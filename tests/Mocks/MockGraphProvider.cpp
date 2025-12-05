@@ -53,42 +53,43 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step)
 }  // namespace tests
 }  // namespace arangodb
 
-MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
+MockGraphProvider::Step::Step(arangodb::graph::VertexRef v, bool isProcessable)
     : arangodb::graph::BaseStep{std::numeric_limits<size_t>::max(), 0, 0.0},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
-                              bool isProcessable)
+MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
+                              MockEdgeType e, bool isProcessable)
     : arangodb::graph::BaseStep{prev},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
-                              size_t depth)
+MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
+                              bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep{prev, depth},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
-                              size_t depth, double weight)
+MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
+                              bool isProcessable, size_t depth, double weight)
     : arangodb::graph::BaseStep{prev, depth, weight},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
-                              bool isProcessable, size_t depth)
+MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
+                              MockEdgeType e, bool isProcessable, size_t depth)
     : arangodb::graph::BaseStep{prev, depth},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
 
-MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
-                              bool isProcessable, size_t depth, double weight)
+MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
+                              MockEdgeType e, bool isProcessable, size_t depth,
+                              double weight)
     : arangodb::graph::BaseStep{prev, depth, weight},
       _vertex(v),
       _edge(e),
@@ -123,8 +124,8 @@ auto MockGraphProvider::decideProcessable() const -> bool {
   }
 }
 
-auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
-    -> Step {
+auto MockGraphProvider::startVertex(arangodb::graph::VertexRef v, size_t depth,
+                                    double weight) -> Step {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Start Vertex:" << v;
   TRI_ASSERT(weight == 0.0);  // Not handled yet
@@ -168,8 +169,8 @@ auto MockGraphProvider::expand(Step const& step, size_t previous,
 auto MockGraphProvider::clear() -> void {}
 
 auto MockGraphProvider::addVertexToBuilder(
-    const Step::Vertex& vertex, arangodb::velocypack::Builder& builder)
-    -> void {
+    arangodb::graph::VertexRef const& vertex,
+    arangodb::velocypack::Builder& builder) -> void {
   std::string id = vertex.getID().toString();
   _stats.incrScannedIndex(1);
   builder.openObject();
@@ -255,12 +256,13 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
           VPackBuilder builder;
           edge.addToBuilder(builder);
           result.push_back(
-              Step{previousIndex, fromH, edge, decideProcessable(),
-                   (source.getDepth() + 1),
+              Step{previousIndex, arangodb::graph::VertexRef{fromH}, edge,
+                   decideProcessable(), (source.getDepth() + 1),
                    (*_weightCallback)(source.getWeight(), builder.slice())});
         } else {
-          result.push_back(Step{previousIndex, fromH, edge, decideProcessable(),
-                                (source.getDepth() + 1)});
+          result.push_back(Step{previousIndex,
+                                arangodb::graph::VertexRef{fromH}, edge,
+                                decideProcessable(), (source.getDepth() + 1)});
         }
 
         LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
@@ -282,11 +284,12 @@ auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
           VPackBuilder builder;
           edge.addToBuilder(builder);
           result.push_back(
-              Step{previousIndex, toH, edge, decideProcessable(),
-                   (source.getDepth() + 1),
+              Step{previousIndex, arangodb::graph::VertexRef{toH}, edge,
+                   decideProcessable(), (source.getDepth() + 1),
                    (*_weightCallback)(source.getWeight(), builder.slice())});
         } else {
-          result.push_back(Step{previousIndex, toH, edge, decideProcessable(),
+          result.push_back(Step{previousIndex, arangodb::graph::VertexRef{toH},
+                                edge, decideProcessable(),
                                 (source.getDepth() + 1)});
         }
 

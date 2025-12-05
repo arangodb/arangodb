@@ -34,6 +34,7 @@
 #include "Graph/Queues/WeightedQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
 #include "Graph/Types/UniquenessLevel.h"
+#include "Graph/Types/VertexRef.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -41,10 +42,6 @@
 #include <deque>
 
 namespace arangodb {
-
-using VertexRef = arangodb::velocypack::HashedStringRef;
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
 
 namespace aql {
 class TraversalStats;
@@ -56,6 +53,9 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
+
+using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                                std::equal_to<VertexRef>>;
 
 class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
@@ -94,8 +94,6 @@ class WeightedTwoSidedEnumerator {
   using CalculatedCandidate = std::tuple<double, Step, Step>;
 
   enum Direction { FORWARD, BACKWARD };
-
-  using VertexRef = arangodb::velocypack::HashedStringRef;
 
   using Edge = ProviderType::Step::EdgeType;
   using EdgeSet =
@@ -236,13 +234,15 @@ class WeightedTwoSidedEnumerator {
       return _haveSeenOtherSide;
     }
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenVertices(std::move(forbidden));
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
@@ -267,8 +267,7 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
-        _visitedNodes;
+    containers::FlatHashMap<VertexRef, std::vector<size_t>> _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
@@ -375,19 +374,22 @@ class WeightedTwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+ private:
+  [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

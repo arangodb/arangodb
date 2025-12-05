@@ -60,14 +60,12 @@ auto PathResult<ProviderType, Step>::clear() -> void {
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v)
-    -> void {
+auto PathResult<ProviderType, Step>::appendVertex(VertexRef v) -> void {
   _vertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
-    -> void {
+auto PathResult<ProviderType, Step>::prependVertex(VertexRef v) -> void {
   _numVerticesFromSourceProvider++;
   _vertices.insert(_vertices.begin(), std::move(v));
 }
@@ -172,7 +170,7 @@ template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::getMemoryUsage() const -> size_t {
   size_t mem = 0;
   mem += sizeof(PathResult<ProviderType, Step>);
-  mem += sizeof(typename Step::Vertex) * _vertices.size();
+  mem += sizeof(VertexRef) * _vertices.size();
   mem += sizeof(typename Step::Edge) * _edges.size();
   mem += sizeof(double) * _weights.size();
   return mem;

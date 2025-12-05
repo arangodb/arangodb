@@ -34,13 +34,13 @@ auto operator<<(std::ostream& out, ClusterProviderStep const& step)
 }
 }  // namespace arangodb::graph
 
-ClusterProviderStep::ClusterProviderStep(VertexType const& v)
+ClusterProviderStep::ClusterProviderStep(VertexRef const& v)
     : _vertex(v),
       _edge(),
       _fetchedStatus(FetchedType::UNFETCHED),
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
-ClusterProviderStep::ClusterProviderStep(VertexType const& v,
+ClusterProviderStep::ClusterProviderStep(VertexRef const& v,
                                          EdgeType const& edge, size_t prev)
     : BaseStep(prev),
       _vertex(v),
@@ -48,7 +48,7 @@ ClusterProviderStep::ClusterProviderStep(VertexType const& v,
       _fetchedStatus(FetchedType::UNFETCHED),
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
-ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
+ClusterProviderStep::ClusterProviderStep(VertexRef v, EdgeType edge,
                                          size_t prev, FetchedType fetchedStatus)
     : BaseStep(prev),
       _vertex(std::move(v)),
@@ -56,7 +56,7 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
       _fetchedStatus(fetchedStatus),
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
-ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
+ClusterProviderStep::ClusterProviderStep(VertexRef v, EdgeType edge,
                                          size_t prev, FetchedType fetchedStatus,
                                          size_t depth)
     : BaseStep(prev, depth),
@@ -65,7 +65,7 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
       _fetchedStatus(fetchedStatus),
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
-ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
+ClusterProviderStep::ClusterProviderStep(VertexRef v, EdgeType edge,
                                          size_t prev, FetchedType fetched,
                                          size_t depth, double weight)
     : BaseStep(prev, depth, weight),
@@ -74,7 +74,7 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, EdgeType edge,
       _fetchedStatus(fetched),
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
-ClusterProviderStep::ClusterProviderStep(VertexType v, size_t depth,
+ClusterProviderStep::ClusterProviderStep(VertexRef v, size_t depth,
                                          double weight)
     : BaseStep(std::numeric_limits<size_t>::max(), depth, weight),
       _vertex(std::move(v)),
@@ -83,10 +83,6 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, size_t depth,
       _validationStatus(ValidationResult::Type::UNKNOWN) {}
 
 ClusterProviderStep::~ClusterProviderStep() = default;
-
-VertexType const& ClusterProviderStep::Vertex::getID() const noexcept {
-  return _vertex;
-}
 
 ClusterProviderStep::EdgeType const& ClusterProviderStep::Edge::getID()
     const noexcept {

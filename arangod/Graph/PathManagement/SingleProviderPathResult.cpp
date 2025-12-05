@@ -61,13 +61,13 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear()
 
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(
-    typename Step::Vertex v) -> void {
+    VertexRef v) -> void {
   _vertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(
-    typename Step::Vertex v) -> void {
+    VertexRef v) -> void {
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 

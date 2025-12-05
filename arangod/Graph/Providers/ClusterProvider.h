@@ -95,7 +95,7 @@ class ClusterProvider {
   auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
                          std::function<void(Step)> const& callback) -> bool;
 
-  void addVertexToBuilder(typename Step::Vertex const& vertex,
+  void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);

@@ -24,10 +24,8 @@
 
 #pragma once
 
-#include <velocypack/HashedStringRef.h>
-#include "Containers/HashSet.h"
-
 #include <numeric>
+#include "Graph/Types/VertexRef.h"
 
 namespace arangodb {
 
@@ -39,15 +37,13 @@ namespace graph {
 
 template<class ProviderType, class Step>
 class PathResult {
-  using VertexRef = arangodb::velocypack::HashedStringRef;
-
  public:
   enum WeightType { NONE, AMOUNT_EDGES, ACTUAL_WEIGHT };
 
   PathResult(ProviderType& sourceProvider, ProviderType& targetProvider);
   auto clear() -> void;
-  auto appendVertex(typename Step::Vertex v) -> void;
-  auto prependVertex(typename Step::Vertex v) -> void;
+  auto appendVertex(VertexRef v) -> void;
+  auto prependVertex(VertexRef v) -> void;
   auto appendEdge(typename Step::Edge e, double weight) -> void;
   auto prependEdge(typename Step::Edge e, double weight) -> void;
   auto addWeight(double weight) -> void;
@@ -63,9 +59,7 @@ class PathResult {
   auto getWeight(size_t which) -> double { return _weights[which]; }
 
   auto getLength() const -> size_t { return _edges.size(); }
-  auto getVertex(size_t which) const -> Step::Vertex {
-    return _vertices[which];
-  }
+  auto getVertex(size_t which) const -> VertexRef { return _vertices[which]; }
   auto getEdge(size_t which) const -> Step::Edge { return _edges[which]; }
   auto getWeight(size_t which) const -> double { return _weights[which]; }
   auto getSourceProvider() const -> ProviderType& { return _sourceProvider; }
@@ -89,7 +83,7 @@ class PathResult {
   }
 
  private:
-  std::vector<typename Step::Vertex> _vertices;
+  std::vector<VertexRef> _vertices;
   std::vector<typename Step::Edge> _edges;
   std::vector<double> _weights;
 

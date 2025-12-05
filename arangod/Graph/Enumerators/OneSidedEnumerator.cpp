@@ -252,7 +252,8 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
   for (auto const& v : vertices) {
     VPackHashedStringRef source{v.id.data(),
                                 static_cast<uint32_t>(v.id.size())};
-    startSteps.emplace_back(_provider.startVertex(source, v.depth, v.weight));
+    startSteps.emplace_back(
+        _provider.startVertex(VertexRef{source}, v.depth, v.weight));
   }
   _queue.setStartContent(std::move(startSteps));
 }

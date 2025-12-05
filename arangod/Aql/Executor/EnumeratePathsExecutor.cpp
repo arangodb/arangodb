@@ -234,8 +234,8 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      _finder.reset(arangodb::velocypack::HashedStringRef(source),
-                    arangodb::velocypack::HashedStringRef(target));
+      _finder.reset(VertexRef{arangodb::velocypack::HashedStringRef(source)},
+                    VertexRef{arangodb::velocypack::HashedStringRef(target)});
       return true;
     }
   }

@@ -110,7 +110,7 @@ auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be
   // removed.
-  return Step(_cache.persistString(vertex), depth, weight);
+  return Step(VertexRef{_cache.persistString(vertex)}, depth, weight);
 }
 
 template<class Step>
@@ -159,9 +159,9 @@ auto SingleServerProvider<Step>::expand(
           << id;
 
       EdgeDocumentToken edgeToken{neighbour.eid};
-      callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
-                    _opts.weightEdge(step.getWeight(), edge),
-                    neighbour.cursorId});
+      callback(Step{
+          VertexRef{id}, std::move(edgeToken), previous, step.getDepth() + 1,
+          _opts.weightEdge(step.getWeight(), edge), neighbour.cursorId});
       // TODO [GraphRefactor]: Why is cursorID set, but never used?
       // Note: There is one implementation that used, it, but there is a high
       // probability we do not need it anymore after refactoring is complete.
@@ -250,7 +250,7 @@ auto SingleServerProvider<Step>::addExpansionIterator(CursorId id,
 
 template<class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(
-    typename Step::Vertex const& vertex, arangodb::velocypack::Builder& builder,
+    VertexRef const& vertex, arangodb::velocypack::Builder& builder,
     bool writeIdIfNotFound) {
   if (_opts.produceVertices()) {
     _vertexLookup.insertVertexIntoResult(vertex.getID(), builder,

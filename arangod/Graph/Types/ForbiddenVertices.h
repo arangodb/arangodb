@@ -23,10 +23,11 @@
 
 #pragma once
 
+#include "Graph/Types/VertexRef.h"
+
 namespace arangodb {
 namespace graph {
 
-using VertexRef = arangodb::velocypack::HashedStringRef;
 using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                                 std::equal_to<VertexRef>>;
 
@@ -34,7 +35,7 @@ template<typename T>
 concept HasForbidden = requires(T t) {
   {
     t.setForbiddenVertices(std::make_shared<VertexSet>())
-    } -> std::same_as<void>;
+  } -> std::same_as<void>;
 };
 
 }  // namespace graph

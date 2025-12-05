@@ -21,13 +21,13 @@
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
 #include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
-
-#pragma once
+#include "Graph/Types/VertexRef.h"
 
 namespace arangodb {
 namespace graph {
@@ -38,27 +38,8 @@ class SingleServerProvider;
 class SingleServerProviderStep : public arangodb::graph::BaseStep {
  public:
   using EdgeType = EdgeDocumentToken;
-  using VertexType = arangodb::velocypack::HashedStringRef;
 
  public:
-  class Vertex {
-   public:
-    explicit Vertex(VertexType v) : _vertex(v) {}
-
-    VertexType const& getID() const noexcept;
-
-    bool operator<(Vertex const& other) const noexcept {
-      return _vertex < other._vertex;
-    }
-
-    bool operator>(Vertex const& other) const noexcept {
-      return _vertex > other._vertex;
-    }
-
-   private:
-    VertexType _vertex;
-  };
-
   class Edge {
    public:
     explicit Edge(EdgeDocumentToken tkn) noexcept : _token(std::move(tkn)) {}
@@ -73,18 +54,18 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep {
     EdgeDocumentToken _token;
   };
 
-  SingleServerProviderStep(VertexType v);
-  SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev);
-  SingleServerProviderStep(VertexType v, EdgeDocumentToken edge, size_t prev,
+  SingleServerProviderStep(VertexRef v);
+  SingleServerProviderStep(VertexRef v, EdgeDocumentToken edge, size_t prev);
+  SingleServerProviderStep(VertexRef v, EdgeDocumentToken edge, size_t prev,
                            size_t depth, double weight, size_t);
-  SingleServerProviderStep(VertexType v, size_t depth, double weight = 0.0);
+  SingleServerProviderStep(VertexRef v, size_t depth, double weight = 0.0);
   ~SingleServerProviderStep();
 
   bool operator<(SingleServerProviderStep const& other) const noexcept {
     return _vertex < other._vertex;
   }
 
-  Vertex const& getVertex() const { return _vertex; }
+  VertexRef const& getVertex() const { return _vertex; }
   Edge const& getEdge() const { return _edge; }
 
   std::string toString() const {
@@ -94,9 +75,6 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep {
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }
   bool isUnknown() const { return false; }
-
-  // beware: will return a *copy* of the vertex id
-  VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
   // beware: will return a *copy* of the edge id
   EdgeType getEdgeIdentifier() const { return _edge.getID(); }
@@ -122,7 +100,7 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep {
   static bool edgeFetched() noexcept { return true; }
 
  private:
-  Vertex _vertex;
+  VertexRef _vertex;
   Edge _edge;
 };
 template<typename Inspector>

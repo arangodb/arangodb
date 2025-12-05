@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <set>
 
@@ -103,7 +104,6 @@ class TwoSidedEnumerator {
 
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = arangodb::velocypack::HashedStringRef;
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                     std::equal_to<VertexRef>>;
@@ -147,17 +147,20 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenVertices(std::move(forbidden));
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private : auto clearProvider() -> void;
+   private:
+    auto clearProvider() -> void;
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 
@@ -255,14 +258,16 @@ class TwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };

@@ -142,7 +142,8 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step{_opts.getCache()->persistString(vertex), depth, weight};
+  return Step{VertexRef{_opts.getCache()->persistString(vertex)}, depth,
+              weight};
 }
 
 template<class StepImpl>
@@ -594,7 +595,8 @@ auto ClusterProvider<StepImpl>::expand(
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
-      callback(Step{to, edge, previous, fetchedType, step.getDepth() + 1,
+      callback(Step{VertexRef{to}, VertexRef{edge}, previous, fetchedType,
+                    step.getDepth() + 1,
                     _opts.weightEdge(step.getWeight(), readEdge(edge))});
     }
   } else {
@@ -813,8 +815,7 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(
 
 template<class StepImpl>
 void ClusterProvider<StepImpl>::addVertexToBuilder(
-    typename Step::Vertex const& vertex,
-    arangodb::velocypack::Builder& builder) {
+    VertexRef const& vertex, arangodb::velocypack::Builder& builder) {
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
 };

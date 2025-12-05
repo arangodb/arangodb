@@ -142,7 +142,7 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::fetchResult(
 template<class ProviderType>
 auto WeightedShortestPathEnumerator<ProviderType>::Ball::hasBeenVisited(
     Step const& step) -> bool {
-  auto it = _foundVertices.find(step.getVertex().getID());
+  auto it = _foundVertices.find(step.getVertex());
   if (it == _foundVertices.end()) {
     return false;
   }
@@ -199,8 +199,8 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
   _diameter = step.getWeight();
   ValidationResult res = _validator.validatePath(step);
 
-  if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
-    auto it = _foundVertices.find(step.getVertex().getID());
+  if (!res.isPruned() && step.getVertex() != other.getCenter()) {
+    auto it = _foundVertices.find(step.getVertex());
     TRI_ASSERT(it != _foundVertices.end());
     if (it->second.cancelled) {
       // This happens if we have later found a shorter path to the vertex
@@ -216,20 +216,19 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       // We check for
       if (_forbiddenVertices != nullptr &&
-          _forbiddenVertices->contains(n.getVertex().getID())) {
+          _forbiddenVertices->contains(n.getVertex())) {
         return;
       }
       if (_forbiddenEdges != nullptr &&
           _forbiddenEdges->contains(n.getEdge().getID())) {
         return;
       }
-      auto reachedIt = _foundVertices.find(n.getVertex().getID());
+      auto reachedIt = _foundVertices.find(n.getVertex());
       bool needToQueue = true;
       bool weightReduced = false;
       if (reachedIt == _foundVertices.end()) {
         reachedIt =
-            _foundVertices
-                .emplace(n.getVertex().getID(), VertexInfo(n.getWeight()))
+            _foundVertices.emplace(n.getVertex(), VertexInfo(n.getWeight()))
                 .first;
       } else if (reachedIt->second.weight > n.getWeight()) {
         // Reduce the weight of the vertex, note that the old Step will
@@ -273,11 +272,22 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
   }
 }
 
+<<<<<<< HEAD
 template<class ProviderType>
 auto WeightedShortestPathEnumerator<ProviderType>::Ball::matchResultsInShell(
     Step const& otherStep, std::optional<CalculatedCandidate>& bestPath,
     PathValidatorType const& otherSideValidator) -> void {
   auto it = _foundVertices.find(otherStep.getVertex().getID());
+=======
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
+                                    PathValidator>::Ball::
+    matchResultsInShell(Step const& otherStep,
+                        std::optional<CalculatedCandidate>& bestPath,
+                        PathValidator const& otherSideValidator) -> void {
+  auto it = _foundVertices.find(otherStep.getVertex());
+>>>>>>> 3c01070a7d5 (Use VertexRef everywhere)
   TRI_ASSERT(it != _foundVertices.end());
   TRI_ASSERT(it->second.expanded);
   auto position = it->second.position;

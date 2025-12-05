@@ -33,6 +33,7 @@
 #include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
 #include "Graph/Providers/SingleServer/VertexLookup.h"
 #include "Graph/Providers/SingleServer/EdgeLookup.h"
+#include "Graph/Types/VertexRef.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
@@ -100,7 +101,7 @@ class SingleServerProvider {
   std::string getEdgeId(typename Step::Edge const& edge);
   EdgeType getEdgeIdRef(typename Step::Edge const& edge);
 
-  void addVertexToBuilder(typename Step::Vertex const& vertex,
+  void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
 

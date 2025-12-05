@@ -30,6 +30,7 @@
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Queues/ExpansionMarker.h"
+#include "Graph/Types/VertexRef.h"
 
 namespace arangodb {
 
@@ -66,8 +67,6 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
-  using VertexRef = velocypack::HashedStringRef;
-
   using ResultList = typename std::conditional_t<
       std::is_same_v<Step, enterprise::SmartGraphStep>,
       enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;

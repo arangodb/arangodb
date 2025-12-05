@@ -34,7 +34,7 @@ class VertexRef {
   VertexRef() : _vertex() {}
   explicit VertexRef(RefType v) : _vertex(std::move(v)) {}
 
-  RefType const& getID() const noexcept;
+  RefType const& getID() const noexcept { return _vertex; };
 
   // TODO: should this be in HashedStringRef?
   auto operator<=>(VertexRef const& other) const {
@@ -54,6 +54,8 @@ class VertexRef {
   friend std::ostream& operator<<(std::ostream& stream, VertexRef const& ref) {
     return stream << ref._vertex;
   }
+
+  operator velocypack::HashedStringRef() { return _vertex; }
 
  private:
   RefType _vertex;

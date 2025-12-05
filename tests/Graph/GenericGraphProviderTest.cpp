@@ -261,7 +261,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
-  auto start = testee.startVertex(startH);
+  auto start = testee.startVertex(arangodb::graph::VertexRef{startH});
 
   if (start.isLooseEnd()) {
     std::vector<decltype(start)*> looseEnds{};
@@ -304,7 +304,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
-  auto start = testee.startVertex(startH);
+  auto start = testee.startVertex(arangodb::graph::VertexRef{startH});
 
   if (start.isLooseEnd()) {
     std::vector<decltype(start)*> looseEnds{};
@@ -371,7 +371,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
-  auto start = testee.startVertex(startH);
+  auto start = testee.startVertex(arangodb::graph::VertexRef{startH});
 
   if (start.isLooseEnd()) {
     std::vector<decltype(start)*> looseEnds{};

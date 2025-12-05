@@ -264,7 +264,8 @@ TEST_P(KPathFinderTest, no_path_exists) {
   auto source = vId(91);
   auto target = vId(99);
   auto finder = pathFinder(1, 1);
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -298,7 +299,8 @@ TEST_P(KPathFinderTest, path_depth_0) {
   auto source = vId(91);
   auto target = vId(91);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -342,7 +344,8 @@ TEST_P(KPathFinderTest, path_depth_1) {
   auto source = vId(1);
   auto target = vId(2);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -379,7 +382,8 @@ TEST_P(KPathFinderTest, path_depth_2) {
   auto source = vId(1);
   auto target = vId(3);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -416,7 +420,8 @@ TEST_P(KPathFinderTest, path_depth_3) {
   auto source = vId(1);
   auto target = vId(4);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -454,7 +459,8 @@ TEST_P(KPathFinderTest, path_diamond) {
   auto source = vId(5);
   auto target = vId(9);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -506,7 +512,8 @@ TEST_P(KPathFinderTest, path_depth_1_to_2) {
   auto source = vId(10);
   auto target = vId(11);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -547,7 +554,8 @@ TEST_P(KPathFinderTest, path_depth_2_to_3) {
   auto source = vId(10);
   auto target = vId(11);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -588,7 +596,8 @@ TEST_P(KPathFinderTest, path_depth_2_to_3_skip) {
   auto source = vId(10);
   auto target = vId(11);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -627,7 +636,8 @@ TEST_P(KPathFinderTest, path_loop) {
   auto source = vId(20);
   auto target = vId(22);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -658,7 +668,8 @@ TEST_P(KPathFinderTest, triangle_loop) {
   auto source = vId(30);
   auto target = vId(34);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -688,7 +699,8 @@ TEST_P(KPathFinderTest, triangle_loop_skip) {
   auto source = vId(30);
   auto target = vId(34);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -714,7 +726,8 @@ TEST_P(KPathFinderTest, many_neighbours_source) {
   auto source = vId(35);
   auto target = vId(40);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -745,7 +758,8 @@ TEST_P(KPathFinderTest, many_neighbours_target) {
   auto source = vId(48);
   auto target = vId(53);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
