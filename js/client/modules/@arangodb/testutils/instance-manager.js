@@ -1167,6 +1167,57 @@ class instanceManager {
     });
   }
 
+  waitForAllShardsInSync() {
+    if (!this.isCluster) {
+      return true;
+    }
+    let count = 0;
+    let collections = [];
+    let dbs = db._databases();
+    while (count < 500) {
+      let dbsOk = 0;
+      dbs.forEach(oneDb => {
+        db._useDatabase(oneDb);
+        collections = [];
+        let found = 0;
+        let shardDist = arango.GET("/_admin/cluster/shardDistribution");
+        if (shardDist.code !== 200 || typeof shardDist.results !== "object") {
+          ++count;
+          return;
+        }
+        let cols = Object.keys(shardDist.results);
+        cols.forEach((c) => {
+          let col = shardDist.results[c];
+          let shards = Object.keys(col.Plan);
+          shards.forEach((s) => {
+            try {
+              if (col.Current.hasOwnProperty(s) && (col.Plan[s].leader !== col.Current[s].leader)) {
+                ++found;
+                collections.push([c, s]);
+              }
+            } catch (ex) {
+              print(`${Date()} 015: ${s}`);
+              print(`${Date()} 015: ${JSON.stringify(col)}`);
+              print(`${Date()} 015: ${ex}`);
+            }
+          });
+        });
+        if (found > 0) {
+          print(`${Date()} 015: ${found} found - Waiting - ${JSON.stringify(collections)}`);
+          internal.sleep(1);
+          count += 1;
+        } else {
+          dbsOk += 1;
+          return;
+        }
+      });
+      if (dbs.length === dbsOk) {
+        break;
+      }
+    }
+    return count < 500;
+  }
+
   stopServerWaitFailed(urlIDOrShortName) {
     this.arangods.forEach(arangod => {
       if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
