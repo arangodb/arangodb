@@ -92,6 +92,8 @@ class instanceManager {
     this.urls = [];
     this.endpoints = [];
     this.endpoint = undefined;
+    this.endpointPorts = [];
+    this.endpointPort = [];
     this.connectedEndpoint = undefined;
     this.connectionHandle = undefined;
     this.arangods = [];
@@ -158,6 +160,8 @@ class instanceManager {
       url: this.url,
       endpoints: this.endpoints,
       endpoint: this.endpoint,
+      endpointPorts: this.endpointPorts,
+      endpointPort: this.endpointPorts,
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
@@ -177,6 +181,8 @@ class instanceManager {
     this.url = struct['url'];
     this.endpoints = struct['endpoints'];
     this.endpoint = struct['endpoint'];
+    this.endpointPorts = struct['endpointPorts'];
+    this.endpointPort = struct['endpointPort'];
     this.restKeyFile = struct['restKeyFile'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
@@ -199,6 +205,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       if (this.endpoint === arangod.endpoint) {
         arangod.setThisConnectionHandle();
+        this.endpointPort = arangod.port;
       }
     });
   }
@@ -453,6 +460,7 @@ class instanceManager {
                                                this.memlayout[instanceRole.single]));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+          this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.single);
@@ -460,9 +468,11 @@ class instanceManager {
       if (frontendCount > 0) {
         this.url = this.urls[0];
         this.endpoint = this.endpoints[0];
+        this.endpointPort = this.endpointPorts[0];
       } else {
         this.url = null;
         this.endpoint = null;
+        this.endpointPort = -1;
       };
     } catch (e) {
       print(e, e.stack);
@@ -1331,6 +1341,8 @@ class instanceManager {
         if (arangod.isRole(instanceRole.coordinator)) {
           this.urls.push(arangod.url);
           this.endpoints.push(arangod.endpoint);
+          this.endpointPorts.push(arangod.port);
+          print(this.endpointPorts)
         }
       });
       if (this.endpoints.length === 0) {
@@ -1338,16 +1350,20 @@ class instanceManager {
       }
       this.url = this.urls[0];
       this.endpoint = this.endpoints[0];
+      this.endpointPort = this.endpointPorts[0];
     } else if (this.options.agency) {
       this.arangods.forEach(arangod => {
         this.urls.push(arangod.url);
         this.endpoints.push(arangod.endpoint);
+        this.endpointPorts.push(arangod.port);
       });
       this.url = this.urls[0];
       this.endpoint = this.endpoints[0];
+      this.endpointPort = this.endpointPorts[0];
     } else {
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
+      this.endpointPort = this.arangods[0].port;
     }
   }
 

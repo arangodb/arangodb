@@ -48,7 +48,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
+const { runWithAllureReport } = require('@arangodb/testutils/testrunners');
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -66,127 +66,8 @@ const testPaths = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_http
+// / @brief TEST: java_driver
 // //////////////////////////////////////////////////////////////////////////////
-
-class runWithAllureReport extends testRunnerBase {
-  getAllureResults(testResultsDir, results, status) {
-    let allResultJsons = {};
-    let topLevelContainers = [];
-    let allContainerJsons = {};
-    let containerRe = /-container.json/;
-    let resultRe = /-result.json/;
-    let resultFiles = fs.list(testResultsDir).filter(file => {
-      return file.match(resultRe) !== null;
-    });
-    if (resultFiles.length === 0) {
-      let msg = `did not find any files in ${testResultsDir}`;
-      print(msg);
-      results['status'] = false;
-      results['message'] = msg;
-    }
-    //print(resultFiles)
-    resultFiles.forEach(containerFile => {
-      let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      resultJson['parents'] = [];
-      allResultJsons[resultJson.uuid] = resultJson;
-    });
-
-    let containerFiles = fs.list(testResultsDir).filter(file => file.match(containerRe) !== null);
-    containerFiles.forEach(containerFile => {
-      let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
-      container['childContainers'] = [];
-      container['isToplevel'] = false;
-      //print(container)
-      container.children.forEach(child => {
-        allResultJsons[child]['parents'].push(container.uuid);
-      });
-      allContainerJsons[container.uuid] = container;
-    });
-
-    for(let oneResultKey in allResultJsons) {
-      allResultJsons[oneResultKey].parents = 
-        allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
-          let a = allContainerJsons[aUuid];
-          let b = allContainerJsons[bUuid];
-          if ((a.start !== b.start) || (a.stop !== b.stop)) {
-            return (b.stop - b.start) - (a.stop - a.start);
-          }
-          if (a.children.length !== b.children.length) {
-            return b.children.length - a.children.length;
-          }
-          //print(a)
-          //print(b)
-          //print('--------')
-          return 0;
-        });
-      for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
-        let parent = allResultJsons[oneResultKey].parents[i];
-        let child = allResultJsons[oneResultKey].parents[i + 1];
-        if(i === 0) {
-          topLevelContainers.push(parent);
-        }
-        if (!allContainerJsons[parent]['childContainers'].includes(child)) {
-          allContainerJsons[parent]['childContainers'].push(child);
-        }
-        // print(allContainerJsons[parent])
-      }
-      //print(allResultJsons[oneResultKey])
-      //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
-    }
-    //print(topLevelContainers)
-    topLevelContainers.forEach(id => {
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-      let tlContainer = allContainerJsons[id];
-      //print(tlContainer['childContainers'])
-
-      let resultSet = {
-        duration: tlContainer.stop - tlContainer.start,
-        total: tlContainer.children.length,
-        failed: 0,
-        status: true
-      };
-      results[tlContainer.name] = resultSet;
-
-      tlContainer['childContainers'].forEach(childContainerId => {
-        let childContainer = allContainerJsons[childContainerId];
-        let suiteResult = {};
-        resultSet[childContainer.name] = suiteResult;
-        //print(childContainer);
-        childContainer['childContainers'].forEach(grandChildContainerId => {
-          let grandChildContainer = allContainerJsons[grandChildContainerId];
-          //print(grandChildContainer);
-          let name = childContainer.name + "." + grandChildContainer.name;
-          if (grandChildContainer.children.length !== 1) {
-            print(RED+"This grandchild has more than one item - not supported!"+RESET);
-            print(RED+grandChildContainer.children+RESET);
-          }
-          let gcTestResult = allResultJsons[grandChildContainer.children[0]];
-          let message = "";
-          if (gcTestResult.hasOwnProperty('statusDetails')) {
-            message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
-          }
-          let myResult = {
-            duration: gcTestResult.stop - gcTestResult.start,
-            status: (gcTestResult.status === "passed") || (gcTestResult.status === "skipped"),
-            message: message
-          };
-
-          suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
-          if (!myResult.status) {
-            status = false;
-            suiteResult.status = false;
-            // suiteResult.message = myResult.message;
-            results.message += myResult.message;
-          }
-        });
-      });
-      //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
-    });
-    results['timeout'] = false;
-    results['status'] = status;
-  }
-}
 
 class runInJavaTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {

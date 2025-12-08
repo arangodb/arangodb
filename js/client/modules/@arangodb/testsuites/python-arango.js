@@ -1,0 +1,172 @@
+/* jshint strict: false, sub: true */
+/* global print db */
+'use strict';
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Wilfried Goesgens
+// //////////////////////////////////////////////////////////////////////////////
+
+const functionsDocumentation = {
+  'python_driver': 'python_arango client driver test',
+};
+const optionsDocumentation = [
+  '   - `pythonsource`: directory of the java driver',
+  '   - `pythonOptions`: additional arguments to pass via the commandline',
+  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java',
+];
+
+const internal = require('internal');
+
+const executeExternal = internal.executeExternal;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const statusExternal = internal.statusExternal;
+
+/* Modules: */
+const _ = require('lodash');
+const fs = require('fs');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
+const { runWithAllureReport } = require('@arangodb/testutils/testrunners');
+const yaml = require('js-yaml');
+const platform = require('internal').platform;
+const time = require('internal').time;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+
+// const BLUE = require('internal').COLORS.COLOR_BLUE;
+// const CYAN = require('internal').COLORS.COLOR_CYAN;
+// const GREEN = require('internal').COLORS.COLOR_GREEN;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+const testPaths = {
+  'python_driver': []
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_http
+// //////////////////////////////////////////////////////////////////////////////
+
+class runInPythonTest extends runWithAllureReport {
+  constructor(options, testname, ...optionalArgs) {
+    let opts = _.clone(tu.testClientJwtAuthInfo);
+    //opts['password'] = 'testpython';
+    //opts['username'] = 'root';
+    //opts['arangodConfig'] = 'arangod-auth.conf';
+    //_.defaults(opts, options);
+    super(options, testname, ...optionalArgs);
+    this.info = "runInPythonTest";
+  }
+  checkSutCleannessBefore() {}
+  checkSutCleannessAfter() { return true; }
+  runOneTest(file) {
+    // todo print(this.instanceManager.setPassvoid());
+    let topology;
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
+    let results = {
+      'message': ''
+    };
+    let matchTopology;
+    if (this.options.cluster) {
+      topology = 'CLUSTER';
+      matchTopology = /^CLUSTER/;
+    } else {
+      topology = 'SINGLE_SERVER';
+      matchTopology = /^SINGLE_SERVER/;
+    }
+//pytest --cov=arango --cov-report=xml --cov-report term-missing --color=yes --code-highlight=yes "${args[@]}"
+//   Running pytest with args: --junitxml=test-results/junit.xml --log-cli-level=DEBUG --host localhost --port=8529 --cluster --port=8539 --port=8549 --enterprise
+    
+    // strip i.e. http:// from the URL to conform with what the driver expects:
+    let rx = /.*:\/\//gi;
+    let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
+arangodb.password=${this.options.password}
+arangodb.acquireHostList=true
+`;
+    //let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
+    //fs.write(propertiesFileName, propertiesFileContent);
+    let args = [
+      '--enterprise',
+      '--junitxml=test-results/junit.xml',
+      '--log-cli-level=DEBUG',
+      '--host',
+      'localhost',
+      `--port=${this.instanceManager.endpointPort}`,
+    ];
+    if (this.options.cluster) {
+      args = args.concat([
+        '--cluster',
+        `--port=${this.instanceManager.endpointPorts[1]}`,
+        `--port=${this.instanceManager.endpointPorts[2]}`,
+        // '-Dallure.results.directory=' + testResultsDir,
+      ]);
+    }
+    if (this.options.testCase) {
+      args.push('-Dit.test=' + this.options.testCase);
+      args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+    }
+    if (this.options.pythonOptions !== '') {
+      for (var key in this.options.pythonOptions) {
+        args.push('--' + key + '=' + this.options.pythonOptions[key]);
+      }
+    }
+    if (this.options.extremeVerbosity) {
+      print(args);
+    }
+    let start = Date();
+    let status = true;
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.pythonsource));
+    const rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
+    if (rc.exit !== 0) {
+      status = false;
+    }
+    results = {
+      status: status,
+      failed: (status)?0:1,
+    };
+    print(results)
+    // this.getAllureResults(testResultsDir, results, status);
+    return results;
+  }
+}
+
+function pythonDriver (options) {
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+  if (localOptions.cluster && localOptions.dbServers < 3) {
+    localOptions.dbServers = 3;
+    localOptions.coordinators = 3;
+  }
+  let rc = new runInPythonTest(localOptions, 'python_test').run([ 'python_test.js']);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
+}
+
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
+  testFns['python_driver'] = pythonDriver;
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'pythonOptions': '',
+    'pythonsource': '../python-arango',
+  });
+};
