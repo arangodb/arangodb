@@ -85,25 +85,7 @@ class runInPythonTest extends runWithAllureReport {
     let results = {
       'message': ''
     };
-    let matchTopology;
-    if (this.options.cluster) {
-      topology = 'CLUSTER';
-      matchTopology = /^CLUSTER/;
-    } else {
-      topology = 'SINGLE_SERVER';
-      matchTopology = /^SINGLE_SERVER/;
-    }
-//pytest --cov=arango --cov-report=xml --cov-report term-missing --color=yes --code-highlight=yes "${args[@]}"
-//   Running pytest with args: --junitxml=test-results/junit.xml --log-cli-level=DEBUG --host localhost --port=8529 --cluster --port=8539 --port=8549 --enterprise
     
-    // strip i.e. http:// from the URL to conform with what the driver expects:
-    let rx = /.*:\/\//gi;
-    let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
-arangodb.password=${this.options.password}
-arangodb.acquireHostList=true
-`;
-    //let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
-    //fs.write(propertiesFileName, propertiesFileContent);
     let args = [
       '--enterprise',
       '--junitxml=test-results/junit.xml',
@@ -143,7 +125,7 @@ arangodb.acquireHostList=true
       status: status,
       failed: (status)?0:1,
     };
-    print(results)
+    print(results);
     // this.getAllureResults(testResultsDir, results, status);
     return results;
   }

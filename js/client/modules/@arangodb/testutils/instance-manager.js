@@ -1342,7 +1342,6 @@ class instanceManager {
           this.urls.push(arangod.url);
           this.endpoints.push(arangod.endpoint);
           this.endpointPorts.push(arangod.port);
-          print(this.endpointPorts)
         }
       });
       if (this.endpoints.length === 0) {
