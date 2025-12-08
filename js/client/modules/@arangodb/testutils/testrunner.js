@@ -414,6 +414,10 @@ class testRunner {
           first = false;
 
           if (this.options.loopEternal) {
+            if (reply.hasOwnProperty('status') && reply.status === false) {
+              print(RED + 'test failed, terminating' + RESET);
+              break;
+            }
             if (loopCount % this.options.loopSleepWhen === 0) {
               print('sleeping...');
               sleep(this.options.loopSleepSec);
