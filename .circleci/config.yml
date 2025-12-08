@@ -17,18 +17,11 @@ parameters:
     # we use it, otherwise we fall back to "devel".
     default: ""
     description: "The branch to use for the enterprise repository."
-  without-instrumentation:
-    type: boolean
-    default: true
-    description: "Whether to create workflows for non-instrumented builds"
-  with-tsan:
-    type: boolean
-    default: false
-    description: "Whether to create workflows for TSan builds"
-  with-alubsan:
-    type: boolean
-    default: false
-    description: "Whether to create workflows for ALUBSan builds"
+  sanitizer:
+    type: enum
+    enum: ["none", "tsan", "alubsan"]
+    default: "none"
+    description: "Sanitizer to use"
   full:
     type: boolean
     default: false
@@ -64,7 +57,7 @@ parameters:
     description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d76ea9cb
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-dd26cefd
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
@@ -167,9 +160,7 @@ jobs:
           name: Print pipeline parameters
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
-            echo "without-instrumentation: << pipeline.parameters.without-instrumentation >>"
-            echo "with-tsan: << pipeline.parameters.with-tsan >>"
-            echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
+            echo "sanitizer: << pipeline.parameters.sanitizer >>"
             echo "full: << pipeline.parameters.full >>"
             echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
@@ -235,9 +226,7 @@ jobs:
             else
               set -x
               python3 ".circleci/generate_config.py" \
-                <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
-                <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
-                <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
+                --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --test-image "<< pipeline.parameters.test-docker-image >>" \
