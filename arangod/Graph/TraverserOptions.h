@@ -1,4 +1,4 @@
-/)///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -31,187 +31,183 @@
 
 namespace arangodb {
 
-  namespace velocypack {
-  class Builder;
-  class Slice;
-  }  // namespace velocypack
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 
-  namespace aql {
-  struct AstNode;
-  class Expression;
-  class PruneExpressionEvaluator;
-  class Query;
-  class TraversalNode;
-  struct Variable;
-  }  // namespace aql
+namespace aql {
+struct AstNode;
+class Expression;
+class PruneExpressionEvaluator;
+class Query;
+class TraversalNode;
+struct Variable;
+}  // namespace aql
 
-  namespace graph {
-  class EdgeCursor;
+namespace graph {
+class EdgeCursor;
+}
+
+namespace traverser {
+
+struct TraverserOptions : public graph::BaseOptions {
+  friend class arangodb::aql::TraversalNode;
+
+ public:
+  enum UniquenessLevel { NONE, PATH, GLOBAL };
+  enum class Order { DFS, BFS, WEIGHTED };
+
+ protected:
+  std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+
+  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>>
+      _vertexExpressions;
+
+  std::unique_ptr<aql::Expression> _baseVertexExpression;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  ///        The Node keeps responsibility
+  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
+
+  /// @brief The condition given for PostFilters (might be empty)
+  ///        The Node keeps responsibility
+  ///        This is used to avoid producing paths if the last vertex or edge
+  ///        do not match.
+  std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
+
+  bool _producePathsVertices{true};
+  bool _producePathsEdges{true};
+  bool _producePathsWeights{true};  // only used by WeightedEnumerator
+
+ public:
+  uint64_t minDepth;
+
+  uint64_t maxDepth;
+
+  Order mode;
+
+  bool useNeighbors;
+
+  bool _isDisjoint = false;
+
+  UniquenessLevel uniqueVertices;
+
+  UniquenessLevel uniqueEdges;
+
+  std::string weightAttribute;
+
+  double defaultWeight;
+
+  std::vector<std::string> vertexCollections;
+
+  std::vector<std::string> edgeCollections;
+
+  explicit TraverserOptions(arangodb::aql::QueryContext& query);
+
+  TraverserOptions(arangodb::aql::QueryContext& query,
+                   arangodb::velocypack::Slice definition);
+
+  TraverserOptions(arangodb::aql::QueryContext& query,
+                   arangodb::velocypack::Slice info,
+                   arangodb::velocypack::Slice collections);
+
+  /// @brief This copy constructor is only working during planning phase.
+  ///        After planning this node should not be copied anywhere.
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works
+  ///        after the planning phase; however, the options have to be
+  ///        prepared again (see TraversalNode::prepareOptions())
+  TraverserOptions(TraverserOptions const& other,
+                   bool allowAlreadyBuiltCopy = false);
+  TraverserOptions& operator=(TraverserOptions const&) = delete;
+
+  virtual ~TraverserOptions();
+
+  /// @brief Build a velocypack for cloning in the plan.
+  void toVelocyPack(arangodb::velocypack::Builder&) const override;
+
+  /// @brief Build a velocypack for indexes
+  void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;
+
+  /// @brief Build a velocypack containing all relevant information
+  ///        for DBServer traverser engines.
+  void buildEngineInfo(arangodb::velocypack::Builder&) const override;
+
+  /// @brief Whether or not the edge collection shall be excluded
+  bool shouldExcludeEdgeCollection(std::string const& name) const override;
+
+  /// @brief Add a lookup info for specific depth
+  void addDepthLookupInfo(aql::ExecutionPlan* plan,
+                          std::string const& collectionName,
+                          std::string const& attributeName,
+                          aql::AstNode* condition, uint64_t depth,
+                          TRI_edge_direction_e direction);
+
+  bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
+
+  bool hasSpecificCursorForDepth(uint64_t depth) const;
+
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
+                              std::string_view vertexId, uint64_t, size_t);
+
+  std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
+
+  double estimateCost(size_t& nrItems) const override;
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx,
+      aql::Expression* expr);
+
+  std::unique_ptr<aql::PruneExpressionEvaluator> createPostFilterEvaluator(
+      std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
+      size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr);
+
+  void activatePostFilter(std::vector<aql::Variable const*> vars,
+                          std::vector<aql::RegisterId> regs,
+                          size_t vertexVarIdx, size_t edgeVarIdx,
+                          aql::Expression* expr);
+
+  bool usesPrune() const { return _pruneExpression != nullptr; }
+  bool usesPostFilter() const { return _postFilterExpression != nullptr; }
+
+  bool isUseBreadthFirst() const { return mode == Order::BFS; }
+
+  bool isUniqueGlobalVerticesAllowed() const {
+    return mode == Order::BFS || mode == Order::WEIGHTED;
   }
 
-  namespace traverser {
+  auto estimateDepth() const noexcept -> uint64_t override;
 
-  struct TraverserOptions : public graph::BaseOptions {
-    friend class arangodb::aql::TraversalNode;
+  auto setProducePaths(bool vertices, bool edges, bool weights) noexcept
+      -> void {
+    _producePathsVertices = vertices;
+    _producePathsEdges = edges;
+    _producePathsWeights = weights;
+  }
 
-   public:
-    enum UniquenessLevel { NONE, PATH, GLOBAL };
-    enum class Order { DFS, BFS, WEIGHTED };
+  auto producePathsVertices() const noexcept -> bool {
+    return _producePathsVertices;
+  }
+  auto producePathsEdges() const noexcept -> bool { return _producePathsEdges; }
+  auto producePathsWeights() const noexcept -> bool {
+    return _producePathsWeights && mode == Order::WEIGHTED;
+  }
 
-   protected:
-    std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
 
-    std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>>
-        _vertexExpressions;
+  auto setDisjoint() -> void;
+  auto isDisjoint() const -> bool;
 
-    std::unique_ptr<aql::Expression> _baseVertexExpression;
+  auto isSatelliteLeader() const -> bool;
 
-    /// @brief The condition given in PRUNE (might be empty)
-    ///        The Node keeps responsibility
-    std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
+  void initializeIndexConditions(aql::Ast* ast, aql::VarInfoMap const& varInfo,
+                                 aql::Variable const* indexVariable) override;
 
-    /// @brief The condition given for PostFilters (might be empty)
-    ///        The Node keeps responsibility
-    ///        This is used to avoid producing paths if the last vertex or edge
-    ///        do not match.
-    std::unique_ptr<aql::PruneExpressionEvaluator> _postFilterExpression;
+  void calculateIndexExpressions(aql::Ast* ast) override;
 
-    bool _producePathsVertices{true};
-    bool _producePathsEdges{true};
-    bool _producePathsWeights{true};  // only used by WeightedEnumerator
-
-   public:
-    uint64_t minDepth;
-
-    uint64_t maxDepth;
-
-    Order mode;
-
-    bool useNeighbors;
-
-    bool _isDisjoint = false;
-
-    UniquenessLevel uniqueVertices;
-
-    UniquenessLevel uniqueEdges;
-
-    std::string weightAttribute;
-
-    double defaultWeight;
-
-    std::vector<std::string> vertexCollections;
-
-    std::vector<std::string> edgeCollections;
-
-    explicit TraverserOptions(arangodb::aql::QueryContext& query);
-
-    TraverserOptions(arangodb::aql::QueryContext& query,
-                     arangodb::velocypack::Slice definition);
-
-    TraverserOptions(arangodb::aql::QueryContext& query,
-                     arangodb::velocypack::Slice info,
-                     arangodb::velocypack::Slice collections);
-
-    /// @brief This copy constructor is only working during planning phase.
-    ///        After planning this node should not be copied anywhere.
-    ///        When allowAlreadyBuiltCopy is true, the constructor also works
-    ///        after the planning phase; however, the options have to be
-    ///        prepared again (see TraversalNode::prepareOptions())
-    TraverserOptions(TraverserOptions const& other,
-                     bool allowAlreadyBuiltCopy = false);
-    TraverserOptions& operator=(TraverserOptions const&) = delete;
-
-    virtual ~TraverserOptions();
-
-    /// @brief Build a velocypack for cloning in the plan.
-    void toVelocyPack(arangodb::velocypack::Builder&) const override;
-
-    /// @brief Build a velocypack for indexes
-    void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;
-
-    /// @brief Build a velocypack containing all relevant information
-    ///        for DBServer traverser engines.
-    void buildEngineInfo(arangodb::velocypack::Builder&) const override;
-
-    /// @brief Whether or not the edge collection shall be excluded
-    bool shouldExcludeEdgeCollection(std::string const& name) const override;
-
-    /// @brief Add a lookup info for specific depth
-    void addDepthLookupInfo(aql::ExecutionPlan* plan,
-                            std::string const& collectionName,
-                            std::string const& attributeName,
-                            aql::AstNode* condition, uint64_t depth,
-                            TRI_edge_direction_e direction);
-
-    bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
-
-    bool hasSpecificCursorForDepth(uint64_t depth) const;
-
-    bool evaluateEdgeExpression(arangodb::velocypack::Slice,
-                                std::string_view vertexId, uint64_t, size_t);
-
-    std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
-
-    double estimateCost(size_t& nrItems) const override;
-
-    std::unique_ptr<aql::PruneExpressionEvaluator> createPruneEvaluator(
-        std::vector<aql::Variable const*> vars,
-        std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
-        size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
-
-    std::unique_ptr<aql::PruneExpressionEvaluator> createPostFilterEvaluator(
-        std::vector<aql::Variable const*> vars,
-        std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
-        size_t edgeVarIdx, aql::Expression* expr);
-
-    void activatePostFilter(std::vector<aql::Variable const*> vars,
-                            std::vector<aql::RegisterId> regs,
-                            size_t vertexVarIdx, size_t edgeVarIdx,
-                            aql::Expression* expr);
-
-    bool usesPrune() const { return _pruneExpression != nullptr; }
-    bool usesPostFilter() const { return _postFilterExpression != nullptr; }
-
-    bool isUseBreadthFirst() const { return mode == Order::BFS; }
-
-    bool isUniqueGlobalVerticesAllowed() const {
-      return mode == Order::BFS || mode == Order::WEIGHTED;
-    }
-
-    auto estimateDepth() const noexcept -> uint64_t override;
-
-    auto setProducePaths(bool vertices, bool edges, bool weights) noexcept
-        -> void {
-      _producePathsVertices = vertices;
-      _producePathsEdges = edges;
-      _producePathsWeights = weights;
-    }
-
-    auto producePathsVertices() const noexcept -> bool {
-      return _producePathsVertices;
-    }
-    auto producePathsEdges() const noexcept -> bool {
-      return _producePathsEdges;
-    }
-    auto producePathsWeights() const noexcept -> bool {
-      return _producePathsWeights && mode == Order::WEIGHTED;
-    }
-
-    auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
-
-    auto setDisjoint() -> void;
-    auto isDisjoint() const -> bool;
-
-    auto isSatelliteLeader() const -> bool;
-
-    void initializeIndexConditions(aql::Ast* ast,
-                                   aql::VarInfoMap const& varInfo,
-                                   aql::Variable const* indexVariable) override;
-
-    void calculateIndexExpressions(aql::Ast* ast) override;
-
-   private:
-    void readProduceInfo(VPackSlice obj);
-  };
-  }  // namespace traverser
+ private:
+  void readProduceInfo(VPackSlice obj);
+};
+}  // namespace traverser
 }  // namespace arangodb
