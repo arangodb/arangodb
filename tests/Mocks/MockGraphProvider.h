@@ -273,7 +273,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
-  void destroyEngines() {};
+  void destroyEngines(){};
   auto startVertex(arangodb::graph::VertexRef vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;
   auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;

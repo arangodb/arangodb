@@ -35,7 +35,7 @@ template<typename T>
 concept HasForbidden = requires(T t) {
   {
     t.setForbiddenVertices(std::make_shared<VertexSet>())
-  } -> std::same_as<void>;
+    } -> std::same_as<void>;
 };
 
 }  // namespace graph
