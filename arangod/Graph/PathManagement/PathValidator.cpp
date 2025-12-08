@@ -282,8 +282,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
-  auto vertexBuilder = transaction::BuilderLeaser(_provider.trx());
-  auto edgeBuilder = transaction::BuilderLeaser(_provider.trx());
+  auto vertexBuilder = std::make_unique<VPackBuilder>();
+  auto edgeBuilder = std::make_unique<VPackBuilder>();
 
   // evaluate if vertex needs to be pruned
   ValidationResult res{ValidationResult::Type::TAKE};
