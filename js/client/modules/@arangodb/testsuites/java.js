@@ -107,7 +107,11 @@ arangodb.acquireHostList=true
     fs.write(propertiesFileName, propertiesFileContent);
     let args = [
       'verify',
-      '-am',
+    ];
+    if (this.options.loopEternal) {
+      args = args.concat(['-am',]);
+    }
+    args = args.concat([
       '-pl',
       'test-functional',
       '-Dgpg.skip',
@@ -118,7 +122,7 @@ arangodb.acquireHostList=true
       '-Dallure.results.directory=' + testResultsDir,
       '-Dmaven.wagon.http.retryHandler.count=10',
       // TODO? '-Dnative=<<parameters.native>>'
-    ];
+    ]);
 
     if (this.options.testCase) {
       args.push('-Dit.test=' + this.options.testCase);
@@ -128,6 +132,9 @@ arangodb.acquireHostList=true
       for (var key in this.options.javaOptions) {
         args.push('-D' + key + '=' + this.options.javaOptions[key]);
       }
+    }
+    if (this.options.loopEternal) {
+      args = ['failsafe:integration-test', 'failsafe:verify'].concat(args);
     }
     if (this.options.extremeVerbosity) {
       print(args);
