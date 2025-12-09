@@ -10,6 +10,7 @@ tests:
       type: single
     args:
       extremeVerbosity: true
+      pythonsource: ../python-arango
 - python_driver:
     job: run-driver-tests
     options:
@@ -18,3 +19,4 @@ tests:
       size: large
     args:
       extremeVerbosity: true
+      pythonsource: ../python-arango
