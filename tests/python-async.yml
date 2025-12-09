@@ -1,0 +1,20 @@
+jobProperties:
+    container_suffix: '-python:'
+    second_repo: git@github.com:arangodb/python-arango-async.git
+    branch: main
+tests:
+- python_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+    args:
+      extremeVerbosity: true
+- python_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      size: large
+    args:
+      extremeVerbosity: true
