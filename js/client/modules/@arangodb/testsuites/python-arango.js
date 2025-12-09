@@ -69,9 +69,9 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(tu.testClientJwtAuthInfo);
-    opts['password'] = 'python-arango';
+    opts['password'] = 'pythonarango';
     opts['username'] = 'root';
-    opts['jwtSecret'] = "python-jwt";
+    opts['jwtSecret'] = "pythonjwt";
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
@@ -80,7 +80,7 @@ class runInPythonTest extends runWithAllureReport {
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
-    print(this.instanceManager.setPassvoid('python-arango'));
+    print(this.instanceManager.setPassvoid('pythonarango'));
     let topology;
     let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
     let results = {
@@ -88,20 +88,19 @@ class runInPythonTest extends runWithAllureReport {
     };
     
     let args = [
-      '--passwd=python-arango',
-      '--secret=python-jwt',
+      '--password', 'pythonarango',
+      '--secret', 'pythonjwt',
       '--enterprise',
-      '--junitxml=test-results/junit.xml',
-      '--log-cli-level=DEBUG',
-      '--host',
-      'localhost',
-      `--port=${this.instanceManager.endpointPort}`,
+      '--junitxml', 'test-results/junit.xml',
+      '--log-cli-level', 'DEBUG',
+      '--host', '127.0.0.1',
+      '--port', `${this.instanceManager.endpointPort}`,
     ];
     if (this.options.cluster) {
       args = args.concat([
         '--cluster',
-        `--port=${this.instanceManager.endpointPorts[1]}`,
-        `--port=${this.instanceManager.endpointPorts[2]}`,
+        '--port', `${this.instanceManager.endpointPorts[1]}`,
+        '--port', `${this.instanceManager.endpointPorts[2]}`,
         // '-Dallure.results.directory=' + testResultsDir,
       ]);
     }
@@ -152,6 +151,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
   tu.CopyIntoObject(opts, {
     'pythonOptions': '',
-    'pythonsource': '../python-arango',
+    'pythonsource': '../python-arango-async',
   });
 };
