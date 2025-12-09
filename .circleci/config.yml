@@ -57,7 +57,7 @@ parameters:
     description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-dd26cefd
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-66770a39
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
