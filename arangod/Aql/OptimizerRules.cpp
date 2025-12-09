@@ -8854,6 +8854,9 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt,
     TRI_ASSERT(sq->getParents().empty());
   }
 
+  if (modified) {
+    plan->root()->invalidateCost();
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }
 

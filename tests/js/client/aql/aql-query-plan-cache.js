@@ -697,6 +697,18 @@ function QueryPlanCacheTestSuite () {
       assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
       assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: true, dataSources: [cn2] })).length, entries);
     },
+
+    // Fixes BTS-2268
+    testPlanCacheEstimatesCrash : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} LET var = (FOR i IN 0..10 FILTER i == 2 RETURN i) FILTER doc.value1 IN var RETURN doc.value`;
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
+
+      let res = db._query(query, {}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+
+      res = db._query(query, {}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+    },
   };
 }
 

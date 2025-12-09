@@ -50,7 +50,6 @@ const download = internal.download;
 const time = internal.time;
 const wait = internal.wait;
 const sleep = internal.sleep;
-const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -73,7 +72,6 @@ let executableExt = '';
 let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
-let isEnterpriseClient = false;
 
 let BIN_DIR;
 let ARANGOBACKUP_BIN;
@@ -168,14 +166,10 @@ function setupBinaries (options) {
     ARANGOD_BIN,
     ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
+    ARANGOBACKUP_BIN,
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN
   ];
-
-  if (isEnterprise()) {
-    isEnterpriseClient = true;
-    checkFiles.push(ARANGOBACKUP_BIN);
-  }
 
   checkFiles.forEach((file) => {
     if (!fs.isFile(file)) {
@@ -469,7 +463,6 @@ exports.endpointToURL = endpointToURL;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
-exports.isEnterpriseClient = isEnterpriseClient;
 
 exports.executableExt = executableExt;
 

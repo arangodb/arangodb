@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
@@ -395,6 +396,42 @@ function launchPlainSnippetInBG (snippet, key) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, snippet);
   return launchInShellBG(file);
+}
+
+
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+  let IM = global.instanceManager;
+  let globalFn = fs.getTempFile();
+  fs.write(globalFn, "x");
+  let testFns = [];
+  for (let i=0; i < volume; i++) {
+    let testFn = fs.getTempFile() + `_${i}`;
+    fs.write(testFn, "x");
+    let mySnippet = `const fs = require('fs');
+fs.remove('${testFn}');
+let volume = ${volume};
+let idx = ${i};
+let endpoint = '${IM.endpoint}';
+let passvoid = '${IM.options.password}';
+while (fs.exists('${globalFn}')) {
+   require('internal').sleep(0.1);
+}
+let testfunc = ${String(snippet)};
+testfunc();
+`;
+    arangoshList.push(
+      launchPlainSnippetInBG(mySnippet, key + `_${i}`)
+    );
+  }
+  // wait for the spawned clients to reach the entry gate:
+  testFns.forEach(testFn => {
+    while (fs.exists(testFn)) {
+      sleep(0.1);
+    }
+  });
+  // GO!
+  fs.remove(globalFn);
+  return true;
 }
 
 function launchSnippetInBG (options, snippet, key, cn, single=false) {
@@ -824,6 +861,7 @@ exports.run = {
   launchInShellBG: launchInShellBG,
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
+  spawnStressArangoshInBG: spawnStressArangoshInBG,
   joinBGShells: joinBGShells,
   joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,

@@ -23,7 +23,7 @@
       if (window.App.naviView) {
         var string = 'Database';
         if (name) {
-          string = string + ': ' + name;
+          string = string + ': ' + _.escape(name);
         }
         $('#subNavigationBar .breadcrumb').html(string);
       } else {
