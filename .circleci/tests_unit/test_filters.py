@@ -29,9 +29,6 @@ class TestFilterCriteria:
     def test_default_values(self):
         """Test default filter criteria values."""
         criteria = FilterCriteria()
-        assert criteria.cluster is False
-        assert criteria.single is False
-        assert criteria.all_tests is False
         assert criteria.full is False
         assert criteria.gtest is False
         assert criteria.sanitizer is None
@@ -42,13 +39,10 @@ class TestFilterCriteria:
         from src.config_lib import Sanitizer
 
         criteria = FilterCriteria(
-            cluster=True,
             full=True,
             sanitizer=Sanitizer.TSAN,
             enterprise=False,
         )
-        assert criteria.cluster is True
-        assert criteria.single is False
         assert criteria.full is True
         assert criteria.sanitizer == Sanitizer.TSAN
         assert criteria.enterprise is False
@@ -80,46 +74,6 @@ class TestShouldIncludeJob:
             options=options,
         )
 
-    def test_all_tests_includes_everything(self):
-        """Test that all_tests=True includes all jobs."""
-        criteria = FilterCriteria(all_tests=True)
-
-        # Test various deployment types
-        for dep_type in [
-            DeploymentType.SINGLE,
-            DeploymentType.CLUSTER,
-            DeploymentType.MIXED,
-            None,
-        ]:
-            job = self.create_job(deployment_type=dep_type)
-            assert should_include_job(job, criteria) is True
-
-    @pytest.mark.parametrize(
-        "cluster,single,dep_type,expected",
-        [
-            # cluster=True, single=False: include cluster, mixed, None; exclude single
-            (True, False, DeploymentType.CLUSTER, True),
-            (True, False, DeploymentType.MIXED, True),
-            (True, False, None, True),
-            (True, False, DeploymentType.SINGLE, False),
-            # single=True, cluster=False: include single, None; exclude cluster, mixed
-            (False, True, DeploymentType.SINGLE, True),
-            (False, True, None, True),
-            (False, True, DeploymentType.CLUSTER, False),
-            (False, True, DeploymentType.MIXED, False),
-            # both True: include everything
-            (True, True, DeploymentType.SINGLE, True),
-            (True, True, DeploymentType.CLUSTER, True),
-            (True, True, DeploymentType.MIXED, True),
-            (True, True, None, True),
-        ],
-    )
-    def test_deployment_type_filtering(self, cluster, single, dep_type, expected):
-        """Test deployment type filtering with various cluster/single combinations."""
-        criteria = FilterCriteria(cluster=cluster, single=single)
-        job = self.create_job(deployment_type=dep_type)
-        assert should_include_job(job, criteria) is expected
-
     def test_gtest_filter(self):
         """Test filtering for gtest suites."""
         criteria = FilterCriteria(gtest=True)
@@ -136,31 +90,6 @@ class TestShouldIncludeJob:
         job = self.create_job(suite_names=["regular_test", "another_test"])
         assert should_include_job(job, criteria) is False
 
-    def test_combined_filters(self):
-        """Test combining multiple filter criteria."""
-        criteria = FilterCriteria(cluster=True, single=False, gtest=True)
-
-        # Should include: cluster + gtest
-        job = self.create_job(
-            deployment_type=DeploymentType.CLUSTER,
-            suite_names=["gtest_foo"],
-        )
-        assert should_include_job(job, criteria) is True
-
-        # Should exclude: single + gtest (fails cluster requirement)
-        job = self.create_job(
-            deployment_type=DeploymentType.SINGLE,
-            suite_names=["gtest_foo"],
-        )
-        assert should_include_job(job, criteria) is False
-
-        # Should exclude: cluster + non-gtest (fails gtest requirement)
-        job = self.create_job(
-            deployment_type=DeploymentType.CLUSTER,
-            suite_names=["regular_test"],
-        )
-        assert should_include_job(job, criteria) is False
-
 
 class TestFilterJobs:
     """Test filter_jobs function."""
@@ -169,85 +98,6 @@ class TestFilterJobs:
         """Helper to create a TestDefinitionFile."""
         return TestDefinitionFile(jobs=jobs_dict)
 
-    def test_single_job_filtered_out(self):
-        """Test filtering that excludes the only job."""
-        jobs = {
-            "cluster_job": TestJob(
-                name="cluster_job",
-                suites=[SuiteConfig(name="test")],
-                options=TestOptions(deployment_type=DeploymentType.CLUSTER),
-            )
-        }
-        test_def = self.create_test_definition(jobs)
-
-        # Filter for single only - should exclude the cluster job
-        criteria = FilterCriteria(single=True, cluster=False)
-        result = filter_jobs(test_def, criteria)
-        assert result == []
-
-    def test_filter_by_deployment_type(self):
-        """Test filtering jobs by deployment type."""
-        jobs = {
-            "cluster_job": TestJob(
-                name="cluster_job",
-                suites=[SuiteConfig(name="test")],
-                options=TestOptions(deployment_type=DeploymentType.CLUSTER),
-            ),
-            "single_job": TestJob(
-                name="single_job",
-                suites=[SuiteConfig(name="test")],
-                options=TestOptions(deployment_type=DeploymentType.SINGLE),
-            ),
-            "mixed_job": TestJob(
-                name="mixed_job",
-                suites=[SuiteConfig(name="test1"), SuiteConfig(name="test2")],
-                options=TestOptions(deployment_type=DeploymentType.MIXED),
-            ),
-        }
-        test_def = self.create_test_definition(jobs)
-
-        # Filter for cluster only
-        criteria = FilterCriteria(cluster=True, single=False)
-        result = filter_jobs(test_def, criteria)
-        result_names = [job.name for job in result]
-        assert "cluster_job" in result_names
-        assert "mixed_job" in result_names
-        assert "single_job" not in result_names
-
-        # Filter for single only
-        criteria = FilterCriteria(single=True, cluster=False)
-        result = filter_jobs(test_def, criteria)
-        result_names = [job.name for job in result]
-        assert "single_job" in result_names
-        assert "cluster_job" not in result_names
-        assert "mixed_job" not in result_names
-
-    def test_all_tests_returns_all(self):
-        """Test that all_tests=True returns all jobs."""
-        jobs = {
-            "job1": TestJob(
-                name="job1",
-                suites=[SuiteConfig(name="test")],
-                options=TestOptions(deployment_type=DeploymentType.CLUSTER),
-            ),
-            "job2": TestJob(
-                name="job2",
-                suites=[SuiteConfig(name="test")],
-                options=TestOptions(deployment_type=DeploymentType.SINGLE),
-            ),
-            "job3": TestJob(
-                name="job3",
-                suites=[SuiteConfig(name="gtest_foo")],
-                options=TestOptions(),
-            ),
-        }
-        test_def = self.create_test_definition(jobs)
-
-        criteria = FilterCriteria(all_tests=True)
-        result = filter_jobs(test_def, criteria)
-        assert len(result) == 3
-        result_names = {job.name for job in result}
-        assert result_names == {"job1", "job2", "job3"}
 
     def test_gtest_filtering(self):
         """Test filtering for gtest jobs."""
@@ -292,7 +142,7 @@ class TestFilterJobs:
         }
         test_def = self.create_test_definition(jobs)
 
-        criteria = FilterCriteria(all_tests=True)
+        criteria = FilterCriteria()
         result = filter_jobs(test_def, criteria)
 
         # Check that we got all jobs
@@ -301,22 +151,6 @@ class TestFilterJobs:
 
 class TestShouldIncludeSuite:
     """Test should_include_suite function."""
-
-    def test_all_tests_includes_everything(self):
-        """Test that all_tests=True includes all suites."""
-        criteria = FilterCriteria(all_tests=True)
-
-        # Suite with full=True
-        suite = SuiteConfig(name="full_suite", requires=TestRequirements(full=True))
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=False
-        suite = SuiteConfig(name="pr_suite", requires=TestRequirements(full=False))
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=None
-        suite = SuiteConfig(name="any_suite")
-        assert should_include_suite(suite, criteria) is True
 
     @pytest.mark.parametrize(
         "full,suite_full,expected",
@@ -378,16 +212,6 @@ class TestFilterSuites:
         assert "any_suite" in result_names
         assert "pr_suite" not in result_names
 
-    def test_filter_all_tests_returns_all_suites(self, mixed_suite_job):
-        """Test that all_tests=True returns all suites."""
-        criteria = FilterCriteria(all_tests=True)
-        result = filter_suites(mixed_suite_job, criteria)
-
-        # Should include all suites
-        assert len(result) == 3
-        result_names = {suite.name for suite in result}
-        assert result_names == {"pr_suite", "full_suite", "any_suite"}
-
     def test_filter_job_with_single_suite(self):
         """Test filtering job with only one suite."""
         job = TestJob(
@@ -444,7 +268,7 @@ class TestFilterSuites:
             options=TestOptions(),
         )
 
-        criteria = FilterCriteria(all_tests=True)
+        criteria = FilterCriteria()
         result = filter_suites(job, criteria)
 
         # Check that order is preserved
@@ -536,24 +360,6 @@ class TestArchitectureFiltering:
         assert not should_include_suite(suite_aarch64_only, criteria_x64)
         assert should_include_suite(suite_aarch64_only, criteria_aarch64)
 
-    def test_all_tests_mode_does_not_bypass_architecture_filter(self):
-        """all_tests mode should still respect architecture constraints."""
-        from src.config_lib import Architecture
-
-        job = TestJob(
-            name="test_job",
-            suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(architecture=Architecture.X64),
-        )
-
-        # Should NOT be included on wrong architecture, even with all_tests=True
-        criteria = FilterCriteria(all_tests=True, architecture=Architecture.AARCH64)
-        assert not should_include_job(job, criteria)
-
-        # Should be included on correct architecture with all_tests=True
-        criteria = FilterCriteria(all_tests=True, architecture=Architecture.X64)
-        assert should_include_job(job, criteria)
-
     def test_architecture_filter_without_criteria_architecture(self):
         """If criteria doesn't specify architecture, don't filter."""
         from src.config_lib import Architecture
@@ -633,33 +439,6 @@ class TestInstrumentationFiltering:
         # Should be excluded from ALUBSAN build
         criteria_alubsan = FilterCriteria(sanitizer=Sanitizer.ALUBSAN)
         assert not should_include_job(job, criteria_alubsan)
-
-    def test_all_tests_mode_respects_architecture_but_not_instrumentation(self):
-        """all_tests mode should still respect architecture but ignore instrumentation."""
-        from src.config_lib import Architecture, Sanitizer
-
-        # Job with instrumentation=False
-        job = TestJob(
-            name="test_job",
-            suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(instrumentation=False),
-        )
-
-        # Should be included in instrumented build with all_tests=True
-        criteria = FilterCriteria(all_tests=True, sanitizer=Sanitizer.TSAN)
-        assert should_include_job(job, criteria)
-
-        # Job with wrong architecture should still be excluded
-        job_x64 = TestJob(
-            name="test_job",
-            suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(architecture=Architecture.X64),
-        )
-
-        criteria_aarch64 = FilterCriteria(
-            all_tests=True, architecture=Architecture.AARCH64
-        )
-        assert not should_include_job(job_x64, criteria_aarch64)
 
     def test_suite_without_instrumentation_constraint_included_in_all_builds(self):
         """Suite without instrumentation field should run in all build types."""
@@ -820,33 +599,6 @@ class TestV8Filtering:
         # Should be included in non-V8 build
         criteria_no_v8 = FilterCriteria(v8=False)
         assert should_include_job(job, criteria_no_v8)
-
-    def test_all_tests_mode_respects_architecture_but_not_v8(self):
-        """all_tests mode should still respect architecture but ignore v8."""
-        from src.config_lib import Architecture
-
-        # Job with v8=False
-        job = TestJob(
-            name="test_job",
-            suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(v8=False),
-        )
-
-        # Should be included in V8 build with all_tests=True
-        criteria = FilterCriteria(all_tests=True, v8=True)
-        assert should_include_job(job, criteria)
-
-        # Job with wrong architecture should still be excluded
-        job_x64 = TestJob(
-            name="test_job",
-            suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(architecture=Architecture.X64),
-        )
-
-        criteria_aarch64 = FilterCriteria(
-            all_tests=True, architecture=Architecture.AARCH64
-        )
-        assert not should_include_job(job_x64, criteria_aarch64)
 
     def test_suite_without_v8_constraint_included_in_all_builds(self):
         """Suite without v8 field should run in all build types."""

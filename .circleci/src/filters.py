@@ -2,7 +2,7 @@
 Filtering logic for test jobs based on environment and CLI arguments.
 
 This module provides functions to filter test jobs based on various criteria
-such as deployment type, full runs, platform exclusions, etc.
+such as full runs, test types, platform exclusions, etc.
 """
 
 from typing import List, Optional
@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from .config_lib import (
     TestJob,
     TestDefinitionFile,
-    DeploymentType,
     SuiteConfig,
     Sanitizer,
     Architecture,
@@ -25,11 +24,6 @@ GTEST_PREFIX = "gtest"
 @dataclass
 class FilterCriteria:
     """Criteria for filtering test jobs."""
-
-    # Deployment type filters
-    cluster: bool = False
-    single: bool = False
-    all_tests: bool = False
 
     # Test type filters
     full: bool = False  # Include full test set (not just PR subset)
@@ -72,34 +66,6 @@ def is_gtest_suite(suite: SuiteConfig) -> bool:
     return suite.name.startswith(GTEST_PREFIX)
 
 
-def matches_deployment_filter(
-    deployment_type: DeploymentType | None, criteria: FilterCriteria
-) -> bool:
-    """
-    Check if a deployment type matches the filter criteria.
-
-    Args:
-        deployment_type: Deployment type from job options (or None)
-        criteria: Filter criteria to check against
-
-    Returns:
-        True if deployment type matches the filter
-    """
-    # If both cluster and single are requested (or neither), accept all
-    if criteria.cluster == criteria.single:
-        return True
-
-    # Cluster-only filter
-    if criteria.cluster:
-        return deployment_type in (DeploymentType.CLUSTER, DeploymentType.MIXED, None)
-
-    # Single-only filter
-    if criteria.single:
-        return deployment_type in (DeploymentType.SINGLE, None)
-
-    return True
-
-
 def _check_requirements_match(
     requires: TestRequirements, criteria: FilterCriteria
 ) -> bool:
@@ -107,7 +73,7 @@ def _check_requirements_match(
     Check if test requirements match filter criteria.
 
     This implements the common filtering logic for both jobs and suites:
-    - Architecture compatibility (even in all_tests mode)
+    - Architecture compatibility
     - Full flag compatibility
     - Instrumentation flag compatibility
 
@@ -118,14 +84,11 @@ def _check_requirements_match(
     Returns:
         True if requirements match criteria, False otherwise
     """
-    # Check architecture compatibility FIRST (even in all_tests mode)
+    # Check architecture compatibility FIRST
     # If test specifies architecture, current architecture must match
     if requires.architecture is not None and criteria.architecture is not None:
         if criteria.architecture != requires.architecture:
             return False
-
-    if criteria.all_tests:
-        return True
 
     # Check full flag compatibility with build type
     # - full=True: Only for full runs
@@ -170,10 +133,6 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
     # Check common requirements (architecture, full, instrumentation)
     if not _check_requirements_match(job.requires, criteria):
-        return False
-
-    # Check deployment type filter
-    if not matches_deployment_filter(job.options.deployment_type, criteria):
         return False
 
     # Check gtest filter

@@ -143,11 +143,8 @@ def create_generator_config(
     arangosh_args: str,
     extra_args: str,
     arangod_without_v8: bool,
-    single: bool,
-    cluster: bool,
     gtest: bool,
     full: bool,
-    all_tests: bool,
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
@@ -168,11 +165,8 @@ def create_generator_config(
 
     # Create filter criteria
     filter_criteria = FilterCriteria(
-        single=single,
-        cluster=cluster,
         gtest=gtest,
         full=full,
-        all_tests=all_tests,
         sanitizer=sanitizer_enum,
         v8=not arangod_without_v8,
     )
@@ -244,16 +238,6 @@ def create_generator_config(
     help="Run without JavaScript (V8 disabled)",
 )
 @click.option(
-    "--single",
-    is_flag=True,
-    help="Include single server tests",
-)
-@click.option(
-    "--cluster",
-    is_flag=True,
-    help="Include cluster tests",
-)
-@click.option(
     "--gtest",
     is_flag=True,
     help="Only run gtest tests",
@@ -262,12 +246,6 @@ def create_generator_config(
     "--full",
     is_flag=True,
     help="Include full test set",
-)
-@click.option(
-    "--all",
-    "all_tests",
-    is_flag=True,
-    help="Include all tests, ignore other filters",
 )
 @click.option(
     "-rt",
@@ -295,11 +273,8 @@ def main(
     arangosh_args: str,
     extra_args: str,
     arangod_without_v8: bool,
-    single: bool,
-    cluster: bool,
     gtest: bool,
     full: bool,
-    all_tests: bool,
     replication_two: bool,
     create_docker_images: bool,
     validate_only: bool,
@@ -328,11 +303,8 @@ def main(
             arangosh_args=arangosh_args,
             extra_args=extra_args,
             arangod_without_v8=arangod_without_v8,
-            single=single,
-            cluster=cluster,
             gtest=gtest,
             full=full,
-            all_tests=all_tests,
             replication_two=replication_two,
             create_docker_images=create_docker_images,
             validate_only=validate_only,
