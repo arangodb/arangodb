@@ -35,6 +35,7 @@
 #include "Graph/Queues/WeightedQueue.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/Types/VertexRef.h"
+#include "Graph/Types/VertexSet.h"
 
 #include <limits>
 #include <set>
@@ -52,9 +53,6 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
-
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
 
 class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;

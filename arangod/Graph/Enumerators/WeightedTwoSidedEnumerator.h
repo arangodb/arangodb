@@ -35,6 +35,7 @@
 #include "Graph/Types/ForbiddenVertices.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/Types/VertexRef.h"
+#include "Graph/Types/VertexSet.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -53,9 +54,6 @@ class HashedStringRef;
 }  // namespace velocypack
 
 namespace graph {
-
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
 
 class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
@@ -234,13 +232,15 @@ class WeightedTwoSidedEnumerator {
       return _haveSeenOtherSide;
     }
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenVertices(std::move(forbidden));
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+      requires HasForbidden<PathValidatorType>
+    {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
@@ -372,19 +372,22 @@ class WeightedTwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void
+    requires HasForbidden<PathValidatorType>
+  {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+ private:
+  [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;
