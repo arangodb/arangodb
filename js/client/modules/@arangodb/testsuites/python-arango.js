@@ -88,6 +88,7 @@ class runInPythonTest extends runWithAllureReport {
     };
     
     let args = [
+      '--root', 'root',
       '--password', 'pythonarango',
       '--secret', 'pythonjwt',
       '--enterprise',
