@@ -203,10 +203,12 @@
           args:
             http2: true
             suffix: http2
+            extremeVerbosity: true 
       - shell_client_transaction:
           args:
             http: true
             suffix: http
+            extremeVerbosity: true 
 
 - shell_client_traffic:
     options:
@@ -453,6 +455,7 @@
       size: small
       buckets: 5
     args:
+      extremeVerbosity: true 
       dumpAgencyOnError: true
 #- shell_client_replication2_recovery:
 #    options:
