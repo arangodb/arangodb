@@ -1341,7 +1341,7 @@ arangodb directory.
 
 - [Arango website](https://arango.ai/)
 
-- [ArangoDB on Twitter](https://twitter.com/arangodb)
+- [Arango on X](https://x.com/arangoai)
 
 - [General GitHub documentation](https://help.github.com/)
 
