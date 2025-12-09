@@ -142,7 +142,7 @@ def create_generator_config(
     test_image: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: str,
+    arangod_without_v8: bool,
     single: bool,
     cluster: bool,
     gtest: bool,
@@ -174,19 +174,19 @@ def create_generator_config(
         full=full,
         all_tests=all_tests,
         sanitizer=sanitizer_enum,
+        v8=not arangod_without_v8,
     )
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
     extra_args_list = TestArguments.parse_args_string(
         extra_args or "",
-        add_skip_server_js=(arangod_without_v8 == "true"),
+        add_skip_server_js=arangod_without_v8,
     )
 
     test_execution = TestExecutionConfig(
         arangosh_args=arangosh_args_list,
         extra_args=extra_args_list,
-        arangod_without_v8=(arangod_without_v8 == "true"),
         replication_two=replication_two,
     )
 
@@ -240,7 +240,8 @@ def create_generator_config(
 )
 @click.option(
     "--arangod-without-v8",
-    help="Whether to run without JavaScript (true, false)",
+    is_flag=True,
+    help="Run without JavaScript (V8 disabled)",
 )
 @click.option(
     "--single",
@@ -293,7 +294,7 @@ def main(
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: str,
+    arangod_without_v8: bool,
     single: bool,
     cluster: bool,
     gtest: bool,
