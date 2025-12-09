@@ -211,6 +211,7 @@ function hotBackup_load_backend (options, which, args) {
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
+        !helper.IM.waitForAllShardsInSync() ||
         !retryWaitRestore(args.postRestoreFn, args.args)
         //!helper.runRtaCheckData()
     ) {

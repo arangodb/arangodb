@@ -140,7 +140,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
         this.results.failed += this.results[key].failed;
       }
     });
-    this.doCleanup = this.serverOptions.cleanup && (this.results.failed === 0) && cleanup;
+    this.doCleanup = this.firstRunOptions.cleanup && (this.results.failed === 0) && cleanup;
     if (this.doCleanup) {
       if (this.im1 !== null) {
         this.im1.destructor(this.results.failed === 0);
