@@ -50,6 +50,9 @@ function subqueryModificationRegressionSuite() {
     tearDownAll,
 
     testNestedSubqueryInsert: function () {
+      // We only got this query to crash on cluster setups, as
+      // the distribute/gather combination deletes defaultCalls
+      // in the callstack.
       const query = `
         LET sq0 = (
           LET sq1 = (
@@ -59,7 +62,23 @@ function subqueryModificationRegressionSuite() {
         RETURN {}`;
 
       const r = db._query(query);
-     },
+    },
+    testNestedSubqueryInsertWithLimitAndFilter: function() {
+      // This query even crashes on single server as the
+      // LIMIT/FILTER combination induces the same problem as with the
+      // query above
+      const query = `
+        LET sq0 = (
+          LET sq1 = (
+            LET sq2 = (INSERT {} INTO ${colName} RETURN NEW )
+            RETURN {}) 
+          FILTER NOOPT(true)
+          LIMIT 1,10
+          RETURN {})
+        RETURN {}`;
+
+      const r = db._query(query);
+    },
   };
 }
 
