@@ -69,17 +69,18 @@ const testPaths = {
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(tu.testClientJwtAuthInfo);
-    //opts['password'] = 'testpython';
-    //opts['username'] = 'root';
+    opts['password'] = 'python-arango';
+    opts['username'] = 'root';
+    opts['jwtSecret'] = "python-jwt";
     //opts['arangodConfig'] = 'arangod-auth.conf';
-    //_.defaults(opts, options);
-    super(options, testname, ...optionalArgs);
+    _.defaults(opts, options);
+    super(opts, testname, ...optionalArgs);
     this.info = "runInPythonTest";
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
-    // todo print(this.instanceManager.setPassvoid());
+    print(this.instanceManager.setPassvoid('python-arango'));
     let topology;
     let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
     let results = {
@@ -87,6 +88,8 @@ class runInPythonTest extends runWithAllureReport {
     };
     
     let args = [
+      '--passwd=python-arango',
+      '--secret=python-jwt',
       '--enterprise',
       '--junitxml=test-results/junit.xml',
       '--log-cli-level=DEBUG',
