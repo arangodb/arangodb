@@ -297,19 +297,27 @@
     options:
       coverage: false
       priority: 1000
-      type: cluster
+      type: mixed
     suites:
       - deadlock:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - arangobench:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - server_secrets:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - audit_client
+          args:
+            cluster: true
       - audit_server
+          args:
+            cluster: true
+      - server_secrets
 
 - restart:
     options:
@@ -530,12 +538,6 @@
       buckets: 2
     args:
       dumpAgencyOnError: true
-- server_secrets:
-    options:
-      type: single
-      priority: 1000
-      parallelity: 5
-      size: small
 
 # Dump Tests
 - dump_single:
