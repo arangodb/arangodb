@@ -191,6 +191,8 @@ class BuilderLeaser {
 
   auto release() { return _lease.release(); }
 
+  auto release() { return _lease.release(); }
+
  private:
   ThreadLocalBuilderLeaser::Lease _lease;
 };
