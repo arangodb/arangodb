@@ -2063,6 +2063,7 @@ Result RocksDBCollection::lookupDocumentVPack(
   //  We can avoid it (and return to the buffer instead), but is it worth?
   auto data = buffer.release();
   // move twice is intentionally
+
   cb(token, std::move(data), doc);
   buffer.acquire(std::move(data));
 
