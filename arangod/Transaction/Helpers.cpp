@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadBuilderLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterMethods.h"
@@ -897,22 +898,12 @@ StringLeaser::~StringLeaser() {
 }
 
 BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _transactionContext{transactionContext},
-      _builder{_transactionContext->leaseBuilder()} {
-  TRI_ASSERT(_builder != nullptr);
+    : _lease(ThreadBuilderLeaser::current.leaseBuilder()) {
+  TRI_ASSERT(_lease.builder() != nullptr);
 }
 
 BuilderLeaser::BuilderLeaser(Methods* trx)
     : BuilderLeaser{trx->transactionContextPtr()} {}
-
-BuilderLeaser::~BuilderLeaser() { clear(); }
-
-void BuilderLeaser::clear() {
-  if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder);
-    _builder = nullptr;
-  }
-}
 
 Result extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,

@@ -26,6 +26,7 @@
 #include <string_view>
 #include "Basics/AttributeNameParser.h"
 #include "Basics/ResultT.h"
+#include "Basics/ThreadBuilderLeaser.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -178,24 +179,16 @@ class BuilderLeaser {
   BuilderLeaser& operator=(BuilderLeaser const&) = delete;
   BuilderLeaser& operator=(BuilderLeaser&&) = delete;
 
-  BuilderLeaser(BuilderLeaser&& source)
-      : _transactionContext(source._transactionContext),
-        _builder(source.steal()) {}
+  BuilderLeaser(BuilderLeaser&& source) = default;
 
-  ~BuilderLeaser();
-
-  velocypack::Builder* builder() const noexcept { return _builder; }
-  velocypack::Builder* operator->() const noexcept { return _builder; }
-  velocypack::Builder& operator*() noexcept { return *_builder; }
-  velocypack::Builder& operator*() const noexcept { return *_builder; }
-  velocypack::Builder* get() const noexcept { return _builder; }
-  velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
-
-  void clear();
+  velocypack::Builder* builder() const noexcept { return _lease.builder(); }
+  velocypack::Builder* operator->() const noexcept { return _lease.builder(); }
+  velocypack::Builder& operator*() noexcept { return *_lease.builder(); }
+  velocypack::Builder& operator*() const noexcept { return *_lease.builder(); }
+  velocypack::Builder* get() const noexcept { return _lease.builder(); }
 
  private:
-  Context* _transactionContext;
-  velocypack::Builder* _builder;
+  ThreadBuilderLeaser::Lease _lease;
 };
 
 ResultT<transaction::BuilderLeaser> extractAttributeValues(
