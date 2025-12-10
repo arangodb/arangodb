@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadBuilderLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/encoding.h"
