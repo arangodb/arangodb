@@ -1184,16 +1184,6 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack) -> ExecState {
   static_assert(std::is_same_v<Executor, E> &&
                 executorHasSideEffects<Executor>);
-  if (!stack.hasAllValidCalls()) {
-    return ExecState::DONE;
-  }
-
-  if (!stack.needToCountSubquery()) {
-    // We need to really produce things here
-    // fall back to original version as any other executor.
-    auto res = shadowRowForwarding(stack);
-    return res;
-  }
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1421,81 +1411,87 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     return shadowRowForwardingSubqueryEnd(stack);
   } else if constexpr (executorHasSideEffects<Executor>) {
-    return sideEffectShadowRowForwarding(stack);
-  } else {
-    TRI_ASSERT(_outputItemRow);
-    TRI_ASSERT(_outputItemRow->isInitialized());
-    TRI_ASSERT(!_outputItemRow->allRowsUsed());
-    if (!_lastRange.hasShadowRow()) {
-      // We got back without a ShadowRow in the LastRange
-      // Let us continue with the next Subquery
-      return ExecState::NEXTSUBQUERY;
-    }
-
-    bool const hasDoneNothing =
-        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
-    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-    TRI_ASSERT(shadowRow.isInitialized());
-
-    // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
-    // SENSIBLE WAY!
-    //
-    // the row fetcher doesn't know its ranges, the ranges don't know the
-    // fetcher
-    //
-    // ranges synchronize shadow rows, and fetcher synchronizes skipping
-    //
-    // but there are interactions between the two.
-    if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-      fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
-    }
-
-    countShadowRowProduced(stack, shadowRow.getDepth());
-    if (shadowRow.isRelevant()) {
-      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-      // We found a relevant shadow Row.
-      // We need to reset the Executor
-      resetExecutor();
-    }
-
-    _outputItemRow->moveRow(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    if (state == ExecutorState::DONE) {
-      // We have consumed everything, we are
-      // Done with this query
+    if (!stack.hasAllValidCalls()) {
       return ExecState::DONE;
-    } else if (_lastRange.hasDataRow()) {
-      /// NOTE: We do not need popDepthsLowerThan here, as we already
-      /// have a new DataRow from upstream, so the upstream
-      /// block has decided it is correct to continue.
-      // Multiple concatenated Subqueries
-      return ExecState::NEXTSUBQUERY;
-    } else if (_lastRange.hasShadowRow()) {
-      // We still have shadowRows.
-      auto const& lookAheadRow = _lastRange.peekShadowRow();
-      if (lookAheadRow.isRelevant()) {
-        // We are starting the NextSubquery here.
-        if constexpr (Executor::Properties::allowsBlockPassthrough ==
-                      BlockPassthrough::Enable) {
-          // TODO: Check if this works with skip forwarding
-          return ExecState::SHADOWROWS;
-        }
-        return ExecState::NEXTSUBQUERY;
-      }
-      // we need to forward them
-      return ExecState::SHADOWROWS;
-    } else {
-      if (hasDoneNothing && !shadowRow.isRelevant()) {
-        stack.popDepthsLowerThan(shadowRow.getDepth());
-      }
+    }
+    if (stack.needToCountSubquery()) {
+      return sideEffectShadowRowForwarding(stack);
+    }
+    // WARNING: fallthrough intentional
+  }
 
-      // End of input, need to fetch new!
-      // Just start with the next subquery.
-      // If in doubt the next row will be a shadowRow again,
-      // this will be forwarded than.
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // We got back without a ShadowRow in the LastRange
+    // Let us continue with the next Subquery
+    return ExecState::NEXTSUBQUERY;
+  }
+
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+  TRI_ASSERT(shadowRow.isInitialized());
+
+  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+  // SENSIBLE WAY!
+  //
+  // the row fetcher doesn't know its ranges, the ranges don't know the
+  // fetcher
+  //
+  // ranges synchronize shadow rows, and fetcher synchronizes skipping
+  //
+  // but there are interactions between the two.
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
+  }
+
+  countShadowRowProduced(stack, shadowRow.getDepth());
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    resetExecutor();
+  }
+
+  _outputItemRow->moveRow(shadowRow);
+  TRI_ASSERT(_outputItemRow->produced());
+  _outputItemRow->advanceRow();
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    /// NOTE: We do not need popDepthsLowerThan here, as we already
+    /// have a new DataRow from upstream, so the upstream
+    /// block has decided it is correct to continue.
+    // Multiple concatenated Subqueries
+    return ExecState::NEXTSUBQUERY;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows.
+    auto const& lookAheadRow = _lastRange.peekShadowRow();
+    if (lookAheadRow.isRelevant()) {
+      // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                    BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
       return ExecState::NEXTSUBQUERY;
     }
+    // we need to forward them
+    return ExecState::SHADOWROWS;
+  } else {
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
+    // End of input, need to fetch new!
+    // Just start with the next subquery.
+    // If in doubt the next row will be a shadowRow again,
+    // this will be forwarded than.
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
