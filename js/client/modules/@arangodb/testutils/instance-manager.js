@@ -1608,7 +1608,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'coordinators': 1,
     'dbServers': 2,
     'disableClusterMonitor': true,
-    'encryptionAtRest': false,
+    'encryptionAtRest': true,
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
