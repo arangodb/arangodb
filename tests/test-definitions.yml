@@ -203,7 +203,8 @@
           args:
             http2: true
             suffix: http2
-            extremeVerbosity: true 
+            extremeVerbosity: true
+            encryptionAtRest: true
       - shell_client_transaction:
           args:
             http: true
