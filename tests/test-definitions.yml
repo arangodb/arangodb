@@ -298,6 +298,7 @@
       coverage: false
       priority: 1000
       type: mixed
+      size: large
     suites:
       - deadlock:
           args:
