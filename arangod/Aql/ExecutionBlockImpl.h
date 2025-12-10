@@ -331,8 +331,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // would cause the static assert in the implementation to fail for executors
   // that don't have side effects.
   template<class E = Executor>
-  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
-                                                   SkipResult& skipResult)
+  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack)
       -> ExecState;
 
   void initOnce();

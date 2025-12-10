@@ -1181,7 +1181,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
 template<class Executor>
 template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
-    AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
+    AqlCallStack& stack) -> ExecState {
   static_assert(std::is_same_v<Executor, E> &&
                 executorHasSideEffects<Executor>);
   if (!stack.hasAllValidCalls()) {
@@ -1226,7 +1226,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     if (shadowCall.needSkipMore()) {
       shadowCall.didSkip(1);
       shadowCall.resetSkipCount();
-      skipResult.didSkipSubquery(1, shadowDepth);
+      _skipped.didSkipSubquery(1, shadowDepth);
     } else if (shadowCall.getLimit() > 0) {
       TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
       _outputItemRow->moveRow(shadowRow);
@@ -1420,6 +1420,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     return shadowRowForwardingSubqueryStart(stack);
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     return shadowRowForwardingSubqueryEnd(stack);
+  } else if constexpr (executorHasSideEffects<Executor>) {
+    return sideEffectShadowRowForwarding(stack);
   } else {
     TRI_ASSERT(_outputItemRow);
     TRI_ASSERT(_outputItemRow->isInitialized());
@@ -2236,12 +2238,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         }
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
-        if constexpr (executorHasSideEffects<Executor>) {
-          _execState = sideEffectShadowRowForwarding(ctx.stack, _skipped);
-        } else {
-          // This may write one or more rows.
-          _execState = shadowRowForwarding(ctx.stack);
-        }
+        // This may write one or more rows.
+        _execState = shadowRowForwarding(ctx.stack);
         if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
           // Produce might have modified the clientCall
           // But only do this if we are not subquery.
