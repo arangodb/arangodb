@@ -1,5 +1,11 @@
 #!/bin/bash
-# This script produces the key pair signed by the `tls-ca.key`:
+
+# Create CA keypair:
+
+openssl ecparam -name prime256v1 -genkey -noout -out tls-ca.key
+openssl req -x509 -new -nodes -extensions v3_ca -key tls-ca.key -days 1024 -out tls-ca.crt -sha512 -subj "/O=ArangoDB/CN=ArangoDB/"
+
+# Produce the key pair signed by the `tls-ca.key`:
 
 openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem
 cat > ssl.conf <<EOF
