@@ -52,22 +52,14 @@ template class ::arangodb::graph::PathValidator<
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    FifoQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
     MockGraphProvider,
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
-    MockGraphProvider,
-    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<MockGraphProvider>;
 
 template class ::arangodb::graph::WeightedShortestPathEnumerator<
-    WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
-    MockGraphProvider,
-    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
-                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
+    MockGraphProvider>;
 
 // BFS with PATH uniqueness
 template class ::arangodb::graph::OneSidedEnumerator<BFSConfiguration<

@@ -42,41 +42,31 @@ namespace arangodb::graph {
 
 template<class Provider>
 using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
-    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template<class Provider>
-using TwoSidedEnumeratorWithProviderWeighted = WeightedTwoSidedEnumerator<
-    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+using TwoSidedEnumeratorWithProviderWeighted =
+    WeightedTwoSidedEnumerator<Provider>;
 
 // SHORTEST_PATH implementation
 template<class Provider>
 using ShortestPathEnumerator = TwoSidedEnumerator<
-    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template<class Provider>
-using WeightedShortestPathEnumeratorAlias = WeightedShortestPathEnumerator<
-    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
+using WeightedShortestPathEnumeratorAlias =
+    WeightedShortestPathEnumerator<Provider>;
 
 // SHORTEST_PATH for Yen:
 template<class Provider>
 using ShortestPathEnumeratorForYen = TwoSidedEnumerator<
-    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidatorTabooWrapper<PathValidator<
-        Provider, PathStore<typename Provider::Step>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+    Provider, PathValidatorTabooWrapper<PathValidator<
+                  Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 // K_PATH implementation
 template<class Provider>
