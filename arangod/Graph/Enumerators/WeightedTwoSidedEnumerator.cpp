@@ -31,12 +31,9 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
@@ -945,16 +942,6 @@ template class WeightedTwoSidedEnumerator<
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-// TracedWeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<SingleProvider>,
-                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-
 /* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
@@ -965,15 +952,5 @@ template class WeightedTwoSidedEnumerator<
     ClustProvider,
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-// TracedWeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<ClustProvider>,
-                      PathStoreTracer<PathStore<ClusterProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
 
 }  // namespace arangodb::graph

@@ -41,10 +41,6 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
-
-// Needed in case of enabled tracing
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -60,7 +56,6 @@ namespace graph {
 class KPathFinderTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using KPathFinder = KPathEnumerator<MockGraphProvider>;
-  // using KPathFinder = TracedKPathEnumerator<MockGraphProvider>;
 
  protected:
   bool activateLogging{false};

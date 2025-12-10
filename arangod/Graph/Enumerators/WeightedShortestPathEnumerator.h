@@ -67,6 +67,7 @@ class PathResult;
 // various different types of smart and not so smart graphs, with tracing
 // and without, etc.). Therefore we need many template parameters. Let me
 // here give an overview over what they do:
+// TODO
 //  - QueueType: This is the queue being used to track which steps to visit
 //    next. It is always `WeightedQueue`, but it needs to be a template
 //    argument since there is a wrapper template for tracing `QueueTracer`,

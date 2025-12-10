@@ -33,13 +33,10 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
@@ -646,36 +643,6 @@ template class TwoSidedEnumerator<
         SingleProvider, PathStore<SingleServerProviderStep>,
         VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-// TracedTwoSidedEnumeratorWithProvider<SingleProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<SingleProvider>,
-                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-
-// TracedShortestPathEnumerator<SingleProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedShortestPathEnumeratorForYen<SingleProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
-
 /* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
@@ -701,35 +668,5 @@ template class TwoSidedEnumerator<
     PathValidatorTabooWrapper<PathValidator<
         ClustProvider, PathStore<ClusterProviderStep>,
         VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedTwoSidedEnumeratorWithProvider<ClustProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<ClustProvider>,
-                      PathStoreTracer<PathStore<ClusterProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-
-// TracedShortestPathEnumerator<ClustProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedShortestPathEnumeratorForYen<ClustProvider>:
-template class TwoSidedEnumerator<
-    QueueTracer<FifoQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 }  // namespace arangodb::graph
