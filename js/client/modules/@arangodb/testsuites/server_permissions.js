@@ -332,7 +332,7 @@ function server_secrets(options) {
   };
   if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./etc/testing/tls.keyfile";
+      = "hans.arango.ai=./etc/testing/tls.keyfile";
   }
   let rc = new trs.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {

@@ -1,10 +1,12 @@
 # Contributing
 
-We welcome bug fixes and patches from 3rd party contributors. Please
-see the [Contributor Agreement](https://www.arangodb.com/community#contribute)
-for details.
+We welcome bug fixes and patches from 3rd party contributors.
+Please see the applicable agreement for details:
 
-Please follow these guidelines if you want to contribute to ArangoDB:
+- [Individual Contributor License Agreement](https://arango.ai/contributor-license)
+- [Corporate Contributor License Agreement](https://arango.ai/corporate-cla)
+
+Please follow below guidelines if you want to contribute to ArangoDB.
 
 # Reporting Bugs
 
@@ -39,7 +41,7 @@ yet.
   the appropriate branches there. This will most likely be **devel**.
 
 - You must use the Apache License for your changes and have signed our
-  [CLA](https://arangodb.com/community/#contribute). We cannot accept pull requests
+  [CLA](#contributing). We cannot accept pull requests
   from contributors who didn't sign the CLA.
 
 - Please let us know if you plan to work on a ticket. This way we can make sure
@@ -557,7 +559,7 @@ SIGABRT. SIGKILL signals, which the operating system can send to a process in ca
 
 In case the crash handler receives one of the mentioned interceptable signals, it will
 write basic crash information to the logfile and a backtrace of the call site.
-The backtrace can be provided to the ArangoDB support for further inspection. Note that
+The backtrace can be provided to the Arango support for further inspection. Note that
 backtraces are only usable if debug symbols for ArangoDB have been installed as well.
 
 After logging the crash information, the crash handler will execute the default action for
@@ -1337,10 +1339,10 @@ arangodb directory.
 
 # Additional Resources
 
-- [ArangoDB website](https://www.arangodb.com/)
+- [Arango website](https://arango.ai/)
 
-- [ArangoDB on Twitter](https://twitter.com/arangodb)
+- [Arango on X](https://x.com/arangoai)
 
 - [General GitHub documentation](https://help.github.com/)
 
-- [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)
+- [GitHub pull request documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)

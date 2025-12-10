@@ -165,7 +165,7 @@ var lessons = [
       'Wrapping multi-line queries in backticks is the most convenient way in\n' +
       "today's JavaScript.\n\n" +
       'See our online documentation for more details on AQL:\n' +
-      'https://docs.arangodb.com/'
+      'https://docs.arango.ai/arangodb/'
   },
   {
     title: 'Using Databases',

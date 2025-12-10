@@ -36,7 +36,7 @@ if (getOptions === true) {
       '^$'
     ],
     'javascript.endpoints-allowlist' : [
-      'ssl://arangodb.com:443'
+      'ssl://arango.ai:443'
     ],
   };
 }
