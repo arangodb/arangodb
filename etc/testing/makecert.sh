@@ -22,7 +22,7 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = localhost
-DNS.2 = hans.arangodb.ai
+DNS.2 = hans.arango.ai
 DNS.3 = 127.0.0.1
 EOF
 
