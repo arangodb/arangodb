@@ -32,6 +32,7 @@ class TestFilterCriteria:
         assert criteria.full is False
         assert criteria.gtest is False
         assert criteria.sanitizer is None
+        assert criteria.deployment_type is None
         assert criteria.enterprise is True
 
     def test_custom_values(self):
@@ -684,3 +685,134 @@ class TestV8Filtering:
         # But if we check the suite directly, it should be included
         suite = job.suites[0]
         assert should_include_suite(suite, criteria_v8)
+
+
+class TestDeploymentTypeFiltering:
+    """Test deployment type filtering at job level."""
+
+    def test_job_without_deployment_type_included_in_all_filters(self):
+        """Job without deployment_type field should run in all filters."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(deployment_type=None),
+        )
+
+        # Should be included with no filter
+        criteria_no_filter = FilterCriteria(deployment_type=None)
+        assert should_include_job(job, criteria_no_filter)
+
+        # Should be included in single filter
+        criteria_single = FilterCriteria(deployment_type=DeploymentType.SINGLE)
+        assert should_include_job(job, criteria_single)
+
+        # Should be included in cluster filter
+        criteria_cluster = FilterCriteria(deployment_type=DeploymentType.CLUSTER)
+        assert should_include_job(job, criteria_cluster)
+
+    def test_job_with_single_deployment_filtered_on_cluster(self):
+        """Job with deployment_type=SINGLE should be filtered out in cluster filter."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(deployment_type=DeploymentType.SINGLE),
+        )
+
+        # Should be included with no filter
+        criteria_no_filter = FilterCriteria(deployment_type=None)
+        assert should_include_job(job, criteria_no_filter)
+
+        # Should be included in single filter
+        criteria_single = FilterCriteria(deployment_type=DeploymentType.SINGLE)
+        assert should_include_job(job, criteria_single)
+
+        # Should be excluded in cluster filter
+        criteria_cluster = FilterCriteria(deployment_type=DeploymentType.CLUSTER)
+        assert not should_include_job(job, criteria_cluster)
+
+    def test_job_with_cluster_deployment_filtered_on_single(self):
+        """Job with deployment_type=CLUSTER should be filtered out in single filter."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(deployment_type=DeploymentType.CLUSTER),
+        )
+
+        # Should be included with no filter
+        criteria_no_filter = FilterCriteria(deployment_type=None)
+        assert should_include_job(job, criteria_no_filter)
+
+        # Should be excluded in single filter
+        criteria_single = FilterCriteria(deployment_type=DeploymentType.SINGLE)
+        assert not should_include_job(job, criteria_single)
+
+        # Should be included in cluster filter
+        criteria_cluster = FilterCriteria(deployment_type=DeploymentType.CLUSTER)
+        assert should_include_job(job, criteria_cluster)
+
+    def test_job_with_mixed_deployment_included_in_all_filters(self):
+        """Job with deployment_type=MIXED should be included in both single and cluster filters."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1"), SuiteConfig(name="suite2")],
+            options=TestOptions(deployment_type=DeploymentType.MIXED),
+        )
+
+        # Should be included with no filter
+        criteria_no_filter = FilterCriteria(deployment_type=None)
+        assert should_include_job(job, criteria_no_filter)
+
+        # Should be included in single filter
+        criteria_single = FilterCriteria(deployment_type=DeploymentType.SINGLE)
+        assert should_include_job(job, criteria_single)
+
+        # Should be included in cluster filter
+        criteria_cluster = FilterCriteria(deployment_type=DeploymentType.CLUSTER)
+        assert should_include_job(job, criteria_cluster)
+
+    def test_filter_jobs_by_deployment_type(self):
+        """Test filtering multiple jobs by deployment type."""
+        jobs = {
+            "single_job": TestJob(
+                name="single_job",
+                suites=[SuiteConfig(name="suite1")],
+                options=TestOptions(deployment_type=DeploymentType.SINGLE),
+            ),
+            "cluster_job": TestJob(
+                name="cluster_job",
+                suites=[SuiteConfig(name="suite2")],
+                options=TestOptions(deployment_type=DeploymentType.CLUSTER),
+            ),
+            "mixed_job": TestJob(
+                name="mixed_job",
+                suites=[SuiteConfig(name="suite3"), SuiteConfig(name="suite4")],
+                options=TestOptions(deployment_type=DeploymentType.MIXED),
+            ),
+            "any_job": TestJob(
+                name="any_job",
+                suites=[SuiteConfig(name="suite5")],
+                options=TestOptions(deployment_type=None),
+            ),
+        }
+        test_def = TestDefinitionFile(jobs=jobs)
+
+        # No filter - should include all jobs
+        criteria_no_filter = FilterCriteria(deployment_type=None)
+        result = filter_jobs(test_def, criteria_no_filter)
+        result_names = {job.name for job in result}
+        assert len(result) == 4
+        assert result_names == {"single_job", "cluster_job", "mixed_job", "any_job"}
+
+        # Single filter - should include single_job, mixed_job, and any_job
+        criteria_single = FilterCriteria(deployment_type=DeploymentType.SINGLE)
+        result = filter_jobs(test_def, criteria_single)
+        result_names = {job.name for job in result}
+        assert len(result) == 3
+        assert result_names == {"single_job", "mixed_job", "any_job"}
+
+        # Cluster filter - should include cluster_job, mixed_job, and any_job
+        criteria_cluster = FilterCriteria(deployment_type=DeploymentType.CLUSTER)
+        result = filter_jobs(test_def, criteria_cluster)
+        result_names = {job.name for job in result}
+        assert len(result) == 3
+        assert result_names == {"cluster_job", "mixed_job", "any_job"}

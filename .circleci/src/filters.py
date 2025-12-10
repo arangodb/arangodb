@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from .config_lib import (
     TestJob,
     TestDefinitionFile,
+    DeploymentType,
     SuiteConfig,
     Sanitizer,
     Architecture,
@@ -33,6 +34,9 @@ class FilterCriteria:
     sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
     architecture: Optional[Architecture] = None  # Current build architecture
     v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
+
+    # Deployment type filter (None = accept all deployment types)
+    deployment_type: Optional[DeploymentType] = None
 
     # Feature flags
     enterprise: bool = True
@@ -134,6 +138,20 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     # Check common requirements (architecture, full, instrumentation)
     if not _check_requirements_match(job.requires, criteria):
         return False
+
+    # Check deployment type filter
+    if criteria.deployment_type is not None:
+        job_deployment = job.options.deployment_type
+
+        # If job has no deployment type specified, it runs in all modes
+        if job_deployment is None:
+            pass  # Include job
+        # If job specifies MIXED, it should be included in both single and cluster filters
+        elif job_deployment == DeploymentType.MIXED:
+            pass  # Include job
+        # Otherwise, deployment types must match
+        elif job_deployment != criteria.deployment_type:
+            return False
 
     # Check gtest filter
     if criteria.gtest and not any(is_gtest_suite(suite) for suite in job.suites):
