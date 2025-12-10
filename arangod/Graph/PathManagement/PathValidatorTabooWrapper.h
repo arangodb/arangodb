@@ -28,7 +28,6 @@
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
-#include "Graph/Helpers/TraceEntry.h"
 
 #include <velocypack/Builder.h>
 
@@ -99,9 +98,6 @@ class PathValidatorTabooWrapper {
 
  private:
   PathValidatorImplementation _impl;
-  // Mapping MethodName => Statistics
-  // We make this mutable to not violate the captured API
-  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 
   std::shared_ptr<VertexSet> _forbiddenVertices;
   std::shared_ptr<EdgeSet> _forbiddenEdges;

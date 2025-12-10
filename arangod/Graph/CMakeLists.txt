@@ -27,7 +27,6 @@ target_include_directories(arango_graph PRIVATE
 add_subdirectory(Cache)
 add_subdirectory(Cursors)
 add_subdirectory(Enumerators)
-add_subdirectory(Helpers)
 add_subdirectory(Options)
 add_subdirectory(PathManagement)
 add_subdirectory(Providers)
