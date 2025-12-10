@@ -182,6 +182,8 @@ class BuilderLeaser {
   velocypack::Builder& operator*() const noexcept { return *_lease.leasee(); }
   velocypack::Builder* get() const noexcept { return _lease.leasee(); }
 
+  auto release() { return _lease.release(); }
+
  private:
   ThreadLocalBuilderLeaser::Lease _lease;
 };
