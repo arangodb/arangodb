@@ -26,8 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/ThreadBuilderLeaser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
@@ -885,21 +885,14 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
 }  // namespace helpers
 
 StringLeaser::StringLeaser(Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _string(_transactionContext->leaseString()) {}
+    : _lease(ThreadLocalStringLeaser::current.lease()) {}
 
 StringLeaser::StringLeaser(Methods* trx)
     : StringLeaser{trx->transactionContextPtr()} {}
 
-StringLeaser::~StringLeaser() {
-  if (_string != nullptr) {
-    _transactionContext->returnString(_string);
-  }
-}
-
 BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _lease(ThreadBuilderLeaser::current.leaseBuilder()) {
-  TRI_ASSERT(_lease.builder() != nullptr);
+    : _lease(ThreadLocalBuilderLeaser::current.lease()) {
+  TRI_ASSERT(_lease.leasee() != nullptr);
 }
 
 BuilderLeaser::BuilderLeaser(Methods* trx)

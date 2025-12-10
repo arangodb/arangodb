@@ -91,7 +91,6 @@ add_library(arango_basic_utils STATIC
         Basics/socket-utils.cpp
         Basics/terminal-utils.cpp
         Basics/tri-zip.cpp
-        Basics/ThreadBuilderLeaser.cpp
 
         # arango_lightweight
         Basics/ArangoGlobalContext.cpp

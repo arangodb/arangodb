@@ -26,7 +26,7 @@
 #include <string_view>
 #include "Basics/AttributeNameParser.h"
 #include "Basics/ResultT.h"
-#include "Basics/ThreadBuilderLeaser.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -149,25 +149,20 @@ class StringLeaser {
  public:
   explicit StringLeaser(Methods*);
   explicit StringLeaser(Context*);
-  ~StringLeaser();
 
-  auto release() {
-    return std::unique_ptr<std::string>{std::exchange(_string, nullptr)};
-  }
-  void acquire(std::unique_ptr<std::string> r) {
-    TRI_ASSERT(_string == nullptr);
-    _string = r.release();
+  auto release() { return _lease.release(); }
+  void acquire(std::unique_ptr<std::string>&& r) {
+    _lease.acquire(std::move(r));
   }
 
-  std::string* string() const { return _string; }
-  std::string* operator->() const { return _string; }
-  std::string& operator*() { return *_string; }
-  std::string const& operator*() const { return *_string; }
-  std::string* get() const { return _string; }
+  std::string* string() const { return _lease.leasee(); }
+  std::string* operator->() const { return _lease.leasee(); }
+  std::string& operator*() { return *_lease.leasee(); }
+  std::string const& operator*() const { return *_lease.leasee(); }
+  std::string* get() const { return _lease.leasee(); }
 
  private:
-  Context* _transactionContext;
-  std::string* _string;
+  ThreadLocalStringLeaser::Lease _lease;
 };
 
 class BuilderLeaser {
@@ -181,14 +176,14 @@ class BuilderLeaser {
 
   BuilderLeaser(BuilderLeaser&& source) = default;
 
-  velocypack::Builder* builder() const noexcept { return _lease.builder(); }
-  velocypack::Builder* operator->() const noexcept { return _lease.builder(); }
-  velocypack::Builder& operator*() noexcept { return *_lease.builder(); }
-  velocypack::Builder& operator*() const noexcept { return *_lease.builder(); }
-  velocypack::Builder* get() const noexcept { return _lease.builder(); }
+  velocypack::Builder* builder() const noexcept { return _lease.leasee(); }
+  velocypack::Builder* operator->() const noexcept { return _lease.leasee(); }
+  velocypack::Builder& operator*() noexcept { return *_lease.leasee(); }
+  velocypack::Builder& operator*() const noexcept { return *_lease.leasee(); }
+  velocypack::Builder* get() const noexcept { return _lease.leasee(); }
 
  private:
-  ThreadBuilderLeaser::Lease _lease;
+  ThreadLocalBuilderLeaser::Lease _lease;
 };
 
 ResultT<transaction::BuilderLeaser> extractAttributeValues(
