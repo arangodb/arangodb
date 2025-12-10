@@ -1411,10 +1411,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     return shadowRowForwardingSubqueryEnd(stack);
   } else if constexpr (executorHasSideEffects<Executor>) {
-    if (!stack.hasAllValidCalls()) {
-      return ExecState::DONE;
-    }
-    if (stack.needToCountSubquery()) {
+    if (stack.hasAllValidCalls() && stack.needToCountSubquery()) {
       return sideEffectShadowRowForwarding(stack);
     }
     // WARNING: fallthrough intentional
