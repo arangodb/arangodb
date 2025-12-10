@@ -7,7 +7,7 @@ openssl req -x509 -new -nodes -extensions v3_ca -key tls-ca.key -days 1024 -out 
 
 # Produce the key pair signed by the `tls-ca.key`:
 
-openssl ecparam -name prime256v1 -genkey -noout -out private-key.pem
+openssl ecparam -name prime256v1 -genkey -noout -out key.pem
 cat > ssl.conf <<EOF
 [req]
 prompt = no
