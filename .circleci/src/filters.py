@@ -185,14 +185,22 @@ def filter_suites(job: TestJob, criteria: FilterCriteria) -> List[SuiteConfig]:
     """
     Filter suites from a job based on criteria.
 
+    This uses job.get_resolved_suites() to ensure job-level requirements
+    (like full, instrumentation, etc.) are properly inherited by suites
+    that don't have their own requirements specified.
+
     Args:
         job: TestJob containing suites to filter
         criteria: FilterCriteria to apply
 
     Returns:
-        Filtered list of SuiteConfig objects
+        Filtered list of SuiteConfig objects with job-level options merged
     """
-    return [suite for suite in job.suites if should_include_suite(suite, criteria)]
+    return [
+        suite
+        for suite in job.get_resolved_suites()
+        if should_include_suite(suite, criteria)
+    ]
 
 
 def filter_jobs(

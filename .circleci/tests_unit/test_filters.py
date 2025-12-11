@@ -279,6 +279,39 @@ class TestFilterSuites:
         assert result[2].name == "suite3"
         assert result[3].name == "suite4"
 
+    def test_job_level_requires_inherited_by_suites(self):
+        """Test that job-level requirements are inherited by suites without their own requires.
+
+        Regression test for: When a job has requires: {full: true} but individual
+        suites have no requires section, those suites should inherit the job's
+        full=True requirement and be filtered out in PR builds.
+        """
+        # Job with full=True at job level, suites with no requires
+        job = TestJob(
+            name="test_job",
+            requires=TestRequirements(full=True),
+            suites=[
+                SuiteConfig(name="suite1"),  # No requires - should inherit job's full=True
+                SuiteConfig(name="suite2"),  # No requires - should inherit job's full=True
+            ],
+            options=TestOptions(),
+        )
+
+        # PR build (full=False) - should filter out all suites
+        pr_criteria = FilterCriteria(full=False)
+        pr_result = filter_suites(job, pr_criteria)
+        assert len(pr_result) == 0, "Suites should inherit job's full=True and be filtered in PR builds"
+
+        # Full build (full=True) - should include all suites
+        full_criteria = FilterCriteria(full=True)
+        full_result = filter_suites(job, full_criteria)
+        assert len(full_result) == 2
+        assert full_result[0].name == "suite1"
+        assert full_result[1].name == "suite2"
+        # Verify resolved suites have inherited requirements
+        assert full_result[0].requires.full is True
+        assert full_result[1].requires.full is True
+
 
 class TestArchitectureFiltering:
     """Test architecture filtering at job and suite level."""
