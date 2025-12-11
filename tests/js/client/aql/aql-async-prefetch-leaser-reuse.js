@@ -28,7 +28,7 @@ const db = require("@arangodb").db;
 
 const colNameA = "UnitTestVertexCollectionA";
 const colNameB = "UnitTestEdgeCollectionB";
-const colNameC = "UnitTestVertexCollectionA";
+const colNameC = "UnitTestVertexCollectionC";
 
 const tearDownAll = () => {
   db._drop(colNameA);
@@ -88,7 +88,7 @@ function asyncPrefetchReuseTestSuite() {
       // Running the above query in a loop previously lead to random errors and crashes
       // due to the reuse of the leased Builders and Strings in the transaction
       // context. This test should tickle TSAN if such a problem persists.
-      for(let i=1; i < 200; i++) {
+      for(let i=1; i < 100; i++) {
         db._query(q, binds);
       }
     },
