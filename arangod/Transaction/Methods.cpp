@@ -475,7 +475,7 @@ struct GenericProcessor {
     _resultBuilder.openObject();
 
     // _id
-    StringLeaser leased(_methods.transactionContext().get());
+    auto leased = ThreadLocalStringLeaser::current.lease();
     std::string& temp(*leased.get());
     temp.reserve(64);
 

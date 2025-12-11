@@ -396,7 +396,7 @@ AqlValue functions::Translate(ExpressionContext* expressionContext,
   if (key.isString()) {
     result = slice.get(key.slice().copyString());
   } else {
-    transaction::StringLeaser buffer(trx);
+    auto buffer = ThreadLocalStringLeaser::current.lease();
     velocypack::StringSink adapter(buffer.get());
     functions::stringify(vopts, adapter, key.slice());
     result = slice.get(*buffer);
@@ -452,7 +452,7 @@ AqlValue functions::Has(ExpressionContext* expressionContext, AstNode const&,
       aql::functions::extractFunctionParameterValue(parameters, 1);
   if (!name.isString()) {
     auto const& vopts = trx->vpackOptions();
-    transaction::StringLeaser buffer(trx);
+    auto buffer = ThreadLocalStringLeaser::current.lease();
     velocypack::StringSink adapter(buffer.get());
     appendAsString(vopts, adapter, name);
     return AqlValue(AqlValueHintBool(value.hasKey(*buffer)));
@@ -787,7 +787,7 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 
   // Buffer will temporarily hold the keys
   containers::FlatHashSet<std::string> keysSeen;
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   velocypack::StringSink adapter(buffer.get());
 
   VPackArrayIterator keysIt(keysSlice);

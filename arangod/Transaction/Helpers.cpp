@@ -884,12 +884,6 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
 
 }  // namespace helpers
 
-StringLeaser::StringLeaser(Context* transactionContext)
-    : _lease(ThreadLocalStringLeaser::lease()) {}
-
-StringLeaser::StringLeaser(Methods* trx)
-    : StringLeaser{trx->transactionContextPtr()} {}
-
 Result extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed, velocypack::Builder& builder) {

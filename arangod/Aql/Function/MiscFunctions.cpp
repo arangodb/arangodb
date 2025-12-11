@@ -191,7 +191,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   } else if (value.isString()) {
     std::string utf8;
-    transaction::StringLeaser buf1(trx);
+    auto buf1 = ThreadLocalStringLeaser::current.lease();
     velocypack::StringSink adapter(buf1.get());
     appendAsString(vopts, adapter, value);
     icu_64_64::UnicodeString uBuf(buf1->data(),

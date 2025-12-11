@@ -83,7 +83,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex =
@@ -184,7 +184,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex =
@@ -287,7 +287,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
@@ -333,7 +333,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = getBooleanParameter(parameters, 3, false);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1

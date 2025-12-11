@@ -144,30 +144,6 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 
 }  // namespace helpers
 
-/// @brief std::string leaser
-class StringLeaser {
- public:
-  explicit StringLeaser(Methods*);
-  explicit StringLeaser(Context*);
-
-  auto release() { return _lease.release(); }
-  void acquire(std::unique_ptr<std::string>&& r) {
-    _lease.acquire(std::move(r));
-  }
-
-  std::string const* string() const { return get(); }
-  std::string* operator->() { return get(); }
-  std::string const* operator->() const { return get(); }
-  std::string& operator*() { return *get(); }
-  std::string const& operator*() const { return *get(); }
-
-  std::string* get() { return _lease.get(); }
-  std::string const* get() const { return _lease.get(); }
-
- private:
-  ThreadLocalStringLeaser::Lease _lease;
-};
-
 ResultT<velocypack::Builder> extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed);

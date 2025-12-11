@@ -1673,7 +1673,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
       }
     }
 
-    transaction::StringLeaser leased(&trx);
+    auto leased = ThreadLocalStringLeaser::current.lease();
     rocksdb::PinnableSlice existing(leased.get());
 
     bool const lock =
@@ -1795,7 +1795,7 @@ Result RocksDBVPackIndex::insertUnique(
   }
   TRI_ASSERT(value.type() != RocksDBEntryType::Placeholder);
 
-  transaction::StringLeaser leased(&trx);
+  auto leased = ThreadLocalStringLeaser::current.lease();
   rocksdb::PinnableSlice existing(leased.get());
   auto cache = useCache();
   bool const isIndexCreation =

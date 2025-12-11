@@ -37,6 +37,7 @@
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
 #include "Aql/TypedAstNodes.h"
+#include "Basics/ThreadLocalLeaser.h"
 #ifdef USE_V8
 #include "Aql/V8ErrorHandler.h"
 #endif
@@ -711,7 +712,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   auto builder = ThreadLocalBuilderLeaser::current.lease();
   builder->openObject();
 
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::current.lease();
   arangodb::velocypack::StringSink adapter(buffer.get());
 
   for (size_t i = 0; i < n; ++i) {

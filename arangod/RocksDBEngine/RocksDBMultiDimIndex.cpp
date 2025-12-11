@@ -1154,7 +1154,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   }
 
   if (!options.checkUniqueConstraintsInPreflight) {
-    transaction::StringLeaser leased(&trx);
+    auto leased = ThreadLocalStringLeaser::current.lease();
     rocksdb::PinnableSlice existing(leased.get());
     if (auto s = methods->GetForUpdate(_cf, rocksdbKey.string(), &existing);
         s.ok()) {  // detected conflicting index entry
