@@ -36,6 +36,7 @@ target_sources(arangodbtests
   StringBufferTest.cpp
   StringUtilsTest.cpp
   SupervisedBufferTest.cpp
+  ThreadLocalLeaserTest.cpp
   TypeListTests.cpp
   UnshackledMutexTest.cpp
   VelocyPackHelperTest.cpp
