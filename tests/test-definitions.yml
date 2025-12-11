@@ -316,7 +316,9 @@
       - audit_server:
           args:
             cluster: true
-      - server_secrets
+      - server_secrets:
+          args:
+            suffix: single
 
 - restart:
     options:
