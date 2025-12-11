@@ -258,7 +258,6 @@
 - rta_makedata:
     options:
       type: mixed
-      size: large
     suites:
       - rta_makedata:
           args:
@@ -298,7 +297,6 @@
       coverage: false
       priority: 1000
       type: mixed
-      size: large
     suites:
       - deadlock:
           args:
@@ -312,10 +310,10 @@
           args:
             dumpAgencyOnError: true
             cluster: true
-      - audit_client
+      - audit_client:
           args:
             cluster: true
-      - audit_server
+      - audit_server:
           args:
             cluster: true
       - server_secrets
