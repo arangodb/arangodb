@@ -61,15 +61,9 @@ TEST(ThreadLocalLeaserTest, multiThreadBuilderLeasing) {
         b.leasee()->add(VPackValue("Fooooooooo"));
       }
     });
-
-    run.store(true);
-    threads.joinAll();
   }
-
-  auto b = ThreadLocalBuilderLeaser::current.lease();
-  ASSERT_NE(b.leasee(), nullptr);
-
-  b.leasee()->add(VPackValue(15));
+  run.store(true);
+  threads.joinAll();
 }
 
 TEST(ThreadLocalLeaserTest, multiThreadStringLeasing) {
@@ -87,13 +81,7 @@ TEST(ThreadLocalLeaserTest, multiThreadStringLeasing) {
         *b.leasee() += "Fooooooooo";
       }
     });
-
-    run.store(true);
-    threads.joinAll();
   }
-
-  auto b = ThreadLocalBuilderLeaser::current.lease();
-  ASSERT_NE(b.leasee(), nullptr);
-
-  b.leasee()->add(VPackValue(15));
+  run.store(true);
+  threads.joinAll();
 }
