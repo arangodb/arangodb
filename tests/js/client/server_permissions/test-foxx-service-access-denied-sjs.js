@@ -22,7 +22,7 @@ if (getOptions === true) {
     // tests/js/common/test-data/apps/server-security/index.js
     'javascript.app-path': fs.join(testPath, 'common', 'test-data', 'apps'),
     'javascript.endpoints-allowlist' : [
-      'ssl://arangodb.com:443'
+      'ssl://arango.ai:443'
     ],
     'javascript.environment-variables-denylist': 'PATH',
     'javascript.startup-options-denylist': 'point|log',

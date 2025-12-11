@@ -35,7 +35,7 @@ if (runSetup === true) {
 
   var replication = require("@arangodb/replication");
   replication.applier.stop(); // should not be running anyway
-  replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
+  replication.applier.properties({ endpoint: "tcp://ignoreme.arango.ai:9999", autoStart: true });
   return 0;
 }
 

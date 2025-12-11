@@ -33,8 +33,8 @@ const users = require("@arangodb/users");
 function AuthSuite() {
   'use strict';
 
-  const user1 = 'hackers@arangodb.com';
-  const user2 = 'noone@arangodb.com';
+  const user1 = 'hackers@arango.ai';
+  const user2 = 'noone@arango.ai';
 
   const cn = 'UnitTestsCollection';
       

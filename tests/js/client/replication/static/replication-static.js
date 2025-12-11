@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global ARGUMENTS */
+/* global ARGUMENTS, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -287,35 +287,61 @@ function BaseTestConfig() {
             value: 'A'
           });
 
-          db._executeTransaction({
-            collections: {
-              write: [cn, cn2]
-            },
-            action: function(params) {
-              var c = require('internal').db._collection(params.cn);
-              var c2 = require('internal').db._collection(params.cn2);
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: [cn, cn2]
+              },
+              action: function(params) {
+                var c = require('internal').db._collection(params.cn);
+                var c2 = require('internal').db._collection(params.cn2);
 
-              c.replace('foo', {
-                value: 2
-              });
-              c.insert({
-                _key: 'foo2',
-                value: 3
-              });
+                c.replace('foo', {
+                  value: 2
+                });
+                c.insert({
+                  _key: 'foo2',
+                  value: 3
+                });
 
-              c2.replace('bar', {
-                value: 'B'
-              });
-              c2.insert({
-                _key: 'bar2',
-                value: 'C'
-              });
-            },
-            params: {
-              cn,
-              cn2
-            }
-          });
+                c2.replace('bar', {
+                  value: 'B'
+                });
+                c2.insert({
+                  _key: 'bar2',
+                  value: 'C'
+                });
+              },
+              params: {
+                cn,
+                cn2
+              }
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: [cn, cn2]
+              }});
+            const c = tx.collection(cn);
+            const c2 = tx.collection(cn2);
+
+            c.replace('foo', {
+              value: 2
+            });
+            c.insert({
+              _key: 'foo2',
+              value: 3
+            });
+
+            c2.replace('bar', {
+              value: 'B'
+            });
+            c2.insert({
+              _key: 'bar2',
+              value: 'C'
+            });
+            tx.commit();
+          }
         },
         function() {
           assertEqual(2, db[cn].count());
@@ -789,22 +815,36 @@ function BaseTestConfig() {
         function(state) {
           db._create(cn);
 
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require('internal').db._collection(params.cn);
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function(params) {
+                var c = require('internal').db._collection(params.cn);
 
-              for (var i = 0; i < 1000; ++i) {
-                c.save({
-                  '_key': 'test' + i
-                });
-              }
-            },
-            params: {cn}
-          });
+                for (var i = 0; i < 1000; ++i) {
+                  c.save({
+                    '_key': 'test' + i
+                  });
+                }
+              },
+              params: {cn}
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: cn
+              }});
+            const c = tx.collection(cn);
 
+            for (var i = 0; i < 1000; ++i) {
+              c.save({
+                '_key': 'test' + i
+              });
+            }
+            tx.commit();
+          }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -825,27 +865,43 @@ function BaseTestConfig() {
         function(state) {
           db._create(cn);
 
-          try {
-            db._executeTransaction({
+          if (SYS_IS_V8_BUILD) {
+            try {
+              db._executeTransaction({
+                collections: {
+                  write: cn
+                },
+                action: function(params) {
+                  var c = require('@arangodb').db._collection(params.cn);
+                  for (var i = 0; i < 1000; ++i) {
+                    c.save({
+                      '_key': 'test' + i
+                    });
+                  }
+
+                  throw new Error('rollback!');
+                },
+                params: {cn}
+              });
+              fail();
+            } catch (err) {
+            }
+          } else {
+            const tx = db._createTransaction({
               collections: {
                 write: cn
-              },
-              action: function(params) {
-                var c = require('@arangodb').db._collection(params.cn);
-                for (var i = 0; i < 1000; ++i) {
-                  c.save({
-                    '_key': 'test' + i
-                  });
-                }
-
-                throw new Error('rollback!');
-              },
-              params: {cn}
-            });
-            fail();
-          } catch (err) {
+              }});
+            const c = tx.collection(cn);
+            for (var i = 0; i < 1000; ++i) {
+              c.save({
+                '_key': 'test' + i
+              });
+            }
+            let x = tx.abort();
+            if (x.status === "committed") {
+              throw new Error("failed to abort transaction " + x);
+            }
           }
-
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
@@ -874,19 +930,30 @@ function BaseTestConfig() {
           }
           c.insert(docs);
 
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require('@arangodb').db._collection(params.cn);
-              for (var i = 0; i < 1000; ++i) {
-                c.remove('test' + i);
-              }
-            },
-            params: {cn}
-          });
-
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function(params) {
+                var c = require('@arangodb').db._collection(params.cn);
+                for (var i = 0; i < 1000; ++i) {
+                  c.remove('test' + i);
+                }
+              },
+              params: {cn}
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: cn
+              }});
+            const tx_col = tx.collection(cn);
+            for (var i = 0; i < 1000; ++i) {
+              tx_col.remove('test' + i);
+            }
+            tx.commit();
+          }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
@@ -915,22 +982,37 @@ function BaseTestConfig() {
           }
           c.insert(docs);
 
-          try {
-            db._executeTransaction({
+          if (SYS_IS_V8_BUILD) {
+            try {
+              db._executeTransaction({
+                collections: {
+                  write: cn
+                },
+                action: function(params) {
+                  var c = require('@arangodb').db._collection(params.cn);
+                  for (var i = 0; i < 1000; ++i) {
+                    c.remove('test' + i);
+                  }
+                  throw new Error('peng!');
+                },
+                params: {cn}
+              });
+            } catch (err) {
+
+            }
+          } else {
+            const tx = db._createTransaction({
               collections: {
                 write: cn
-              },
-              action: function(params) {
-                var c = require('@arangodb').db._collection(params.cn);
-                for (var i = 0; i < 1000; ++i) {
-                  c.remove('test' + i);
-                }
-                throw new Error('peng!');
-              },
-              params: {cn}
-            });
-          } catch (err) {
-
+              }});
+            const tx_col = tx.collection(cn);
+            for (var i = 0; i < 1000; ++i) {
+              tx_col.remove('test' + i);
+            }
+            let x = tx.abort();
+            if (x.status === "committed") {
+              throw new Error("failed to abort transaction " + x);
+            }
           }
 
           state.checksum = collectionChecksum(cn);
@@ -953,41 +1035,72 @@ function BaseTestConfig() {
         function(state) {
           db._create(cn);
 
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require('internal').db._collection(params.cn);
-              var i;
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function(params) {
+                var c = require('internal').db._collection(params.cn);
+                var i;
 
-              for (i = 0; i < 1000; ++i) {
-                c.save({
-                  '_key': 'test' + i
-                });
-              }
+                for (i = 0; i < 1000; ++i) {
+                  c.save({
+                    '_key': 'test' + i
+                  });
+                }
 
-              for (i = 0; i < 1000; ++i) {
-                c.update('test' + i, {
-                  'foo': 'bar' + i
-                });
-              }
+                for (i = 0; i < 1000; ++i) {
+                  c.update('test' + i, {
+                    'foo': 'bar' + i
+                  });
+                }
 
-              for (i = 0; i < 1000; ++i) {
-                c.update('test' + i, {
-                  'foo': 'baz' + i
-                });
-              }
+                for (i = 0; i < 1000; ++i) {
+                  c.update('test' + i, {
+                    'foo': 'baz' + i
+                  });
+                }
 
-              for (i = 0; i < 1000; i += 10) {
-                c.remove('test' + i);
+                for (i = 0; i < 1000; i += 10) {
+                  c.remove('test' + i);
+                }
+              },
+              params: {
+                'cn': cn
               }
-            },
-            params: {
-              'cn': cn
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: cn
+              }});
+            const c = tx.collection(cn);
+            var i;
+
+            for (i = 0; i < 1000; ++i) {
+              c.save({
+                '_key': 'test' + i
+              });
             }
-          });
 
+            for (i = 0; i < 1000; ++i) {
+              c.update('test' + i, {
+                'foo': 'bar' + i
+              });
+            }
+
+            for (i = 0; i < 1000; ++i) {
+              c.update('test' + i, {
+                'foo': 'baz' + i
+              });
+            }
+
+            for (i = 0; i < 1000; i += 10) {
+              c.remove('test' + i);
+            }
+            tx.commit();
+          }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(900, state.count);
@@ -1008,33 +1121,56 @@ function BaseTestConfig() {
         function(state) {
           db._create(cn);
 
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require('internal').db._collection(params.cn);
-              var i;
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function(params) {
+                var c = require('internal').db._collection(params.cn);
+                var i;
 
-              for (i = 0; i < 50000; ++i) {
-                c.save({
-                  '_key': 'test' + i,
-                  value: i
-                });
-                c.update('test' + i, {
-                  value: i + 1
-                });
+                for (i = 0; i < 50000; ++i) {
+                  c.save({
+                    '_key': 'test' + i,
+                    value: i
+                  });
+                  c.update('test' + i, {
+                    value: i + 1
+                  });
 
-                if (i % 5 === 0) {
-                  c.remove('test' + i);
+                  if (i % 5 === 0) {
+                    c.remove('test' + i);
+                  }
                 }
+              },
+              params: {
+                'cn': cn
               }
-            },
-            params: {
-              'cn': cn
-            }
-          });
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: cn
+              }});
+            const c = tx.collection(cn);
+            var i;
 
+            for (i = 0; i < 50000; ++i) {
+              c.save({
+                '_key': 'test' + i,
+                value: i
+              });
+              c.update('test' + i, {
+                value: i + 1
+              });
+
+              if (i % 5 === 0) {
+                c.remove('test' + i);
+              }
+            }
+            tx.commit();
+          }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(40000, state.count);
@@ -1057,32 +1193,54 @@ function BaseTestConfig() {
         function(state) {
           db._create(cn);
 
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function(params) {
-              var c = require('internal').db._collection(params.cn);
-              var i;
-              var wait = require('internal').wait;
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function(params) {
+                var c = require('internal').db._collection(params.cn);
+                var i;
+                var wait = require('internal').wait;
 
-              for (i = 0; i < 10; ++i) {
-                c.save({
-                  '_key': 'test' + i,
-                  value: i
-                });
-                c.update('test' + i, {
-                  value: i + 1
-                });
+                for (i = 0; i < 10; ++i) {
+                  c.save({
+                    '_key': 'test' + i,
+                    value: i
+                  });
+                  c.update('test' + i, {
+                    value: i + 1
+                  });
 
-                wait(1, false);
+                  wait(1, false);
+                }
+              },
+              params: {
+                'cn': cn
               }
-            },
-            params: {
-              'cn': cn
-            }
-          });
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: cn
+              }});
+            const c = tx.collection(cn);
+            var i;
+            var wait = require('internal').wait;
 
+            for (i = 0; i < 10; ++i) {
+              c.save({
+                '_key': 'test' + i,
+                value: i
+              });
+              c.update('test' + i, {
+                value: i + 1
+              });
+
+              wait(1, false);
+            }
+            tx.commit();
+          }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(10, state.count);
@@ -1106,85 +1264,7 @@ function BaseTestConfig() {
           db._create(cn);
           db._create(cn2);
 
-          db._executeTransaction({
-            collections: {
-              write: [cn, cn2]
-            },
-            action: function(params) {
-              var c1 = require('internal').db._collection(params.cn);
-              var c2 = require('internal').db._collection(params.cn2);
-              var i;
-
-              for (i = 0; i < 1000; ++i) {
-                c1.save({
-                  '_key': 'test' + i
-                });
-                c2.save({
-                  '_key': 'test' + i,
-                  'foo': 'bar'
-                });
-              }
-
-              for (i = 0; i < 1000; ++i) {
-                c1.update('test' + i, {
-                  'foo': 'bar' + i
-                });
-              }
-
-              for (i = 0; i < 1000; ++i) {
-                c1.update('test' + i, {
-                  'foo': 'baz' + i
-                });
-                c2.update('test' + i, {
-                  'foo': 'baz' + i
-                });
-              }
-
-              for (i = 0; i < 1000; i += 10) {
-                c1.remove('test' + i);
-                c2.remove('test' + i);
-              }
-            },
-            params: {
-              'cn': cn,
-              'cn2': cn2
-            }
-          });
-
-          state.checksum1 = collectionChecksum(cn);
-          state.checksum2 = collectionChecksum(cn2);
-          state.count1 = collectionCount(cn);
-          state.count2 = collectionCount(cn2);
-          assertEqual(900, state.count1);
-          assertEqual(900, state.count2);
-        },
-        function(state) {
-          assertEqual(state.count1, collectionCount(cn));
-          assertEqual(state.count2, collectionCount(cn2));
-          assertEqual(state.checksum1, collectionChecksum(cn));
-          assertEqual(state.checksum2, collectionChecksum(cn2));
-        }
-      );
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test transactions
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testTransactionAbort: function() {
-      compare(
-        function(state) {
-          db._create(cn);
-          db._create(cn2);
-
-          db._collection(cn).save({
-            foo: 'bar'
-          });
-          db._collection(cn2).save({
-            bar: 'baz'
-          });
-
-          try {
+          if (SYS_IS_V8_BUILD) {
             db._executeTransaction({
               collections: {
                 write: [cn, cn2]
@@ -1223,16 +1303,178 @@ function BaseTestConfig() {
                   c1.remove('test' + i);
                   c2.remove('test' + i);
                 }
-
-                throw new Error('rollback!');
               },
               params: {
                 'cn': cn,
                 'cn2': cn2
               }
             });
-            fail();
-          } catch (err) {
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: [cn, cn2]
+              }});
+            const c1 = tx.collection(cn);
+            const c2 = tx.collection(cn2);
+            var i;
+
+            for (i = 0; i < 1000; ++i) {
+              c1.save({
+                '_key': 'test' + i
+              });
+              c2.save({
+                '_key': 'test' + i,
+                'foo': 'bar'
+              });
+            }
+
+            for (i = 0; i < 1000; ++i) {
+              c1.update('test' + i, {
+                'foo': 'bar' + i
+              });
+            }
+
+            for (i = 0; i < 1000; ++i) {
+              c1.update('test' + i, {
+                'foo': 'baz' + i
+              });
+              c2.update('test' + i, {
+                'foo': 'baz' + i
+              });
+            }
+
+            for (i = 0; i < 1000; i += 10) {
+              c1.remove('test' + i);
+              c2.remove('test' + i);
+            }
+            tx.commit();
+          }
+          state.checksum1 = collectionChecksum(cn);
+          state.checksum2 = collectionChecksum(cn2);
+          state.count1 = collectionCount(cn);
+          state.count2 = collectionCount(cn2);
+          assertEqual(900, state.count1);
+          assertEqual(900, state.count2);
+        },
+        function(state) {
+          assertEqual(state.count1, collectionCount(cn));
+          assertEqual(state.count2, collectionCount(cn2));
+          assertEqual(state.checksum1, collectionChecksum(cn));
+          assertEqual(state.checksum2, collectionChecksum(cn2));
+        }
+      );
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief test transactions
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testTransactionAbort: function() {
+      compare(
+        function(state) {
+          db._create(cn);
+          db._create(cn2);
+
+          db._collection(cn).save({
+            foo: 'bar'
+          });
+          db._collection(cn2).save({
+            bar: 'baz'
+          });
+
+          if (SYS_IS_V8_BUILD) {
+            try {
+              db._executeTransaction({
+                collections: {
+                  write: [cn, cn2]
+                },
+                action: function(params) {
+                  var c1 = require('internal').db._collection(params.cn);
+                  var c2 = require('internal').db._collection(params.cn2);
+                  var i;
+
+                  for (i = 0; i < 1000; ++i) {
+                    c1.save({
+                      '_key': 'test' + i
+                    });
+                    c2.save({
+                      '_key': 'test' + i,
+                      'foo': 'bar'
+                    });
+                  }
+
+                  for (i = 0; i < 1000; ++i) {
+                    c1.update('test' + i, {
+                      'foo': 'bar' + i
+                    });
+                  }
+
+                  for (i = 0; i < 1000; ++i) {
+                    c1.update('test' + i, {
+                      'foo': 'baz' + i
+                    });
+                    c2.update('test' + i, {
+                      'foo': 'baz' + i
+                    });
+                  }
+
+                  for (i = 0; i < 1000; i += 10) {
+                    c1.remove('test' + i);
+                    c2.remove('test' + i);
+                  }
+
+                  throw new Error('rollback!');
+                },
+                params: {
+                  'cn': cn,
+                  'cn2': cn2
+                }
+              });
+              fail();
+            } catch (err) {
+            }
+          } else {
+            const tx = db._createTransaction({
+              collections: {
+                write: [cn, cn2]
+              }});
+            const c1 = tx.collection(cn);
+            const c2 = tx.collection(cn2);
+            var i;
+
+            for (i = 0; i < 1000; ++i) {
+              c1.save({
+                '_key': 'test' + i
+              });
+              c2.save({
+                '_key': 'test' + i,
+                'foo': 'bar'
+              });
+            }
+
+            for (i = 0; i < 1000; ++i) {
+              c1.update('test' + i, {
+                'foo': 'bar' + i
+              });
+            }
+
+            for (i = 0; i < 1000; ++i) {
+              c1.update('test' + i, {
+                'foo': 'baz' + i
+              });
+              c2.update('test' + i, {
+                'foo': 'baz' + i
+              });
+            }
+
+            for (i = 0; i < 1000; i += 10) {
+              c1.remove('test' + i);
+              c2.remove('test' + i);
+            }
+            let x = tx.abort();
+            if (x.status === "committed") {
+              throw new Error("failed to abort transaction " + x);
+            }
           }
 
           state.checksum1 = collectionChecksum(cn);

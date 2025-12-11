@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/7819991/218699214-264942f9-b020-4f50-b1a6-3363cdc0ddc9.svg" width="638" height="105">
-  <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/7819991/218699215-b9b4a465-45f8-4db9-b5a4-ba912541e017.svg" width="638" height="105">
-  <img alt="Two stylized avocado halves and the product name." src="https://user-images.githubusercontent.com/7819991/218697980-26ffd7af-cf29-4365-8a5d-504b850fc6b1.png" width="638" height="105">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/b3605085-087a-4cac-a563-c82ceefc0a81" width="800" height="167">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/0b187230-f508-4745-833d-2f51812af0aa" width="800" height="167">
+  <img alt="A stylized avocado half and the company name" src="https://github.com/user-attachments/assets/e8ce5249-0527-41d0-aae4-a141bc85206e" width="800" height="167">
 </picture>
 
 ArangoDB
@@ -14,7 +14,7 @@ single query language. ArangoDB runs on-prem, in the cloud – anywhere.
 ArangoDB Cloud Service
 ----------------------
 
-The [ArangoGraph Insights Platform](https://cloud.arangodb.com/home) is the
+The [Arango Managed Platform (AMP)](https://dashboard.arangodb.cloud/home) is the
 simplest way to run ArangoDB. You can create deployments on all major cloud
 providers in many regions with ease.
 
@@ -23,19 +23,18 @@ Getting Started
 
 - [ArangoDB University](https://university.arangodb.com/)
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
-- [Training Center](https://www.arangodb.com/learn/)
-- [Documentation](https://docs.arangodb.com/)
+- [Documentation](https://docs.arango.ai/)
 
 For the impatient:
 
-- Test ArangoDB in the cloud with [ArangoGraph](https://cloud.arangodb.com/home) for free.
+- Test ArangoDB in the cloud with [AMP](https://dashboard.arangodb.cloud/home) for free.
 
-- Alternatively, [download](https://www.arangodb.com/download) and install ArangoDB.
+- Alternatively, [download](https://arango.ai/downloads/) and install ArangoDB.
   Start the server `arangod` if the installer did not do it for you.
 
   Or start ArangoDB in a Docker container:
 
-      docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb
+      docker run -d -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 arangodb
 
   Then point your browser to `http://127.0.0.1:8529/`.
 
@@ -69,8 +68,6 @@ as an **Enterprise Edition** for commercial use and without a dataset size limit
   graphs, and ranked full-text search.
 - **Transactions**: Run queries on multiple documents or collections with
   optional transactional consistency and isolation.
-- **Data-centric microservices**: Unify your data storage logic, reduce network
-  overhead, and secure sensitive data with the _ArangoDB Foxx_ JavaScript framework.
 - **Fast access to your data**: Fine-tune your queries with a variety of index
   types for optimal performance. ArangoDB is written in C++ and can handle even
   very large datasets efficiently.
@@ -88,8 +85,7 @@ and security, as well as advanced query capabilities.
   query execution.
 - Combine the performance of a single server with the resilience of a cluster
   setup using **OneShard** deployments.
-- Increase fault tolerance with **Datacenter-to-Datacenter Replication** and
-  and create incremental **Hot Backups** without downtime.
+- Create incremental **Hot Backups** without downtime.
 - Enable highly secure work with **Encryption 360**, enhanced **Data Masking**, 
   and detailed **Auditing**.
 - Perform **parallel graph traversals**.
@@ -100,10 +96,10 @@ Latest Release
 --------------
 
 Packages for all supported platforms can be downloaded from
-<https://www.arangodb.com/download/>.
+<https://arango.ai/downloads/>.
 
 For what's new in ArangoDB, see the Release Notes in the
-[Documentation](https://docs.arangodb.com/).
+[Documentation](https://docs.arango.ai/).
 
 Stay in Contact
 ---------------
@@ -120,7 +116,5 @@ Stay in Contact
 - Learn more about ArangoDB with our YouTube channel: 
   [https://www.youtube.com/@ArangoDB](https://www.youtube.com/@ArangoDB)
 
-- Follow us on Twitter to stay up to date:
-  [https://twitter.com/arangodb](https://twitter.com/arangodb)
-
-- Find out more about our community: [https://www.arangodb.com/community](https://www.arangodb.com/community/)
+- Follow us on X to stay up to date:
+  [https://x.com/arangoai](https://x.com/arangoai)

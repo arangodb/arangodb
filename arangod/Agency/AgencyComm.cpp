@@ -938,7 +938,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     } catch (velocypack::Exception const& e) {
       LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
           << "Sync/LatestID in agency could not be parsed: " << e.what()
-          << "; If this error persists, contact the ArangoDB support.";
+          << "; If this error persists, contact the Arango support.";
       auto message = std::string("Failed to parse Sync/LatestID: ") + e.what();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
     }

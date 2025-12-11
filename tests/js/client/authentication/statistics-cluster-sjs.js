@@ -36,8 +36,8 @@ function AuthSuite() {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
-  const user1 = 'hackers@arangodb.com';
-  const user2 = 'noone@arangodb.com';
+  const user1 = 'hackers@arango.ai';
+  const user2 = 'noone@arango.ai';
       
   let checkStatistics = function() {
     let result = arango.GET('/_admin/aardvark/statistics/coordshort');

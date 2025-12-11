@@ -42,7 +42,7 @@ export const DebugPackageModal = ({
             <Text>
               This will generate a package containing a lot of commonly required
               information about your query and environment that helps the
-              ArangoDB Team to reproduce your issue. This debug package will
+              Arango Team to reproduce your issue. This debug package will
               include:
             </Text>
             <UnorderedList marginLeft="4">

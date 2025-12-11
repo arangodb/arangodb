@@ -50,7 +50,7 @@ function TLSRotation() {
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
 
-  //   const user = 'hackers@arangodb.com';
+  //   const user = 'hackers@arango.ai';
   const keyfileName = process.env["tls-keyfile"];
   assertTrue(keyfileName.length > 0);
 

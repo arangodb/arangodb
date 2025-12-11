@@ -1,12 +1,12 @@
 {
  "externalDocs": {
-  "description": "ArangoDB Documentation",
-  "url": "https://docs.arangodb.com"
+  "description": "Arango Documentation",
+  "url": "https://docs.arango.ai"
  },
  "info": {
   "contact": {
    "name": "ArangoDB Inc.",
-   "url": "https://arangodb.com"
+   "url": "https://arango.ai"
   },
   "license": {
    "name": "Business Source License 1.1",
@@ -14,7 +14,7 @@
   },
   "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
   "title": "ArangoDB Core API",
-  "version": "3.12.7-devel"
+  "version": "3.12.8-devel"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -123,7 +123,7 @@
           "type": "boolean"
          },
          "config": {
-          "description": "Configuration of remote repository. This is required when a download\noperation is scheduled. In this case leave out the `downloadId`\nattribute. See [Rclone Configuration](https://docs.arangodb.com/3.12/components/tools/arangobackup/examples/#rclone-configuration)\nfor a description of the `config` object.\n",
+          "description": "Configuration of remote repository. This is required when a download\noperation is scheduled. In this case leave out the `downloadId`\nattribute. See [Rclone Configuration](https://docs.arango.ai/arangodb/3.12/components/tools/arangobackup/examples/#rclone-configuration)\nfor a description of the `config` object.\n",
           "type": "object"
          },
          "downloadId": {
@@ -261,7 +261,7 @@
           "type": "boolean"
          },
          "config": {
-          "description": "Configuration of remote repository. This is required when an upload\noperation is scheduled. In this case leave out the `uploadId`\nattribute. See [Rclone Configuration](https://docs.arangodb.com/3.12/components/tools/arangobackup/examples/#rclone-configuration)\nfor a description of the `config` object.\n",
+          "description": "Configuration of remote repository. This is required when an upload\noperation is scheduled. In this case leave out the `uploadId`\nattribute. See [Rclone Configuration](https://docs.arango.ai/arangodb/3.12/components/tools/arangobackup/examples/#rclone-configuration)\nfor a description of the `config` object.\n",
           "type": "object"
          },
          "id": {
@@ -6566,7 +6566,7 @@
              "uniqueItems": true
             },
             "expression": {
-             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arangodb.com/3.12/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
+             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
              "type": "string"
             },
             "failOnWarning": {
@@ -6673,7 +6673,7 @@
             "type": "string"
            },
            "rule": {
-            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
             "type": "object"
            }
           },
@@ -6887,7 +6887,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -7761,7 +7761,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -8162,7 +8162,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -8837,7 +8837,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -9071,7 +9071,7 @@
              "uniqueItems": true
             },
             "expression": {
-             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arangodb.com/3.12/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
+             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
              "type": "string"
             },
             "failOnWarning": {
@@ -9125,7 +9125,7 @@
             "type": "string"
            },
            "rule": {
-            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
             "type": "object"
            }
           },
@@ -9311,7 +9311,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -9838,7 +9838,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -10392,7 +10392,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -10770,7 +10770,7 @@
              "type": "string"
             },
             "rule": {
-             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arango.ai/arangodb/3.12/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
              "type": "object"
             },
             "type": {
@@ -11426,7 +11426,7 @@
             "type": "boolean"
            },
            "cache": {
-            "description": "Whether the [AQL query results cache](https://docs.arangodb.com/3.12/aql/execution-and-performance/caching-query-results/)\nshall be used for adding as well as for retrieving results.\n\nIf the query cache mode is set to `demand` and you set the `cache` query option\nto `true` for a query, then its query result is cached if it's eligible for\ncaching. If the query cache mode is set to `on`, query results are automatically\ncached if they are eligible for caching unless you set the `cache` option to `false`.\n\nIf you set the `cache` option to `false`, then any query cache lookup is skipped\nfor the query. If you set it to `true`, the query cache is checked for a cached result\n**if** the query cache mode is either set to `on` or `demand`.\n\nDefault: Controlled by the `--query.cache-mode` startup option.\n",
+            "description": "Whether the [AQL query results cache](https://docs.arango.ai/arangodb/3.12/aql/execution-and-performance/caching-query-results/)\nshall be used for adding as well as for retrieving results.\n\nIf the query cache mode is set to `demand` and you set the `cache` query option\nto `true` for a query, then its query result is cached if it's eligible for\ncaching. If the query cache mode is set to `on`, query results are automatically\ncached if they are eligible for caching unless you set the `cache` option to `false`.\n\nIf you set the `cache` option to `false`, then any query cache lookup is skipped\nfor the query. If you set it to `true`, the query cache is checked for a cached result\n**if** the query cache mode is either set to `on` or `demand`.\n\nDefault: Controlled by the `--query.cache-mode` startup option.\n",
             "type": "boolean"
            },
            "failOnWarning": {
@@ -11480,7 +11480,7 @@
             "description": "Options related to the query optimizer.\n",
             "properties": {
              "rules": {
-              "description": "A list of optimizer rules, telling the optimizer to\ninclude or exclude specific rules. See the\n[List of optimizer rules](https://docs.arangodb.com/3.12/aql/execution-and-performance/query-optimization/#list-of-optimizer-rules).\n\nTo disable a rule, prefix its name with `-`. To enable a rule,\nprefix it with `+`. There is also a pseudo-rule `all` that\nmatches all optimizer rules. `-all` disables all rules.\n",
+              "description": "A list of optimizer rules, telling the optimizer to\ninclude or exclude specific rules. See the\n[List of optimizer rules](https://docs.arango.ai/arangodb/3.12/aql/execution-and-performance/query-optimization/#list-of-optimizer-rules).\n\nTo disable a rule, prefix its name with `-`. To enable a rule,\nprefix it with `+`. There is also a pseudo-rule `all` that\nmatches all optimizer rules. `-all` disables all rules.\n",
               "items": {
                "type": "string"
               },
@@ -11519,7 +11519,7 @@
            },
            "usePlanCache": {
             "default": false,
-            "description": "Set this option to `true` to utilize a cached query plan or add the execution plan\nof this query to the cache if it's not in the cache yet. Otherwise, the plan cache\nis bypassed (introduced in v3.12.4).\n\nQuery plan caching can reduce the total time for processing queries by avoiding\nto parse, plan, and optimize queries over and over again that effectively have\nthe same execution plan with at most some changes to bind parameter values.\n\nAn error is raised if a query doesn't meet the requirements for plan caching.\nSee [Cache eligibility](https://docs.arangodb.com/3.12/aql/execution-and-performance/caching-query-plans/#cache-eligibility)\nfor details.\n",
+            "description": "Set this option to `true` to utilize a cached query plan or add the execution plan\nof this query to the cache if it's not in the cache yet. Otherwise, the plan cache\nis bypassed (introduced in v3.12.4).\n\nQuery plan caching can reduce the total time for processing queries by avoiding\nto parse, plan, and optimize queries over and over again that effectively have\nthe same execution plan with at most some changes to bind parameter values.\n\nAn error is raised if a query doesn't meet the requirements for plan caching.\nSee [Cache eligibility](https://docs.arango.ai/arangodb/3.12/aql/execution-and-performance/caching-query-plans/#cache-eligibility)\nfor details.\n",
             "type": "boolean"
            }
           },
@@ -14574,7 +14574,7 @@
             "description": "Options related to the query optimizer.\n",
             "properties": {
              "rules": {
-              "description": "A list of optimizer rules, telling the optimizer to\ninclude or exclude specific rules. See the\n[List of optimizer rules](https://docs.arangodb.com/3.12/aql/execution-and-performance/query-optimization/#list-of-optimizer-rules).\n\nTo disable a rule, prefix its name with `-`. To enable a rule,\nprefix it with `+`. There is also a pseudo-rule `all` that\nmatches all optimizer rules. `-all` disables all rules.\n",
+              "description": "A list of optimizer rules, telling the optimizer to\ninclude or exclude specific rules. See the\n[List of optimizer rules](https://docs.arango.ai/arangodb/3.12/aql/execution-and-performance/query-optimization/#list-of-optimizer-rules).\n\nTo disable a rule, prefix its name with `-`. To enable a rule,\nprefix it with `+`. There is also a pseudo-rule `all` that\nmatches all optimizer rules. `-all` disables all rules.\n",
               "items": {
                "type": "string"
               },
@@ -14590,7 +14590,7 @@
            },
            "usePlanCache": {
             "default": false,
-            "description": "Set this option to `true` to utilize a cached query plan or add the execution plan\nof this query to the cache if it's not in the cache yet. Otherwise, the plan cache\nis bypassed (introduced in v3.12.4).\n\nQuery plan caching can reduce the total time for processing queries by avoiding\nto parse, plan, and optimize queries over and over again that effectively have\nthe same execution plan with at most some changes to bind parameter values.\n\nAn error is raised if a query doesn't meet the requirements for plan caching.\nSee [Cache eligibility](https://docs.arangodb.com/3.12/aql/execution-and-performance/caching-query-plans/#cache-eligibility)\nfor details.\n",
+            "description": "Set this option to `true` to utilize a cached query plan or add the execution plan\nof this query to the cache if it's not in the cache yet. Otherwise, the plan cache\nis bypassed (introduced in v3.12.4).\n\nQuery plan caching can reduce the total time for processing queries by avoiding\nto parse, plan, and optimize queries over and over again that effectively have\nthe same execution plan with at most some changes to bind parameter values.\n\nAn error is raised if a query doesn't meet the requirements for plan caching.\nSee [Cache eligibility](https://docs.arango.ai/arangodb/3.12/aql/execution-and-performance/caching-query-plans/#cache-eligibility)\nfor details.\n",
             "type": "boolean"
            }
           },
@@ -23447,7 +23447,7 @@
           "type": "integer"
          },
          "consolidationIntervalMsec": {
-          "default": 1000,
+          "default": 5000,
           "description": "Wait at least this many milliseconds between applying `consolidationPolicy` to\nconsolidate the inverted index data store and possibly release space on the filesystem\n(set to `0` to disable).\nFor the case where there are a lot of data modification operations, a higher\nvalue could potentially have the data store consume more space and file handles.\nFor the case where there are a few data modification operations, a lower value\nimpacts performance due to no segment candidates being available for\nconsolidation.\n\n_Background:_\n  For data modification, ArangoSearch follows the concept of a\n  \"versioned data store\". Thus old versions of data may be removed once there\n  are no longer any users of the old data. The frequency of the cleanup and\n  compaction operations are governed by `consolidationIntervalMsec` and the\n  candidates for compaction are selected via `consolidationPolicy`.\n",
           "type": "integer"
          },
@@ -23460,22 +23460,22 @@
             "type": "integer"
            },
            "segmentsBytesFloor": {
-            "default": 2097152,
+            "default": 25165824,
             "description": "Defines the value (in bytes) to treat all smaller segments as equal for\nconsolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
-            "default": 5368709120,
+            "default": 8589934592,
             "description": "The maximum allowed size of all consolidated segments in bytes.\n",
             "type": "integer"
            },
            "segmentsMax": {
-            "default": 10,
+            "default": 200,
             "description": "The maximum number of segments that are evaluated as candidates for\nconsolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
-            "default": 1,
+            "default": 50,
             "description": "The minimum number of segments that are evaluated as candidates for\nconsolidation.\n",
             "type": "integer"
            },
@@ -29002,7 +29002,7 @@
           "type": "integer"
          },
          "consolidationIntervalMsec": {
-          "default": 10000,
+          "default": 5000,
           "description": "Wait at least this many milliseconds between applying `consolidationPolicy` to\nconsolidate the View data store and possibly release space on the filesystem\n(`0` = disable).\nFor the case where there are a lot of data modification operations, a higher\nvalue could potentially have the data store consume more space and file handles.\nFor the case where there are a few data modification operations, a lower value\nimpacts performance due to no segment candidates being available for\nconsolidation.\n\n_Background:_\n  For data modification, ArangoSearch follows the concept of a\n  \"versioned data store\". Thus old versions of data may be removed once there\n  are no longer any users of the old data. The frequency of the cleanup and\n  compaction operations are governed by `consolidationIntervalMsec` and the\n  candidates for compaction are selected via `consolidationPolicy`.\n",
           "type": "integer"
          },
@@ -29015,22 +29015,22 @@
             "type": "integer"
            },
            "segmentsBytesFloor": {
-            "default": 2097152,
+            "default": 25165824,
             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
-            "default": 5368709120,
+            "default": 8589934592,
             "description": "Maximum allowed size of all consolidated segments in bytes.\n",
             "type": "integer"
            },
            "segmentsMax": {
-            "default": 10,
+            "default": 200,
             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
-            "default": 1,
+            "default": 50,
             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
@@ -29057,7 +29057,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          },
          "name": {
@@ -29246,7 +29246,7 @@
            "type": "string"
           },
           "links": {
-           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
            "type": "object"
           },
           "name": {
@@ -29900,6 +29900,123 @@
     ]
    }
   },
+  "/_db/{database-name}/_api/view/{view-name}#searchalias": {
+   "get": {
+    "description": "Returns the basic information about a specific View.\n",
+    "operationId": "getViewSearchAlias",
+    "parameters": [
+     {
+      "description": "The name of the database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The name of the View.\n",
+      "in": "path",
+      "name": "view-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "globallyUniqueId": {
+           "description": "A unique identifier of the View. This is an internal property.\n",
+           "type": "string"
+          },
+          "id": {
+           "description": "A unique identifier of the View (deprecated).\n",
+           "type": "string"
+          },
+          "name": {
+           "description": "The name of the View.\n",
+           "example": "coll",
+           "type": "string"
+          },
+          "type": {
+           "description": "The type of the View (`\"search-alias\"`).\n",
+           "example": "search-alias",
+           "type": "string"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "name",
+          "type",
+          "id",
+          "globallyUniqueId"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The basic information about the View.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "A View called `view-name` could not be found.\n"
+     }
+    },
+    "summary": "Get information about a View",
+    "tags": [
+     "Views"
+    ]
+   }
+  },
   "/_db/{database-name}/_api/view/{view-name}/properties": {
    "get": {
     "description": "Returns an object containing the definition of the View identified by `view-name`.\n",
@@ -30002,7 +30119,7 @@
            "type": "string"
           },
           "links": {
-           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
            "type": "object"
           },
           "name": {
@@ -30257,22 +30374,22 @@
             "type": "integer"
            },
            "segmentsBytesFloor": {
-            "default": 2097152,
+            "default": 25165824,
             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
-            "default": 5368709120,
+            "default": 8589934592,
             "description": "Maximum allowed size of all consolidated segments in bytes.\n",
             "type": "integer"
            },
            "segmentsMax": {
-            "default": 10,
+            "default": 200,
             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
-            "default": 1,
+            "default": 50,
             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
@@ -30298,7 +30415,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          }
         },
@@ -30374,7 +30491,7 @@
            "type": "string"
           },
           "links": {
-           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
            "type": "object"
           },
           "name": {
@@ -30617,7 +30734,7 @@
           "type": "integer"
          },
          "consolidationIntervalMsec": {
-          "default": 10000,
+          "default": 5000,
           "description": "Wait at least this many milliseconds between applying `consolidationPolicy` to\nconsolidate the View data store and possibly release space on the filesystem\n(`0` = disable).\nFor the case where there are a lot of data modification operations, a higher\nvalue could potentially have the data store consume more space and file handles.\nFor the case where there are a few data modification operations, a lower value\nimpacts performance due to no segment candidates being available for\nconsolidation.\n\n_Background:_\n  For data modification, ArangoSearch follows the concept of a\n  \"versioned data store\". Thus old versions of data may be removed once there\n  are no longer any users of the old data. The frequency of the cleanup and\n  compaction operations are governed by `consolidationIntervalMsec` and the\n  candidates for compaction are selected via `consolidationPolicy`.\n",
           "type": "integer"
          },
@@ -30630,22 +30747,22 @@
             "type": "integer"
            },
            "segmentsBytesFloor": {
-            "default": 2097152,
+            "default": 25165824,
             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
-            "default": 5368709120,
+            "default": 8589934592,
             "description": "Maximum allowed size of all consolidated segments in bytes.\n",
             "type": "integer"
            },
            "segmentsMax": {
-            "default": 10,
+            "default": 200,
             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
-            "default": 1,
+            "default": 50,
             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
@@ -30672,7 +30789,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. Example:\n\n```json\n{\n  \"name\": \"arangosearch\",\n  \"links\": {\n    \"coll\": {\n      \"fields\": {\n        \"my_attribute\": {\n          \"fields\": {\n            \"my_sub_attribute\": {\n              \"analyzers\": [\"text_en\"]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\nSee [`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          }
         },
@@ -30748,7 +30865,7 @@
            "type": "string"
           },
           "links": {
-           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
            "type": "object"
           },
           "name": {
@@ -31615,7 +31732,7 @@
            "type": "string"
           },
           "links": {
-           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.12/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
+           "description": "An object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arango.ai/arangodb/3.12/indexes-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
            "type": "object"
           },
           "name": {
@@ -31775,6 +31892,185 @@
        }
       },
       "description": "The `view-name` path parameter is missing or invalid.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "A View called `view-name` could not be found.\n"
+     }
+    },
+    "summary": "Rename a View",
+    "tags": [
+     "Views"
+    ]
+   }
+  },
+  "/_db/{database-name}/_api/view/{view-name}/rename#searchalias": {
+   "put": {
+    "description": "Renames a View.\n\n\u003e **INFO:**\nRenaming Views is not supported in cluster deployments.\n",
+    "operationId": "renameViewSearchAlias",
+    "parameters": [
+     {
+      "description": "The name of the database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The name of the View to rename.\n",
+      "in": "path",
+      "name": "view-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "properties": {
+         "name": {
+          "description": "The new name for the View.\n",
+          "type": "string"
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "type": "object"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "globallyUniqueId": {
+           "description": "A unique identifier of the View. This is an internal property.\n",
+           "type": "string"
+          },
+          "id": {
+           "description": "The identifier of the View.\n",
+           "type": "string"
+          },
+          "indexes": {
+           "description": "The list of inverted indexes that are part of the View.\n",
+           "items": {
+            "properties": {
+             "collection": {
+              "description": "The name of a collection.\n",
+              "type": "string"
+             },
+             "index": {
+              "description": "The name of an inverted index of the `collection`.\n",
+              "type": "string"
+             }
+            },
+            "required": [
+             "collection",
+             "index"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          },
+          "name": {
+           "description": "The name of the View.\n",
+           "type": "string"
+          },
+          "type": {
+           "description": "The View type (`\"search-alias\"`).\n",
+           "type": "string"
+          }
+         },
+         "required": [
+          "name",
+          "type",
+          "id",
+          "globallyUniqueId",
+          "indexes"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The View has been renamed successfully.\n"
+     },
+     "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The `view-name` parameter is missing or invalid.\n"
      },
      "404": {
       "content": {
