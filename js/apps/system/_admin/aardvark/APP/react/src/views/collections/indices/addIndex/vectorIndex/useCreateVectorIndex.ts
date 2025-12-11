@@ -5,6 +5,7 @@ import { useCreateIndex } from "../useCreateIndex";
 export const INITIAL_VALUES = {
   type: "vector",
   fields: "",
+  storedValues: "",
   name: commonFieldsMap.name.initialValue,
   params: {
     metric: "",
@@ -27,6 +28,13 @@ export const FIELDS = [
     tooltip: "The name of the attribute that contains the vector embeddings. Only a single attribute is supported."
   },
   commonFieldsMap.name,
+  {
+    label: "Extra stored values",
+    name: "storedValues",
+    type: "string",
+    tooltip:
+      "A comma-separated list of extra attribute paths. The values of these attributes will be stored in the index as well. They can be used for projections, but cannot be used for filtering or sorting."
+  },
   {
     label: "Metric",
     name: "params.metric",
@@ -102,8 +110,9 @@ export const SCHEMA = Yup.object({
   inBackground: commonSchema.inBackground
 });
 
-type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & {
+type ValuesType = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
   fields: string[];
+  storedValues?: string[];
 };
 
 export const useCreateVectorIndex = () => {
@@ -112,6 +121,9 @@ export const useCreateVectorIndex = () => {
     return onCreateIndex({
       type: values.type,
       fields: [values.fields.trim()],
+      storedValues: values.storedValues
+        ? values.storedValues.split(",").map(field => field.trim())
+        : undefined,
       name: values.name,
       params: values.params,
       parallelism: values.parallelism,
