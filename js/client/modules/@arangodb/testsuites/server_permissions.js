@@ -311,7 +311,7 @@ function server_secrets(options) {
   // Now set up TLS with the first server key:
   let keyfileDir = fs.join(secretsDir, 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
-  fs.makeDirectory(keyfileDir);
+  fs.makeDirectoryRecursive(keyfileDir);
 
   fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
 
