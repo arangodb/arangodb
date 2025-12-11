@@ -68,7 +68,8 @@ function asyncPrefetchReuseTestSuite() {
     tearDownAll,
 
     testTickleReuse: function () {
-      const q = `FOR node IN @@col
+      const q = `WITH ${colNameA}, ${colNameB}, ${colNameC}
+        FOR node IN @@col
         LET x = (
           FOR n,e,p IN 1..1 ANY node._id @@edge_col
             FILTER !IS_NULL(e) && !IS_NULL(e._from) && !IS_NULL(e._to)
