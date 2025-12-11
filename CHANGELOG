@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-914: Add UI support for `storedValues` in vector index.
+
 * FE-636: bump rollup from 2.79.1 to 2.79.2.
 
 * Replace arangodb.com with arango.ai in URLs
