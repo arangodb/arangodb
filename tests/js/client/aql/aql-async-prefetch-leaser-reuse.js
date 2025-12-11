@@ -47,7 +47,7 @@ const createCollections = () => {
   for(i=1;i<=4000;i++) {
     averts.push({ _key: `${i}` });
     cverts.push({ _key: `${i}` });
-    bedges.push({ _from: `a/${i}`, _to: `c/${i}` });
+    bedges.push({ _from: `${colNameA}/${i}`, _to: `${colNameC}/${i}` });
   }
 
   db._collection(colNameA).insert(averts);
@@ -63,7 +63,7 @@ function asyncPrefetchReuseTestSuite() {
   return {
     setUpAll: function() {
       tearDownAll();
-      createCollection();
+      createCollections();
     },
     tearDownAll,
 
