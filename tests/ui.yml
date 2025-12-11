@@ -8,6 +8,7 @@ tests:
       buckets: auto
     requires:
       arch: x64
+      v8: true
     suites:
       - UserPageTestSuite
       - CollectionsTestSuite
