@@ -32,7 +32,7 @@ export const FIELDS = [
     label: "Extra stored values",
     name: "storedValues",
     type: "string",
-    tooltip: "Store additional attributes in the index that you want to filter by. Avoids materializing documents twice, once for the filtering and once for the matches."
+    tooltip: "Store additional attributes in the index that you want to filter by (comma-separated list). Avoids materializing documents twice, once for the filtering and once for the matches."
   },
   {
     label: "Metric",
