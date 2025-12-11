@@ -110,13 +110,13 @@ export const SCHEMA = Yup.object({
   inBackground: commonSchema.inBackground
 });
 
-type ValuesType = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
+type VectorIndexPayload = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
   fields: string[];
   storedValues?: string[];
 };
 
 export const useCreateVectorIndex = () => {
-  const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
+  const { onCreate: onCreateIndex } = useCreateIndex<VectorIndexPayload>();
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       type: values.type,
