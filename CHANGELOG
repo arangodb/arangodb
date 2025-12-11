@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix RocksDB cluttering into tiny SST files.
+
 * FE-636: bump rollup from 2.79.1 to 2.79.2.
 
 * Replace arangodb.com with arango.ai in URLs
@@ -19,7 +21,7 @@ devel
   causing a crash when being stored in query plan cache. The issue is a missing
   invalidateCost from the splice-subqueries rule.
 
-* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio. 
+* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio.
 
 * COR-45: Added support for index hints in vector search queries.
 

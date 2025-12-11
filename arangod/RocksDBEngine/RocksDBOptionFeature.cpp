@@ -321,7 +321,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _enableBlobGarbageCollection(true),
       _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
-      _partitionFilesForDocumentsCf(true),
+      _partitionFilesForDocumentsCf(false),
       _partitionFilesForPrimaryIndexCf(false),
       _partitionFilesForEdgeIndexCf(false),
       _partitionFilesForVPackIndexCf(false),
