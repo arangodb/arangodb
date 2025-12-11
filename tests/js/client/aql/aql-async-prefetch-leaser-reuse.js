@@ -40,11 +40,11 @@ const createCollections = () => {
   db._createDocumentCollection(colNameC);
   db._createEdgeCollection(colNameB);
 
-  averts = [];
-  cverts = [];
-  bedges = [];
+  var averts = [];
+  var cverts = [];
+  var bedges = [];
 
-  for(i=1;i<=4000;i++) {
+  for(let i=1;i<=4000;i++) {
     averts.push({ _key: `${i}` });
     cverts.push({ _key: `${i}` });
     bedges.push({ _from: `${colNameA}/${i}`, _to: `${colNameC}/${i}` });
