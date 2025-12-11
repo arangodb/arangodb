@@ -32,8 +32,7 @@ export const FIELDS = [
     label: "Extra stored values",
     name: "storedValues",
     type: "string",
-    tooltip:
-      "Store additional attributes in the index. Unlike with other index types, this is not for covering projections with the index but for adding attributes that you filter on. This lets you make the lookup in the vector index more efficient because it avoids materializing documents twice, once for the filtering and once for the matches. The maximum number of attributes that you can use in storedValues is 32."
+    tooltip: "Store additional attributes in the index that you want to filter by. Avoids materializing documents twice, once for the filtering and once for the matches."
   },
   {
     label: "Metric",
