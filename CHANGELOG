@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix concurrent reuse of builders and string buffers when using async-prefetch
+
 * Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
   dependencies.
 
