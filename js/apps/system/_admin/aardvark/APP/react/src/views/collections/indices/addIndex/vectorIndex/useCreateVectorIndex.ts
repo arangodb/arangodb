@@ -97,6 +97,16 @@ export const FIELDS = [
 
 export const SCHEMA = Yup.object({
   fields: Yup.string().trim().required("Field is required"),
+  storedValues: Yup.string()
+    .test(
+      "max-stored-values",
+      "The maximum number of attributes that you can use in storedValues is 32.",
+      value => {
+        if (!value) return true;
+        return value.split(",").length <= 32;
+      }
+    )
+    .optional(),
   name: commonSchema.name,
   params: Yup.object({
     metric: Yup.string().required("Metric is required"),
