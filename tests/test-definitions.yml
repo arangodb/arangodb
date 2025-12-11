@@ -308,6 +308,7 @@
             cluster: true
       - server_secrets:
           args:
+            suffix: cluster
             dumpAgencyOnError: true
             cluster: true
       - audit_client:
