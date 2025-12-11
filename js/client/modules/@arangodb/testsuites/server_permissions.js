@@ -298,7 +298,7 @@ function server_parameters(options) {
 
 function server_secrets(options) {
   let secretsDir = fs.join(fs.getTempPath(), options.suffix, 'arango_jwt_secrets');
-  fs.makeDirectory(secretsDir);
+  fs.makeDirectoryRecursive(secretsDir);
   let secretFiles = [
     fs.join(secretsDir, 'secret1'),
     fs.join(secretsDir, 'secret2')
