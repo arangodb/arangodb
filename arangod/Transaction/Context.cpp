@@ -136,34 +136,6 @@ void transaction::Context::returnString(std::string* str) noexcept {
   }
 }
 
-/// @brief temporarily lease a Builder object
-VPackBuilder* transaction::Context::leaseBuilder() {
-  if (_builders.empty()) {
-    // create a new builder and return it
-    return new VPackBuilder();
-  }
-
-  // re-use an existing builder
-  VPackBuilder* b = _builders.back();
-  TRI_ASSERT(b != nullptr);
-  b->clear();
-  _builders.pop_back();
-
-  return b;
-}
-
-/// @brief return a temporary Builder object
-void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
-  TRI_ASSERT(builder != nullptr);
-  try {
-    // put builder back into our vector of builders
-    _builders.push_back(builder);
-  } catch (...) {
-    // no harm done. just wipe the builder
-    delete builder;
-  }
-}
-
 /// @brief get velocypack options with a custom type handler
 VPackOptions const* transaction::Context::getVPackOptions() const noexcept {
   return &_options;

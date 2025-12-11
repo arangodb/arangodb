@@ -29,6 +29,7 @@
 #include "Aql/QueryContext.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
@@ -140,7 +141,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   // slow path, sharding not deducable from _id
   bool mustSend = false;
 
-  transaction::BuilderLeaser leased(trx());
+  auto leased = ThreadLocalBuilderLeaser::current.lease();
   leased->openObject();
 
   if (_opts.produceVertices()) {
@@ -317,7 +318,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Expanding " << step->getVertex().getID();
   auto const* engines = _opts.engines();
-  transaction::BuilderLeaser leased(trx());
+  auto leased = ThreadLocalBuilderLeaser::current.lease();
   leased->openObject(true);
   leased->add("backward",
               VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
@@ -452,7 +453,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
         if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
           auto maybeBatchId = resSlice.get("batchId");
           if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
-            transaction::BuilderLeaser leasedContinue(trx());
+            auto leasedContinue = ThreadLocalBuilderLeaser::current.lease();
             leasedContinue->openObject(true);
             leasedContinue->add("cursorId", maybeCursorId);
             leasedContinue->add(

@@ -31,6 +31,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Helpers.h"
@@ -1322,7 +1323,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
   if (parameters.size() == 1) {
     // pre-documented edge-case: if we only have the first parameter, return it.
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::current.lease();
     builder->openArray();
     builder->add(aqlValueToSplit.slice());
     builder->close();
@@ -1347,7 +1348,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser result(trx);
+  auto result = ThreadLocalBuilderLeaser::current.lease();
   result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an

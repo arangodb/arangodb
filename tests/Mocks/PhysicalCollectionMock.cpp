@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
@@ -387,7 +388,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
-    arangodb::transaction::BuilderLeaser builder(trx);
+    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
@@ -412,7 +413,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
-    arangodb::transaction::BuilderLeaser builder(trx);
+    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
@@ -822,7 +823,7 @@ class HashIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const*,
       arangodb::IndexIteratorOptions const&, arangodb::ReadOwnWrites,
       int) override {
-    arangodb::transaction::BuilderLeaser builder(trx);
+    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
     if (nullptr == node) {

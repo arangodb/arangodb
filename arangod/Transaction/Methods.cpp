@@ -33,6 +33,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
@@ -633,7 +634,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                           TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
         _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
-        _replicationData(&methods),
+        _replicationData(ThreadLocalBuilderLeaser::current.lease()),
         _operationType(operationType),
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
@@ -835,7 +836,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   IndexesSnapshot _indexesSnapshot;
 
   // all document data that are going to be replicated, append-only
-  BuilderLeaser _replicationData;
+  ThreadLocalBuilderLeaser::Lease _replicationData;
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
@@ -851,8 +852,8 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
                   OperationOptions& options)
       : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
                                 "remove", TRI_VOC_DOCUMENT_OPERATION_REMOVE),
-        _keyBuilder(&_methods),
-        _previousDocumentBuilder(&_methods) {}
+        _keyBuilder(ThreadLocalBuilderLeaser::current.lease()),
+        _previousDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()) {}
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -998,10 +999,10 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
   }
 
   // temporary builder for building keys
-  BuilderLeaser _keyBuilder;
+  ThreadLocalBuilderLeaser::Lease _keyBuilder;
   // builder for a single, old version of document (will be recycled for each
   // document)
-  BuilderLeaser _previousDocumentBuilder;
+  ThreadLocalBuilderLeaser::Lease _previousDocumentBuilder;
 };
 
 template<class Derived>
@@ -1178,7 +1179,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
                   OperationOptions& options)
       : ModifyingProcessorBase(methods, trxColl, collection, value, options,
                                "insert", TRI_VOC_DOCUMENT_OPERATION_INSERT),
-        _newDocumentBuilder(&_methods),
+        _newDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
         // if no overwriteMode is specified we default to Conflict
         _overwriteMode(options.isOverwriteModeSet()
                            ? options.overwriteMode
@@ -1288,7 +1289,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
     std::ignore = _methods.state()->ensureSnapshot();
 
     // only populated for update/replace
-    BuilderLeaser previousDocumentBuilder(&_methods);
+    auto previousDocumentBuilder = ThreadLocalBuilderLeaser::current.lease();
 
     RevisionId newRevisionId;
     bool didReplace = false;
@@ -1457,7 +1458,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
   }
 
   // builder for a single document (will be recycled for each document)
-  BuilderLeaser _newDocumentBuilder;
+  ThreadLocalBuilderLeaser::Lease _newDocumentBuilder;
 
   OperationOptions::OverwriteMode _overwriteMode;
 };
@@ -1470,8 +1471,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
                                isUpdate ? "update" : "replace",
                                isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                         : TRI_VOC_DOCUMENT_OPERATION_REPLACE),
-        _newDocumentBuilder(&_methods),
-        _previousDocumentBuilder(&_methods),
+        _newDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
+        _previousDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
         _isUpdate(isUpdate) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {
@@ -1644,10 +1645,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   }
 
   // builder for a single document (will be recycled for each document)
-  BuilderLeaser _newDocumentBuilder;
+  ThreadLocalBuilderLeaser::Lease _newDocumentBuilder;
   // builder for a single, old version of document (will be recycled for each
   // document)
-  BuilderLeaser _previousDocumentBuilder;
+  ThreadLocalBuilderLeaser::Lease _previousDocumentBuilder;
 
   bool const _isUpdate;
 };

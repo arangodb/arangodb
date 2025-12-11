@@ -74,20 +74,6 @@ TEST_F(TransactionContextTest, StandaloneContext) {
     ctx.returnString(str);
     strings.pop_back();
   }
-
-  std::vector<velocypack::Builder*> builders;
-  for (int i = 0; i < 10; i++) {
-    auto* b = ctx.leaseBuilder();
-    if (i > 0) {
-      EXPECT_NE(builders.back(), b);
-    }
-    builders.push_back(b);
-  }
-  while (!builders.empty()) {
-    auto* b = builders.back();
-    ctx.returnBuilder(b);
-    builders.pop_back();
-  }
 }
 
 TEST_F(TransactionContextTest, StandaloneSmartContext) {

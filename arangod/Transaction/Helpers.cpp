@@ -470,7 +470,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
                              BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::current.lease();
   b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -656,7 +656,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
                           BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::current.lease();
 
   b->openObject();
 
@@ -770,7 +770,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            RevisionId& revisionId, VPackBuilder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::current.lease();
   b->openObject();
 
   // add system attributes first, in this order:
@@ -890,14 +890,6 @@ StringLeaser::StringLeaser(Context* transactionContext)
 StringLeaser::StringLeaser(Methods* trx)
     : StringLeaser{trx->transactionContextPtr()} {}
 
-BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _lease(ThreadLocalBuilderLeaser::lease()) {
-  TRI_ASSERT(_lease.get() != nullptr);
-}
-
-BuilderLeaser::BuilderLeaser(Methods* trx)
-    : BuilderLeaser{trx->transactionContextPtr()} {}
-
 Result extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed, velocypack::Builder& builder) {
@@ -937,14 +929,14 @@ Result extractAttributeValues(
   return {};
 }
 
-ResultT<transaction::BuilderLeaser> extractAttributeValues(
+ResultT<ThreadLocalBuilderLeaser::Lease> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed) {
-  transaction::BuilderLeaser leased(&trx);
+  auto leased = ThreadLocalBuilderLeaser::current.lease();
 
-  if (auto const res = extractAttributeValues(storedValues, doc, nullAllowed,
-                                              *leased.builder());
+  if (auto const res =
+          extractAttributeValues(storedValues, doc, nullAllowed, *leased.get());
       res.fail()) {
     return res;
   }

@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/system-compiler.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -387,12 +388,12 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     TRI_ASSERT(_inputRow.isInitialized());
 
     // traverser now has next v, e, p values
-    transaction::BuilderLeaser tmp{_infos.getTrx()};
+    auto tmp = ThreadLocalBuilderLeaser::current.lease();
 
     // Vertex variable (v)
     if (_infos.useVertexOutput()) {
       tmp->clear();
-      currentPath->lastVertexToVelocyPack(*tmp.builder());
+      currentPath->lastVertexToVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.vertexRegister(), _inputRow, &guard);
@@ -401,7 +402,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     // Edge variable (e)
     if (_infos.useEdgeOutput()) {
       tmp->clear();
-      currentPath->lastEdgeToVelocyPack(*tmp.builder());
+      currentPath->lastEdgeToVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.edgeRegister(), _inputRow, &guard);
@@ -410,7 +411,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     // Path variable (p)
     if (_infos.usePathOutput()) {
       tmp->clear();
-      currentPath->toVelocyPack(*tmp.builder());
+      currentPath->toVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.pathRegister(), _inputRow, &guard);

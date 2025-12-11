@@ -650,7 +650,7 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
     if (cv != nullptr) {
       return AqlValue(cv);
     }
-    transaction::BuilderLeaser builder(&ctx.trx());
+    auto builder = ThreadLocalBuilderLeaser::current.lease();
     return AqlValue(node->computeValue(builder.get()).begin());
   }
 
@@ -662,7 +662,7 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
 
   auto& trx = ctx.trx();
 
-  transaction::BuilderLeaser builder(&trx);
+  auto builder = ThreadLocalBuilderLeaser::current.lease();
   builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
@@ -694,7 +694,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     if (cv != nullptr) {
       return AqlValue(cv);
     }
-    transaction::BuilderLeaser builder(&trx);
+    auto builder = ThreadLocalBuilderLeaser::current.lease();
     return AqlValue(node->computeValue(builder.get()).begin());
   }
 
@@ -708,7 +708,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   containers::FlatHashSet<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
-  transaction::BuilderLeaser builder(&trx);
+  auto builder = ThreadLocalBuilderLeaser::current.lease();
   builder->openObject();
 
   transaction::StringLeaser buffer(&trx);
@@ -805,7 +805,7 @@ AqlValue Expression::executeSimpleExpressionValue(ExpressionContext& ctx,
   if (cv != nullptr) {
     return AqlValue(cv);
   }
-  transaction::BuilderLeaser builder(&ctx.trx());
+  auto builder = ThreadLocalBuilderLeaser::current.lease();
   return AqlValue(node->computeValue(builder.get()).begin());
 }
 
@@ -968,8 +968,7 @@ AqlValue Expression::invokeV8Function(
     return AqlValue(AqlValueHintNull());
   }
 
-  auto& trx = ctx.trx();
-  transaction::BuilderLeaser builder(&trx);
+  auto builder = ThreadLocalBuilderLeaser::current.lease();
 
   // can throw
   TRI_V8ToVPack(isolate, *builder.get(), result, false);

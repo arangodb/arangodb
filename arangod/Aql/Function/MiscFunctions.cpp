@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Result.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Transaction/Helpers.h"
@@ -172,7 +173,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
   if (value.isArray()) {
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::current.lease();
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(value);
     std::vector<VPackSlice> array;

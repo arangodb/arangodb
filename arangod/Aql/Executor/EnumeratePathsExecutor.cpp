@@ -27,6 +27,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -244,10 +245,9 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
 template<class FinderType>
 auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
-  transaction::BuilderLeaser tmp{&_trx};
-  tmp->clear();
+  auto tmp = ThreadLocalBuilderLeaser::current.lease();
 
-  if (_finder.getNextPath(*tmp.builder())) {
+  if (_finder.getNextPath(*tmp.get())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, &guard);
