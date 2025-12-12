@@ -1196,13 +1196,15 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-
   if (shadowRow.isRelevant()) {
     LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
     // We found a relevant shadow Row.
     // We need to reset the Executor
     resetExecutor();
   }
+
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
 
   uint64_t depthSkippingNow =
       static_cast<uint64_t>(stack.shadowRowDepthToSkip());
@@ -1243,6 +1245,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     _outputItemRow->advanceRow();
     didWriteRow = true;
   }
+
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
     // Done with this query
@@ -1251,18 +1254,33 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows, we
-    // need to forward them
+    // We still have shadowRows.
+    auto const& lookAheadRow = _lastRange.peekShadowRow();
+    if (lookAheadRow.isRelevant()) {
+      // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                    BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
+      return ExecState::NEXTSUBQUERY;
+    }
+    // we need to forward them
     return ExecState::SHADOWROWS;
   } else if (didWriteRow) {
     // End of input, we are done for now
     // Need to call again
     return ExecState::DONE;
   } else {
-    // Done with this subquery.
-    // We did not write any output yet.
-    // So we can continue with upstream.
-    return ExecState::UPSTREAM;
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
+    // End of input, need to fetch new!
+    // Just start with the next subquery.
+    // If in doubt the next row will be a shadowRow again,
+    // this will be forwarded than.
+    return ExecState::NEXTSUBQUERY;
   }
 }
 
@@ -1461,6 +1479,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   _outputItemRow->moveRow(shadowRow);
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
+
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
     // Done with this query
