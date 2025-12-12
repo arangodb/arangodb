@@ -152,7 +152,7 @@ ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
       _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
-      _pathBuilder{arangodb::ThreadLocalBuilderLeaser::current.lease()},
+      _pathBuilder{arangodb::ThreadLocalBuilderLeaser::lease()},
       _posInPath(0),
       _pathLength(0),
       _sourceBuilder{},

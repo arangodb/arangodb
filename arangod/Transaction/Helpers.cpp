@@ -470,7 +470,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
                              BatchOptions& batchOptions) {
-  auto b = ThreadLocalBuilderLeaser::current.lease();
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -656,7 +656,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
                           BatchOptions& batchOptions) {
-  auto b = ThreadLocalBuilderLeaser::current.lease();
+  auto b = ThreadLocalBuilderLeaser::lease();
 
   b->openObject();
 
@@ -770,7 +770,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            RevisionId& revisionId, VPackBuilder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions) {
-  auto b = ThreadLocalBuilderLeaser::current.lease();
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   // add system attributes first, in this order:
@@ -927,7 +927,7 @@ ResultT<ThreadLocalBuilderLeaser::Lease> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed) {
-  auto leased = ThreadLocalBuilderLeaser::current.lease();
+  auto leased = ThreadLocalBuilderLeaser::lease();
 
   if (auto const res =
           extractAttributeValues(storedValues, doc, nullAllowed, *leased.get());

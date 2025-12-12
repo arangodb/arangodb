@@ -245,7 +245,7 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
 template<class FinderType>
 auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
-  auto tmp = ThreadLocalBuilderLeaser::current.lease();
+  auto tmp = ThreadLocalBuilderLeaser::lease();
 
   if (_finder.getNextPath(*tmp.get())) {
     AqlValue path{tmp->slice()};

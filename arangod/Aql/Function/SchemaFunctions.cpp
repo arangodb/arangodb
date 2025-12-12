@@ -69,7 +69,7 @@ AqlValue functions::SchemaGet(ExpressionContext* expressionContext,
         absl::StrCat("could not find collection: ", collectionName));
   }
 
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   logicalCollection->schemaToVelocyPack(*builder.get());
   VPackSlice slice = builder->slice();
 
@@ -113,7 +113,7 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
   if (schemaValue.isNull(false) ||
       (schemaValue.isObject() && schemaValue.length() == 0)) {
     // schema is null or {}
-    auto resultBuilder = ThreadLocalBuilderLeaser::current.lease();
+    auto resultBuilder = ThreadLocalBuilderLeaser::lease();
     {
       VPackObjectBuilder guard(resultBuilder.get());
       resultBuilder->add("valid", VPackValue(true));
@@ -144,7 +144,7 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
     res = validator->validateOne(docValue.slice(), vopts);
   }
 
-  auto resultBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto resultBuilder = ThreadLocalBuilderLeaser::lease();
   {
     VPackObjectBuilder guard(resultBuilder.get());
     resultBuilder->add("valid", VPackValue(res.ok()));

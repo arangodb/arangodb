@@ -256,7 +256,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     TRI_ASSERT(_searchValues.slice().isArray());
 
     // check if we only have equality lookups
-    auto rewriteBuilder = ThreadLocalBuilderLeaser::current.lease();
+    auto rewriteBuilder = ThreadLocalBuilderLeaser::lease();
 
     rewriteBuilder->openArray();
     for (VPackSlice it : VPackArrayIterator(_searchValues.slice())) {
@@ -359,7 +359,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-    auto searchValues = ThreadLocalBuilderLeaser::current.lease();
+    auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kValuesOnly;
     _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
@@ -474,7 +474,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
       handleRocksDBValue(ps);
 
       if (_cache != nullptr) {
-        auto builder = ThreadLocalBuilderLeaser::current.lease();
+        auto builder = ThreadLocalBuilderLeaser::lease();
 
         builder->openArray(true);
         // LocalDocumentId
@@ -613,7 +613,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-    auto searchValues = ThreadLocalBuilderLeaser::current.lease();
+    auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format = _format;
     _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
                               _indexIteratorOptions, *searchValues, format);
@@ -638,7 +638,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // no need to adjust the bounds. only need to reseek to the start
     if (l > 0) {
       // check if we only have equality lookups
-      auto rewriteBuilder = ThreadLocalBuilderLeaser::current.lease();
+      auto rewriteBuilder = ThreadLocalBuilderLeaser::lease();
 
       VPackSlice lastNonEq;
       rewriteBuilder->openArray();
@@ -1665,7 +1665,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
 
     {
       // rethrow all types of exceptions from here...
-      auto leased = ThreadLocalBuilderLeaser::current.lease();
+      auto leased = ThreadLocalBuilderLeaser::lease();
       auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
       if (r != TRI_ERROR_NO_ERROR) {
@@ -1673,7 +1673,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
       }
     }
 
-    auto leased = ThreadLocalStringLeaser::current.lease();
+    auto leased = ThreadLocalStringLeaser::lease();
     rocksdb::PinnableSlice existing(leased.get());
 
     bool const lock =
@@ -1742,7 +1742,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
 
   {
     // rethrow all types of exceptions from here...
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
@@ -1773,7 +1773,7 @@ Result RocksDBVPackIndex::insertUnique(
   if (_storedValuesPaths.empty()) {
     value = RocksDBValue::UniqueVPackIndexValue(documentId);
   } else {
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
       VPackSlice s;
@@ -1795,7 +1795,7 @@ Result RocksDBVPackIndex::insertUnique(
   }
   TRI_ASSERT(value.type() != RocksDBEntryType::Placeholder);
 
-  auto leased = ThreadLocalStringLeaser::current.lease();
+  auto leased = ThreadLocalStringLeaser::lease();
   rocksdb::PinnableSlice existing(leased.get());
   auto cache = useCache();
   bool const isIndexCreation =
@@ -1895,7 +1895,7 @@ Result RocksDBVPackIndex::insertNonUnique(
   // storedValues are used)
   RocksDBValue value = RocksDBValue::VPackIndexValue();
   if (!_storedValuesPaths.empty()) {
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
       VPackSlice s;
@@ -2055,7 +2055,7 @@ Result RocksDBVPackIndex::update(
   containers::SmallVector<uint64_t, 4> hashes;
   {
     // rethrow all types of exceptions from here...
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     auto r = fillElement(*leased, newDocumentId, newDoc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
@@ -2069,7 +2069,7 @@ Result RocksDBVPackIndex::update(
   if (_storedValuesPaths.empty()) {
     value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   } else {
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     leased->openArray(true);
     for (auto const& it : _storedValuesPaths) {
       VPackSlice s = newDoc.get(it);
@@ -2119,7 +2119,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
 
   {
     // rethrow all types of exceptions from here...
-    auto leased = ThreadLocalBuilderLeaser::current.lease();
+    auto leased = ThreadLocalBuilderLeaser::lease();
     auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
@@ -2232,7 +2232,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   }
 
   // check if we only have equality lookups
-  auto leftSearch = ThreadLocalBuilderLeaser::current.lease();
+  auto leftSearch = ThreadLocalBuilderLeaser::lease();
 
   VPackSlice lastNonEq;
   leftSearch->openArray();
@@ -2433,7 +2433,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
-  auto searchValues = ThreadLocalBuilderLeaser::current.lease();
+  auto searchValues = ThreadLocalBuilderLeaser::lease();
   RocksDBVPackIndexSearchValueFormat format =
       RocksDBVPackIndexSearchValueFormat::kDetect;
   buildSearchValues(monitor, trx, node, reference, opts, *searchValues, format);
@@ -2714,7 +2714,7 @@ void RocksDBVPackIndex::buildSearchValuesInner(
 
   if (needNormalize) {
     // we found an IN clause. now rewrite the lookup conditions accordingly
-    auto expandedSearchValues = ThreadLocalBuilderLeaser::current.lease();
+    auto expandedSearchValues = ThreadLocalBuilderLeaser::lease();
     expandInSearchValues(monitor, searchValues.slice(), *expandedSearchValues,
                          opts);
 

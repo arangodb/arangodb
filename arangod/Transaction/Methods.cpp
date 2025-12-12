@@ -475,7 +475,7 @@ struct GenericProcessor {
     _resultBuilder.openObject();
 
     // _id
-    auto leased = ThreadLocalStringLeaser::current.lease();
+    auto leased = ThreadLocalStringLeaser::lease();
     std::string& temp(*leased.get());
     temp.reserve(64);
 
@@ -634,7 +634,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                           TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
         _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
-        _replicationData(ThreadLocalBuilderLeaser::current.lease()),
+        _replicationData(ThreadLocalBuilderLeaser::lease()),
         _operationType(operationType),
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
@@ -852,8 +852,8 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
                   OperationOptions& options)
       : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
                                 "remove", TRI_VOC_DOCUMENT_OPERATION_REMOVE),
-        _keyBuilder(ThreadLocalBuilderLeaser::current.lease()),
-        _previousDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()) {}
+        _keyBuilder(ThreadLocalBuilderLeaser::lease()),
+        _previousDocumentBuilder(ThreadLocalBuilderLeaser::lease()) {}
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -1179,7 +1179,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
                   OperationOptions& options)
       : ModifyingProcessorBase(methods, trxColl, collection, value, options,
                                "insert", TRI_VOC_DOCUMENT_OPERATION_INSERT),
-        _newDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
+        _newDocumentBuilder(ThreadLocalBuilderLeaser::lease()),
         // if no overwriteMode is specified we default to Conflict
         _overwriteMode(options.isOverwriteModeSet()
                            ? options.overwriteMode
@@ -1289,7 +1289,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
     std::ignore = _methods.state()->ensureSnapshot();
 
     // only populated for update/replace
-    auto previousDocumentBuilder = ThreadLocalBuilderLeaser::current.lease();
+    auto previousDocumentBuilder = ThreadLocalBuilderLeaser::lease();
 
     RevisionId newRevisionId;
     bool didReplace = false;
@@ -1471,8 +1471,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
                                isUpdate ? "update" : "replace",
                                isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                         : TRI_VOC_DOCUMENT_OPERATION_REPLACE),
-        _newDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
-        _previousDocumentBuilder(ThreadLocalBuilderLeaser::current.lease()),
+        _newDocumentBuilder(ThreadLocalBuilderLeaser::lease()),
+        _previousDocumentBuilder(ThreadLocalBuilderLeaser::lease()),
         _isUpdate(isUpdate) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {

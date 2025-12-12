@@ -80,7 +80,7 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
     // index attribute not present or invalid. nothing to do
     return {};
   }
-  auto leased = ThreadLocalBuilderLeaser::current.lease();
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();
@@ -99,7 +99,7 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
     // index attribute not present or invalid. nothing to do
     return Result();
   }
-  auto leased = ThreadLocalBuilderLeaser::current.lease();
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();

@@ -388,7 +388,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
-    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
+    auto builder = arangodb::ThreadLocalBuilderLeaser::lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
@@ -413,7 +413,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* attrNode,
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
-    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
+    auto builder = arangodb::ThreadLocalBuilderLeaser::lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
@@ -823,7 +823,7 @@ class HashIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const*,
       arangodb::IndexIteratorOptions const&, arangodb::ReadOwnWrites,
       int) override {
-    auto builder = arangodb::ThreadLocalBuilderLeaser::current.lease();
+    auto builder = arangodb::ThreadLocalBuilderLeaser::lease();
     std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
     if (nullptr == node) {

@@ -388,7 +388,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     TRI_ASSERT(_inputRow.isInitialized());
 
     // traverser now has next v, e, p values
-    auto tmp = ThreadLocalBuilderLeaser::current.lease();
+    auto tmp = ThreadLocalBuilderLeaser::lease();
 
     // Vertex variable (v)
     if (_infos.useVertexOutput()) {

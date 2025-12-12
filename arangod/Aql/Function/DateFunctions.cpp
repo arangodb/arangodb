@@ -855,7 +855,7 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   int isoYear = (int)(yww.year());
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("week", VPackValue(isoWeek));
   builder->add("year", VPackValue(isoYear));
@@ -1089,7 +1089,7 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     AqlValue aqlEnd = timeAqlValue(expressionContext, AFN, tp_end, true, false);
     AqlValueGuard aqlEndGuard(aqlEnd, true);
 
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("local", aqlLocal.slice());
     builder->add("tzdb", VPackValue(date::get_tzdb().version));
@@ -1159,7 +1159,7 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     AqlValue aqlEnd = timeAqlValue(expressionContext, AFN, tp_end, true, false);
     AqlValueGuard aqlEndGuard(aqlEnd, true);
 
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("utc", aqlUtc.slice());
     builder->add("tzdb", VPackValue(date::get_tzdb().version));
@@ -1199,7 +1199,7 @@ AqlValue functions::DateTimeZones(ExpressionContext* expressionContext,
   auto& list = date::get_tzdb_list();
   auto& db = list.front();
 
-  auto result = ThreadLocalBuilderLeaser::current.lease();
+  auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
 
   for (auto& zone : db.zones) {

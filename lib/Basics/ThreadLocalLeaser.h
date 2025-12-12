@@ -48,11 +48,6 @@ struct ThreadLocalLeaser {
     auto operator*() noexcept -> T& { return *get(); }
     auto operator*() const noexcept -> T const& { return *get(); }
 
-    auto operator->() const noexcept -> T* { return leasee(); }
-    auto operator*() noexcept -> T& { return *leasee(); }
-    auto operator*() const noexcept -> T& { return *leasee(); }
-    auto get() const noexcept -> T* { return leasee(); }
-
     // TODO: this is used precisely in one (dubious) place
     // Maybe we can remove that;
     auto release() -> std::unique_ptr<T> {

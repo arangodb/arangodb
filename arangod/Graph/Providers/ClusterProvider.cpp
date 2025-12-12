@@ -141,7 +141,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   // slow path, sharding not deducable from _id
   bool mustSend = false;
 
-  auto leased = ThreadLocalBuilderLeaser::current.lease();
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
 
   if (_opts.produceVertices()) {
@@ -318,7 +318,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Expanding " << step->getVertex().getID();
   auto const* engines = _opts.engines();
-  auto leased = ThreadLocalBuilderLeaser::current.lease();
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject(true);
   leased->add("backward",
               VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
@@ -453,7 +453,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
         if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
           auto maybeBatchId = resSlice.get("batchId");
           if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
-            auto leasedContinue = ThreadLocalBuilderLeaser::current.lease();
+            auto leasedContinue = ThreadLocalBuilderLeaser::lease();
             leasedContinue->openObject(true);
             leasedContinue->add("cursorId", maybeCursorId);
             leasedContinue->add(

@@ -80,7 +80,7 @@ AqlValue convertToObject(transaction::Methods& trx, VPackSlice input,
 
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   buildKeyObject(*builder, input.stringView(), /*closeObject*/ true);
   return AqlValue{builder->slice()};
 }
@@ -186,7 +186,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
   // MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION
   // But we must project _from and _to as well
   if (projectOnlyId && !buildNewObject) {
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     {
       VPackObjectBuilder objectGuard(builder.get());
       objectGuard->add(StaticStrings::KeyString,
@@ -201,7 +201,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
   }
 
   if (buildNewObject) {
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     buildKeyObject(
         *builder,
         std::string_view(logicalCollection->keyGenerator().generate(input)),
@@ -227,7 +227,7 @@ AqlValue functions::MakeDistributeGraphInput(
     // Need to fix this document.
     // We need id and key as input.
 
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     std::string_view s(input.stringView());
     size_t pos = s.find('/');
     if (pos == s.npos) {
@@ -266,7 +266,7 @@ AqlValue functions::MakeDistributeGraphInput(
     // could be extracted. We can work with _id value only however so let us do
     // this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     buildKeyObject(*builder, std::string_view(keyPart), /*closeObject*/ false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringView(), cur.value);

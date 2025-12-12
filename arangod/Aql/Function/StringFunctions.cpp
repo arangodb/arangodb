@@ -123,7 +123,7 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);
@@ -171,7 +171,7 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
 
   auto& trx = ctx->trx();
 
-  auto sepBuffer = ThreadLocalStringLeaser::current.lease();
+  auto sepBuffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink sepAdapter(sepBuffer.get());
   std::string_view separator;
   if (parameters.size() > 2) {
@@ -181,7 +181,7 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
     separator = {sepBuffer->data(), sepBuffer->size()};
   }
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::SizeConstrainedStringSink adapter(buffer.get(),
                                                 /*maxLength*/ 16 * 1024 * 1024);
 
@@ -217,13 +217,13 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
   AqlValue const& searchValue =
       aql::functions::extractFunctionParameterValue(parameters, 1);
 
-  auto buf1 = ThreadLocalStringLeaser::current.lease();
+  auto buf1 = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buf1.get());
   appendAsString(vopts, adapter, value);
   icu_64_64::UnicodeString uBuf(buf1->data(),
                                 static_cast<int32_t>(buf1->length()));
 
-  auto buf2 = ThreadLocalStringLeaser::current.lease();
+  auto buf2 = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter2(buf2.get());
   appendAsString(vopts, adapter2, searchValue);
   icu_64_64::UnicodeString uSearchBuf(buf2->data(),
@@ -293,13 +293,13 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   AqlValue const& searchValue =
       aql::functions::extractFunctionParameterValue(parameters, 1);
 
-  auto buf1 = ThreadLocalStringLeaser::current.lease();
+  auto buf1 = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buf1.get());
   appendAsString(vopts, adapter, value);
   icu_64_64::UnicodeString uBuf(buf1->data(),
                                 static_cast<int32_t>(buf1->length()));
 
-  auto buf2 = ThreadLocalStringLeaser::current.lease();
+  auto buf2 = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter2(buf2.get());
   appendAsString(vopts, adapter2, searchValue);
   icu_64_64::UnicodeString uSearchBuf(buf2->data(),
@@ -363,7 +363,7 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
                                     VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   bool found = false;
@@ -436,7 +436,7 @@ AqlValue functions::CharLength(ExpressionContext* ctx, AstNode const&,
     AqlValueMaterializer materializer(vopts);
     VPackSlice slice = materializer.slice(value);
 
-    auto buffer = ThreadLocalStringLeaser::current.lease();
+    auto buffer = ThreadLocalStringLeaser::lease();
     velocypack::StringSink adapter(buffer.get());
 
     VPackDumper dumper(&adapter, vopts);
@@ -481,7 +481,7 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -503,7 +503,7 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -526,7 +526,7 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
 
   int32_t length = INT32_MAX;
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -769,7 +769,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     return AqlValue(value);
   }
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -922,7 +922,7 @@ AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
 
   std::string utf8;
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -946,7 +946,7 @@ AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
 
   std::string utf8;
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -971,7 +971,7 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
@@ -1037,7 +1037,7 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
@@ -1085,7 +1085,7 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
   icu_64_64::UnicodeString unicodeStr(buffer->data(),
@@ -1139,7 +1139,7 @@ AqlValue functions::Contains(ExpressionContext* ctx, AstNode const&,
 
   int result = -1;  // default is "not found"
   {
-    auto buffer = ThreadLocalStringLeaser::current.lease();
+    auto buffer = ThreadLocalStringLeaser::lease();
     velocypack::StringSink adapter(buffer.get());
 
     appendAsString(vopts, adapter, value);
@@ -1196,7 +1196,7 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
                            VPackFunctionParametersView parameters) {
   transaction::Methods* trx = &ctx->trx();
   auto const& vopts = trx->vpackOptions();
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   size_t const n = parameters.size();
@@ -1242,7 +1242,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   transaction::Methods* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
@@ -1307,7 +1307,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     }
   }
 
-  auto regexBuffer = ThreadLocalStringLeaser::current.lease();
+  auto regexBuffer = ThreadLocalStringLeaser::lease();
   AqlValue aqlSeparatorExpression;
   if (parameters.size() >= 2) {
     aqlSeparatorExpression =
@@ -1323,7 +1323,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
   if (parameters.size() == 1) {
     // pre-documented edge-case: if we only have the first parameter, return it.
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openArray();
     builder->add(aqlValueToSplit.slice());
     builder->close();
@@ -1331,7 +1331,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   }
 
   // Get ready for ICU
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
   functions::stringify(vopts, adapter, aqlValueToSplit.slice());
   icu_64_64::UnicodeString valueToSplit(buffer->data(),
@@ -1348,7 +1348,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto result = ThreadLocalBuilderLeaser::current.lease();
+  auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an

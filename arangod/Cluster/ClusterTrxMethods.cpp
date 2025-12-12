@@ -577,7 +577,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     }
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     ::buildTransactionBody(state, server, *builder);
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
@@ -614,7 +614,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       value.append(" aql");  // This is a single AQL query
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      auto builder = ThreadLocalBuilderLeaser::current.lease();
+      auto builder = ThreadLocalBuilderLeaser::lease();
       ::buildTransactionBody(state, server, *builder);
       headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction

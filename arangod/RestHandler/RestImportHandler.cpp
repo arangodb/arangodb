@@ -199,7 +199,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
   }
 
   // document ok, now import it
-  auto newBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto newBuilder = ThreadLocalBuilderLeaser::lease();
   tempBuilder.clear();
 
   // add prefixes to _from and _to

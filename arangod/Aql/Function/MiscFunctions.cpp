@@ -173,7 +173,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
   if (value.isArray()) {
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(value);
     std::vector<VPackSlice> array;
@@ -191,7 +191,7 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
     return AqlValue(builder->slice(), builder->size());
   } else if (value.isString()) {
     std::string utf8;
-    auto buf1 = ThreadLocalStringLeaser::current.lease();
+    auto buf1 = ThreadLocalStringLeaser::lease();
     velocypack::StringSink adapter(buf1.get());
     appendAsString(vopts, adapter, value);
     icu_64_64::UnicodeString uBuf(buf1->data(),

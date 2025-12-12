@@ -122,7 +122,7 @@ Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
     options.isRestore = true;
     options.waitForSync = false;
 
-    auto tempBuilder = ThreadLocalBuilderLeaser::current.lease();
+    auto tempBuilder = ThreadLocalBuilderLeaser::lease();
     auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
     double t = TRI_microtime();
@@ -214,7 +214,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       absl::StrCat("fetching documents by revision for collection '",
                    collection.name(), "' from ", path));
 
-  auto tempBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto tempBuilder = ThreadLocalBuilderLeaser::lease();
   auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {

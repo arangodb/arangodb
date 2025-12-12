@@ -1059,7 +1059,7 @@ std::unique_ptr<IndexIterator> RocksDBMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  auto leaser = ThreadLocalBuilderLeaser::current.lease();
+  auto leaser = ThreadLocalBuilderLeaser::lease();
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   if (!isPrefixed()) {
@@ -1103,7 +1103,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  auto leaser = ThreadLocalBuilderLeaser::current.lease();
+  auto leaser = ThreadLocalBuilderLeaser::lease();
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   if (!isPrefixed()) {
@@ -1154,7 +1154,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   }
 
   if (!options.checkUniqueConstraintsInPreflight) {
-    auto leased = ThreadLocalStringLeaser::current.lease();
+    auto leased = ThreadLocalStringLeaser::lease();
     rocksdb::PinnableSlice existing(leased.get());
     if (auto s = methods->GetForUpdate(_cf, rocksdbKey.string(), &existing);
         s.ok()) {  // detected conflicting index entry

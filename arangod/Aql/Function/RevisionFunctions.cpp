@@ -77,7 +77,7 @@ AqlValue functions::DecodeRev(ExpressionContext* expressionContext,
   // buffer[23] is 'Z'
   buffer[24] = 0;
 
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("date", VPackValue(buffer));
   builder->add("count", VPackValue(count));

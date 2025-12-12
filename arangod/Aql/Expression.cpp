@@ -651,7 +651,7 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
     if (cv != nullptr) {
       return AqlValue(cv);
     }
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     return AqlValue(node->computeValue(builder.get()).begin());
   }
 
@@ -663,7 +663,7 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
 
   auto& trx = ctx.trx();
 
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
 
   for (size_t i = 0; i < n; ++i) {
@@ -695,7 +695,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     if (cv != nullptr) {
       return AqlValue(cv);
     }
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
     return AqlValue(node->computeValue(builder.get()).begin());
   }
 
@@ -709,10 +709,10 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   containers::FlatHashSet<std::string> keys;
   bool const mustCheckUniqueness = node->mustCheckUniqueness();
 
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   arangodb::velocypack::StringSink adapter(buffer.get());
 
   for (size_t i = 0; i < n; ++i) {
@@ -806,7 +806,7 @@ AqlValue Expression::executeSimpleExpressionValue(ExpressionContext& ctx,
   if (cv != nullptr) {
     return AqlValue(cv);
   }
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
   return AqlValue(node->computeValue(builder.get()).begin());
 }
 
@@ -969,7 +969,7 @@ AqlValue Expression::invokeV8Function(
     return AqlValue(AqlValueHintNull());
   }
 
-  auto builder = ThreadLocalBuilderLeaser::current.lease();
+  auto builder = ThreadLocalBuilderLeaser::lease();
 
   // can throw
   TRI_V8ToVPack(isolate, *builder.get(), result, false);

@@ -2016,7 +2016,7 @@ Result RocksDBCollection::lookupDocumentVPack(
     }
   }
 
-  auto buffer = ThreadLocalStringLeaser::current.lease();
+  auto buffer = ThreadLocalStringLeaser::lease();
   rocksdb::PinnableSlice ps(buffer.get());
 
   RocksDBMethods* mthd =

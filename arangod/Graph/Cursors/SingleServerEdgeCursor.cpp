@@ -301,7 +301,7 @@ void SingleServerEdgeCursor<Step>::readNext(
     uint64_t batchSize, SingleServerProvider<Step>& provider,
     aql::TraversalStats& stats, size_t depth, Callback const& callback) {
   TRI_ASSERT(!getLookupInfos(depth).empty());
-  auto tmpBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto tmpBuilder = ThreadLocalBuilderLeaser::lease();
 
   auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
                                           EdgeDocumentToken edgeToken,

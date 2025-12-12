@@ -294,7 +294,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " <<
   // responseBody.toJson();
 
-  auto tempBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto tempBuilder = ThreadLocalBuilderLeaser::lease();
   auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
   std::vector<size_t> toFetch;
   size_t i = 0;
@@ -447,7 +447,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     return numUnique;
   }();
 
-  auto keyBuilder = ThreadLocalBuilderLeaser::current.lease();
+  auto keyBuilder = ThreadLocalBuilderLeaser::lease();
   keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
     keyBuilder->add(VPackValue(it));
@@ -503,7 +503,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       stats.numSyncBytesReceived += response->getContentLength();
     }
 
-    auto docsBuilder = ThreadLocalBuilderLeaser::current.lease();
+    auto docsBuilder = ThreadLocalBuilderLeaser::lease();
     docsBuilder->clear();
     Result r = replutils::parseResponse(*docsBuilder.get(), response.get());
 

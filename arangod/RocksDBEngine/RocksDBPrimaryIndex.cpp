@@ -419,7 +419,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(limit > 0);
 
-    auto builder = ThreadLocalBuilderLeaser::current.lease();
+    auto builder = ThreadLocalBuilderLeaser::lease();
 
     do {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
