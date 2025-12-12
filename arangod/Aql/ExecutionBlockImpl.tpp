@@ -1187,10 +1187,11 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
+
   if (!_lastRange.hasShadowRow()) {
     // We got back without a ShadowRow in the LastRange
     // Let client call again
-    return ExecState::DONE;
+    return ExecState::NEXTSUBQUERY;
   }
 
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
@@ -1265,8 +1266,9 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryStartExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1341,8 +1343,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryEndExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1677,14 +1680,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // compared to their output depth, which is i.a. the size of _skipped.
         // Therefore, outputDepthOffset needs to be passed to didSkipSubquery(),
         // as inputDepthOffset is passed to skipAllShadowRowsOfDepth().
-        constexpr static int inputDepthOffset = ([]() consteval->int {
+        constexpr static int inputDepthOffset = ([]() consteval -> int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
           } else {
             return 0;
           }
         })();
-        constexpr static int outputDepthOffset = ([]() consteval->int {
+        constexpr static int outputDepthOffset = ([]() consteval -> int {
           if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
             return -1;
           } else {
@@ -2636,9 +2639,9 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
     Status status, std::memory_order memoryOrder) noexcept {
   auto state = _state.load(std::memory_order_relaxed);
-  while (not _state.compare_exchange_weak(
-      state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
-    ;
+  while (not _state.compare_exchange_weak(state, {status, state.abandoned},
+                                          memoryOrder,
+                                          std::memory_order_relaxed));
 }
 
 template<class Executor>
@@ -2779,8 +2782,9 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
 //       ScatterExecutor and in DistributeClientExecutor
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
-    SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
+    SharedAqlItemBlockPtr block, SkipResult skipped) -> void
+  requires std::same_as<Executor, IdExecutor<ConstFetcher>>
+{
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -2815,7 +2819,9 @@ auto ExecutionBlockImpl<Executor>::injectConstantBlock(
 // this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
-    -> RegisterId requires std::same_as<
-        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
+    -> RegisterId
+  requires std::same_as<Executor,
+                        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>
+{
   return _executorInfos.getOutputRegister();
 }
