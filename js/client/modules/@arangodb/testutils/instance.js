@@ -361,7 +361,9 @@ class instance {
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
-    if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
+    if (this.options.encryptionAtRest &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
 
