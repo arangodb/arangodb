@@ -309,7 +309,7 @@ function server_secrets(options) {
   process.env["jwt-secret-folder"] = secretsDir;
 
   // Now set up TLS with the first server key:
-  let keyfileDir = fs.join(secretsDir, 'arango_tls_keyfile');
+  let keyfileDir = fs.join(fs.getTempPath(), options.suffix, 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectoryRecursive(keyfileDir);
 
