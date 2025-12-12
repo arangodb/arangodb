@@ -867,6 +867,13 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      this.arangods.forEach(arangod => {
+        if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
+          delete arangod.args['server.jwt-secret-keyfile'];
+        } else if (arangod.args.hasOwnProperty('server.jwt-secret-folder')) {
+          delete arangod.args['server.jwt-secret-folder'];
+        }
+      });
     }
 
     this.arangods.forEach(arangod => {
