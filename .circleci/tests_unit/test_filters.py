@@ -32,6 +32,7 @@ class TestFilterCriteria:
         assert criteria.full is False
         assert criteria.gtest is False
         assert criteria.sanitizer is None
+        assert criteria.coverage is False
         assert criteria.deployment_type is None
         assert criteria.enterprise is True
 
@@ -581,6 +582,155 @@ class TestInstrumentationFiltering:
         # But if we check the suite directly, it should be included
         suite = job.suites[0]
         assert should_include_suite(suite, criteria_tsan)
+
+
+class TestCoverageFiltering:
+    """Test coverage filtering at job and suite level."""
+
+    def test_job_without_coverage_constraint_included_in_all_builds(self):
+        """Job without coverage field should run in all build types."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(),
+        )
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert should_include_job(job, criteria_regular)
+
+        # Should be included in coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert should_include_job(job, criteria_coverage)
+
+    def test_job_with_coverage_true_only_in_coverage_builds(self):
+        """Job with coverage=True should only run in coverage builds."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(coverage=True),
+        )
+
+        # Should be excluded from regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert not should_include_job(job, criteria_regular)
+
+        # Should be included in coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert should_include_job(job, criteria_coverage)
+
+    def test_job_with_coverage_false_only_in_regular_builds(self):
+        """Job with coverage=False should only run in non-coverage builds."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(coverage=False),
+        )
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert should_include_job(job, criteria_regular)
+
+        # Should be excluded from coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert not should_include_job(job, criteria_coverage)
+
+    def test_suite_without_coverage_constraint_included_in_all_builds(self):
+        """Suite without coverage field should run in all build types."""
+        suite = SuiteConfig(name="suite1")
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert should_include_suite(suite, criteria_regular)
+
+        # Should be included in coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert should_include_suite(suite, criteria_coverage)
+
+    def test_suite_with_coverage_true_only_in_coverage_builds(self):
+        """Suite with coverage=True should only run in coverage builds."""
+        suite = SuiteConfig(name="suite1", requires=TestRequirements(coverage=True))
+
+        # Should be excluded from regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert not should_include_suite(suite, criteria_regular)
+
+        # Should be included in coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert should_include_suite(suite, criteria_coverage)
+
+    def test_suite_with_coverage_false_only_in_regular_builds(self):
+        """Suite with coverage=False should only run in regular builds."""
+        suite = SuiteConfig(name="suite1", requires=TestRequirements(coverage=False))
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria(coverage=False)
+        assert should_include_suite(suite, criteria_regular)
+
+        # Should be excluded from coverage build
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert not should_include_suite(suite, criteria_coverage)
+
+    def test_filter_suites_by_coverage(self):
+        """Test filtering mixed coverage suites in different build types."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(
+                    name="coverage_suite", requires=TestRequirements(coverage=True)
+                ),
+                SuiteConfig(
+                    name="no_coverage_suite", requires=TestRequirements(coverage=False)
+                ),
+                SuiteConfig(name="any_suite"),
+            ],
+            options=TestOptions(),
+        )
+
+        # Regular build - should include no_coverage_suite and any_suite
+        criteria_regular = FilterCriteria(coverage=False)
+        result = filter_suites(job, criteria_regular)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "no_coverage_suite" in result_names
+        assert "any_suite" in result_names
+        assert "coverage_suite" not in result_names
+
+        # Coverage build - should include coverage_suite and any_suite
+        criteria_coverage = FilterCriteria(coverage=True)
+        result = filter_suites(job, criteria_coverage)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "coverage_suite" in result_names
+        assert "any_suite" in result_names
+        assert "no_coverage_suite" not in result_names
+
+    def test_suite_coverage_overrides_job_coverage(self):
+        """Suite-level coverage should override job-level coverage."""
+        # Job with coverage=False, but suite overrides to True
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(
+                    name="override_suite", requires=TestRequirements(coverage=True)
+                )
+            ],
+            requires=TestRequirements(coverage=False),
+        )
+
+        # Job should be excluded from coverage build (job-level filter)
+        criteria_coverage = FilterCriteria(coverage=True)
+        assert not should_include_job(job, criteria_coverage)
+
+        # But if we check the suite directly, it should be included
+        suite = job.suites[0]
+        assert should_include_suite(suite, criteria_coverage)
+
+    def test_coverage_build_is_instrumented(self):
+        """Coverage builds should be considered instrumented builds."""
+        criteria = FilterCriteria(coverage=True)
+        assert criteria.is_instrumented_build
+        assert criteria.is_coverage_build
 
 
 class TestV8Filtering:

@@ -34,6 +34,7 @@ class FilterCriteria:
     sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
     architecture: Optional[Architecture] = None  # Current build architecture
     v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
+    coverage: bool = False  # Whether this is a coverage build
 
     # Deployment type filter (None = accept all deployment types)
     deployment_type: Optional[DeploymentType] = None
@@ -48,8 +49,13 @@ class FilterCriteria:
 
     @property
     def is_instrumented_build(self) -> bool:
-        """Check if this is an instrumented build (TSan/ALUBSan)."""
-        return self.sanitizer is not None
+        """Check if this is an instrumented build (TSan/ALUBSan/coverage)."""
+        return self.sanitizer is not None or self.coverage
+
+    @property
+    def is_coverage_build(self) -> bool:
+        """Check if this is a coverage build."""
+        return self.coverage
 
     @property
     def is_v8_build(self) -> bool:
@@ -79,7 +85,9 @@ def _check_requirements_match(
     This implements the common filtering logic for both jobs and suites:
     - Architecture compatibility
     - Full flag compatibility
+    - Coverage flag compatibility
     - Instrumentation flag compatibility
+    - V8 flag compatibility
 
     Args:
         requires: TestRequirements to check
@@ -102,6 +110,15 @@ def _check_requirements_match(
         return False  # Requires full run, but we're in PR mode
     if requires.full is False and criteria.is_full_run:
         return False  # PR-only, but we're in full mode
+
+    # Check coverage flag compatibility
+    # - coverage=True: Only for coverage builds
+    # - coverage=False: Only for non-coverage builds
+    # - coverage=None (unspecified): Include in both
+    if requires.coverage is True and not criteria.is_coverage_build:
+        return False  # Requires coverage build, but we're in non-coverage mode
+    if requires.coverage is False and criteria.is_coverage_build:
+        return False  # Non-coverage-only, but we're in coverage mode
 
     # Check instrumentation flag compatibility
     # - instrumentation=True: Only for instrumented builds (TSAN/ASAN/coverage)
