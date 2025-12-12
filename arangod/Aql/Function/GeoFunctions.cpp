@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Result.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
@@ -701,7 +703,9 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
   builder->close();
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function GEO_MULTIPOINT
@@ -753,7 +757,9 @@ AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
   builder->close();
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function GEO_POLYGON
@@ -803,7 +809,9 @@ AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function GEO_MULTIPOLYGON
@@ -887,7 +895,9 @@ AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function GEO_LINESTRING
@@ -939,7 +949,9 @@ AqlValue functions::GeoLinestring(ExpressionContext* expressionContext,
   builder->close();
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function GEO_MULTILINESTRING
@@ -1010,7 +1022,9 @@ AqlValue functions::GeoMultiLinestring(ExpressionContext* expressionContext,
   builder->close();
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 }  // namespace arangodb::aql

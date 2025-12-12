@@ -81,10 +81,11 @@ AqlValue functions::IsObject(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function TYPENAME
-AqlValue functions::Typename(ExpressionContext*, AstNode const&,
+AqlValue functions::Typename(ExpressionContext* expr, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  return AqlValue(value.getTypeString());
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+  return AqlValue(value.getTypeString(), rm);
 }
 
 }  // namespace arangodb::aql

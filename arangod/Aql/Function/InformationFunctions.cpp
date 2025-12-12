@@ -43,27 +43,31 @@ using namespace arangodb;
 namespace arangodb::aql {
 
 /// @brief function CURRENT_USER
-AqlValue functions::CurrentUser(ExpressionContext*, AstNode const&,
+AqlValue functions::CurrentUser(ExpressionContext* expressionContext,
+                                AstNode const&,
                                 VPackFunctionParametersView parameters) {
   std::string const& username = ExecContext::current().user();
   if (username.empty()) {
     return AqlValue(AqlValueHintNull());
   }
-  return AqlValue(username);
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue(username, rm);
 }
 
 /// @brief function CURRENT_DATABASE
 AqlValue functions::CurrentDatabase(ExpressionContext* expressionContext,
                                     AstNode const&,
                                     VPackFunctionParametersView parameters) {
-  return AqlValue(expressionContext->vocbase().name());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue(expressionContext->vocbase().name(), rm);
 }
 
 /// @brief function VERSION
 AqlValue functions::Version(ExpressionContext* expressionContext,
                             AstNode const&,
                             VPackFunctionParametersView parameters) {
-  return AqlValue(rest::Version::getServerVersion());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue(rest::Version::getServerVersion(), rm);
 }
 
 }  // namespace arangodb::aql

@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Utf8Helper.h"
 #include "Transaction/Helpers.h"
@@ -76,7 +78,9 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
     builder->openArray();
     builder->add(aqlValueToMatch.slice());
     builder->close();
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
@@ -114,7 +118,9 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
     // empty string again.
     result->add(VPackValue(""));
     result->close();
-    return AqlValue(result->slice(), result->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(result->slice(), result->size(), rm);
   }
 
   UErrorCode status = U_ZERO_ERROR;
@@ -138,7 +144,9 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   }
 
   result->close();
-  return AqlValue(result->slice(), result->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(result->slice(), result->size(), rm);
 }
 
 /// @brief function REGEX_SPLIT
@@ -177,7 +185,9 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
     builder->openArray();
     builder->add(aqlValueToSplit.slice());
     builder->close();
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
@@ -214,7 +224,9 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
     // empty string again.
     result->add(VPackValue(""));
     result->close();
-    return AqlValue(result->slice(), result->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(result->slice(), result->size(), rm);
   }
 
   std::string utf8;
@@ -274,7 +286,9 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   }
 
   result->close();
-  return AqlValue(result->slice(), result->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(result->slice(), result->size(), rm);
 }
 
 /// @brief function REGEX_TEST

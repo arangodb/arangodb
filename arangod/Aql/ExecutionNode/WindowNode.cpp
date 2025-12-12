@@ -125,9 +125,9 @@ WindowBounds::WindowBounds(Type type, AqlValue&& preceding,
   }
 }
 
-WindowBounds::WindowBounds(Type t, VPackSlice slice)
-    : WindowBounds(t, AqlValue(slice.get("preceding")),
-                   AqlValue(slice.get("following"))) {}
+WindowBounds::WindowBounds(Type t, VPackSlice slice, ResourceMonitor& rm)
+    : WindowBounds(t, AqlValue(slice.get("preceding"), 0, &rm),
+                   AqlValue(slice.get("following"), 0, &rm)) {}
 
 WindowBounds::~WindowBounds() = default;
 

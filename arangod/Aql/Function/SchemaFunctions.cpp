@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -85,7 +87,9 @@ AqlValue functions::SchemaGet(ExpressionContext* expressionContext,
                      " has no rule object"));
   }
 
-  return AqlValue(slice, builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(slice, builder->size(), rm);
 }
 
 AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
@@ -117,7 +121,9 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
       VPackObjectBuilder guard(resultBuilder.builder());
       resultBuilder->add("valid", VPackValue(true));
     }
-    return AqlValue(resultBuilder->slice(), resultBuilder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(resultBuilder->slice(), resultBuilder->size(), rm);
   }
 
   if (!schemaValue.isObject()) {
@@ -153,7 +159,9 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
     }
   }
 
-  return AqlValue(resultBuilder->slice(), resultBuilder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(resultBuilder->slice(), resultBuilder->size(), rm);
 }
 
 }  // namespace arangodb::aql

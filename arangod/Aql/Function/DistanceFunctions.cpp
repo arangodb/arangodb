@@ -132,8 +132,10 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
         builder.add(dist.slice());
       }
     }
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
     // return array with values
-    return AqlValue(std::move(*builder.steal()));
+    return AqlValue(std::move(*builder.steal()), rm);
 
   } else {
     // calculate dist between 2 vectors and return number

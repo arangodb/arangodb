@@ -203,7 +203,8 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
   TRI_ASSERT(!args.empty());  // ensured by function signature
 
   aql::AqlValueMaterializer materializer(&ctx->trx().vpackOptions());
-  return aql::AqlValue{materializer.slice(args[0])};
+  return aql::AqlValue(materializer.slice(args[0]), 0,
+                       ctx->getResourceMonitorPtr());
 }
 
 // Register invalid argument warning

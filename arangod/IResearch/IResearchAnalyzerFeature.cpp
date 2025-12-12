@@ -376,7 +376,8 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
 
   builder.close();
 
-  return aql::AqlValue(std::move(buffer));
+  return aql::AqlValue(std::move(buffer),
+                       expressionContext->getResourceMonitorPtr());
 }
 
 void addFunctions(aql::AqlFunctionFeature& functions) {

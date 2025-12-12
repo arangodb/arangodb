@@ -57,7 +57,9 @@ AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
 
   std::string encoded = absl::Base64Escape({buffer->data(), buffer->length()});
 
-  return AqlValue(std::move(encoded));
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+
+  return AqlValue(std::move(encoded), rm);
 }
 
 /// @brief function TO_HEX
@@ -74,7 +76,9 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
   std::string encoded =
       basics::StringUtils::encodeHex(buffer->data(), buffer->length());
 
-  return AqlValue(encoded);
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+
+  return AqlValue(encoded, rm);
 }
 
 /// @brief function ENCODE_URI_COMPONENT
@@ -91,7 +95,9 @@ AqlValue functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
   std::string encoded =
       basics::StringUtils::encodeURIComponent(buffer->data(), buffer->length());
 
-  return AqlValue(encoded);
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+
+  return AqlValue(encoded, rm);
 }
 
 }  // namespace arangodb::aql

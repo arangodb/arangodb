@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
@@ -86,7 +88,9 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   char hex[32];
   rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
-  return AqlValue(std::string_view{&hex[0], 32});
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&hex[0], 32}, rm);
 }
 
 /// @brief function SHA1
@@ -109,7 +113,9 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   char hex[40];
   rest::SslInterface::sslHEX(hash, 20, &hex[0]);
 
-  return AqlValue(std::string_view{&hex[0], 40});
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&hex[0], 40}, rm);
 }
 
 /// @brief function SHA256
@@ -132,7 +138,9 @@ AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
   char hex[64];
   rest::SslInterface::sslHEX(hash, 32, &hex[0]);
 
-  return AqlValue(std::string_view{&hex[0], 64});
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&hex[0], 64}, rm);
 }
 
 /// @brief function SHA512
@@ -155,7 +163,9 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   char hex[128];
   rest::SslInterface::sslHEX(hash, 64, &hex[0]);
 
-  return AqlValue(std::string_view{&hex[0], 128});
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&hex[0], 128}, rm);
 }
 
 /// @brief function Crc32
@@ -173,7 +183,10 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
       absl::ComputeCrc32c(std::string_view{buffer->data(), buffer->length()}));
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
-  return AqlValue(std::string_view{&out[0], length});
+
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&out[0], length}, rm);
 }
 
 /// @brief function Fnv64
@@ -191,7 +204,10 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
   uint64_t hashval = FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
-  return AqlValue(std::string_view{&out[0], length});
+
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&out[0], length}, rm);
 }
 
 /// @brief function HASH

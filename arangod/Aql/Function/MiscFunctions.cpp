@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Result.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
@@ -187,7 +189,9 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
       builder->add(it);
     }
     builder->close();
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   } else if (value.isString()) {
     std::string utf8;
     transaction::StringLeaser buf1(trx);

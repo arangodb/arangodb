@@ -133,8 +133,9 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
         builder.add(VPackValue(funcRes));
       }
     }
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
 
-    return AqlValue(std::move(*builder.steal()));
+    return AqlValue(std::move(*builder.steal()), rm);
   }
 }
 

@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -100,7 +102,9 @@ AqlValue functions::ParseIdentifier(ExpressionContext* expressionContext,
                                          identifier.size() - pos - 1,
                                          VPackValueType::String));
       builder->close();
-      return AqlValue(builder->slice(), builder->size());
+      ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+      return AqlValue(builder->slice(), builder->size(), rm);
     }
   };
 

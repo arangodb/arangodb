@@ -28,6 +28,7 @@
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
@@ -48,7 +49,6 @@
 
 #include <optional>
 #include <vector>
-#include <Aql/ExecutorExpressionContext.h>
 
 using namespace arangodb;
 
@@ -131,9 +131,7 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
-  auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
-  ResourceMonitor* resourceMonitor =
-      execCtx ? &execCtx->resourceMonitor() : nullptr;
+  ResourceMonitor* resourceMonitor = expressionContext->getResourceMonitorPtr();
 
   size_t const n = parameters.size();
 
@@ -286,7 +284,9 @@ AqlValue functions::Unset(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   unsetOrKeep(trx, slice, names, true, false, *builder.get());
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function UNSET_RECURSIVE
@@ -313,7 +313,9 @@ AqlValue functions::UnsetRecursive(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   unsetOrKeep(trx, slice, names, true, true, *builder.get());
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function KEEP
@@ -339,7 +341,9 @@ AqlValue functions::Keep(ExpressionContext* expressionContext, AstNode const&,
   VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   unsetOrKeep(trx, slice, names, false, false, *builder.get());
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function KEEP_RECURSIVE
@@ -366,7 +370,9 @@ AqlValue functions::KeepRecursive(ExpressionContext* expressionContext,
   VPackSlice slice = materializer.slice(value);
   transaction::BuilderLeaser builder(trx);
   unsetOrKeep(trx, slice, names, false, true, *builder.get());
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function TRANSLATE
@@ -511,7 +517,9 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
     }
     builder->close();
 
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   std::unordered_set<std::string_view> keys;
@@ -526,7 +534,9 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
     builder->add(VPackValue(it));
   }
   builder->close();
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function VALUES
@@ -583,7 +593,9 @@ AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
   }
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 AqlValue functions::Value(ExpressionContext* expressionContext,
@@ -813,7 +825,9 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 AqlValue functions::Entries(ExpressionContext* expressionContext,
@@ -855,7 +869,9 @@ AqlValue functions::Entries(ExpressionContext* expressionContext,
 
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 }  // namespace arangodb::aql

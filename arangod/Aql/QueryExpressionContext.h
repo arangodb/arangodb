@@ -88,6 +88,11 @@ class QueryExpressionContext : public aql::ExpressionContext {
 
   ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }
 
+  virtual ResourceMonitor* getResourceMonitorPtr()
+    const noexcept override final {
+    return &_resourceMonitor;
+  }
+
  protected:
   // return temporary variable if set, otherwise call lambda for
   // retrieving variable value

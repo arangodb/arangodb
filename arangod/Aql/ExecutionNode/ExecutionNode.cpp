@@ -444,7 +444,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
 
       auto type = rangeVar != nullptr ? WindowBounds::Type::Range
                                       : WindowBounds::Type::Row;
-      WindowBounds bounds(type, slice);
+      WindowBounds bounds(type, slice,
+                          plan->getAst()->query().resourceMonitor());
       return new WindowNode(plan, slice, std::move(bounds), rangeVar,
                             aggregateVariables);
     }

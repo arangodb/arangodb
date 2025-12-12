@@ -131,7 +131,7 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
     if (it != _variables.end()) {
       // copy the slice we found
       mustDestroy = true;
-      return AqlValue((*it).second);
+      return AqlValue((*it).second, 0, getResourceMonitorPtr());
     }
   }
 

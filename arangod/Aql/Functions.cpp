@@ -27,7 +27,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
+#include "Aql/QueryExpressionContext.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -142,6 +145,13 @@ AqlValue functions::numberValue(double value, bool nullify) {
   }
 
   return AqlValue(AqlValueHintDouble(value));
+}
+
+/// @brief Get ResourceMonitor if available
+/// @deprecated Use expressionContext->getResourceMonitorPtr() directly instead
+ResourceMonitor* functions::getResourceMonitor(
+    ExpressionContext* expressionContext) noexcept {
+  return expressionContext->getResourceMonitorPtr();
 }
 
 /// @brief extra a collection name from an AqlValue

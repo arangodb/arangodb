@@ -60,7 +60,7 @@ class WindowBounds final {
   };
 
   WindowBounds(Type type, AqlValue&& preceding, AqlValue&& following);
-  WindowBounds(Type type, velocypack::Slice slice);
+  WindowBounds(Type type, velocypack::Slice slice, ResourceMonitor& rm);
   ~WindowBounds();
 
  public:

@@ -41,9 +41,12 @@ namespace velocypack {
 class Slice;
 }
 
+struct ResourceMonitor;
+
 namespace aql {
 struct AstNode;
 class ExpressionContext;
+class QueryExpressionContext;
 
 namespace functions {
 
@@ -77,6 +80,9 @@ AqlValue numberValue(double value, bool nullify);
 std::string extractCollectionName(transaction::Methods* trx,
                                   VPackFunctionParametersView parameters,
                                   size_t position);
+
+ResourceMonitor* getResourceMonitor(
+    ExpressionContext* expressionContext) noexcept;
 
 template<typename T>
 void appendAsString(velocypack::Options const& vopts, T& buffer,
