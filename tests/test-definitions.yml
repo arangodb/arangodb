@@ -258,7 +258,6 @@
 - rta_makedata:
     options:
       type: mixed
-      size: large
     suites:
       - rta_makedata:
           args:
@@ -298,21 +297,30 @@
 - arangobench_deadlock_audit:
     options:
       priority: 1000
-      type: cluster
-    requires:
-      coverage: false
+      type: mixed
     suites:
       - deadlock:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - arangobench:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - server_secrets:
           args:
+            suffix: cluster
             dumpAgencyOnError: true
-      - audit_client
-      - audit_server
+            cluster: true
+      - audit_client:
+          args:
+            cluster: true
+      - audit_server:
+          args:
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: single
 
 - restart:
     options:
@@ -533,12 +541,6 @@
       buckets: 2
     args:
       dumpAgencyOnError: true
-- server_secrets:
-    options:
-      type: single
-      priority: 1000
-      parallelity: 5
-      size: small
 
 # Dump Tests
 - dump_single:
