@@ -367,7 +367,9 @@ class instance {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
 
-    if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
+    if (this.restKeyFile &&
+        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
