@@ -1196,16 +1196,18 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-  uint64_t depthSkippingNow =
-      static_cast<uint64_t>(stack.shadowRowDepthToSkip());
-  uint64_t shadowDepth = shadowRow.getDepth();
-  bool didWriteRow = false;
+
   if (shadowRow.isRelevant()) {
     LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
     // We found a relevant shadow Row.
     // We need to reset the Executor
     resetExecutor();
   }
+
+  uint64_t depthSkippingNow =
+      static_cast<uint64_t>(stack.shadowRowDepthToSkip());
+  uint64_t shadowDepth = shadowRow.getDepth();
+  bool didWriteRow = false;
 
   if (depthSkippingNow > shadowDepth) {
     // We are skipping the outermost Subquery.
@@ -1429,10 +1431,18 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     return ExecState::NEXTSUBQUERY;
   }
 
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+
+  TRI_ASSERT(shadowRow.isInitialized());
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    resetExecutor();
+  }
+
   bool const hasDoneNothing =
       _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
-  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-  TRI_ASSERT(shadowRow.isInitialized());
 
   // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
   // SENSIBLE WAY!
@@ -1448,13 +1458,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   }
 
   countShadowRowProduced(stack, shadowRow.getDepth());
-  if (shadowRow.isRelevant()) {
-    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-    // We found a relevant shadow Row.
-    // We need to reset the Executor
-    resetExecutor();
-  }
-
   _outputItemRow->moveRow(shadowRow);
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
