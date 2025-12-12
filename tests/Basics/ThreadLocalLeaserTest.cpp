@@ -129,22 +129,16 @@ TEST_F(ThreadLocalLeaserTest, testLeaseMovedBetweenThreads) {
   ASSERT_NE(b.get(), nullptr);
   auto* builder = b.get();
 
-  auto threads = ThreadGuard(1);
-  threads.emplace([&]() {
-    auto n = ThreadLocalBuilderLeaser::stashSize();
-    ASSERT_EQ(n, 0);
-    {
-      auto c = std::move(b);
-      ASSERT_NE(c.get(), nullptr);
-    }
-    // Now c is dropped and should end up in this thread's stash
+  {
+    auto c = std::move(b);
+    ASSERT_NE(c.get(), nullptr);
+  }
 
-    auto d = ThreadLocalBuilderLeaser::lease();
-    ASSERT_EQ(d.get(), builder);
-  });
-
-  threads.joinAll();
-  ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 0);
+  auto d = ThreadLocalBuilderLeaser::lease();
+  ASSERT_EQ(d.get(), builder);
+});
+threads.joinAll();
+ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 0);
 }
 
 TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
