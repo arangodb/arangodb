@@ -155,11 +155,11 @@ class StringLeaser {
     _lease.acquire(std::move(r));
   }
 
-  std::string* string() const { return _lease.leasee(); }
-  std::string* operator->() const { return _lease.leasee(); }
-  std::string& operator*() { return *_lease.leasee(); }
-  std::string const& operator*() const { return *_lease.leasee(); }
-  std::string* get() const { return _lease.leasee(); }
+  std::string* string() const { return _lease.get(); }
+  std::string* operator->() const { return _lease.get(); }
+  std::string& operator*() { return *_lease.get(); }
+  std::string const& operator*() const { return *_lease.get(); }
+  std::string* get() const { return _lease.get(); }
 
  private:
   ThreadLocalStringLeaser::Lease _lease;
@@ -176,11 +176,11 @@ class BuilderLeaser {
 
   BuilderLeaser(BuilderLeaser&& source) = default;
 
-  velocypack::Builder* builder() const noexcept { return _lease.leasee(); }
-  velocypack::Builder* operator->() const noexcept { return _lease.leasee(); }
-  velocypack::Builder& operator*() noexcept { return *_lease.leasee(); }
-  velocypack::Builder& operator*() const noexcept { return *_lease.leasee(); }
-  velocypack::Builder* get() const noexcept { return _lease.leasee(); }
+  velocypack::Builder* builder() const noexcept { return _lease.get(); }
+  velocypack::Builder* operator->() const noexcept { return _lease.get(); }
+  velocypack::Builder& operator*() noexcept { return *_lease.get(); }
+  velocypack::Builder& operator*() const noexcept { return *_lease.get(); }
+  velocypack::Builder* get() const noexcept { return _lease.get(); }
 
   auto release() { return _lease.release(); }
 

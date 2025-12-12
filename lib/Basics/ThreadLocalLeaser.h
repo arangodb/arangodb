@@ -26,10 +26,6 @@
 #include <vector>
 #include "velocypack/Builder.h"
 
-namespace {
-constexpr auto max_leasees_per_thread = size_t{128};
-}
-
 namespace arangodb {
 
 template<typename T>
@@ -37,8 +33,8 @@ struct ThreadLocalLeaser {
   struct Lease {
     ~Lease() {
       // put builder on builders vector unless capacity is reached
-      if (_leasee != nullptr) {
-        current.returnLeasee(std::move(_leasee));
+      if (_object != nullptr) {
+        current.returnObject(std::move(_object));
       }
     }
     Lease(Lease&&) = default;
@@ -46,49 +42,56 @@ struct ThreadLocalLeaser {
 
     friend struct ThreadLocalLeaser;
 
-    auto leasee() const -> T* { return _leasee.get(); }
+    auto get() const noexcept -> T* { return _object.get(); }
+    auto operator->() const noexcept -> T* { return get(); }
+    auto operator*() noexcept -> T& { return *get(); }
+    auto operator*() const noexcept -> T& { return *get(); }
 
     // TODO: this is used precisely in one (dubious) place
     // Maybe we can remove that use and these functions.
     auto release() -> std::unique_ptr<T> {
-      return std::exchange(_leasee, nullptr);
+      return std::exchange(_object, nullptr);
     }
-    auto acquire(std::unique_ptr<T>&& m) -> void { _leasee = std::move(m); }
+    auto acquire(std::unique_ptr<T>&& m) -> void { _object = std::move(m); }
 
    private:
-    Lease(std::unique_ptr<T>&& leasee) : _leasee(std::move(leasee)) {
-      TRI_ASSERT(_leasee != nullptr);
+    Lease(std::unique_ptr<T>&& leasee) : _object(std::move(leasee)) {
+      TRI_ASSERT(_object != nullptr);
     };
 
-    std::unique_ptr<T> _leasee;
+    std::unique_ptr<T> _object;
   };
 
-  auto lease() -> Lease {
-    if (!_leasees.empty()) {
-      TRI_ASSERT(_leasees.back() != nullptr);
-      auto leasee = std::move(_leasees.back());
+  auto doLease() -> Lease {
+    if (!_stash.empty()) {
+      TRI_ASSERT(_stash.back() != nullptr);
+      auto leasee = std::move(_stash.back());
       leasee->clear();
       TRI_ASSERT(leasee != nullptr);
-      _leasees.pop_back();
+      _stash.pop_back();
       return Lease(std::move(leasee));
     } else {
       return Lease(std::make_unique<T>());
     }
   }
 
+  static auto stashSize() noexcept -> size_t { return current._stash.size(); }
+  static constexpr auto maxStashedPerThread = size_t{128};
   static thread_local ThreadLocalLeaser current;
+  static auto lease() -> Lease { return current.doLease(); }
 
   friend struct Lease;
 
  private:
-  auto returnLeasee(std::unique_ptr<T>&& leasee) -> void {
-    TRI_ASSERT(leasee != nullptr);
-    if (_leasees.size() < max_leasees_per_thread) {
-      _leasees.push_back(std::move(leasee));
+  ThreadLocalLeaser() = default;
+  auto returnObject(std::unique_ptr<T>&& object) -> void {
+    TRI_ASSERT(object != nullptr);
+    if (_stash.size() < maxStashedPerThread) {
+      _stash.push_back(std::move(object));
     }
   }
 
-  std::vector<std::unique_ptr<T>> _leasees;
+  std::vector<std::unique_ptr<T>> _stash;
 };
 
 template<typename T>

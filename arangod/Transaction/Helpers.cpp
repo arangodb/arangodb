@@ -885,14 +885,14 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
 }  // namespace helpers
 
 StringLeaser::StringLeaser(Context* transactionContext)
-    : _lease(ThreadLocalStringLeaser::current.lease()) {}
+    : _lease(ThreadLocalStringLeaser::lease()) {}
 
 StringLeaser::StringLeaser(Methods* trx)
     : StringLeaser{trx->transactionContextPtr()} {}
 
 BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _lease(ThreadLocalBuilderLeaser::current.lease()) {
-  TRI_ASSERT(_lease.leasee() != nullptr);
+    : _lease(ThreadLocalBuilderLeaser::lease()) {
+  TRI_ASSERT(_lease.get() != nullptr);
 }
 
 BuilderLeaser::BuilderLeaser(Methods* trx)
