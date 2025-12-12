@@ -1205,10 +1205,10 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
   bool const hasDoneNothing =
       _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+  uint64_t shadowDepth = shadowRow.getDepth();
 
   uint64_t depthSkippingNow =
       static_cast<uint64_t>(stack.shadowRowDepthToSkip());
-  uint64_t shadowDepth = shadowRow.getDepth();
   bool didWriteRow = false;
 
   if (depthSkippingNow > shadowDepth) {
@@ -1462,6 +1462,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   bool const hasDoneNothing =
       _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
 
+  auto shadowDepth = shadowRow.getDepth();
+
   // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
   // SENSIBLE WAY!
   //
@@ -1472,10 +1474,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   //
   // but there are interactions between the two.
   if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-    fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
+    fetcher().resetDidReturnSubquerySkips(shadowDepth);
   }
 
-  countShadowRowProduced(stack, shadowRow.getDepth());
+  countShadowRowProduced(stack, shadowDepth);
   _outputItemRow->moveRow(shadowRow);
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
@@ -2483,8 +2485,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack,
                                                           size_t depth)
     -> void {
-  auto& subList = stack.modifyCallListAtDepth(depth);
-  auto& subCall = subList.modifyNextCall();
+  auto& subCall = stack.modifyCallAtDepth(depth);
   subCall.didProduce(1);
   if (depth > 0) {
     // We have written a ShadowRow.

@@ -197,6 +197,22 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
   return 0;
 }
 
+auto AqlCallStack::shadowRowDepthToSkip2pointOH() const
+    -> std::optional<size_t> {
+  auto const n = _operations.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto& call = _operations[i];
+    auto const& nextCall = call.peekNextCall();
+    if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
+      // 0 if i = n - 1
+      return n - i - 1;
+    }
+  }
+  // was this reachable before?
+  return std::nullopt;
+}
+
 auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
