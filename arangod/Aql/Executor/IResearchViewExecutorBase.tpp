@@ -79,8 +79,7 @@ inline velocypack::Slice getStoredValue(
 
   for (const auto& attr : attrs) {
     slice = slice.get(attr);
-    if (slice.isNone())
-      return velocypack::Slice::nullSlice();
+    if (slice.isNone()) return velocypack::Slice::nullSlice();
   }
   return slice;
 }
