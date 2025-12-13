@@ -416,6 +416,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         return false;
     }
   }
+
   if (!attrs.empty()) {
     if (latematerialized::attributesMatch<true>(
             primarySort, storedValues, attrs, usedColumns, columnsCount)) {
@@ -431,12 +432,13 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         TRI_ASSERT(sortBucket.postfix.empty());
         TRI_ASSERT(a.afData.field);
         auto const fieldSize = a.afData.field->size();
-        TRI_ASSERT(fieldSize > a.afData.postfix);
-        for (size_t i = a.afData.postfix + 1; i < fieldSize; ++i) {
+
+        // TRI_ASSERT(fieldSize > a.afData.postfix);
+        for (size_t i = fieldSize; i < (fieldSize + a.afData.postfix); ++i) {
           if (i != a.afData.postfix + 1) {
             sortBucket.postfix += ".";
           }
-          sortBucket.postfix += a.afData.field->at(i).name;
+          sortBucket.postfix += a.attr[i].name;
         }
       }
     } else {

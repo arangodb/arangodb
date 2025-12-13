@@ -22,6 +22,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <ranges>
+#include <vector>
 #include "IResearchViewExecutorBase.h"
 
 #include "Aql/ExecutionPlan.h"
@@ -56,8 +58,31 @@ inline velocypack::Slice getStoredValue(
   if (!slice.isObject()) {
     return velocypack::Slice::nullSlice();
   }
-  auto value = slice.get(sort.postfix);
-  return !value.isNone() ? value : velocypack::Slice::nullSlice();
+
+  //  split dot separated query attributes from the SORT clause.
+  //  eg.
+  //    Query: for doc in view sort doc.l1.l2.l3.l4 desc limit 10 return doc
+  //    primarySort: { field: "l1.l2", asc: true }
+  //  W.r.t to the sort field ("l1.l2"), the query attribute in the sort clause
+  //  has a postfix of "l3.l4"
+  auto splitPostfixAttrs = [](const std::string& input) {
+    std::string_view view = input;
+    std::vector<std::string> postfixAttrs;
+    for (auto part : std::views::split(view, '.')) {
+      std::string attr(part.begin(), part.end());
+      postfixAttrs.push_back(attr);
+    }
+    return postfixAttrs;
+  };
+
+  auto attrs = splitPostfixAttrs(sort.postfix);
+
+  for (const auto& attr : attrs) {
+    slice = slice.get(attr);
+    if (slice.isNone())
+      return velocypack::Slice::nullSlice();
+  }
+  return slice;
 }
 
 template<typename ValueType, typename HeapSortType>
