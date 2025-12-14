@@ -334,7 +334,11 @@ class instance {
       'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
       'temp.intermediate-results-path': this.tmpRocksdbDir,
-      'log.file': this.logFile
+      'log.file': this.logFile,
+      // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
+      'server.authentication': 'true',
+      // need by Python tests to query the options API
+      'server.options-api': 'admin',
     };
     if (!this.options.skipServerJS) {
       // the argparser barely ignores them and breaks others...

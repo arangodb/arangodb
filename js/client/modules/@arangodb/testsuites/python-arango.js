@@ -94,6 +94,7 @@ class runInPythonTest extends runWithAllureReport {
       '--enterprise',
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
+      '--skip', 'backup', 'jwt-secret-keyfile', 'foxx', 'js-transactions',
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
     ];
@@ -102,9 +103,13 @@ class runInPythonTest extends runWithAllureReport {
         '--cluster',
         '--port', `${this.instanceManager.endpointPorts[1]}`,
         '--port', `${this.instanceManager.endpointPorts[2]}`,
-        // '-Dallure.results.directory=' + testResultsDir,
       ]);
     }
+    args = args.concat([
+        '--alluredir=' + testResultsDir,
+        // run a specific test only (save time during debugging)
+        // '-k', `test_backup`,
+    ]);
     if (this.options.testCase) {
       args.push('-Dit.test=' + this.options.testCase);
       args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
