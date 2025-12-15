@@ -39,7 +39,7 @@ parameters:
   rebuild-test-docker-images:
     type: boolean
     default: false
-  nightly:
+  full:
     type: boolean
     default: false
   replication-two:

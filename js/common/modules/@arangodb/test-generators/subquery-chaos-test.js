@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,6 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 const db = require("@arangodb").db;
 const _ = require("lodash");
+const internal = require('internal');
+const errors = internal.errors;
 const {md5} = require("@arangodb/crypto");
 const arango = require("@arangodb").arango;
 const {randomNumberGeneratorInt} = require("@arangodb/testutils/seededRandom");
@@ -290,25 +292,32 @@ function runQuery(query, queryOptions, testOptions) {
   }
 
   /* Run query */
-  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions, ttl: 600})
-    .execute();
-
-  if (testOptions.enableLogging) {
-    arango.PUT("/_admin/log/level", { queries: oldLogLevel });
-  }
- 
-  /* Create a simple hash value from the query results, so that we don't have to
-   * load the entire result set into memory and work with it */
   let hash = "";
-  let count = 0;
-  while (result.hasNext()) {
-    let row = JSON.stringify(result.next());
-    hash = md5(hash + row);
-    // invoke cleanup
-    count += 1;
-    if (count % 5 === 0) {
-      require("internal").wait(0, true);
+  try {
+    const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions, ttl: 600})
+          .execute();
+
+    if (testOptions.enableLogging) {
+      arango.PUT("/_admin/log/level", { queries: oldLogLevel });
     }
+    
+    /* Create a simple hash value from the query results, so that we don't have to
+     * load the entire result set into memory and work with it */
+    let count = 0;
+    while (result.hasNext()) {
+      let row = JSON.stringify(result.next());
+      hash = md5(hash + row);
+      // invoke cleanup
+      count += 1;
+      if (count % 5 === 0) {
+        internal.wait(0, true);
+      }
+    }
+  } catch (ex) {
+    if (ex.errorNum !== errors.ERROR_RESOURCE_LIMIT) {
+      throw ex;
+    }
+    print(`Ignoring ${ex.message}`);
   }
 
   /* Cleanup */
@@ -327,7 +336,6 @@ function testQuery(query, testOptions) {
 
   /* Run query with all optimizations */
   const result1 = runQuery(query, {batchSize}, testOptions);
-
   /* Run query with full count */
   const result2 = runQuery(
     query,

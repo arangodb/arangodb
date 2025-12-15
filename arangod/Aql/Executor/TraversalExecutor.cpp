@@ -291,14 +291,12 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
   // However, the current implementation does not hand in isSmart==true
   // in the valid combination.
   TRI_ASSERT(!isSmart);
-  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       SingleServerProvider<SingleServerProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
-      std::move(pathValidatorOptions), std::move(enumeratorOptions),
-      useTracing);
+      std::move(pathValidatorOptions), std::move(enumeratorOptions));
 
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }
@@ -336,7 +334,6 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     }
   }
   TRI_ASSERT(baseProviderOptions.getCache() != nullptr);
-  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
 #ifdef USE_ENTERPRISE
@@ -348,20 +345,19 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
         aql::enterprise::SmartGraphProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
+        std::move(enumeratorOptions));
   } else {
     _traversalEnumerator = TraversalEnumerator::createEnumerator<
         ClusterProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
+        std::move(enumeratorOptions));
   }
 #else
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       ClusterProvider<ClusterProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
-      std::move(pathValidatorOptions), std::move(enumeratorOptions),
-      useTracing);
+      std::move(pathValidatorOptions), std::move(enumeratorOptions));
 #endif
 
   TRI_ASSERT(_traversalEnumerator != nullptr);

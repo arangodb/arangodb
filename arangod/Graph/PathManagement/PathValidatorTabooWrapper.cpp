@@ -24,9 +24,7 @@
 #include "PathValidator.h"
 #include "PathValidatorTabooWrapper.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -150,22 +148,12 @@ template class PathValidatorTabooWrapper<
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class PathValidatorTabooWrapper<
-    PathValidator<ProviderTracer<SingleProvider>,
-                  PathStoreTracer<PathStore<SingleServerProviderStep>>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
 /* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 template class PathValidatorTabooWrapper<
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-template class PathValidatorTabooWrapper<
-    PathValidator<ProviderTracer<ClustProvider>,
-                  PathStoreTracer<PathStore<ClusterProviderStep>>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 }  // namespace arangodb::graph

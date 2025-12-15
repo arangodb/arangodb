@@ -5,7 +5,11 @@ devel
 
 * FE-636: bump rollup from 2.79.1 to 2.79.2.
 
-* Replace arangodb.com with arango.ai in URLs
+* Replace arangodb.com with arango.ai in URLs.
+
+
+3.12.7 (2025-12-06)
+-------------------
 
 * Updated ArangoDB Starter to v0.19.15.
 
