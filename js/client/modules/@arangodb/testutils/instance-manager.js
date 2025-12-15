@@ -126,7 +126,7 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
       this.JWT = fs.read(this.restKeyFile);
     }
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
   }
 
