@@ -71,7 +71,7 @@ class runInPythonTest extends runWithAllureReport {
     let opts = _.clone(tu.testClientJwtAuthInfo);
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
-    opts['jwtSecret'] = "pythonjwt";
+    opts["encryptionAtRest"] = true;
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
