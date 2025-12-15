@@ -67,6 +67,13 @@ function asyncPrefetchReuseTestSuite() {
     },
     tearDownAll,
 
+    // This is a regression test for issue
+    // https://github.com/arangodb/arangodb/issues/22158, i.e. that
+    // when using async-prefetch, the BuilderLeaser and StringLeaser
+    // members of the transaction context were unsafely write-accessed
+    // concurrently.
+    // In case of a regression, this test will either fail with an
+    // obscure AQL error, or tickle the thread sanitizer.
     testTickleReuse: function () {
       const q = `WITH ${colNameA}, ${colNameB}, ${colNameC}
         FOR node IN @@col
