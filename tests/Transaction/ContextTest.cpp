@@ -54,28 +54,6 @@ class TransactionContextTest : public ::testing::Test {
   TransactionContextTest() : vocbase(testDBInfo(setup.server.server())) {}
 };
 
-TEST_F(TransactionContextTest, StandaloneContext) {
-  transaction::StandaloneContext ctx(vocbase,
-                                     transaction::OperationOriginTestCase{});
-  EXPECT_TRUE(ctx.isEmbeddable());
-  EXPECT_FALSE(ctx.isStateSet());
-
-  std::vector<std::string*> strings;
-  for (int i = 0; i < 10; i++) {
-    std::string* str = ctx.leaseString();
-    if (i > 0) {
-      EXPECT_NE(strings.back(), str);
-    }
-    strings.push_back(str);
-  }
-
-  while (!strings.empty()) {
-    std::string* str = strings.back();
-    ctx.returnString(str);
-    strings.pop_back();
-  }
-}
-
 TEST_F(TransactionContextTest, StandaloneSmartContext) {
   auto const cname = "testCollection";
   auto params = arangodb::velocypack::Parser::fromJson(

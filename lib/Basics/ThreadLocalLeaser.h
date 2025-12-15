@@ -23,8 +23,8 @@
 
 #include "Basics/Exceptions.h"
 
-#include "velocypack/Builder.h"
 #include <vector>
+#include "velocypack/Builder.h"
 
 namespace arangodb {
 
@@ -66,6 +66,11 @@ struct ThreadLocalLeaser {
   static auto stashSize() noexcept -> size_t { return current._stash.size(); }
   static constexpr auto maxStashedPerThread = size_t{128};
   static auto lease() -> Lease { return current.doLease(); }
+  // TODO: This is a hack to enable RocksDBKeyLeaser to return a
+  // string to the stash.
+  static auto acquire(std::unique_ptr<T>&& item) {
+    current._stash.emplace_back(std::move(item));
+  }
   static auto clear() -> void { current._stash.clear(); }
   friend struct Lease;
 
