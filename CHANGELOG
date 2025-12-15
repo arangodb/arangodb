@@ -1,9 +1,15 @@
-3.12.7.1 (xxxx-xx-xx)
+3.12.7.1 (XXXX-XX-XX)
 ---------------------
 
 * Licenses with "managed=true" in their grant are not "expiring". They go 
   directly from "good" to "read-only". This is relevant for the new automatic
   license management.
+
+* FE-914: Add UI support for `storedValues` in vector index.
+
+* FE-636: bump rollup from 2.79.1 to 2.79.2.
+
+* Fix RocksDB cluttering into tiny SST files.
 
 
 3.12.7 (2025-12-06)
@@ -23,7 +29,7 @@
   causing a crash when being stored in query plan cache. The issue is a missing
   invalidateCost from the splice-subqueries rule.
 
-* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio. 
+* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio.
 
 * COR-45: Added support for index hints in vector search queries.
 
