@@ -66,7 +66,7 @@ struct ThreadLocalLeaser {
   static auto stashSize() noexcept -> size_t { return current._stash.size(); }
   static constexpr auto maxStashedPerThread = size_t{128};
   static auto lease() -> Lease { return current.doLease(); }
-
+  static auto clear() -> void { current._stash.clear(); }
   friend struct Lease;
 
  private:
