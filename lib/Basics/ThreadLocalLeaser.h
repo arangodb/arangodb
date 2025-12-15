@@ -32,7 +32,6 @@ template<typename T>
 struct ThreadLocalLeaser {
   struct Lease {
     ~Lease() {
-      // put builder on builders vector unless capacity is reached
       if (_object != nullptr) {
         current.returnObject(std::move(_object));
       }
@@ -42,13 +41,15 @@ struct ThreadLocalLeaser {
 
     friend struct ThreadLocalLeaser;
 
-    auto get() const noexcept -> T* { return _object.get(); }
-    auto operator->() const noexcept -> T* { return get(); }
+    auto get() noexcept -> T* { return _object.get(); }
+    auto get() const noexcept -> T const* { return _object.get(); }
+    auto operator->() noexcept -> T* { return get(); }
+    auto operator->() const noexcept -> T const* { return get(); }
     auto operator*() noexcept -> T& { return *get(); }
-    auto operator*() const noexcept -> T& { return *get(); }
+    auto operator*() const noexcept -> T const& { return *get(); }
 
     // TODO: this is used precisely in one (dubious) place
-    // Maybe we can remove that use and these functions.
+    // Maybe we can remove that;
     auto release() -> std::unique_ptr<T> {
       return std::exchange(_object, nullptr);
     }
@@ -62,6 +63,20 @@ struct ThreadLocalLeaser {
     std::unique_ptr<T> _object;
   };
 
+  static auto stashSize() noexcept -> size_t { return current._stash.size(); }
+  static constexpr auto maxStashedPerThread = size_t{128};
+  static auto lease() -> Lease { return current.doLease(); }
+
+  friend struct Lease;
+
+ private:
+  ThreadLocalLeaser() = default;
+  auto returnObject(std::unique_ptr<T>&& object) -> void {
+    TRI_ASSERT(object != nullptr);
+    if (_stash.size() < maxStashedPerThread) {
+      _stash.push_back(std::move(object));
+    }
+  }
   auto doLease() -> Lease {
     if (!_stash.empty()) {
       TRI_ASSERT(_stash.back() != nullptr);
@@ -75,22 +90,7 @@ struct ThreadLocalLeaser {
     }
   }
 
-  static auto stashSize() noexcept -> size_t { return current._stash.size(); }
-  static constexpr auto maxStashedPerThread = size_t{128};
   static thread_local ThreadLocalLeaser current;
-  static auto lease() -> Lease { return current.doLease(); }
-
-  friend struct Lease;
-
- private:
-  ThreadLocalLeaser() = default;
-  auto returnObject(std::unique_ptr<T>&& object) -> void {
-    TRI_ASSERT(object != nullptr);
-    if (_stash.size() < maxStashedPerThread) {
-      _stash.push_back(std::move(object));
-    }
-  }
-
   std::vector<std::unique_ptr<T>> _stash;
 };
 
