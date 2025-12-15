@@ -9,4 +9,5 @@ RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists
 RUN cd /tmp/; wget https://raw.githubusercontent.com/arangodb/python-arango/refs/heads/main/docs/requirements.txt && \
-    pip3 install --break-system-packages -r requirements.txt && rm requirements.txt
+    pip3 install --break-system-packages -r requirements.txt && rm requirements.txt; pip3 install --break-system-packages  allure-pytest
+
