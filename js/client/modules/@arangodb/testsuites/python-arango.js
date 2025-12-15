@@ -96,12 +96,13 @@ class runInPythonTest extends runWithAllureReport {
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
-      '--secret', 'pythonjwt',
+      '--secret', fs.read(this.instanceManager.restKeyFile),
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--skip', 'backup', 'foxx', 'js-transactions',
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
+      '--alluredir', testResultsDir,
     ];
     if (this.options.cluster) {
       args = args.concat([
@@ -110,11 +111,8 @@ class runInPythonTest extends runWithAllureReport {
         '--port', `${this.instanceManager.endpointPorts[2]}`,
       ]);
     }
-    args = args.concat([
-        '--alluredir=' + testResultsDir,
-    ]);
     if (this.options.testCase) {
-      args.push('-k=' + this.options.testCase);
+      args = args.concat(['-k', this.options.testCase]);
     }
     if (this.options.pythonOptions !== '') {
       for (var key in this.options.pythonOptions) {
