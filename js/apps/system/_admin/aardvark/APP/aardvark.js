@@ -240,7 +240,7 @@ authRouter.post('/query/debugDump', function (req, res) {
   Creates a debug output for the query in a zip file.
   This file includes the query plan and anonymized test data as
   well es collection information required for this query.
-  It is extremely helpful for the ArangoDB team to get this archive
+  It is extremely helpful for the Arango team to get this archive
   and to reproduce your case. Whenever you submit a query based issue
   please attach this file and the Team can help you much faster with it.
 `);

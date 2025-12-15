@@ -209,7 +209,7 @@ trimmed, leading to authentication problems:
 - Carriage Return (`\r`, U+000D)
 - Space (U+0020)
 - Next Line (U+0085)
-- No-Nreak Space (U+00A0)
+- No-Break Space (U+00A0)
 
 In single server setups, ArangoDB generates a secret if none is specified.
 

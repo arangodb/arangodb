@@ -19,8 +19,6 @@ class TestExecutionConfig:
 
     arangosh_args: List[str] = field(default_factory=list)
     extra_args: List[str] = field(default_factory=list)
-    arangod_without_v8: bool = False
-    create_report: bool = True
     replication_two: bool = False
 
 

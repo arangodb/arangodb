@@ -1,5 +1,5 @@
 FROM ubuntu:24.04
-MAINTAINER hackers@arangodb.com
+MAINTAINER hackers@arango.ai
 
 ARG arch
 ARG CLANG_VERSION=19

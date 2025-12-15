@@ -14,11 +14,11 @@
   "contributors": [
     {
       "name": "Heiko Kernbach",
-      "email": "heiko@arangodb.com"
+      "email": "heiko@arango.ai"
     },
     {
       "name": "Michael Hackstein",
-      "email": "michael@arangodb.com"
+      "email": "michael@arango.ai"
     }
   ],
   "main": "index.js",

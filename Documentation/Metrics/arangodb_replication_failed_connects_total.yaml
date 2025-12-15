@@ -31,10 +31,10 @@ troubleshoot: |
     and the machines can communicate to one-another.
   * Second: Check ArangoDB logs of this server for more details, most likely
     you see `WARN` or `ERROR` messages in the `replication` log topic. If you contact
-    ArangoDB support for this issue, it helps to include these servers logs as well.
+    the Arango support for this issue, it helps to include these servers logs as well.
   * Third: (Unlikely) If the logs contain unexpected format or value entries
     please check if you are running all ArangoDB DB-Servers within the same
     version of ArangoDB. Only upgrades of one minor version at a time are supported
     in general, so if you are running one server with a much newer / older version
     please upgrade all servers to the newest version.
-  * Forth: If none of the above applies, please contact ArangoDB Support.
+  * Forth: If none of the above applies, please contact the Arango support.

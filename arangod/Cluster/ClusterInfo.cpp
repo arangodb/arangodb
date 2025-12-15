@@ -5565,7 +5565,7 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       // This means the above request was actually illegal
       return {TRI_ERROR_HOT_BACKUP_INTERNAL,
               "Failed to restore agency plan from Hotbackup. Please contact "
-              "ArangoDB support immediately."};
+              "Arango support immediately."};
     }
     rr = waitForPlan(raftIndex).waitAndGet();
   }

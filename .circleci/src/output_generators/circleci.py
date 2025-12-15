@@ -116,7 +116,7 @@ class CircleCIGenerator(OutputGenerator):
             build_config = BuildConfig(
                 architecture=Architecture.X64,
                 build_variant=build_variant,
-                nightly=self.config.filter_criteria.nightly,
+                nightly=self.config.filter_criteria.is_full_run,
             )
             self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
@@ -124,7 +124,7 @@ class CircleCIGenerator(OutputGenerator):
             build_config = BuildConfig(
                 architecture=Architecture.AARCH64,
                 build_variant=build_variant,
-                nightly=self.config.filter_criteria.nightly,
+                nightly=self.config.filter_criteria.is_full_run,
             )
             self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 

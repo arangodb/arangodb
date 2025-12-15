@@ -11,6 +11,7 @@ from src.config_lib import (
     TestJob,
     SuiteConfig,
     TestOptions,
+    TestRequirements,
     TestDefinitionFile,
     BuildConfig,
     DeploymentType,
@@ -18,7 +19,7 @@ from src.config_lib import (
     BuildVariant,
     Architecture,
 )
-from src.filters import FilterCriteria, PlatformFlags
+from src.filters import FilterCriteria
 from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
@@ -303,7 +304,7 @@ class TestGenerateMethod:
     def test_generate_creates_workflows(self):
         """Test that generate() creates workflows."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(),
             build_variants=[BuildVariant.NORMAL],  # Must provide build variants
         )
         base_config = {"version": 2.1}
@@ -446,7 +447,7 @@ class TestCreateTestJobsForDeployment:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="suite1", options=TestOptions(full=True))
+                SuiteConfig(name="suite1", requires=TestRequirements(full=True))
             ],  # Full only
             options=TestOptions(deployment_type=DeploymentType.SINGLE),
         )
@@ -463,8 +464,8 @@ class TestCreateTestJobsForDeployment:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="pr_suite", requires=TestRequirements(full=False)),
+                SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
             ],
             options=TestOptions(deployment_type=None),
         )
@@ -694,9 +695,9 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="pr_suite1", options=TestOptions(full=False)),
-                SuiteConfig(name="pr_suite2", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="pr_suite1", requires=TestRequirements(full=False)),
+                SuiteConfig(name="pr_suite2", requires=TestRequirements(full=False)),
+                SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
             ],
             options=TestOptions(buckets="auto"),
         )
@@ -810,7 +811,9 @@ class TestCreateTestJob:
         gen = self.create_generator(full=False)  # Only PR tests
         job = TestJob(
             name="test_job",
-            suites=[SuiteConfig(name="full_only", options=TestOptions(full=True))],
+            suites=[
+                SuiteConfig(name="full_only", requires=TestRequirements(full=True))
+            ],
             options=TestOptions(),
         )
         build_config = BuildConfig(architecture=Architecture.X64)
@@ -828,11 +831,12 @@ class TestCreateTestJob:
             name="test_job",
             suites=[
                 SuiteConfig(
-                    name="x64_only", options=TestOptions(architecture=Architecture.X64)
+                    name="x64_only",
+                    requires=TestRequirements(architecture=Architecture.X64),
                 ),
                 SuiteConfig(
                     name="aarch64_only",
-                    options=TestOptions(architecture=Architecture.AARCH64),
+                    requires=TestRequirements(architecture=Architecture.AARCH64),
                 ),
                 SuiteConfig(name="all_archs"),  # No architecture specified
             ],
@@ -866,7 +870,8 @@ class TestCreateTestJob:
             name="test_job",
             suites=[
                 SuiteConfig(
-                    name="x64_only", options=TestOptions(architecture=Architecture.X64)
+                    name="x64_only",
+                    requires=TestRequirements(architecture=Architecture.X64),
                 ),
             ],
             options=TestOptions(),
@@ -982,13 +987,13 @@ class TestJobLevelArchitectureFiltering:
 
     def test_job_with_x64_architecture_excluded_from_aarch64_workflow(self):
         """Test that job with arch: x64 is excluded from aarch64 workflow."""
-        gen = self.create_generator(all_tests=True)
+        gen = self.create_generator()
 
         # Create a job with x64 architecture constraint at job level
         job_x64_only = TestJob(
             name="ui_tests",
             suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         # Create a job without architecture constraint
@@ -1023,13 +1028,13 @@ class TestJobLevelArchitectureFiltering:
 
     def test_job_with_x64_architecture_included_in_x64_workflow(self):
         """Test that job with arch: x64 is included in x64 workflow."""
-        gen = self.create_generator(all_tests=True)
+        gen = self.create_generator()
 
         # Create a job with x64 architecture constraint at job level
         job_x64_only = TestJob(
             name="ui_tests",
             suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         jobs = [job_x64_only]
@@ -1052,13 +1057,13 @@ class TestJobLevelArchitectureFiltering:
 
     def test_job_with_aarch64_architecture_excluded_from_x64_workflow(self):
         """Test that job with arch: aarch64 is excluded from x64 workflow."""
-        gen = self.create_generator(all_tests=True)
+        gen = self.create_generator()
 
         # Create a job with aarch64 architecture constraint
         job_aarch64_only = TestJob(
             name="arm_specific_tests",
             suites=[SuiteConfig(name="ArmTestSuite")],
-            options=TestOptions(architecture=Architecture.AARCH64),
+            requires=TestRequirements(architecture=Architecture.AARCH64),
         )
 
         jobs = [job_aarch64_only]
@@ -1075,7 +1080,7 @@ class TestJobLevelArchitectureFiltering:
 
     def test_job_without_architecture_included_in_both_workflows(self):
         """Test that job without architecture constraint appears in both workflows."""
-        gen = self.create_generator(all_tests=True)
+        gen = self.create_generator()
 
         # Create a job without architecture constraint
         job_all_archs = TestJob(

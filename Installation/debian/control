@@ -1,7 +1,7 @@
 Source: arangodb3
 Section: database
 Priority: optional
-Maintainer: ArangoDB GmbH <info@arangodb.com>
+Maintainer: ArangoDB GmbH <info@arango.ai>
 Build-Depends: debhelper (>= 5), libreadline-dev, libssl-dev, python, libicu-dev, libtool, autoconf, automake
 
 Package: arangodb3
@@ -16,7 +16,7 @@ Description: a multi-purpose NoSQL database
  Copyright: 2012-2013 by triAGENS GmbH
  Copyright: 2014-2015 by ArangoDB GmbH
  ArangoDB Software
- www.arangodb.com
+ https://arango.ai
 
 Package: arangodb3-client
 Architecture: any
@@ -30,7 +30,7 @@ Description: stand-alone shell
  Copyright: 2012-2013 by triAGENS GmbH
  Copyright: 2014-2015 by ArangoDB GmbH
  ArangoDB Software
- www.arangodb.com
+ https://arango.ai
 
 Package: arangodb-dbg
 Architecture: any

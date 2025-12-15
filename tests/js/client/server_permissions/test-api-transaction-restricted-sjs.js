@@ -108,7 +108,7 @@ function testSuite() {
       let data = {
         collections: { },
         action: String(function() {
-          require("internal").download("https://www.arangodb.com/");
+          require("internal").download("https://arango.ai/");
         })
       };
 
