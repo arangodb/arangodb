@@ -91,7 +91,6 @@ class runInPythonTest extends runWithAllureReport {
       '--root', 'root',
       '--password', 'pythonarango',
       '--secret', 'pythonjwt',
-      '--enterprise',
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
       '--skip', 'backup', 'jwt-secret-keyfile', 'foxx', 'js-transactions',
