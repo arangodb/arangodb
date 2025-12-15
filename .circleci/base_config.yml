@@ -179,7 +179,7 @@ commands:
           command: |
             set -x
             STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" <<parameters.repo-path>>/VERSIONS)
-            RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" <<parameters.repo-path>>/VERSIONS)
+            RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+_[0-9]+" <<parameters.repo-path>>/VERSIONS)
             RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" <<parameters.repo-path>>/VERSIONS)
             ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" <<parameters.repo-path>>/ARANGO-VERSION)
             arch="<<parameters.arch>>"
