@@ -93,7 +93,7 @@ class runInPythonTest extends runWithAllureReport {
       '--secret', 'pythonjwt',
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
-      '--skip', 'backup', 'jwt-secret-keyfile', 'foxx', 'js-transactions',
+      '--skip', 'backup', 'foxx', 'js-transactions',
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
     ];
@@ -133,7 +133,7 @@ class runInPythonTest extends runWithAllureReport {
       failed: (status)?0:1,
     };
     print(results);
-    // this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status);
     return results;
   }
 }
