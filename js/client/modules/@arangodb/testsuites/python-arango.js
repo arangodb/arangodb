@@ -72,6 +72,12 @@ class runInPythonTest extends runWithAllureReport {
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
+    opts.extraArgs = {
+      // needed by Python jwt tests, otherwise the returned token is "invalid", see RestAuthHandler.cpp:58
+      'server.authentication': 'true',
+      // need by Python tests to query the options API
+      'server.options-api': 'admin',
+    };
     //opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
@@ -106,12 +112,9 @@ class runInPythonTest extends runWithAllureReport {
     }
     args = args.concat([
         '--alluredir=' + testResultsDir,
-        // run a specific test only (save time during debugging)
-        // '-k', `test_backup`,
     ]);
     if (this.options.testCase) {
-      args.push('-Dit.test=' + this.options.testCase);
-      args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+      args.push('-k=' + this.options.testCase);
     }
     if (this.options.pythonOptions !== '') {
       for (var key in this.options.pythonOptions) {
