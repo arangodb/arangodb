@@ -68,7 +68,7 @@ const testPaths = {
 
 class runInPythonTest extends runWithAllureReport {
   constructor(options, testname, ...optionalArgs) {
-    let opts = _.clone(tu.testClientJwtAuthInfo);
+    let opts = _.clone(options);
     opts['password'] = 'pythonarango';
     opts['username'] = 'root';
     opts["encryptionAtRest"] = true;
