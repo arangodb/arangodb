@@ -145,15 +145,11 @@
     options:
       priority: 500
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
 
 - shell_api_multi:
     options:
       priority: 500
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
     suites:
       - shell_api_multi:
           args:
@@ -171,8 +167,6 @@
       buckets: 4
       type: single
       size: medium
-    args:
-      moreArgv: $EncryptionAtRest
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
 - shell_client_multi:
@@ -196,8 +190,6 @@
     options:
       priority: 750
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
     suites:
       - shell_client_transaction:
           args:
@@ -238,6 +230,9 @@
       buckets: 19
       priority: 250
       type: single
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
 
 - gtest_iresearch:
     options:
@@ -393,23 +388,18 @@
     options:
       priority: 500
       type: cluster
-    args:
-      moreArgv: $EncryptionAtRest
 
 - shell_api_multi:
     options:
       priority: 500
       type: cluster
       suffix: http
-    args:
-      moreArgv: $EncryptionAtRest
 - shell_api_multi:
     options:
       priority: 500
       type: cluster
       suffix: https
     args:
-      moreArgv: $EncryptionAtRest
       protocol: ssl
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
@@ -437,6 +427,8 @@
       buckets: 20
     args:
       dumpAgencyOnError: true
+      # TODO: BTS-2283
+      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500

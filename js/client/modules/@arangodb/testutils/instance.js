@@ -361,12 +361,16 @@ class instance {
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
-    if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
+    if (this.options.encryptionAtRest &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
 
-    if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
-      this.args['server.jwt-secret'] = this.restKeyFile;
+    if (this.restKeyFile &&
+        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-folder')) {
+      this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];

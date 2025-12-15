@@ -26,9 +26,7 @@
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Basics/ScopeGuard.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -509,7 +507,6 @@ auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
 //    VertexUniqueness    EdgeUniqueness
 //    PATH                PATH
 //    GLOBAL              PATH
-// We need each case with tracing template parameters and without.
 // For the enterprise version, we need SingleServerProvider<SmartGraphStep>
 // and SmartGraphProvider<ClusterProviderStep>, but only for the
 // OneSidedEnumerator, since no logic for the TwoSidedEnumerator and
@@ -527,17 +524,7 @@ template class PathValidator<
     VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
 
 template class PathValidator<
-    ProviderTracer<SingleProvider>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
-
-template class PathValidator<
     SingleProvider, PathStore<SingleServerProviderStep>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<SingleProvider>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
     VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<
@@ -545,17 +532,7 @@ template class PathValidator<
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<
-    ProviderTracer<SingleProvider>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
     SingleProvider, PathStore<SingleServerProviderStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<SingleProvider>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
 #ifdef USE_ENTERPRISE
@@ -564,40 +541,20 @@ template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
                              VertexUniquenessLevel::NONE,
                              EdgeUniquenessLevel::NONE>;
 
-template class PathValidator<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    PathStoreTracer<PathStore<enterprise::SmartGraphStep>>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
-
 template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
                              PathStore<enterprise::SmartGraphStep>,
                              VertexUniquenessLevel::NONE,
                              EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    PathStoreTracer<PathStore<enterprise::SmartGraphStep>>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
                              PathStore<enterprise::SmartGraphStep>,
                              VertexUniquenessLevel::PATH,
                              EdgeUniquenessLevel::PATH>;
 
-template class PathValidator<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    PathStoreTracer<PathStore<enterprise::SmartGraphStep>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
-
 template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
                              PathStore<enterprise::SmartGraphStep>,
                              VertexUniquenessLevel::GLOBAL,
                              EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    PathStoreTracer<PathStore<enterprise::SmartGraphStep>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
 #endif
 
@@ -609,17 +566,7 @@ template class PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                              VertexUniquenessLevel::NONE,
                              EdgeUniquenessLevel::NONE>;
 
-template class PathValidator<ProviderTracer<ClustProvider>,
-                             PathStoreTracer<PathStore<ClusterProviderStep>>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::NONE>;
-
 template class PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<ProviderTracer<ClustProvider>,
-                             PathStoreTracer<PathStore<ClusterProviderStep>>,
                              VertexUniquenessLevel::NONE,
                              EdgeUniquenessLevel::PATH>;
 
@@ -627,17 +574,7 @@ template class PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                              VertexUniquenessLevel::PATH,
                              EdgeUniquenessLevel::PATH>;
 
-template class PathValidator<ProviderTracer<ClustProvider>,
-                             PathStoreTracer<PathStore<ClusterProviderStep>>,
-                             VertexUniquenessLevel::PATH,
-                             EdgeUniquenessLevel::PATH>;
-
 template class PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                             VertexUniquenessLevel::GLOBAL,
-                             EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<ProviderTracer<ClustProvider>,
-                             PathStoreTracer<PathStore<ClusterProviderStep>>,
                              VertexUniquenessLevel::GLOBAL,
                              EdgeUniquenessLevel::PATH>;
 
@@ -649,19 +586,9 @@ template class PathValidator<
     EdgeUniquenessLevel::NONE>;
 
 template class PathValidator<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
-
-template class PathValidator<
     enterprise::SmartGraphProvider<ClusterProviderStep>,
     PathStore<ClusterProviderStep>, VertexUniquenessLevel::NONE,
     EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<
     enterprise::SmartGraphProvider<ClusterProviderStep>,
@@ -669,19 +596,9 @@ template class PathValidator<
     EdgeUniquenessLevel::PATH>;
 
 template class PathValidator<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
     enterprise::SmartGraphProvider<ClusterProviderStep>,
     PathStore<ClusterProviderStep>, VertexUniquenessLevel::GLOBAL,
     EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
 #endif
 

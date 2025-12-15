@@ -136,8 +136,8 @@ class PathResult;
 // The subtlety lies in the template magic going on all around this.
 // The `ProviderType` is used to get actual graph data like neighbours
 // out of the system. Essentially, there can be a `SingleServerProvider`
-// or a `ClusterProvider`, and it can be wrapped with a tracer wrapper or
-// not. This provider is just handed on to the `EnumeratorType`, which is
+// or a `ClusterProvider`.
+// This provider is just handed on to the `EnumeratorType`, which is
 // essentially an instance of the `TwoSidedEnumerator` or the
 // `WeightedTwoSidedEnumerator`. However, we have to be able to forbid
 // some vertices and edges. This is handled by putting a wrapper type

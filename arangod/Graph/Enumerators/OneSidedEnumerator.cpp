@@ -31,7 +31,6 @@
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
@@ -407,26 +406,24 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
 /* SingleServerProvider Section */
 using SingleServerProviderStep = graph::SingleServerProviderStep;
 
-#define MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                           vertexUniqueness, edgeUniqueness) \
-  template class graph::OneSidedEnumerator<                                  \
-      configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
-  template class graph::OneSidedEnumerator<                                  \
-      configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
+#define MAKE_ONE_SIDED_ENUMERATORS(provider, configuration, vertexUniqueness, \
+                                   edgeUniqueness)                            \
+  template class graph::OneSidedEnumerator<                                   \
+      configuration<provider, vertexUniqueness, edgeUniqueness>>;
 
 #define MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, configuration) \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::NONE,      \
-                                     EdgeUniquenessLevel::NONE)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::NONE,      \
-                                     EdgeUniquenessLevel::PATH)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::PATH,      \
-                                     EdgeUniquenessLevel::PATH)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::GLOBAL,    \
-                                     EdgeUniquenessLevel::PATH)
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::NONE,              \
+                             EdgeUniquenessLevel::NONE)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::NONE,              \
+                             EdgeUniquenessLevel::PATH)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::PATH,              \
+                             EdgeUniquenessLevel::PATH)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::GLOBAL,            \
+                             EdgeUniquenessLevel::PATH)
 
 #define MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
   MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration) \

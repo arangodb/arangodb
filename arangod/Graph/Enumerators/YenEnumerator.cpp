@@ -32,10 +32,8 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
@@ -378,15 +376,7 @@ template class ::arangodb::graph::YenEnumerator<
     SingleProvider, ShortestPathEnumeratorForYen<SingleProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ProviderTracer<SingleProvider>,
-    TracedShortestPathEnumeratorForYen<SingleProvider>, false>;
-
-template class ::arangodb::graph::YenEnumerator<
     SingleProvider, WeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
-
-template class ::arangodb::graph::YenEnumerator<
-    ProviderTracer<SingleProvider>,
-    TracedWeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
 
 // ClusterProvider Section:
 
@@ -396,12 +386,4 @@ template class ::arangodb::graph::YenEnumerator<
     ClustProvider, ShortestPathEnumeratorForYen<ClustProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ProviderTracer<ClustProvider>,
-    TracedShortestPathEnumeratorForYen<ClustProvider>, false>;
-
-template class ::arangodb::graph::YenEnumerator<
     ClustProvider, WeightedShortestPathEnumeratorAlias<ClustProvider>, true>;
-
-template class ::arangodb::graph::YenEnumerator<
-    ProviderTracer<ClustProvider>,
-    TracedWeightedShortestPathEnumeratorAlias<ClustProvider>, true>;
