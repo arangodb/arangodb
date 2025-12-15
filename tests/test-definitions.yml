@@ -445,7 +445,6 @@
       size: small
       buckets: 5
     args:
-      extremeVerbosity: true 
       dumpAgencyOnError: true
 #- shell_client_replication2_recovery:
 #    options:
