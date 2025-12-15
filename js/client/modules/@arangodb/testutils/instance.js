@@ -371,6 +371,7 @@ class instance {
         !this.args.hasOwnProperty('server.jwt-secret') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
+      this.JWT = fs.read(this.restKeyFile);
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];

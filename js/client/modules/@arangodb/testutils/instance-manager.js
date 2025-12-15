@@ -124,6 +124,7 @@ class instanceManager {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+      this.JWT = fs.read(this.restKeyFile);
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
     this.expectAsserts = false;
