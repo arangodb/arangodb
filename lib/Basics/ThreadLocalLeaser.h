@@ -37,7 +37,7 @@ struct ThreadLocalLeaser {
       }
     }
     Lease(Lease&&) = default;
-    auto operator=(Lease&&) -> Lease& = default;
+    auto operator=(Lease&&) -> Lease& = delete;
 
     friend struct ThreadLocalLeaser;
 
