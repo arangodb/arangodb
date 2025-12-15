@@ -133,7 +133,7 @@ TEST_F(ThreadLocalLeaserTest, testLeaseMovedBetweenThreads) {
   threads.joinAll();
 }
 
-TEST_F(ThreadLocalLeaserTest, testMaximumStashSize) {
+TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
   auto lease_ptrs = std::vector<velocypack::Builder*>{};
   lease_ptrs.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
   {
@@ -150,13 +150,45 @@ TEST_F(ThreadLocalLeaserTest, testMaximumStashSize) {
             ThreadLocalBuilderLeaser::stashSize());
 
   {
-    // Now get more than the stash size of builders
     auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
     leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
     for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
          ++i) {
       auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      ASSERT_EQ(it.get(), lease_ptrs[0]);
+      ASSERT_EQ(it.get(), lease_ptrs.back());
+      lease_ptrs.pop_back();
+    }
+  }
+}
+
+TEST_F(ThreadLocalLeaserTest, testStashExhaustion) {
+  auto lease_ptrs = std::vector<velocypack::Builder*>{};
+  lease_ptrs.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread + 1);
+  {
+    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
+    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread + 1);
+    for (auto i = size_t{0};
+         i < ThreadLocalBuilderLeaser::maxStashedPerThread + 1; ++i) {
+      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
+      lease_ptrs.emplace_back(it.get());
+    }
+  }
+  // leases above is dropped and all builders *but the last one to be
+  // dropped* end up in the stash
+  ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
+            ThreadLocalBuilderLeaser::stashSize());
+
+  {
+    // This one is the one that overflowed; we don't get it back.
+    lease_ptrs.pop_back();
+
+    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
+    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
+    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
+         ++i) {
+      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
+      ASSERT_EQ(it.get(), lease_ptrs.back());
+      lease_ptrs.pop_back();
     }
   }
 }
