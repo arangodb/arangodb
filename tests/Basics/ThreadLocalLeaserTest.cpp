@@ -202,3 +202,31 @@ TEST_F(ThreadLocalLeaserTest, testStashExhaustion) {
     }
   }
 }
+
+TEST_F(ThreadLocalLeaserTest, testMaximumStashSize) {
+  auto lease_ptrs = std::vector<velocypack::Builder*>{};
+  lease_ptrs.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
+  {
+    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
+    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
+    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
+         ++i) {
+      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
+      lease_ptrs.emplace_back(it.get());
+    }
+  }
+  // leases above is dropped and all builders end up in the stash
+  ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
+            ThreadLocalBuilderLeaser::stashSize());
+
+  {
+    // Now get more than the stash size of builders
+    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
+    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
+    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
+         ++i) {
+      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
+      ASSERT_EQ(it.get(), lease_ptrs[0]);
+    }
+  }
+}
