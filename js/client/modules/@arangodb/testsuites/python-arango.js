@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db */
+/* global print, db, SYS_IS_V8_BUILD */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -93,18 +93,30 @@ class runInPythonTest extends runWithAllureReport {
     let results = {
       'message': ''
     };
-    
+
     let args = [
       '--root', 'root',
       '--password', 'pythonarango',
       '--secret', fs.read(this.instanceManager.restKeyFile),
       '--junitxml', 'test-results/junit.xml',
       '--log-cli-level', 'DEBUG',
-      '--skip', 'foxx', 'js-transactions',
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
       '--alluredir', testResultsDir,
     ];
+
+    let testSkipList = [];
+    if (!this.options.cluster) {
+      testSkipList.push('backup');
+    }
+    if (!SYS_IS_V8_BUILD) {
+      testSkipList.push('foxx');
+      //testSkipList.push('tasks');
+      testSkipList.push('js-transactions');
+    }
+    if (testSkipList.length > 0) {
+      args = args.concat(['--skip'].concat(testSkipList));
+    }
     if (this.options.cluster) {
       args = args.concat([
         '--cluster',
