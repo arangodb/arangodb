@@ -22,10 +22,10 @@ parameters:
     enum: ["none", "tsan", "alubsan"]
     default: "none"
     description: "Sanitizer to use"
-  nightly:
+  full:
     type: boolean
     default: false
-    description: "Whether this is a nightly build"
+    description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
   arangod-without-v8:
     type: boolean
     default: false
@@ -110,8 +110,6 @@ jobs:
           command: |
             if [ "<< pipeline.parameters.dont-cancel-pipelines >>" == "true" ]; then
               echo "Cancelling of redundant pipelines is disabled, not cancelling any pipelines"
-            elif [ "<< pipeline.parameters.nightly >>" == "true" ]; then
-              echo "Nightly build - not cancelling any pipelines"
             elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
@@ -163,7 +161,7 @@ jobs:
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
             echo "sanitizer: << pipeline.parameters.sanitizer >>"
-            echo "nightly: << pipeline.parameters.nightly >>"
+            echo "full: << pipeline.parameters.full >>"
             echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
@@ -232,8 +230,8 @@ jobs:
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --test-image "<< pipeline.parameters.test-docker-image >>" \
-                --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
-                <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
+                <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
+                <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 --driver-branch-overrides "<<parameters.config-definitions-branches>>" \

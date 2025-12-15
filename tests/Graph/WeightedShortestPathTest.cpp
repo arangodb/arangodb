@@ -41,10 +41,6 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/WeightedQueue.h"
-
-// Needed in case of enabled tracing
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>

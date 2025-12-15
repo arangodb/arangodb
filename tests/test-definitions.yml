@@ -101,7 +101,7 @@
       - fuerte:
           args:
             protocol: ssl
-          options:
+          requires:
             coverage: false
       - endpoints:
           args:
@@ -114,9 +114,8 @@
       - agency
       - agency-restart
       - fuerte:
-          options:
+          requires:
             coverage: false
-
 - recovery:
     options:
       priority: 2000
@@ -146,15 +145,11 @@
     options:
       priority: 500
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
 
 - shell_api_multi:
     options:
       priority: 500
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
     suites:
       - shell_api_multi:
           args:
@@ -172,8 +167,6 @@
       buckets: 4
       type: single
       size: medium
-    args:
-      moreArgv: $EncryptionAtRest
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
 - shell_client_multi:
@@ -197,8 +190,6 @@
     options:
       priority: 750
       type: single
-    args:
-      moreArgv: $EncryptionAtRest
     suites:
       - shell_client_transaction:
           args:
@@ -239,26 +230,29 @@
       buckets: 19
       priority: 250
       type: single
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
 
 - gtest_iresearch:
     options:
-      coverage: false
       priority: 1000
       parallelity: 3
       size: medium
       type: single
+    requires:
+      coverage: false
 - gtest_arangodb:
     options:
-      coverage: false
       priority: 1000
       parallelity: 3
       size: large
       type: single
-
+    requires:
+      coverage: false
 - rta_makedata:
     options:
       type: mixed
-      size: large
     suites:
       - rta_makedata:
           args:
@@ -276,17 +270,19 @@
 - chaos:
     options:
       type: cluster
+      parallelity: 8
+    requires:
       coverage: false
       full: false
-      parallelity: 8
     args:
       dumpAgencyOnError: true
 - chaos_subq:
     options:
-      coverage: false
-      full: true
       priority: 1000
       size: medium+
+    requires:
+      coverage: false
+      full: true
     arangosh_args:
       javascript.v8-max-heap: "32768"
       javascript.gc-interval: "25"
@@ -295,21 +291,31 @@
 
 - arangobench_deadlock_audit:
     options:
-      coverage: false
       priority: 1000
-      type: cluster
+      type: mixed
     suites:
       - deadlock:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - arangobench:
           args:
             dumpAgencyOnError: true
+            cluster: true
       - server_secrets:
           args:
+            suffix: cluster
             dumpAgencyOnError: true
-      - audit_client
-      - audit_server
+            cluster: true
+      - audit_client:
+          args:
+            cluster: true
+      - audit_server:
+          args:
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: single
 
 - restart:
     options:
@@ -382,23 +388,18 @@
     options:
       priority: 500
       type: cluster
-    args:
-      moreArgv: $EncryptionAtRest
 
 - shell_api_multi:
     options:
       priority: 500
       type: cluster
       suffix: http
-    args:
-      moreArgv: $EncryptionAtRest
 - shell_api_multi:
     options:
       priority: 500
       type: cluster
       suffix: https
     args:
-      moreArgv: $EncryptionAtRest
       protocol: ssl
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
@@ -426,6 +427,8 @@
       buckets: 20
     args:
       dumpAgencyOnError: true
+      # TODO: BTS-2283
+      encryptionAtRest: false
 - shell_client:
     options:
       priority: 500
@@ -530,12 +533,6 @@
       buckets: 2
     args:
       dumpAgencyOnError: true
-- server_secrets:
-    options:
-      type: single
-      priority: 1000
-      parallelity: 5
-      size: small
 
 # Dump Tests
 - dump_single:
@@ -594,9 +591,10 @@
               dumpVPack: true
       - dump_with_crashes:
             options:
-              full: true
               parallelity: 1
               priority: 2000
+            requires:
+              full: true
       - dump_with_crashes_non_parallel:
             options:
               parallelity: 1
@@ -630,12 +628,13 @@
 # Full Tests Single Server
 - shell_fuzzer:
     options:
-      full: true
-      coverage: false
       type: cluster
       priority: 500
       parallelity: 6
       size: large
+    requires:
+      full: true
+      coverage: false
     arangosh_args:
       log.level: httpclient=trace
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
@@ -644,10 +643,11 @@
       extraArgs:experimental-vector-index: true
 - shell_fuzzer:
     options:
-      full: true
-      coverage: false
       type: single
       priority: 500
+    requires:
+      full: true
+      coverage: false
     arangosh_args:
       log.level: httpclient=trace
       log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
@@ -657,86 +657,99 @@
 - authentication_parameters:
     options:
       type: single
-      full: true
       priority: 1000
+    requires:
+      full: true
 - config:
     options:
       type: single
-      full: true
       priority: 1000
+    requires:
+      full: true
 - foxx_manager:
     options:
       type: single
-      full: true
       priority: 500
+    requires:
+      full: true
 - queryCacheAuthorization:
     options:
       type: single
-      full: true
       priority: 500
+    requires:
+      full: true
 - readOnly:
     options:
       type: single
-      full: true
       priority: 500
+    requires:
+      full: true
 - replication_aql:
     options:
       priority: 1000
       type: single
+    requires:
       full: true
 - replication_random:
     options:
       priority: 1000
       type: single
-      full: true
 
+    requires:
+      full: true
 # Full Cluster Tests
 - authentication:
     options:
-      full: true
       type: cluster
       priority: 500
       buckets: 3
+    requires:
+      full: true
     args:
       dumpAgencyOnError: true
 - chaos:
     options:
-      coverage: false
-      full: true
       type: cluster
       priority: 9600
       size: large
       # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
       timeLimit: 9600
+    requires:
+      coverage: false
+      full: true
     args:
       dumpAgencyOnError: true
       skipNightly: false
 - resilience_failover_failure:
     options:
-      full: true
       type: cluster
       priority: 500
+    requires:
+      full: true
     args:
       dumpAgencyOnError: true
 - resilience_failover_view:
     options:
-      full: true
       type: cluster
       priority: 500
+    requires:
+      full: true
     args:
       dumpAgencyOnError: true
 - resilience_transactions:
     options:
-      full: true
       type: cluster
       priority: 500
+    requires:
+      full: true
     args:
       dumpAgencyOnError: true
 - wal_cleanup:
     options:
-      full: true
       type: cluster
       priority: 2500
+    requires:
+      full: true
     args:
       dumpAgencyOnError: true
 
@@ -744,21 +757,23 @@
 - communication:
     options:
       buckets: auto
-      full: true
       priority: 1000
       parallelity: 2
       type: single
+    requires:
+      full: true
     suites:
       - communication
       - communication_ssl
 - communication:
     options:
       buckets: auto
-      full: true
       priority: 1000
       size: large
       parallelity: 6
       type: cluster
+    requires:
+      full: true
     suites:
       - communication
       - communication_ssl

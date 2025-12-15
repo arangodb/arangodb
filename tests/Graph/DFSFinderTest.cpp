@@ -41,10 +41,6 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/LifoQueue.h"
-
-// Needed in case of enabled tracing
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -62,8 +58,8 @@ class DFSFinderTest
   // using DFSFinder = DFSEnumerator<MockGraphProvider,
   // VertexUniquenessLevel::PATH>;
   using DFSFinder =
-      TracedDFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH,
-                          EdgeUniquenessLevel::PATH>;
+      DFSEnumerator<MockGraphProvider, VertexUniquenessLevel::PATH,
+                    EdgeUniquenessLevel::PATH>;
 
  protected:
   bool activateLogging{false};
