@@ -42,7 +42,9 @@ TEST_F(ThreadLocalLeaserTest, testLeaseAccess) {
     ASSERT_EQ(&a, builder);
   }
 
-  { ASSERT_EQ(lease->isEmpty(), true); }
+  {
+    ASSERT_EQ(lease->isEmpty(), true);
+  }
 }
 
 TEST_F(ThreadLocalLeaserTest, testBuilderIsLeasable) {
@@ -60,7 +62,9 @@ TEST_F(ThreadLocalLeaserTest, testLeasedBuilderIsUsable) {
 }
 
 TEST_F(ThreadLocalLeaserTest, testLeasingAndReturningIncreasesStashSize) {
-  { auto b = ThreadLocalBuilderLeaser::lease(); }
+  {
+    auto b = ThreadLocalBuilderLeaser::lease();
+  }
   ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 1);
 }
 
@@ -210,8 +214,12 @@ TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
       auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
       lease_ptrs.emplace_back(it.get());
     }
+
+    // enforce defined order of leases being freed
+    while (!leases.empty()) {
+      leases.pop_back();
+    }
   }
-  // leases above is dropped and all builders end up in the stash
   ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
             ThreadLocalBuilderLeaser::stashSize());
 
@@ -221,8 +229,7 @@ TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
     for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
          ++i) {
       auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      ASSERT_EQ(it.get(), lease_ptrs.back());
-      lease_ptrs.pop_back();
+      ASSERT_EQ(it.get(), lease_ptrs.at(i));
     }
   }
 }
@@ -238,23 +245,22 @@ TEST_F(ThreadLocalLeaserTest, testStashExhaustion) {
       auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
       lease_ptrs.emplace_back(it.get());
     }
+
+    // enforce defined order of leases being freed
+    while (!leases.empty()) {
+      leases.pop_back();
+    }
   }
-  // leases above is dropped and all builders *but the last one to be
-  // dropped* end up in the stash
   ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
             ThreadLocalBuilderLeaser::stashSize());
 
   {
-    // This one is the one that overflowed; we don't get it back.
-    lease_ptrs.pop_back();
-
     auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
     leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
     for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
          ++i) {
       auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      ASSERT_EQ(it.get(), lease_ptrs.back());
-      lease_ptrs.pop_back();
+      ASSERT_EQ(it.get(), lease_ptrs.at(i + 1));
     }
   }
 }
