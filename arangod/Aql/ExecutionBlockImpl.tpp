@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Exceptions.h"
 #include "ExecutionBlockImpl.h"
 
@@ -1178,113 +1179,6 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-// NOTE that this function is going to become obsolete
-template<class Executor>
-template<class E>
-auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
-    AqlCallStack& stack) -> ExecState {
-  static_assert(std::is_same_v<Executor, E> &&
-                executorHasSideEffects<Executor>);
-  TRI_ASSERT(_outputItemRow);
-  TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(!_outputItemRow->allRowsUsed());
-
-  if (!_lastRange.hasShadowRow()) {
-    // We got back without a ShadowRow in the LastRange
-    // Let client call again
-    return ExecState::NEXTSUBQUERY;
-  }
-
-  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-  TRI_ASSERT(shadowRow.isInitialized());
-  if (shadowRow.isRelevant()) {
-    LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
-    // We found a relevant shadow Row.
-    // We need to reset the Executor
-    resetExecutor();
-  }
-
-  bool const hasDoneNothing =
-      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
-  uint64_t shadowDepth = shadowRow.getDepth();
-
-  uint64_t depthSkippingNow =
-      static_cast<uint64_t>(stack.shadowRowDepthToSkip().value());
-  bool didWriteRow = false;
-
-  if (depthSkippingNow > shadowDepth) {
-    // We are skipping the outermost Subquery.
-    // Simply drop this ShadowRow
-  } else if (depthSkippingNow == shadowDepth) {
-    // We are skipping on this subquery level.
-    // Skip the row, but report skipped 1.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    if (shadowCall.needSkipMore()) {
-      shadowCall.didSkip(1);
-      shadowCall.resetSkipCount();
-      _skipped.didSkipSubquery(1, shadowDepth);
-    } else if (shadowCall.getLimit() > 0) {
-      TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-      _outputItemRow->moveRow(shadowRow);
-      shadowCall.didProduce(1);
-      TRI_ASSERT(_outputItemRow->produced());
-      _outputItemRow->advanceRow();
-      didWriteRow = true;
-    } else {
-      TRI_ASSERT(shadowCall.hardLimit == 0);
-      // Simply drop this shadowRow!
-    }
-  } else {
-    // We got a shadowRow of a subquery we are not skipping here.
-    // Do proper reporting on it's call.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-    _outputItemRow->moveRow(shadowRow);
-    shadowCall.didProduce(1);
-
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    didWriteRow = true;
-  }
-
-  if (state == ExecutorState::DONE) {
-    // We have consumed everything, we are
-    // Done with this query
-    return ExecState::DONE;
-  } else if (_lastRange.hasDataRow()) {
-    // Multiple concatenated Subqueries
-    return ExecState::NEXTSUBQUERY;
-  } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows.
-    auto const& lookAheadRow = _lastRange.peekShadowRow();
-    if (lookAheadRow.isRelevant()) {
-      // We are starting the NextSubquery here.
-      if constexpr (Executor::Properties::allowsBlockPassthrough ==
-                    BlockPassthrough::Enable) {
-        // TODO: Check if this works with skip forwarding
-        return ExecState::SHADOWROWS;
-      }
-      return ExecState::NEXTSUBQUERY;
-    }
-    // we need to forward them
-    return ExecState::SHADOWROWS;
-  } else if (didWriteRow) {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::DONE;
-  } else {
-    if (hasDoneNothing && !shadowRow.isRelevant()) {
-      stack.popDepthsLowerThan(shadowRow.getDepth());
-    }
-
-    // End of input, need to fetch new!
-    // Just start with the next subquery.
-    // If in doubt the next row will be a shadowRow again,
-    // this will be forwarded than.
-    return ExecState::NEXTSUBQUERY;
-  }
-}
-
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
     AqlCallStack& stack) -> ExecState
@@ -1430,6 +1324,23 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     -> ExecState {
+  auto const writeShadowRow =
+      [](AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+         ShadowAqlItemRow& shadowRow) {
+        auto shadowDepth = shadowRow.getDepth();
+        auto& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+        _outputItemRow->moveRow(shadowRow);
+        shadowCall.didProduce(1);
+        TRI_ASSERT(_outputItemRow->produced());
+        _outputItemRow->advanceRow();
+
+        // TODO Why? This comes from countShadowRowProduced
+        if (!shadowRow.isRelevant()) {
+          std::ignore =
+              stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
+        }
+      };
+
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     return shadowRowForwardingSubqueryStart(stack);
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
@@ -1474,9 +1385,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   }
 
   auto depthSkippingNow = stack.shadowRowDepthToSkip();
-  auto didWriteRow = false;
   if (depthSkippingNow.has_value()) {
     if constexpr (executorHasSideEffects<Executor>) {
+      AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
       // sideeffect forwarding
       if (depthSkippingNow > shadowDepth) {
         // We are skipping the outermost Subquery.
@@ -1484,41 +1395,31 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       } else if (depthSkippingNow == shadowDepth) {
         // We are skipping on this subquery level.
         // Skip the row, but report skipped 1.
-        AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
         if (shadowCall.needSkipMore()) {
           shadowCall.didSkip(1);
           shadowCall.resetSkipCount();
           _skipped.didSkipSubquery(1, shadowDepth);
+          // also does not write the shadow row.
         } else if (shadowCall.getLimit() > 0) {
           TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-          _outputItemRow->moveRow(shadowRow);
-          shadowCall.didProduce(1);
-          TRI_ASSERT(_outputItemRow->produced());
-          _outputItemRow->advanceRow();
-          didWriteRow = true;
+          writeShadowRow(stack, _outputItemRow, shadowRow);
         } else {
           TRI_ASSERT(shadowCall.hardLimit == 0);
           // Simply drop this shadowRow!
         }
-      } else {
+      } else /* depthSkippingNow < shadowDepth */ {
         // We got a shadowRow of a subquery we are not skipping here.
         // Do proper reporting on it's call.
-        AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-        TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-        _outputItemRow->moveRow(shadowRow);
-        shadowCall.didProduce(1);
-
-        TRI_ASSERT(_outputItemRow->produced());
-        _outputItemRow->advanceRow();
-        didWriteRow = true;
+        writeShadowRow(stack, _outputItemRow, shadowRow);
       }
+    } else {
+      // this is the "original" shadowrow forwarding code
+      writeShadowRow(stack, _outputItemRow, shadowRow);
     }
+  } else {
+    // this is the "original" shadowrow forwarding code
+    writeShadowRow(stack, _outputItemRow, shadowRow);
   }
-
-  countShadowRowProduced(stack, shadowDepth);
-  _outputItemRow->moveRow(shadowRow);
-  TRI_ASSERT(_outputItemRow->produced());
-  _outputItemRow->advanceRow();
 
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
@@ -1541,11 +1442,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     }
     // we need to forward them
     return ExecState::SHADOWROWS;
-  } else if (didWriteRow) {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::DONE;
   } else {
+    // call has not produced output or skips, and the shadow row is not
+    // relevant.
     if (hasDoneNothing && !shadowRow.isRelevant()) {
       stack.popDepthsLowerThan(shadowRow.getDepth());
     }
