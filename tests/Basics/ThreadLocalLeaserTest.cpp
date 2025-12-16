@@ -98,16 +98,22 @@ TEST_F(ThreadLocalLeaserTest, testLeaseMovedOutOf) {
 }
 
 TEST_F(ThreadLocalLeaserTest, testLeaseMovedOutOfReturned) {
+  EXPECT_EQ(ThreadLocalBuilderLeaser::stashSize(), 0);
   velocypack::Builder* builder{nullptr};
   {
     auto b = ThreadLocalBuilderLeaser::lease();
     ASSERT_NE(b.get(), nullptr);
 
     auto c = std::move(b);
+    // The moved-from lease should not stash anything
     ASSERT_EQ(b.get(), nullptr);
     ASSERT_NE(c.get(), nullptr);
     builder = c.get();
   }
+  // Only one object should be returned. In particular
+  // the moved-out-of lease must not push anything to
+  // the stash
+  ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 1);
 
   auto b = ThreadLocalBuilderLeaser::lease();
   ASSERT_EQ(b.get(), builder);
