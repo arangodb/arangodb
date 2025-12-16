@@ -264,7 +264,7 @@ arangodb.acquireHostList=true
 }
 
 function javaDriver (options) {
-  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+  let localOptions = Object.assign({extraArgs: { 'vector-index': true }}, options, tu.testServerAuthInfo);
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
