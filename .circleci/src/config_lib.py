@@ -95,12 +95,12 @@ class BuildVariant(Enum):
     Build instrumentation variant.
 
     Represents different types of build instrumentation that can be enabled.
-    Future variants may include coverage builds.
     """
 
     NORMAL = "normal"  # Non-instrumented build
     TSAN = "tsan"  # Thread Sanitizer
     ALUBSAN = "alubsan"  # Address + Leak + UB Sanitizer
+    COVERAGE = "coverage"  # Coverage build
 
     @classmethod
     def from_string(cls, value: str) -> "BuildVariant":
@@ -115,8 +115,8 @@ class BuildVariant(Enum):
 
     @property
     def is_instrumented(self) -> bool:
-        """Check if this is an instrumented build (any variant except NORMAL)."""
-        return self != BuildVariant.NORMAL
+        """Check if this is an instrumented build (TSAN, ALUBSAN, or COVERAGE)."""
+        return self in (BuildVariant.TSAN, BuildVariant.ALUBSAN, BuildVariant.COVERAGE)
 
     @property
     def is_tsan(self) -> bool:
@@ -127,6 +127,11 @@ class BuildVariant(Enum):
     def is_alubsan(self) -> bool:
         """Check if this is an Address+Leak+UB Sanitizer build."""
         return self == BuildVariant.ALUBSAN
+
+    @property
+    def is_coverage(self) -> bool:
+        """Check if this is a coverage build."""
+        return self == BuildVariant.COVERAGE
 
 
 class Architecture(Enum):
@@ -166,10 +171,10 @@ class TestRequirements:
     """
 
     full: Optional[bool] = None  # Only run if full test set is enabled
-    coverage: Optional[bool] = None  # Include/exclude for coverage builds
     instrumentation: Optional[bool] = (
-        None  # Include/exclude for instrumented builds (TSAN/ASAN/coverage)
+        None  # Include/exclude for instrumented builds (TSAN/ALUBSAN/COVERAGE)
     )
+    coverage: Optional[bool] = None  # Include/exclude for coverage builds only
     v8: Optional[bool] = None  # Include/exclude for v8 builds
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
@@ -192,10 +197,10 @@ class TestRequirements:
         # Direct field mappings
         if "full" in data:
             kwargs["full"] = data["full"]
-        if "coverage" in data:
-            kwargs["coverage"] = data["coverage"]
         if "instrumentation" in data:
             kwargs["instrumentation"] = data["instrumentation"]
+        if "coverage" in data:
+            kwargs["coverage"] = data["coverage"]
         if "v8" in data:
             kwargs["v8"] = data["v8"]
 
@@ -218,8 +223,8 @@ class TestRequirements:
         if override is None:
             return TestRequirements(
                 full=self.full,
-                coverage=self.coverage,
                 instrumentation=self.instrumentation,
+                coverage=self.coverage,
                 v8=self.v8,
                 architecture=self.architecture,
             )
@@ -229,8 +234,8 @@ class TestRequirements:
 
         return TestRequirements(
             full=merge_field(override.full, self.full),
-            coverage=merge_field(override.coverage, self.coverage),
             instrumentation=merge_field(override.instrumentation, self.instrumentation),
+            coverage=merge_field(override.coverage, self.coverage),
             v8=merge_field(override.v8, self.v8),
             architecture=merge_field(override.architecture, self.architecture),
         )

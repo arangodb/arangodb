@@ -111,22 +111,16 @@ class CircleCIGenerator(OutputGenerator):
 
         # Generate workflows for each build variant and architecture
         build_variants = self.config.build_variants
-        for build_variant in build_variants:
-            # X64 workflow
-            build_config = BuildConfig(
-                architecture=Architecture.X64,
-                build_variant=build_variant,
-                nightly=self.config.filter_criteria.is_full_run,
-            )
-            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        architectures = [Architecture.X64, Architecture.AARCH64]
 
-            # ARM64 workflow
-            build_config = BuildConfig(
-                architecture=Architecture.AARCH64,
-                build_variant=build_variant,
-                nightly=self.config.filter_criteria.is_full_run,
-            )
-            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        for build_variant in build_variants:
+            for architecture in architectures:
+                build_config = BuildConfig(
+                    architecture=architecture,
+                    build_variant=build_variant,
+                    nightly=self.config.filter_criteria.is_full_run,
+                )
+                self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         return circleci_config
 
@@ -402,9 +396,7 @@ class CircleCIGenerator(OutputGenerator):
 
         # Build job name with architecture and sanitizer suffix for global uniqueness
         sanitizer_suffix = build_config.build_variant.get_suffix()
-        job_name = (
-            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}{sanitizer_suffix}"
-        )
+        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}{sanitizer_suffix}"
 
         return job_name, suite_name
 

@@ -758,7 +758,7 @@ class TestTestRequirements:
     def test_merge_preserves_base_when_override_is_none(self):
         """Merging with None preserves all base requirement values."""
         base = TestRequirements(
-            full=True, coverage=False, instrumentation=True, v8=False
+            full=True, instrumentation=True, coverage=False, v8=False
         )
         merged = base.merge_with(None)
 
@@ -780,6 +780,7 @@ class TestTestRequirements:
         )
         suite_reqs = TestRequirements(
             full=False,  # Override
+            coverage=False,  # Override
             instrumentation=True,  # Override
             v8=False,  # Override
         )
@@ -787,18 +788,23 @@ class TestTestRequirements:
         merged = job_reqs.merge_with(suite_reqs)
 
         assert merged.full is False  # Suite overrides
-        assert merged.coverage is True  # Job value preserved
         assert merged.instrumentation is True  # Suite overrides
+        assert merged.coverage is False  # Suite overrides
         assert merged.v8 is False  # Suite overrides
         assert merged.architecture == Architecture.X64  # Job value preserved
 
     def test_merge_none_values_in_override_preserve_base(self):
         """None values in override don't erase base requirement values."""
-        base = TestRequirements(full=True, instrumentation=True, v8=True)
-        override = TestRequirements(full=None, instrumentation=None, v8=None)
+        base = TestRequirements(
+            full=True, instrumentation=True, coverage=False, v8=True
+        )
+        override = TestRequirements(
+            full=None, instrumentation=None, coverage=None, v8=None
+        )
 
         merged = base.merge_with(override)
 
         assert merged.full is True
+        assert merged.coverage is False
         assert merged.instrumentation is True
         assert merged.v8 is True

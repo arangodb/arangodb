@@ -14,6 +14,7 @@ from .config_lib import (
     SuiteConfig,
     Architecture,
     TestRequirements,
+    BuildVariant,
 )
 
 
@@ -32,7 +33,7 @@ class FilterCriteria:
     # Build configuration
     architecture: Optional[Architecture] = None  # Current build architecture
     v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
-    coverage: bool = False  # Whether this is a coverage build
+    build_variant: Optional[BuildVariant] = None  # Build variant (for instrumentation)
 
     # Deployment type filter (None = accept all deployment types)
     deployment_type: Optional[DeploymentType] = None
@@ -47,13 +48,8 @@ class FilterCriteria:
 
     @property
     def is_instrumented_build(self) -> bool:
-        """Check if this is an instrumented build (TSan/ALUBSan/coverage)."""
-        return self.sanitizer is not None or self.coverage
-
-    @property
-    def is_coverage_build(self) -> bool:
-        """Check if this is a coverage build."""
-        return self.coverage
+        """Check if this is an instrumented build (TSAN/ALUBSAN/COVERAGE)."""
+        return self.build_variant is not None and self.build_variant.is_instrumented
 
     @property
     def is_v8_build(self) -> bool:
@@ -83,8 +79,8 @@ def _check_requirements_match(
     This implements the common filtering logic for both jobs and suites:
     - Architecture compatibility
     - Full flag compatibility
-    - Coverage flag compatibility
-    - Instrumentation flag compatibility
+    - Instrumentation flag compatibility (TSAN/ALUBSAN/COVERAGE)
+    - Coverage flag compatibility (COVERAGE only)
     - V8 flag compatibility
 
     Args:
@@ -109,17 +105,21 @@ def _check_requirements_match(
     if requires.full is False and criteria.is_full_run:
         return False  # PR-only, but we're in full mode
 
-    # Check coverage flag compatibility
+    # Check coverage flag compatibility (specific to COVERAGE builds)
     # - coverage=True: Only for coverage builds
     # - coverage=False: Only for non-coverage builds
     # - coverage=None (unspecified): Include in both
-    if requires.coverage is True and not criteria.is_coverage_build:
-        return False  # Requires coverage build, but we're in non-coverage mode
-    if requires.coverage is False and criteria.is_coverage_build:
+    if requires.coverage is True and (
+        criteria.build_variant is None or not criteria.build_variant.is_coverage
+    ):
+        return False  # Requires coverage build, but we're not in coverage mode
+    if requires.coverage is False and (
+        criteria.build_variant is not None and criteria.build_variant.is_coverage
+    ):
         return False  # Non-coverage-only, but we're in coverage mode
 
     # Check instrumentation flag compatibility
-    # - instrumentation=True: Only for instrumented builds (TSAN/ASAN/coverage)
+    # - instrumentation=True: Only for instrumented builds (TSAN/ALUBSAN/COVERAGE)
     # - instrumentation=False: Only for non-instrumented builds
     # - instrumentation=None (unspecified): Include in both
     if requires.instrumentation is True and not criteria.is_instrumented_build:

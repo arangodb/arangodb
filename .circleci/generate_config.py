@@ -145,6 +145,7 @@ def create_generator_config(
     tsan: bool,
     alubsan: bool,
     no_sanitizer: bool,
+    coverage: bool,
     test_image: str,
     arangosh_args: str,
     extra_args: str,
@@ -167,13 +168,17 @@ def create_generator_config(
     # Build list of requested build variants
     build_variants = []
 
-    if no_sanitizer or (not tsan and not alubsan):
+    if no_sanitizer or (not tsan and not alubsan and not coverage):
         # Include non-instrumented build if explicitly requested or no variants specified
         build_variants.append(BuildVariant.NORMAL)
     if tsan:
         build_variants.append(BuildVariant.TSAN)
     if alubsan:
         build_variants.append(BuildVariant.ALUBSAN)
+    if coverage:
+        build_variants.append(BuildVariant.COVERAGE)
+
+    assert build_variants, "build_variants must not be empty (logic error)"
 
     # Create filter criteria
     filter_criteria = FilterCriteria(
@@ -233,7 +238,12 @@ def create_generator_config(
 @click.option(
     "--no-sanitizer",
     is_flag=True,
-    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan)",
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+)
+@click.option(
+    "--coverage",
+    is_flag=True,
+    help="Enable coverage build",
 )
 @click.option(
     "-t",
@@ -292,6 +302,7 @@ def main(
     tsan: bool,
     alubsan: bool,
     no_sanitizer: bool,
+    coverage: bool,
     test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
@@ -325,6 +336,7 @@ def main(
             tsan=tsan,
             alubsan=alubsan,
             no_sanitizer=no_sanitizer,
+            coverage=coverage,
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,

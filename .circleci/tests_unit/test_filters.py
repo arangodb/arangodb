@@ -13,6 +13,7 @@ from src.config_lib import (
     TestRequirements,
     DeploymentType,
     TestDefinitionFile,
+    BuildVariant,
 )
 from src.filters import (
     FilterCriteria,
@@ -32,8 +33,8 @@ class TestFilterCriteria:
         assert criteria.full is False
         assert criteria.gtest is False
         assert criteria.architecture is None
-        assert criteria.v8 is False
-        assert criteria.coverage is False
+        assert criteria.v8 is True
+        assert criteria.build_variant is None
         assert criteria.enterprise is True
 
     def test_custom_values(self):
@@ -95,7 +96,6 @@ class TestFilterJobs:
     def create_test_definition(self, jobs_dict):
         """Helper to create a TestDefinitionFile."""
         return TestDefinitionFile(jobs=jobs_dict)
-
 
     def test_gtest_filtering(self):
         """Test filtering for gtest jobs."""
@@ -288,8 +288,12 @@ class TestFilterSuites:
             name="test_job",
             requires=TestRequirements(full=True),
             suites=[
-                SuiteConfig(name="suite1"),  # No requires - should inherit job's full=True
-                SuiteConfig(name="suite2"),  # No requires - should inherit job's full=True
+                SuiteConfig(
+                    name="suite1"
+                ),  # No requires - should inherit job's full=True
+                SuiteConfig(
+                    name="suite2"
+                ),  # No requires - should inherit job's full=True
             ],
             options=TestOptions(),
         )
@@ -297,7 +301,9 @@ class TestFilterSuites:
         # PR build (full=False) - should filter out all suites
         pr_criteria = FilterCriteria(full=False)
         pr_result = filter_suites(job, pr_criteria)
-        assert len(pr_result) == 0, "Suites should inherit job's full=True and be filtered in PR builds"
+        assert (
+            len(pr_result) == 0
+        ), "Suites should inherit job's full=True and be filtered in PR builds"
 
         # Full build (full=True) - should include all suites
         full_criteria = FilterCriteria(full=True)
@@ -411,8 +417,6 @@ class TestInstrumentationFiltering:
 
     def test_job_without_instrumentation_constraint_included_in_all_builds(self):
         """Job without instrumentation field should run in all build types."""
-        from src.config_lib import Sanitizer
-
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
@@ -424,13 +428,11 @@ class TestInstrumentationFiltering:
         assert should_include_job(job, criteria_regular)
 
         # Should be included in TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert should_include_job(job, criteria_tsan)
 
     def test_job_with_instrumentation_true_only_in_instrumented_builds(self):
         """Job with instrumentation=True should only run in instrumented builds."""
-        from src.config_lib import Sanitizer
-
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
@@ -442,17 +444,15 @@ class TestInstrumentationFiltering:
         assert not should_include_job(job, criteria_regular)
 
         # Should be included in TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert should_include_job(job, criteria_tsan)
 
         # Should be included in ALUBSAN build
-        criteria_alubsan = FilterCriteria(sanitizer=Sanitizer.ALUBSAN)
+        criteria_alubsan = FilterCriteria(build_variant=BuildVariant.ALUBSAN)
         assert should_include_job(job, criteria_alubsan)
 
     def test_job_with_instrumentation_false_only_in_regular_builds(self):
         """Job with instrumentation=False should only run in regular builds."""
-        from src.config_lib import Sanitizer
-
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
@@ -464,17 +464,15 @@ class TestInstrumentationFiltering:
         assert should_include_job(job, criteria_regular)
 
         # Should be excluded from TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert not should_include_job(job, criteria_tsan)
 
         # Should be excluded from ALUBSAN build
-        criteria_alubsan = FilterCriteria(sanitizer=Sanitizer.ALUBSAN)
+        criteria_alubsan = FilterCriteria(build_variant=BuildVariant.ALUBSAN)
         assert not should_include_job(job, criteria_alubsan)
 
     def test_suite_without_instrumentation_constraint_included_in_all_builds(self):
         """Suite without instrumentation field should run in all build types."""
-        from src.config_lib import Sanitizer
-
         suite = SuiteConfig(name="suite1")
 
         # Should be included in regular build
@@ -482,13 +480,11 @@ class TestInstrumentationFiltering:
         assert should_include_suite(suite, criteria_regular)
 
         # Should be included in TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert should_include_suite(suite, criteria_tsan)
 
     def test_suite_with_instrumentation_true_only_in_instrumented_builds(self):
         """Suite with instrumentation=True should only run in instrumented builds."""
-        from src.config_lib import Sanitizer
-
         suite = SuiteConfig(
             name="suite1", requires=TestRequirements(instrumentation=True)
         )
@@ -498,13 +494,11 @@ class TestInstrumentationFiltering:
         assert not should_include_suite(suite, criteria_regular)
 
         # Should be included in TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert should_include_suite(suite, criteria_tsan)
 
     def test_suite_with_instrumentation_false_only_in_regular_builds(self):
         """Suite with instrumentation=False should only run in regular builds."""
-        from src.config_lib import Sanitizer
-
         suite = SuiteConfig(
             name="suite1", requires=TestRequirements(instrumentation=False)
         )
@@ -514,7 +508,7 @@ class TestInstrumentationFiltering:
         assert should_include_suite(suite, criteria_regular)
 
         # Should be excluded from TSAN build
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert not should_include_suite(suite, criteria_tsan)
 
     def test_filter_suites_by_instrumentation(self):
@@ -545,9 +539,7 @@ class TestInstrumentationFiltering:
         assert "instrumented_suite" not in result_names
 
         # TSAN build - should include instrumented_suite and any_suite, exclude regular_suite
-        from src.config_lib import Sanitizer
-
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         result = filter_suites(job, criteria_tsan)
         assert len(result) == 2
         result_names = {suite.name for suite in result}
@@ -557,8 +549,6 @@ class TestInstrumentationFiltering:
 
     def test_suite_instrumentation_overrides_job_instrumentation(self):
         """Suite-level instrumentation should override job-level instrumentation."""
-        from src.config_lib import Sanitizer
-
         # Job with instrumentation=False, but suite overrides to True
         job = TestJob(
             name="test_job",
@@ -572,7 +562,7 @@ class TestInstrumentationFiltering:
         )
 
         # Job should be excluded from TSAN build (job-level filter)
-        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
         assert not should_include_job(job, criteria_tsan)
 
         # But if we check the suite directly, it should be included
@@ -581,7 +571,12 @@ class TestInstrumentationFiltering:
 
 
 class TestCoverageFiltering:
-    """Test coverage filtering at job and suite level."""
+    """Test coverage-specific filtering (coverage field is DIFFERENT from instrumentation field).
+
+    Key distinction:
+    - instrumentation=False: Excludes ALL instrumented builds (TSAN, ALUBSAN, COVERAGE)
+    - coverage=False: Excludes ONLY coverage builds (but allows TSAN, ALUBSAN)
+    """
 
     def test_job_without_coverage_constraint_included_in_all_builds(self):
         """Job without coverage field should run in all build types."""
@@ -592,130 +587,141 @@ class TestCoverageFiltering:
         )
 
         # Should be included in regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert should_include_job(job, criteria_regular)
 
+        # Should be included in TSAN build
+        criteria_tsan = FilterCriteria(build_variant=BuildVariant.TSAN)
+        assert should_include_job(job, criteria_tsan)
+
         # Should be included in coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert should_include_job(job, criteria_coverage)
 
-    def test_job_with_coverage_true_only_in_coverage_builds(self):
-        """Job with coverage=True should only run in coverage builds."""
+    def test_job_with_instrumentation_true_only_in_instrumented_builds(self):
+        """Job with instrumentation=True should only run in instrumented builds (including COVERAGE)."""
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(coverage=True),
+            requires=TestRequirements(instrumentation=True),
         )
 
         # Should be excluded from regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert not should_include_job(job, criteria_regular)
 
         # Should be included in coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert should_include_job(job, criteria_coverage)
 
-    def test_job_with_coverage_false_only_in_regular_builds(self):
-        """Job with coverage=False should only run in non-coverage builds."""
+    def test_job_with_instrumentation_false_only_in_regular_builds(self):
+        """Job with instrumentation=False should only run in non-instrumented builds."""
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            requires=TestRequirements(coverage=False),
+            requires=TestRequirements(instrumentation=False),
         )
 
         # Should be included in regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert should_include_job(job, criteria_regular)
 
         # Should be excluded from coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert not should_include_job(job, criteria_coverage)
 
-    def test_suite_without_coverage_constraint_included_in_all_builds(self):
-        """Suite without coverage field should run in all build types."""
+    def test_suite_without_instrumentation_constraint_included_in_all_builds(self):
+        """Suite without instrumentation field should run in all build types."""
         suite = SuiteConfig(name="suite1")
 
         # Should be included in regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert should_include_suite(suite, criteria_regular)
 
         # Should be included in coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert should_include_suite(suite, criteria_coverage)
 
-    def test_suite_with_coverage_true_only_in_coverage_builds(self):
-        """Suite with coverage=True should only run in coverage builds."""
-        suite = SuiteConfig(name="suite1", requires=TestRequirements(coverage=True))
+    def test_suite_with_instrumentation_true_only_in_instrumented_builds(self):
+        """Suite with instrumentation=True should only run in instrumented builds."""
+        suite = SuiteConfig(
+            name="suite1", requires=TestRequirements(instrumentation=True)
+        )
 
         # Should be excluded from regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert not should_include_suite(suite, criteria_regular)
 
         # Should be included in coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert should_include_suite(suite, criteria_coverage)
 
-    def test_suite_with_coverage_false_only_in_regular_builds(self):
-        """Suite with coverage=False should only run in regular builds."""
-        suite = SuiteConfig(name="suite1", requires=TestRequirements(coverage=False))
+    def test_suite_with_instrumentation_false_only_in_regular_builds(self):
+        """Suite with instrumentation=False should only run in regular builds."""
+        suite = SuiteConfig(
+            name="suite1", requires=TestRequirements(instrumentation=False)
+        )
 
         # Should be included in regular build
-        criteria_regular = FilterCriteria(coverage=False)
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         assert should_include_suite(suite, criteria_regular)
 
         # Should be excluded from coverage build
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert not should_include_suite(suite, criteria_coverage)
 
-    def test_filter_suites_by_coverage(self):
-        """Test filtering mixed coverage suites in different build types."""
+    def test_filter_suites_by_instrumentation(self):
+        """Test filtering mixed instrumentation suites in different build types."""
         job = TestJob(
             name="test_job",
             suites=[
                 SuiteConfig(
-                    name="coverage_suite", requires=TestRequirements(coverage=True)
+                    name="instrumented_suite",
+                    requires=TestRequirements(instrumentation=True),
                 ),
                 SuiteConfig(
-                    name="no_coverage_suite", requires=TestRequirements(coverage=False)
+                    name="non_instrumented_suite",
+                    requires=TestRequirements(instrumentation=False),
                 ),
                 SuiteConfig(name="any_suite"),
             ],
             options=TestOptions(),
         )
 
-        # Regular build - should include no_coverage_suite and any_suite
-        criteria_regular = FilterCriteria(coverage=False)
+        # Regular build - should include non_instrumented_suite and any_suite
+        criteria_regular = FilterCriteria(build_variant=BuildVariant.NORMAL)
         result = filter_suites(job, criteria_regular)
         assert len(result) == 2
         result_names = {suite.name for suite in result}
-        assert "no_coverage_suite" in result_names
+        assert "non_instrumented_suite" in result_names
         assert "any_suite" in result_names
-        assert "coverage_suite" not in result_names
+        assert "instrumented_suite" not in result_names
 
-        # Coverage build - should include coverage_suite and any_suite
-        criteria_coverage = FilterCriteria(coverage=True)
+        # Coverage build - should include instrumented_suite and any_suite
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         result = filter_suites(job, criteria_coverage)
         assert len(result) == 2
         result_names = {suite.name for suite in result}
-        assert "coverage_suite" in result_names
+        assert "instrumented_suite" in result_names
         assert "any_suite" in result_names
-        assert "no_coverage_suite" not in result_names
+        assert "non_instrumented_suite" not in result_names
 
-    def test_suite_coverage_overrides_job_coverage(self):
-        """Suite-level coverage should override job-level coverage."""
-        # Job with coverage=False, but suite overrides to True
+    def test_suite_instrumentation_overrides_job_instrumentation(self):
+        """Suite-level instrumentation should override job-level instrumentation."""
+        # Job with instrumentation=False, but suite overrides to True
         job = TestJob(
             name="test_job",
             suites=[
                 SuiteConfig(
-                    name="override_suite", requires=TestRequirements(coverage=True)
+                    name="override_suite",
+                    requires=TestRequirements(instrumentation=True),
                 )
             ],
-            requires=TestRequirements(coverage=False),
+            requires=TestRequirements(instrumentation=False),
         )
 
         # Job should be excluded from coverage build (job-level filter)
-        criteria_coverage = FilterCriteria(coverage=True)
+        criteria_coverage = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert not should_include_job(job, criteria_coverage)
 
         # But if we check the suite directly, it should be included
@@ -724,9 +730,8 @@ class TestCoverageFiltering:
 
     def test_coverage_build_is_instrumented(self):
         """Coverage builds should be considered instrumented builds."""
-        criteria = FilterCriteria(coverage=True)
+        criteria = FilterCriteria(build_variant=BuildVariant.COVERAGE)
         assert criteria.is_instrumented_build
-        assert criteria.is_coverage_build
 
 
 class TestV8Filtering:

@@ -922,8 +922,7 @@ class TestSanitizerSuffixInJobNames:
         )
         assert result_tsan is not None
         assert (
-            result_tsan["run-linux-tests"]["name"]
-            == "test-cluster-resilience-x64-tsan"
+            result_tsan["run-linux-tests"]["name"] == "test-cluster-resilience-x64-tsan"
         )
 
         # Test ALUBSAN - should have -alubsan suffix

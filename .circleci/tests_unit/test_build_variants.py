@@ -38,7 +38,7 @@ class TestBuildVariantWorkflows:
     def test_single_sanitizer_config_generates_two_workflows(self):
         """Test that a single sanitizer config generates x64 and aarch64 workflows."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(),
             build_variants=[BuildVariant.TSAN],
         )
         gen = CircleCIGenerator(config, base_config={"version": 2.1})
@@ -55,7 +55,7 @@ class TestBuildVariantWorkflows:
     def test_two_sanitizer_configs_generate_four_workflows(self):
         """Test that two sanitizer configs generate four workflows (2 archs × 2 sanitizers)."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(),
             build_variants=[
                 BuildVariant.TSAN,
                 BuildVariant.ALUBSAN,
@@ -77,7 +77,7 @@ class TestBuildVariantWorkflows:
     def test_three_configs_generate_six_workflows(self):
         """Test all three configs (none, tsan, alubsan) generate six workflows."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(),
             build_variants=[
                 BuildVariant.NORMAL,
                 BuildVariant.TSAN,
@@ -102,7 +102,7 @@ class TestBuildVariantWorkflows:
     def test_non_sanitizer_only_generates_two_workflows(self):
         """Test that non-sanitizer config only generates two workflows."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(),
             build_variants=[BuildVariant.NORMAL],
         )
         gen = CircleCIGenerator(config, base_config={"version": 2.1})
@@ -122,7 +122,7 @@ class TestBuildVariantWorkflows:
     def test_empty_sanitizer_configs_generates_no_workflows(self):
         """Test that empty build_variants list generates no workflows."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(full=True),
             build_variants=[],  # Empty list - no workflows should be generated
         )
         gen = CircleCIGenerator(config, base_config={"version": 2.1})
@@ -137,7 +137,7 @@ class TestBuildVariantWorkflows:
     def test_workflows_have_correct_build_jobs(self):
         """Test that each workflow has correctly named build jobs."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(full=True),
             build_variants=[
                 BuildVariant.NORMAL,
                 BuildVariant.TSAN,
@@ -151,7 +151,7 @@ class TestBuildVariantWorkflows:
         workflows = result["workflows"]
 
         # Check non-sanitizer x64 workflow
-        x64_pr_jobs = workflows["x64-pr"]["jobs"]
+        x64_pr_jobs = workflows["x64-nightly"]["jobs"]
         build_jobs = [
             j for j in x64_pr_jobs if "compile-linux" in j or "build-frontend" in j
         ]
@@ -167,7 +167,7 @@ class TestBuildVariantWorkflows:
         )
 
         # Check TSAN x64 workflow
-        x64_tsan_jobs = workflows["x64-pr-tsan"]["jobs"]
+        x64_tsan_jobs = workflows["x64-nightly-tsan"]["jobs"]
         build_jobs_tsan = [
             j for j in x64_tsan_jobs if "compile-linux" in j or "build-frontend" in j
         ]
@@ -185,7 +185,7 @@ class TestBuildVariantWorkflows:
     def test_workflows_have_independent_test_jobs(self):
         """Test that test jobs are created independently for each workflow."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(full=True),
             build_variants=[
                 BuildVariant.NORMAL,
                 BuildVariant.TSAN,
@@ -200,10 +200,10 @@ class TestBuildVariantWorkflows:
 
         # Both workflows should have test jobs
         x64_pr_test_jobs = [
-            j for j in workflows["x64-pr"]["jobs"] if "run-linux-tests" in j
+            j for j in workflows["x64-nightly"]["jobs"] if "run-linux-tests" in j
         ]
         x64_tsan_test_jobs = [
-            j for j in workflows["x64-pr-tsan"]["jobs"] if "run-linux-tests" in j
+            j for j in workflows["x64-nightly-tsan"]["jobs"] if "run-linux-tests" in j
         ]
 
         assert len(x64_pr_test_jobs) > 0, "Non-sanitizer workflow should have test jobs"
@@ -221,7 +221,7 @@ class TestBuildVariantWorkflows:
     def test_nightly_workflows_with_multiple_sanitizers(self):
         """Test that nightly builds work correctly with multiple sanitizers."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True, nightly=True),
+            filter_criteria=FilterCriteria(full=True),
             build_variants=[
                 BuildVariant.NORMAL,
                 BuildVariant.TSAN,
@@ -242,7 +242,7 @@ class TestBuildVariantWorkflows:
     def test_cppcheck_only_in_non_sanitizer_x64_workflow(self):
         """Test that cppcheck job only appears in non-sanitizer x64 workflow."""
         config = GeneratorConfig(
-            filter_criteria=FilterCriteria(all_tests=True),
+            filter_criteria=FilterCriteria(full=True),
             build_variants=[
                 BuildVariant.NORMAL,
                 BuildVariant.TSAN,
@@ -257,7 +257,7 @@ class TestBuildVariantWorkflows:
 
         # Check non-sanitizer x64 workflow has cppcheck
         x64_pr_cppcheck = [
-            j for j in workflows["x64-pr"]["jobs"] if "run-cppcheck" in j
+            j for j in workflows["x64-nightly"]["jobs"] if "run-cppcheck" in j
         ]
         assert (
             len(x64_pr_cppcheck) == 1
@@ -265,13 +265,13 @@ class TestBuildVariantWorkflows:
 
         # Check TSAN x64 workflow does NOT have cppcheck
         x64_tsan_cppcheck = [
-            j for j in workflows["x64-pr-tsan"]["jobs"] if "run-cppcheck" in j
+            j for j in workflows["x64-nightly-tsan"]["jobs"] if "run-cppcheck" in j
         ]
         assert len(x64_tsan_cppcheck) == 0, "TSAN x64 workflow should NOT have cppcheck"
 
         # Check aarch64 workflows do NOT have cppcheck
         aarch64_pr_cppcheck = [
-            j for j in workflows["aarch64-pr"]["jobs"] if "run-cppcheck" in j
+            j for j in workflows["aarch64-nightly"]["jobs"] if "run-cppcheck" in j
         ]
         assert (
             len(aarch64_pr_cppcheck) == 0
