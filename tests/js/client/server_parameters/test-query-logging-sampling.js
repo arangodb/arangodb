@@ -28,7 +28,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const request = require("@arangodb/request");
+const arangosh = require('@arangodb/arangosh');
 const internal = require('internal');
 const errors = internal.errors;
 
@@ -45,28 +45,23 @@ if (getOptions === true) {
   };
 }
 
-const baseUrl = function (dbName = '_system') {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
-};
-  
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
-    let result = request.post({
-      url: baseUrl() + "/_api/cursor",
-      body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
-      json: true,
-    });
-
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    if (!body.error) {
-      return;
+    let result = arango.POST(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
+    );
+    try {
+      arangosh.checkRequestResult(result);
+    } catch (ex) {
+      if (ex.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+        throw ex;
+      }
+      internal.sleep(0.25);
+      continue;
     }
-    if (body.code !== 404 || body.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
-      throw body;
-    }
-    internal.sleep(0.25);
+    return;
   }
   assertFalse(true, "_queries collection did not appear in time");
 };
@@ -79,30 +74,25 @@ function QueryLoggerSuite() {
   };
   
   const clearQueries = () => {
-    let result = request.put({
-      url: baseUrl() + "/_api/collection/_queries/truncate",
-      body: {},
-      json: true,
-    });
-    
-    assertInstanceOf(request.Response, result);
-    if (result.statusCode !== 404) {
-      assertEqual(200, result.statusCode);
+    let result = arango.PUT_RAW(
+      "/_api/collection/_queries/truncate",
+      {},
+    );
+    if (result.code !== 404) {
+      assertEqual(200, result.code, result);
     }
   };
   
   const getQueries = () => {
-    let result = request.post({
-      url: baseUrl() + "/_api/cursor",
-      body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-      json: true,
-    });
-
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    assertEqual(201, result.statusCode);
-    assertTrue(Array.isArray(body.result));
-    return body.result;
+    print({query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}})
+    let result = arango.POST(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+    );
+    arangosh.checkRequestResult(result);
+    assertEqual(201, result.code);
+    assertTrue(Array.isArray(result.result), result);
+    return result.result;
   };
       
   const checkForQuery = (values) => {
@@ -147,7 +137,7 @@ function QueryLoggerSuite() {
       let results = checkForQuery({
         query, 
         database: "_system", 
-        user: "root", 
+        user: "",
         state: "finished",
         modificationQuery: false, 
         stream: false,
