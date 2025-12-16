@@ -103,7 +103,7 @@ class runInPythonTest extends runWithAllureReport {
       '--host', '127.0.0.1',
       '--port', `${this.instanceManager.endpointPort}`,
       '--alluredir', testResultsDir,
-      '--foxx-source', fs.join(this.options.pythonsource, '/tests/static'),
+      // TODO: '--foxx-app-source', fs.join(this.options.pythonsource, '/tests/static'),
     ];
 
     let testSkipList = [];
