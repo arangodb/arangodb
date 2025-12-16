@@ -305,10 +305,19 @@ class MockGraphProvider {
   using CursorId = size_t;
   auto addExpansionIterator(CursorId id, Step const& from,
                             std::function<void()> const& callback) -> void {
+    _startedIterators.emplace(id);
+    callback();
     return;
   }
   auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
                          std::function<void(Step)> const& callback) -> bool {
+    // expand everything and remove step from _startedIterators
+    auto iterator = _startedIterators.find(id);
+    if (iterator == _startedIterators.end()) {
+      return false;
+    }
+    expand(step, previous, callback);
+    _startedIterators.erase(iterator);
     return true;
   }
   auto clear() -> void;
@@ -359,6 +368,7 @@ class MockGraphProvider {
   arangodb::aql::TraversalStats _stats;
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+  std::unordered_set<CursorId> _startedIterators;
 };
 }  // namespace graph
 }  // namespace tests
