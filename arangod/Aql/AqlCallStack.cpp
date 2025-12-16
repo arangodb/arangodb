@@ -189,6 +189,9 @@ auto AqlCallStack::shadowRowDepthToSkip() const -> std::optional<size_t> {
 
   for (size_t i = 0; i < n; ++i) {
     auto& call = _operations[i];
+    if (!call.hasMoreCalls()) {
+      return std::nullopt;
+    }
     auto const& nextCall = call.peekNextCall();
     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return n - i - 1;

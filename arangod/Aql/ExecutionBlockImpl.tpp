@@ -1178,6 +1178,7 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
+// NOTE that this function is going to become obsolete
 template<class Executor>
 template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
@@ -1524,9 +1525,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     // Done with this query
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
-    /// NOTE: We do not need popDepthsLowerThan here, as we already
-    /// have a new DataRow from upstream, so the upstream
-    /// block has decided it is correct to continue.
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
