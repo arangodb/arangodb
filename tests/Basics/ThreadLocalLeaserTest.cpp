@@ -42,9 +42,7 @@ TEST_F(ThreadLocalLeaserTest, testLeaseAccess) {
     ASSERT_EQ(&a, builder);
   }
 
-  {
-    ASSERT_EQ(lease->isEmpty(), true);
-  }
+  { ASSERT_EQ(lease->isEmpty(), true); }
 }
 
 TEST_F(ThreadLocalLeaserTest, testBuilderIsLeasable) {
@@ -62,9 +60,7 @@ TEST_F(ThreadLocalLeaserTest, testLeasedBuilderIsUsable) {
 }
 
 TEST_F(ThreadLocalLeaserTest, testLeasingAndReturningIncreasesStashSize) {
-  {
-    auto b = ThreadLocalBuilderLeaser::lease();
-  }
+  { auto b = ThreadLocalBuilderLeaser::lease(); }
   ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 1);
 }
 
@@ -129,78 +125,22 @@ TEST_F(ThreadLocalLeaserTest, testLeaseMovedBetweenThreads) {
   ASSERT_NE(b.get(), nullptr);
   auto* builder = b.get();
 
-  {
-    auto c = std::move(b);
-    ASSERT_NE(c.get(), nullptr);
-  }
-
-  auto d = ThreadLocalBuilderLeaser::lease();
-  ASSERT_EQ(d.get(), builder);
-});
-threads.joinAll();
-ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 0);
-}
-
-TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
-  auto lease_ptrs = std::vector<velocypack::Builder*>{};
-  lease_ptrs.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
-  {
-    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
-    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
-    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
-         ++i) {
-      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      lease_ptrs.emplace_back(it.get());
+  auto threads = ThreadGuard(1);
+  threads.emplace([&]() {
+    auto n = ThreadLocalBuilderLeaser::stashSize();
+    ASSERT_EQ(n, 0);
+    {
+      auto c = std::move(b);
+      ASSERT_NE(c.get(), nullptr);
     }
+    // Now c is dropped and should end up in this thread's stash
 
-    // enforce defined order of leases being freed
-    while (!leases.empty()) {
-      leases.pop_back();
-    }
-  }
-  ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
-            ThreadLocalBuilderLeaser::stashSize());
+    auto d = ThreadLocalBuilderLeaser::lease();
+    ASSERT_EQ(d.get(), builder);
+  });
 
-  {
-    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
-    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
-    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
-         ++i) {
-      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      ASSERT_EQ(it.get(), lease_ptrs.at(i));
-    }
-  }
-}
-
-TEST_F(ThreadLocalLeaserTest, testStashExhaustion) {
-  auto lease_ptrs = std::vector<velocypack::Builder*>{};
-  lease_ptrs.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread + 1);
-  {
-    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
-    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread + 1);
-    for (auto i = size_t{0};
-         i < ThreadLocalBuilderLeaser::maxStashedPerThread + 1; ++i) {
-      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      lease_ptrs.emplace_back(it.get());
-    }
-
-    // enforce defined order of leases being freed
-    while (!leases.empty()) {
-      leases.pop_back();
-    }
-  }
-  ASSERT_EQ(ThreadLocalBuilderLeaser::maxStashedPerThread,
-            ThreadLocalBuilderLeaser::stashSize());
-
-  {
-    auto leases = std::vector<ThreadLocalBuilderLeaser::Lease>{};
-    leases.reserve(ThreadLocalBuilderLeaser::maxStashedPerThread);
-    for (auto i = size_t{0}; i < ThreadLocalBuilderLeaser::maxStashedPerThread;
-         ++i) {
-      auto& it = leases.emplace_back(ThreadLocalBuilderLeaser::lease());
-      ASSERT_EQ(it.get(), lease_ptrs.at(i + 1));
-    }
-  }
+  threads.joinAll();
+  ASSERT_EQ(ThreadLocalBuilderLeaser::stashSize(), 0);
 }
 
 TEST_F(ThreadLocalLeaserTest, testStashIsLiFo) {
