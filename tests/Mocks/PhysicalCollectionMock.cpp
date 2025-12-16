@@ -388,7 +388,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
     handleValNode(keys.get(), valNode);
@@ -413,7 +413,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
 
     size_t const n = valNode->numMembers();
@@ -823,7 +823,7 @@ class HashIndexMock final : public arangodb::Index {
       arangodb::IndexIteratorOptions const&, arangodb::ReadOwnWrites,
       int) override {
     arangodb::transaction::BuilderLeaser builder(trx);
-    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    std::unique_ptr<VPackBuilder> keys(builder.release());
     keys->openArray();
     if (nullptr == node) {
       keys->close();

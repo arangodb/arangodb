@@ -26,6 +26,7 @@
 #include <string_view>
 #include "Basics/AttributeNameParser.h"
 #include "Basics/ResultT.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -148,25 +149,23 @@ class StringLeaser {
  public:
   explicit StringLeaser(Methods*);
   explicit StringLeaser(Context*);
-  ~StringLeaser();
 
-  auto release() {
-    return std::unique_ptr<std::string>{std::exchange(_string, nullptr)};
-  }
-  void acquire(std::unique_ptr<std::string> r) {
-    TRI_ASSERT(_string == nullptr);
-    _string = r.release();
+  auto release() { return _lease.release(); }
+  void acquire(std::unique_ptr<std::string>&& r) {
+    _lease.acquire(std::move(r));
   }
 
-  std::string* string() const { return _string; }
-  std::string* operator->() const { return _string; }
-  std::string& operator*() { return *_string; }
-  std::string const& operator*() const { return *_string; }
-  std::string* get() const { return _string; }
+  std::string const* string() const { return get(); }
+  std::string* operator->() { return get(); }
+  std::string const* operator->() const { return get(); }
+  std::string& operator*() { return *get(); }
+  std::string const& operator*() const { return *get(); }
+
+  std::string* get() { return _lease.get(); }
+  std::string const* get() const { return _lease.get(); }
 
  private:
-  Context* _transactionContext;
-  std::string* _string;
+  ThreadLocalStringLeaser::Lease _lease;
 };
 
 class BuilderLeaser {
@@ -178,24 +177,22 @@ class BuilderLeaser {
   BuilderLeaser& operator=(BuilderLeaser const&) = delete;
   BuilderLeaser& operator=(BuilderLeaser&&) = delete;
 
-  BuilderLeaser(BuilderLeaser&& source)
-      : _transactionContext(source._transactionContext),
-        _builder(source.steal()) {}
+  BuilderLeaser(BuilderLeaser&& source) = default;
 
-  ~BuilderLeaser();
+  velocypack::Builder* builder() noexcept { return get(); }
+  velocypack::Builder const* builder() const noexcept { return get(); }
+  velocypack::Builder* operator->() noexcept { return get(); }
+  velocypack::Builder const* operator->() const noexcept { return get(); }
+  velocypack::Builder& operator*() noexcept { return *get(); }
+  velocypack::Builder const& operator*() const noexcept { return *get(); }
 
-  velocypack::Builder* builder() const noexcept { return _builder; }
-  velocypack::Builder* operator->() const noexcept { return _builder; }
-  velocypack::Builder& operator*() noexcept { return *_builder; }
-  velocypack::Builder& operator*() const noexcept { return *_builder; }
-  velocypack::Builder* get() const noexcept { return _builder; }
-  velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
+  velocypack::Builder* get() noexcept { return _lease.get(); }
+  velocypack::Builder const* get() const noexcept { return _lease.get(); }
 
-  void clear();
+  auto release() { return _lease.release(); }
 
  private:
-  Context* _transactionContext;
-  velocypack::Builder* _builder;
+  ThreadLocalBuilderLeaser::Lease _lease;
 };
 
 ResultT<transaction::BuilderLeaser> extractAttributeValues(

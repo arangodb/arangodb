@@ -780,7 +780,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
             _operationType, this->_methods.username());
         // Return the builder now, so it doesn't happen too late when the
         // context might already be gone.
-        _replicationData.clear();
         return std::move(fut).thenValue(
             [options = this->_options, errs = std::move(errorCounter),
              resultData = std::move(resDocs)](Result&& res) mutable {
