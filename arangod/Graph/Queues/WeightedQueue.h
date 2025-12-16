@@ -81,7 +81,7 @@ class WeightedQueue {
     for (auto& s : startSteps) {
       // Just resort on insert.
       // This is proven to be correct, but may not be the fastest possible way.
-      append({std::move(s)});
+      append(std::move(s));
     }
   }
 

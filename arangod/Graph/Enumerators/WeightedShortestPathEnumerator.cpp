@@ -75,7 +75,7 @@ void WeightedShortestPathEnumerator<ProviderType>::Ball::reset(VertexRef center,
   clear();
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
-  _queue.append({std::move(firstStep)});
+  _queue.append(std::move(firstStep));
   _queued = 1;
   _expanded = 0;
   _foundVertices.emplace(center, VertexInfo(0.0));
@@ -263,7 +263,7 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
         // If the other side has already expanded the vertex, we do not
         // have to put it on our queue. But if not, we must look at it
         // later:
-        _queue.append({std::move(n)});
+        _queue.append(std::move(n));
         _queued++;
         reachedIt->second.cancelled = false;  // Make sure we expand the vertex
       } else if (weightReduced) {

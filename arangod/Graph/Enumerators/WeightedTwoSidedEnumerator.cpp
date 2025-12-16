@@ -72,7 +72,7 @@ void WeightedTwoSidedEnumerator<ProviderType>::Ball::reset(VertexRef center,
   clear();
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
-  _queue.append({std::move(firstStep)});
+  _queue.append(std::move(firstStep));
 }
 
 template<class ProviderType>
@@ -262,7 +262,7 @@ auto WeightedTwoSidedEnumerator<ProviderType>::Ball::
         // If the other side has already visited the vertex, we do not
         // have to put it on our queue. But if not, we must look at it
         // later:
-        _queue.append({std::move(n)});
+        _queue.append(std::move(n));
       }
     });
   }

@@ -51,20 +51,15 @@ class BatchedLifoQueue {
 
   void clear() {
     if (!_queue.empty()) {
-      // TODO
-      for (auto const& item : _queue) {
-        if (std::holds_alternative<Step>(item)) {
-          _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-        } else {
-          _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
-        }
-      }
+      _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>) *
+                                           _queue.size());
       _queue.clear();
     }
   }
 
   void append(Step step) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
+    arangodb::ResourceUsageScope guard(_resourceMonitor,
+                                       sizeof(QueueEntry<Step>));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_front({std::move(step)});
@@ -72,7 +67,8 @@ class BatchedLifoQueue {
   }
 
   void append(Expansion expansion) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
+    arangodb::ResourceUsageScope guard(_resourceMonitor,
+                                       sizeof(QueueEntry<Step>));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_front({std::move(expansion)});
@@ -80,8 +76,8 @@ class BatchedLifoQueue {
   }
 
   void setStartContent(std::vector<Step> startSteps) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor,
-                                       sizeof(Step) * startSteps.size());
+    arangodb::ResourceUsageScope guard(
+        _resourceMonitor, sizeof(QueueEntry<Step>) * startSteps.size());
     TRI_ASSERT(_queue.empty());
     for (auto& s : startSteps) {
       // For LIFO just append to the back,
@@ -148,11 +144,7 @@ class BatchedLifoQueue {
         << (std::holds_alternative<Step>(first)
                 ? std::get<Step>(first).toString()
                 : "next batch");
-    if (std::holds_alternative<Step>(first)) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-    } else {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
-    }
+    _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>));
     _queue.pop_front();
     return first;
   }

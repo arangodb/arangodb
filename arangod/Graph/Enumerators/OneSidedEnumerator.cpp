@@ -171,11 +171,11 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      // currently batching only works with cluster case
+      // currently batching only works with single server case
       if (_queue.isBatched() && ServerState::instance()->isSingleServer()) {
         auto cursorId = _nextCursorId++;
         _provider.addExpansionIterator(cursorId, step, [&]() -> void {
-          _queue.append({Expansion{cursorId, posPrevious}});
+          _queue.append(Expansion{cursorId, posPrevious});
         });
       } else {
         if (!step.edgeFetched()) {
@@ -186,7 +186,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
           std::vector<Step*> stepsToFetch{&step};
           _queue.getStepsWithoutFetchedEdges(stepsToFetch);
           TRI_ASSERT(!stepsToFetch.empty());
-          _provider.fetchEdges(stepsToFetch);  // TODO
+          _provider.fetchEdges(stepsToFetch);
           TRI_ASSERT(step.edgeFetched());
         }
         _provider.expand(step, posPrevious,
@@ -232,7 +232,7 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
                                               bool keepPathStore) {
   clear(keepPathStore);
   auto firstStep = _provider.startVertex(source, depth, weight);
-  _queue.append({std::move(firstStep)});
+  _queue.append(std::move(firstStep));
 }
 
 template<class Configuration>

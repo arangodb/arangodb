@@ -157,7 +157,6 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
-  // TODO rename to something else than stack
   std::unordered_map<CursorId, SingleServerNeighbourProvider<Step>>
       _neighboursStack;
   aql::Ast* _ast = nullptr;  // ast from TraversalExecutor

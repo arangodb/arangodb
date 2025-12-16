@@ -86,17 +86,17 @@ TEST_F(WeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
 TEST_F(WeightedQueueTest, it_should_contain_element_after_insertion) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
   auto step = Step{1, 1, false};
-  queue.append({step});
+  queue.append(step);
   ASSERT_EQ(queue.size(), 1U);
   ASSERT_FALSE(queue.isEmpty());
 }
 
 TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
-  queue.append({Step{1, 1, false}});
-  queue.append({Step{2, 4, false}});
-  queue.append({Step{3, 2, false}});
-  queue.append({Step{4, 3, true}});
+  queue.append(Step{1, 1, false});
+  queue.append(Step{2, 4, false});
+  queue.append(Step{3, 2, false});
+  queue.append(Step{4, 3, true});
   ASSERT_EQ(queue.size(), 4U);
   queue.clear();
   ASSERT_TRUE(queue.isEmpty());
@@ -104,20 +104,20 @@ TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
 
 TEST_F(WeightedQueueTest, it_should_contain_processable_elements) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
-  queue.append({Step{1, 5, false}});
-  queue.append({Step{2, 1, false}});
-  queue.append({Step{3, 2, true}});
-  queue.append({Step{4, 1.6, false}});
+  queue.append(Step{1, 5, false});
+  queue.append(Step{2, 1, false});
+  queue.append(Step{3, 2, true});
+  queue.append(Step{4, 1.6, false});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
 TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
-  queue.append({Step{1, 4, true}});
-  queue.append({Step{2, 1.6, true}});
-  queue.append({Step{3, 1.2, true}});
-  queue.append({Step{4, 1.5, true}});
+  queue.append(Step{1, 4, true});
+  queue.append(Step{2, 1.6, true});
+  queue.append(Step{3, 1.2, true});
+  queue.append(Step{4, 1.5, true});
 
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
@@ -127,10 +127,10 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   // 2 and 3 have identical and smallest weight.
   // 3 is processable, 2 not.
   auto queue = WeightedQueue<Step>(_resourceMonitor);
-  queue.append({Step{1, 8, true}});
-  queue.append({Step{2, 2, true}});
-  queue.append({Step{3, 2, false}});
-  queue.append({Step{4, 6, false}});
+  queue.append(Step{1, 8, true});
+  queue.append(Step{2, 2, true});
+  queue.append(Step{3, 2, false});
+  queue.append(Step{4, 6, false});
   EXPECT_EQ(queue.size(), 4U);
   EXPECT_TRUE(queue.hasProcessableElement());
   auto s = queue.pop();
@@ -176,7 +176,7 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     std::sort(input.begin(), input.end(), o);
     auto queue = WeightedQueue<Step>(_resourceMonitor);
     for (auto s : input) {
-      queue.append({s});
+      queue.append(s);
     }
     // We start with all inputs injected.
     EXPECT_EQ(queue.size(), input.size());
@@ -201,10 +201,10 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
 
 TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
-  queue.append({Step{2, 1.5, true}});
-  queue.append({Step{3, 5, true}});
-  queue.append({Step{1, 1, true}});
-  queue.append({Step{4, 6, true}});
+  queue.append(Step{2, 1.5, true});
+  queue.append(Step{3, 5, true});
+  queue.append(Step{1, 1, true});
+  queue.append(Step{4, 6, true});
   EXPECT_EQ(queue.size(), 4U);
   EXPECT_FALSE(queue.hasProcessableElement());
 
@@ -265,8 +265,8 @@ TEST_F(WeightedQueueTest,
     ASSERT_TRUE(std::holds_alternative<Step>(step));
     ASSERT_EQ(std::get<Step>(step).id(), id);
     id++;
-    queue.append({Step{8, 8, false}});
-    queue.append({Step{4, 4, false}});
+    queue.append(Step{8, 8, false});
+    queue.append(Step{4, 4, false});
   }
   {
     // Pop Second entry, add two more new ones
@@ -274,8 +274,8 @@ TEST_F(WeightedQueueTest,
     ASSERT_TRUE(std::holds_alternative<Step>(step));
     ASSERT_EQ(std ::get<Step>(step).id(), id);
     id++;
-    queue.append({Step{5, 5, false}});
-    queue.append({Step{3, 3, false}});
+    queue.append(Step{5, 5, false});
+    queue.append(Step{3, 3, false});
   }
   // Ids are increasing in order of FIFO sorting.
   // so lets now pull everything from queue in expected order
