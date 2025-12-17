@@ -1324,23 +1324,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     -> ExecState {
-  auto const writeShadowRow =
-      [](AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
-         ShadowAqlItemRow& shadowRow) {
-        auto shadowDepth = shadowRow.getDepth();
-        auto& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-        _outputItemRow->moveRow(shadowRow);
-        shadowCall.didProduce(1);
-        TRI_ASSERT(_outputItemRow->produced());
-        _outputItemRow->advanceRow();
-
-        // TODO Why? This comes from countShadowRowProduced
-        if (!shadowRow.isRelevant()) {
-          std::ignore =
-              stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
-        }
-      };
-
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     return shadowRowForwardingSubqueryStart(stack);
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
@@ -1384,15 +1367,31 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     fetcher().resetDidReturnSubquerySkips(shadowDepth);
   }
 
-  auto depthSkippingNow = stack.shadowRowDepthToSkip();
-  if (depthSkippingNow.has_value()) {
-    if constexpr (executorHasSideEffects<Executor>) {
-      AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-      // sideeffect forwarding
+  // TODO: make member/function in namespace {}
+  auto writeShadowRow = [](AqlCallStack& stack,
+                           std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                           ShadowAqlItemRow& shadowRow) {
+    auto shadowDepth = shadowRow.getDepth();
+    auto& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+    _outputItemRow->moveRow(shadowRow);
+    shadowCall.didProduce(1);
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+
+    // TODO Why? This comes from countShadowRowProduced
+    if (!shadowRow.isRelevant()) {
+      std::ignore = stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
+    }
+  };
+
+  if constexpr (executorHasSideEffects<Executor>) {
+    auto depthSkippingNow = stack.shadowRowDepthToSkip();
+    if (depthSkippingNow.has_value()) {
       if (depthSkippingNow > shadowDepth) {
         // We are skipping the outermost Subquery.
         // Simply drop this ShadowRow
       } else if (depthSkippingNow == shadowDepth) {
+        AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
         // We are skipping on this subquery level.
         // Skip the row, but report skipped 1.
         if (shadowCall.needSkipMore()) {
@@ -1409,15 +1408,13 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
         }
       } else /* depthSkippingNow < shadowDepth */ {
         // We got a shadowRow of a subquery we are not skipping here.
-        // Do proper reporting on it's call.
+        // Do proper reporting on its call.
         writeShadowRow(stack, _outputItemRow, shadowRow);
       }
     } else {
-      // this is the "original" shadowrow forwarding code
       writeShadowRow(stack, _outputItemRow, shadowRow);
     }
   } else {
-    // this is the "original" shadowrow forwarding code
     writeShadowRow(stack, _outputItemRow, shadowRow);
   }
 
