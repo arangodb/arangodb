@@ -158,7 +158,7 @@ class SingleServerProvider {
 
   SingleServerNeighbourProvider<Step> _neighbours;
   std::unordered_map<CursorId, SingleServerNeighbourProvider<Step>>
-      _neighboursStack;
+      _neighbourCursors;
   aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph
