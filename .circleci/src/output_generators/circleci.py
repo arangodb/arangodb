@@ -304,12 +304,14 @@ class CircleCIGenerator(OutputGenerator):
         build_jobs: List[str],
     ) -> None:
         """Add all test jobs to workflow."""
-        # Filter jobs based on workflow's architecture
+        # Filter jobs based on workflow's architecture and build variant
         from dataclasses import replace
         from ..filters import should_include_job
 
         criteria = replace(
-            self.config.filter_criteria, architecture=build_config.architecture
+            self.config.filter_criteria,
+            architecture=build_config.architecture,
+            build_variant=build_config.build_variant,
         )
 
         for job in jobs:
