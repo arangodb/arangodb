@@ -9,6 +9,8 @@ tests:
     options:
       priority: 500
       type: single
+    requires:
+      instrumented: false
     args:
       extremeVerbosity: true
       tinkerpopGraphType: simple
@@ -18,6 +20,8 @@ tests:
       priority: 500
       type: cluster
       timeLimit: 19200
+    requires:
+      instrumented: false
     args:
       extremeVerbosity: true
       tinkerpopGraphType: simple
@@ -30,6 +34,8 @@ tests:
       size: medium
       suffix: complex
       timeLimit: 19200
+    requires:
+      instrumented: false
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
@@ -41,6 +47,8 @@ tests:
       size: large
       suffix: complex
       timeLimit: 19200
+    requires:
+      instrumented: false
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
