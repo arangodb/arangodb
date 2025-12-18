@@ -23,8 +23,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 const jsunity = require("jsunity");
 const internal = require("internal");
-const errors = internal.errors;
 const db = require("@arangodb").db;
+let { versionHas } = require('@arangodb/test-helper');
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 
 const colNameA = "UnitTestVertexCollectionA";
 const colNameB = "UnitTestEdgeCollectionB";
@@ -96,7 +97,8 @@ function asyncPrefetchReuseTestSuite() {
       // Running the above query in a loop previously lead to random errors and crashes
       // due to the reuse of the leased Builders and Strings in the transaction
       // context. This test should tickle TSAN if such a problem persists.
-      for(let i=1; i < 100; i++) {
+      let num_runs = isInstr ? 10 : 50;
+      for (let i = 1; i < num_runs; i++) {
         db._query(q, binds);
       }
     },
