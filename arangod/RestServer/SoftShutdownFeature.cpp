@@ -27,6 +27,7 @@
 #include "Logger/LoggerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Manager.h"
@@ -187,7 +188,7 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
 
   // Get number of ongoing and queued requests from scheduler:
   std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =
-      SchedulerFeature::SCHEDULER->getNumberLowPrioOngoingAndQueued();
+      SchedulerFeature::ACCEPTANCE_QUEUE->getNumberLowPrioOngoingAndQueued();
 
   return status;
 }

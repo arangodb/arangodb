@@ -26,13 +26,12 @@
 #include "Basics/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Utils/ExecContext.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -127,7 +126,7 @@ RestStatus RestTestHandler::execute() {
   }
 
   auto self(shared_from_this());
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+  bool ok = SchedulerFeature::ACCEPTANCE_QUEUE->tryBoundedQueue(
       res.get(), [this, self, duration]() {
         auto stop = clock::now() + duration;
 

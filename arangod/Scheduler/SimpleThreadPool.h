@@ -46,6 +46,8 @@ struct SimpleThreadPool {
 
       static_assert(std::is_nothrow_invocable_r_v<void, F>);
       void invoke() noexcept override { std::forward<F>(_func)(); }
+      bool queued() override { return true; }
+      bool dequeued() override { return true; }
     };
 
     // Note: push is noexcept, so any bad_alloc exception from make_unique will

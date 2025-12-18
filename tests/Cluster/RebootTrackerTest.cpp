@@ -34,6 +34,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/AcceptanceQueue/LowPrioAntiOverwhelm.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -136,15 +137,16 @@ class RebootTrackerTest
     : public ::testing::Test,
       public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
  protected:
-  RebootTrackerTest()
-      : mockApplicationServer(),
-        scheduler(std::make_unique<SupervisedScheduler>(
-            mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
-            128, 0.0,
-            std::make_shared<SchedulerMetrics>(
-                mockApplicationServer.server()
-                    .template getFeature<
-                        arangodb::metrics::MetricsFeature>()))) {}
+  RebootTrackerTest() : mockApplicationServer() {
+    auto metrics = std::make_shared<SchedulerMetrics>(
+        mockApplicationServer.server()
+            .template getFeature<arangodb::metrics::MetricsFeature>());
+    auto antiOverwhelm = std::make_shared<LowPrioAntiOverwhelm>(
+        mockApplicationServer.server(), 128, metrics);
+    scheduler = std::make_unique<SupervisedScheduler>(
+        mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
+        metrics, antiOverwhelm);
+  }
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;

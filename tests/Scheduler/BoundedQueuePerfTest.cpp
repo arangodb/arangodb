@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,19 +30,20 @@
 #include <thread>
 
 #include "GeneralServer/RequestLane.h"
-#include "Scheduler/LockfreeThreadPool.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
-#include "Scheduler/WorkStealingThreadPool.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueueImpl.h"
 #include "Mocks/Servers.h"
 #include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 
-struct SupervisedSchedulerPool {
+struct AcceptanceQueueFast {
   static constexpr auto limit = 1024 * 64;
 
-  explicit SupervisedSchedulerPool(
-      tests::mocks::MockRestServer& mockApplicationServer, unsigned numThreads)
+  explicit AcceptanceQueueFast(
+      tests::mocks::MockRestServer& mockApplicationServer,
+      unsigned const numThreads)
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
             mockApplicationServer.server(),
             LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
@@ -55,13 +56,68 @@ struct SupervisedSchedulerPool {
         antiOverwhelm(std::make_shared<LowPrioAntiOverwhelm>(
             mockApplicationServer.server(), limit, schedulerMetrics)),
         scheduler(mockApplicationServer.server(), numThreads, numThreads, limit,
-                  limit, limit, limit, schedulerMetrics, antiOverwhelm) {
+                  limit, limit, limit, schedulerMetrics, antiOverwhelm),
+        acceptanceQueue(limit, limit, limit, limit, 0.0, &scheduler,
+                        schedulerMetrics, antiOverwhelm) {
     scheduler.start();
+    acceptanceQueue.start();
+    // SchedulerFeature::ACCEPTANCE_QUEUE = &acceptanceQueue;
   }
 
-  ~SupervisedSchedulerPool() { scheduler.shutdown(); }
+  ~AcceptanceQueueFast() { shutdown(); }
 
-  void shutdown() { scheduler.shutdown(); }
+  void shutdown() {
+    scheduler.shutdown();
+    acceptanceQueue.shutdown();
+  }
+  // we create multiple schedulers, so each one needs its own metrics feature to
+  // register its metrics
+  std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
+  std::shared_ptr<SchedulerMetrics> schedulerMetrics;
+  std::shared_ptr<LowPrioAntiOverwhelm> antiOverwhelm;
+  SupervisedScheduler scheduler;
+  AcceptanceQueueImpl acceptanceQueue;
+
+  template<std::invocable Fn>
+  void push(Fn&& fn) {
+    auto const wasQueued = acceptanceQueue.tryBoundedQueue(
+        RequestLane::CLIENT_FAST, std::forward<Fn>(fn));
+    GTEST_ASSERT_TRUE(wasQueued);
+  }
+};
+
+struct AcceptanceQueueSlow {
+  static constexpr auto limit = 1024 * 64;
+
+  explicit AcceptanceQueueSlow(
+      tests::mocks::MockRestServer& mockApplicationServer,
+      unsigned const numThreads)
+      : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
+            mockApplicationServer.server(),
+            LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+            LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+            LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+            LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+                nullptr),
+            LazyApplicationFeatureReference<ClusterFeature>(nullptr))),
+        schedulerMetrics(std::make_shared<SchedulerMetrics>(*metricsFeature)),
+        antiOverwhelm(std::make_shared<LowPrioAntiOverwhelm>(
+            mockApplicationServer.server(), limit, schedulerMetrics)),
+        scheduler(mockApplicationServer.server(), numThreads, numThreads, limit,
+                  limit, limit, limit, schedulerMetrics, antiOverwhelm),
+        acceptanceQueue(limit, limit, limit, limit, 0.0, &scheduler,
+                        schedulerMetrics, antiOverwhelm) {
+    scheduler.start();
+    acceptanceQueue.start();
+    // SchedulerFeature::ACCEPTANCE_QUEUE = &acceptanceQueue;
+  }
+
+  ~AcceptanceQueueSlow() { shutdown(); }
+
+  void shutdown() {
+    scheduler.shutdown();
+    acceptanceQueue.shutdown();
+  }
 
   // we create multiple schedulers, so each one needs its own metrics feature to
   // register its metrics
@@ -69,10 +125,13 @@ struct SupervisedSchedulerPool {
   std::shared_ptr<SchedulerMetrics> schedulerMetrics;
   std::shared_ptr<LowPrioAntiOverwhelm> antiOverwhelm;
   SupervisedScheduler scheduler;
+  AcceptanceQueueImpl acceptanceQueue;
 
   template<std::invocable Fn>
   void push(Fn&& fn) {
-    scheduler.queue(RequestLane::CLIENT_FAST, std::forward<Fn>(fn));
+    auto const wasQueued = acceptanceQueue.tryBoundedQueue(
+        RequestLane::CLIENT_SLOW, std::forward<Fn>(fn));
+    GTEST_ASSERT_TRUE(wasQueued);
   }
 };
 
@@ -84,25 +143,33 @@ struct PoolBuilder {
 };
 
 template<>
-struct PoolBuilder<SupervisedSchedulerPool> {
+struct PoolBuilder<AcceptanceQueueSlow> {
   tests::mocks::MockRestServer mockApplicationServer;
 
-  SupervisedSchedulerPool makePool(const char*, unsigned numThreads) {
-    return SupervisedSchedulerPool{mockApplicationServer, numThreads};
+  AcceptanceQueueSlow makePool(const char*, unsigned numThreads) {
+    return AcceptanceQueueSlow{mockApplicationServer, numThreads};
+  }
+};
+
+template<>
+struct PoolBuilder<AcceptanceQueueFast> {
+  tests::mocks::MockRestServer mockApplicationServer;
+
+  AcceptanceQueueFast makePool(const char*, unsigned numThreads) {
+    return AcceptanceQueueFast{mockApplicationServer, numThreads};
   }
 };
 
 template<typename Pool>
-class ThreadPoolPerfTest : public testing::Test {
+class BoundedSchedulerPerfTest : public testing::Test {
   void SetUp() override {
     arangodb::Logger::CLUSTER.setLogLevel(LogLevel::ERR);
     arangodb::Logger::THREADS.setLogLevel(LogLevel::ERR);
   }
 };
 
-using PoolTypes = ::testing::Types<LockfreeThreadPool, WorkStealingThreadPool,
-                                   SupervisedSchedulerPool>;
-TYPED_TEST_SUITE(ThreadPoolPerfTest, PoolTypes);
+using PoolTypes = ::testing::Types<AcceptanceQueueSlow, AcceptanceQueueFast>;
+TYPED_TEST_SUITE(BoundedSchedulerPerfTest, PoolTypes);
 
 namespace {
 template<typename Pool>
@@ -146,47 +213,6 @@ callable<Pool> createLambda(std::atomic<std::uint64_t>& cnt, Pool& pool, int x,
 }
 }  // namespace
 
-template<typename Pool>
-void spawnWorkTest(unsigned numThreads) {
-  std::atomic<bool> stop = false;
-  std::atomic<std::uint64_t> counter = 0;
-
-  std::uint64_t durationMs = 0;
-  {
-    PoolBuilder<Pool> poolBuilder;
-    auto pool = poolBuilder.makePool("pool", numThreads);
-
-    auto start = std::chrono::steady_clock::now();
-    pool.push(createLambda(counter, pool, 0, stop));
-
-    std::this_thread::sleep_for(std::chrono::seconds{5});
-    stop.store(true);
-    durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                     std::chrono::steady_clock::now() - start)
-                     .count();
-
-    // wait a bit so we don't run into an assertion in the SupervisedScheduler
-    // that we tried to queue an item after the SchedulerFeature was stopped
-    std::this_thread::sleep_for(std::chrono::milliseconds{100});
-  }
-  auto numOps = counter.load();
-  std::cout << std::setw(2) << numThreads << " threads: " << std::setw(5)
-            << numOps / durationMs << " ops/ms\n";
-}
-
-TYPED_TEST(ThreadPoolPerfTest, spawn_work) {
-  if constexpr (std::same_as<TypeParam, SupervisedSchedulerPool>) {
-    // the SupervisedScheduler needs at least 4 threads, otherwise it will
-    // assert
-    std::cout << "Skipping test for SupervisedSchedulerPool\n";
-  } else {
-    spawnWorkTest<TypeParam>(1);
-  }
-  spawnWorkTest<TypeParam>(5);
-  spawnWorkTest<TypeParam>(11);
-  spawnWorkTest<TypeParam>(19);
-}
-
 enum class WorkSimulation { None, Deterministic, Random };
 
 template<typename Pool>
@@ -208,7 +234,8 @@ struct PingPong {
         static constexpr unsigned randomWorkLimit = 2 << 14;
         unsigned workLimit = work == WorkSimulation::Deterministic
                                  ? deterministicWorkLimit
-                                 : std::mt19937_64{ping + id * 123456789}() &
+                                 : std::mt19937_64{static_cast<unsigned long>(
+                                       ping + id * 123456789)}() &
                                        (randomWorkLimit - 1);
         while (++i < workLimit) {
           // not doing the stop check in every iteration is especially important
@@ -252,21 +279,17 @@ std::size_t pingPongTest(unsigned numThreads, unsigned numBalls,
           PingPong<Pool>(&pool1, &pool2, i, 0, stopSignal, counter, work));
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds{2});
+    std::this_thread::sleep_for(std::chrono::seconds{6});
     stopSignal.store(true);
 
     durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                      std::chrono::steady_clock::now() - start)
                      .count();
 
-    if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
-      // wait a bit so we don't run into an assertion in the SupervisedScheduler
-      // that we tried to queue an item after the SchedulerFeature was stopped
-      std::this_thread::sleep_for(std::chrono::milliseconds{100});
-    }
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
 
-    // need to explicitly shutdown the pools, otherwise one pool might still try
-    // to push to a pool that is already being destroyed
+    // need to explicitly shut down the pools, otherwise one pool might still
+    // try to push to a pool that is already being destroyed
     pool2.shutdown();
     pool1.shutdown();
   }
@@ -275,9 +298,9 @@ std::size_t pingPongTest(unsigned numThreads, unsigned numBalls,
 }
 
 template<typename Pool>
-void runPingPong(WorkSimulation work) {
-  std::array<unsigned, 5> threads = {1, 5, 13, 41, 67};
-  std::array<unsigned, 7> balls = {1, 4, 8, 16, 64, 128, 256};
+void runPingPong(WorkSimulation const work) {
+  std::array<unsigned, 4> const threads = {5, 13, 41, 67};
+  std::array<unsigned, 7> const balls = {1, 4, 8, 16, 64, 128, 256};
 
   std::cout << "              ";
   for (auto b : balls) {
@@ -285,11 +308,6 @@ void runPingPong(WorkSimulation work) {
   }
   std::cout << "\n";
   for (auto t : threads) {
-    if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
-      // the SupervisedScheduler needs at least 4 threads, otherwise it will
-      // assert
-      continue;
-    }
     std::cout << std::setw(2) << t << " threads: " << std::flush;
     for (auto b : balls) {
       auto throughput = pingPongTest<Pool>(t, b, work);
@@ -299,14 +317,14 @@ void runPingPong(WorkSimulation work) {
   }
 }
 
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_no_work) {
+TYPED_TEST(BoundedSchedulerPerfTest, ping_pong_no_work) {
   runPingPong<TypeParam>(WorkSimulation::None);
 }
 
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_deterministic_work) {
+TYPED_TEST(BoundedSchedulerPerfTest, ping_pong_deterministic_work) {
   runPingPong<TypeParam>(WorkSimulation::Deterministic);
 }
 
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_random_work) {
+TYPED_TEST(BoundedSchedulerPerfTest, ping_pong_random_work) {
   runPingPong<TypeParam>(WorkSimulation::Random);
 }

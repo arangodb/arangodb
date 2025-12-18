@@ -202,11 +202,11 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 /// method
 Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
-             Scheduler* scheduler)
-    : Query(0, ctx, std::move(queryString), std::move(bindParameters),
-            std::move(options),
-            std::make_shared<SharedQueryState>(ctx->vocbase().server(),
-                                               scheduler)) {}
+             AcceptanceQueue* queue)
+    : Query(
+          0, ctx, std::move(queryString), std::move(bindParameters),
+          std::move(options),
+          std::make_shared<SharedQueryState>(ctx->vocbase().server(), queue)) {}
 
 Query::~Query() {
   TRI_ASSERT(!_isExecuting);
@@ -287,11 +287,11 @@ void Query::destroy() {
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
-    Scheduler* scheduler) {
+    AcceptanceQueue* queue) {
   AqlFeature& aqlFeature = ctx->vocbase().server().getFeature<AqlFeature>();
   return aqlFeature.createQuery(std::move(ctx), std::move(queryString),
                                 std::move(bindParameters), std::move(options),
-                                scheduler);
+                                queue);
 }
 
 /// @brief return the user that started the query

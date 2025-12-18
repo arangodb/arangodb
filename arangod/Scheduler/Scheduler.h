@@ -91,14 +91,6 @@ class Scheduler {
     return f;
   }
 
-  // push an item onto the queue. indicates success or failure by returning
-  // a boolean value (true = queueing successful, false = queueing failed)
-  template<typename F,
-           std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  [[nodiscard]] bool tryBoundedQueue(RequestLane lane, F&& fn) noexcept {
-    return doQueue(lane, std::forward<F>(fn), true);
-  }
-
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a DelayedWorkItem. If all references the
   // DelayedWorkItem are dropped, the task is canceled.
@@ -114,6 +106,9 @@ class Scheduler {
     virtual void invoke() = 0;
 
     std::chrono::steady_clock::time_point enqueueTime;
+
+    virtual bool queued() { return true; };
+    virtual bool dequeued() { return true; };
 
     // used by some schedulers to chain work items
     WorkItemBase* next = nullptr;
@@ -191,7 +186,7 @@ class Scheduler {
         : F(std::move(f)), logContext(LogContext::current()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
-    ~WorkItem() {
+    ~WorkItem() override {
       schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
     }
     void invoke() override {
@@ -200,15 +195,18 @@ class Scheduler {
       this->operator()();
     }
 
+    bool queued() override { return true; }
+    bool dequeued() override { return true; }
+
    private:
     LogContext logContext;
   };
 
+ public:
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
   [[nodiscard]] virtual bool queueItem(RequestLane lane,
-                                       std::unique_ptr<WorkItemBase> item,
-                                       bool bounded) = 0;
+                                       std::unique_ptr<WorkItemBase> item) = 0;
 
  private:
   template<typename F,
@@ -216,7 +214,7 @@ class Scheduler {
   [[nodiscard]] bool doQueue(RequestLane lane, F&& fn, bool bounded) {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(
         std::forward<F>(fn));
-    auto result = queueItem(lane, std::move(item), bounded);
+    auto result = queueItem(lane, std::move(item));
     ADB_PROD_ASSERT(result || bounded);
     return result;
   }
@@ -315,11 +313,6 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
-  virtual void trackCreateHandlerTask() noexcept = 0;
-  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
-  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
-
-  virtual void trackQueueTimeViolation() = 0;
   virtual void trackQueueItemSize(std::int64_t) noexcept = 0;
 
   /// @brief returns the last stored dequeue time [ms]
@@ -328,17 +321,6 @@ class Scheduler {
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
   virtual void setLastLowPriorityDequeueTime(uint64_t time) noexcept = 0;
-
-  /// @brief get information about low prio queue:
-  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
-      const = 0;
-
-  /// @brief approximate fill grade of the scheduler's queue (in %)
-  virtual double approximateQueueFillGrade() const = 0;
-
-  /// @brief fill grade of the scheduler's queue (in %) from which onwards
-  /// the server is considered unavailable (because of overload)
-  virtual double unavailabilityQueueFillGrade() const = 0;
 
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff

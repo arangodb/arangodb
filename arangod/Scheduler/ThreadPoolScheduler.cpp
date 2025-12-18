@@ -39,18 +39,7 @@ void ThreadPoolScheduler::toVelocyPack(velocypack::Builder& b) const {
 Scheduler::QueueStatistics ThreadPoolScheduler::queueStatistics() const {
   return QueueStatistics();
 }
-void ThreadPoolScheduler::trackCreateHandlerTask() noexcept {
-  ++_metrics->_metricsHandlerTasksCreated;
-}
-void ThreadPoolScheduler::trackBeginOngoingLowPriorityTask() noexcept {
-  _metrics->_ongoingLowPriorityGauge += 1;
-}
-void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {
-  _metrics->_ongoingLowPriorityGauge -= 1;
-}
-void ThreadPoolScheduler::trackQueueTimeViolation() {
-  ++_metrics->_metricsQueueTimeViolations;
-}
+
 void ThreadPoolScheduler::trackQueueItemSize(std::int64_t x) noexcept {
   _metrics->_schedulerQueueMemory += x;
 }
@@ -64,25 +53,8 @@ void ThreadPoolScheduler::setLastLowPriorityDequeueTime(
   _lastLowPriorityDequeueTime.store(time, std::memory_order::relaxed);
 }
 
-std::pair<uint64_t, uint64_t>
-ThreadPoolScheduler::getNumberLowPrioOngoingAndQueued() const {
-  auto dequeued =
-      _threadPools[int(RequestPriority::LOW)]->statistics.dequeued.load();
-  auto queued =
-      _threadPools[int(RequestPriority::LOW)]->statistics.queued.load();
-  auto remaining = dequeued > queued ? 0 : queued - dequeued;
-  return std::make_pair(
-      _metrics->_ongoingLowPriorityGauge.load(std::memory_order_relaxed),
-      remaining);
-}
-
-// queue fill grade tracking is currently not implemented for this scheduler
-double ThreadPoolScheduler::approximateQueueFillGrade() const { return 0; }
-double ThreadPoolScheduler::unavailabilityQueueFillGrade() const { return 0; }
-
 bool ThreadPoolScheduler::queueItem(RequestLane lane,
-                                    std::unique_ptr<WorkItemBase> item,
-                                    bool bounded) {
+                                    std::unique_ptr<WorkItemBase> item) {
   item->enqueueTime = std::chrono::steady_clock::now();
   auto prio = PriorityRequestLane(lane);
   _threadPools[int(prio)]->push(std::move(item));

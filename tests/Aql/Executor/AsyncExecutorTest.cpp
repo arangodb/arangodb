@@ -31,7 +31,7 @@
 #include "Aql/ExecutionNode/DistributeConsumerNode.h"
 #include "Aql/Executor/ParallelUnsortedGatherExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.cpp"
-#include "Mocks/FakeScheduler.h"
+#include "Mocks/AcceptanceQueue/FakeAcceptanceQueue.h"
 
 #include "Aql/Executor/AsyncExecutor.h"
 #include "Aql/SharedQueryState.h"
@@ -75,10 +75,9 @@ struct MutexTestSetup {
 };
 
 struct AsyncExecutorTest : AqlExecutorTestCase<false> {
-  AsyncExecutorTest()
-      : AqlExecutorTestCase(&scheduler), scheduler(_server->server()) {}
+  AsyncExecutorTest() : AqlExecutorTestCase(&acceptanceQueue) {}
 
-  FakeScheduler scheduler;
+  FakeAcceptanceQueue acceptanceQueue;
 
  protected:
   MutexTestSetup create_mutex_consumers(
@@ -186,8 +185,8 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
   // wakeups are processed before leaving the callback, we simulate the thread
   // being slow.
   asyncBlock0->setPostAsyncExecuteCallback([&](ExecutionState) {
-    while (!scheduler.queueEmpty()) {
-      scheduler.runOnce();
+    while (!acceptanceQueue.queueEmpty()) {
+      acceptanceQueue.runOnce();
     }
     while (wakeupsQueued > 0) {
       --wakeupsQueued;
@@ -195,18 +194,18 @@ TEST_F(AsyncExecutorTest, sleepingBeauty) {
     }
   });
 
-  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+  while (wakeupsQueued > 0 || !acceptanceQueue.queueEmpty()) {
     while (wakeupsQueued > 0) {
       --wakeupsQueued;
       testHelper.executeOnce();
     }
-    if (!scheduler.queueEmpty()) {
-      scheduler.runOnce();
+    if (!acceptanceQueue.queueEmpty()) {
+      acceptanceQueue.runOnce();
     }
   };
 
   EXPECT_EQ(0, wakeupsQueued);
-  EXPECT_TRUE(scheduler.queueEmpty());
+  EXPECT_TRUE(acceptanceQueue.queueEmpty());
 
   testHelper.expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{0}})
@@ -261,12 +260,12 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   testHelper.prepareInput();
 
   auto const somethingToDo = [&] {
-    return !scheduler.queueEmpty() or wakeupsQueued > 0;
+    return !acceptanceQueue.queueEmpty() or wakeupsQueued > 0;
   };
 
   auto const doSomething = [&](bool everything) {
     while (somethingToDo()) {
-      auto const queueSize = scheduler.queueSize();
+      auto const queueSize = acceptanceQueue.queueSize();
       auto max = queueSize;
       if (wakeupsQueued > 0) {
         ++max;
@@ -281,7 +280,7 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
       auto actionIdx = dist(gen);
 
       if (actionIdx < queueSize) {
-        scheduler.runOne(actionIdx);
+        acceptanceQueue.runOne(actionIdx);
       } else if (actionIdx == max) {
         TRI_ASSERT(!everything);
         return;
@@ -304,7 +303,7 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   doSomething(true);
 
   EXPECT_EQ(0, wakeupsQueued);
-  EXPECT_TRUE(scheduler.queueEmpty());
+  EXPECT_TRUE(acceptanceQueue.queueEmpty());
 
   testHelper.expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{0}})
@@ -346,18 +345,18 @@ TEST_F(AsyncExecutorTest, WAITING_result_should_not_trigger_wakeup) {
   testHelper.setWakeupCallback(wakeupHandler);
   testHelper.prepareInput();
 
-  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+  while (wakeupsQueued > 0 || !acceptanceQueue.queueEmpty()) {
     while (wakeupsQueued > 0) {
       --wakeupsQueued;
       testHelper.executeOnce();
     }
-    if (!scheduler.queueEmpty()) {
-      scheduler.runOnce();
+    if (!acceptanceQueue.queueEmpty()) {
+      acceptanceQueue.runOnce();
     }
   };
 
   EXPECT_EQ(0, wakeupsQueued);
-  EXPECT_TRUE(scheduler.queueEmpty());
+  EXPECT_TRUE(acceptanceQueue.queueEmpty());
 
   testHelper.expectedState(ExecutionState::DONE)
       .expectOutput({0}, {{0}})
@@ -405,13 +404,13 @@ TEST_F(AsyncExecutorTest,
   testHelper.prepareInput();
 
   try {
-    while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+    while (wakeupsQueued > 0 || !acceptanceQueue.queueEmpty()) {
       while (wakeupsQueued > 0) {
         --wakeupsQueued;
         testHelper.executeOnce();
       }
-      if (!scheduler.queueEmpty()) {
-        scheduler.runOnce();
+      if (!acceptanceQueue.queueEmpty()) {
+        acceptanceQueue.runOnce();
       }
     };
     FAIL() << "expected test exception to be thrown";
@@ -420,7 +419,7 @@ TEST_F(AsyncExecutorTest,
   }
 
   EXPECT_EQ(0, wakeupsQueued);
-  EXPECT_TRUE(scheduler.queueEmpty());
+  EXPECT_TRUE(acceptanceQueue.queueEmpty());
   EXPECT_EQ(2, executeCalls);
 
   ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
@@ -519,11 +518,11 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
     taskActive.wait(false);
   };
 
-  std::thread schedulerThread([&]() {
+  std::thread acceptanceQueueThread([&]() {
     taskActive.wait(false);
 
-    ASSERT_EQ(scheduler.queueSize(), 1);
-    scheduler.runOnce();
+    ASSERT_EQ(acceptanceQueue.queueSize(), 1);
+    acceptanceQueue.runOnce();
 
     taskActive.store(false);
     taskActive.notify_one();
@@ -550,7 +549,7 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
   async2->setBeforeAsyncExecuteCallback([&]() {
     // the first async node should have scheduled a task. We want to run that
     // task, but _not_ store the result before the second async node is run.
-    EXPECT_EQ(scheduler.queueSize(), 1);
+    EXPECT_EQ(acceptanceQueue.queueSize(), 1);
 
     // let the first part of he async1 node task run (perform the call to the
     // upstream), but do _not_ yet store the result, before we perform our call
@@ -580,9 +579,9 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
   // swallowed
   switchToAsync1Task();
 
-  schedulerThread.join();
+  acceptanceQueueThread.join();
 
-  ASSERT_TRUE(scheduler.queueEmpty());
+  ASSERT_TRUE(acceptanceQueue.queueEmpty());
 
   // set another wakeup handler to simulate the existence of a new
   // RestHandler.
@@ -601,17 +600,17 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
     // and instead trigger a new task
     auto const [state, skipped, result] = gather->execute(callstack);
     ASSERT_EQ(state, ExecutionState::WAITING);
-    ASSERT_EQ(scheduler.queueSize(), 1);
+    ASSERT_EQ(acceptanceQueue.queueSize(), 1);
   }
 
   // run the scheduled task from async node1. This should trigger a wakeup that
   // schedules yet another task
-  scheduler.runOnce();
+  acceptanceQueue.runOnce();
 
-  ASSERT_EQ(scheduler.queueSize(), 1);
+  ASSERT_EQ(acceptanceQueue.queueSize(), 1);
 
   // run scheduled task which should execute the previously set wakeup handler
-  scheduler.runOnce();
+  acceptanceQueue.runOnce();
   ASSERT_EQ(gatherState, ExecutionState::DONE);
 }
 

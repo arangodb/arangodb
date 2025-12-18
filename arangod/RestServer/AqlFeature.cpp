@@ -135,16 +135,16 @@ std::shared_ptr<arangodb::aql::Query> AqlFeature::createQuery(
     std::shared_ptr<arangodb::transaction::Context> ctx,
     arangodb::aql::QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters,
-    arangodb::aql::QueryOptions options, Scheduler* scheduler) {
+    arangodb::aql::QueryOptions options, AcceptanceQueue* queue) {
   TRI_ASSERT(ctx != nullptr);
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : arangodb::aql::Query {
     MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
                     arangodb::aql::QueryString queryString,
                     std::shared_ptr<velocypack::Builder> bindParameters,
-                    arangodb::aql::QueryOptions options, Scheduler* scheduler)
+                    arangodb::aql::QueryOptions options, AcceptanceQueue* queue)
         : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options), scheduler} {}
+                std::move(bindParameters), std::move(options), queue} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -175,7 +175,7 @@ std::shared_ptr<arangodb::aql::Query> AqlFeature::createQuery(
   }
   return std::make_shared<MakeSharedQuery>(
       std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options), scheduler);
+      std::move(options), queue);
 }
 
 }  // namespace arangodb

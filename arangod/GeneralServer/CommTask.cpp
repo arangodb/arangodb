@@ -43,8 +43,8 @@
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Scheduler.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
@@ -114,30 +114,14 @@ bool queueTimeViolated(GeneralRequest const& req) {
     // yes, now parse the sent time value. if the value sent by client cannot be
     // parsed as a double, then it will be handled as if "0.0" was sent - i.e.
     // no queuing time restriction
-    double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
+    double const requestedQueueTime =
+        StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      // value is > 0.0, so now check the last dequeue time that the scheduler
-      // reported
-      double lastDequeueTime =
-          static_cast<double>(
-              SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
-          1000.0;
-
-      if (lastDequeueTime > requestedQueueTime) {
-        // the log topic should actually be REQUESTS here, but the default log
-        // level for the REQUESTS log topic is FATAL, so if we logged here in
-        // INFO level, it would effectively be suppressed. thus we are using the
-        // Scheduler's log topic here, which is somewhat related.
-        SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
-        LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
-            << "dropping incoming request because the client-specified maximum "
-               "queue time requirement ("
-            << requestedQueueTime
-            << "s) would be violated by current queue time (" << lastDequeueTime
-            << "s)";
-        return true;
-      }
+      TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+      // value is > 0.0, so now  let the acceptance queue check if
+      // the last dequeue time violates the requestedQueueTime.
+      return SchedulerFeature::ACCEPTANCE_QUEUE->trackQueueTimeViolation(
+          requestedQueueTime);
     }
   }
   return false;
@@ -395,11 +379,11 @@ void CommTask::finishExecution(GeneralResponse& res,
 
     // add "x-arango-queue-time-seconds" header
     if (_generalServerFeature.returnQueueTimeHeader()) {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
       res.setHeaderNC(
           StaticStrings::XArangoQueueTimeSeconds,
           std::to_string(
-              static_cast<double>(SchedulerFeature::SCHEDULER
+              static_cast<double>(SchedulerFeature::ACCEPTANCE_QUEUE
                                       ->getLastLowPriorityDequeueTime()) /
               1000.0));
     }
@@ -489,8 +473,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
+  TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+  SchedulerFeature::ACCEPTANCE_QUEUE->trackCreateHandlerTask();
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
@@ -677,7 +661,7 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
 void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
 
-  RequestLane lane = handler->determineRequestLane();
+  RequestLane const lane = handler->determineRequestLane();
   handler->trackQueueStart();
   // We just injected the request pointer before calling this method
   TRI_ASSERT(handler->request() != nullptr);
@@ -685,8 +669,8 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       << "Handling request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane;
 
-  ContentType respType = handler->request()->contentTypeResponse();
-  uint64_t mid = handler->messageId();
+  ContentType const respType = handler->request()->contentTypeResponse();
+  uint64_t const mid = handler->messageId();
 
   // queue the operation for execution in the scheduler
   auto cb = [self = shared_from_this(),
@@ -708,8 +692,9 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     });
   };
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
+  TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+  bool const ok =
+      SchedulerFeature::ACCEPTANCE_QUEUE->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
@@ -724,10 +709,10 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     return false;
   }
 
-  RequestLane lane = handler->determineRequestLane();
+  RequestLane const lane = handler->determineRequestLane();
   handler->trackQueueStart();
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
@@ -744,7 +729,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
+    return SchedulerFeature::ACCEPTANCE_QUEUE->tryBoundedQueue(
         lane, [handler = std::move(handler), manager(&jobManager)] {
           handler->trackQueueEnd();
           handler->trackTaskStart();
@@ -754,16 +739,15 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
             manager->finishAsyncJob(h);
           });
         });
-  } else {
-    // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->tryBoundedQueue(
-        lane, [handler = std::move(handler)] {
-          handler->trackQueueEnd();
-          handler->trackTaskStart();
-
-          handler->runHandler([](RestHandler* h) { h->trackTaskEnd(); });
-        });
   }
+  // here the response will just be ignored
+  return SchedulerFeature::ACCEPTANCE_QUEUE->tryBoundedQueue(
+      lane, [handler = std::move(handler)] {
+        handler->trackQueueEnd();
+        handler->trackTaskStart();
+
+        handler->runHandler([](RestHandler* h) { h->trackTaskEnd(); });
+      });
 }
 
 /// @brief checks the access rights for a specified path

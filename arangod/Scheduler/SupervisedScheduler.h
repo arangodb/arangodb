@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include <array>
 #include <condition_variable>
 #include <functional>
 #include <list>
@@ -32,9 +31,9 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerMetrics.h"
+#include "AcceptanceQueue/LowPrioAntiOverwhelm.h"
 
 namespace arangodb {
 class NetworkFeature;
@@ -44,13 +43,12 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(ArangodServer& server, uint64_t minThreads,
-                      uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size,
-                      uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-                      double unavailabilityQueueFillGrade,
-                      std::shared_ptr<SchedulerMetrics> metrics);
-  ~SupervisedScheduler() final;
+  SupervisedScheduler(
+      ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
+      uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
+      uint64_t fifo3Size, std::shared_ptr<SchedulerMetrics> const& metrics,
+      std::shared_ptr<LowPrioAntiOverwhelm> const& antiOverwhelm);
+  ~SupervisedScheduler() override;
 
   bool start() override;
   void shutdown() override;
@@ -58,11 +56,6 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void trackCreateHandlerTask() noexcept override;
-  void trackBeginOngoingLowPriorityTask() noexcept override;
-  void trackEndOngoingLowPriorityTask() noexcept override;
-
-  void trackQueueTimeViolation() noexcept override;
   void trackQueueItemSize(std::int64_t) noexcept override;
 
   /// @brief returns the last stored dequeue time [ms]
@@ -71,10 +64,6 @@ class SupervisedScheduler final : public Scheduler {
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
   void setLastLowPriorityDequeueTime(uint64_t time) noexcept override;
-
-  /// @brief get information about low prio queue:
-  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
-      const override;
 
   constexpr static uint64_t const NumberOfQueues = 4;
 
@@ -88,13 +77,6 @@ class SupervisedScheduler final : public Scheduler {
 
   static_assert(HighPriorityQueue < MediumPriorityQueue);
   static_assert(MediumPriorityQueue < LowPriorityQueue);
-
-  /// @brief approximate fill grade of the scheduler's queue (in %)
-  double approximateQueueFillGrade() const override;
-
-  /// @brief fill grade of the scheduler's queue (in %) from which onwards
-  /// the server is considered unavailable (because of overload)
-  double unavailabilityQueueFillGrade() const override;
 
  protected:
   bool isStopping() override { return _stopping; }
@@ -114,7 +96,7 @@ class SupervisedScheduler final : public Scheduler {
   //
   // All those values are maintained by the supervisor thread.
   // Currently they are set once and for all the same, however a future
-  // implementation my alter those values for each thread individually.
+  // implementation might alter those values for each thread individually.
   //
   // _lastJobStarted is the timepoint when the last job in this thread was
   // started. _working indicates if the thread is currently processing a job.
@@ -153,17 +135,15 @@ class SupervisedScheduler final : public Scheduler {
 
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
-  bool canPullFromQueue(uint64_t queueIdx) const noexcept;
+  [[nodiscard]] bool canPullFromQueue(uint64_t queueIdx) const noexcept;
 
   void runWorker();
   void runSupervisor();
 
   [[nodiscard]] bool queueItem(RequestLane lane,
-                               std::unique_ptr<WorkItemBase> item,
-                               bool bounded) override;
+                               std::unique_ptr<WorkItemBase> item) override;
 
  private:
-  NetworkFeature& _nf;
   SharedPRNGFeature& _sharedPRNG;
 
   std::atomic<uint64_t> _numWorkers;
@@ -172,12 +152,7 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  struct {
-    /// @brief the number of items that have been enqueued via tryBoundedQueue
-    /// Items that are added via an unbounded queue operation are not counted!
-    std::atomic<uint64_t> numCountedItems{0};
-    boost::lockfree::queue<WorkItemBase*> queue;
-  } _queues[NumberOfQueues];
+  boost::lockfree::queue<WorkItemBase*> _queue[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -187,11 +162,6 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorkers;
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
-  uint64_t const _ongoingLowPriorityLimit;
-
-  /// @brief fill grade of the scheduler's queue (in %) from which onwards
-  /// the server is considered unavailable (because of overload)
-  double const _unavailabilityQueueFillGrade;
 
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
@@ -213,7 +183,8 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  std::shared_ptr<SchedulerMetrics> _metrics;
+  std::shared_ptr<SchedulerMetrics> const _metrics;
+  std::shared_ptr<LowPrioAntiOverwhelm> const _antiOverwhelm;
 };
 
 }  // namespace arangodb

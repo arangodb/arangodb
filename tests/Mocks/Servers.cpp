@@ -471,12 +471,12 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
-  return createFakeQuery(SchedulerFeature::SCHEDULER, activateTracing,
+  return createFakeQuery(SchedulerFeature::ACCEPTANCE_QUEUE, activateTracing,
                          queryString, callback);
 }
 
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
-    Scheduler* scheduler, bool activateTracing, std::string queryString,
+    AcceptanceQueue* queue, bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
   VPackBuilder queryOptions;
   queryOptions.openObject();
@@ -492,7 +492,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
       transaction::StandaloneContext::create(
           getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
-      aql::QueryOptions(queryOptions.slice()), scheduler);
+      aql::QueryOptions(queryOptions.slice()), queue);
   callback(*query);
   waitForAsync(query->prepareQuery());
 
@@ -522,13 +522,13 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
   consensus::index_t commitIndex;
 
   {
-    std::lock_guard g(_storeLock);
+    std::lock_guard storeGuard(_storeLock);
     commitIndex = ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
     {
-      std::lock_guard g(_callbacksLock);
+      std::lock_guard callbackGuard(_callbacksLock);
       for (auto const& trx : VPackArrayIterator(trxs)) {
         handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }

@@ -32,7 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
-#include "Transaction/Hints.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
@@ -187,7 +187,7 @@ class MockAqlServer
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
   std::shared_ptr<arangodb::aql::Query> createFakeQuery(
-      Scheduler* scheduler, bool activateTracing = false,
+      AcceptanceQueue* queue, bool activateTracing = false,
       std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;

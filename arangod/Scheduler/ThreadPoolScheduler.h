@@ -31,23 +31,14 @@ struct ThreadPoolScheduler final : Scheduler {
                                std::shared_ptr<SchedulerMetrics> metrics);
   void toVelocyPack(velocypack::Builder& builder) const override;
   QueueStatistics queueStatistics() const override;
-  void trackCreateHandlerTask() noexcept override;
-  void trackBeginOngoingLowPriorityTask() noexcept override;
-  void trackEndOngoingLowPriorityTask() noexcept override;
-  void trackQueueTimeViolation() override;
   void trackQueueItemSize(std::int64_t x) noexcept override;
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
   void setLastLowPriorityDequeueTime(uint64_t time) noexcept override;
-  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
-      const override;
-  double approximateQueueFillGrade() const override;
-  double unavailabilityQueueFillGrade() const override;
 
   void shutdown() override;
 
  protected:
-  bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item,
-                 bool bounded) override;
+  bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override;
   bool isStopping() override { return _stopping; }
 
  private:

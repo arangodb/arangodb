@@ -30,7 +30,7 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-class Scheduler;
+class AcceptanceQueue;
 namespace application_features {
 class ApplicationServer;
 }
@@ -42,8 +42,8 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState(ArangodServer& server);
-  SharedQueryState(ArangodServer& server, Scheduler* scheduler);
+  explicit SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server, AcceptanceQueue* acceptanceQueue);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -182,7 +182,7 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
-  Scheduler* _scheduler;
+  AcceptanceQueue* _acceptanceQueue;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 

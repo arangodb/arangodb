@@ -44,9 +44,9 @@ if (USE_V8)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/AcceptanceQueue/FakeAcceptanceQueue.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/AcceptanceQueue/FakeAcceptanceQueue.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -280,7 +280,9 @@ endif()
 
 if (USE_PERF_TESTS)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
-    Scheduler/ThreadPoolPerfTest.cpp)
+    Scheduler/ThreadPoolPerfTest.cpp
+    Scheduler/BoundedQueuePerfTest.cpp
+  )
 endif()
     
 if (LINUX)

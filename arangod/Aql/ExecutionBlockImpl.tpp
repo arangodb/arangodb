@@ -48,6 +48,7 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <absl/strings/str_cat.h>
@@ -1012,7 +1013,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     });
 
     // note: SCHEDULER is a nullptr in unit tests
-    if (SchedulerFeature::SCHEDULER != nullptr &&
+    if (SchedulerFeature::ACCEPTANCE_QUEUE != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
         _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
       // Async prefetching.
@@ -1032,7 +1033,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // At the moment we may spawn one task per execution node
 
       if (shouldSchedule) {
-        bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        bool const queued = SchedulerFeature::ACCEPTANCE_QUEUE->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
               TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {

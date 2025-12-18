@@ -46,6 +46,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/ThreadPoolScheduler.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueueImpl.h"
+#include "Scheduler/AcceptanceQueue/LowPrioAntiOverwhelm.h"
+
 #ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
 #endif
@@ -83,6 +86,7 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 namespace arangodb {
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+AcceptanceQueue* SchedulerFeature::ACCEPTANCE_QUEUE = nullptr;
 
 struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _exitSignals;
@@ -93,6 +97,7 @@ SchedulerFeature::SchedulerFeature(Server& server,
                                    metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _scheduler(nullptr),
+      _acceptanceQueue(nullptr),
       _metricsFeature(metrics),
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
@@ -329,29 +334,40 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(_queueSize > 0);
 
   auto metrics = std::make_shared<SchedulerMetrics>(_metricsFeature);
+
+  uint64_t const ongoingLowPriorityLimit =
+      ServerState::instance()->isDBServer() ||
+              ServerState::instance()->isAgent()
+          ? 0
+          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
+                                  _nrMaximalThreads);
+
+  auto const lowPrioAntiOverwhelm = std::make_shared<LowPrioAntiOverwhelm>(
+      server(), ongoingLowPriorityLimit, metrics);
+
   _scheduler = std::invoke([&]() -> std::unique_ptr<Scheduler> {
     if (_schedulerType == "supervised") {
       // on a DB server we intentionally disable throttling of incoming
       // requests. this is because coordinators are the gatekeepers, and they
       // should perform all the throttling.
-      uint64_t ongoingLowPriorityLimit =
-          ServerState::instance()->isDBServer() ||
-                  ServerState::instance()->isAgent()
-              ? 0
-              : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
-                                      _nrMaximalThreads);
+
       return std::make_unique<SupervisedScheduler>(
           server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize,
-          _fifo1Size, _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-          _unavailabilityQueueFillGrade, metrics);
-    } else {
-      TRI_ASSERT(_schedulerType == "threadpools");
-      return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
-                                                   std::move(metrics));
+          _fifo1Size, _fifo2Size, _fifo3Size, metrics, lowPrioAntiOverwhelm);
     }
+
+    TRI_ASSERT(_schedulerType == "threadpools");
+    return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
+                                                 metrics);
   });
 
+  _acceptanceQueue = std::make_unique<AcceptanceQueueImpl>(
+      _queueSize, _fifo1Size, _fifo2Size, _fifo3Size,
+      _unavailabilityQueueFillGrade, _scheduler.get(), metrics,
+      lowPrioAntiOverwhelm);
+
   SCHEDULER = _scheduler.get();
+  ACCEPTANCE_QUEUE = _acceptanceQueue.get();
 }
 
 void SchedulerFeature::start() {
@@ -364,6 +380,14 @@ void SchedulerFeature::start() {
     FATAL_ERROR_EXIT();
   }
   LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
+
+  ok = _acceptanceQueue->start();
+  if (!ok) {
+    LOG_TOPIC("7f498", FATAL, arangodb::Logger::FIXME)
+        << "the AcceptanceQueue cannot be started";
+    FATAL_ERROR_EXIT();
+  }
+  LOG_TOPIC("14e70", DEBUG, Logger::STARTUP) << "AcceptanceQueue has started";
 }
 
 void SchedulerFeature::stop() {
@@ -372,6 +396,7 @@ void SchedulerFeature::stop() {
   arangodb::Task::shutdownTasks();
 #endif
   signalStuffDeinit();
+  _acceptanceQueue->shutdown();
   _scheduler->shutdown();
 }
 
@@ -385,6 +410,9 @@ void SchedulerFeature::unprepare() {
   // synchronization and complains about reads that have happened before
   // this write here, but are not officially inter-thread synchronized.
   // We use the atomic reference here and in these places to silence TSAN.
+  std::atomic_ref<AcceptanceQueue*> acceptanceQueueRef{ACCEPTANCE_QUEUE};
+  acceptanceQueueRef.store(nullptr, std::memory_order_relaxed);
+  _acceptanceQueue.reset();
   std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
   schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();

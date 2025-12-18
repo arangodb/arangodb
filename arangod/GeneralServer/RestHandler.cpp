@@ -41,6 +41,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -80,8 +81,8 @@ RestHandler::~RestHandler() {
     // someone forgot to call trackTaskEnd 🤔
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+    SchedulerFeature::ACCEPTANCE_QUEUE->trackEndOngoingLowPriorityTask();
   }
 }
 
@@ -162,9 +163,9 @@ RequestLane RestHandler::determineRequestLane() {
 }
 
 void RestHandler::trackQueueStart() noexcept {
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
   _statistics.SET_QUEUE_START(
-      SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+      SchedulerFeature::ACCEPTANCE_QUEUE->queueStatistics()._queued);
 }
 
 void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
@@ -173,8 +174,8 @@ void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);
 
   if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+    SchedulerFeature::ACCEPTANCE_QUEUE->trackBeginOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = true;
   }
 }
@@ -186,15 +187,16 @@ void RestHandler::trackTaskEnd() noexcept {
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    TRI_ASSERT(SchedulerFeature::ACCEPTANCE_QUEUE != nullptr);
+    SchedulerFeature::ACCEPTANCE_QUEUE->trackEndOngoingLowPriorityTask();
     _trackedAsOngoingLowPrio = false;
 
     // update the time the last low priority item spent waiting in the queue.
 
     // the queueing time in ms
-    uint64_t queueTimeMs = static_cast<uint64_t>(queueTime * 1000.0);
-    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+    uint64_t const queueTimeMs = static_cast<uint64_t>(queueTime * 1000.0);
+    SchedulerFeature::ACCEPTANCE_QUEUE->setLastLowPriorityDequeueTime(
+        queueTimeMs);
   }
 
   if (queueTime >= 30.0) {
