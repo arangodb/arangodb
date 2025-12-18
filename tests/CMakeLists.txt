@@ -245,6 +245,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  Scheduler/ThreadPoolTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
