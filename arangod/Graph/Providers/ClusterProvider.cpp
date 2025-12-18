@@ -603,9 +603,8 @@ auto ClusterProvider<StepImpl>::expand(
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::addExpansionIterator(
-    CursorId id, Step const& from, std::function<void()> const& callback)
-    -> void {
+auto ClusterProvider<StepImpl>::addExpansionIterator(CursorId id,
+                                                     Step const& from) -> void {
   LOG_TOPIC("fa7ec", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Add expansion iterator "
       << from.getVertex().getID();
@@ -650,8 +649,6 @@ auto ClusterProvider<StepImpl>::addExpansionIterator(
   }
 
   _edgeRequests.emplace(id, std::move(requests));
-
-  callback();
 }
 
 template<class StepImpl>

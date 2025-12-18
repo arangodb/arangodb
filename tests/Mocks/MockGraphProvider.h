@@ -303,10 +303,8 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> callback) -> void;
   using CursorId = size_t;
-  auto addExpansionIterator(CursorId id, Step const& from,
-                            std::function<void()> const& callback) -> void {
+  auto addExpansionIterator(CursorId id, Step const& from) -> void {
     _startedIterators.emplace(id);
-    callback();
     return;
   }
   auto expandToNextBatch(CursorId id, Step const& step, size_t previous,

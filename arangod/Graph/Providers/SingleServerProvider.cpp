@@ -224,8 +224,8 @@ auto SingleServerProvider<Step>::expandToNextBatch(
 }
 
 template<class Step>
-auto SingleServerProvider<Step>::addExpansionIterator(
-    CursorId id, Step const& step, std::function<void()> const& callback)
+auto SingleServerProvider<Step>::addExpansionIterator(CursorId id,
+                                                      Step const& step)
     -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
@@ -246,7 +246,6 @@ auto SingleServerProvider<Step>::addExpansionIterator(
     cursor.prepareIndexExpressions(_ast);
   }
   _neighbourCursors.emplace(id, std::move(cursor));
-  callback();
 }
 
 template<class Step>
