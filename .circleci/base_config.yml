@@ -435,26 +435,6 @@ jobs:
               echo "Nothing to cancel"
             fi
 
-  build-frontend:
-    docker:
-      - image: << pipeline.parameters.build-docker-image >>
-    resource_class: large
-    steps:
-      - checkout-arangodb:
-          with-submodules: false
-          destination: "/root/project"
-      - run:
-          name: Build frontend
-          command: |
-            cd js/apps/system/_admin/aardvark/APP/react
-            tar -xJf /node_modules.tar.xz
-            yarn install
-            yarn build
-      - persist_to_workspace:
-          root: .
-          paths:
-            - js/apps/system/_admin/aardvark/APP/react/build
-
   compile-linux:
     parameters:
       preset:
@@ -544,7 +524,6 @@ jobs:
                 name: Create install package
                 command: |
                   mkdir install
-                  # Note: ATM this will rebuild the frontend
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
