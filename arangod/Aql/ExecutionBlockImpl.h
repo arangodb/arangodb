@@ -341,18 +341,32 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
+  auto forwardShadowRow(AqlCallStack& stack,
+                        std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                        ShadowAqlItemRow& shadowRow) -> void;
+
+  enum class SideEffectSkipResult {
+    FORWARD_SHADOW_ROW,
+    DROP_SHADOW_ROW,
+    RETURN_DONE
+  };
+  auto sideEffectSkipHandling(AqlCallStack& stack,
+                              std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                              ShadowAqlItemRow& shadowRow, SkipResult& skipped)
+      -> SideEffectSkipResult;
+
  private:
   /**
    * @brief The PrefetchTask is used to asynchronously prefetch the next batch
    * from upstream. Each block holds only a single instance (if any), so each
    * block can have max one pending async prefetch task. This instance is
-   * created on demand when the first async request is spawned, later tasks can
-   * reuse that instance.
-   * The async task is queued on the global scheduler so it can be picked up by
-   * some worker thread. However, sometimes the original thread might that
-   * created the task might be faster, in which case we don't want to wait
-   * until a worker has picked up the task. Instead, any thread that wants to
-   * process the task has to _claim_ it. This is managed via the task's `state`.
+   * created on demand when the first async request is spawned, later tasks
+   * can reuse that instance. The async task is queued on the global scheduler
+   * so it can be picked up by some worker thread. However, sometimes the
+   * original thread might that created the task might be faster, in which
+   * case we don't want to wait until a worker has picked up the task.
+   * Instead, any thread that wants to process the task has to _claim_ it.
+   * This is managed via the task's `state`.
    *
    * Before the task is queued on the scheduler, `state` is set to `Pending`.
    * When a thread wants to process the task, it must call `tryClaim` which
