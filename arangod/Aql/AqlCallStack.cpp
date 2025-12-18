@@ -184,13 +184,14 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
                      });
 }
 
+// TODO: is there a better name?
 auto AqlCallStack::shadowRowDepthToSkip() const -> std::optional<size_t> {
   auto const n = _operations.size();
 
   for (size_t i = 0; i < n; ++i) {
     auto& call = _operations[i];
     if (!call.hasMoreCalls()) {
-      return std::nullopt;
+      return n - i - 1;
     }
     auto const& nextCall = call.peekNextCall();
     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {

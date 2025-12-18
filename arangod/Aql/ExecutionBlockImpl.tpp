@@ -1379,15 +1379,25 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     _outputItemRow->advanceRow();
 
     // TODO Why? This comes from countShadowRowProduced
+    //
     if (!shadowRow.isRelevant()) {
       std::ignore = stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
     }
   };
 
   if constexpr (executorHasSideEffects<Executor>) {
-    auto depthSkippingNow = stack.shadowRowDepthToSkip();
-    if (depthSkippingNow.has_value()) {
+    // finds the *highest depth* (equivalently *outermost*) entry in
+    // the call stack that either
+    //  - has no calls, in which case we cannot do anything and have to return
+    //  ExecState::DONE
+    //  - has a call which needs to skip or has a limit
+    auto maybeDepthSkippingNow = stack.shadowRowDepthToSkip();
+    if (maybeDepthSkippingNow.has_value()) {
+      auto depthSkippingNow = maybeDepthSkippingNow.value();
       if (depthSkippingNow > shadowDepth) {
+        if (!stack.modifyCallListAtDepth(depthSkippingNow).hasMoreCalls()) {
+          return ExecState::DONE;
+        }
         // We are skipping the outermost Subquery.
         // Simply drop this ShadowRow
       } else if (depthSkippingNow == shadowDepth) {
