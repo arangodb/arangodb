@@ -1422,8 +1422,6 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   bool const hasDoneNothing =
       _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
 
-  auto shadowDepth = shadowRow.getDepth();
-
   // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
   // SENSIBLE WAY!
   //
