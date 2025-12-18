@@ -221,15 +221,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool isAsyncQuery() const noexcept final;
 
-  /// @brief enter a V8 executor
-  void enterV8Executor() final;
-
-  /// @brief exits a V8 executor
-  void exitV8Executor() final;
-
-  /// @brief check if the query has a V8 executor ready for use
-  bool hasEnteredV8Executor() const final { return false; }
-
   Result result() const;
 
   void setResult(Result&& res) noexcept;

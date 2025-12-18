@@ -676,29 +676,9 @@ void IndexExecutor::initIndexes(InputAqlItemRow const& input) {
     TRI_ASSERT(_infos.getCondition() != nullptr);
 
     if (_infos.getV8Expression()) {
-#ifdef USE_v8
-      // must have a V8 context here to protect Expression::execute()
-      auto cleanup = [this]() {
-        if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          _infos.query().exitV8Executor();
-        }
-      };
-
-      _infos.query().enterV8Executor();
-      auto sg = arangodb::scopeGuard([&]() noexcept { cleanup(); });
-
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions(input);
-      TRI_IF_FAILURE("IndexBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-#else
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "unexpected v8 function call in IndexExecutor");
-#endif
     } else {
       // no V8 context required!
       executeExpressions(input);

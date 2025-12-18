@@ -232,8 +232,6 @@ void Query::destroy() {
 
   unregisterSnippets();
 
-  exitV8Executor();
-
   _snippets.clear();  // simon: must be before plan
   _plans.clear();     // simon: must be before AST
   _ast.reset();
@@ -667,9 +665,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan = opt.stealBest();  // Now we own the best one again
 
   TRI_ASSERT(plan != nullptr);
-
-  // return the V8 executor if we are in one
-  exitV8Executor();
 
   // validate that all bind parameters are in use
   _bindParameters.validateAllUsed();
@@ -1381,12 +1376,6 @@ bool Query::isAsyncQuery() const noexcept {
   TRI_ASSERT(_ast != nullptr);
   return _ast->canApplyParallelism();
 }
-
-/// @brief enter a V8 executor
-void Query::enterV8Executor() {}
-
-/// @brief return a V8 executor
-void Query::exitV8Executor() {}
 
 /// @brief build traverser engines. only used on DB servers
 void buildTraverserEngines(velocypack::Slice /*traverserSlice*/,

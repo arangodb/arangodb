@@ -97,8 +97,7 @@ CalculationExecutor<calculationType>::produceRows(
 
     // _hasEnteredExecutor implies the query has entered the context, but not
     // the other way round because it may be owned by exterior.
-    TRI_ASSERT(!_hasEnteredExecutor ||
-               _infos.getQuery().hasEnteredV8Executor());
+    TRI_ASSERT(!_hasEnteredExecutor);
 
     // The following only affects V8Conditions. If we should exit the V8 context
     // between blocks, because we might have to wait for client or upstream,
