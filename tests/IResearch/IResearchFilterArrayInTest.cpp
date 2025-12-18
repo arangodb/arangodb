@@ -1886,9 +1886,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                         &actual, filterCtx, *filterNode)
                         .ok());
 
-        {
-          caseData.second(actual, 1);
-        }
+        { caseData.second(actual, 1); }
       }
     }
   }

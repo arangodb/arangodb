@@ -162,9 +162,7 @@ std::shared_ptr<arangodb::aql::Query> AqlFeature::createQuery(
       bindParamsCopy = velocypack::SharedSlice(bindParameters->bufferRef());
     } else {
       VPackBuilder builder;
-      {
-        VPackObjectBuilder guard(&builder);
-      }
+      { VPackObjectBuilder guard(&builder); }
       bindParamsCopy = velocypack::SharedSlice{*builder.steal()};
     }
     apiRecordingFeat->recordAQLQuery(

@@ -211,8 +211,7 @@ struct TRI_vocbase_t {
 
   template<typename As>
   As& engine() const noexcept
-    requires(std::derived_from<As, arangodb::StorageEngine>)
-  {
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
     return static_cast<As&>(_engine);
   }
 
