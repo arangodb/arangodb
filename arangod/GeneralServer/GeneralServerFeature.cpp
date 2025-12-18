@@ -99,7 +99,6 @@
 #include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
-#include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
