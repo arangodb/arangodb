@@ -1513,7 +1513,7 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
 
   return std::move(f).thenValue([=, &trx,
                                  opCtx(std::move(opCtx))](Result&& r) mutable
-                                    -> Future<OperationResult> {
+                                -> Future<OperationResult> {
     if (r.fail()) {
       return OperationResult(std::move(r), options);
     }
@@ -1866,7 +1866,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
         }
         return std::move(fut).thenValue(
             [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
+            -> OperationResult {
               return ::handleCRUDShardResponsesSlow(
                   network::clusterResultRemove, expectedLen, std::move(options),
                   responses);
@@ -2035,7 +2035,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
     return std::move(f).thenValue([=, &trx,
                                    opCtx(std::move(opCtx))](Result&& r) mutable
-                                      -> Future<OperationResult> {
+                                  -> Future<OperationResult> {
       if (r.fail()) {
         return OperationResult(std::move(r), options);
       }
@@ -2208,7 +2208,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
   return futures::collectAll(std::move(futures))
       .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable
-                     -> OperationResult {
+                 -> OperationResult {
         return ::handleCRUDShardResponsesSlow(network::clusterResultDocument,
                                               expectedLen, std::move(options),
                                               responses);
@@ -2345,7 +2345,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 
     return std::move(f).thenValue([=, &trx,
                                    opCtx(std::move(opCtx))](Result&& r) mutable
-                                      -> Future<OperationResult> {
+                                  -> Future<OperationResult> {
       if (r.fail()) {  // bail out
         return OperationResult(r, opCtx.options);
       }
@@ -2490,7 +2490,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         }
         return std::move(fut).thenValue(
             [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
+            -> OperationResult {
               return ::handleCRUDShardResponsesSlow(
                   network::clusterResultModify, expectedLen, std::move(options),
                   responses);
