@@ -60,10 +60,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/Events.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/vocbase.h"
 
 #include <date/date.h>
@@ -664,11 +660,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     // handle global changes to Sync/UserVersion
     handleUserVersionChange(result);
 
-#ifdef USE_V8
-    // handle global changes to Sync/FoxxQueueVersion
-    handleFoxxQueueVersionChange(result);
-#endif
-
     versionSlice = result[0].get(std::vector<std::string>(
         {AgencyCommHelper::path(), "Current", "Version"}));
     if (versionSlice.isInteger()) {
@@ -745,33 +736,6 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     }
   }
 }
-
-#ifdef USE_V8
-void HeartbeatThread::handleFoxxQueueVersionChange(
-    VPackSlice foxxQueueVersion) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  VPackSlice slice = foxxQueueVersion[0].get(std::vector<std::string>(
-      {AgencyCommHelper::path(), "Sync", "FoxxQueueVersion"}));
-
-  if (slice.isInteger()) {
-    // there is a UserVersion
-    uint64_t version = 0;
-    try {
-      version = slice.getNumber<uint64_t>();
-    } catch (...) {
-    }
-
-    if (version > 0) {
-      // track the global foxx queues version from the agency. any
-      // coordinator can update this any time. the setQueueVersion
-      // method makes sure we are not going below a value that
-      // we have already seen.
-      server().getFeature<FoxxFeature>().setQueueVersion(version);
-    }
-  }
-}
-#endif
 
 void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   bool readOnly = false;

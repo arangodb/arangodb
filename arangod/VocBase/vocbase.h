@@ -211,7 +211,8 @@ struct TRI_vocbase_t {
 
   template<typename As>
   As& engine() const noexcept
-      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    requires(std::derived_from<As, arangodb::StorageEngine>)
+  {
     return static_cast<As&>(_engine);
   }
 
@@ -263,11 +264,6 @@ struct TRI_vocbase_t {
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
                                                    // the state of the vocbase
-
-  // structures for volatile cache data (used from JavaScript)
-#ifdef USE_V8
-  std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
-#endif
 
   arangodb::ArangodServer& server() const noexcept { return _server; }
 

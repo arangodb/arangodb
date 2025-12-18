@@ -42,7 +42,6 @@
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
-#ifndef USE_V8
 namespace {
 bool skipJsRelatedOption(std::string const& str,
                          arangodb::options::ParseJsOps parseOpt) {
@@ -51,7 +50,6 @@ bool skipJsRelatedOption(std::string const& str,
            str.starts_with("foxx.") || str.starts_with("--foxx.")));
 }
 }  // namespace
-#endif
 
 using namespace arangodb::options;
 
@@ -110,12 +108,8 @@ int ProgramOptions::ProcessingResult::exitCodeOrFailure() const noexcept {
 }
 
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
-                               std::string const& more, char const* binaryPath
-#ifndef USE_V8
-                               ,
-                               ParseJsOps parseJsOptions
-#endif
-                               )
+                               std::string const& more, char const* binaryPath,
+                               ParseJsOps parseJsOptions)
     : _progname(progname),
       _usage(usage),
       _more(more),
@@ -123,12 +117,8 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
       _processingResult(),
       _sealed(false),
       _overrideOptions(false),
-      _binaryPath(binaryPath)
-#ifndef USE_V8
-      ,
-      _parseJsOptions(parseJsOptions)
-#endif
-{
+      _binaryPath(binaryPath),
+      _parseJsOptions(parseJsOptions) {
   // find progname wildcard in string
   size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 
@@ -444,12 +434,10 @@ bool ProgramOptions::require(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-#ifndef USE_V8
     if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       return true;
     }
-#endif
     unknownOption(modernized);
     return false;
   }
@@ -457,12 +445,10 @@ bool ProgramOptions::require(std::string const& name) {
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-#ifndef USE_V8
     if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       return true;
     }
-#endif
     unknownOption(modernized);
     return false;
   }
@@ -484,13 +470,11 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-#ifndef USE_V8
     if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       _processingResult.touch(modernized);
       return true;
     }
-#endif
     unknownOption(modernized);
     return false;
   }
@@ -503,13 +487,11 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-#ifndef USE_V8
     if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       _processingResult.touch(modernized);
       return true;
     }
-#endif
     unknownOption(modernized);
     return false;
   }
@@ -631,12 +613,10 @@ Option& ProgramOptions::addObsoleteOption(std::string const& name,
 bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
-#ifndef USE_V8
   if (skipJsRelatedOption(modernized, _parseJsOptions)) {
     // hack: make all options starting with --javascript not require a value
     return false;
   }
-#endif
 
   auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);

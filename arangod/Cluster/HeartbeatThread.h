@@ -178,12 +178,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   // handle changes of user version (Sync/UserVersion)
   void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
 
-#ifdef USE_V8
-  // handle changes of foxx queue version (Sync/FoxxQueueVersion)
-  void handleFoxxQueueVersionChange(
-      arangodb::velocypack::Slice foxxQueueVersion);
-#endif
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////

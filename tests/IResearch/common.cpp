@@ -75,11 +75,6 @@
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
-#ifdef USE_V8
-#include <libplatform/libplatform.h>
-#include <v8.h>
-#endif
-
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
@@ -514,30 +509,6 @@ void init(bool withICU /*= false*/) {
     findIResearchTestResources();
   }
 }
-
-#ifdef USE_V8
-/// @note once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init() {
-  class V8Init {
-   public:
-    V8Init() {
-      _platform = v8::platform::NewDefaultPlatform();
-      // avoid SIGSEGV during v8::Isolate::New(...)
-      v8::V8::InitializePlatform(_platform.get());
-      // avoid error: "Check failed: thread_data_table_"
-      v8::V8::Initialize();
-    }
-    ~V8Init() {
-      v8::V8::Dispose();
-      v8::V8::DisposePlatform();
-    }
-
-   private:
-    std::unique_ptr<v8::Platform> _platform;
-  };
-  [[maybe_unused]] static const V8Init init;
-}
-#endif
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,

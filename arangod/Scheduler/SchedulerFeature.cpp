@@ -46,9 +46,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/ThreadPoolScheduler.h"
-#ifdef USE_V8
-#include "VocBase/Methods/Tasks.h"
-#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -368,9 +365,6 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
-#ifdef USE_V8
-  arangodb::Task::shutdownTasks();
-#endif
   signalStuffDeinit();
   _scheduler->shutdown();
 }

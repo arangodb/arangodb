@@ -48,9 +48,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -99,12 +96,6 @@ class FlushFeatureTest
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
-#ifdef USE_V8
-    features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
-        false);  // required for DatabaseFeature::createDatabase(...)
-#endif
 
     for (auto& f : features) {
       f.first.prepare();

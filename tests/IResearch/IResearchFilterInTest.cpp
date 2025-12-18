@@ -72,9 +72,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/Methods/Collections.h"
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -1594,7 +1591,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::Empty(), **begin); }
+        {
+          EXPECT_EQ(irs::Empty(), **begin);
+        }
 
         // 2nd filter
         {
@@ -1708,7 +1707,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::Empty(), **begin); }
+        {
+          EXPECT_EQ(irs::Empty(), **begin);
+        }
 
         // 2nd filter
         {
@@ -1724,7 +1725,9 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), **++begin); }
+        {
+          EXPECT_EQ(irs::all(), **++begin);
+        }
 
         EXPECT_EQ(root.end(), ++begin);
       }
@@ -4928,7 +4931,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::Empty(), **begin); }
+        {
+          EXPECT_EQ(irs::Empty(), **begin);
+        }
 
         // 2nd filter
         {
@@ -4941,7 +4946,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), **++begin); }
+        {
+          EXPECT_EQ(irs::all(), **++begin);
+        }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }
@@ -5049,7 +5056,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::Empty(), **begin); }
+        {
+          EXPECT_EQ(irs::Empty(), **begin);
+        }
 
         // 2nd filter
         {
@@ -5065,7 +5074,9 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         }
 
         // 3rd filter
-        { EXPECT_EQ(irs::all(), **++begin); }
+        {
+          EXPECT_EQ(irs::all(), **++begin);
+        }
 
         EXPECT_EQ(orNode->end(), ++begin);
       }

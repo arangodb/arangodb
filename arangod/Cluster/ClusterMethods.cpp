@@ -65,9 +65,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
-#ifdef USE_V8
-#include "V8Server/FoxxFeature.h"
-#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -1506,11 +1503,6 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
     // all operations failed with a local error
   }
 
-#ifdef USE_V8
-  bool const isJobsCollection =
-      coll.system() && coll.name() == StaticStrings::JobsCollection;
-#endif
-
   Future<Result> f = makeFuture(Result());
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1521,7 +1513,7 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
 
   return std::move(f).thenValue([=, &trx,
                                  opCtx(std::move(opCtx))](Result&& r) mutable
-                                -> Future<OperationResult> {
+                                    -> Future<OperationResult> {
     if (r.fail()) {
       return OperationResult(std::move(r), options);
     }
@@ -1618,20 +1610,6 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
           reqOpts, std::move(headers));
       futures.emplace_back(std::move(future));
     }
-
-#ifdef USE_V8
-    // track that we have done a local insert into a Foxx queue.
-    // this information will be broadcasted to other coordinators
-    // in the cluster eventually via the agency.
-    // because the agency update is posted asynchronously, there is the
-    // possibility that this coordinator dies before the update is
-    // broadcasted to the agency. this is a rather unlikely edge case,
-    // and we currently do not optimize for that (i.e. posting updates
-    // to the agency is currently best effort).
-    if (isJobsCollection && trx.vocbase().server().hasFeature<FoxxFeature>()) {
-      trx.vocbase().server().getFeature<FoxxFeature>().trackLocalQueueInsert();
-    }
-#endif
 
     // Now compute the result
     if (!useMultiple) {  // single-shard fast track
@@ -1888,7 +1866,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
         }
         return std::move(fut).thenValue(
             [=](std::vector<Try<network::Response>>&& responses) mutable
-            -> OperationResult {
+                -> OperationResult {
               return ::handleCRUDShardResponsesSlow(
                   network::clusterResultRemove, expectedLen, std::move(options),
                   responses);
@@ -2057,7 +2035,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
     return std::move(f).thenValue([=, &trx,
                                    opCtx(std::move(opCtx))](Result&& r) mutable
-                                  -> Future<OperationResult> {
+                                      -> Future<OperationResult> {
       if (r.fail()) {
         return OperationResult(std::move(r), options);
       }
@@ -2230,7 +2208,7 @@ Future<OperationResult> getDocumentOnCoordinator(
 
   return futures::collectAll(std::move(futures))
       .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable
-                 -> OperationResult {
+                     -> OperationResult {
         return ::handleCRUDShardResponsesSlow(network::clusterResultDocument,
                                               expectedLen, std::move(options),
                                               responses);
@@ -2367,7 +2345,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 
     return std::move(f).thenValue([=, &trx,
                                    opCtx(std::move(opCtx))](Result&& r) mutable
-                                  -> Future<OperationResult> {
+                                      -> Future<OperationResult> {
       if (r.fail()) {  // bail out
         return OperationResult(r, opCtx.options);
       }
@@ -2512,7 +2490,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         }
         return std::move(fut).thenValue(
             [=](std::vector<Try<network::Response>>&& responses) mutable
-            -> OperationResult {
+                -> OperationResult {
               return ::handleCRUDShardResponsesSlow(
                   network::clusterResultModify, expectedLen, std::move(options),
                   responses);

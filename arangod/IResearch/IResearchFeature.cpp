@@ -878,11 +878,7 @@ IResearchFeature::IResearchFeature(Server& server)
       _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_execution_threads_demand{})) {
   setOptional(true);
-#ifdef USE_V8
-  startsAfter<application_features::V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
 }

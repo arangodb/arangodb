@@ -39,11 +39,7 @@ using FF = Function::Flags;
 AqlFunctionFeature::AqlFunctionFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   startsAfter<AqlFeature>();
 }
 
@@ -512,12 +508,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ShardId});
-
-  // only function without a C++ implementation. not usable in analyzers
-#ifdef USE_V8
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable),
-       nullptr});
-#endif
 
   // the following functions are not eligible to run on DB servers and not
   // in analyzers

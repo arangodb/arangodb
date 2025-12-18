@@ -76,12 +76,8 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(
             argv[0], "Usage: " + context.binaryName() + " [<options>]",
-            "For more information use:", BIN_DIRECTORY
-#ifndef USE_V8
-            ,
-            arangodb::options::ParseJsOps::parseJS
-#endif
-            ));
+            "For more information use:", BIN_DIRECTORY,
+            arangodb::options::ParseJsOps::parseJS));
     ArangoshServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{

@@ -90,9 +90,6 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   }
   DatabaseFeature& _databaseFeature;
   StorageEngine& _engine;
-#ifdef USE_V8
-  V8DealerFeature& _dealer;
-#endif
 };
 
 class DatabaseFeature final : public ArangodFeature {

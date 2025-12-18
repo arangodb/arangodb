@@ -54,12 +54,7 @@ namespace arangodb {
 
 AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(false);
-#ifdef USE_V8
-  startsAfter<V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
-
   startsAfter<QueryRegistryFeature>();
 }
 
@@ -167,7 +162,9 @@ std::shared_ptr<arangodb::aql::Query> AqlFeature::createQuery(
       bindParamsCopy = velocypack::SharedSlice(bindParameters->bufferRef());
     } else {
       VPackBuilder builder;
-      { VPackObjectBuilder guard(&builder); }
+      {
+        VPackObjectBuilder guard(&builder);
+      }
       bindParamsCopy = velocypack::SharedSlice{*builder.steal()};
     }
     apiRecordingFeat->recordAQLQuery(

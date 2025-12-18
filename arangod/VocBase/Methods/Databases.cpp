@@ -47,13 +47,6 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
-#ifdef USE_V8
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-utils.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/V8Executor.h"
-#include "VocBase/Methods/Tasks.h"
-#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -62,9 +55,6 @@
 
 #include <absl/strings/str_cat.h>
 
-#ifdef USE_V8
-#include <v8.h>
-#endif
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -503,66 +493,6 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
 
   Result res;
   auto& server = systemVocbase->server();
-#ifdef USE_V8
-  if (server.hasFeature<V8DealerFeature>() &&
-      server.isEnabled<V8DealerFeature>()) {
-    constexpr std::string_view dropError = "Error when dropping database: ";
-    V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
-    try {
-      JavaScriptSecurityContext securityContext =
-          JavaScriptSecurityContext::createInternalContext();
-
-      V8ConditionalExecutorGuard guard(systemVocbase, securityContext);
-
-      if (guard.isolate() == nullptr) {
-        events::DropDatabase(dbName, res, exec);
-        return res;
-      }
-
-      Task::removeTasksForDatabase(dbName);
-
-      res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
-        v8::HandleScope scope(isolate);
-
-        // clear collections in cache object
-        TRI_ClearObjectCacheV8(isolate);
-
-        Result res;
-
-        if (ServerState::instance()->isCoordinator()) {
-          // If we are a coordinator in a cluster, we have to behave
-          // differently:
-          auto& df = server.getFeature<DatabaseFeature>();
-          res = ::dropDBCoordinator(df, dbName);
-        } else {
-          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
-
-          if (res.fail()) {
-            events::DropDatabase(dbName, res, exec);
-            return res;
-          }
-
-          // run the garbage collection in case the database held some objects
-          // which can now be freed
-          TRI_RunGarbageCollectionV8(isolate, 0.1);
-        }
-        return res;
-      });
-
-      dealer.addGlobalExecutorMethod(
-          GlobalExecutorMethods::MethodType::kReloadRouting);
-    } catch (basics::Exception const& ex) {
-      events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
-      return Result(ex.code(), absl::StrCat(dropError, ex.message()));
-    } catch (std::exception const& ex) {
-      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, absl::StrCat(dropError, ex.what()));
-    } catch (...) {
-      events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, dropError);
-    }
-  } else
-#endif
   {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:

@@ -416,17 +416,7 @@ std::string Version::getRocksDBVersion() {
 }
 
 // get V8 version
-std::string Version::getV8Version() {
-#ifdef USE_V8
-#ifdef ARANGODB_V8_VERSION
-  return std::string(ARANGODB_V8_VERSION);
-#else
-  return std::string();
-#endif
-#else
-  return "none";
-#endif
-}
+std::string Version::getV8Version() { return "none"; }
 
 // get OpenSSL version
 std::string Version::getOpenSSLVersion(bool compileTime) {
@@ -582,11 +572,7 @@ std::string Version::getVerboseVersionString() {
 #endif
   version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
-          << "ICU " << getICUVersion() << ", "
-#ifdef USE_V8
-          << "V8 " << getV8Version() << ", "
-#endif
-          << getOpenSSLVersion(false);
+          << "ICU " << getICUVersion() << ", " << getOpenSSLVersion(false);
 
   if (Values.contains("build-id")) {
     version << ", build-id: " << Values["build-id"];

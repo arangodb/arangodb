@@ -33,9 +33,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 
 #include <velocypack/Builder.h>
 
@@ -429,10 +426,6 @@ stats::Descriptions::Descriptions(ArangodServer& server)
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-#ifdef USE_V8
-  auto& dealer = _server.getFeature<V8DealerFeature>();
-#endif
-
   ServerStatistics const& info =
       _server.getFeature<metrics::MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info.uptime()));
@@ -452,35 +445,6 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("dirtyReadOnly",
         VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
   b.close();
-
-#ifdef USE_V8
-  if (dealer.isEnabled()) {
-    b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer.getCurrentExecutorStatistics();
-    auto memoryStatistics = dealer.getCurrentExecutorDetails();
-    b.add("available", VPackValue(v8Counters.available));
-    b.add("busy", VPackValue(v8Counters.busy));
-    b.add("dirty", VPackValue(v8Counters.dirty));
-    b.add("free", VPackValue(v8Counters.free));
-    b.add("max", VPackValue(v8Counters.max));
-    b.add("min", VPackValue(v8Counters.min));
-    {
-      b.add("memory", VPackValue(VPackValueType::Array));
-      for (auto const& memStatistic : memoryStatistics) {
-        b.add(VPackValue(VPackValueType::Object));
-        b.add("contextId", VPackValue(memStatistic.id));
-        b.add("tMax", VPackValue(memStatistic.tMax));
-        b.add("countOfTimes", VPackValue(memStatistic.countOfTimes));
-        b.add("heapMax", VPackValue(memStatistic.heapMax));
-        b.add("heapMin", VPackValue(memStatistic.heapMin));
-        b.add("invocations", VPackValue(memStatistic.invocations));
-        b.close();
-      }
-      b.close();
-    }
-    b.close();
-  }
-#endif
 
   b.add("threads", VPackValue(VPackValueType::Object, true));
   SchedulerFeature::SCHEDULER->toVelocyPack(b);

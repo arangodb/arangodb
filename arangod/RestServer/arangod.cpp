@@ -42,9 +42,6 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
-#ifdef USE_V8
-               ArangodServer::id<FoxxFeature>(),
-#endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -167,11 +164,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               server,
               server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
-#ifdef USE_V8
-        [&ret](auto& server, TypeTag<ScriptFeature>) {
-          return std::make_unique<ScriptFeature>(server, &ret);
-        },
-#endif
         [&ret](auto& server, TypeTag<ServerFeature>) {
           return std::make_unique<ServerFeature>(server, &ret);
         },
@@ -181,13 +173,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(
-              server,
-#ifdef USE_V8
-              std::array { ArangodServer::id<ScriptFeature>() }
-#else
-              std::array { ArangodServer::id<AgencyFeaturePhase>() }
-#endif
-          );
+              server, std::array{ArangodServer::id<AgencyFeaturePhase>()});
         },
         [&name](auto& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, name);

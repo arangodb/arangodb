@@ -1093,11 +1093,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
     : ArangodFeature{server, *this},
       _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
-#ifdef USE_V8
-  startsAfter<application_features::V8FeaturePhase>();
-#else
   startsAfter<application_features::ClusterFeaturePhase>();
-#endif
   // used for registering IResearch analyzer functions
   startsAfter<aql::AqlFunctionFeature>();
   // used for getting the system database

@@ -32,10 +32,6 @@ FoxxFeaturePhase::FoxxFeaturePhase(ArangodServer& server)
   startsAfter<ServerFeaturePhase, ArangodServer>();
 
   startsAfter<BootstrapFeature, ArangodServer>();
-#ifdef USE_V8
-  startsAfter<FoxxFeature, ArangodServer>();
-  startsAfter<FrontendFeature, ArangodServer>();
-#endif
 }
 
 }  // namespace arangodb::application_features

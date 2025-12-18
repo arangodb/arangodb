@@ -62,9 +62,6 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/vocbase.h"
 
 #include <initializer_list>
@@ -1114,34 +1111,13 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                  "httpReqsUser", globals, ensureWhitespace);
   }
 
-#ifdef USE_V8
-  V8DealerFeature::Statistics v8Counters{};
-  if (server().hasFeature<V8DealerFeature>()) {
-    V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-    if (dealer.isEnabled()) {
-      v8Counters = dealer.getCurrentExecutorStatistics();
-    }
-  }
-  appendMetric(result, std::to_string(v8Counters.available),
-               "v8ContextAvailable", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy",
-               globals, ensureWhitespace);
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty",
-               globals, ensureWhitespace);
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree",
-               globals, ensureWhitespace);
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin", globals,
-               ensureWhitespace);
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax", globals,
-               ensureWhitespace);
-#else
+  // FIXME-V8: Do we want to remove this?
   appendMetric(result, "0", "v8ContextAvailable", globals, ensureWhitespace);
   appendMetric(result, "0", "v8ContextBusy", globals, ensureWhitespace);
   appendMetric(result, "0", "v8ContextDirty", globals, ensureWhitespace);
   appendMetric(result, "0", "v8ContextFree", globals, ensureWhitespace);
   appendMetric(result, "0", "v8ContextMin", globals, ensureWhitespace);
   appendMetric(result, "0", "v8ContextMax", globals, ensureWhitespace);
-#endif
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(

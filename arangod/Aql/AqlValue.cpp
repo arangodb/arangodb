@@ -31,9 +31,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
-#ifdef USE_V8
-#include "V8/v8-vpack.h"
-#endif
 
 #include <absl/strings/numbers.h>
 
@@ -783,39 +780,6 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(memoryOriginType() == mot);
   TRI_ASSERT(memoryUsage() == length);
 }
-
-#ifdef USE_V8
-v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
-                                     velocypack::Options const* options) const {
-  auto context = TRI_IGETC;
-  auto t = type();
-  switch (t) {
-    case RANGE: {
-      auto const n = _data.rangeMeta.range->size();
-      Range::throwIfTooBigForMaterialization(n);
-      v8::Handle<v8::Array> result =
-          v8::Array::New(isolate, static_cast<int>(n));
-
-      for (uint32_t i = 0; i < n; ++i) {
-        // is it safe to use a double here (precision loss)? No, it's not safe
-        result
-            ->Set(context, i,
-                  v8::Number::New(isolate, static_cast<double>(
-                                               _data.rangeMeta.range->at(i))))
-            .FromMaybe(true);
-        if (i % 1024 == 0) {
-          if (V8PlatformFeature::isOutOfMemory(isolate)) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-        }
-      }
-      return result;
-    }
-    default:
-      return TRI_VPackToV8(isolate, slice(t), options);
-  }
-}
-#endif
 
 void AqlValue::toVelocyPack(velocypack::Options const* options,
                             velocypack::Builder& builder,

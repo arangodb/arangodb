@@ -68,9 +68,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseMetrics.h"
 #include "VocBase/ticks.h"
@@ -127,13 +124,7 @@ DatabaseManagerThread::DatabaseManagerThread(Server& server,
                                              StorageEngine& engine)
     : ServerThread<ArangodServer>(server, "DatabaseManager"),
       _databaseFeature(databaseFeature),
-      _engine(engine)
-#ifdef USE_V8
-      ,
-      _dealer(server.getFeature<V8DealerFeature>())
-#endif
-{
-}
+      _engine(engine) {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
@@ -179,11 +170,7 @@ void DatabaseManagerThread::run() {
         iresearch::cleanupDatabase(*database);
 
         auto* queryRegistry = QueryRegistryFeature::registry();
-#ifdef USE_V8
-        if (_dealer.isEnabled() || queryRegistry != nullptr) {
-#else
         if (queryRegistry != nullptr) {
-#endif
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
           std::lock_guard lockCreate{_databaseFeature._databaseCreateLock};
@@ -191,11 +178,6 @@ void DatabaseManagerThread::run() {
           auto* same = _databaseFeature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
-#ifdef USE_V8
-            if (_dealer.isEnabled()) {
-              _dealer.cleanupDatabase(*database);
-            }
-#endif
             if (queryRegistry != nullptr) {
               queryRegistry->destroy(database->name());
             }
@@ -422,13 +404,6 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
-    dealer.verifyAppPaths();
-  }
-#endif
-
   // scan all databases
   VPackBuilder builder;
   _engine->getDatabases(builder);
@@ -775,16 +750,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         LOG_TOPIC("56c41", ERR, Logger::FIXME) << msg;
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
-
-#ifdef USE_V8
-      auto& dealer = server().getFeature<V8DealerFeature>();
-      if (dealer.isEnabled()) {
-        auto r = dealer.createDatabase(name, std::to_string(dbId), true);
-        if (r != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(r);
-        }
-      }
-#endif
     }
 
     if (!_engine->inRecovery()) {
@@ -1203,10 +1168,6 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-#endif
-
   auto r = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
@@ -1236,15 +1197,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     }
 
     auto name = it.get("name").stringView();
-#ifdef USE_V8
-    if (dealer.isEnabled()) {
-      auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer.createDatabase(name, id, false);
-      if (r != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-    }
-#endif
 
     // open the database and scan collections in it
 

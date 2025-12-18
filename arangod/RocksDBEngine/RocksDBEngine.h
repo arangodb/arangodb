@@ -333,11 +333,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
-#ifdef USE_V8
-  /// @brief Add engine-specific V8 functions
-  void addV8Functions() override;
-#endif
-
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 

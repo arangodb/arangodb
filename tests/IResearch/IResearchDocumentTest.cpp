@@ -66,9 +66,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/Methods/Collections.h"
 
 namespace {
@@ -2625,7 +2622,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
       auto ctx = writer->GetBatch();
       auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
+      EXPECT_TRUE(doc.Insert < irs::Action::INDEX |
+                  irs::Action::STORE > (field));
       EXPECT_TRUE(doc);
     }
     writer->Commit();
@@ -2797,7 +2795,8 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto ctx = store.writer->GetBatch();
       auto doc = ctx.Insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
+      EXPECT_TRUE(doc.Insert < irs::Action::INDEX |
+                  irs::Action::STORE > (field));
       EXPECT_TRUE(doc);
       ++expectedDocs;
       ++expectedLiveDocs;
@@ -2812,7 +2811,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto ctx = store.writer->GetBatch();
     auto doc = ctx.Insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.Insert<irs::Action::INDEX | irs::Action::STORE>(field));
+    EXPECT_TRUE(doc.Insert < irs::Action::INDEX | irs::Action::STORE > (field));
     EXPECT_TRUE(doc);
   }
 

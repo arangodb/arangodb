@@ -51,9 +51,6 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
-#ifdef USE_V8
-#include "V8/v8-globals.h"
-#endif
 
 #include <velocypack/Iterator.h>
 

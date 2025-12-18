@@ -51,19 +51,10 @@
 
 struct TRI_vocbase_t;
 
-#ifdef USE_V8
-namespace v8 {
-class Isolate;
-}
-#endif
-
 namespace arangodb {
 
 class CollectionNameResolver;
 class LogicalDataSource;
-#ifdef USE_V8
-class V8Executor;
-#endif
 
 template<typename>
 struct async;
@@ -84,9 +75,6 @@ struct ExecutionStats;
 struct QueryCacheResultEntry;
 class QueryList;
 struct QueryProfile;
-#ifdef USE_V8
-struct QueryResultV8;
-#endif
 class SharedQueryState;
 
 /// @brief an AQL query
@@ -206,12 +194,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
-#ifdef USE_V8
-  /// @brief execute an AQL query
-  /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate);
-#endif
-
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
@@ -246,17 +228,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void exitV8Executor() final;
 
   /// @brief check if the query has a V8 executor ready for use
-  bool hasEnteredV8Executor() const final {
-#ifdef USE_V8
-    return (_executorOwnedByExterior || _v8Executor != nullptr);
-#else
-    return false;
-#endif
-  }
-
-#ifdef USE_V8
-  void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
-#endif
+  bool hasEnteredV8Executor() const final { return false; }
 
   Result result() const;
 
@@ -425,11 +397,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
 
-#ifdef USE_V8
-  /// @brief the currently used V8 executor
-  V8Executor* _v8Executor;
-#endif
-
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
 
@@ -503,18 +470,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// plan cache. this will be result for storing the query plan later in the
   /// cache
   std::optional<QueryPlanCache::Key> _planCacheKey;
-
-#ifdef USE_V8
-  /// @brief whether or not someone else has acquired a V8 executor for us
-  bool const _executorOwnedByExterior;
-
-  /// @brief set if we are inside a JS transaction
-  bool const _embeddedQuery;
-
-  /// @brief whether or not the transaction executor was registered
-  /// in a v8 executor
-  bool _registeredInV8Executor;
-#endif
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

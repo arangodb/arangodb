@@ -31,12 +31,7 @@ FinalFeaturePhase::FinalFeaturePhase(ArangodServer& server)
   setOptional(false);
   startsAfter<AgencyFeaturePhase, ArangodServer>();
 
-#ifdef USE_V8
-  startsAfter<ConsoleFeature, ArangodServer>();
-  startsAfter<ScriptFeature, ArangodServer>();
-#else
   startsAfter<AgencyFeaturePhase, ArangodServer>();
-#endif
   startsAfter<ShutdownFeature, ArangodServer>();
   startsAfter<SoftShutdownFeature, ArangodServer>();
 }

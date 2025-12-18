@@ -44,14 +44,13 @@
 #include "IResearch/IResearchCommon.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#define ASSERT_ARANGO_OK(x) \
-  { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
+#define ASSERT_ARANGO_OK(x)                  \
+  {                                          \
+    ASSERT_TRUE(x.ok()) << x.errorMessage(); \
+  }
 
 using namespace std::literals::string_literals;
 
