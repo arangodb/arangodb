@@ -1,6 +1,10 @@
 4.0
 ---
 
+* Remove V8 server code.
+
+* Remove aardvark and system Foxx apps code.
+
 * Let's note the removals we do in 4.0 here.
 
 
