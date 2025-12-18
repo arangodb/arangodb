@@ -125,11 +125,6 @@ add_library(arango_aql STATIC
   tokens.cpp
 )
 
-if (USE_V8) 
-  target_sources(arango_aql PRIVATE
-    V8ErrorHandler.cpp)
-endif()
-
 add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)

@@ -32,9 +32,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
 
-# enable frontend build
-option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ${USE_V8})
-
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
@@ -160,26 +157,6 @@ endif()
 # If enterprise add USE_ENTERPRISE flag to all targets
 if(USE_ENTERPRISE)
   add_definitions("-DUSE_ENTERPRISE=1")
-endif()
-
-# enable V8/JavaScript in executables.
-# note that V8 will always be built, regardless of the value of this option.
-# this is required because the V8 build step also builds ICU, which is needed
-# in all programs.
-# if set to OFF, V8 will not be linked to arangod.
-# The arangosh will be built with V8 support in order to execute tests.
-# with V8 integration code for arangod will not be compiled.
-# additionally, arangosh will not be built.
-# setting the option to OFF will further disable all JavaScript support in
-# arangod, rendering the web UI, JavaScript transactions, AQL user-defined
-# functions(UDFs), Foxx and some other smaller features unusable.
-# setting this option to OFF also renders many tests unusable as many tests
-# depend on JavaScript.
-# setting the option to OFF is highly experimental option and not well tested.
-# use at your own risk!
-option(USE_V8 "build with V8/JavaScript support" OFF)
-if(USE_V8)
-  add_definitions("-DUSE_V8=1")
 endif()
 
 # enable dtrace
@@ -1156,12 +1133,6 @@ endforeach()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
-if(USE_FRONTEND)
-  if(NOT(USE_V8))
-    message(FATAL_ERROR "Can't build frontend without V8")
-  endif()
-  include(frontend/aardvark)
-endif()
 if(NOT(SKIP_PACKAGING))
   include(packages/packages)
 endif()

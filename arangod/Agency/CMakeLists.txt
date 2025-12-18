@@ -29,11 +29,6 @@ add_library(arango_agency STATIC
   Store.cpp
   Supervision.cpp)
 
-if (USE_V8) 
-  target_sources(arango_agency PRIVATE
-    v8-agency.cpp)
-endif()
-
 target_link_libraries(arango_agency
   arango
   arango_health

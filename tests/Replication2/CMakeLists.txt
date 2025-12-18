@@ -91,10 +91,6 @@ target_link_libraries(arangodbtests_replication2 PRIVATE
   boost_boost
   fmt)
 
-if (USE_V8)
-  target_link_libraries(arangodbtests_replication2 PRIVATE arango_v8server)
-endif()
-
 add_test(NAME replication2
   COMMAND arangodbtests_replication2)
 

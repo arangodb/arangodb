@@ -98,10 +98,6 @@ target_link_libraries(arangodbtests-iresearch
   boost_boost
 )
 
-if (USE_V8)
-  target_link_libraries(arangodbtests-iresearch arango_v8server)
-endif ()
-
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
@@ -113,12 +109,6 @@ target_include_directories(arangodbtests-iresearch PRIVATE
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
-
-if (USE_V8) 
-  target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
-    ${V8_INTERNAL_INCLUDE_DIR})
-endif ()
-
 
 target_link_libraries(arangodbtests-iresearch v8_interface)
 

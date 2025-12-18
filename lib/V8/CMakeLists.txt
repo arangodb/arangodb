@@ -42,14 +42,3 @@ target_include_directories(arango_v8
 if (USE_ENTERPRISE)
   target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
-
-if (USE_V8)
-  add_library(arango_v8_no_deadline STATIC
-    v8-no-deadline.cpp)
-  target_link_libraries(arango_v8_no_deadline
-    arango
-    v8_interface
-    velocypack)
-  target_include_directories(arango_v8_no_deadline PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR})
-endif()

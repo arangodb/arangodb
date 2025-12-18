@@ -395,10 +395,6 @@ target_link_libraries(arango
          absl::strings
          arango_lightweight)
 
-if (USE_V8)
-  target_link_libraries(arango PUBLIC ${V8_LIBS})
-endif()
-
 target_link_libraries(arango PUBLIC fmt::fmt)
 
 # this is "."
@@ -412,9 +408,6 @@ target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC zlib_interface)
-if (USE_V8)
-  target_link_libraries(arango PUBLIC v8_interface)
-endif()
 
 add_dependencies(arango v8_build)
 add_dependencies(arango iculegacy_build)
