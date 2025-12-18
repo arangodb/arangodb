@@ -36,7 +36,7 @@ parameters:
   arangod-without-v8:
     type: boolean
     default: true
-    description: "Build arangod without serverside JS (also excludes frontend)"
+    description: "Build arangod without serverside JS (must be true now since 4.0!)"
   config-definitions:
     type: string
     default: test-definitions.yml

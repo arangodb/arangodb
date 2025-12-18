@@ -174,16 +174,14 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig
     ) -> List[str]:
         """
-        Add compilation and frontend build jobs.
+        Add compilation build job.
 
         Returns:
             List of build job names that tests depend on
         """
         build_job = self._create_build_job(build_config)
-        frontend_job = self._create_frontend_build_job(build_config)
 
         workflow["jobs"].append(build_job)
-        workflow["jobs"].append(frontend_job)
 
         # Add non-maintainer build for x64 (non-instrumented builds only)
         if (
@@ -195,9 +193,8 @@ class CircleCIGenerator(OutputGenerator):
 
         # Extract job names from the dicts
         build_job_name = build_job["compile-linux"]["name"]
-        frontend_job_name = frontend_job["build-frontend"]["name"]
 
-        return [build_job_name, frontend_job_name]
+        return [build_job_name]
 
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
@@ -223,13 +220,6 @@ class CircleCIGenerator(OutputGenerator):
             params["s3-prefix"] = "aarch64"
 
         return {"compile-linux": params}
-
-    def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
-        """Create frontend build job definition."""
-        suffix = build_config.build_variant.get_suffix()
-        name = f"build-{build_config.architecture.value}{suffix}-frontend"
-
-        return {"build-frontend": {"name": name}}
 
     def _create_non_maintainer_build_job(
         self, build_config: BuildConfig

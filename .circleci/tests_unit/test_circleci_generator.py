@@ -167,29 +167,6 @@ class TestCreateBuildJob:
         assert params["name"] == "build-x64-tsan"
         assert params["preset"] == "enterprise-pr-tsan"
 
-    def test_create_frontend_build_job(self):
-        """Test creating frontend build job."""
-        gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        job = gen._create_frontend_build_job(build_config)
-
-        assert "build-frontend" in job
-        assert job["build-frontend"]["name"] == "build-x64-frontend"
-
-    def test_create_frontend_build_job_with_sanitizer(self):
-        """Test creating frontend build job with sanitizer."""
-        gen = self.create_generator()
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            build_variant=BuildVariant.ALUBSAN,
-        )
-
-        job = gen._create_frontend_build_job(build_config)
-
-        assert job["build-frontend"]["name"] == "build-x64-alubsan-frontend"
-
-
 class TestDockerImageJob:
     """Test docker image job creation."""
 

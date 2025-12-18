@@ -153,33 +153,23 @@ class TestBuildVariantWorkflows:
         # Check non-sanitizer x64 workflow
         x64_pr_jobs = workflows["x64-nightly"]["jobs"]
         build_jobs = [
-            j for j in x64_pr_jobs if "compile-linux" in j or "build-frontend" in j
+            j for j in x64_pr_jobs if "compile-linux" in j
         ]
         assert any(
             j["compile-linux"]["name"] == "build-x64"
             for j in build_jobs
             if "compile-linux" in j
         )
-        assert any(
-            j["build-frontend"]["name"] == "build-x64-frontend"
-            for j in build_jobs
-            if "build-frontend" in j
-        )
 
         # Check TSAN x64 workflow
         x64_tsan_jobs = workflows["x64-nightly-tsan"]["jobs"]
         build_jobs_tsan = [
-            j for j in x64_tsan_jobs if "compile-linux" in j or "build-frontend" in j
+            j for j in x64_tsan_jobs if "compile-linux" in j
         ]
         assert any(
             j["compile-linux"]["name"] == "build-x64-tsan"
             for j in build_jobs_tsan
             if "compile-linux" in j
-        )
-        assert any(
-            j["build-frontend"]["name"] == "build-x64-tsan-frontend"
-            for j in build_jobs_tsan
-            if "build-frontend" in j
         )
 
     def test_workflows_have_independent_test_jobs(self):
@@ -208,15 +198,6 @@ class TestBuildVariantWorkflows:
 
         assert len(x64_pr_test_jobs) > 0, "Non-sanitizer workflow should have test jobs"
         assert len(x64_tsan_test_jobs) > 0, "TSAN workflow should have test jobs"
-
-        # Test jobs should require their respective build jobs
-        for job in x64_pr_test_jobs:
-            requires = job["run-linux-tests"]["requires"]
-            assert "build-x64-frontend" in requires
-
-        for job in x64_tsan_test_jobs:
-            requires = job["run-linux-tests"]["requires"]
-            assert "build-x64-tsan-frontend" in requires
 
     def test_nightly_workflows_with_multiple_sanitizers(self):
         """Test that nightly builds work correctly with multiple sanitizers."""
