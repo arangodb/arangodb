@@ -535,11 +535,13 @@ class CircleCIGenerator(OutputGenerator):
             job, deployment_type, build_config, replication_version
         )
 
-        # Create filter criteria with current workflow's architecture
+        # Create filter criteria with current workflow's architecture and build variant
         from dataclasses import replace
 
         criteria = replace(
-            self.config.filter_criteria, architecture=build_config.architecture
+            self.config.filter_criteria,
+            architecture=build_config.architecture,
+            build_variant=build_config.build_variant,
         )
 
         filtered_suites = filter_suites(job, criteria)

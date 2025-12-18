@@ -276,3 +276,85 @@ class TestBuildVariantWorkflows:
         assert (
             len(aarch64_pr_cppcheck) == 0
         ), "aarch64 workflow should NOT have cppcheck"
+
+    def test_job_with_instrumentation_false_excluded_from_sanitizer_workflows(self):
+        """Test that jobs with instrumentation=false are excluded from sanitizer workflows."""
+        from src.config_lib import TestRequirements
+
+        # Create test definition with one job that requires non-instrumented builds
+        test_def = TestDefinitionFile(
+            jobs={
+                "non_instrumented_job": TestJob(
+                    name="non_instrumented_job",
+                    suites=[SuiteConfig(name="test_suite")],
+                    options=TestOptions(),
+                    requires=TestRequirements(instrumentation=False),
+                )
+            }
+        )
+
+        config = GeneratorConfig(
+            filter_criteria=FilterCriteria(),
+            build_variants=[BuildVariant.NORMAL, BuildVariant.TSAN],
+        )
+        gen = CircleCIGenerator(config, base_config={"version": 2.1})
+
+        result = gen.generate([test_def])
+        workflows = result["workflows"]
+
+        # Job should appear in NORMAL workflow
+        normal_test_jobs = [
+            j for j in workflows["x64-pr"]["jobs"] if "run-linux-tests" in j
+        ]
+        assert len(normal_test_jobs) == 2  # single + cluster
+        assert any(
+            "non_instrumented_job" in j["run-linux-tests"]["name"]
+            for j in normal_test_jobs
+        )
+
+        # Job should NOT appear in TSAN workflow
+        tsan_test_jobs = [
+            j for j in workflows["x64-pr-tsan"]["jobs"] if "run-linux-tests" in j
+        ]
+        assert len(tsan_test_jobs) == 0, "Job with instrumentation=false should not appear in TSAN workflow"
+
+    def test_job_with_instrumentation_true_only_in_sanitizer_workflows(self):
+        """Test that jobs with instrumentation=true only appear in sanitizer workflows."""
+        from src.config_lib import TestRequirements
+
+        # Create test definition with one job that requires instrumented builds
+        test_def = TestDefinitionFile(
+            jobs={
+                "instrumented_only_job": TestJob(
+                    name="instrumented_only_job",
+                    suites=[SuiteConfig(name="test_suite")],
+                    options=TestOptions(),
+                    requires=TestRequirements(instrumentation=True),
+                )
+            }
+        )
+
+        config = GeneratorConfig(
+            filter_criteria=FilterCriteria(),
+            build_variants=[BuildVariant.NORMAL, BuildVariant.TSAN],
+        )
+        gen = CircleCIGenerator(config, base_config={"version": 2.1})
+
+        result = gen.generate([test_def])
+        workflows = result["workflows"]
+
+        # Job should NOT appear in NORMAL workflow
+        normal_test_jobs = [
+            j for j in workflows["x64-pr"]["jobs"] if "run-linux-tests" in j
+        ]
+        assert len(normal_test_jobs) == 0, "Job with instrumentation=true should not appear in NORMAL workflow"
+
+        # Job should appear in TSAN workflow
+        tsan_test_jobs = [
+            j for j in workflows["x64-pr-tsan"]["jobs"] if "run-linux-tests" in j
+        ]
+        assert len(tsan_test_jobs) == 2  # single + cluster
+        assert any(
+            "instrumented_only_job" in j["run-linux-tests"]["name"]
+            for j in tsan_test_jobs
+        )
