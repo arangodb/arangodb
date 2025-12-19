@@ -54,6 +54,9 @@ namespace arangodb::aql {
 AqlValue functions::Call(ExpressionContext* expressionContext,
                          AstNode const& node,
                          VPackFunctionParametersView parameters) {
+  // Since we lost JavaScript in 4.0, this can only ever error out.
+  // We leave the code for potential future extensions with other
+  // types of user defined functions.
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "CALL() function is not supported in this build of ArangoDB");
@@ -63,6 +66,9 @@ AqlValue functions::Call(ExpressionContext* expressionContext,
 AqlValue functions::Apply(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
+  // Since we lost JavaScript in 4.0, this can only ever error out.
+  // We leave the code for potential future extensions with other
+  // types of user defined functions.
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "APPLY() function is not supported in this build of ArangoDB");
