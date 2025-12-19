@@ -122,8 +122,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_restServer && !db.upgrade() &&
       !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
-        << "need at least '--console', '--javascript.unit-tests' or"
-        << "'--javascript.script if rest-server is disabled";
+        << "Rest server cannot be disabled any more, because it is pointless.";
     FATAL_ERROR_EXIT();
   }
 
