@@ -109,7 +109,10 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_await executeBegin();
         co_return;
       } else if (_request->suffixes().empty()) {
-        executeJSTransaction();
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED,
+                      "JavaScript operations are not available in this build "
+                      "of ArangoDB");
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
@@ -377,13 +380,6 @@ void RestTransactionHandler::generateTransactionResult(
 }
 
 // ====================== V8 stuff ===================
-
-/// start a legacy JS transaction
-void RestTransactionHandler::executeJSTransaction() {
-  generateError(
-      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-      "JavaScript operations are not available in this build of ArangoDB");
-}
 
 void RestTransactionHandler::cancel() {
   // cancel v8 transaction
