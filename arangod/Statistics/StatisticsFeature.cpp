@@ -1110,14 +1110,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                  std::to_string(connectionStats.totalRequestsUser.get()),
                  "httpReqsUser", globals, ensureWhitespace);
   }
-
-  // FIXME-V8: Do we want to remove this?
-  appendMetric(result, "0", "v8ContextAvailable", globals, ensureWhitespace);
-  appendMetric(result, "0", "v8ContextBusy", globals, ensureWhitespace);
-  appendMetric(result, "0", "v8ContextDirty", globals, ensureWhitespace);
-  appendMetric(result, "0", "v8ContextFree", globals, ensureWhitespace);
-  appendMetric(result, "0", "v8ContextMin", globals, ensureWhitespace);
-  appendMetric(result, "0", "v8ContextMax", globals, ensureWhitespace);
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(

@@ -1018,17 +1018,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
           serverInfo._transactionsStatistics._dirtyReadTransactions.load()));
   builder.close();
 
-  // FIXME-V8: Do we want to remove this?
-  // export v8 statistics
-  builder.add("v8Context", VPackValue(VPackValueType::Object));
-  builder.add("available", VPackValue(0));
-  builder.add("busy", VPackValue(0));
-  builder.add("dirty", VPackValue(0));
-  builder.add("free", VPackValue(0));
-  builder.add("min", VPackValue(0));
-  builder.add("max", VPackValue(0));
-  builder.close();
-
   // export threads statistics
   builder.add("threads", VPackValue(VPackValueType::Object));
   SchedulerFeature::SCHEDULER->toVelocyPack(builder);
