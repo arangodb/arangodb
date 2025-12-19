@@ -1438,6 +1438,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   }
 
   if constexpr (executorHasSideEffects<Executor>) {
+    auto didWriteRow = false;
     auto r = sideEffectSkipHandling(stack, _outputItemRow, shadowRow, _skipped);
     switch (r) {
       case SideEffectSkipResult::RETURN_DONE: {
@@ -1445,10 +1446,34 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       } break;
       case SideEffectSkipResult::FORWARD_SHADOW_ROW: {
         forwardShadowRow(stack, _outputItemRow, shadowRow);
+        didWriteRow = true;
       } break;
       case SideEffectSkipResult::DROP_SHADOW_ROW: {
+        //        return ExecState::UPSTREAM;
       } break;
     }
+    if (state == ExecutorState::DONE) {
+      // We have consumed everything, we are
+      // Done with this query
+      return ExecState::DONE;
+    } else if (_lastRange.hasDataRow()) {
+      // Multiple concatenated Subqueries
+      return ExecState::NEXTSUBQUERY;
+    } else if (_lastRange.hasShadowRow()) {
+      // We still have shadowRows, we
+      // need to forward them
+      return ExecState::SHADOWROWS;
+    } else if (didWriteRow) {
+      // End of input, we are done for now
+      // Need to call again
+      return ExecState::DONE;
+    } else {
+      // Done with this subquery.
+      // We did not write any output yet.
+      // So we can continue with upstream.
+      return ExecState::UPSTREAM;
+    }
+
   } else {
     forwardShadowRow(stack, _outputItemRow, shadowRow);
   }
