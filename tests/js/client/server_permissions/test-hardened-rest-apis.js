@@ -104,7 +104,6 @@ function testSuite() {
       assertTrue(result.hasOwnProperty("serverInfo"));
       assertTrue(result.hasOwnProperty("server"));
       assertTrue(result.hasOwnProperty("pid"));
-      assertTrue(result.hasOwnProperty("foxxApi"));
     },
 
     testCanAccessAdminStatusRo : function() {
@@ -116,7 +115,6 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("serverInfo"));
       assertFalse(result.hasOwnProperty("server"));
       assertFalse(result.hasOwnProperty("pid"));
-      assertFalse(result.hasOwnProperty("foxxApi"));
     },
 
     testCanAccessAdminMetricsRw : function() {
