@@ -1437,8 +1437,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     fetcher().resetDidReturnSubquerySkips(shadowDepth);
   }
 
+  bool didWriteShadowRow = false;
   if constexpr (executorHasSideEffects<Executor>) {
-    auto didWriteRow = false;
     auto r = sideEffectSkipHandling(stack, _outputItemRow, shadowRow, _skipped);
     switch (r) {
       case SideEffectSkipResult::RETURN_DONE: {
@@ -1446,36 +1446,14 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       } break;
       case SideEffectSkipResult::FORWARD_SHADOW_ROW: {
         forwardShadowRow(stack, _outputItemRow, shadowRow);
-        didWriteRow = true;
+        didWriteShadowRow = true;
       } break;
       case SideEffectSkipResult::DROP_SHADOW_ROW: {
-        //        return ExecState::UPSTREAM;
       } break;
     }
-    if (state == ExecutorState::DONE) {
-      // We have consumed everything, we are
-      // Done with this query
-      return ExecState::DONE;
-    } else if (_lastRange.hasDataRow()) {
-      // Multiple concatenated Subqueries
-      return ExecState::NEXTSUBQUERY;
-    } else if (_lastRange.hasShadowRow()) {
-      // We still have shadowRows, we
-      // need to forward them
-      return ExecState::SHADOWROWS;
-    } else if (didWriteRow) {
-      // End of input, we are done for now
-      // Need to call again
-      return ExecState::DONE;
-    } else {
-      // Done with this subquery.
-      // We did not write any output yet.
-      // So we can continue with upstream.
-      return ExecState::UPSTREAM;
-    }
-
   } else {
     forwardShadowRow(stack, _outputItemRow, shadowRow);
+    didWriteShadowRow = true;
   }
 
   if (state == ExecutorState::DONE) {
@@ -1499,7 +1477,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     }
     // we need to forward them
     return ExecState::SHADOWROWS;
-  } else {
+  } else if (didWriteShadowRow) {
     // call has not produced output or skips, and the shadow row is not
     // relevant.
     if (hasDoneNothing && !shadowRow.isRelevant()) {
@@ -1510,7 +1488,12 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     // Just start with the next subquery.
     // If in doubt the next row will be a shadowRow again,
     // this will be forwarded than.
+
     return ExecState::NEXTSUBQUERY;
+  } else {
+    // Did not write any output, the only choice is to ask upstream for more
+    // this can only happen when sideeffects are handled
+    return ExecState::UPSTREAM;
   }
 }
 
