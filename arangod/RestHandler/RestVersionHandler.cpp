@@ -38,8 +38,6 @@ static void addVersionDetails(ArangodServer& server, VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
-  auto& serverFeature = server.getFeature<ServerFeature>();
-  result.add("mode", VPackValue(serverFeature.operationModeString()));
   auto serverState = ServerState::instance();
   if (serverState != nullptr) {
     result.add("role",

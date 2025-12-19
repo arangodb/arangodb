@@ -48,27 +48,13 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 ServerFeature::ServerFeature(Server& server, int* res)
-    : ArangodFeature{server, *this},
-      _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+    : ArangodFeature{server, *this}, _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--console",
-                  "Start the server with a JavaScript emergency console.",
-                  new BooleanParameter(&_console))
-      .setLongDescription(R"(In this exclusive emergency mode, all networking
-and HTTP interfaces of the server are disabled. No requests can be made to the
-server in this mode, and the only way to work with the server in this mode is by
-using the emergency console.
-
-The server cannot be started in this mode if it is already running in this or
-another mode.)");
-
   options->addSection("server", "server features");
 
   options->addOption(
@@ -82,9 +68,6 @@ another mode.)");
       "data.",
       new BooleanParameter(&_validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.script", "Run the script and exit.",
-                     new VectorParameter<StringParameter>(&_scripts));
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
@@ -134,40 +117,13 @@ another mode.)");
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  int count = 0;
-
-  if (_console) {
-    _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_scripts.empty()) {
-    _operationMode = OperationMode::MODE_SCRIPT;
-    ++count;
-  }
-
-  if (1 < count) {
-    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
-        << "cannot combine '--console', '--javascript.unit-tests' and "
-        << "'--javascript.script'";
-    FATAL_ERROR_EXIT();
-  }
-
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
-      !db.upgrade() &&
+  if (!_restServer && !db.upgrade() &&
       !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
-        << "Options '--console', '--javascript.unit-tests'"
-        << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
   }
 
@@ -199,17 +155,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
-#ifdef USE_V8
-  if (_operationMode == OperationMode::MODE_CONSOLE) {
-    disableDeamonAndSupervisor();
-    v8dealer.setMinimumExecutors(2);
-  }
-#endif
-
-  if (_operationMode == OperationMode::MODE_SERVER ||
-      _operationMode == OperationMode::MODE_CONSOLE) {
-    server().getFeature<ShutdownFeature>().disable();
-  }
+  server().getFeature<ShutdownFeature>().disable();
 }
 
 void ServerFeature::prepare() {
@@ -223,28 +169,15 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
-  switch (_operationMode) {
-    case OperationMode::MODE_SCRIPT:
-    case OperationMode::MODE_CONSOLE:
-      break;
-
-    case OperationMode::MODE_SERVER:
-      LOG_TOPIC("7031b", TRACE, Logger::STARTUP)
-          << "server operation mode: SERVER";
-      break;
-  }
-
   // flush all log output before we go on... this is sensible because any
   // of the following options may print or prompt, and pending log entries
   // might overwrite that
   Logger::flush();
 
-  if (!isConsoleMode()) {
-    // install CTRL-C handlers
-    server().registerStartupCallback([this]() {
-      server().getFeature<SchedulerFeature>().buildControlCHandler();
-    });
-  }
+  // install CTRL-C handlers
+  server().registerStartupCallback([this]() {
+    server().getFeature<SchedulerFeature>().buildControlCHandler();
+  });
 }
 
 void ServerFeature::beginShutdown() { _isStopping = true; }
@@ -268,19 +201,6 @@ void ServerFeature::waitForHeartbeat() {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-}
-
-std::string ServerFeature::operationModeString(OperationMode mode) {
-  switch (mode) {
-    case OperationMode::MODE_CONSOLE:
-      return "console";
-    case OperationMode::MODE_SCRIPT:
-      return "script";
-    case OperationMode::MODE_SERVER:
-      return "server";
-    default:
-      return "unknown";
   }
 }
 
