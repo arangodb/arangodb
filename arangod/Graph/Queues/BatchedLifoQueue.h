@@ -25,6 +25,7 @@
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
+#include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Graph/Queues/ExpansionMarker.h"
 
@@ -94,7 +95,7 @@ class BatchedLifoQueue {
       if (std::holds_alternative<Step>(first)) {
         return std::get<Step>(first).vertexFetched();
       } else {
-        return false;  // next batch needs to be fetched
+        return true;
       }
     }
     return false;
@@ -134,6 +135,8 @@ class BatchedLifoQueue {
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
+    auto const& first = _queue.front();
+    return std::get<Step>(first);
   }
 
   QueueEntry<Step> pop() {
@@ -172,6 +175,8 @@ class BatchedLifoQueue {
       }
     }
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, BatchedLifoQueue<S>& x);
 
  private:
   /// @brief queue datastore
@@ -180,6 +185,10 @@ class BatchedLifoQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, BatchedLifoQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 
 }  // namespace graph
 }  // namespace arangodb

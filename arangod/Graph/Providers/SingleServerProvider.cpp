@@ -176,15 +176,15 @@ auto SingleServerProvider<Step>::expandToNextBatch(
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
-  auto cursorIt = _neighboursStack.find(id);
-  TRI_ASSERT(cursorIt != _neighboursStack.end());
+  auto cursorIt = _neighbourCursors.find(id);
+  TRI_ASSERT(cursorIt != _neighbourCursors.end());
   auto& cursor = cursorIt->second;
 
   LOG_TOPIC("c9179", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
   if (not cursor.hasMore(step.getDepth())) {
-    _neighboursStack.erase(cursorIt);
+    _neighbourCursors.erase(cursorIt);
     return false;
   }
 
@@ -217,15 +217,15 @@ auto SingleServerProvider<Step>::expandToNextBatch(
     // probability we do not need it anymore after refactoring is complete.
   }
   if (count == 0 && not cursor.hasMore(step.getDepth())) {
-    _neighboursStack.erase(cursorIt);
+    _neighbourCursors.erase(cursorIt);
     return false;
   }
   return true;
 }
 
 template<class Step>
-auto SingleServerProvider<Step>::addExpansionIterator(
-    CursorId id, Step const& step, std::function<void()> const& callback)
+auto SingleServerProvider<Step>::addExpansionIterator(CursorId id,
+                                                      Step const& step)
     -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
@@ -245,8 +245,7 @@ auto SingleServerProvider<Step>::addExpansionIterator(
   if (_ast != nullptr) {
     cursor.prepareIndexExpressions(_ast);
   }
-  _neighboursStack.emplace(id, std::move(cursor));
-  callback();
+  _neighbourCursors.emplace(id, std::move(cursor));
 }
 
 template<class Step>
@@ -267,7 +266,7 @@ auto SingleServerProvider<Step>::clear() -> void {
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
   _neighbours.clear();
-  _neighboursStack.clear();
+  _neighbourCursors.clear();
 }
 
 template<class Step>

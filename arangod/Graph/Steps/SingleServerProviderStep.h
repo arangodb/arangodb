@@ -125,5 +125,9 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep {
   Vertex _vertex;
   Edge _edge;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, SingleServerProviderStep& x) {
+  return f.object(x).fields(f.field("vertex", x.getVertex().getID()));
+}
 }  // namespace graph
 }  // namespace arangodb

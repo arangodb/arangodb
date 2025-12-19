@@ -163,6 +163,8 @@ class WeightedQueue {
       }
     }
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, WeightedQueue<S>& x);
 
  private:
   struct WeightedComparator {
@@ -188,6 +190,9 @@ class WeightedQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, WeightedQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

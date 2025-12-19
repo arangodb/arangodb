@@ -147,6 +147,8 @@ class FifoQueue {
     _queue.pop_front();
     return {first};
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, FifoQueue<S>& x);
 
  private:
   /// @brief queue datastore
@@ -155,6 +157,9 @@ class FifoQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, FifoQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

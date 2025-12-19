@@ -25,8 +25,10 @@
 #include "ClusterProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadLocalLeaser.h"
@@ -105,6 +107,14 @@ ClusterProvider<StepImpl>::ClusterProvider(
 template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
   clearWithForce();  // Make sure we actually free all memory in the edge cache!
+  for (auto& [cusorId, requestsToDBServers] : _edgeRequests) {
+    for (auto& [serverId, request] : requestsToDBServers) {
+      try {
+        request.wait();
+      } catch (...) {
+      }
+    }
+  }
 }
 
 template<class StepImpl>
@@ -317,6 +327,10 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
   LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Expanding " << step->getVertex().getID();
+
+  // 1. prepare the first request to all dbservers to start a batched iteration
+  //    over all edges of the the given vertices
+
   auto const* engines = _opts.engines();
   auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject(true);
@@ -338,7 +352,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   /* Needed for TRAVERSALS only - End */
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
-  leased->add("batchSize", VPackValue(1000));
+  leased->add("batchSize", VPackValue(aql::ExecutionBlock::DefaultBatchSize));
   leased->close();
 
   auto* pool =
@@ -348,8 +362,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  using EngineResponse = std::pair<aql::EngineId, Future<network::Response>>;
-  std::vector<EngineResponse> futures;
+  using EngineRequestOld =
+      std::pair<aql::EngineId, futures::Future<network::Response>>;
+  std::vector<EngineRequestOld> futures;
   futures.reserve(engines->size());
 
   ScopeGuard sg([&]() noexcept {
@@ -363,9 +378,11 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     }
   });
 
+  // 2. send the start request to all dbservers
+
   std::unordered_map<aql::EngineId, ServerID> engineMap;
   for (auto const& [server, engineId] : *engines) {
-    futures.emplace_back(EngineResponse{
+    futures.emplace_back(EngineRequestOld{
         engineId, network::sendRequestRetry(
                       pool, "server:" + server, fuerte::RestVerb::Put,
                       RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
@@ -374,8 +391,14 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     engineMap.emplace(engineId, server);
   }
 
+  // 3. collect the responses from the dbservers
+  //    and if the iteration on a dbserver is not yet done, send a
+  //    continuation request whose response is again collected in this loop
+
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   while (not futures.empty()) {
+    // 3a. wait on the next response
+
     auto& [engineId, f_ref] = futures.back();
     auto f = std::move(f_ref);
     futures.pop_back();
@@ -384,6 +407,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     // operation, remember to remove the `skipScheduler = true` option of the
     // corresponding requests.
     network::Response const& r = f.waitAndGet();
+
+    // 3b. process response
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -445,6 +470,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
       _opts.getCache()->datalake().add(std::move(payload));
     }
 
+    // 3c. if iteration is not yet finished, send a continuation request
+
     auto maybeDone = resSlice.get("done");
     if (not maybeDone.isNone() && maybeDone.isBool()) {
       auto done = maybeDone.getBool();
@@ -461,7 +488,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
                 VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
             leasedContinue->close();
 
-            futures.emplace_back(EngineResponse{
+            futures.emplace_back(EngineRequestOld{
                 engineId, network::sendRequestRetry(
                               pool, "server:" + engineMap[engineId],
                               fuerte::RestVerb::Put,
@@ -475,6 +502,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   }
   // Note: This disables the ScopeGuard
   futures.clear();
+
+  // 4. process all results
 
   std::uint64_t memoryPerItem =
       costPerVertexOrEdgeType +
@@ -571,6 +600,215 @@ auto ClusterProvider<StepImpl>::expand(
   } else {
     throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
   }
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::addExpansionIterator(CursorId id,
+                                                     Step const& from) -> void {
+  LOG_TOPIC("fa7ec", TRACE, Logger::GRAPHS)
+      << "<ClusterProvider> Add expansion iterator "
+      << from.getVertex().getID();
+
+  // prepare the first request to all dbservers to start a batched iteration
+  // over all edges of the the given vertex
+
+  auto const* engines = _opts.engines();
+  auto leased = ThreadLocalBuilderLeaser::lease();
+  leased->openObject(true);
+  leased->add("backward", VPackValue(_opts.isBackward()));
+  leased->add("depth", VPackValue(from.getDepth()));
+  if (_opts.expressionContext() != nullptr) {
+    leased->add(VPackValue("variables"));
+    leased->openArray();
+    _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                     *(leased.get()));
+    leased->close();
+  }
+  leased->add("keys", VPackValue(from.getVertex().getID().toString()));
+  leased->add("batchSize", VPackValue(aql::ExecutionBlock::DefaultBatchSize));
+  leased->close();
+
+  auto* pool =
+      trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.database = trx()->vocbase().name();
+  reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
+
+  std::vector<EngineRequest> requests;
+  requests.reserve(engines->size());
+
+  for (auto const& [server, engineId] : *engines) {
+    requests.emplace_back(EngineRequest{
+        server, network::sendRequestRetry(
+                    pool, "server:" + server, fuerte::RestVerb::Put,
+                    RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
+                        StringUtils::itoa(engineId),
+                    leased->bufferRef(), reqOpts)});
+    _stats.incrHttpRequests(1);
+  }
+
+  _edgeRequests.emplace(id, std::move(requests));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::expandToNextBatch(
+    CursorId cursorId, Step const& step, size_t previous,
+    std::function<void(Step)> const& callback) -> bool {
+  auto cursorIt = _edgeRequests.find(cursorId);
+  TRI_ASSERT(cursorIt != _edgeRequests.end());
+  auto requests = std::move(cursorIt->second);
+  _edgeRequests.erase(cursorIt);
+
+  auto* pool =
+      trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
+
+  network::RequestOptions reqOpts;
+  reqOpts.database = trx()->vocbase().name();
+  reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
+
+  auto const* engines = _opts.engines();
+
+  std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
+  std::vector<EngineRequest> continuation_requests;
+  while (not requests.empty()) {
+    // 1. wait on next response
+
+    auto& [server_ref, f_ref] = requests.back();
+    auto server = server_ref;
+    auto f = std::move(f_ref);
+    requests.pop_back();
+
+    // NOTE: If you remove this waitAndGet() in favour of an asynchronous
+    // operation, remember to remove the `skipScheduler = true` option of the
+    // corresponding requests.
+    network::Response const& r = f.waitAndGet();
+
+    // 2. process response
+
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
+    }
+
+    auto payload = r.response().stealPayload();
+    VPackSlice resSlice(payload->data());
+    if (!resSlice.isObject()) {
+      // Response has invalid format
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
+    }
+    Result res = network::resultFromBody(resSlice, TRI_ERROR_NO_ERROR);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    _stats.incrScannedIndex(
+        Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    _stats.incrFiltered(
+        Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.incrCursorsCreated(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsCreated", 0));
+    _stats.incrCursorsRearmed(
+        Helper::getNumericValue<size_t>(resSlice, "cursorsRearmed", 0));
+    _stats.incrCacheHits(
+        Helper::getNumericValue<size_t>(resSlice, "cacheHits", 0));
+    _stats.incrCacheMisses(
+        Helper::getNumericValue<size_t>(resSlice, "cacheMisses", 0));
+
+    bool allCached = true;
+    VPackSlice edges = resSlice.get("edges");
+    for (VPackSlice e : VPackArrayIterator(edges)) {
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC("eb7c2", ERR, Logger::GRAPHS)
+            << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
+      LOG_TOPIC("ffb3b", TRACE, Logger::GRAPHS)
+          << "<ClusterProvider> Neighbor of " << step.getVertex().getID()
+          << " -> " << id.toJson();
+
+      auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
+      if (needToCache) {
+        allCached = false;
+      }
+
+      arangodb::velocypack::HashedStringRef edgeIdRef(
+          edge.get(StaticStrings::IdString));
+
+      auto edgeToEmplace = std::make_pair(
+          edgeIdRef,
+          VertexType{getEdgeDestination(edge, step.getVertex().getID())});
+
+      connectedEdges.emplace_back(edgeToEmplace);
+    }
+
+    if (!allCached) {
+      _opts.getCache()->datalake().add(std::move(payload));
+    }
+
+    // 3. if iteration is not yet finished, send a continuation request
+
+    auto maybeDone = resSlice.get("done");
+    if (not maybeDone.isNone() && maybeDone.isBool()) {
+      auto done = maybeDone.getBool();
+      if (not done) {
+        auto maybeCursorId = resSlice.get("cursorId");
+        if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
+          auto maybeBatchId = resSlice.get("batchId");
+          if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
+            auto leasedContinue = ThreadLocalBuilderLeaser::lease();
+            leasedContinue->openObject(true);
+            leasedContinue->add("cursorId", maybeCursorId);
+            leasedContinue->add(
+                "batchId",
+                VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
+            leasedContinue->close();
+
+            auto engineIdLookup = engines->find(server);
+            if (engineIdLookup == engines->end()) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+            auto& [_server, engineId] = *engineIdLookup;
+
+            continuation_requests.emplace_back(EngineRequest{
+                server, network::sendRequestRetry(
+                            pool, "server:" + server, fuerte::RestVerb::Put,
+                            RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
+                                StringUtils::itoa(engineId),
+                            leasedContinue->bufferRef(), reqOpts)});
+            _stats.incrHttpRequests(1);
+          }
+        }
+      }
+    }
+  }
+
+  // only in this case the callback is not executed and we are sure that no more
+  // edges are coming from a continuation request: this means that no additional
+  // steps are added to the queue. only then can we pop the expansion iterator
+  // from the queue by returning false here
+  if (continuation_requests.size() == 0 && connectedEdges.size() == 0) {
+    return false;
+  }
+
+  // 4. callback
+  for (auto const& [edge, to] : connectedEdges) {
+    bool vertexCached = _opts.getCache()->isVertexCached(to);
+    bool edgesCached = _vertexConnectedEdges.contains(to);
+    typename Step::FetchedType fetchedType =
+        ::getFetchedType(vertexCached, edgesCached);
+    callback(Step{to, edge, previous, fetchedType, step.getDepth() + 1,
+                  _opts.weightEdge(step.getWeight(), readEdge(edge))});
+  }
+
+  // 5. push continuations
+  _edgeRequests.emplace(cursorId, std::move(continuation_requests));
+
+  // TODO check if we need to add connectedEdges to cache
+  // (_vertexConnectedEdges) as well (is done in non-batched version, see
+  // fetchEdgesFromEngines fn)
+
+  return true;
 }
 
 template<class StepImpl>
