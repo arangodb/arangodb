@@ -209,8 +209,8 @@ auto SingleServerProvider<Step>::expandToNextBatch(
         << id;
 
     EdgeDocumentToken edgeToken{neighbour.eid};
-    callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
-                  _opts.weightEdge(step.getWeight(), edge),
+    callback(Step{VertexRef{id}, std::move(edgeToken), previous,
+                  step.getDepth() + 1, _opts.weightEdge(step.getWeight(), edge),
                   neighbour.cursorId});
     // TODO [GraphRefactor]: Why is cursorID set, but never used?
     // Note: There is one implementation that used, it, but there is a high

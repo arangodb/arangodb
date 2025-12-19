@@ -272,22 +272,11 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
   }
 }
 
-<<<<<<< HEAD
 template<class ProviderType>
 auto WeightedShortestPathEnumerator<ProviderType>::Ball::matchResultsInShell(
     Step const& otherStep, std::optional<CalculatedCandidate>& bestPath,
     PathValidatorType const& otherSideValidator) -> void {
-  auto it = _foundVertices.find(otherStep.getVertex().getID());
-=======
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::
-    matchResultsInShell(Step const& otherStep,
-                        std::optional<CalculatedCandidate>& bestPath,
-                        PathValidator const& otherSideValidator) -> void {
   auto it = _foundVertices.find(otherStep.getVertex());
->>>>>>> 3c01070a7d5 (Use VertexRef everywhere)
   TRI_ASSERT(it != _foundVertices.end());
   TRI_ASSERT(it->second.expanded);
   auto position = it->second.position;

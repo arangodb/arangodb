@@ -799,7 +799,8 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(
     bool edgesCached = _vertexConnectedEdges.contains(to);
     typename Step::FetchedType fetchedType =
         ::getFetchedType(vertexCached, edgesCached);
-    callback(Step{to, edge, previous, fetchedType, step.getDepth() + 1,
+    callback(Step{VertexRef{to}, edge, previous, fetchedType,
+                  step.getDepth() + 1,
                   _opts.weightEdge(step.getWeight(), readEdge(edge))});
   }
 
