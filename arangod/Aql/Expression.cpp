@@ -913,6 +913,9 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
 }
 
 // execute an expression of type ExpressionType::kSimple, JavaScript variant
+// Since JavaScript is removed, this can only ever throw an exception right
+// now. This is a place where we might in the future add new style user defined
+// functions, therefore we keep the code around.
 AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
                                                     AstNode const* node,
                                                     bool& mustDestroy) {
