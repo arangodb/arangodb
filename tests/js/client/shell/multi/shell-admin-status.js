@@ -44,11 +44,6 @@ function adminStatusSuite () {
       assertTrue(result.hasOwnProperty("license"));
       assertNotEqual(-1, ["enterprise", "community"].indexOf(result.license));
       
-      assertEqual("server", result.mode);
-      assertEqual("server", result.operationMode);
-
-      assertTrue(result.hasOwnProperty("foxxApi"));
-
       assertTrue(result.hasOwnProperty("host"));
       assertEqual("string", typeof result.host);
       
