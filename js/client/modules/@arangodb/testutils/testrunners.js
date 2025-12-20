@@ -391,9 +391,12 @@ class runWithAllureReport extends testRunnerBase {
       container['childContainers'] = [];
       container['isToplevel'] = false;
       //print(container)
-      container.children.forEach(child => {
-        allResultJsons[child]['parents'].push(container.uuid);
-      });
+      if ('children' in container)
+      {
+        container.children.forEach(child => {
+          allResultJsons[child]['parents'].push(container.uuid);
+        });
+      }
       allContainerJsons[container.uuid] = container;
     });
 
