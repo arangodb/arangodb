@@ -156,6 +156,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<VectorIndexFeature>) {
           return std::make_unique<VectorIndexFeature>(server);
         },
+        [](auto& server, TypeTag<RocksDBOptionFeature>) {
+          return RocksDBOptionFeature::construct(
+              server,
+              server.template hasFeature<arangodb::AgencyFeature>()
+                  ? &server.template getFeature<arangodb::AgencyFeature>()
+                  : nullptr);
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
               server,
