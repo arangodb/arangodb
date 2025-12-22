@@ -97,9 +97,7 @@ class Context {
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
-  void setStreaming() noexcept {
-    _meta.isStreamingTransaction = true;
-  }
+  void setStreaming() noexcept { _meta.isStreamingTransaction =   true; }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
