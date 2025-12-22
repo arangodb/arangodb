@@ -94,6 +94,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // replication path
   static std::string const REPLICATION_PATH;
 
+  // schema path
+  static std::string const SCHEMA_PATH;
+
   // simple query all path
   static std::string const SIMPLE_QUERY_ALL_PATH;
 

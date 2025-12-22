@@ -237,6 +237,7 @@ set(ARANGODB_TESTS_SOURCES
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp
+  RestHandler/RestSchemaHandlerTest.cpp
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
   RestServer/FlushFeatureTest.cpp
@@ -328,6 +329,8 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_basic_errors
+  arango_utils
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
@@ -344,6 +347,8 @@ target_link_libraries(arangodbtests
   arango_cluster_engine
   arango_rocksdb
   arangoserver
+  arango_basic_http_client
+  arango_basic_utils
   arango_restore
   clienttools_utils
   fuerte

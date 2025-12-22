@@ -287,6 +287,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
 
   switch (static_cast<int>(code)) {
     case static_cast<int>(TRI_ERROR_HTTP_CORRUPTED_JSON):
+    case static_cast<int>(TRI_ERROR_HTTP_BAD_PARAMETER):
     case static_cast<int>(TRI_ERROR_BAD_PARAMETER):
     case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID):
     case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD):

@@ -100,6 +100,7 @@
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestSchemaHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -711,6 +712,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::SCHEMA_PATH,
+                     RestHandlerCreator<RestSchemaHandler>::createNoData);
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
