@@ -182,10 +182,9 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8) 
+if (USE_V8)
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
-    FeaturePhases/V8FeaturePhase.cpp
     RestHandler/RestAdminExecuteHandler.cpp
     RestHandler/RestAdminRoutingHandler.cpp
     RestHandler/RestAqlUserFunctionsHandler.cpp

@@ -40,7 +40,6 @@ class FinalFeaturePhase;
 class FoxxFeaturePhase;
 class GreetingsFeaturePhase;
 class ServerFeaturePhase;
-class V8FeaturePhase;
 
 template<typename Features>
 class ApplicationServerT;

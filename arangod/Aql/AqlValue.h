@@ -35,16 +35,6 @@
 #include <string_view>
 #include <vector>
 
-namespace v8 {
-
-template<class T>
-class Local;
-template<class T>
-using Handle = Local<T>;
-class Value;
-class Isolate;
-
-}  // namespace v8
 namespace arangodb {
 
 class CollectionNameResolver;

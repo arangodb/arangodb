@@ -379,10 +379,7 @@ void RestTransactionHandler::generateTransactionResult(
   generateResult(code, std::move(buffer));
 }
 
-// ====================== V8 stuff ===================
-
 void RestTransactionHandler::cancel() {
-  // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
 }

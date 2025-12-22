@@ -189,15 +189,10 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
   SetupClusterFeaturePhase(server);
   server.addFeature<HttpEndpointProvider, HttpEndpointProviderMock>(false);
   server.addFeature<CommunicationFeaturePhase>(false);
-  // This phase is empty...
-}
-
-static void SetupV8Phase(MockServer& server) {
-  SetupCommunicationFeaturePhase(server);
 }
 
 static void SetupAqlPhase(MockServer& server) {
-  SetupV8Phase(server);
+  SetupCommunicationFeaturePhase(server);
   server.addFeature<AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(
       false, server.template getFeature<arangodb::metrics::MetricsFeature>());

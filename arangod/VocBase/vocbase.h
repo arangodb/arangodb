@@ -98,7 +98,6 @@ class Future;
 }
 class CursorRepository;
 struct DatabaseConfiguration;
-struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;

@@ -1646,8 +1646,7 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query results cache can be used for the query
 bool Query::canUseResultsCache() const {
-  bool isCachingAllowed = !(_transactionContext->isStreaming() ||
-                            _transactionContext->isTransactionJS()) ||
+  bool isCachingAllowed = !_transactionContext->isStreaming() ||
                           _transactionContext->isReadOnlyTransaction();
 
   if (!isCachingAllowed || _queryString.size() < 8 || _queryOptions.silent) {
@@ -2499,7 +2498,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   }
 
 #if 0
-  // TODO: currently does not work in cluster, as stats in cluster are only 
+  // TODO: currently does not work in cluster, as stats in cluster are only
   // updated after the query is removed from the query list.
   // these attributes can be added once the issue is fixed in cluster.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));

@@ -41,7 +41,6 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -3739,34 +3738,34 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   arangodb::iresearch::IResearchLinkMeta meta;
   auto json = arangodb::velocypack::Parser::fromJson(
-      R"({ 
-    "analyzerDefinitions": [ 
+      R"({
+    "analyzerDefinitions": [
       { "name": "empty", "type": "empty",
         "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
     "includeAllFields" : false,
     "trackListPositions" : false,
-    "fields" : { 
+    "fields" : {
       "abc": {},
       "foo" : {
-        "nested": { "bar":{}, 
+        "nested": { "bar":{},
                     "bas":{
                       "nested":{
                         "a":{"analyzers":["empty"]}, "b":{}, "c":{}
                        }
                     },
                     "kas":{
-                      "nested": { 
+                      "nested": {
                         "skas":{
                           "analyzers":["empty"],
                           "includeAllFields":true
                          }
                        }
                     }
-                  } 
+                  }
       },
       "bar" : {
-        "nested": { "c":{}, "d":{}} 
-      } 
+        "nested": { "c":{}, "d":{}}
+      }
     },
     "analyzers": [ "identity" ]
   })");
@@ -3998,9 +3997,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": false,
       "fields" : {
@@ -4041,9 +4040,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": true,
       "primaryKeyCache": true,
@@ -4085,9 +4084,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache": true,
       "primaryKeyCache": false,
@@ -4240,12 +4239,12 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   auto json = VPackParser::fromJson(
       R"({
       "analyzerDefinitions": [
-         { "name": "geo", "type": "geojson", 
+         { "name": "geo", "type": "geojson",
            "properties": {
              "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
            "features": [ "frequency" ]},
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "fields" : {
         "nothot": {
@@ -4370,9 +4369,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":true,
       "includeAllFields":true,
@@ -4446,9 +4445,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":true,
       "includeAllFields":true,
@@ -4520,9 +4519,9 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":false,
       "includeAllFields":true,
@@ -4593,9 +4592,9 @@ TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
-         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]}
       ],
       "cache":false,
       "includeAllFields":true,
