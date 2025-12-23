@@ -50,9 +50,8 @@ RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
     : Thread(engine.server(), "RocksDBThread"),
       _engine(engine),
       _interval(interval),
-      _metricsWalReleasedTickReplication(
-          engine.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_wal_released_tick_replication{})) {}
+      _metricsWalReleasedTickReplication(engine.getMetricsFeature().add(
+          rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -65,7 +64,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  auto& flushFeature = _engine.getFeature<FlushFeature>();
+  auto& flushFeature = _engine.getFlushFeature();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
@@ -167,7 +166,7 @@ void RocksDBBackgroundThread::run() {
       }
 
       uint64_t minTickForReplication = latestSeqNo;
-      _engine.getFeature<DatabaseFeature>().enumerateDatabases(
+      _engine.getDatabaseFeature().enumerateDatabases(
           [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
             // lowestServedValue will return the lowest of the lastServedTick
             // values stored, or UINT64_MAX if no clients are registered

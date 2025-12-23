@@ -4342,19 +4342,13 @@ std::string RocksDBEngine::getLanguageFile() const {
   return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
 }
 
-template<>
-auto RocksDBEngine::getFeature<DatabaseFeature>() const -> DatabaseFeature& {
+auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
   return _databaseFeature;
 }
-
-template<>
-auto RocksDBEngine::getFeature<metrics::MetricsFeature>() const
-    -> metrics::MetricsFeature& {
+auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
   return _metrics;
 }
-
-template<>
-auto RocksDBEngine::getFeature<FlushFeature>() const -> FlushFeature& {
+auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
   return _flushFeature;
 }
 

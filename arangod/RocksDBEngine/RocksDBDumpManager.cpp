@@ -93,7 +93,7 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, *this, _engine.getFeature<DatabaseFeature>(), generateId(),
+      _engine, *this, _engine.getDatabaseFeature(), generateId(),
       std::move(opts), user, database, useVPack);
 
   std::lock_guard mutexLocker{_lock};

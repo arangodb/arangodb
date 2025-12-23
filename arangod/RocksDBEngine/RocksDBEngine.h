@@ -198,6 +198,12 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   template<typename Type>
   auto getFeature() const -> Type&;
 
+  auto getDatabaseFeature() const -> DatabaseFeature&;
+
+  auto getMetricsFeature() const -> metrics::MetricsFeature&;
+
+  auto getFlushFeature() const -> FlushFeature&;
+
   // inherited from ApplicationFeature
   // ---------------------------------
 
