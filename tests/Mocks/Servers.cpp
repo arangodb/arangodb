@@ -406,7 +406,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
-  SetupV8Phase(*this);
+  SetupCommunicationFeaturePhase(*this);
   addFeature<NetworkFeature>(
       true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
@@ -482,7 +482,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
-  SetupV8Phase(*this);
+  SetupCommunicationFeaturePhase(*this);
   addFeature<QueryRegistryFeature>(
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(
