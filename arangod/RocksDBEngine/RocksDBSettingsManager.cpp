@@ -142,7 +142,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
 
-    auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
+    auto& dbfeature = _engine.getFeature<arangodb::DatabaseFeature>();
 
     bool didWork = false;
     auto mappings = _engine.collectionMappings();

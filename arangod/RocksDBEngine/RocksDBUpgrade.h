@@ -23,17 +23,18 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace rocksdb {
 class TransactionDB;
 }
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+class DatabaseFeature;
 
-void rocksdbStartupVersionCheck(ArangodServer& server, rocksdb::TransactionDB*,
-                                bool dbExisted, bool forceLittleEndianKeys);
+void rocksdbStartupVersionCheck(options::ProgramOptions const& programOptions,
+                                DatabaseFeature& databaseFeature,
+                                rocksdb::TransactionDB*, bool dbExisted,
+                                bool forceLittleEndianKeys);
+
 }  // namespace arangodb
