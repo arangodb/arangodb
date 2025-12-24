@@ -10,6 +10,18 @@ parameters:
     default: "devel"
   rebuild-test-docker-images:
     type: boolean
+    default: true
+  config-definitions:
+    type: string
+    default: ""
+  without-instrumentation:
+    type: boolean
+    default: false
+  with-tsan:
+    type: boolean
+    default: false
+  with-alubsan:
+    type: boolean
     default: false
   enterprise-commit:
     type: string
