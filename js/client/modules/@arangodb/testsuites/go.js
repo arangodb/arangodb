@@ -117,6 +117,7 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
+      process.env['ENABLE_VECTOR_INDEX'] = 'true';
       if (this.instanceManager.JWT) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
