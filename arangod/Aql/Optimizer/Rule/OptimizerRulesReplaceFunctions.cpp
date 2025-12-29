@@ -400,8 +400,8 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   aql::Ast* ast = plan->getAst();
 
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
-  ast::FunctionCallNode fcall(funAstNode);
-  AstNode* fargs = fcall.getArguments();
+  ast::FunctionCallNode fcallNode(funAstNode);
+  AstNode* fargs = fcallNode.getArguments();
   TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
 
   if (fargs->numMembers() < 5) {
