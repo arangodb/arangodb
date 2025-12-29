@@ -19,4 +19,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesReplaceFunctions.cpp
   OptimizerRuleSortInValues.cpp
   OptimizerRuleRemoveCollectVariables.cpp
+  OptimizerRuleSpecializeCollect.cpp
 )
