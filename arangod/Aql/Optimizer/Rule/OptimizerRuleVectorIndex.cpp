@@ -37,6 +37,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Aql/QueryContext.h"
@@ -173,8 +174,8 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
 // set other search parameters
 SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
                                      ResourceMonitor& resourceMonitor) {
-  auto const* approxFunctionParameters =
-      calculationNodeExpressionNode->getMember(0);
+  ast::FunctionCallNode fcall(calculationNodeExpressionNode);
+  auto const* approxFunctionParameters = fcall.getArguments();
 
   if (approxFunctionParameters->numMembers() == 3 &&
       approxFunctionParameters->getMemberUnchecked(2)->isObject()) {
@@ -204,8 +205,8 @@ AstNode* getApproxNearAttributeExpression(
     auto const* calculationNodeExpressionNode,
     std::shared_ptr<Index> const& vectorIndex, const auto* outVariable) {
   // one of the params must be a documentField and the other a query point
-  auto const* approxFunctionParameters =
-      calculationNodeExpressionNode->getMember(0);
+  ast::FunctionCallNode fcall(calculationNodeExpressionNode);
+  auto const* approxFunctionParameters = fcall.getArguments();
   TRI_ASSERT(approxFunctionParameters->numMembers() > 1 &&
              approxFunctionParameters->numMembers() < 4)
       << "There can be only two or three arguments to APPROX_NEAR"
