@@ -24,42 +24,24 @@
 
 #include "OptimizerRuleSortInValues.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
-#include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/ExecutionNode/ShortestPathNode.h"
-#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
-#include "Aql/ExecutionNode/TraversalNode.h"
-#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Query.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/ScopeGuard.h"
-#include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
-#include "Geo/GeoParams.h"
-#include "Indexes/Index.h"
 
-#include <initializer_list>
-#include <span>
-#include <tuple>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::containers;
-using namespace arangodb::iresearch;
 using EN = arangodb::aql::ExecutionNode;
 
 /// @brief adds a SORT operation for IN right-hand side operands
