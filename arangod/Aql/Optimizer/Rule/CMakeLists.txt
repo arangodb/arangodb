@@ -21,4 +21,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleRemoveCollectVariables.cpp
   OptimizerRuleSpecializeCollect.cpp
   OptimizerRuleUseIndexes.cpp
+  OptimizerRuleInterchangeAdjacentEnumerations.cpp
 )
