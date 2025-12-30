@@ -19,4 +19,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesReplaceFunctions.cpp
   OptimizerRuleUseIndexes.cpp
   OptimizerRuleOptimizeTraversals.cpp
+  OptimizerRuleOptimizePaths.cpp
 )
