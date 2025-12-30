@@ -34,4 +34,15 @@ class Optimizer;
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const&);
 
+/// unused variables
+void removeFiltersCoveredByTraversal(Optimizer* opt,
+                                     std::unique_ptr<ExecutionPlan> plan,
+                                     OptimizerRule const&);
+
+/// @brief removes redundant path variables, after applying
+/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
+void removeTraversalPathVariable(Optimizer* opt,
+                                 std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const&);
+
 }  // namespace arangodb::aql
