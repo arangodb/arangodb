@@ -30,4 +30,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleAsyncPrefetch.cpp
   OptimizerRuleOptimizeProjections.cpp
   OptimizerRulesSortAndGather.cpp
+  OptimizerRulesFilter.cpp
 )
