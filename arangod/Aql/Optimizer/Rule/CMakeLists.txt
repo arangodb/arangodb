@@ -27,4 +27,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleOptimizePaths.cpp
   OptimizerRuleGeoIndex.cpp
   OptimizerRuleOptimizeCount.cpp
+  OptimizerRuleAsyncPrefetch.cpp
 )
