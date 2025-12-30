@@ -23,4 +23,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleUseIndexes.cpp
   OptimizerRuleInterchangeAdjacentEnumerations.cpp
   OptimizerRuleRemoveDataModificationOutVariables.cpp
+  OptimizerRuleOptimizeTraversals.cpp
 )
