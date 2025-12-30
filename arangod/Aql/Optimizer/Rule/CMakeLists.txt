@@ -23,7 +23,7 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleUseIndexes.cpp
   OptimizerRuleInterchangeAdjacentEnumerations.cpp
   OptimizerRuleRemoveDataModificationOutVariables.cpp
-  OptimizerRuleOptimizeTraversals.cpp
+  OptimizerRulesOptimizeTraversals.cpp
   OptimizerRuleOptimizePaths.cpp
   OptimizerRuleGeoIndex.cpp
   OptimizerRuleOptimizeCount.cpp
