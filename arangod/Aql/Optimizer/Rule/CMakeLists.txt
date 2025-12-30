@@ -17,7 +17,7 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
   OptimizerRulesReplaceFunctions.cpp
-  OptimizerRuleUseIndexes.cpp
+  OptimizerRulesUseIndexes.cpp
   OptimizerRulesOptimizeTraversals.cpp
   OptimizerRuleOptimizePaths.cpp
 )
