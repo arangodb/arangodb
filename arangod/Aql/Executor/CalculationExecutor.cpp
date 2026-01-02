@@ -183,8 +183,29 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
       _trx, _infos.getQuery(), _aqlFunctionsInternalCache, input,
       _infos.getVarToRegs(), _infos.getQuery().resourceMonitor());
 
+  {
+    velocypack::Builder builder;
+    input.toSimpleVelocyPack(&VPackOptions::Defaults, builder);
+    LOG_DEVEL << "KKDBG: input: " << builder.toJson();
+  }
+
   bool mustDestroy;  // will get filled by execution
+
+  const auto& expression = _infos.getExpression();
+  {
+    velocypack::Builder builder;
+    expression.toVelocyPack(builder, true);
+    LOG_DEVEL << "KKDBG: expression: " << builder.toJson();
+  }
+
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
+
+  {
+    velocypack::Builder builder;
+    a.toVelocyPack(&VPackOptions::Defaults, builder, true);
+    LOG_DEVEL << "KKDBG: output: " << builder.toJson();
+  }
+
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {

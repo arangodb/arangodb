@@ -105,31 +105,45 @@ void Expression::variables(VarSet& result) const {
 /// @brief execute the expression
 AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
+
+  LOG_DEVEL << "KKDBG: Expression::execute: start.";
   prepareForExecution();
 
   TRI_ASSERT(_type != ExpressionType::kUnprocessed);
 
+  velocypack::Builder builder;
   // and execute
   switch (_type) {
     case ExpressionType::kJson: {
       mustDestroy = false;
       TRI_ASSERT(_data != nullptr);
-      return AqlValue(_data);
+      auto ret = AqlValue(_data);
+
+      ret.toVelocyPack(&VPackOptions::Defaults, builder, true);
+      LOG_DEVEL << "KKDBG: Expression::execute: kJson: (" << builder.toJson() << ")";
+      return ret;
     }
 
     case ExpressionType::kSimple: {
-      return executeSimpleExpression(*ctx, _node, mustDestroy, true);
+      auto ret = executeSimpleExpression(*ctx, _node, mustDestroy, true);
+      ret.toVelocyPack(&VPackOptions::Defaults, builder, true);
+      LOG_DEVEL << "KKDBG: Expression::execute: kSimple: (" << builder.toJson() << ")";
+      return ret;
     }
 
     case ExpressionType::kAttributeAccess: {
       TRI_ASSERT(_accessor != nullptr);
       auto resolver = ctx->trx().resolver();
       TRI_ASSERT(resolver != nullptr);
-      return _accessor->get(*resolver, ctx, mustDestroy);
+      auto ret = _accessor->get(*resolver, ctx, mustDestroy);
+      ret.toVelocyPack(&VPackOptions::Defaults, builder, true);
+      LOG_DEVEL << "KKDBG: Expression::execute: kAttributeAccess: (" << builder.toJson() << ")";
+      return ret;
     }
 
     case ExpressionType::kUnprocessed: {
       // fall-through to exception
+      LOG_DEVEL << "KKDBG: Expression::execute: ExpressionType::kUnprocessed: throwing exception";
     }
   }
 
@@ -914,6 +928,13 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
   TRI_ASSERT(params.parameters.size() == n);
 
   AqlValue a = func->implementation(&ctx, *node, params.parameters);
+
+  {
+    velocypack::Builder builder;
+    a.toVelocyPack(&VPackOptions::Defaults, builder, true);
+    LOG_DEVEL << "KKDBG: executeSimpleExpressionFcall: aqlValue: " << builder.toJson();
+  }
+
   mustDestroy = true;  // function result is always dynamic
 
   return a;

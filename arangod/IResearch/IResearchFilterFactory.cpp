@@ -2126,6 +2126,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     return {TRI_ERROR_NOT_IMPLEMENTED, "ANALYZER is supported for SEARCH only"};
   }
 
+  LOG_DEVEL << "KKDBG: " << __FUNCTION__ << "args count: " << args.numMembers();
+
   auto const argc = args.numMembers();
 
   if (argc != 2) {
@@ -2175,6 +2177,8 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
     analyzer._shortName =
         IResearchAnalyzerFeature::normalize(analyzerId, vocbase.name(), false);
   }
+
+  LOG_DEVEL << "KKDBG: " << __FUNCTION__ << "Using analyzer: (" << analyzer->name() << ")";
 
   // override analyzer and throw away provider
   FilterContext const subFilterContext{
@@ -2342,6 +2346,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   if (!analyzer) {
     return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
   }
+  LOG_DEVEL << "KKDBG: EXISTS(analyzer: " << analyzer._shortName << ")";
 
   if (argc > 1) {
     // 2nd argument defines a type (if present)

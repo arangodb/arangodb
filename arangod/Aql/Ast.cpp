@@ -2636,7 +2636,25 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
   };
 
   auto visitor = [&](AstNode* node) -> AstNode* {
+
+    auto logNode = [](AstNode* n, const std::string& logMsgPrefix) {
+
+      return;
+      std::ostringstream oss;
+      if (!n)
+        oss << "nullptr";
+      else {
+        velocypack::Builder builder;
+        n->toVelocyPack(builder, true);
+        oss << builder.toJson();
+      }
+        // n->toStream(oss, 4);
+      LOG_DEVEL << "KTRACE_NODES: " << logMsgPrefix << ": \n" << oss.str();
+    };
+
+    logNode(node, "input node");
     if (node == nullptr) {
+      logNode(nullptr, "output node (line: " + std::to_string(__LINE__) + ")");
       return nullptr;
     }
 
@@ -2645,17 +2663,23 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     // unary operators
     if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
         node->type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
-      return this->optimizeUnaryOperatorArithmetic(node);
+          auto ret = this->optimizeUnaryOperatorArithmetic(node);
+          logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+          return ret;
     }
 
     if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-      return this->optimizeUnaryOperatorLogical(node);
+      auto ret = this->optimizeUnaryOperatorLogical(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // binary operators
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
         node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return this->optimizeBinaryOperatorLogical(node, ctx->filterDepth == 1);
+      auto ret = this->optimizeBinaryOperatorLogical(node, ctx->filterDepth == 1);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -2666,8 +2690,10 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
         node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return this->optimizeBinaryOperatorRelational(
+      auto ret = this->optimizeBinaryOperatorRelational(
           ctx->trx, ctx->aqlFunctionsInternalCache, node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -2675,17 +2701,23 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
         node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      return this->optimizeBinaryOperatorArithmetic(node);
+      auto ret = this->optimizeBinaryOperatorArithmetic(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // ternary operator
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
-      return this->optimizeTernaryOperator(node);
+      auto ret = this->optimizeTernaryOperator(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // attribute access
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      return this->optimizeAttributeAccess(node, ctx->variableDefinitions);
+      auto ret = this->optimizeAttributeAccess(node, ctx->variableDefinitions);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // passthru node
@@ -2693,7 +2725,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
       // optimize away passthru node. this type of node is only used during
       // parsing
       ast::PassthruNode passthruNode(node);
-      return passthruNode.getWrappedNode();
+      auto ret = passthruNode.getWrappedNode();
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // call to built-in function
@@ -2711,10 +2745,13 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(
+        auto ret = this->optimizeFunctionCall(
             ctx->trx, ctx->aqlFunctionsInternalCache, node, options);
+        logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+        return ret;
       }
       // optimization not allowed
+      logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
       return node;
     }
 
@@ -2731,16 +2768,21 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         if (it != ctx->variableDefinitions.end() &&
             (*it).second->isConstant()) {
           // if the definition is a constant, return the const value
-          return const_cast<AstNode*>((*it).second);
+          auto ret = const_cast<AstNode*>((*it).second);
+          logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+          return ret;
         }
       }
       // optimization not allowed
+      logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
       return node;
     }
 
     // indexed access, e.g. a[0] or a['foo']
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      return this->optimizeIndexedAccess(node, ctx->variableDefinitions);
+      auto ret = this->optimizeIndexedAccess(node, ctx->variableDefinitions);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // LET
@@ -2761,17 +2803,22 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
       }
 
       ctx->variableDefinitions.try_emplace(variable, source);
+      logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
       return node;
     }
 
     // FILTER
     if (node->type == NODE_TYPE_FILTER) {
-      return this->optimizeFilter(node);
+      auto ret = this->optimizeFilter(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // FOR
     if (node->type == NODE_TYPE_FOR) {
-      return this->optimizeFor(node);
+      auto ret = this->optimizeFor(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // collection
@@ -2784,11 +2831,14 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
                                       name.c_str());
       }
 
+      logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
       return node;
     }
 
     if (node->type == NODE_TYPE_OBJECT) {
-      return this->optimizeObject(node);
+      auto ret = this->optimizeObject(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
     // traversal
@@ -2799,14 +2849,18 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
                                       "traversal");
       }
 
+      logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
       return node;
     }
 
     // example
     if (node->type == NODE_TYPE_EXAMPLE) {
-      return this->makeConditionFromExample(node);
+      auto ret = this->makeConditionFromExample(node);
+      logNode(ret, "output node (line: " + std::to_string(__LINE__) + ")");
+      return ret;
     }
 
+    logNode(node, "output node (line: " + std::to_string(__LINE__) + ")");
     return node;
   };
 

@@ -33,6 +33,7 @@
 #include "search/all_iterator.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
+#include "Logger/LogMacros.h"
 
 #include <type_traits>
 
@@ -81,14 +82,25 @@ class NondeterministicExpressionIterator
         _doc{irs::get<irs::document>(*_it)} {
     TRI_ASSERT(_it);
     TRI_ASSERT(_doc);
+    LOG_DEVEL << "KKDBG: NondeterministicExpressionIterator::NondeterministicExpressionIterator.";
   }
 
   bool next() final {
+    LOG_DEVEL << "KKDBG: NondeterministicExpressionIterator: next(): start.";
+
     while (_it->next()) {
+      LOG_DEVEL << "KKDBG: NondeterministicExpressionIterator: next(): " << "Evaluating expression \
+      for doc_id: " << _doc->value;
+
       if (evaluate()) {
+        LOG_DEVEL << "KKDBG: NondeterministicExpressionIterator: next(): Document " << _doc->value <<
+          "MATCHED";
         return true;
       }
+        LOG_DEVEL << "KKDBG: NondeterministicExpressionIterator: next(): Document " << _doc->value <<
+          "REJECTED";
     }
+
     return false;
   }
 
