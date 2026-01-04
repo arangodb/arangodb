@@ -34,4 +34,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesConditionRewrite.cpp
   OptimizerRulesSubqueryStructure.cpp
   OptimizerRulesCalculation.cpp
+  OptimizerRulesClusterDistribution.cpp
 )
