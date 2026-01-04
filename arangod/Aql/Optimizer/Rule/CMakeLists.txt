@@ -32,4 +32,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesSortAndGather.cpp
   OptimizerRulesFilter.cpp
   OptimizerRulesConditionRewrite.cpp
+  OptimizerRulesSubqueryStructure.cpp
 )
