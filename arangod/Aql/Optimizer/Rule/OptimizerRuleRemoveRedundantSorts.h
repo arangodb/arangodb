@@ -28,6 +28,7 @@
 
 namespace arangodb::aql {
 class Optimizer;
+struct OptimizerRule;
 
 /// @brief remove redundant sorts
 void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

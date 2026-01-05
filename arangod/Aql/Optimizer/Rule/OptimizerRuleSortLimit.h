@@ -27,6 +27,7 @@
 
 namespace arangodb::aql {
 class Optimizer;
+struct OptimizerRule;
 
 /// @brief push SORT into LIMIT
 void sortLimitRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
