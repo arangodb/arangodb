@@ -43,8 +43,6 @@
 #include "Containers/SmallVector.h"
 #include "VocBase/Methods/Collections.h"
 
-#include <memory>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;

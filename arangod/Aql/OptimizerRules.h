@@ -120,17 +120,6 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
 
-/// @brief moves simple subqueries one level higher
-void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
-
-/// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                  OptimizerRule const&);
-/// @brief push LIMIT into subqueries, and simplify them
-void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
@@ -143,20 +132,6 @@ void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceEntriesWithObjectIteration(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
-
-/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized
-/// count operation
-void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-/// @brief allows execution nodes to asynchronously prefetch the next batch from
-/// their upstream node.
-void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                       OptimizerRule const&);
-
-//// @brief splice in subqueries
-void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
@@ -180,9 +155,6 @@ void findSubqueriesInPlan(
 
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
-
-void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
