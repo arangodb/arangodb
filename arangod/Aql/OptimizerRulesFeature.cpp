@@ -32,6 +32,7 @@
 #include "Aql/Optimizer/Rule/OptimizerRuleOptimizeProjections.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleRemoveCollectVariables.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleRemoveDataModificationOutVariables.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleScatterInCluster.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesConditionRewrite.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleSortInValues.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesCalculation.h"

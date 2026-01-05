@@ -35,4 +35,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesSubqueryStructure.cpp
   OptimizerRulesCalculation.cpp
   OptimizerRulesClusterDistribution.cpp
+  OptimizerRuleScatterInCluster.cpp
 )
