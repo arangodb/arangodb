@@ -92,10 +92,6 @@ void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
-/// @brief simplify some conditions in CalculationNodes
-void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
 /// @brief remove redundant CalculationNodes
 void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
@@ -104,7 +100,6 @@ void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeUnnecessaryCalculationsRule(Optimizer*,
                                        std::unique_ptr<ExecutionPlan>,
                                        OptimizerRule const&);
-
 /// @brief useIndex, try to use an index for filtering
 void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                     OptimizerRule const&);
@@ -243,17 +238,6 @@ void undistributeRemoveAfterEnumCollRule(Optimizer*,
                                          std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
 
-/// @brief this rule replaces expressions of the type:
-///   x.val == 1 || x.val == 2 || x.val == 3
-//  with
-//    x.val IN [1,2,3]
-//  when the OR conditions are present in the same FILTER node, and refer to the
-//  same (single) attribute.
-void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
 
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required
