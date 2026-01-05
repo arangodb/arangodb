@@ -33,10 +33,7 @@
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
 #include "Aql/TypedAstNodes.h"
-
 #include "Containers/SmallVector.h"
-
-#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
