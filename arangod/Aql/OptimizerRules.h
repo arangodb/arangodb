@@ -53,20 +53,6 @@ void activateCallstackSplit(ExecutionPlan& plan);
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-/// @brief move calculations up in the plan
-/// this rule modifies the plan in place
-/// it aims to move up calculations as far up in the plan as possible, to
-/// avoid redundant calculations in inner loops
-void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                            OptimizerRule const&);
-
-/// @brief move calculations down in the plan
-/// this rule modifies the plan in place
-/// it aims to move down calculations as far down in the plan as possible,
-/// beyond FILTER and LIMIT statements
-void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
 /// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
@@ -80,15 +66,6 @@ void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief simplify some conditions in CalculationNodes
 void simplifyConditionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                             OptimizerRule const&);
-
-/// @brief remove redundant CalculationNodes
-void removeRedundantCalculationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-/// @brief remove CalculationNodes and SubqueryNodes that are never needed
-void removeUnnecessaryCalculationsRule(Optimizer*,
-                                       std::unique_ptr<ExecutionPlan>,
-                                       OptimizerRule const&);
 
 /// @brief useIndex, try to use an index for filtering
 void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

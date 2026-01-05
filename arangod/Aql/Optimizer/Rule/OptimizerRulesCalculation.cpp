@@ -62,9 +62,6 @@ private:
 };
 
 namespace {
-// static node types used by some optimizer rules
-// having them statically available avoids having to build the lists over
-// and over for each AQL query
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeUnnecessaryCalculationsNodeTypes{
       arangodb::aql::ExecutionNode::CALCULATION,
