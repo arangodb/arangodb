@@ -49,10 +49,6 @@ void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void activateCallstackSplit(ExecutionPlan& plan);
 
-/// @brief adds a SORT operation for IN right-hand side operands
-void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
-
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -175,10 +171,6 @@ void lateMaterialiationOffsetInfoRule(aql::Optimizer* opt,
                                       std::unique_ptr<aql::ExecutionPlan> plan,
                                       aql::OptimizerRule const& rule);
 
-ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
-                                            ExecutionNode* node,
-                                            bool& wasModified);
-
 /// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
@@ -273,10 +265,6 @@ void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);
 
-/// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.
 void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -285,11 +273,6 @@ void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
-
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is
-/// involved
-void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
@@ -310,18 +293,6 @@ void insertScatterGatherSnippet(
 void findSubqueriesInPlan(
     ExecutionPlan& plan,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
-
-//// @brief create a DistributeNode for the given ExecutionNode
-DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
-                                        ExecutionNode* node);
-
-//// @brief create a gather node matching the given DistributeNode
-GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
-
-//// @brief enclose a node in DISTRIBUTE/GATHER
-DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                              ExecutionNode* at,
-                                              SubqueryNode* snode);
 
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);

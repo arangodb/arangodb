@@ -35,13 +35,8 @@
 #include "Aql/Optimizer.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
-#include "Basics/ScopeGuard.h"
 #include "Containers/SmallVector.h"
 
-#include <memory>
-
-using namespace arangodb;
-using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 /// @brief adds a SORT operation for IN right-hand side operands
