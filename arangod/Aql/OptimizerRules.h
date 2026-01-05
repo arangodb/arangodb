@@ -57,23 +57,6 @@ void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
-/// @brief useIndex, try to use an index for filtering
-void useIndexesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
-
-/// @brief try to use the index for sorting
-void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
-
-/// @brief try to remove filters which are covered by indexes
-void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
-/// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
-void interchangeAdjacentEnumerationsRule(Optimizer*,
-                                         std::unique_ptr<ExecutionPlan>,
-                                         OptimizerRule const&);
-
 /// @brief replace single document operations in cluster by special handling
 void substituteClusterSingleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
@@ -131,38 +114,11 @@ void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                     OptimizerRule const&);
 #endif
 
-/// @brief remove $OLD and $NEW variables from data-modification statements
-/// if not required
-void removeDataModificationOutVariablesRule(Optimizer*,
-                                            std::unique_ptr<ExecutionPlan>,
-                                            OptimizerRule const&);
-
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
 #ifdef USE_ENTERPRISE
 void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
-
-/// @brief optimizes away unused traversal output variables and
-/// merges filter nodes into graph traversal nodes
-void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                            OptimizerRule const&);
-
-/// @brief optimizes away unused K_PATHS things
-void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                       OptimizerRule const&);
-
-/// @brief removes filter nodes already covered by the traversal and removes
-/// unused variables
-void removeFiltersCoveredByTraversal(Optimizer* opt,
-                                     std::unique_ptr<ExecutionPlan> plan,
-                                     OptimizerRule const&);
-
-/// @brief removes redundant path variables, after applying
-/// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
-void removeTraversalPathVariable(Optimizer* opt,
-                                 std::unique_ptr<ExecutionPlan> plan,
-                                 OptimizerRule const&);
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

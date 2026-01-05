@@ -44,8 +44,6 @@
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 
-#include <memory>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
