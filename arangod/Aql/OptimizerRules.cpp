@@ -867,29 +867,6 @@ std::optional<arangodb::ShardID> getSingleShardId(
   return std::move(res.get());
 }
 
-bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
-                                 arangodb::aql::LimitNode& limitNode) {
-  size_t input = sortNode.getCost().estimatedNrItems;
-  size_t output = limitNode.limit() + limitNode.offset();
-
-  // first check an easy case
-  if (input < 100) {  // TODO fine-tune this cut-off
-    // no reason to complicate things for such a small input
-    return false;
-  }
-
-  // now check something a little more sophisticated, comparing best estimate of
-  // cost of heap sort to cost of regular sort (ignoring some variables)
-  double N = static_cast<double>(input);
-  double M = static_cast<double>(output);
-  double lgN = std::log2(N);
-  double lgM = std::log2(M);
-
-  // the 0.25 here comes from some experiments, may need to be tweaked;
-  // should kick in if output is roughly at most 3/4 of input
-  return (0.25 * N * lgM + M * lgM) < (N * lgN);
-}
-
 bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   auto* options =
       static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
@@ -1201,7 +1178,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       continue;
     }
 
-    variable = static_cast<Variable const*>(rhs->getData());
+    variable = ast::ReferenceNode(rhs).getVariable();
     setter = plan->getVarSetBy(variable->id);
 
     if (setter == nullptr || (setter->getType() != EN::CALCULATION &&
@@ -1228,7 +1205,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       AstNode const* testNode = originalNode;
 
       if (originalNode->type == NODE_TYPE_FCALL &&
-          static_cast<Function const*>(originalNode->getData())
+          ast::FunctionCallNode(originalNode)
+              .getFunction()
               ->hasFlag(Function::Flags::NoEval)) {
         // bypass NOOPT(...) for testing
         TRI_ASSERT(originalNode->numMembers() == 1);
@@ -1253,10 +1231,9 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       }
 
       if (testNode->type == NODE_TYPE_FCALL &&
-          (static_cast<Function const*>(testNode->getData())->name ==
+          (ast::FunctionCallNode(testNode).getFunction()->name ==
                "SORTED_UNIQUE" ||
-           static_cast<Function const*>(testNode->getData())->name ==
-               "SORTED")) {
+           ast::FunctionCallNode(testNode).getFunction()->name == "SORTED")) {
         // we don't need to sort results of a function that already returns
         // sorted results
 
@@ -1324,165 +1301,6 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief remove redundant sorts
-/// this rule modifies the plan in place:
-/// - sorts that are covered by earlier sorts will be removed
-void arangodb::aql::removeRedundantSortsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::SORT, true);
-
-  if (nodes.empty()) {
-    // quick exit
-    opt->addPlan(std::move(plan), rule, false);
-    return;
-  }
-
-  ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-
-  for (auto const& n : nodes) {
-    if (toUnlink.find(n) != toUnlink.end()) {
-      // encountered a sort node that we already deleted
-      continue;
-    }
-
-    auto const sortNode = ExecutionNode::castTo<SortNode*>(n);
-
-    auto sortInfo = sortNode->getSortInformation();
-
-    if (sortInfo.isValid && !sortInfo.criteria.empty()) {
-      // we found a sort that we can understand
-      std::vector<ExecutionNode*> stack;
-
-      sortNode->dependencies(stack);
-
-      int nodesRelyingOnSort = 0;
-
-      while (!stack.empty()) {
-        auto current = stack.back();
-        stack.pop_back();
-
-        if (current->getType() == EN::SORT) {
-          // we found another sort. now check if they are compatible!
-
-          auto other =
-              ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
-
-          bool canContinueSearch = true;
-          switch (sortInfo.isCoveredBy(other)) {
-            case SortInformation::unequal: {
-              // different sort criteria
-              if (nodesRelyingOnSort == 0) {
-                // a sort directly followed by another sort: now remove one of
-                // them
-
-                if (!other.isDeterministic) {
-                  // if the sort is non-deterministic, we must not remove it
-                  canContinueSearch = false;
-                  break;
-                }
-
-                if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort
-                  // (used in a COLLECT node)
-                  // the stable sort is for a reason, and removing any
-                  // predecessors sorts might change the result.
-                  // We're not allowed to continue our search for further
-                  // redundant SORTS in this iteration.
-                  canContinueSearch = false;
-                  break;
-                }
-
-                // remove sort that is a direct predecessor of a sort
-                toUnlink.emplace(current);
-              } else {
-                canContinueSearch = false;
-              }
-              break;
-            }
-
-            case SortInformation::otherLessAccurate: {
-              toUnlink.emplace(current);
-              break;
-            }
-
-            case SortInformation::ourselvesLessAccurate: {
-              // the sort at the start of the pipeline makes the sort at the end
-              // superfluous, so we'll remove it
-              // Related to: BTS-937
-              toUnlink.emplace(n);
-              canContinueSearch = false;
-              break;
-            }
-
-            case SortInformation::allEqual: {
-              // the sort at the end of the pipeline makes the sort at the start
-              // superfluous, so we'll remove it
-              toUnlink.emplace(current);
-              break;
-            }
-          }
-          if (!canContinueSearch) {
-            break;
-          }
-        } else if (current->getType() == EN::FILTER) {
-          // ok: a filter does not depend on sort order
-        } else if (current->getType() == EN::CALCULATION) {
-          // ok: a calculation does not depend on sort order only if it is
-          // deterministic
-          if (!current->isDeterministic()) {
-            ++nodesRelyingOnSort;
-          }
-        } else if (current->getType() == EN::ENUMERATE_LIST ||
-                   current->getType() == EN::ENUMERATE_COLLECTION ||
-                   current->getType() == EN::TRAVERSAL ||
-                   current->getType() == EN::ENUMERATE_PATHS ||
-                   current->getType() == EN::SHORTEST_PATH) {
-          // ok, but we cannot remove two different sorts if one of these node
-          // types is between them
-          // example: in the following query, the one sort will be optimized
-          // away:
-          //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC SORT i.a
-          //   DESC RETURN i
-          // but in the following query, the sorts will stay:
-          //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC LET a =
-          //   i.a SORT i.a DESC RETURN i
-          ++nodesRelyingOnSort;
-        } else {
-          // abort at all other type of nodes. we cannot remove a sort beyond
-          // them
-          // this includes COLLECT and LIMIT
-          break;
-        }
-
-        if (!current->hasDependency()) {
-          // node either has no or more than one dependency. we don't know what
-          // to do and must abort
-          // note: this will also handle Singleton nodes
-          break;
-        }
-
-        current->dependencies(stack);
-      }
-
-      if (toUnlink.find(n) == toUnlink.end() &&
-          sortNode->simplify(plan.get())) {
-        // sort node had only constant expressions. it will make no difference
-        // if we execute it or not
-        // so we can remove it
-        toUnlink.emplace(n);
-      }
-    }
-  }
-
-  if (!toUnlink.empty()) {
-    plan->unlinkNodes(toUnlink);
-  }
-
-  opt->addPlan(std::move(plan), rule, !toUnlink.empty());
 }
 
 /// @brief remove all unnecessary filters
@@ -2252,7 +2070,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         auto const* accessed = node->getMemberUnchecked(0);
 
         if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          Variable const* v = ast::ReferenceNode(accessed).getVariable();
           TRI_ASSERT(v != nullptr);
 
           auto setter = p->getVarSetBy(v->id);
@@ -2309,7 +2127,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         auto const* accessed = indexAccess.getObject();
 
         if (accessed->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          Variable const* v = ast::ReferenceNode(accessed).getVariable();
           TRI_ASSERT(v != nullptr);
 
           auto setter = p->getVarSetBy(v->id);
@@ -2757,9 +2575,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         if (!hasCollectWithOutVariable) {
           // no COLLECT found, now replace
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.try_emplace(
-              outVariable->id,
-              static_cast<Variable const*>(rootNode->getData()));
+          replacements.try_emplace(outVariable->id,
+                                   ast::ReferenceNode(rootNode).getVariable());
 
           VariableReplacer finder(replacements);
           plan->root()->walk(finder);
@@ -2815,7 +2632,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         if (eligible) {
           auto visitor = [&](AstNode* node) {
             if (node->type == NODE_TYPE_REFERENCE &&
-                static_cast<Variable const*>(node->getData()) ==
+                ast::ReferenceNode(node).getVariable() ==
                     calcNode->outVariable()) {
               return const_cast<AstNode*>(rootNode);
             }
@@ -6858,8 +6675,8 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
                             ->expression()
                             ->node();
         if (rootNode->type == NODE_TYPE_REFERENCE) {
-          if (subqueryVars.find(static_cast<Variable const*>(
-                  rootNode->getData())) != subqueryVars.end()) {
+          if (subqueryVars.find(ast::ReferenceNode(rootNode).getVariable()) !=
+              subqueryVars.end()) {
             // found an alias for the subquery variable
             subqueryVars.emplace(
                 ExecutionNode::castTo<CalculationNode*>(current)
@@ -7114,8 +6931,8 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     }
     return false;
   } else if (lhs->type == NODE_TYPE_REFERENCE) {
-    return static_cast<Variable const*>(lhs->getData())->id ==
-           static_cast<Variable const*>(rhs->getData())->id;
+    return ast::ReferenceNode(lhs).getVariable()->id ==
+           ast::ReferenceNode(rhs).getVariable()->id;
   }
   // compareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
@@ -7133,7 +6950,7 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
   // note: this only modifies "info" if the function returns true
   if (funcNode->type == NODE_TYPE_REFERENCE) {
     // FOR x IN cc LET d = DISTANCE(...) FILTER d > 10 RETURN x
-    Variable const* var = static_cast<Variable const*>(funcNode->getData());
+    Variable const* var = ast::ReferenceNode(funcNode).getVariable();
     TRI_ASSERT(var != nullptr);
     ExecutionNode* setter = plan->getVarSetBy(var->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -7148,7 +6965,7 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
     return false;
   }
   AstNode* fargs = funcNode->getMemberUnchecked(0);
-  auto func = static_cast<Function const*>(funcNode->getData());
+  auto func = ast::FunctionCallNode(funcNode).getFunction();
   if (fargs->numMembers() >= 4 &&
       func->name == "DISTANCE") {  // allow DISTANCE(a,b,c,d)
     if (info.distCenterExpr != nullptr) {
@@ -7201,7 +7018,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
     return false;
   }
 
-  auto func = static_cast<Function const*>(funcNode->getData());
+  auto func = ast::FunctionCallNode(funcNode).getFunction();
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   bool contains = func->name == "GEO_CONTAINS";
   bool intersect = func->name == "GEO_INTERSECTS";
@@ -7647,152 +7464,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, mod);
 }
 
-static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
-  switch (node->getType()) {
-    case ExecutionNode::CALCULATION:
-    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
-    case ExecutionNode::SUBQUERY:
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::ASYNC:
-      return true;
-    case ExecutionNode::GATHER:
-      // sorting gather is allowed
-      return ExecutionNode::castTo<GatherNode*>(node)->isSortingGather();
-    case ExecutionNode::WINDOW:
-      // if we do not look at following rows we can appyly limit to sort
-      return !ExecutionNode::castTo<WindowNode*>(node)->needsFollowingRows();
-    case ExecutionNode::SINGLETON:
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::ENUMERATE_LIST:
-    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
-    case ExecutionNode::FILTER:
-    case ExecutionNode::LIMIT:
-    case ExecutionNode::SORT:
-    case ExecutionNode::COLLECT:
-    case ExecutionNode::INSERT:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::NORESULTS:
-    case ExecutionNode::UPSERT:
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::INDEX:
-    case ExecutionNode::INDEX_COLLECT:
-    case ExecutionNode::JOIN:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::ENUMERATE_PATHS:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::RETURN:
-    case ExecutionNode::DISTRIBUTE:
-    case ExecutionNode::SCATTER:
-    case ExecutionNode::REMOTE_SINGLE:
-    case ExecutionNode::REMOTE_MULTIPLE:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_START:
-    case ExecutionNode::SUBQUERY_END:
-    // TODO: As soon as materialize does no longer have to filter out
-    //  non-existent documents, move MATERIALIZE to the allowed nodes!
-    case ExecutionNode::MATERIALIZE:
-    case ExecutionNode::MUTEX:
-      return false;
-    case ExecutionNode::MAX_NODE_TYPE_VALUE:
-      break;
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL_AQL,
-      absl::StrCat(
-          "Unhandled node type '", node->getTypeString(),
-          "' in sort-limit optimizer rule. Please report "
-          "this error. Try turning off the sort-limit rule to get your query "
-          "working."));
-}
-
-void arangodb::aql::sortLimitRule(Optimizer* opt,
-                                  std::unique_ptr<ExecutionPlan> plan,
-                                  OptimizerRule const& rule) {
-  bool mod = false;
-  // If there isn't a limit node, and at least one sort or gather node,
-  // there's nothing to do.
-  if (!plan->contains(EN::LIMIT) ||
-      (!plan->contains(EN::SORT) && !plan->contains(EN::GATHER))) {
-    opt->addPlan(std::move(plan), rule, mod);
-    return;
-  }
-
-  containers::SmallVector<ExecutionNode*, 8> limitNodes;
-
-  plan->findNodesOfType(limitNodes, EN::LIMIT, true);
-  for (ExecutionNode* node : limitNodes) {
-    bool hasRemoteBeforeSort{false};
-    bool firstSortNode{true};
-    auto limitNode = ExecutionNode::castTo<LimitNode*>(node);
-    for (ExecutionNode* current = limitNode->getFirstDependency();
-         current != nullptr; current = current->getFirstDependency()) {
-      if (current->getType() == EN::SORT) {
-        // Apply sort-limit optimization to sort node, if it seems reasonable
-        auto sortNode = ExecutionNode::castTo<SortNode*>(current);
-        if (shouldApplyHeapOptimization(*sortNode, *limitNode)) {
-          sortNode->setLimit(limitNode->offset() + limitNode->limit());
-          // Make sure LIMIT is always after the SORT
-          // this, makes sense only for the closest to LIMIT node.
-          // All nodes higher will be protected by the limit set before
-          // the first sort node.
-          if (firstSortNode) {
-            auto& mainLimitNode = *ExecutionNode::castTo<LimitNode*>(limitNode);
-            // if we don't have remote breaker we could just replace the limit
-            // node otherwise we must have new node to constrain accesss to the
-            // sort node with only offset+limit documents
-            if (!hasRemoteBeforeSort) {
-              plan->unlinkNode(limitNode);
-            }
-            auto* auxLimitNode =
-                hasRemoteBeforeSort
-                    ? plan->registerNode(std::make_unique<LimitNode>(
-                          plan.get(), plan->nextId(), 0,
-                          limitNode->offset() + limitNode->limit()))
-                    : limitNode;
-            TRI_ASSERT(auxLimitNode);
-            if (hasRemoteBeforeSort && mainLimitNode.fullCount()) {
-              TRI_ASSERT(limitNode != auxLimitNode);
-              auto& tmp = *ExecutionNode::castTo<LimitNode*>(auxLimitNode);
-              tmp.setFullCount();
-              mainLimitNode.setFullCount(false);
-            }
-            auto* sortParent = sortNode->getFirstParent();
-            TRI_ASSERT(sortParent);
-            if (sortParent != auxLimitNode) {
-              sortParent->replaceDependency(sortNode, auxLimitNode);
-              sortNode->addParent(auxLimitNode);
-            }
-          }
-          firstSortNode = false;
-          mod = true;
-        }
-      } else if (current->getType() == EN::GATHER) {
-        // Make sorting gather nodes aware of the limit, so they may skip
-        // after it
-        auto gatherNode = ExecutionNode::castTo<GatherNode*>(current);
-        if (gatherNode->isSortingGather()) {
-          gatherNode->setConstrainedSortLimit(limitNode->offset() +
-                                              limitNode->limit());
-          mod = true;
-        }
-      } else if (current->getType() == EN::REMOTE) {
-        hasRemoteBeforeSort = true;
-      }
-
-      // Stop on nodes that may not be between sort & limit (or between
-      // sorting gather & limit) for the limit to be applied to the sort (or
-      // sorting gather) node safely.
-      if (!isAllowedIntermediateSortLimitNode(current)) {
-        break;
-      }
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, mod);
-}
-
 void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
                                            OptimizerRule const& rule) {
@@ -7820,7 +7491,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       bool usedForCount = false;
 
       if (node->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(node->getData());
+        Variable const* v = ast::ReferenceNode(node).getVariable();
         auto setter = plan->getVarSetBy(v->id);
         if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
           // we found a subquery result being used somehow in some
@@ -7831,7 +7502,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
         auto sub = node->getMemberUnchecked(0);
         if (sub->type == NODE_TYPE_REFERENCE) {
-          Variable const* v = static_cast<Variable const*>(sub->getData());
+          Variable const* v = ast::ReferenceNode(sub).getVariable();
           auto setter = plan->getVarSetBy(v->id);
           auto index = node->getMemberUnchecked(1);
           if (index->type == NODE_TYPE_VALUE && index->isNumericValue() &&
@@ -8287,7 +7958,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           }
         }
       } else if (node->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(node->getData());
+        Variable const* v = ast::ReferenceNode(node).getVariable();
         auto setter = plan->getVarSetBy(v->id);
         if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
           // subquery used for something else inside the calculation,
