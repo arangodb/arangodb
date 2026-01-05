@@ -33,19 +33,13 @@
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
-#include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/InsertNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
-#include "Aql/ExecutionNode/RemoteNode.h"
 #include "Aql/ExecutionNode/RemoveNode.h"
-#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionNode/ShortestPathNode.h"
-#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionNode/UpdateNode.h"
 #include "Aql/ExecutionNode/UpsertNode.h"
@@ -56,18 +50,13 @@
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
-#include "Aql/SortElement.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
-#include "Containers/FlatHashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
-#include "Graph/TraverserOptions.h"
-#include "Indexes/Index.h"
-#include "Transaction/Methods.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -103,39 +92,6 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using namespace arangodb::iresearch;
 using EN = arangodb::aql::ExecutionNode;
-
-namespace arangodb {
-namespace aql {
-
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context) {
-  aql::Collection* coll = nullptr;
-
-  if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ,
-                                   aql::Collection::Hint::Collection);
-    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
-    // could become unnecessary if the AST takes care of adding the collections
-    if (!ServerState::instance()->isCoordinator()) {
-      TRI_ASSERT(coll != nullptr);
-      query.trxForOptimization()
-          .addCollectionAtRuntime(cname, AccessMode::Type::READ)
-          .waitAndGet();
-    }
-  }
-
-  if (coll == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        std::string("collection '") + cname + "' used in " + context +
-            " not found");
-  }
-
-  return coll;
-}
-
-}  // namespace aql
-}  // namespace arangodb
 
 struct VariableReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {

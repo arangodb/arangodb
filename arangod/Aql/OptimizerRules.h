@@ -42,9 +42,6 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context);
-
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void activateCallstackSplit(ExecutionPlan& plan);
@@ -114,14 +111,6 @@ void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
-
-/// @brief replace legacy JS functions in the plan.
-void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                   OptimizerRule const&);
-
-/// @brief replace LIKE function with range scan where possible
-void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
 
 /// @brief replace enumeration of ENTRIES with object iteration
 void replaceEntriesWithObjectIteration(Optimizer*,

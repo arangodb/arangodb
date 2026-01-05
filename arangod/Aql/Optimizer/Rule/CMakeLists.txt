@@ -16,7 +16,6 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesIndexNode.cpp
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
-  OptimizerRulesReplaceFunctions.cpp
   OptimizerRuleSortInValues.cpp
   OptimizerRuleRemoveCollectVariables.cpp
   OptimizerRuleSpecializeCollect.cpp
@@ -36,4 +35,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesCalculation.cpp
   OptimizerRulesClusterDistribution.cpp
   OptimizerRuleScatterInCluster.cpp
+  OptimizerRulesReplaceFunctions.cpp
 )
