@@ -220,14 +220,6 @@ class MockGraphProvider {
       return _edge.getID();
     }
 
-    std::string getCollectionName() const {
-      auto collectionNameResult = extractCollectionName(_vertex.getID());
-      if (collectionNameResult.fail()) {
-        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-      }
-      return collectionNameResult.get().first;
-    };
-
     void setLocalSchreierIndex(size_t index) {
       TRI_ASSERT(index != std::numeric_limits<size_t>::max());
       TRI_ASSERT(!hasLocalSchreierIndex());
@@ -273,7 +265,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
-  void destroyEngines(){};
+  void destroyEngines() {};
   auto startVertex(arangodb::graph::VertexRef vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;
   auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
