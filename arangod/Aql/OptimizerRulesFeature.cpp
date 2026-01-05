@@ -30,6 +30,7 @@
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleRemoveCollectVariables.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesSortAndGather.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"

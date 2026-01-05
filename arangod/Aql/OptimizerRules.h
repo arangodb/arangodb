@@ -49,10 +49,6 @@ void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void activateCallstackSplit(ExecutionPlan& plan);
 
-/// @brief remove unused INTO variable from COLLECT, or unused aggregates
-void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                OptimizerRule const&);
-
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
