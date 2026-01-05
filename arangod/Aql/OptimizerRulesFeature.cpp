@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleRemoveCollectVariables.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesConditionRewrite.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleSortInValues.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesCalculation.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesClusterDistribution.h"

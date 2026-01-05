@@ -36,8 +36,6 @@
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 
-#include <memory>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
