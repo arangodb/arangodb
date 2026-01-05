@@ -32,13 +32,12 @@
 #include <queue>
 #include <variant>
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
 /**
-   Queue-like queue (first-in-first-out) that can contain either steps (which
-   correspond to vertex-edges) or expansions that promise more vertex-edges for
-   a specific vertex.
+   Queue-like structure (first-in-first-out) that can contain either steps
+   (which correspond to vertex-edges) or expansions that promise more
+   vertex-edges for a specific vertex.
 
    Internally, this queue includes two queues, the main queue (_queue) that
    includes steps and the continuation queue (_continuationQueue) that includes
@@ -80,8 +79,6 @@ class BatchedFifoQueue {
 
   void append(Step step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-    // if push_back() throws, no harm is done, and the memory usage increase
-    // will be rolled back
     _queue.push_back({std::move(step)});
     guard.steal();  // now we are responsible for tracking the memory
   }
@@ -91,14 +88,10 @@ class BatchedFifoQueue {
     auto cursorId = expansion.id;
     if (_biggestCursorId.has_value() && cursorId <= _biggestCursorId.value()) {
       // iterator already existed, put it at front! of continuation queue
-      // if push_front() throws, no harm is done, and the memory usage increase
-      // will be rolled back
       _continuationQueue.push_front(std::move(expansion));
     } else {
       // new iterator
       _biggestCursorId = cursorId;
-      // if push_front() throws, no harm is done, and the memory usage increase
-      // will be rolled back
       _continuationQueue.push_back(std::move(expansion));
     }
     guard.steal();  // now we are responsible for tracking the memory
@@ -136,8 +129,6 @@ class BatchedFifoQueue {
     return false;
   }
 
-  size_t size() const { return _queue.size() + _continuationQueue.size(); }
-
   bool isEmpty() const { return _queue.empty() && _continuationQueue.empty(); }
 
   std::vector<Step*> getLooseEnds() {
@@ -160,7 +151,7 @@ class BatchedFifoQueue {
 
   QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
-    // if queue is empty, pop next iterator
+    // if _queue is empty, pop next iterator
     if (_queue.empty()) {
       auto first = std::move(_continuationQueue.front());
       LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
@@ -212,5 +203,4 @@ auto inspect(Inspector& f, BatchedFifoQueue<StepType>& x) {
                             f.field("continuations", x._continuationQueue));
 }
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
