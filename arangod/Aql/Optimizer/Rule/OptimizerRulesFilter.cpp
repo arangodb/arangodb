@@ -38,11 +38,8 @@
 #include "Aql/Query.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
-#include "Basics/ScopeGuard.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Methods/Collections.h"
-
-#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
