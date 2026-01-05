@@ -38,6 +38,7 @@ install(
   REGEX "^.*/ansi_up"                                      EXCLUDE
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
+  REGEX "^.*/sinon"                                        EXCLUDE
   REGEX "^.*/@xmldom"                                      EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
