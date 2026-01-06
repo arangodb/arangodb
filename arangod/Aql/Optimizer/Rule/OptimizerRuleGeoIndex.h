@@ -34,5 +34,3 @@ void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                   OptimizerRule const&);
 
 }  // namespace arangodb::aql
-
-

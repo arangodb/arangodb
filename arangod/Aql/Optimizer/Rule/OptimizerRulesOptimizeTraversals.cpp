@@ -375,7 +375,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-
 // remove filter nodes already covered by a traversal
 void arangodb::aql::removeFiltersCoveredByTraversal(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,

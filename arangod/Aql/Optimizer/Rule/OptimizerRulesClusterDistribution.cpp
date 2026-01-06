@@ -24,8 +24,6 @@
 
 #include "OptimizerRulesClusterDistribution.h"
 
-
-
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -177,7 +175,7 @@ class CollectionVariableTracker final
   std::unordered_map<arangodb::aql::Collection const*, arangodb::aql::VarSet>
       _collectionVariables;
 
-private:
+ private:
   template<class NodeType>
   void processSetter(arangodb::aql::ExecutionNode const* en,
                      arangodb::aql::Variable const* outVariable) {
@@ -200,7 +198,7 @@ private:
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     auto collection = node->collection();
     std::vector<arangodb::aql::Variable const*> outVariables{
-      node->getOutVariableOld(), node->getOutVariableNew()};
+        node->getOutVariableOld(), node->getOutVariableNew()};
     for (auto outVariable : outVariables) {
       if (nullptr != outVariable) {
         processSetter<NodeType>(node, outVariable);
@@ -209,7 +207,7 @@ private:
     }
   }
 
-public:
+ public:
   explicit CollectionVariableTracker() : _stop{false} {}
 
   bool isSafeForOptimization() const { return !_stop; }
@@ -297,7 +295,7 @@ class RestrictToSingleShardChecker final
   bool _stop;
   std::map<arangodb::aql::Collection const*, bool> _unsafe;
 
-public:
+ public:
   explicit RestrictToSingleShardChecker(arangodb::aql::ExecutionPlan* plan,
                                         CollectionVariableTracker& tracker)
       : _plan{plan}, _tracker{tracker}, _stop{false} {}
@@ -407,7 +405,7 @@ public:
     return false;  // go on
   }
 
-private:
+ private:
   void handleShardOutput(std::optional<arangodb::ShardID> shardId,
                          arangodb::aql::Variable const* variable) {
     if (!shardId.has_value()) {
@@ -420,10 +418,10 @@ private:
           std::holds_alternative<AllShards>(it->second)) {
         _shardsUsed[variable] =
             std::unordered_set<arangodb::ShardID>{std::move(shardId.value())};
-          } else {
-            std::get<std::unordered_set<arangodb::ShardID>>(it->second)
-                .emplace(std::move(shardId.value()));
-          }
+      } else {
+        std::get<std::unordered_set<arangodb::ShardID>>(it->second)
+            .emplace(std::move(shardId.value()));
+      }
     }
   }
 
@@ -476,11 +474,11 @@ void findShardKeyInComparison(arangodb::aql::AstNode const* root,
       pair.first == inputVariable && rhs->isConstant()) {
     TRI_AttributeNamesToString(pair.second, result, true);
     value = rhs;
-      } else if (rhs->isAttributeAccessForVariable(pair, false) &&
-                 pair.first == inputVariable && lhs->isConstant()) {
-        TRI_AttributeNamesToString(pair.second, result, true);
-        value = lhs;
-                 }
+  } else if (rhs->isAttributeAccessForVariable(pair, false) &&
+             pair.first == inputVariable && lhs->isConstant()) {
+    TRI_AttributeNamesToString(pair.second, result, true);
+    value = lhs;
+  }
 
   if (value != nullptr) {
     TRI_ASSERT(!result.empty());
@@ -515,7 +513,7 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
           root->type !=
               arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
         return;
-              }
+      }
     }  // falls through
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_AND:
     case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND: {
@@ -525,7 +523,7 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
             member->type ==
                 arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
           findShardKeyInComparison(member, inputVariable, toFind, builder);
-                }
+        }
       }
       break;
     }
@@ -556,7 +554,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
       collection->getCollection()->type() == TRI_COL_TYPE_EDGE) {
     // no support for smart edge collections
     return std::nullopt;
-      }
+  }
 
   TRI_ASSERT(node->getType() == EN::INDEX ||
              node->getType() == EN::ENUMERATE_COLLECTION ||
@@ -570,29 +568,29 @@ std::optional<arangodb::ShardID> getSingleShardId(
     inputVariable =
         ExecutionNode::castTo<arangodb::aql::DocumentProducingNode const*>(node)
             ->outVariable();
-      } else if (node->getType() == EN::FILTER) {
-        inputVariable =
-            ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)
-                ->inVariable();
-      } else if (node->getType() == EN::INSERT) {
-        inputVariable =
-            ExecutionNode::castTo<arangodb::aql::InsertNode const*>(node)
-                ->inVariable();
-      } else if (node->getType() == EN::REMOVE) {
-        inputVariable =
-            ExecutionNode::castTo<arangodb::aql::RemoveNode const*>(node)
-                ->inVariable();
-      } else if (node->getType() == EN::REPLACE || node->getType() == EN::UPDATE) {
-        auto updateReplaceNode =
-            ExecutionNode::castTo<arangodb::aql::UpdateReplaceNode const*>(node);
-        if (updateReplaceNode->inKeyVariable() != nullptr) {
-          inputVariable = updateReplaceNode->inKeyVariable();
-        } else {
-          inputVariable = updateReplaceNode->inDocVariable();
-        }
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
-      }
+  } else if (node->getType() == EN::FILTER) {
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)
+            ->inVariable();
+  } else if (node->getType() == EN::INSERT) {
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::InsertNode const*>(node)
+            ->inVariable();
+  } else if (node->getType() == EN::REMOVE) {
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::RemoveNode const*>(node)
+            ->inVariable();
+  } else if (node->getType() == EN::REPLACE || node->getType() == EN::UPDATE) {
+    auto updateReplaceNode =
+        ExecutionNode::castTo<arangodb::aql::UpdateReplaceNode const*>(node);
+    if (updateReplaceNode->inKeyVariable() != nullptr) {
+      inputVariable = updateReplaceNode->inKeyVariable();
+    } else {
+      inputVariable = updateReplaceNode->inDocVariable();
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+  }
 
   TRI_ASSERT(inputVariable != nullptr);
 
@@ -635,7 +633,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
       if (!n->isConstant() || toFind.size() != 1 ||
           toFind.find(arangodb::StaticStrings::KeyString) == toFind.end()) {
         return std::nullopt;
-          }
+      }
 
       // the lookup value is a string, and the only shard key is _key: so we
       // can use it
@@ -700,7 +698,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
       arangodb::aql::AstNode const* root = en->filter()->node();
       ::findShardKeysInExpression(root, inputVariable, toFind, builder);
     }
-                          }
+  }
 
   builder.close();
 
@@ -717,7 +715,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
     // insert into a collection with more than one shard or custom shard keys,
     // and _key is not given in inputs.
     return std::nullopt;
-      }
+  }
 
   // find the responsible shard for the data
   std::string shardId;
@@ -735,8 +733,7 @@ std::optional<arangodb::ShardID> getSingleShardId(
   TRI_ASSERT(res.get().isValid());
   return std::move(res.get());
 }
-} // namespace
-
+}  // namespace
 
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
@@ -1101,7 +1098,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -1187,7 +1184,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 break;
               }
               case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-                auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(p);
+                auto& viewNode =
+                    *ExecutionNode::castTo<iresearch::IResearchViewNode*>(p);
                 auto collections = viewNode.collections();
                 auto const collCount = collections.size();
                 TRI_ASSERT(collCount > 0);

@@ -47,16 +47,16 @@ using EN = arangodb::aql::ExecutionNode;
 namespace {
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeDataModificationOutVariablesNodeTypes{
-      arangodb::aql::ExecutionNode::REMOVE,
-      arangodb::aql::ExecutionNode::INSERT,
-      arangodb::aql::ExecutionNode::UPDATE,
-      arangodb::aql::ExecutionNode::REPLACE,
-      arangodb::aql::ExecutionNode::UPSERT};
-} // namespace
+        arangodb::aql::ExecutionNode::REMOVE,
+        arangodb::aql::ExecutionNode::INSERT,
+        arangodb::aql::ExecutionNode::UPDATE,
+        arangodb::aql::ExecutionNode::REPLACE,
+        arangodb::aql::ExecutionNode::UPSERT};
+}  // namespace
 
 struct VariableReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-public:
+ public:
   explicit VariableReplacer(
       std::unordered_map<VariableId, Variable const*> const& replacements)
       : replacements(replacements) {}
@@ -67,7 +67,7 @@ public:
     return false;
   }
 
-private:
+ private:
   std::unordered_map<VariableId, Variable const*> const& replacements;
 };
 

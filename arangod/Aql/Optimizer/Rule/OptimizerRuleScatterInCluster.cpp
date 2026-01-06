@@ -366,7 +366,7 @@ void findSubqueriesInPlan(
   }
 }
 
-}  // namespace
+}  // namespace arangodb::aql
 
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on

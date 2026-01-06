@@ -54,7 +54,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 struct VariableReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-public:
+ public:
   explicit VariableReplacer(
       std::unordered_map<VariableId, Variable const*> const& replacements)
       : replacements(replacements) {}
@@ -65,7 +65,7 @@ public:
     return false;
   }
 
-private:
+ private:
   std::unordered_map<VariableId, Variable const*> const& replacements;
 };
 

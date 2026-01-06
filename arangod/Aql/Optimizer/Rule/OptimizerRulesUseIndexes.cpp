@@ -48,7 +48,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-
 struct SortToIndexNode final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionPlan* _plan;
@@ -667,4 +666,3 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     opt->addPlan(std::move(plan), rule, modified);
   }
 }
-

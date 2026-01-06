@@ -395,7 +395,7 @@ struct ParallelizableFinder final
       // currently lacking synchronization for that scatter/distribute node.
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
-        }
+    }
 
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
@@ -406,7 +406,7 @@ struct ParallelizableFinder final
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
-        }
+    }
 
     // continue inspecting
     return false;

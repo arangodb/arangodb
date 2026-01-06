@@ -60,8 +60,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-Collection* arangodb::aql::addCollectionToQuery(QueryContext& query, std::string const& cname,
-                                 char const* context) {
+Collection* arangodb::aql::addCollectionToQuery(QueryContext& query,
+                                                std::string const& cname,
+                                                char const* context) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {

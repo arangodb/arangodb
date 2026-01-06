@@ -46,7 +46,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 struct VariableReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-public:
+ public:
   explicit VariableReplacer(
       std::unordered_map<VariableId, Variable const*> const& replacements)
       : replacements(replacements) {}
@@ -57,15 +57,15 @@ public:
     return false;
   }
 
-private:
+ private:
   std::unordered_map<VariableId, Variable const*> const& replacements;
 };
 
 namespace {
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeUnnecessaryCalculationsNodeTypes{
-      arangodb::aql::ExecutionNode::CALCULATION,
-      arangodb::aql::ExecutionNode::SUBQUERY};
+        arangodb::aql::ExecutionNode::CALCULATION,
+        arangodb::aql::ExecutionNode::SUBQUERY};
 
 bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
                                 arangodb::aql::ExecutionNode const* node,
@@ -95,12 +95,12 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
         setter->getType() == EN::ENUMERATE_PATHS ||
         setter->getType() == EN::SHORTEST_PATH) {
       return true;
-        }
+    }
   }
 
   return false;
 }
-} // namespace
+}  // namespace
 
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
@@ -113,9 +113,11 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
   plan->findNodesOfType(nodes, EN::SUBQUERY, true);
 
-  containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>::allocator_type::arena_type
+  containers::SmallUnorderedMap<ExecutionNode*,
+                                ExecutionNode*>::allocator_type::arena_type
       subqueriesArena;
-  containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{subqueriesArena};
+  containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> subqueries{
+      subqueriesArena};
   {
     containers::SmallVector<ExecutionNode*, 8> subs;
     plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);

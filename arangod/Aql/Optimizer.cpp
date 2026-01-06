@@ -583,7 +583,7 @@ bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
               ->willUseV8()) {
         result = true;
         return true;
-              }
+      }
       return false;
     }
     bool result{false};
