@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-929: add resolution for qs package.
+
 * Make cluster traversal executor with DFS receive neighbours in batches
   to be able to stop the retrieval early in case a limit has been reached.
 
