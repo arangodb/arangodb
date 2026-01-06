@@ -35,7 +35,6 @@
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/InsertNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
 #include "Aql/ExecutionNode/RemoveNode.h"
@@ -43,20 +42,14 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionNode/UpdateNode.h"
 #include "Aql/ExecutionNode/UpsertNode.h"
-#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
-#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/AttributeNameParser.h"
-#include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
-#include "Geo/GeoParams.h"
 
 #include <absl/strings/str_cat.h>
 

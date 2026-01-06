@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,8 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Julia Puget
+/// @author Koichi Nakata
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRuleScatterInCluster.h"
@@ -63,7 +63,6 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
-}
 
 auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
   auto collectionAccessingNode =
@@ -245,7 +244,7 @@ auto insertGatherNode(
 // uses a list of subqueries which are precomputed at the beginning
 // of the optimizer rule; once that list is gone the configuration of the
 // gather node can be moved into this function.
-void arangodb::aql::insertScatterGatherSnippet(
+void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
         subqueries) {
@@ -350,7 +349,7 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
 // TODO: move into ExecutionPlan?
 // TODO: Is this still needed after register planning is refactored?
 // Find all Subquery Nodes
-void arangodb::aql::findSubqueriesInPlan(
+void findSubqueriesInPlan(
     ExecutionPlan& plan,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries) {
   containers::SmallVector<ExecutionNode*, 8> subs;
@@ -361,6 +360,8 @@ void arangodb::aql::findSubqueriesInPlan(
         ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
 }
+
+}  // namespace
 
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on

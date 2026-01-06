@@ -36,6 +36,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
@@ -506,12 +507,10 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     TRI_ASSERT(operatorNode->numMembers() == 3 &&
                other.operatorNode->numMembers() == 3);
 
-    AstNode* q1 = operatorNode->getMemberUnchecked(2);
-    TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
-    AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
-    TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
+    ast::QuantifierNode quantifier1(operatorNode->getMemberUnchecked(2));
+    ast::QuantifierNode quantifier2(other.operatorNode->getMemberUnchecked(2));
     // do only cover ALL and NONE when both sides have same quantifier
-    if (q1->getIntValue() != q2->getIntValue() || Quantifier::isAny(q1)) {
+    if (quantifier1.value() != quantifier2.value() || quantifier1.isAny()) {
       return false;
     }
 
