@@ -201,7 +201,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 
@@ -716,7 +716,6 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   // signal that plan has been changed
   return true;
 }
-
 
 void arangodb::aql::geoIndexRule(Optimizer* opt,
                                  std::unique_ptr<ExecutionPlan> plan,

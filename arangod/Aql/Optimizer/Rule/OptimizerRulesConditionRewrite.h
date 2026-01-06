@@ -45,5 +45,4 @@ void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                            OptimizerRule const&);
 
-
 }  // namespace arangodb::aql
