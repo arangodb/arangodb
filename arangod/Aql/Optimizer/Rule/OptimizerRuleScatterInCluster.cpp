@@ -244,6 +244,11 @@ auto insertGatherNode(
 // uses a list of subqueries which are precomputed at the beginning
 // of the optimizer rule; once that list is gone the configuration of the
 // gather node can be moved into this function.
+
+}  // namespace
+
+namespace arangodb::aql {
+
 void insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
