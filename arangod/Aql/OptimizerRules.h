@@ -41,10 +41,6 @@ class SubqueryNode;
 
 class QueryContext;
 struct Collection;
-/// Helper
-void insertDistributeInputCalculation(ExecutionPlan& plan);
-
-void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,

@@ -36,6 +36,10 @@
 #include <vector>
 
 namespace arangodb::aql {
+
+void insertDistributeInputCalculation(ExecutionPlan& plan);
+void activateCallstackSplit(ExecutionPlan& plan);
+
 struct OptimizerRule;
 struct QueryOptions;
 
