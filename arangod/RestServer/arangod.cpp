@@ -164,7 +164,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               server.template getFeature<metrics::MetricsFeature>(),
               server.template getFeature<DatabasePathFeature>(),
               server.template getFeature<VectorIndexFeature>(),
-              server.template getFeature<RocksDBOptionFeature>(),
               server.template getFeature<FlushFeature>(),
               server.template getFeature<DumpLimitsFeature>(),
               server.template getFeature<SchedulerFeature>(),

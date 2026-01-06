@@ -270,11 +270,10 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 // create the storage engine
 template<typename Server>
 RocksDBEngine::RocksDBEngine(
-    Server& server, RocksDBOptionsProvider const& optionsProvider,
+    Server& server, RocksDBOptionsProvider& optionsProvider,
     metrics::MetricsFeature& metrics,
     DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature,
-    RocksDBOptionFeature& rocksDbOptionFeature, FlushFeature& flushFeature,
+    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
     SchedulerFeature& schedulerFeature,
     ReplicatedLogFeature* replicatedLogFeature,
@@ -288,7 +287,6 @@ RocksDBEngine::RocksDBEngine(
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathFeature(databasePathFeature),
       _vectorIndexFeature(vectorIndexFeature),
-      _rocksDbOptionFeature(rocksDbOptionFeature),
       _flushFeature(flushFeature),
       _dumpLimitsFeature(dumpLimitsFeature),
       _schedulerFeature(schedulerFeature),
@@ -385,11 +383,10 @@ RocksDBEngine::~RocksDBEngine() {
 
 template<typename Server>
 auto RocksDBEngine::construct(
-    Server& server, RocksDBOptionsProvider const& optionsProvider,
+    Server& server, RocksDBOptionsProvider& optionsProvider,
     metrics::MetricsFeature& metrics,
     DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature,
-    RocksDBOptionFeature& rocksDbOptionFeature, FlushFeature& flushFeature,
+    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
     SchedulerFeature& schedulerFeature,
     ReplicatedLogFeature* replicatedLogFeature,
@@ -400,9 +397,9 @@ auto RocksDBEngine::construct(
     AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine> {
   return std::make_unique<RocksDBEngine>(
       server, optionsProvider, metrics, databasePathFeature, vectorIndexFeature,
-      rocksDbOptionFeature, flushFeature, dumpLimitsFeature, schedulerFeature,
-      replicatedLogFeature, rocksDbRecoveryManager, databaseFeature,
-      rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
+      flushFeature, dumpLimitsFeature, schedulerFeature, replicatedLogFeature,
+      rocksDbRecoveryManager, databaseFeature, rocksDbIndexCacheRefillFeature,
+      cacheManagerFeature, agencyFeature);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -1064,7 +1061,7 @@ void RocksDBEngine::start() {
         << "ATTENTION: Using legacy sorting method for VPack indexes. Consider "
            "running GET /_admin/cluster/vpackSortMigration/check to find out "
            "if cheap migration is an option.";
-    _rocksDbOptionFeature.resetVPackComparator(
+    _optionsProvider.resetVPackComparator(
         std::make_unique<RocksDBVPackComparator<
             arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>>());
   }
@@ -4355,11 +4352,10 @@ auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
 // a named constructor is necessary, because a template constructor can't be
 // explicitly instantiated.
 template auto RocksDBEngine::construct<ArangodServer>(
-    ArangodServer& server, RocksDBOptionsProvider const& optionsProvider,
+    ArangodServer& server, RocksDBOptionsProvider& optionsProvider,
     metrics::MetricsFeature& metrics,
     DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature,
-    RocksDBOptionFeature& rocksDbOptionFeature, FlushFeature& flushFeature,
+    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
     SchedulerFeature& schedulerFeature,
     ReplicatedLogFeature* replicatedLogFeature,

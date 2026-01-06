@@ -162,11 +162,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create the storage engine
   template<typename Server>
-  RocksDBEngine(Server& server, RocksDBOptionsProvider const& optionsProvider,
+  RocksDBEngine(Server& server, RocksDBOptionsProvider& optionsProvider,
                 metrics::MetricsFeature& metrics,
                 DatabasePathFeature const& databasePathFeature,
                 VectorIndexFeature const& vectorIndexFeature,
-                RocksDBOptionFeature& rocksDbOptionFeature,
                 FlushFeature& flushFeature,
                 DumpLimitsFeature const& dumpLimitsFeature,
                 SchedulerFeature& schedulerFeature,
@@ -180,11 +179,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   template<typename Server>
   static auto construct(
-      Server& server, RocksDBOptionsProvider const& optionsProvider,
+      Server& server, RocksDBOptionsProvider& optionsProvider,
       metrics::MetricsFeature& metrics,
       DatabasePathFeature const& databasePathFeature,
-      VectorIndexFeature const& vectorIndexFeature,
-      RocksDBOptionFeature& rocksDbOptionFeature, FlushFeature& flushFeature,
+      VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
       DumpLimitsFeature const& dumpLimitsFeature,
       SchedulerFeature& schedulerFeature,
       ReplicatedLogFeature* replicatedLogFeature,
@@ -630,7 +628,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
  private:
   DatabasePathFeature const& _databasePathFeature;
   VectorIndexFeature const& _vectorIndexFeature;
-  RocksDBOptionFeature& _rocksDbOptionFeature;
   FlushFeature& _flushFeature;
   DumpLimitsFeature const& _dumpLimitsFeature;
   SchedulerFeature& _schedulerFeature;
@@ -640,7 +637,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
   CacheManagerFeature& _cacheManagerFeature;
   AgencyFeature const& _agencyFeature;
-  RocksDBOptionsProvider const& _optionsProvider;
+  RocksDBOptionsProvider& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;
 

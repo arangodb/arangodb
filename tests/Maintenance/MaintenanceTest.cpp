@@ -28,38 +28,45 @@
 #include "gtest/gtest.h"
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AgencyFeature.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "Agency/Node.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
+#include "Cache/CacheManagerFeature.h"
+#include "Cache/CacheOptionsFeature.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DumpLimitsFeature.h"
+#include "RestServer/FlushFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "Cluster/ClusterFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 
-#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <random>
-#include <typeinfo>
-
-#include "MaintenanceFeatureMock.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -69,21 +76,27 @@ using namespace arangodb::velocypack;
 
 char const* planStr =
 #include "Plan.json"
+
     ;
 char const* currentStr =
 #include "Current.json"
+
     ;
 char const* supervisionStr =
 #include "Supervision.json"
+
     ;
 char const* dbs0Str =
 #include "DBServer0001.json"
+
     ;
 char const* dbs1Str =
 #include "DBServer0002.json"
+
     ;
 char const* dbs2Str =
 #include "DBServer0003.json"
+
     ;
 
 // Random stuff
@@ -115,7 +128,7 @@ class SharedMaintenanceTest : public ::testing::Test {
     supervision = createNode(supervisionStr);
     current = createNode(currentStr);
     dbsIds = matchShortLongIds(supervision);
-    arangodb::AgencyCommHelper::initialize("arango");
+    AgencyCommHelper::initialize("arango");
   }
 
  protected:
@@ -500,44 +513,66 @@ TEST_F(MaintenanceTestActionDescription,
 class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
   int _dummy;
-  std::shared_ptr<arangodb::options::ProgramOptions> po;
-  arangodb::ArangodServer as;
+  std::shared_ptr<options::ProgramOptions> po;
+  ArangodServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, NodePtr> localNodes;
 
-  std::unique_ptr<arangodb::RocksDBEngine>
+  std::unique_ptr<RocksDBEngine>
       engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
       : SharedMaintenanceTest(),
         _dummy(loadResources()),
-        po(std::make_shared<arangodb::options::ProgramOptions>(
-            "test", std::string(), std::string(), "path")),
+        po(std::make_shared<options::ProgramOptions>("test", std::string(),
+                                                     std::string(), "path")),
         as(po, nullptr),
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    as.addFeature<arangodb::RocksDBOptionFeature>();
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-        std::false_type{});
-    auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
-    auto& metrics = as.addFeature<arangodb::metrics::MetricsFeature>(
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+    auto& roOptions = as.addFeature2(
+        std::function<std::unique_ptr<RocksDBOptionFeature>(ArangodServer&)>(
+            [](ArangodServer& server) {
+              TRI_ASSERT(!server.hasFeature<AgencyFeature>());
+              return RocksDBOptionFeature::construct(
+                  server, server.hasFeature<AgencyFeature>()
+                              ? &server.getFeature<AgencyFeature>()
+                              : nullptr);
+            }));
+    as.addFeature<GreetingsFeaturePhase>(std::false_type{});
+    auto& selector = as.addFeature<EngineSelectorFeature>();
+    auto& metrics = as.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
-        selector,
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::metrics::ClusterMetricsFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-            nullptr));
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+    auto& dbpath = as.addFeature<DatabasePathFeature>();
+    auto& vectorIndex = as.addFeature<VectorIndexFeature>();
+    auto& flush = as.addFeature<FlushFeature>();
+    auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
+    auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
 
+    auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
+    auto& databaseFeature = as.addFeature<DatabaseFeature>();
+    auto& rocksDbIndexCacheRefillFeature =
+        as.addFeature<RocksDBIndexCacheRefillFeature>();
+    auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
+    auto& cacheManagerFeature =
+        as.addFeature<CacheManagerFeature>(cacheOptions);
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
+    auto* replicatedLogFeature = replication2::EnableReplication2
+                                     ? &as.addFeature<ReplicatedLogFeature>()
+                                     : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<arangodb::RocksDBEngine>(
-        as, as.template getFeature<arangodb::RocksDBOptionFeature>(), metrics);
+    engine = RocksDBEngine::construct(
+        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
+        schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
+        databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
+        agencyFeature);
     selector.setEngineTesting(engine.get());
   }
 
