@@ -21,12 +21,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRulesJoin.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
-#include "Aql/AstHelper.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
@@ -39,27 +39,21 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
-#include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
-#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
 
 #include <span>
 #include <tuple>

@@ -18,6 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#include "Aql/Optimizer/Rule/OptimizerRuleCollectWithIndex.h"
+
 #include "Cluster/ServerState.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -33,7 +35,6 @@
 #include "Aql/IndexDistrinctScan.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"

@@ -22,12 +22,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRuleReplaceEqualAttributeAccess.h"
+
 #include "Aql/Ast.h"
-#include "Aql/AstHelper.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
-#include "Aql/Condition.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -38,11 +38,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
-#include "Aql/types.h"
 #include "Containers/ImmutableMap.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
