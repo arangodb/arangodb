@@ -18,8 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Julia Puget
+/// @author Koichi Nakata
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"

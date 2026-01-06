@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Koichi Nakata
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
