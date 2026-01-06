@@ -510,7 +510,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     ast::QuantifierNode quantifier1(operatorNode->getMemberUnchecked(2));
     ast::QuantifierNode quantifier2(other.operatorNode->getMemberUnchecked(2));
     // do only cover ALL and NONE when both sides have same quantifier
-    if (quantifier1.value() != quantifier2.value() || quantifier1.isAny()) {
+    if (quantifier1.getType() != quantifier2.getType() || quantifier1.isAny()) {
       return false;
     }
 
