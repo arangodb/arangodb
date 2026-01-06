@@ -22,8 +22,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRuleVectorIndex.h"
+
 #include "Aql/Ast.h"
-#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/Functions.h"
@@ -32,14 +33,12 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
-#include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Query.h"
-#include "Aql/types.h"
 #include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
@@ -47,7 +46,6 @@
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
-#include "Basics/ResourceUsage.h"
 #include "Basics/SupervisedBuffer.h"
 
 #define LOG_RULE_ENABLED false

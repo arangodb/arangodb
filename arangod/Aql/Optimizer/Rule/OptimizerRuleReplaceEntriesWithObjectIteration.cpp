@@ -19,9 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRuleReplaceEntriesWithObjectIteration.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
@@ -30,7 +31,6 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/TypedAstNodes.h"
 #include "Logger/LogMacros.h"

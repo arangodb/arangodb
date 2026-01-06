@@ -42,42 +42,24 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 
-/// @brief propagate constant attributes in FILTERs
-void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                     OptimizerRule const&);
-
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
-
-/// @brief replace single document operations in cluster by special handling
-void substituteClusterSingleDocumentOperationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
-
-/// @brief replace multiple document operations in cluster by special handling
-void substituteClusterMultipleDocumentOperationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server
 void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                          OptimizerRule const&);
-#endif
 
-#ifdef USE_ENTERPRISE
 void clusterLiftConstantsForDisjointGraphNodes(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule);
-#endif
 
-#ifdef USE_ENTERPRISE
 void clusterPushSubqueryToDBServer(Optimizer* opt,
                                    std::unique_ptr<ExecutionPlan> plan,
                                    OptimizerRule const& rule);
-#endif
 
-#ifdef USE_ENTERPRISE
 void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
                                        std::unique_ptr<aql::ExecutionPlan> plan,
                                        aql::OptimizerRule const& rule);
@@ -100,16 +82,9 @@ void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                     OptimizerRule const&);
-#endif
 
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
-#ifdef USE_ENTERPRISE
 void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const& rule);
 #endif
-
-/// @brief replace enumeration of ENTRIES with object iteration
-void replaceEntriesWithObjectIteration(Optimizer*,
-                                       std::unique_ptr<ExecutionPlan>,
-                                       OptimizerRule const&);
 }  // namespace arangodb::aql
