@@ -61,6 +61,7 @@ add_library(arangoserver STATIC
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
