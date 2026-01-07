@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Aql/AstNode.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
