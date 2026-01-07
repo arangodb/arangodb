@@ -895,7 +895,7 @@ void IResearchFeature::collectOptions(
       ->addOption(THREADS_PARAM,
                   "The exact number of threads to use for asynchronous "
                   "tasks (0 = auto-detect).",
-                  new options::UInt32Parameter(&_threads))
+                  new options::UInt32Parameter(&_options.threads))
       .setDeprecatedIn(30705)
       .setLongDescription(R"(From version 3.7.5 on, you should set the commit
 and consolidation thread counts separately via the following options instead:
@@ -917,7 +917,7 @@ then the commit and consolidation thread counts are calculated as follows:
           THREADS_LIMIT_PARAM,
           "The upper limit to the auto-detected number of threads to use "
           "for asynchronous tasks (0 = use default).",
-          new options::UInt32Parameter(&_threadsLimit))
+          new options::UInt32Parameter(&_options.threadsLimit))
       .setDeprecatedIn(30705)
       .setLongDescription(R"(From version 3.7.5 on, you should set the commit
 and consolidation thread counts separately via the following options instead:
@@ -939,7 +939,7 @@ then the commit and consolidation thread counts are calculated as follows:
           CONSOLIDATION_THREADS_PARAM,
           "The upper limit to the allowed number of consolidation threads "
           "(0 = auto-detect).",
-          new options::UInt32Parameter(&_consolidationThreads))
+          new options::UInt32Parameter(&_options.consolidationThreads))
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
 choose a sensible number based on the number of cores in the system.)");
@@ -949,7 +949,7 @@ choose a sensible number based on the number of cores in the system.)");
           CONSOLIDATION_THREADS_IDLE_PARAM,
           "The upper limit to the allowed number of idle threads to use "
           "for consolidation tasks (0 = auto-detect).",
-          new options::UInt32Parameter(&_deprecatedOptions))
+          new options::UInt32Parameter(&_options.deprecatedOptions))
       .setDeprecatedIn(3'11'06)
       .setDeprecatedIn(3'12'00);
 
@@ -957,7 +957,7 @@ choose a sensible number based on the number of cores in the system.)");
       ->addOption(COMMIT_THREADS_PARAM,
                   "The upper limit to the allowed number of commit threads "
                   "(0 = auto-detect).",
-                  new options::UInt32Parameter(&_commitThreads))
+                  new options::UInt32Parameter(&_options.commitThreads))
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..4 * NumberOfCores ]`. Set it to `0` to automatically choose a sensible
 number based on the number of cores in the system.)");
@@ -967,7 +967,7 @@ number based on the number of cores in the system.)");
           COMMIT_THREADS_IDLE_PARAM,
           "The upper limit to the allowed number of idle threads to use "
           "for commit tasks (0 = auto-detect)",
-          new options::UInt32Parameter(&_deprecatedOptions))
+          new options::UInt32Parameter(&_options.deprecatedOptions))
       .setLongDescription(R"(The option value must fall in the range
 `[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a
 sensible number based on the number of cores in the system.)")
@@ -991,14 +991,14 @@ sensible number based on the number of cores in the system.)")
           "become incomplete or more incomplete until they have been manually "
           "recreated.",
           new options::VectorParameter<options::StringParameter>(
-              &_skipRecoveryItems))
+              &_options.skipRecoveryItems))
       .setIntroducedIn(30904);
 
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
                   "Whether retrieval queries on out-of-sync "
                   "View links and inverted indexes should fail.",
-                  new options::BooleanParameter(&_failQueriesOnOutOfSync))
+                  new options::BooleanParameter(&_options.failQueriesOnOutOfSync))
       .setIntroducedIn(30904)
       .setLongDescription(R"(If set to `true`, any data retrieval queries on
 out-of-sync links/indexes fail with the error 'collection/view is out of sync'
@@ -1023,7 +1023,7 @@ but the returned data may be incomplete.)");
   options
       ->addOption(CACHE_ONLY_LEADER,
                   "Cache ArangoSearch columns only for leader shards.",
-                  new options::BooleanParameter(&_columnsCacheOnlyLeader),
+                  new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnDBServer,
                                             options::Flags::Enterprise))
@@ -1033,7 +1033,7 @@ but the returned data may be incomplete.)");
       ->addOption(SEARCH_THREADS_LIMIT,
                   "The maximum number of threads that can be used to process "
                   "ArangoSearch indexes during a SEARCH operation of a query.",
-                  new options::UInt32Parameter(&_searchExecutionThreadsLimit),
+                  new options::UInt32Parameter(&_options.searchExecutionThreadsLimit),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnDBServer,
                                             options::Flags::OnSingle))
@@ -1042,7 +1042,7 @@ but the returned data may be incomplete.)");
   options
       ->addOption(SEARCH_DEFAULT_PARALLELISM,
                   "Default parallelism for ArangoSearch queries",
-                  new options::UInt32Parameter(&_defaultParallelism),
+                  new options::UInt32Parameter(&_options.defaultParallelism),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnDBServer,
                                             options::Flags::OnSingle))
@@ -1052,7 +1052,7 @@ but the returned data may be incomplete.)");
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  // validate all entries in _skipRecoveryItems for formal correctness
+  // validate all entries in _options.skipRecoveryItems for formal correctness
   auto checkFormat = [](auto const& item) {
     auto r = item.find('/');
     if (r == std::string_view::npos) {
@@ -1064,7 +1064,7 @@ void IResearchFeature::validateOptions(
     }
     return false;
   };
-  for (auto const& item : _skipRecoveryItems) {
+  for (auto const& item : _options.skipRecoveryItems) {
     if (item != "all" && checkFormat(item)) {
       LOG_TOPIC("b9f28", FATAL, arangodb::iresearch::TOPIC)
           << "invalid format for '" << SKIP_RECOVERY
@@ -1088,18 +1088,18 @@ void IResearchFeature::validateOptions(
   if ((threadsLimitSet || threadsSet) && !commitThreadsSet &&
       !consolidationThreadsSet) {
     // backwards compatibility
-    threadsLimit = std::min(threadsLimit, _threadsLimit);
-    uint32_t const threads = computeThreadsCount(_threads, threadsLimit, 4);
-    _commitThreads = std::max(threads / 2, 1U);
-    _consolidationThreads = _commitThreads;
+    threadsLimit = std::min(threadsLimit, _options.threadsLimit);
+    uint32_t const threads = computeThreadsCount(_options.threads, threadsLimit, 4);
+    _options.commitThreads = std::max(threads / 2, 1U);
+    _options.consolidationThreads = _options.commitThreads;
   } else {
-    _commitThreads = computeThreadsCount(_commitThreads, threadsLimit, 6);
-    _consolidationThreads =
-        computeThreadsCount(_consolidationThreads, threadsLimit, 6);
+    _options.commitThreads = computeThreadsCount(_options.commitThreads, threadsLimit, 6);
+    _options.consolidationThreads =
+        computeThreadsCount(_options.consolidationThreads, threadsLimit, 6);
   }
 
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
-    _searchExecutionThreadsLimit =
+    _options.searchExecutionThreadsLimit =
         static_cast<uint32_t>(2 * NumberOfCores::getValue());
   }
 }
@@ -1152,22 +1152,22 @@ void IResearchFeature::start() {
   // ensure that at least 1 worker for each group is started
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    TRI_ASSERT(_commitThreads);
-    TRI_ASSERT(_consolidationThreads);
+    TRI_ASSERT(_options.commitThreads);
+    TRI_ASSERT(_options.consolidationThreads);
 
     _async->get(ThreadGroup::_0)
-        .start(_commitThreads, IR_NATIVE_STRING("ARS-0"));
+        .start(_options.commitThreads, IR_NATIVE_STRING("ARS-0"));
     _async->get(ThreadGroup::_1)
-        .start(_consolidationThreads, IR_NATIVE_STRING("ARS-1"));
-    _searchExecutionPool.setLimit(_searchExecutionThreadsLimit);
+        .start(_options.consolidationThreads, IR_NATIVE_STRING("ARS-1"));
+    _searchExecutionPool.setLimit(_options.searchExecutionThreadsLimit);
 
     LOG_TOPIC("c1b63", INFO, TOPIC)
-        << "ArangoSearch maintenance: [" << _commitThreads << ".."
-        << _commitThreads << "] commit thread(s), [" << _consolidationThreads
-        << ".." << _consolidationThreads
+        << "ArangoSearch maintenance: [" << _options.commitThreads << ".."
+        << _options.commitThreads << "] commit thread(s), [" << _options.consolidationThreads
+        << ".." << _options.consolidationThreads
         << "] consolidation thread(s). ArangoSearch execution parallel threads "
            "limit: "
-        << _searchExecutionThreadsLimit;
+        << _options.searchExecutionThreadsLimit;
 
 #ifdef USE_ENTERPRISE
     auto& manager =
@@ -1257,22 +1257,22 @@ bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
     // here to test --arangosearch.fail-queries-on-out-of-sync
     return true;
   }
-  return _failQueriesOnOutOfSync;
+  return _options.failQueriesOnOutOfSync;
 }
 
 void IResearchFeature::registerRecoveryHelper() {
-  if (!_skipRecoveryItems.empty()) {
+  if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
         << SKIP_RECOVERY << "' startup option for the following links/indexes: "
-        << _skipRecoveryItems
+        << _options.skipRecoveryItems
         << ". all affected links/indexes that are touched during "
            "recovery will be marked as out of sync and should be recreated "
            "manually when the recovery is finished.";
   }
 
   _recoveryHelper = std::make_shared<IResearchRocksDBRecoveryHelper>(
-      server(), _skipRecoveryItems);
+      server(), _options.skipRecoveryItems);
   auto res = RocksDBEngine::registerRecoveryHelper(_recoveryHelper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1304,8 +1304,8 @@ void IResearchFeature::setCacheUsageLimit(uint64_t limit) noexcept {
 #endif
 
 bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
-  TRI_ASSERT(ServerState::instance()->isDBServer() || !_columnsCacheOnlyLeader);
-  return _columnsCacheOnlyLeader;
+  TRI_ASSERT(ServerState::instance()->isDBServer() || !_options.columnsCacheOnlyLeader);
+  return _options.columnsCacheOnlyLeader;
 }
 #endif
 

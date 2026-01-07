@@ -24,22 +24,17 @@
 
 #pragma once
 
+#include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
-#include "utils/async_utils.hpp"
 
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <string_view>
-#include <vector>
 #include <filesystem>
 
 namespace arangodb {
@@ -149,48 +144,35 @@ class IResearchFeature final : public ArangodFeature {
   void setCacheUsageLimit(uint64_t limit) noexcept;
 
   void setColumnsCacheOnlyOnLeader(bool b) noexcept {
-    _columnsCacheOnlyLeader = b;
+    _options.columnsCacheOnlyLeader = b;
   }
 #endif
 #endif
 
-  uint32_t defaultParallelism() const noexcept { return _defaultParallelism; }
+  uint32_t defaultParallelism() const noexcept {
+    return _options.defaultParallelism;
+  }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setDefaultParallelism(uint32_t v) noexcept { _defaultParallelism = v; }
+  void setDefaultParallelism(uint32_t v) noexcept {
+    _options.defaultParallelism = v;
+  }
 #endif
 
  private:
   void registerRecoveryHelper();
   void registerIndexFactory();
 
+  IResearchOptions _options;
+
   std::shared_ptr<IResearchAsync> _async;
-
-  // whether or not to fail queries on links/indexes that are marked as
-  // out of sync
-  bool _failQueriesOnOutOfSync{false};
-
-  // names/ids of links/indexes to *NOT* recover. all entries should
-  // be in format "collection-name/index-name" or "collection/index-id".
-  // the pseudo-entry "all" skips recovering data for all links/indexes
-  // found during recovery.
-  std::vector<std::string> _skipRecoveryItems;
 
   // number of links/indexes currently out of sync
   metrics::Gauge<uint64_t>& _outOfSyncLinks;
 
 #ifdef USE_ENTERPRISE
   irs::IResourceManager& _columnsCacheMemoryUsed;
-  bool _columnsCacheOnlyLeader{false};
 #endif
-
-  uint32_t _deprecatedOptions{0};
-  uint32_t _consolidationThreads{0};
-  uint32_t _commitThreads{0};
-  uint32_t _threads{0};
-  uint32_t _threadsLimit{0};
-  uint32_t _searchExecutionThreadsLimit{0};
-  uint32_t _defaultParallelism{1};
 
   std::shared_ptr<IndexTypeFactory> _clusterFactory;
   std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
