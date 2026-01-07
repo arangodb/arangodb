@@ -449,6 +449,25 @@ void Expression::prepareForExecution() {
 AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
                                              AstNode const* node,
                                              bool& mustDestroy, bool doCopy) {
+
+  auto logNode = [](const AstNode* n, const std::string& logMsgPrefix) {
+
+    return;
+    std::ostringstream oss;
+    if (!n)
+      oss << "nullptr";
+    else {
+      velocypack::Builder builder;
+      n->toVelocyPack(builder, true);
+      oss << builder.toJson();
+    }
+      // n->toStream(oss, 4);
+    LOG_DEVEL << "KTRACE_NODES: " << logMsgPrefix << ": \n" << oss.str();
+  };
+
+  logNode(node, std::string("Expression::executeSimpleExpression (") +
+    std::string(AstNode::getTypeString(node->type)) + ")");
+
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       return executeSimpleExpressionAttributeAccess(ctx, node, mustDestroy,
@@ -742,6 +761,8 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       // make sure key is a string, and convert it if not
       AqlValueMaterializer materializer(&vopts);
       VPackSlice slice = materializer.slice(result);
+
+      LOG_DEVEL << "KKDBG: Expression::executeSimpleExpressionObject: slice: " << slice.toJson();
 
       buffer->clear();
       functions::stringify(&vopts, adapter, slice);

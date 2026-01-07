@@ -77,8 +77,11 @@ class PrimaryKeysFilterBase : public irs::filter,
     _pos = 0;
     _doc.value = irs::doc_limits::invalid();
     _last_doc = irs::doc_limits::invalid();
-    return irs::memory::to_managed<irs::doc_iterator>(
+    auto ret = irs::memory::to_managed<irs::doc_iterator>(
         const_cast<PrimaryKeysFilterBase&>(*this));
+    auto mdi = irs::memory::make_managed<irs::MyDocIterator>(
+      std::move(ret), "PrimaryKeysFilterBase");
+    return mdi;
   }
 
   void visit(irs::SubReader const&, irs::PreparedStateVisitor&,

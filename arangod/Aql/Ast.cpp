@@ -2637,7 +2637,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
 
   auto visitor = [&](AstNode* node) -> AstNode* {
 
-    auto logNode = [](AstNode* n, const std::string& logMsgPrefix) {
+    auto logNode = [](const AstNode* n, const std::string& logMsgPrefix) {
 
       return;
       std::ostringstream oss;

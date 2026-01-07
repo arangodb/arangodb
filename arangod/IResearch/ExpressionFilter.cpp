@@ -49,10 +49,12 @@ class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
       ExpressionCompilationContext const& cctx,
       ExpressionExecutionContext const& ectx)
       : _expr{cctx.ast, cctx.node.get()}, _ctx{ectx} {
+    LOG_DEVEL << "KKDBG: NondeterministicExpressionIteratorBase::NondeterministicExpressionIteratorBase";
     TRI_ASSERT(_ctx.ctx);
   }
 
   bool evaluate() {
+    LOG_DEVEL << "KKDBG: NondeterministicExpressionIteratorBase::evaluate";
     destroy();  // destroy old value before assignment
     _val = _expr.execute(_ctx.ctx, _destroy);
     return _val.toBoolean();
@@ -169,8 +171,11 @@ class NondeterministicExpressionQuery : public ExpressionQuery {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    return irs::memory::make_managed<NondeterministicExpressionIterator>(
+    auto ret = irs::memory::make_managed<NondeterministicExpressionIterator>(
         _allQuery->execute(ctx), _ctx, *execCtx);
+    auto mdi = irs::memory::make_managed<irs::MyDocIterator>(
+      std::move(ret), "NondeterministicExpressionQuery");
+    return mdi;
   }
 };
 
@@ -203,7 +208,10 @@ class DeterministicExpressionQuery : public ExpressionQuery {
     aql::AqlValueGuard guard{value, mustDestroy};
 
     if (value.toBoolean()) {
-      return _allQuery->execute(ctx);
+      auto ret = _allQuery->execute(ctx);
+      auto mdi = irs::memory::make_managed<irs::MyDocIterator>(
+        std::move(ret), "DeterministicExpressionQuery");
+      return mdi;
     }
 
     return irs::doc_iterator::empty();

@@ -145,8 +145,11 @@ class Query : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
     auto columnIt = column->iterator(irs::ColumnHint::kNormal);
-    return irs::memory::make_managed<Iterator>(_matcher, std::move(approx),
+    auto ret = irs::memory::make_managed<Iterator>(_matcher, std::move(approx),
                                                std::move(columnIt));
+    auto mdi = irs::memory::make_managed<irs::MyDocIterator>(
+      std::move(ret), "Query");
+    return mdi;
   }
 
   void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
