@@ -63,16 +63,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 SslServerFeature::SslServerFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _cafile(),
-      _keyfile(),
-      _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
-      _sslProtocol(TLS_GENERIC),
-      _sslOptions(asio_ns::ssl::context::default_workarounds |
-                  asio_ns::ssl::context::single_dh_use),
-      _ecdhCurve("prime256v1"),
-      _sessionCache(false),
-      _preferHttp11InAlpn(false) {
+    : ArangodFeature{server, *this} {
   setOptional(true);
 }
 
@@ -88,7 +79,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--ssl.cafile", "The CA file used for secure connections.",
-                  new StringParameter(&_cafile))
+                  new StringParameter(&_options.cafile))
       .setLongDescription(R"(You can use this option to specify a file with
 CA certificates that are sent to the client whenever the server requests a
 client certificate. If you specify a file, the server only accepts client
@@ -101,7 +92,7 @@ The certificates in the file must be PEM-formatted.)");
       ->addOption("--ssl.keyfile",
                   "The path to a PEM file (server certificate + private key) "
                   "to use for secure connections.",
-                  new StringParameter(&_keyfile))
+                  new StringParameter(&_options.keyfile))
       .setLongDescription(R"(If you use TLS/SSL encryption by binding the
 server to an `ssl://` endpoint (e.g. `--server.endpoint ssl://127.0.0.1:8529`),
 you must use this option to specify the filename of the server's private key.
@@ -153,12 +144,12 @@ the certificate.)");
 
   options->addOption("--ssl.session-cache",
                      "Enable the session cache for connections.",
-                     new BooleanParameter(&_sessionCache));
+                     new BooleanParameter(&_options.sessionCache));
 
   options
       ->addOption("--ssl.cipher-list",
                   "The SSL ciphers to use. See the OpenSSL documentation.",
-                  new StringParameter(&_cipherList))
+                  new StringParameter(&_options.cipherList))
       .setLongDescription(R"(You can use this option to restrict the server to
 certain SSL ciphers only, and to define the relative usage preference of SSL
 ciphers.
@@ -184,7 +175,7 @@ Mac=SHA1
 
   options
       ->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                  new DiscreteValuesParameter<UInt64Parameter>(&_sslProtocol,
+                  new DiscreteValuesParameter<UInt64Parameter>(&_options.sslProtocol,
                                                                sslProtocols))
       .setLongDescription(R"(Use this option to specify the default encryption
 protocol to be used. The default value is 9 (generic TLS), which allows the
@@ -198,7 +189,7 @@ the startup.)");
   options
       ->addOption("--ssl.options",
                   "The SSL connection options. See the OpenSSL documentation.",
-                  new UInt64Parameter(&_sslOptions),
+                  new UInt64Parameter(&_options.sslOptions),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(You can use this option to set various SSL-related
@@ -226,18 +217,18 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
   options->addOption(
       "--ssl.ecdh-curve",
       "The SSL ECDH curve, see the output of \"openssl ecparam -list_curves\".",
-      new StringParameter(&_ecdhCurve));
+      new StringParameter(&_options.ecdhCurve));
 
   options->addOption("--ssl.prefer-http1-in-alpn",
                      "Allows to let the server prefer HTTP/1.1 over HTTP/2 in "
                      "ALPN protocol negotiations",
-                     new BooleanParameter(&_preferHttp11InAlpn));
+                     new BooleanParameter(&_options.preferHttp11InAlpn));
 }
 
 void SslServerFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   // check for SSLv2
-  if (_sslProtocol == SslProtocol::SSL_V2) {
+  if (_options.sslProtocol == SslProtocol::SSL_V2) {
     LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
         << "SSLv2 is not supported any longer because of security "
            "vulnerabilities in this protocol";
@@ -247,11 +238,11 @@ void SslServerFeature::validateOptions(
 
 void SslServerFeature::prepare() {
   LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
-      << "using SSL options: " << stringifySslOptions(_sslOptions);
+      << "using SSL options: " << stringifySslOptions(_options.sslOptions);
 
-  if (!_cipherList.empty()) {
+  if (!_options.cipherList.empty()) {
     LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
-        << "using SSL cipher-list '" << _cipherList << "'";
+        << "using SSL cipher-list '" << _options.cipherList << "'";
   }
 
   UniformCharacter r(
@@ -261,12 +252,12 @@ void SslServerFeature::prepare() {
 
 void SslServerFeature::unprepare() {
   LOG_TOPIC("7093e", TRACE, arangodb::Logger::SSL)
-      << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
+      << "unpreparing ssl: " << stringifySslOptions(_options.sslOptions);
 }
 
 void SslServerFeature::verifySslOptions() {
   // check keyfile
-  if (_keyfile.empty()) {
+  if (_options.keyfile.empty()) {
     LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
         << "no value specified for '--ssl.keyfile'";
     FATAL_ERROR_EXIT();
@@ -274,7 +265,7 @@ void SslServerFeature::verifySslOptions() {
 
   // validate protocol
   // cppcheck-suppress unsignedLessThanZero
-  if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
+  if (_options.sslProtocol <= SSL_UNKNOWN || _options.sslProtocol >= SSL_LAST) {
     LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "
            "value for '--ssl.protocol'";
@@ -283,17 +274,17 @@ void SslServerFeature::verifySslOptions() {
 
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
       << "using SSL protocol version '"
-      << protocolName(SslProtocol(_sslProtocol)) << "'";
+      << protocolName(SslProtocol(_options.sslProtocol)) << "'";
 
-  if (!FileUtils::exists(_keyfile)) {
+  if (!FileUtils::exists(_options.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
-        << "unable to find SSL keyfile '" << _keyfile << "'";
+        << "unable to find SSL keyfile '" << _options.keyfile << "'";
     FATAL_ERROR_EXIT();
   }
 
   // Set up first _sniEntry:
   _sniEntries.clear();
-  _sniEntries.emplace_back("", _keyfile);
+  _sniEntries.emplace_back("", _options.keyfile);
 
   try {
     createSslContexts();  // just to test if everything works
@@ -367,7 +358,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     std::string keyfileContent = FileUtils::slurp(keyfilename);
     // create context
     asio_ns::ssl::context sslContext =
-        ::sslContext(SslProtocol(_sslProtocol), keyfilename);
+        ::sslContext(SslProtocol(_options.sslProtocol), keyfilename);
     content = std::move(keyfileContent);
 
     // and use this native handle
@@ -375,34 +366,34 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
         sslContext.native_handle();
 
     // set cache mode
-    SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache
+    SSL_CTX_set_session_cache_mode(nativeContext, _options.sessionCache
                                                       ? SSL_SESS_CACHE_SERVER
                                                       : SSL_SESS_CACHE_OFF);
 
-    if (_sessionCache) {
+    if (_options.sessionCache) {
       LOG_TOPIC("af2f4", TRACE, arangodb::Logger::SSL)
           << "using SSL session caching";
     }
 
     // set options
-    sslContext.set_options(static_cast<long>(_sslOptions));
+    sslContext.set_options(static_cast<long>(_options.sslOptions));
 
-    if (!_cipherList.empty()) {
-      if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
+    if (!_options.cipherList.empty()) {
+      if (SSL_CTX_set_cipher_list(nativeContext, _options.cipherList.c_str()) != 1) {
         LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL)
-            << "cannot set SSL cipher list '" << _cipherList
+            << "cannot set SSL cipher list '" << _options.cipherList
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
     }
 
-    if (!_ecdhCurve.empty()) {
-      int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
+    if (!_options.ecdhCurve.empty()) {
+      int sslEcdhNid = OBJ_sn2nid(_options.ecdhCurve.c_str());
 
       if (sslEcdhNid == 0) {
         LOG_TOPIC("40292", ERR, arangodb::Logger::SSL)
             << "SSL error: " << lastSSLError()
-            << " Unknown curve name: " << _ecdhCurve;
+            << " Unknown curve name: " << _options.ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
 
@@ -411,7 +402,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
       if (ecdhKey == nullptr) {
         LOG_TOPIC("471f2", ERR, arangodb::Logger::SSL)
             << "SSL error: " << lastSSLError()
-            << ". unable to create curve by name: " << _ecdhCurve;
+            << ". unable to create curve by name: " << _options.ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
 
@@ -438,29 +429,29 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     }
 
     // check CA
-    if (!_cafile.empty()) {
+    if (!_options.cafile.empty()) {
       LOG_TOPIC("cdaf2", TRACE, arangodb::Logger::SSL)
-          << "trying to load CA certificates from '" << _cafile << "'";
+          << "trying to load CA certificates from '" << _options.cafile << "'";
 
-      res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(),
+      res = SSL_CTX_load_verify_locations(nativeContext, _options.cafile.c_str(),
                                           nullptr);
 
       if (res == 0) {
         LOG_TOPIC("30289", ERR, arangodb::Logger::SSL)
-            << "cannot load CA certificates from '" << _cafile
+            << "cannot load CA certificates from '" << _options.cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
 
       STACK_OF(X509_NAME) * certNames;
 
-      std::string cafileContent = FileUtils::slurp(_cafile);
-      certNames = SSL_load_client_CA_file(_cafile.c_str());
+      std::string cafileContent = FileUtils::slurp(_options.cafile);
+      certNames = SSL_load_client_CA_file(_options.cafile.c_str());
       _cafileContent = cafileContent;
 
       if (certNames == nullptr) {
         LOG_TOPIC("30363", ERR, arangodb::Logger::SSL)
-            << "cannot load CA certificates from '" << _cafile
+            << "cannot load CA certificates from '" << _options.cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
@@ -492,7 +483,7 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
 
     SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb,
-                               (void*)(&_preferHttp11InAlpn));
+                               (void*)(&_options.preferHttp11InAlpn));
 
     return sslContext;
   } catch (std::exception const& ex) {
