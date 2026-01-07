@@ -26,8 +26,6 @@
 
 namespace arangodb {
 
-/// @brief Pure value struct holding all configurable options for Maintenance
-/// No behavior - just data fields with default values
 struct MaintenanceOptions {
   /// @brief option for forcing this feature to always be enable - used by the
   /// catch tests

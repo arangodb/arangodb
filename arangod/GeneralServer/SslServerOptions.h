@@ -31,8 +31,6 @@
 
 namespace arangodb {
 
-/// @brief Pure value struct holding all configurable options for SslServer
-/// No behavior - just data fields with default values
 struct SslServerOptions {
   std::string cafile;
   std::string keyfile;

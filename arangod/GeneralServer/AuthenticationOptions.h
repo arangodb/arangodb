@@ -27,8 +27,6 @@
 
 namespace arangodb {
 
-/// @brief Pure value struct holding all configurable options for Authentication
-/// No behavior - just data fields with default values
 struct AuthenticationOptions {
   bool authenticationUnixSockets = true;
   bool authenticationSystemOnly = true;
