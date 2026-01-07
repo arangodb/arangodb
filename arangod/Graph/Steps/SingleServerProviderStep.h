@@ -79,19 +79,6 @@ class SingleServerProviderStep : public arangodb::graph::BaseStep {
   // beware: will return a *copy* of the edge id
   EdgeType getEdgeIdentifier() const { return _edge.getID(); }
 
-  std::string getCollectionName() const {
-    /*
-     * Future optimization: When re-implementing the documentFastPathLocal
-     * method to support string refs or either string views, we can improve this
-     * section here as well.
-     */
-    auto collectionNameResult = extractCollectionName(_vertex.getID());
-    if (collectionNameResult.fail()) {
-      THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-    }
-    return collectionNameResult.get().first;
-  };
-
   friend auto operator<<(std::ostream& out,
                          SingleServerProviderStep const& step) -> std::ostream&;
 
