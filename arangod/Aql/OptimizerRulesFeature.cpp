@@ -58,7 +58,6 @@
 #include "Aql/Optimizer/Rule/OptimizerRulesSubqueryStructure.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesUseIndexes.h"
 #include "Aql/Optimizer/Rule/OptimizerRuleVectorIndex.h"
-#include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -68,6 +67,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/OptimizerRulesEE.h"
+#endif
 
 using namespace arangodb::application_features;
 
