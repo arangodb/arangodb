@@ -705,11 +705,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   plan->findVarUsage();
 
-  // ABAC attribute detection and check
   enterState(QueryExecutionState::ValueType::ABAC_CHECK);
-  // TODO: Add ABAC check here after best execution plan is chosen
-  // This is where AttributeDetector should walk the ExecutionPlan
-  // and check attribute access permissions with ABAC service
 
   if (_planCacheKey.has_value()) {
     TRI_ASSERT(_queryOptions.optimizePlanForCaching &&
