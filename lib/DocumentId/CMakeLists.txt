@@ -1,0 +1,9 @@
+add_library(arango_documentid INTERFACE)
+target_include_directories(arango_documentid INTERFACE include/)
+target_link_libraries(arango_documentid INTERFACE arango_crashhandler velocypack)
+
+add_library(arango_documentid_standalone INTERFACE)
+target_include_directories(arango_documentid_standalone INTERFACE include/)
+target_link_libraries(arango_documentid_standalone INTERFACE velocypack)
+target_link_libraries(arango_documentid_standalone INTERFACE absl::flat_hash_set)
+target_compile_definitions(arango_documentid_standalone INTERFACE STANDALONE)
