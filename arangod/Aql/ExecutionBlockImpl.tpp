@@ -1433,6 +1433,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
   // Also note that executors with this DataRange type have no side effects,
   // so merging the two functions can leave this in place
   if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    static_assert(!executorHasSideEffects<Executor>());
     auto shadowDepth = shadowRow.getDepth();
     fetcher().resetDidReturnSubquerySkips(shadowDepth);
   }
