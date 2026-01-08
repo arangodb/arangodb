@@ -54,6 +54,7 @@
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"

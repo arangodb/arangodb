@@ -45,6 +45,21 @@ class LogicalCollection;
 namespace maintenance {
 enum ActionState;
 
+/// @brief Statistics about shards in for every database
+struct ShardStatistics {
+  uint64_t shards{0};
+  uint64_t leaderShards{0};
+  uint64_t outOfSyncShards{0};
+  uint64_t notReplicated{0};
+  uint64_t followersOutOfSync{0};
+
+  void increaseNumberOfShards() noexcept { ++shards; }
+  void increaseNumberOfLeaderShards() noexcept { ++leaderShards; }
+  void increaseNumberOfOutOfSyncShards() noexcept { ++outOfSyncShards; }
+  void increaseNumberOfNotReplicatedShards() noexcept { ++notReplicated; }
+  void increaseNumberOfFollowersOutOfSync() noexcept { ++followersOutOfSync; }
+};
+
 // The following is used in multiple Maintenance actions and therefore
 // made available here.
 arangodb::Result collectionCount(arangodb::LogicalCollection const& collection,
@@ -174,6 +189,8 @@ class MaintenanceFeature : public ArangodFeature {
   /// ActionState::COMPLETE or ActionState::FAILED!
   Result requeueAction(std::shared_ptr<maintenance::Action>& action,
                        int newPriority);
+
+  void updateDatabaseStatistics();
 
  protected:
   std::shared_ptr<maintenance::Action> createAction(
@@ -622,11 +639,17 @@ class MaintenanceFeature : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>*
       _maintenance_action_runtime_msec = nullptr;
 
-  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
   metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_follower_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
+  metrics::Gauge<uint64_t>* _followers_out_of_sync_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
   metrics::Counter* _sync_timeouts_total = nullptr;
+
+  // contains statistics about shards for all databases
+  std::unordered_map<std::string, maintenance::ShardStatistics>
+      _databaseShardsStats;
 };
 
 }  // namespace arangodb
