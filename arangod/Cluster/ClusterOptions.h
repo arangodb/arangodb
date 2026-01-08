@@ -26,12 +26,15 @@
 #include <string>
 #include <vector>
 
+#include "Cluster/ServerState.h"
+
 namespace arangodb {
 
 struct ClusterOptions {
   std::vector<std::string> agencyEndpoints;
   std::string agencyPrefix;
   std::string myRole;
+  ServerState::RoleEnum requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::string myEndpoint;
   std::string myAdvertisedEndpoint;
   std::string apiJwtPolicy = "jwt-compat";

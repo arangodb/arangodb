@@ -592,20 +592,20 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ss->findHost(fallback);
 
   if (!_options.myRole.empty()) {
-    auto requestedRole = ServerState::stringToRole(_options.myRole);
+    _options.requestedRole = ServerState::stringToRole(_options.myRole);
 
     std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles = {
         /*ServerState::ROLE_SINGLE,*/ ServerState::ROLE_AGENT,
         ServerState::ROLE_UNDEFINED};
 
     if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
-                  requestedRole) != disallowedRoles.end()) {
+                  _options.requestedRole) != disallowedRoles.end()) {
       LOG_TOPIC("198c3", FATAL, arangodb::Logger::CLUSTER)
           << "Invalid role provided for `--cluster.my-role`. Possible values: "
              "DBSERVER, PRIMARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
-    ServerState::instance()->setRole(requestedRole);
+    ServerState::instance()->setRole(_options.requestedRole);
   }
 
   constexpr std::uint32_t minConnectivityCheckInterval = 10;  // seconds
@@ -666,7 +666,7 @@ void ClusterFeature::prepare() {
     return;
   }
 
-  reportRole(_requestedRole);
+  reportRole(_options.requestedRole);
 
   network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
@@ -713,7 +713,8 @@ void ClusterFeature::prepare() {
   }
 
   if (!ServerState::instance()->integrateIntoCluster(
-          _requestedRole, _options.myEndpoint, _options.myAdvertisedEndpoint)) {
+          _options.requestedRole, _options.myEndpoint,
+          _options.myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
         << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
