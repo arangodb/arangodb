@@ -964,7 +964,7 @@ single collection/shard from multiple files.)")
       ->addOption("--local-network-threads",
                   "Number of local network threads, i.e. how many requests "
                   "are sent in parallel.",
-                  new UInt64Parameter(&_options.dbserverWorkerThreads),
+                  new UInt64Parameter(&_options.localNetworkThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31008)
