@@ -35,7 +35,7 @@ const {
   cleanupBGShells
 } = require('@arangodb/testutils/client-tools').run;
 let IM = global.instanceManager;
-const waitFor = IM.options.isInstrumented ? 80 * 10 : 80;
+const waitFor = IM.options.isInstrumented ? 80 * 10 : 200;
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
@@ -66,13 +66,13 @@ function ParallelIndexLinkCreateDropSuite() {
       db._drop(cn);
       db._dropView(vn);
     },
-    
+
     testCreateDropInParallel: function () {
       const threads = 4;
       const iterations = 15;
 
       let c = require("internal").db._collection(cn);
-      
+
       let viewMeta = {};
       let indexMeta = {};
       if (isEnterprise) {
@@ -108,49 +108,19 @@ db["${cn}"].dropIndex(ii);
 `;
         } else {
           command += `
-          for (let iteration = 0; iteration < ${iterations}; ++iteration) {
-  const now = () => Date.now();
+for (let iteration = 0; iteration < ${iterations}; ++iteration) {
   require("console").log("thread ${i}, iteration " + iteration);
 
   try {
-    require("console").log("t${i} it" + iteration + " addLink BEGIN " + Date.now());
-    let addOk = true;
-    try {
-      db._view("${vn}").properties(${viewMeta}, true);
-    } catch (e) {
-      addOk = false;
-      require("console").warn("t${i} it" + iteration + " addLink ERROR " + String(e));
-    }
-    require("console").log("t${i} it" + iteration + " addLink END " + Date.now() + " ok=" + addOk);
-    
-    require("console").log("t${i} it" + iteration + " removeLink BEGIN " + Date.now());
-    let rmOk = true;
-    try {
-      db._view("${vn}").properties({ links : { ${cn} : null }}, true);
-    } catch (e) {
-      rmOk = false;
-      require("console").warn("t${i} it" + iteration + " removeLink ERROR " + String(e));
-    }
-    require("console").log("t${i} it" + iteration + " removeLink END " + Date.now() + " ok=" + rmOk);
-    
-    c.indexes();
+    db._view("${vn}").properties(${viewMeta}, true);
+    db._view("${vn}").properties({ links : { ${cn} : null }}, true);   
   } catch (err) {
+    // concurrent modification of links can fail in the cluster
     console.warn("caught exception: " + String(err));
   }
+  db._view("${vn}");
+  c.indexes();
 }
-// for (let iteration = 0; iteration < ${iterations}; ++iteration) {
-//   require("console").log("thread ${i}, iteration " + iteration);
-//
-//   try {
-//     db._view("${vn}").properties(${viewMeta}, true);
-//     db._view("${vn}").properties({ links : { ${cn} : null }}, true);   
-//   } catch (err) {
-//     // concurrent modification of links can fail in the cluster
-//     console.warn("caught exception: " + String(err));
-//   }
-//   db._view("${vn}");
-//   c.indexes();
-// }
 `;
         }
 
@@ -158,22 +128,13 @@ db["${cn}"].dropIndex(ii);
 c.insert({ _key: "done${i}", value: true });
 `;
         clients.push({client: launchPlainSnippetInBG(
-          command, 
+          command,
           `testCreateDropInParallel${i}`)});
       }
 
-        print("Main: waiting for BG shells, keys now: " +
-            JSON.stringify(db._query(`FOR d IN ${cn} FILTER LIKE(d._key, "done%") RETURN d._key`).toArray()));
       // wait for the shells to complete
-      try {
-        joinBGShells(IM.options, clients, waitFor, cn);
-      } catch (e) {
-          print("Main: joinBGShells failed. done keys: " +
-              JSON.stringify(db._query(`FOR d IN ${cn} FILTER LIKE(d._key, "done%") RETURN d._key`).toArray()));
-        throw e;
-      }
+      joinBGShells(IM.options, clients, waitFor, cn);
 
-      
       // check that all indexes except primary are gone
       assertEqual(1, c.indexes().length);
 
