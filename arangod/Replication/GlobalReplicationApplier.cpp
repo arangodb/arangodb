@@ -93,13 +93,13 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
     TRI_ASSERT(builder.isEmpty());
-    return ReplicationApplierConfiguration(engine.server());
+    return ReplicationApplierConfiguration(server);
   }
 
   TRI_ASSERT(!builder.isEmpty());
 
   return ReplicationApplierConfiguration::fromVelocyPack(
-      engine.server(), builder.slice(), std::string());
+      server, builder.slice(), std::string());
 }
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()

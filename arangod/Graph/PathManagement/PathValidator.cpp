@@ -254,9 +254,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return true;
   }
 
-  auto collectionName = step.getCollectionName();
+  auto collectionNameResult = step.getVertex().collectionName();
+  if (collectionNameResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+  }
   if (std::find(allowedCollections.begin(), allowedCollections.end(),
-                collectionName) != allowedCollections.end()) {
+                collectionNameResult.get()) != allowedCollections.end()) {
     // found in allowed collections => allowed
     return true;
   }

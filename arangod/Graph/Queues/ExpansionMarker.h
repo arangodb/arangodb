@@ -38,7 +38,7 @@ struct Expansion {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Expansion& x) {
-  return f.object(x).fields(f.field("from", x.from));
+  return f.object(x).fields(f.field("id", x.id), f.field("from", x.from));
 }
 
 template<typename Step>
