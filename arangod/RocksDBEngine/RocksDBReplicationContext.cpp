@@ -91,7 +91,7 @@ bool RocksDBReplicationContext::findCollection(
     std::string const& dbName, T const& collection,
     std::function<void(TRI_vocbase_t& vocbase,
                        LogicalCollection& collection)> const& cb) {
-  auto& dbfeature = _engine.server().getFeature<DatabaseFeature>();
+  auto& dbfeature = _engine.getDatabaseFeature();
   auto vocbase = dbfeature.useDatabase(dbName);
   if (!vocbase) {
     return false;
@@ -391,8 +391,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
 
   if (global) {
     // global inventory
-    vocbase.server().getFeature<DatabaseFeature>().inventory(inventory, tick,
-                                                             nameFilter);
+    _engine.getDatabaseFeature().inventory(inventory, tick, nameFilter);
   } else {
     // database-specific inventory
     inventory.openObject();

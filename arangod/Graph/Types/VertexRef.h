@@ -25,6 +25,8 @@
 
 #include <compare>
 
+#include "Basics/ResultT.h"
+
 namespace arangodb::graph {
 
 class VertexRef {
@@ -56,6 +58,8 @@ class VertexRef {
   }
 
   operator velocypack::HashedStringRef() { return _vertex; }
+
+  [[nodiscard]] auto collectionName() const -> ResultT<std::string_view>;
 
  private:
   RefType _vertex;
