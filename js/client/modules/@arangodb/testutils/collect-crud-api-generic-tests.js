@@ -41,7 +41,8 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
 
     const collection = collectionWrapper.rawCollection();
     const cn = collection.name();
-    const baseUrl = "/_api/document/" + encodeURIComponent(cn);
+    const baseUrl = "/_api/document?collection=" + encodeURIComponent(cn);
+    const singleDocBaseUrl = "/_api/document/" + encodeURIComponent(cn);
     for (const doc of generator) {
       let keyUrl;
       let documentKey;
@@ -49,7 +50,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       if (!isEnterpriseGraphEdge) {
         assertTrue(doc.hasOwnProperty("_key"));
         documentKey = doc._key;
-        keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
+        keyUrl = singleDocBaseUrl + "/" + encodeURIComponent(doc._key);
       }
 
       // create document
@@ -57,7 +58,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       if (isEnterpriseGraphEdge) {
         assertTrue(result.parsedBody.hasOwnProperty("_key"));
         documentKey = result.parsedBody._key;
-        keyUrl = baseUrl + "/" + encodeURIComponent(result.parsedBody._key);
+        keyUrl = singleDocBaseUrl + "/" + encodeURIComponent(result.parsedBody._key);
       }
       assertEqual(202, result.code, `Creating document with key ${documentKey}`);
       let rev = result.parsedBody._rev;
@@ -183,7 +184,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     [`testLookupByKeys${testNamePostfix}`]: function () {
       const collection = collectionWrapper.rawCollection();
       const cn = collection.name();
-      const baseUrl = "/_api/document/" + encodeURIComponent(cn);
+      const baseUrl = "/_api/document?collection=" + encodeURIComponent(cn);
       const documents = [];
       const isEnterpriseGraphEdge = collectionWrapper._isEnterpriseGraphEdge;
       for (const doc of collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator())) {
@@ -255,9 +256,8 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
 
       {
         // Try to remove them by keys using document API
-        const docIds = keys.map(key => collection.name() + '/' + key);
         const removeUrl = '/_api/document/' + encodeURIComponent(collection.name());
-        const result = arango.DELETE_RAW(removeUrl, docIds);
+        const result = arango.DELETE_RAW(removeUrl, keys);
         if (result.code !== 202 && result.code !== 200) {
           console.warn(`Remove returned with: ${JSON.stringify(result)}`);
         }
