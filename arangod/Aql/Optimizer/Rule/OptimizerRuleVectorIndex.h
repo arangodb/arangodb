@@ -18,8 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
-/// @author Koichi Nakata
+/// @author Jure Bajic
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

@@ -18,8 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
-/// @author Koichi Nakata
+/// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesClusterDistribution.h"
@@ -1098,7 +1098,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }  // for end subquery in plan
+  }    // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
