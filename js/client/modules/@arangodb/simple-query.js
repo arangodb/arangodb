@@ -63,6 +63,9 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -127,6 +130,9 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -199,6 +205,9 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -305,6 +314,9 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -362,6 +374,9 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -415,6 +430,9 @@ SimpleQueryWithinRectangle.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';
@@ -464,6 +482,9 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
       if (this._limit !== null && this._limit > 0) {
         query += ', @limit';
         bindVars.limit = this._limit;
+      } else {
+        query += ', @limit';
+        bindVars.limit = 99999999999;
       }
     } else if (this._limit !== null && this._limit > 0) {
       query += ' LIMIT @limit';

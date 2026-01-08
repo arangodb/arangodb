@@ -223,7 +223,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         assertTrue(keys.length > 0, "No keys were generated from document insertion");
         assertNotUndefined(keys[0]);
         const docId = collection.name() + '/' + keys[0];
-        const result = arango.GET_RAW('/_api/document/' + encodeURIComponent(docId));
+        const result = arango.GET_RAW('/_api/document/' + encodeURIComponent(collection.name()) + '/' + encodeURIComponent(keys[0]));
 
         assertEqual(200, result.code, `Failed to retrieve document ${docId}. Response: ${JSON.stringify(result)}`);
         const response = result.parsedBody;

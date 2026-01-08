@@ -465,6 +465,42 @@ actions.defineHttp({
 });
 
 actions.defineHttp({
+  url: API + 'remove-by-keys',
+  isSystem: false,
+
+  callback: function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType !== actions.PUT) {
+        actions.resultUnsupported(req, res);
+      } else {
+        var keys = body.keys;
+        var name = body.collection;
+        var collection = db._collection(name);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        } else if (!Array.isArray(keys)) {
+          actions.badParameter(req, res, 'keys');
+        } else if (keys.length === 0) {
+          actions.resultOk(req, res, actions.HTTP_OK, { deleted: 0, ignored: 0 });
+        } else {
+          var result = collection.removeByKeys(keys);
+          actions.resultOk(req, res, actions.HTTP_OK, { deleted: result.removed, ignored: result.ignored });
+        }
+      }
+    } catch (err) {
+      actions.resultException(req, res, err, undefined, false);
+    }
+  }
+});
+
+actions.defineHttp({
   url: API + 'replace-by-example',
   isSystem: false,
 

@@ -1318,7 +1318,10 @@ ArangoCollection.prototype.removeByExample = function (example,
     });
   }
 
-  let bindVars = { '@collection': this.name() };
+  let collectionName = this.name();
+  // Escape backticks in collection name for use in query
+  let escapedCollectionName = collectionName.replace(/`/g, '``');
+  let bindVars = {};
   let filters = [];
   Object.keys(example).forEach(function (key) {
     let value = example[key];
@@ -1338,17 +1341,17 @@ ArangoCollection.prototype.removeByExample = function (example,
     filters.push('doc.`' + processedKey + '` == ' + JSON.stringify(value));
   });
 
-  let query = 'FOR doc IN @@collection';
+  let query = 'FOR doc IN `' + escapedCollectionName + '`';
   if (filters.length > 0) {
     query += ' FILTER ' + filters.join(' AND ') + ' ';
   }
   if (options.limit > 0) {
     query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
   }
-  query += 'REMOVE doc IN @@collection';
+  query += 'REMOVE doc IN `' + escapedCollectionName + '`';
 
   let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.removed || 0;
+  return cursor.getExtra().stats.writesExecuted || 0;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1386,24 +1389,27 @@ ArangoCollection.prototype.replaceByExample = function (example,
     });
   }
 
-  let bindVars = { '@collection': this.name(), 'newValue': newValue };
+  let collectionName = this.name();
+  // Escape backticks in collection name for use in query
+  let escapedCollectionName = collectionName.replace(/`/g, '``');
+  let bindVars = { 'newValue': newValue };
   let filters = [];
   Object.keys(example).forEach(function (key) {
     let value = example[key];
     filters.push('doc.`' + key.replace(/\`/g, '').split('.').join('`.`') + '` == ' + JSON.stringify(value));
   });
 
-  let query = 'FOR doc IN @@collection';
+  let query = 'FOR doc IN `' + escapedCollectionName + '`';
   if (filters.length > 0) {
     query += ' FILTER ' + filters.join(' AND ') + ' ';
   }
   if (options.limit > 0) {
     query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
   }
-  query += 'REPLACE doc WITH @newValue IN @@collection';
+  query += 'REPLACE doc WITH @newValue IN `' + escapedCollectionName + '`';
 
   let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.replaced || 0;
+  return cursor.getExtra().stats.writesExecuted || 0;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1444,27 +1450,30 @@ ArangoCollection.prototype.updateByExample = function (example,
     });
   }
 
-  let bindVars = { '@collection': this.name(), 'newValue': newValue };
+  let collectionName = this.name();
+  // Escape backticks in collection name for use in query
+  let escapedCollectionName = collectionName.replace(/`/g, '``');
+  let bindVars = { 'newValue': newValue };
   let filters = [];
   Object.keys(example).forEach(function (key) {
     let value = example[key];
     filters.push('doc.`' + key.replace(/\`/g, '').split('.').join('`.`') + '` == ' + JSON.stringify(value));
   });
 
-  let query = 'FOR doc IN @@collection';
+  let query = 'FOR doc IN `' + escapedCollectionName + '`';
   if (filters.length > 0) {
     query += ' FILTER ' + filters.join(' AND ') + ' ';
   }
   if (options.limit > 0) {
     query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
   }
-  query += 'UPDATE doc WITH @newValue IN @@collection';
+  query += 'UPDATE doc WITH @newValue IN `' + escapedCollectionName + '`';
   if (options.keepNull !== undefined) {
     query += ' OPTIONS { keepNull: ' + (options.keepNull ? 'true' : 'false') + ' }';
   }
 
   let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.updated || 0;
+  return cursor.getExtra().stats.writesExecuted || 0;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1594,3 +1603,4 @@ ArangoCollection.prototype._revisionTreeRebuild = function() {
   arangosh.checkRequestResult(requestResult);
   return { result: true };
 };
+
