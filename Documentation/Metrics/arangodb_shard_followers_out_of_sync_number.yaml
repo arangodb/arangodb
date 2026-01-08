@@ -1,5 +1,5 @@
 name: arangodb_shard_followers_out_of_sync_number
-introducedIn: "3.12.7"
+introducedIn: "3.12.8"
 help: |
   Number of follower shards on this machine that are out of sync with their leader.
 unit: number
