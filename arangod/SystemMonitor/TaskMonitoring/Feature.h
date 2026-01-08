@@ -50,7 +50,7 @@ class Feature final : public ArangodFeature {
   };
 
  public:
-  static constexpr std::string_view name() { return "Coroutines"; }
+  static constexpr std::string_view name() { return "Tasks"; }
   auto asyncLock() -> futures::Future<
       futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
 
