@@ -22,7 +22,6 @@
 /// @author Matthew Von-Maszewski
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-#include "utils/string.hpp"
 
 #include "RestServer/arangod.h"
 #include "gtest/gtest.h"
@@ -549,6 +548,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+
+    as.addFeature<MaintenanceFeature>();
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& vectorIndex = as.addFeature<VectorIndexFeature>();
     auto& flush = as.addFeature<FlushFeature>();
