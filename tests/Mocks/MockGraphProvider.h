@@ -220,14 +220,6 @@ class MockGraphProvider {
       return _edge.getID();
     }
 
-    std::string getCollectionName() const {
-      auto collectionNameResult = extractCollectionName(_vertex.getID());
-      if (collectionNameResult.fail()) {
-        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-      }
-      return collectionNameResult.get().first;
-    };
-
     void setLocalSchreierIndex(size_t index) {
       TRI_ASSERT(index != std::numeric_limits<size_t>::max());
       TRI_ASSERT(!hasLocalSchreierIndex());

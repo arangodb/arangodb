@@ -1,0 +1,84 @@
+{
+  "name": "@sinonjs/samsam",
+  "version": "8.0.3",
+  "description": "Value identification and comparison functions",
+  "homepage": "http://sinonjs.github.io/samsam/",
+  "author": "Christian Johansen",
+  "license": "BSD-3-Clause",
+  "main": "./lib/samsam",
+  "types": "./types/samsam.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinonjs/samsam.git"
+  },
+  "lint-staged": {
+    "*.{js,css,md}": "prettier --check",
+    "*.js": "eslint"
+  },
+  "scripts": {
+    "benchmark": "node lib/deep-equal-benchmark.js",
+    "build": "rm -rf types && tsc",
+    "jsdoc": "jsdoc -c jsdoc.conf.json",
+    "lint": "eslint .",
+    "prepublishOnly": "npm run build && mkdocs gh-deploy -r upstream || mkdocs gh-deploy -r origin",
+    "test": "mocha ./lib/*.test.js",
+    "test-cloud": "npm run test-headless -- --wd",
+    "test-check-coverage": "npm run test-coverage && nyc check-coverage --branches 100 --functions 100 --lines 100",
+    "test-coverage": "nyc --all --reporter text --reporter html --reporter lcovonly npm run test",
+    "test-headless": "mochify --no-detect-globals --recursive -R dot --plugin [ proxyquire-universal ] \"./lib/*.test.js\"",
+    "prettier:check": "prettier --check '**/*.{js,css,md}'",
+    "prettier:write": "prettier --write '**/*.{js,css,md}'",
+    "preversion": "./check-external-dependencies.sh && npm run test-check-coverage",
+    "version": "changes --commits --footer",
+    "postversion": "git push --follow-tags && npm publish --access public",
+    "prepare": "husky install"
+  },
+  "browser": {
+    "jsdom": false,
+    "jsdom-global": false
+  },
+  "files": [
+    "docs/",
+    "lib/",
+    "!lib/**/*.test.js",
+    "types/"
+  ],
+  "dependencies": {
+    "@sinonjs/commons": "^3.0.1",
+    "type-detect": "^4.1.0"
+  },
+  "devDependencies": {
+    "@sinonjs/eslint-config": "^5.0.3",
+    "@sinonjs/eslint-plugin-no-prototype-methods": "^0.1.1",
+    "@sinonjs/referee": "^11.0.1",
+    "@studio/changes": "^3.0.0",
+    "benchmark": "^2.1.4",
+    "husky": "^9.1.7",
+    "jquery": "^3.7.1",
+    "jsdoc": "^4.0.4",
+    "jsdom": "^26.1.0",
+    "jsdom-global": "^3.0.2",
+    "lint-staged": "^15.5.2",
+    "microtime": "^3.1.1",
+    "mocha": "^11.2.2",
+    "mochify": "^9.2.0",
+    "nyc": "^17.1.0",
+    "prettier": "^3.5.3",
+    "proxyquire": "^2.1.3",
+    "proxyquire-universal": "^3.0.1",
+    "proxyquireify": "^3.2.1",
+    "typescript": "^5.8.3"
+  },
+  "nyc": {
+    "exclude": [
+      "**/*.test.js",
+      "coverage/**",
+      "dist/**",
+      "out/**",
+      "site/**",
+      "eslint-local-rules.js",
+      "rollup.config.js",
+      "lib/deep-equal-benchmark.js"
+    ]
+  }
+}
