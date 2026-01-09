@@ -206,6 +206,10 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         if (isEnterpriseGraphEdge) {
           // Keys are not provided by us, they are auto-generated.
           keys = result.parsedBody.map(d => d._key);
+          // Update documents array with generated keys for later comparison
+          for (let i = 0; i < documents.length; ++i) {
+            documents[i]._key = keys[i];
+          }
         } else {
           keys = documents.map(d => d._key);
         }
@@ -238,18 +242,43 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       documents.sort(sortByKey);
       {
         // Try to find them by keys using document API
-        const docIds = keys.map(key => collection.name() + '/' + key);
+        // Note: The batch lookup API returns responses in the same order as the input
+        // For Enterprise Graph edges, use keys directly; for others, use document IDs
+        const lookupData = isEnterpriseGraphEdge ? keys : keys.map(key => collection.name() + '/' + key);
         const lookupUrl = '/_api/document/' + encodeURIComponent(collection.name()) + '?onlyget=true';
-        const result = arango.PUT_RAW(lookupUrl, docIds);
+        const result = arango.PUT_RAW(lookupUrl, lookupData);
 
         assertEqual(200, result.code);
         const response = Array.isArray(result.parsedBody) ? result.parsedBody : [];
-        response.sort(sortByKey);
         assertEqual(response.length, documents.length);
-        for (let i = 0; i < documents.length; ++i) {
-          for (const [key, value] of Object.entries(documents[i])) {
-            assertEqual(response[i][key], value,
-              `Mismatch at document ${i} user data of ${JSON.stringify(response[i])} does not match the insert ${JSON.stringify(documents[i])}`);
+        
+        // Create a map of documents by key for matching
+        const documentsByKey = new Map();
+        for (const doc of documents) {
+          documentsByKey.set(doc._key, doc);
+        }
+        
+        // Match documents by key (response order matches input lookupData order, not sorted documents)
+        for (let i = 0; i < response.length; ++i) {
+          const resp = response[i];
+          
+          // Check if the response is an error object
+          if (resp.hasOwnProperty('error') && resp.error === true) {
+            const key = lookupData[i].includes('/') ? lookupData[i].split('/').pop() : lookupData[i];
+            assertTrue(false,
+              `Document lookup failed for document ${i} with key ${key}: ${JSON.stringify(resp)}`);
+          }
+          
+          // Find the corresponding document by key
+          const doc = documentsByKey.get(resp._key);
+          if (!doc) {
+            assertTrue(false,
+              `Document with key ${resp._key} not found in documents array. Response: ${JSON.stringify(resp)}`);
+          }
+          
+          for (const [key, value] of Object.entries(doc)) {
+            assertEqual(resp[key], value,
+              `Mismatch at document ${i} (key: ${resp._key}) user data of ${JSON.stringify(resp)} does not match the insert ${JSON.stringify(doc)}`);
           }
         }
       }
