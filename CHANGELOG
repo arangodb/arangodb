@@ -10,6 +10,9 @@ devel
   - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
   - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
 
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
 * COR-8: Improved the accuracy of shard metrics on DBservers by updating only
   metrics for databases with changes, rather than recalculating all metrics.
   Added new metrics `arangodb_shards_follower_number` to track the number of
