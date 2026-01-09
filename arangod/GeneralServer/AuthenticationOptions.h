@@ -18,41 +18,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include <string>
+#include <vector>
 
 namespace arangodb {
-namespace consensus {
-class Agent;
-}
 
-class AgencyFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "Agency"; }
+struct AuthenticationOptions {
+  bool authenticationUnixSockets = true;
+  bool authenticationSystemOnly = true;
+  bool active = true;
+  double authenticationTimeout = 0.0;
+  double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
+  double minimalJwtExpiryTime = 10.0;                     // 10 seconds
+  double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
 
-  explicit AgencyFeature(Server& server);
-  ~AgencyFeature();
+  std::string jwtSecretProgramOption;
+  std::string jwtSecretKeyfileProgramOption;
+  std::string jwtSecretFolderProgramOption;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool activated() const noexcept { return _options.activated; }
-
-  consensus::Agent* agent() const;
-
- private:
-  AgencyOptions _options;
-  std::unique_ptr<consensus::Agent> _agent;
+#ifdef USE_ENTERPRISE
+  /// verification only secrets
+  std::vector<std::string> jwtPassiveSecrets;
+#endif
 };
 
 }  // namespace arangodb

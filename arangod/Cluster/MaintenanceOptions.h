@@ -18,46 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
-#include "Aql/QueryInfoLoggerOptions.h"
+#include <cstdint>
 
-#include <velocypack/String.h>
+namespace arangodb {
 
-#include <memory>
+struct MaintenanceOptions {
+  /// @brief option for forcing this feature to always be enable - used by the
+  /// catch tests
+  bool forceActivation = false;
 
-namespace arangodb::aql {
-class QueryInfoLoggerThread;
+  bool resignLeadershipOnShutdown = false;
 
-class QueryInfoLoggerFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept {
-    return "QueryInfoLogger";
-  }
+  /// @brief tunable option for thread pool size
+  uint32_t maintenanceThreadsMax = 0;  // Initialized in constructor
 
-  explicit QueryInfoLoggerFeature(Server& server);
+  /// @brief tunable option for number of slow threads
+  uint32_t maintenanceThreadsSlowMax = 0;  // Initialized in constructor
 
-  ~QueryInfoLoggerFeature();
+  /// @brief tunable option for number of seconds COMPLETE or FAILED actions
+  /// block duplicates from adding to _actionRegistry
+  int32_t secondsActionsBlock = 2;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void beginShutdown() override;
-  void start() override;
-  void stop() override;
+  /// @brief tunable option for number of seconds COMPLETE and FAILED actions
+  /// remain within _actionRegistry
+  int32_t secondsActionsLinger = 3600;
 
-  bool shouldLog(bool isSystem, bool isSlowQuery) const noexcept;
-
-  void log(std::shared_ptr<velocypack::String> const& query);
-
- private:
-  void stopThread();
-
-  std::unique_ptr<QueryInfoLoggerThread> _loggerThread;
-  QueryInfoLoggerOptions _options;
+  uint64_t maximalNumberOfSyncShardActionsQueued = 32;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb
