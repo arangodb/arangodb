@@ -28,6 +28,7 @@
 #include "Inspection/VPack.h"
 #include "RestServer/CrashHandlerFeature.h"
 #include "Utils/ExecContext.h"
+#include "Futures/Future.h"
 
 namespace arangodb::crash_handler {
 
@@ -36,19 +37,19 @@ RestCrashHandler::RestCrashHandler(ArangodServer& server,
                                    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestCrashHandler::execute() {
+futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   // Require admin access
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "you need admin rights for crash management operations");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
   if (!crashHandlerFeature.isEnabled()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_DISABLED,
                   "crash handler feature is disabled");
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -72,7 +73,7 @@ RestStatus RestCrashHandler::execute() {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestCrashHandler::handleListCrashes() {

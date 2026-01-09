@@ -38,7 +38,7 @@ class RestCrashHandler : public RestBaseHandler {
  public:
   char const* name() const override final { return "RestCrashHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
+  futures::Future<futures::Unit> executeAsync() override;
 
  private:
   void handleListCrashes();
