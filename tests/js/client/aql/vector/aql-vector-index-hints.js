@@ -228,6 +228,11 @@ function VectorIndexHintsSuite() {
         assertEqual("vector_l2_with_filter", indexName);
     },
 
+    // COR-53 this test is same as the one above testVectorL2HintWithFilterNotForced
+    // except that we force the usage of the existing vector index which can be used.
+    // This used to fail since only on FILTER condition the use-index rule could not
+    // handle vector index and would throw an error, and now the order of rules
+    // is swiched.
     testVectorL2HintWithFilterForced: function () {
         const query = `
           FOR doc IN ${collName} OPTIONS { indexHint: "vector_l2_with_filter", forceIndexHint: true }
