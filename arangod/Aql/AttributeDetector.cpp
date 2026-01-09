@@ -42,9 +42,11 @@ AttributeDetector::AttributeDetector(Ast* ast) : _ast(ast) {}
 void AttributeDetector::detect() {
   TRI_ASSERT(_ast != nullptr);
 
-  AstNode* root = const_cast<AstNode*>(_ast->root());
+  AstNode const* root = _ast->root();
   if (root != nullptr) {
-    root->walk(*this);
+    _ast->traverseReadOnly(
+        root, [this](AstNode const* node) { return !before(const_cast<AstNode*>(node)); },
+        [this](AstNode const* node) { after(const_cast<AstNode*>(node)); });
   }
 
   _collectionAccesses.clear();
