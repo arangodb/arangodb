@@ -47,9 +47,7 @@ static_assert(!std::is_default_constructible<Root::Arango::Current>::value, CONS
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersKnown>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersKnown::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersKnown::Server::RebootId>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Current::FoxxmasterQueueupdate>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ShardsCopied>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Current::Foxxmaster>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegistered>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegistered::Version>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Current::ServersRegistered::Server>::value, CONSTRUCTIBLE_MESSAGE);
@@ -212,9 +210,7 @@ static_assert(!std::is_constructible<Root::Arango::Current, Root::Arango>::value
 static_assert(!std::is_constructible<Root::Arango::Current::ServersKnown, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersKnown::Server, Root::Arango::Current::ServersKnown>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersKnown::Server::RebootId, Root::Arango::Current::ServersKnown::Server>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::FoxxmasterQueueupdate, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ShardsCopied, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::Foxxmaster, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered, Root::Arango::Current>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered::Version, Root::Arango::Current::ServersRegistered>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ServersRegistered::Server, Root::Arango::Current::ServersRegistered>::value, CONSTRUCTIBLE_MESSAGE);
@@ -496,9 +492,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Current", "ServersKnown"}, root()->arango()->current()->serversKnown()},
       {{"arango", "Current", "ServersKnown", "PRMR-1234"}, root()->arango()->current()->serversKnown()->server("PRMR-1234")},
       {{"arango", "Current", "ServersKnown", "CRDN-5678", "rebootId"}, root()->arango()->current()->serversKnown()->server("CRDN-5678")->rebootId()},
-      {{"arango", "Current", "FoxxmasterQueueupdate"}, root()->arango()->current()->foxxmasterQueueupdate()},
       {{"arango", "Current", "ShardsCopied"}, root()->arango()->current()->shardsCopied()},
-      {{"arango", "Current", "Foxxmaster"}, root()->arango()->current()->foxxmaster()},
       {{"arango", "Current", "ServersRegistered"}, root()->arango()->current()->serversRegistered()},
       {{"arango", "Current", "ServersRegistered", "Version"}, root()->arango()->current()->serversRegistered()->version()},
       {{"arango", "Current", "ServersRegistered", "PRMR-1234"}, root()->arango()->current()->serversRegistered()->server("PRMR-1234")},

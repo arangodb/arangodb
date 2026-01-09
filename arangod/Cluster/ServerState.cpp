@@ -96,9 +96,7 @@ ServerState::ServerState(ArangodServer& server)
       _role(RoleEnum::ROLE_UNDEFINED),
       _shortId(0),
       _rebootId(0),
-      _state(STATE_UNDEFINED),
-      _foxxmasterSince(0),
-      _foxxmasterQueueupdate(false) {
+      _state(STATE_UNDEFINED) {
   TRI_ASSERT(Instance == nullptr);
   Instance = this;
   setRole(ROLE_UNDEFINED);
@@ -1255,45 +1253,6 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 
   // anything else is invalid
   return false;
-}
-
-bool ServerState::isFoxxmaster() const {
-  READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmaster == getId();
-}
-
-std::string ServerState::getFoxxmaster() const {
-  READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmaster;
-}
-
-void ServerState::setFoxxmaster(std::string const& foxxmaster) {
-  WRITE_LOCKER(writeLocker, _foxxmasterLock);
-
-  if (_foxxmaster != foxxmaster) {
-    _foxxmaster = foxxmaster;
-    _foxxmasterQueueupdate = true;
-
-    // We're the new foxxmaster, set this once.
-    if (_foxxmaster == getId()) {
-      _foxxmasterSince = TRI_HybridLogicalClock();
-    }
-  }
-}
-
-void ServerState::setFoxxmasterQueueupdate(bool value) noexcept {
-  WRITE_LOCKER(writeLocker, _foxxmasterLock);
-  _foxxmasterQueueupdate = value;
-}
-
-bool ServerState::getFoxxmasterQueueupdate() const noexcept {
-  READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmasterQueueupdate;
-}
-
-TRI_voc_tick_t ServerState::getFoxxmasterSince() const noexcept {
-  READ_LOCKER(readLocker, _foxxmasterLock);
-  return _foxxmasterSince;
 }
 
 std::ostream& operator<<(std::ostream& stream,
