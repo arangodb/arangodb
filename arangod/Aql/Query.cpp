@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
+#include "Aql/AttributeDetector.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -706,6 +707,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan->findVarUsage();
 
   enterState(QueryExecutionState::ValueType::ABAC_CHECK);
+  
+  AttributeDetector detector(plan.get());
+  detector.detect();
 
   if (_planCacheKey.has_value()) {
     TRI_ASSERT(_queryOptions.optimizePlanForCaching &&

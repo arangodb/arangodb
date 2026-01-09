@@ -35,24 +35,15 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
-class Slice;
-}  // namespace velocypack
+}
 
 namespace aql {
-class Ast;
-struct AstNode;
+class ExecutionNode;
 class ExecutionPlan;
-struct Variable;
 
 class AttributeDetector final
-    : public WalkerWorker<AstNode, WalkerUniqueness::NonUnique> {
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  struct AttributeAccess {
-    std::string name;
-    bool read{false};
-    bool write{false};
-  };
-
   struct AttributeAccessInfo {
     bool requiresAll{false};
     std::vector<std::string> attributes;
@@ -87,7 +78,7 @@ class AttributeDetector final
     }
   };
 
-  explicit AttributeDetector(Ast* ast);
+  explicit AttributeDetector(ExecutionPlan* plan);
   ~AttributeDetector() = default;
 
   void detect();
@@ -97,34 +88,15 @@ class AttributeDetector final
     return _collectionAccesses;
   }
 
-  bool requiresWildcardAccess() const;
-
-  bool before(AstNode* node) override final;
-  void after(AstNode* node) override final;
-  bool enterSubquery(AstNode*, AstNode*) override final;
+  bool before(ExecutionNode* node) override final;
+  void after(ExecutionNode* node) override final;
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
-  void trackAttributeAccess(Variable const* var, std::string_view attribute,
-                            bool isWrite);
-  void markRequiresAllAttributes(Variable const* var, bool isWrite);
-  std::string resolveVariableToCollection(Variable const* var) const;
-  void processAttributeAccess(AstNode const* node, bool isWrite);
-  void processModificationNode(AstNode const* node);
-  bool isFullDocumentAccess(AstNode const* node) const;
-  void extractAttributesFromObject(AstNode const* node,
-                                    std::vector<std::string>& attributes);
-  void processViewAccess(AstNode const* node, Variable const* var);
-  void processGraphTraversal(AstNode const* node);
-
-  Ast* _ast;
-  containers::FlatHashMap<Variable const*, std::string>
-      _variableToCollection;
+  ExecutionPlan* _plan;
   containers::FlatHashMap<std::string, CollectionAccess> _collectionAccessMap;
   std::vector<CollectionAccess> _collectionAccesses;
-  bool _inWriteContext{false};
-  Variable const* _modificationVariable{nullptr};
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
