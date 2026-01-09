@@ -30,6 +30,7 @@ const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
 const {assertEqual, assertTrue, assertNotEqual, assertFalse, assertNotUndefined}
   = jsunity.jsUnity.assertions;
+const internal = require("internal");
 
 // The post fix is used to make testName unique accross suites in the same file
 // just to make testing-js happy.
@@ -243,8 +244,15 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       {
         // Try to find them by keys using document API
         // Note: The batch lookup API returns responses in the same order as the input
-        // For Enterprise Graph edges, use keys directly; for others, use document IDs
-        const lookupData = isEnterpriseGraphEdge ? keys : keys.map(key => collection.name() + '/' + key);
+        // In cluster mode, always use document IDs for proper routing
+        // For Enterprise Graph edges in single-server mode, use keys directly
+        // For Enterprise Graph Smart vertex collections in cluster mode, use keys directly
+        // because the sharding strategy requires the key to determine the responsible shard
+        const isCluster = internal.isCluster();
+        const isEnterpriseGraphSmartVertex = collectionWrapper._isEnterpriseGraphSmartVertex;
+        const lookupData = ((isEnterpriseGraphEdge && !isCluster) || (isEnterpriseGraphSmartVertex && isCluster))
+          ? keys 
+          : keys.map(key => collection.name() + '/' + key);
         const lookupUrl = '/_api/document/' + encodeURIComponent(collection.name()) + '?onlyget=true';
         const result = arango.PUT_RAW(lookupUrl, lookupData);
 
