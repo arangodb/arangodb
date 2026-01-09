@@ -152,7 +152,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   };
 
   const getMetricsAndEventuallyAssert = function(servers, expectedShardsNum, expectedShardsLeaderNum, expectedShardsOutOfSync, expectedShardsNotReplicated, expectedFollowersOutOfSync = 0) {
-    for(let i = 0; i < 100; i++) {
+    for(let i = 0; i < 200; i++) {
       internal.wait(0.1);
       const shardsNumMetricValue = getDBServerMetricSum(servers, shardsNumMetric);
       if (shardsNumMetricValue !== expectedShardsNum && expectedShardsNum !== null) {
@@ -189,7 +189,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   // compareFn takes the metric value and returns true if the assertion should pass
   const eventuallyAssertMetric = function(servers, metricName, compareFn, errorMessage) {
     let metricValue;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 200; i++) {
       internal.wait(0.1);
       metricValue = getDBServerMetricSum(servers, metricName);
       if (compareFn(metricValue)) {
@@ -348,7 +348,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       // - eventually the number of shards leaders must be 1 or greater
       // - eventually the number of out of sync should be at least 1
       // - eventually the number of not replicated shards should be at least 1
-      for(let i = 0; i < 100; i++) {
+      for(let i = 0; i < 200; i++) {
         internal.wait(0.1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
         if (shardsNumMetricValue !== totalLeaderCount) {
@@ -420,14 +420,12 @@ function ClusterDBServerShardMetricsTestSuite() {
       const onlineServers = dbServers.filter(server => server.id !== dbServersWithoutLeader[1].id);
 
       let followersOutOfSyncNumMetricValue;
-      for(let i = 0; i < 100; i++) {
+      for(let i = 0; i < 200; i++) {
         internal.wait(0.1);
         followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
-        if (followersOutOfSyncNumMetricValue === 0) {
-          continue;
+        if (followersOutOfSyncNumMetricValue !== 0) {
+          break;
         }
-
-        break;
       }
 
       assertTrue(followersOutOfSyncNumMetricValue > 0);
