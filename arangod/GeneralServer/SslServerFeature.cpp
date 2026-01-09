@@ -175,8 +175,8 @@ Mac=SHA1
 
   options
       ->addOption("--ssl.protocol", availableSslProtocolsDescription(),
-                  new DiscreteValuesParameter<UInt64Parameter>(&_options.sslProtocol,
-                                                               sslProtocols))
+                  new DiscreteValuesParameter<UInt64Parameter>(
+                      &_options.sslProtocol, sslProtocols))
       .setLongDescription(R"(Use this option to specify the default encryption
 protocol to be used. The default value is 9 (generic TLS), which allows the
 negotiation of the TLS version between the client and the server, dynamically
@@ -379,7 +379,8 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
     sslContext.set_options(static_cast<long>(_options.sslOptions));
 
     if (!_options.cipherList.empty()) {
-      if (SSL_CTX_set_cipher_list(nativeContext, _options.cipherList.c_str()) != 1) {
+      if (SSL_CTX_set_cipher_list(nativeContext, _options.cipherList.c_str()) !=
+          1) {
         LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL)
             << "cannot set SSL cipher list '" << _options.cipherList
             << "': " << lastSSLError();
@@ -433,8 +434,8 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
       LOG_TOPIC("cdaf2", TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _options.cafile << "'";
 
-      res = SSL_CTX_load_verify_locations(nativeContext, _options.cafile.c_str(),
-                                          nullptr);
+      res = SSL_CTX_load_verify_locations(nativeContext,
+                                          _options.cafile.c_str(), nullptr);
 
       if (res == 0) {
         LOG_TOPIC("30289", ERR, arangodb::Logger::SSL)

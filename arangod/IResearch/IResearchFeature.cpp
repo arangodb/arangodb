@@ -995,10 +995,11 @@ sensible number based on the number of cores in the system.)")
       .setIntroducedIn(30904);
 
   options
-      ->addOption(FAIL_ON_OUT_OF_SYNC,
-                  "Whether retrieval queries on out-of-sync "
-                  "View links and inverted indexes should fail.",
-                  new options::BooleanParameter(&_options.failQueriesOnOutOfSync))
+      ->addOption(
+          FAIL_ON_OUT_OF_SYNC,
+          "Whether retrieval queries on out-of-sync "
+          "View links and inverted indexes should fail.",
+          new options::BooleanParameter(&_options.failQueriesOnOutOfSync))
       .setIntroducedIn(30904)
       .setLongDescription(R"(If set to `true`, any data retrieval queries on
 out-of-sync links/indexes fail with the error 'collection/view is out of sync'
@@ -1021,22 +1022,24 @@ but the returned data may be incomplete.)");
                                             options::Flags::Enterprise))
       .setIntroducedIn(3'09'05);
   options
-      ->addOption(CACHE_ONLY_LEADER,
-                  "Cache ArangoSearch columns only for leader shards.",
-                  new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::Enterprise))
+      ->addOption(
+          CACHE_ONLY_LEADER,
+          "Cache ArangoSearch columns only for leader shards.",
+          new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnDBServer,
+                                    options::Flags::Enterprise))
       .setIntroducedIn(3'10'06);
 #endif
   options
-      ->addOption(SEARCH_THREADS_LIMIT,
-                  "The maximum number of threads that can be used to process "
-                  "ArangoSearch indexes during a SEARCH operation of a query.",
-                  new options::UInt32Parameter(&_options.searchExecutionThreadsLimit),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::OnSingle))
+      ->addOption(
+          SEARCH_THREADS_LIMIT,
+          "The maximum number of threads that can be used to process "
+          "ArangoSearch indexes during a SEARCH operation of a query.",
+          new options::UInt32Parameter(&_options.searchExecutionThreadsLimit),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnDBServer,
+                                    options::Flags::OnSingle))
       .setIntroducedIn(3'11'06)
       .setIntroducedIn(3'12'00);
   options
@@ -1089,11 +1092,13 @@ void IResearchFeature::validateOptions(
       !consolidationThreadsSet) {
     // backwards compatibility
     threadsLimit = std::min(threadsLimit, _options.threadsLimit);
-    uint32_t const threads = computeThreadsCount(_options.threads, threadsLimit, 4);
+    uint32_t const threads =
+        computeThreadsCount(_options.threads, threadsLimit, 4);
     _options.commitThreads = std::max(threads / 2, 1U);
     _options.consolidationThreads = _options.commitThreads;
   } else {
-    _options.commitThreads = computeThreadsCount(_options.commitThreads, threadsLimit, 6);
+    _options.commitThreads =
+        computeThreadsCount(_options.commitThreads, threadsLimit, 6);
     _options.consolidationThreads =
         computeThreadsCount(_options.consolidationThreads, threadsLimit, 6);
   }
@@ -1163,8 +1168,9 @@ void IResearchFeature::start() {
 
     LOG_TOPIC("c1b63", INFO, TOPIC)
         << "ArangoSearch maintenance: [" << _options.commitThreads << ".."
-        << _options.commitThreads << "] commit thread(s), [" << _options.consolidationThreads
-        << ".." << _options.consolidationThreads
+        << _options.commitThreads << "] commit thread(s), ["
+        << _options.consolidationThreads << ".."
+        << _options.consolidationThreads
         << "] consolidation thread(s). ArangoSearch execution parallel threads "
            "limit: "
         << _options.searchExecutionThreadsLimit;
@@ -1304,7 +1310,8 @@ void IResearchFeature::setCacheUsageLimit(uint64_t limit) noexcept {
 #endif
 
 bool IResearchFeature::columnsCacheOnlyLeaders() const noexcept {
-  TRI_ASSERT(ServerState::instance()->isDBServer() || !_options.columnsCacheOnlyLeader);
+  TRI_ASSERT(ServerState::instance()->isDBServer() ||
+             !_options.columnsCacheOnlyLeader);
   return _options.columnsCacheOnlyLeader;
 }
 #endif
