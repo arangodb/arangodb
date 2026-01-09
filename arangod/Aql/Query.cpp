@@ -710,6 +710,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   
   AttributeDetector detector(plan.get());
   detector.detect();
+  _abacAccesses = detector.getCollectionAccesses();
 
   if (_planCacheKey.has_value()) {
     TRI_ASSERT(_queryOptions.optimizePlanForCaching &&
