@@ -113,6 +113,18 @@ function VectorIndexHintsSuite() {
           nLists: 3,
         },
       });
+
+      collection.ensureIndex({
+        name: "vector_l2_with_filter",
+        type: "vector",
+        fields: ["vector"],
+        storedValues: ["value"],
+        params: {
+          metric: "l2",
+          dimension: dimension,
+          nLists: 4,
+        },
+      });
     },
 
     tearDownAll: function () {
@@ -200,6 +212,39 @@ function VectorIndexHintsSuite() {
         const indexName = getVectorIndexName(query, bindVars);
         
         assertEqual("vector_l2_secondary", indexName);
+    },
+
+    testVectorL2HintWithFilterNotForced: function () {
+        const query = `
+          FOR doc IN ${collName} OPTIONS { indexHint: "vector_l2_with_filter" }
+            FILTER doc.value > 10
+            SORT APPROX_NEAR_L2(doc.vector, @qp)
+            LIMIT 5
+            RETURN doc
+        `;
+        const bindVars = { qp: randomPoint };
+        const indexName = getVectorIndexName(query, bindVars);
+        
+        assertEqual("vector_l2_with_filter", indexName);
+    },
+
+    // COR-53 this test is same as the one above testVectorL2HintWithFilterNotForced
+    // except that we force the usage of the existing vector index which can be used.
+    // This used to fail since only on FILTER condition the use-index rule could not
+    // handle vector index and would throw an error, and now the order of rules
+    // is swiched.
+    testVectorL2HintWithFilterForced: function () {
+        const query = `
+          FOR doc IN ${collName} OPTIONS { indexHint: "vector_l2_with_filter", forceIndexHint: true }
+            FILTER doc.value > 10
+            SORT APPROX_NEAR_L2(doc.vector, @qp)
+            LIMIT 5
+            RETURN doc
+        `;
+        const bindVars = { qp: randomPoint };
+        const indexName = getVectorIndexName(query, bindVars);
+        
+        assertEqual("vector_l2_with_filter", indexName);
     },
   };
 }
