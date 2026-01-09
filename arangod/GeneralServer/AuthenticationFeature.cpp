@@ -247,8 +247,15 @@ void AuthenticationFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
+  if (!_options.jwtSecretKeyfileProgramOption.empty() ||
+      !_options.jwtSecretFolderProgramOption.empty()) {
+    Result res = loadJwtSecretsFromFile();
+    if (res.fail()) {
+      LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
   if (!_options.jwtSecretProgramOption.empty()) {
-    constexpr size_t kMaxSecretLength = 64;
     if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << kMaxSecretLength
@@ -270,15 +277,6 @@ void AuthenticationFeature::validateOptions(
         << ") must not be greater than --auth.maximal-jwt-expiry-time ("
         << _options.maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
-  }
-
-  if (!_options.jwtSecretKeyfileProgramOption.empty() ||
-      !_options.jwtSecretFolderProgramOption.empty()) {
-    Result res = loadJwtSecretsFromFile();
-    if (res.fail()) {
-      LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
-      FATAL_ERROR_EXIT();
-    }
   }
 }
 
