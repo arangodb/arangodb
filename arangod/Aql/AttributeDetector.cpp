@@ -23,6 +23,7 @@
 
 #include "AttributeDetector.h"
 
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
@@ -69,9 +70,12 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto& access = _collectionAccessMap[collName];
       access.collectionName = collName;
       
-      if (auto const& projections = enumNode->projections(); projections.hasProjections()) {
-        for (auto const& attr : projections.projections()) {
-          access.readAttributes.insert(attr.path.toString());
+      if (auto const& projections = enumNode->projections(); !projections.empty()) {
+        for (auto const& proj : projections.projections()) {
+          auto const& path = proj.path.get();
+          if (!path.empty()) {
+            access.readAttributes.insert(path[0]);
+          }
         }
       } else {
         access.requiresAllAttributesRead = true;
@@ -86,9 +90,12 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto& access = _collectionAccessMap[collName];
       access.collectionName = collName;
       
-      if (auto const& projections = idxNode->projections(); projections.hasProjections()) {
-        for (auto const& attr : projections.projections()) {
-          access.readAttributes.insert(attr.path.toString());
+      if (auto const& projections = idxNode->projections(); !projections.empty()) {
+        for (auto const& proj : projections.projections()) {
+          auto const& path = proj.path.get();
+          if (!path.empty()) {
+            access.readAttributes.insert(path[0]);
+          }
         }
       } else {
         access.requiresAllAttributesRead = true;
