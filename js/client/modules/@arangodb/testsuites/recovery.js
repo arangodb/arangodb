@@ -57,7 +57,7 @@ const termSignal = 15;
 const testPaths = {
   'recovery': [tu.pathForTesting('client/recovery')],
   'recovery_cluster': [tu.pathForTesting('client/recovery/search')],
-  'recovery_cluster_crash_dump': [tu.pathForTesting('client/recovery/crash-dump')]
+  'recovery_cluster_crash_dump': [tu.pathForTesting('client/recovery/cluster-crash-dump')]
 };
 
 // These tests should NOT be killed after the setup phase.

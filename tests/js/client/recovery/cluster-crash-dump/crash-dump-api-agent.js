@@ -111,8 +111,8 @@ function recoverySuite () {
       // Assert specific expected files are present
       assertTrue(contents.files.hasOwnProperty('ApiRecording.json'),
                  'Crash dump should contain ApiRecording.json');
-      assertTrue(contents.files.hasOwnProperty('Coroutines.json'),
-                 'Crash dump should contain Coroutines.json');
+      assertTrue(contents.files.hasOwnProperty('AsyncRegistry.json'),
+                 'Crash dump should contain AsyncRegistry.json');
       assertTrue(contents.files.hasOwnProperty('backtrace.txt'),
                  'Crash dump should contain backtrace.txt');
       assertTrue(contents.files.hasOwnProperty('system_info.txt'),
