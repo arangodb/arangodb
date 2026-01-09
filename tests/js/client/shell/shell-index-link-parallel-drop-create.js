@@ -66,13 +66,13 @@ function ParallelIndexLinkCreateDropSuite() {
       db._drop(cn);
       db._dropView(vn);
     },
-    
+
     testCreateDropInParallel: function () {
       const threads = 4;
       const iterations = 15;
 
       let c = require("internal").db._collection(cn);
-      
+
       let viewMeta = {};
       let indexMeta = {};
       if (isEnterprise) {
@@ -128,14 +128,13 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
 c.insert({ _key: "done${i}", value: true });
 `;
         clients.push({client: launchPlainSnippetInBG(
-          command, 
+          command,
           `testCreateDropInParallel${i}`)});
       }
 
       // wait for the shells to complete
       joinBGShells(IM.options, clients, waitFor, cn);
 
-      
       // check that all indexes except primary are gone
       assertEqual(1, c.indexes().length);
 

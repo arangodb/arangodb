@@ -19,9 +19,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRuleReplaceEntriesWithObjectIteration.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
@@ -30,8 +31,8 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/TypedAstNodes.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -70,7 +71,8 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
       if (enumInVariable->isEqualTo(*cn->outVariable())) {
         auto exp = cn->expression();
         if (exp->node()->type == NODE_TYPE_FCALL) {
-          auto func = static_cast<Function const*>(exp->node()->getData());
+          ast::FunctionCallNode fcall(exp->node());
+          auto func = fcall.getFunction();
           if (func->name == "ENTRIES") {
             // potentially subject to optimize
             enumAndCalc.push_back(std::make_tuple(eln, cn, exp));
@@ -93,10 +95,11 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
       if (exp->type == NODE_TYPE_INDEXED_ACCESS) {
         // <something>[<some index>]
         // myVariable[<some index>]
-        auto indexedValue = exp->getMemberUnchecked(0);
+        ast::IndexedAccessNode indexedAccess(exp);
+        auto indexedValue = indexedAccess.getObject();
         if (indexedValue->type == NODE_TYPE_REFERENCE) {
-          Variable const* v =
-              static_cast<Variable const*>(indexedValue->getData());
+          ast::ReferenceNode ref(indexedValue);
+          Variable const* v = ref.getVariable();
           if (reqVar->isEqualTo(*v)) {
             auto idx = exp->getMemberUnchecked(1);
             if (idx->isConstant()) {

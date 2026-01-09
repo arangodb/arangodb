@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -21,19 +21,17 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRulePushFilterVectorIndex.h"
+
 #include "Aql/Ast.h"
-#include "Aql/AstHelper.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
-#include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"

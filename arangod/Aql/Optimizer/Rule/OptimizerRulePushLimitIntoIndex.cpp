@@ -19,6 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRulePushLimitIntoIndex.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
@@ -29,8 +31,8 @@
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"
@@ -203,7 +205,8 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
     // check if `compare in` variable is same as IndexNode output,
     // and that it compares against the attribute defined in index
-    if (auto const* lhs = compareInNode->getMember(0);
+    ast::RelationalOperatorNode relOp(compareInNode);
+    if (auto const* lhs = relOp.getLeft();
         lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
           attributeAccessResult;

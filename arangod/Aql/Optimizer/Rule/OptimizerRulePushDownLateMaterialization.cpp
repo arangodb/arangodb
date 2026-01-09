@@ -19,6 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRulePushDownLateMaterialization.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -32,7 +34,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"

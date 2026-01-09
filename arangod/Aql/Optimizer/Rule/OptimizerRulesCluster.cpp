@@ -22,6 +22,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Optimizer/Rule/OptimizerRulesCluster.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -38,7 +40,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerRule.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
@@ -400,8 +403,9 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
         for (std::size_t i = 0; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
           if (anode->getStringView() == StaticStrings::KeyString) {
-            if (anode->getMember(0)->isStringValue()) {
-              key = anode->getMember(0)->getString();
+            ast::ObjectElementNode objElem(anode);
+            if (objElem.getValue()->isStringValue()) {
+              key = objElem.getValue()->getString();
             }
             foundKey = true;
           } else if (anode->getStringView() == StaticStrings::RevString) {

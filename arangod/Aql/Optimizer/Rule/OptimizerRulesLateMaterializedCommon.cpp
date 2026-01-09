@@ -24,6 +24,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/TypedAstNodes.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "IResearch/IResearchViewSort.h"
 
@@ -127,7 +128,8 @@ bool getReferencedAttributes(AstNode* node, Variable const* variable,
         return true;
       case NODE_TYPE_REFERENCE: {
         // reference to a variable
-        auto v = static_cast<Variable const*>(node->getData());
+        ast::ReferenceNode ref(node);
+        auto v = ref.getVariable();
         if (v == state.variable) {
           if (!state.wasAccess) {
             // we haven't seen an attribute access directly before

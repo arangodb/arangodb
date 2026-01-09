@@ -16,5 +16,24 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesIndexNode.cpp
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
+  OptimizerRuleSortInValues.cpp
+  OptimizerRuleRemoveCollectVariables.cpp
+  OptimizerRuleSpecializeCollect.cpp
+  OptimizerRulesUseIndexes.cpp
+  OptimizerRuleInterchangeAdjacentEnumerations.cpp
+  OptimizerRuleRemoveDataModificationOutVariables.cpp
+  OptimizerRulesOptimizeTraversals.cpp
+  OptimizerRuleOptimizePaths.cpp
+  OptimizerRuleGeoIndex.cpp
+  OptimizerRuleOptimizeCount.cpp
+  OptimizerRuleAsyncPrefetch.cpp
+  OptimizerRuleOptimizeProjections.cpp
+  OptimizerRulesSortAndGather.cpp
+  OptimizerRulesFilter.cpp
+  OptimizerRulesConditionRewrite.cpp
+  OptimizerRulesSubqueryStructure.cpp
+  OptimizerRulesCalculation.cpp
+  OptimizerRulesClusterDistribution.cpp
+  OptimizerRuleScatterInCluster.cpp
   OptimizerRulesReplaceFunctions.cpp
 )
