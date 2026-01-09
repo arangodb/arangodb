@@ -41,6 +41,6 @@ class CrashHandlerDataSource {
 
 void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource);
 
-std::vector<CrashHandlerDataSource const*>& getCrashHanbdlerDataSources();
+std::vector<CrashHandlerDataSource const*>& getCrashHandlerDataSources();
 
 }  // namespace arangodb

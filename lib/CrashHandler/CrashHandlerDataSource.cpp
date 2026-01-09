@@ -36,7 +36,7 @@ void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
   dataSources.push_back(dataSource);
 }
 
-std::vector<CrashHandlerDataSource const*>& getCrashHanbdlerDataSources() {
+std::vector<CrashHandlerDataSource const*>& getCrashHandlerDataSources() {
   return dataSources;
 }
 

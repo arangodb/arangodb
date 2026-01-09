@@ -73,23 +73,12 @@ class CrashHandler : public CrashHandlerInterface {
     _theCrashHandler.store(nullptr);
   }
 
-  // CrashHandlerInterface implementation - delegate to static methods
-  void setDatabaseDirectory(std::string path) override {
-    setDatabaseDirectoryStatic(std::move(path));
-  }
-
-  std::vector<std::string> listCrashes() override {
-    return listCrashesStatic();
-  }
-
+  // CrashHandlerInterface implementation
+  void setDatabaseDirectory(std::string path) override;
+  std::vector<std::string> listCrashes() override;
   std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) override {
-    return getCrashContentsStatic(crashId);
-  }
-
-  bool deleteCrash(std::string_view crashId) override {
-    return deleteCrashStatic(crashId);
-  }
+      std::string_view crashId) override;
+  bool deleteCrash(std::string_view crashId) override;
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();

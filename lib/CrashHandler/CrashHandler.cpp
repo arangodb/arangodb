@@ -593,7 +593,7 @@ void actuallyDumpCrashInfo() {
       arangodb::basics::FileUtils::createDirectory(crashDirectory);
 
       // Dump data from all registered and alive data sources
-      for (auto const* dataSource : arangodb::getCrashHanbdlerDataSources()) {
+      for (auto const* dataSource : arangodb::getCrashHandlerDataSources()) {
         std::string filename = arangodb::basics::FileUtils::buildFilename(
             crashDirectory,
             std::format("{}.json", dataSource->getDataSourceName()));
@@ -793,8 +793,12 @@ void cleanupOldCrashDirectories() {
   }
 }
 
-/// @brief sets the database directory
-void CrashHandler::setDatabaseDirectoryStatic(std::string path) {
+std::string CrashHandler::getCrashesDirectory() {
+  return ::databaseDirectoryPath;
+}
+
+// CrashHandlerInterface instance method implementations
+void CrashHandler::setDatabaseDirectory(std::string path) {
   ::databaseDirectoryPath =
       arangodb::basics::FileUtils::buildFilename(path, "crashes");
 
@@ -802,11 +806,7 @@ void CrashHandler::setDatabaseDirectoryStatic(std::string path) {
   cleanupOldCrashDirectories();
 }
 
-std::string CrashHandler::getCrashesDirectory() {
-  return ::databaseDirectoryPath;
-}
-
-std::vector<std::string> CrashHandler::listCrashesStatic() {
+std::vector<std::string> CrashHandler::listCrashes() {
   std::vector<std::string> crashes;
 
   if (::databaseDirectoryPath.empty() ||
@@ -827,8 +827,8 @@ std::vector<std::string> CrashHandler::listCrashesStatic() {
   return crashes;
 }
 
-std::unordered_map<std::string, std::string>
-CrashHandler::getCrashContentsStatic(std::string_view crashId) {
+std::unordered_map<std::string, std::string> CrashHandler::getCrashContents(
+    std::string_view crashId) {
   std::unordered_map<std::string, std::string> contents;
 
   if (::databaseDirectoryPath.empty()) {
@@ -858,7 +858,7 @@ CrashHandler::getCrashContentsStatic(std::string_view crashId) {
   return contents;
 }
 
-bool CrashHandler::deleteCrashStatic(std::string_view crashId) {
+bool CrashHandler::deleteCrash(std::string_view crashId) {
   if (::databaseDirectoryPath.empty()) {
     return false;
   }
