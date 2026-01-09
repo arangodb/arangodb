@@ -209,6 +209,15 @@ function ClusterDBServerShardMetricsTestSuite() {
       } catch (e) {
         // Ignore errors
       }
+      // Ensure all DB servers are online
+      const dbServers = getDBServers();
+      dbServers.forEach(server => {
+        try {
+          server.resume();
+        } catch (e) {
+          // Ignore errors - server may already be running
+        }
+      });
     },
 
     testShardCountMetricStability: function () {
@@ -413,15 +422,15 @@ function ClusterDBServerShardMetricsTestSuite() {
       });
 
       // Insert some data to trigger replication
-      db._query(`FOR i IN 0..1000 INSERT {val: i} INTO ${collectionName}`);
+      db._query(`FOR i IN 0..10000 INSERT {val: i, val2: HASH(i), val3: CONCAT(HASH(i), i * 10)} INTO ${collectionName}`);
 
       dbServersWithoutLeader[0].resume();
       // Only the second db server id down
       const onlineServers = dbServers.filter(server => server.id !== dbServersWithoutLeader[1].id);
 
       let followersOutOfSyncNumMetricValue;
-      for(let i = 0; i < 200; i++) {
-        internal.wait(0.1);
+      for(let i = 0; i < 2000; i++) {
+        internal.wait(0.01);
         followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
         if (followersOutOfSyncNumMetricValue !== 0) {
           break;
