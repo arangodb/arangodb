@@ -87,6 +87,60 @@ void clearAttributeAccess(
 // is a condition that excludes null (e.g. != null). if this is tracked first,
 // we are sure the index attribute value cannot be null and we can still use
 // the sparse index
+bool isSafeForComparison(AstNode const* node) noexcept {
+  if (node == nullptr) {
+    return false;
+  }
+
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+      return true;
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_SUBQUERY:
+      return false;
+    default:
+      return node->isConstant();
+  }
+}
+
+bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
+  if (lhs == nullptr || rhs == nullptr) {
+    return lhs == rhs;
+  }
+
+  if (lhs->type != rhs->type || lhs->numMembers() != rhs->numMembers()) {
+    return false;
+  }
+
+  if (!isSafeForComparison(lhs) || !isSafeForComparison(rhs)) {
+    return lhs->toNormalizedString() == rhs->toNormalizedString();
+  }
+
+  if (lhs->isConstant() && rhs->isConstant()) {
+    return compareAstNodes(lhs, rhs, false) == 0;
+  }
+
+  size_t const n = lhs->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (!areNodesEqual(lhs->getMemberUnchecked(i),
+                       rhs->getMemberUnchecked(i))) {
+      return false;
+    }
+  }
+
+  return lhs->type == rhs->type;
+}
+
 int operationWeight(AstNode const* node) noexcept {
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_NE:
@@ -1537,19 +1591,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
           continue;
         }
 
-        if (op1->type == op2->type && op1->numMembers() == op2->numMembers()) {
-          bool isDuplicate = false;
-
-          // Detect duplicates using normalized string comparison
-          if (op1->toNormalizedString() == op2->toNormalizedString()) {
-            isDuplicate = true;
-          }
-
-          if (isDuplicate) {
-            andNode->removeMemberUncheckedUnordered(j - 1);
-            --andNumMembers;
-            break;
-          }
+        if (areNodesEqual(op1, op2)) {
+          andNode->removeMemberUncheckedUnordered(j - 1);
+          --andNumMembers;
+          break;
         }
       }
     }
@@ -1895,11 +1940,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
         continue;
       }
 
-      // Detect duplicate OR branches
-      if (branch1->toNormalizedString() == branch2->toNormalizedString()) {
+      if (areNodesEqual(branch1, branch2)) {
         _root->removeMemberUncheckedUnordered(i - 1);
         --n;
-        break;  // Found duplicate, move to next branch
+        break;
       }
     }
   }
