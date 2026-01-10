@@ -61,6 +61,7 @@ add_library(arangoserver STATIC
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
@@ -182,7 +183,7 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8) 
+if (USE_V8)
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
     FeaturePhases/V8FeaturePhase.cpp

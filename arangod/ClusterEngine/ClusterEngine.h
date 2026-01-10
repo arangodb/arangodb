@@ -240,6 +240,7 @@ class ClusterEngine final : public StorageEngine {
 #endif
 
  private:
+  ClusterFeature& _clusterFeature;
   /// path to arangodb data dir
   std::string _basePath;
   StorageEngine* _actualEngine;

@@ -27,6 +27,7 @@
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ClusterOptions.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
@@ -70,14 +71,16 @@ class ClusterFeature : public ArangodFeature {
   void allocateMembers();
   void shutdown();
 
-  std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
+  std::vector<std::string> agencyEndpoints() const {
+    return _options.agencyEndpoints;
+  }
 
-  std::string agencyPrefix() const { return _agencyPrefix; }
+  std::string agencyPrefix() const { return _options.agencyPrefix; }
 
   AgencyCache& agencyCache();
 
   /// @return role argument as it was supplied by a user
-  std::string const& myRole() const noexcept { return _myRole; }
+  std::string const& myRole() const noexcept { return _options.myRole; }
 
   void notify();
 
@@ -93,35 +96,39 @@ class ClusterFeature : public ArangodFeature {
 
   void setUnregisterOnShutdown(bool);
   bool createWaitsForSyncReplication() const noexcept {
-    return _createWaitsForSyncReplication;
+    return _options.createWaitsForSyncReplication;
   }
-  std::uint32_t writeConcern() const noexcept { return _writeConcern; }
+  std::uint32_t writeConcern() const noexcept { return _options.writeConcern; }
   std::uint32_t systemReplicationFactor() const noexcept {
-    return _systemReplicationFactor;
+    return _options.systemReplicationFactor;
   }
   std::uint32_t defaultReplicationFactor() const noexcept {
-    return _defaultReplicationFactor;
+    return _options.defaultReplicationFactor;
   }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void defaultReplicationFactor(std::uint32_t value) noexcept {
-    _defaultReplicationFactor = value;
+    _options.defaultReplicationFactor = value;
   }
 #endif
 
   std::uint32_t maxNumberOfShards() const noexcept {
-    return _maxNumberOfShards;
+    return _options.maxNumberOfShards;
   }
   std::uint32_t minReplicationFactor() const noexcept {
-    return _minReplicationFactor;
+    return _options.minReplicationFactor;
   }
   std::uint32_t maxReplicationFactor() const noexcept {
-    return _maxReplicationFactor;
+    return _options.maxReplicationFactor;
   }
-  std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards; }
-  bool forceOneShard() const noexcept { return _forceOneShard; }
+  std::uint32_t maxNumberOfMoveShards() const {
+    return _options.maxNumberOfMoveShards;
+  }
+  bool forceOneShard() const noexcept { return _options.forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
-  double indexCreationTimeout() const noexcept { return _indexCreationTimeout; }
+  double indexCreationTimeout() const noexcept {
+    return _options.indexCreationTimeout;
+  }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
@@ -131,10 +138,12 @@ class ClusterFeature : public ArangodFeature {
   /// - "jwt-all"    = JWT required to access all operations
   /// - "jwt-write"  = JWT required to access post/put/delete operations
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
-  std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
+  std::string const& apiJwtPolicy() const noexcept {
+    return _options.apiJwtPolicy;
+  }
 
   std::uint32_t statusCodeFailedWriteConcern() const {
-    return _statusCodeFailedWriteConcern;
+    return _options.statusCodeFailedWriteConcern;
   }
 
   /// @brief get deployment ID (single server or cluster ID)
@@ -224,48 +233,15 @@ class ClusterFeature : public ArangodFeature {
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();
 
-  std::vector<std::string> _agencyEndpoints;
-  std::string _agencyPrefix;
-  std::string _myRole;
-  std::string _myEndpoint;
-  std::string _myAdvertisedEndpoint;
-  std::string _apiJwtPolicy;
+  ClusterOptions _options;
 
-  // hard-coded limit for maximum replicationFactor value
-  static constexpr std::uint32_t kMaxReplicationFactor = 10;
-
-  std::uint32_t _connectivityCheckInterval = 3600;  // seconds
-  std::uint32_t _writeConcern = 1;                  // write concern
-  std::uint32_t _defaultReplicationFactor = 1;
-  std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;
-  std::uint32_t _maxReplicationFactor = kMaxReplicationFactor;
-  std::uint32_t _maxNumberOfShards = 1000;  // maximum number of shards
-  std::uint32_t _maxNumberOfMoveShards =
-      10;  // maximum number of shards to be moved per rebalance operation
-           // if value = 0, no move shards operations will be scheduled
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
-  bool _createWaitsForSyncReplication = true;
-  bool _forceOneShard = false;
-  bool _unregisterOnShutdown = false;
-  bool _enableCluster = false;
-  bool _requirePersistedId = false;
-  // The following value indicates what HTTP status code should be returned if
-  // a configured write concern cannot currently be fulfilled. The old
-  // behavior (currently the default) means that a 403 Forbidden
-  // with an error of 1004 ERROR_ARANGO_READ_ONLY is returned. It is possible to
-  // adjust the behavior so that an HTTP 503 Service Unavailable with an error
-  // of 1429 ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED is returned.
-  uint32_t _statusCodeFailedWriteConcern = 403;
-  /// @brief coordinator timeout for index creation. defaults to 4 days
-  double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   metrics::MetricsFeature& _metrics;
-  ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   metrics::Counter* _followersDroppedCounter = nullptr;
@@ -288,8 +264,6 @@ class ClusterFeature : public ArangodFeature {
   Scheduler::WorkHandle _connectivityCheck;
   metrics::Counter* _connectivityCheckFailsCoordinators = nullptr;
   metrics::Counter* _connectivityCheckFailsDBServers = nullptr;
-
-  double _noHeartbeatDelayBeforeShutdown = 1800;  // seconds
 };
 
 }  // namespace arangodb

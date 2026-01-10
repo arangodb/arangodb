@@ -38,15 +38,12 @@ struct FlushJobInfo;
 }  // namespace rocksdb
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 /// @brief Gathers better metrics from RocksDB than we can get by scraping
 /// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  explicit RocksDBMetricsListener(ArangodServer&);
+  explicit RocksDBMetricsListener(metrics::MetricsFeature& metricsFeature);
 
   void OnFlushBegin(rocksdb::DB*, rocksdb::FlushJobInfo const& info) override;
   void OnFlushCompleted(rocksdb::DB*,
