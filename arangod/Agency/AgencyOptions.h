@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,41 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
-namespace consensus {
-class Agent;
-}
 
-class AgencyFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "Agency"; }
-
-  explicit AgencyFeature(Server& server);
-  ~AgencyFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool activated() const noexcept { return _options.activated; }
-
-  consensus::Agent* agent() const;
-
- private:
-  AgencyOptions _options;
-  std::unique_ptr<consensus::Agent> _agent;
+struct AgencyOptions {
+  bool activated = false;
+  uint64_t size = 1;
+  uint64_t poolSize = 1;
+  double minElectionTimeout = 1.0;
+  double maxElectionTimeout = 5.0;
+  bool supervision = false;
+  bool supervisionTouched = false;
+  bool waitForSync = true;
+  double supervisionFrequency = 1.0;
+  uint64_t compactionStepSize = 1000;
+  uint64_t compactionKeepSize = 50000;
+  uint64_t maxAppendSize = 250;
+  double supervisionGracePeriod = 10.0;
+  double supervisionOkThreshold = 5.0;
+  double supervisionExpiredServersGracePeriod = 3600.0;
+  uint64_t supervisionDelayAddFollower = 0;
+  uint64_t supervisionDelayFailedFollower = 0;
+  bool failedLeaderAddsFollower = true;
+  std::string agencyMyAddress;
+  std::vector<std::string> agencyEndpoints;
+  std::string recoveryId;
 };
 
 }  // namespace arangodb

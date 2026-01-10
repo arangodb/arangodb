@@ -18,41 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include <cstdint>
+#include <string>
+
+#include "Basics/asio_ns.h"
+#include "Ssl/ssl-helper.h"
 
 namespace arangodb {
-namespace consensus {
-class Agent;
-}
 
-class AgencyFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "Agency"; }
-
-  explicit AgencyFeature(Server& server);
-  ~AgencyFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool activated() const noexcept { return _options.activated; }
-
-  consensus::Agent* agent() const;
-
- private:
-  AgencyOptions _options;
-  std::unique_ptr<consensus::Agent> _agent;
+struct SslServerOptions {
+  std::string cafile;
+  std::string keyfile;
+  std::string cipherList = "HIGH:!EXPORT:!aNULL@STRENGTH";
+  uint64_t sslProtocol = TLS_GENERIC;
+  uint64_t sslOptions = asio_ns::ssl::context::default_workarounds |
+                        asio_ns::ssl::context::single_dh_use;
+  std::string ecdhCurve = "prime256v1";
+  bool sessionCache = false;
+  bool preferHttp11InAlpn = false;
 };
 
 }  // namespace arangodb
