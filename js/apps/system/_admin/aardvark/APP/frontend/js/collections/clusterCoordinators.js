@@ -3,14 +3,68 @@
   window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
 
-    url: arangoHelper.databaseUrl('/_admin/aardvark/cluster/Coordinators'),
-
+    // No longer using HTTP endpoint - data comes from cached health API result
     updateUrl: function () {
-      this.url = window.App.getNewRoute('Coordinators');
+      // No-op - kept for compatibility
     },
 
     initialize: function () {
-      // window.App.registerForUpdate(this)
+    },
+
+    // Override fetch to use cached health data from window.App.lastHealthCheckResult
+    fetch: function (options) {
+      var self = this;
+      options = options || {};
+
+      var processHealth = function () {
+        var healthData = window.App && window.App.lastHealthCheckResult
+          ? window.App.lastHealthCheckResult.Health
+          : null;
+
+        if (!healthData) {
+          if (options.error) {
+            options.error.call(self);
+          }
+          return $.Deferred().reject().promise();
+        }
+
+        var models = arangoHelper.parseHealthToClusterModels(healthData, 'Coordinator');
+        self.reset(models);
+        self.successFullTry();
+
+        if (options.success) {
+          options.success.call(self, self, models, options);
+        }
+
+        return $.Deferred().resolve(self).promise();
+      };
+
+      // If health data is already available, use it immediately
+      if (window.App && window.App.lastHealthCheckResult) {
+        return processHealth();
+      }
+
+      // Otherwise wait for health data to become available
+      var deferred = $.Deferred();
+      var attempts = 0;
+      var maxAttempts = 50; // 5 seconds max wait
+
+      var waitForHealth = function () {
+        if (window.App && window.App.lastHealthCheckResult) {
+          processHealth();
+          deferred.resolve(self);
+        } else if (attempts++ < maxAttempts) {
+          window.setTimeout(waitForHealth, 100);
+        } else {
+          if (options.error) {
+            options.error.call(self);
+          }
+          deferred.reject();
+        }
+      };
+
+      waitForHealth();
+      return deferred.promise();
     },
 
     statusClass: function (s) {
@@ -34,7 +88,6 @@
       }
       var self = this;
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
       }).done(function () {
         self.successFullTry();
@@ -51,7 +104,6 @@
       }
       var self = this;
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
       }).done(function () {
         self.successFullTry();
@@ -73,7 +125,6 @@
         return;
       }
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
       }).done(function () {
         self.successFullTry();
