@@ -35,6 +35,8 @@
 
 #include "Mocks/Servers.h"
 
+#include <IResearch/common.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;

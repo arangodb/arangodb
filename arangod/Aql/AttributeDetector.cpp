@@ -51,7 +51,7 @@ void AttributeDetector::detect() {
   _collectionAccesses.clear();
   _collectionAccesses.reserve(_collectionAccessMap.size());
   for (auto const& [name, access] : _collectionAccessMap) {
-    _collectionAccesses.push_back(access);
+    _collectionAccesses.push_back(*access);
   }
 }
 
@@ -68,17 +68,18 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = enumNode->collection()->name();
       
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
+      access->collectionName = collName;
       
       if (auto const& projections = enumNode->projections(); !projections.empty()) {
         for (auto const& proj : projections.projections()) {
           auto const& path = proj.path.get();
           if (!path.empty()) {
-            access.readAttributes.insert(path[0]);
+            access->readAttributes.insert(path[0]);
           }
         }
       } else {
-        access.requiresAllAttributesRead = true;
+        access->requiresAllAttributesRead = true;
+        // For the first iteration, this should be good. But, there might be edge cases...
       }
       break;
     }
@@ -88,20 +89,24 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = idxNode->collection()->name();
       
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
+      access->collectionName = collName;
       
       if (auto const& projections = idxNode->projections(); !projections.empty()) {
         for (auto const& proj : projections.projections()) {
           auto const& path = proj.path.get();
           if (!path.empty()) {
-            access.readAttributes.insert(path[0]);
+            access->readAttributes.insert(path[0]);
           }
         }
       } else {
-        access.requiresAllAttributesRead = true;
+        access->requiresAllAttributesRead = true;
       }
       break;
     }
+      // Add case ExecutionNode::CALCULATION
+      // 1. Pure calculation: LET x = u.salary * 2
+      // 2. Filter (FILTER u.age >= 18), Return, Sort, Collect
+      // 3. Building objects
 
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
@@ -112,8 +117,11 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = modNode->collection()->name();
       
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
-      access.requiresAllAttributesWrite = true;
+      access->collectionName = collName;
+      access->requiresAllAttributesWrite = true;
+      // replace, erase attributes, (remove) -> all attribute
+      // update insert
+      // upsert <- 2 phases
       break;
     }
 

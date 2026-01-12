@@ -94,7 +94,7 @@ class AttributeDetector final
 
  private:
   ExecutionPlan* _plan;
-  containers::FlatHashMap<std::string, CollectionAccess> _collectionAccessMap;
+  containers::FlatHashMap<std::string, std::unique_ptr<CollectionAccess>> _collectionAccessMap;
   std::vector<CollectionAccess> _collectionAccesses;
 };
 
