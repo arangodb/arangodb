@@ -122,6 +122,50 @@
       return models;
     },
 
+    // Fetches cluster models from cached health data with optional waiting.
+    // roleFilter: 'DBServer', 'Coordinator', or null for all
+    // Returns a jQuery Deferred that resolves with the models array.
+    getHealthModels: function (roleFilter) {
+      var self = this;
+      var deferred = $.Deferred();
+
+      var processHealth = function () {
+        var healthData = window.App && window.App.lastHealthCheckResult
+          ? window.App.lastHealthCheckResult.Health
+          : null;
+
+        if (!healthData) {
+          return null;
+        }
+        return self.parseHealthToClusterModels(healthData, roleFilter);
+      };
+
+      // If health data is already available, use it immediately
+      var models = processHealth();
+      if (models !== null) {
+        deferred.resolve(models);
+        return deferred.promise();
+      }
+
+      // Otherwise wait for health data to become available
+      var attempts = 0;
+      var maxAttempts = 50; // 5 seconds max wait
+
+      var waitForHealth = function () {
+        var models = processHealth();
+        if (models !== null) {
+          deferred.resolve(models);
+        } else if (attempts++ < maxAttempts) {
+          window.setTimeout(waitForHealth, 100);
+        } else {
+          deferred.resolve([]); // Return empty on timeout
+        }
+      };
+
+      waitForHealth();
+      return deferred.promise();
+    },
+
     getCurrentJwt: function () {
       return sessionStorage.getItem('jwt');
     },
