@@ -21,7 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/task_registry_variable.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 
 namespace arangodb::activity_registry {
 

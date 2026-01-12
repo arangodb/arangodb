@@ -23,8 +23,8 @@
 
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
-#include "ActivityRegistry/task.h"
-#include "ActivityRegistry/task_registry_variable.h"
+#include "ActivityRegistry/activity.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
 

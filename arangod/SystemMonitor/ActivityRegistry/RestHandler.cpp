@@ -27,8 +27,8 @@
 #include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ActivityRegistry/task.h"
-#include "ActivityRegistry/task_registry_variable.h"
+#include "ActivityRegistry/activity.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;

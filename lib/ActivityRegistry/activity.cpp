@@ -20,13 +20,13 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "ActivityRegistry/task.h"
+#include "ActivityRegistry/activity.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
-#include "ActivityRegistry/task_registry_variable.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include <atomic>
 #include <optional>
 #include <source_location>

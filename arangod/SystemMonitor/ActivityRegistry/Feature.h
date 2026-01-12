@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ActivityRegistry/task_registry_variable.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include "SystemMonitor/ActivityRegistry/Metrics.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/AsyncLockWithScheduler.h"

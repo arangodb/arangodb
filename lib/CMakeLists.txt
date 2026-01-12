@@ -332,8 +332,8 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_activity_registry_global
          arango_async
-         arango_task_registry_global
   PRIVATE date_interface
           fmt
           arango_assertions
