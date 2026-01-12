@@ -1,8 +1,9 @@
+import { CollectionMetadata } from "arangojs/collection";
 import React, { createContext, ReactNode, useContext } from "react";
-import { LockableCollectionDescription, useFetchCollections } from "./useFetchCollections";
+import { useFetchCollections } from "./useFetchCollections";
 
 type CollectionsContextType = {
-  collections: LockableCollectionDescription[] | undefined;
+  collections: CollectionMetadata[] | undefined;
   isFormDisabled: boolean;
 };
 const CollectionsContext = createContext<CollectionsContextType>({} as CollectionsContextType);
