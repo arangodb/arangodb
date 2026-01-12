@@ -561,12 +561,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path("Current/Version"),
-      AgencyCommHelper::path("Current/Foxxmaster"),
-      AgencyCommHelper::path("Current/FoxxmasterQueueupdate"),
       AgencyCommHelper::path("Plan/Version"),
       AgencyCommHelper::path("Readonly"), AgencyCommHelper::path("Shutdown"),
       AgencyCommHelper::path("Sync/UserVersion"),
-      AgencyCommHelper::path("Sync/FoxxQueueVersion"),
       AgencyCommHelper::path("Target/FailedServers"), "/.agency"});
   auto result = acb->slice();
   LOG_TOPIC("53262", DEBUG, Logger::HEARTBEAT)
@@ -594,42 +591,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
     if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
       _server.beginShutdown();
-    }
-
-    // mop: order is actually important here...FoxxmasterQueueupdate will
-    // be set only when somebody registers some new queue stuff (for example
-    // on a different coordinator than this one)... However when we are just
-    // about to become the new foxxmaster we must immediately refresh our
-    // queues this is done in ServerState...if queueupdate is set after
-    // foxxmaster the change will be reset again
-    VPackSlice foxxmasterQueueupdateSlice =
-        result[0].get(std::vector<std::string>(
-            {AgencyCommHelper::path(), "Current", "FoxxmasterQueueupdate"}));
-
-    if (foxxmasterQueueupdateSlice.isBool() &&
-        foxxmasterQueueupdateSlice.getBool()) {
-      ServerState::instance()->setFoxxmasterQueueupdate(true);
-    }
-
-    VPackSlice foxxmasterSlice = result[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Current", "Foxxmaster"}));
-
-    if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
-      ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
-    } else {
-      auto state = ServerState::instance();
-      VPackBuilder myIdBuilder;
-      myIdBuilder.add(VPackValue(state->getId()));
-
-      AgencyComm agency(server());
-
-      auto updateLeader = agency.casValue(
-          "/Current/Foxxmaster", foxxmasterSlice, myIdBuilder.slice(), 0, 10.0);
-      if (updateLeader.successful()) {
-        // We won the race we are the master
-        ServerState::instance()->setFoxxmaster(state->getId());
-      }
-      agency.increment("Current/Version");
     }
 
     VPackSlice versionSlice = result[0].get(std::vector<std::string>(

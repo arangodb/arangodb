@@ -50,9 +50,8 @@ RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
     : Thread(engine.server(), "RocksDBThread"),
       _engine(engine),
       _interval(interval),
-      _metricsWalReleasedTickReplication(
-          engine.server().getFeature<metrics::MetricsFeature>().add(
-              rocksdb_wal_released_tick_replication{})) {}
+      _metricsWalReleasedTickReplication(engine.getMetricsFeature().add(
+          rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -65,7 +64,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  FlushFeature& flushFeature = _engine.server().getFeature<FlushFeature>();
+  auto& flushFeature = _engine.getFlushFeature();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
@@ -167,28 +166,26 @@ void RocksDBBackgroundThread::run() {
       }
 
       uint64_t minTickForReplication = latestSeqNo;
-      if (_engine.server().hasFeature<DatabaseFeature>()) {
-        _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
-            [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
-              // lowestServedValue will return the lowest of the lastServedTick
-              // values stored, or UINT64_MAX if no clients are registered
-              TRI_voc_tick_t lowestServedValue =
-                  vocbase.replicationClients().lowestServedValue();
+      _engine.getDatabaseFeature().enumerateDatabases(
+          [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
+            // lowestServedValue will return the lowest of the lastServedTick
+            // values stored, or UINT64_MAX if no clients are registered
+            TRI_voc_tick_t lowestServedValue =
+                vocbase.replicationClients().lowestServedValue();
 
-              if (lowestServedValue != UINT64_MAX) {
-                // only log noteworthy things
-                LOG_TOPIC("e979f", DEBUG, Logger::ENGINES)
-                    << "lowest served tick for database '" << vocbase.name()
-                    << "': " << lowestServedValue << ", minTick: " << minTick
-                    << ", minTickForReplication: " << minTickForReplication;
-              }
+            if (lowestServedValue != UINT64_MAX) {
+              // only log noteworthy things
+              LOG_TOPIC("e979f", DEBUG, Logger::ENGINES)
+                  << "lowest served tick for database '" << vocbase.name()
+                  << "': " << lowestServedValue << ", minTick: " << minTick
+                  << ", minTickForReplication: " << minTickForReplication;
+            }
 
-              minTickForReplication =
-                  std::min(minTickForReplication, lowestServedValue);
-            });
+            minTickForReplication =
+                std::min(minTickForReplication, lowestServedValue);
+          });
 
-        minTick = std::min(minTick, minTickForReplication);
-      }
+      minTick = std::min(minTick, minTickForReplication);
       _metricsWalReleasedTickReplication.store(minTickForReplication,
                                                std::memory_order_relaxed);
 

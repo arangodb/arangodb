@@ -234,7 +234,6 @@ static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
-static std::string const foxxmaster = "/Current/Foxxmaster";
 
 void Supervision::upgradeOne(Builder& builder) {
   // "/arango/Agency/Definition" not exists or is 0
@@ -458,12 +457,6 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         VPackObjectBuilder b(&create);
         // unconditionally increase reboot id and plan version
         Job::addIncreaseRebootId(create, serverID);
-
-        // if the current foxxmaster server failed => reset the value to ""
-        if (auto fx = snapshot.hasAsString(foxxmaster);
-            fx && fx.value() == serverID) {
-          create.add(foxxmaster, VPackValue(""));
-        }
       }
     }
     singleWriteTransaction(agent, create, false);

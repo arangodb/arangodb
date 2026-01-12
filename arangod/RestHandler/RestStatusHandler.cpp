@@ -173,10 +173,6 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
       if (serverState->isCoordinator()) {
         result.add("coordinator", VPackValue(VPackValueType::Object));
-
-        result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
-        result.add("isFoxxmaster", VPackValue(serverState->isFoxxmaster()));
-
         result.close();
       }
 

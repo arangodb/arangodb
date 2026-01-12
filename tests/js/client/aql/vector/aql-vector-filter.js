@@ -901,11 +901,16 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                 targetKeys: targetKeys
             };
 
-              assertQueryError(
-                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
-                query,
-                bindVars,
-            );
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertFalse(indexNodes[0].isCoveredByStoredValues, "Cannot be covered by stored values");
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5, "Results should be limited to 5");
+
+            verifyResultsMatchFilter(results, r => r.stringField === 'type_A', "String filter not applied");
+            verifyResultsMatchFilter(results, r => targetKeys.includes(r.key), "Key filter not applied");
+            verifyDistancesAscending(results);
         },
 
         testApproxL2WithFilterConstantExpressionAndStoredValue: function() {
