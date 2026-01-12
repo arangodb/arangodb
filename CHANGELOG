@@ -1,6 +1,17 @@
 devel
 -----
 
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
+* COR-8: Improved the accuracy of shard metrics on DBservers by updating only
+  metrics for databases with changes, rather than recalculating all metrics.
+  Added new metrics `arangodb_shards_follower_number` to track the number of
+  follower shards on each DBserver and `arangodb_shard_followers_out_of_sync_number`
+  to track follower shards that are out of sync with their leader.
+
+* FE-929, BTS-2289: bump qs from 6.11.2 to 6.14.1 for node_modules and core UI.
+
 * Make cluster traversal executor with DFS receive neighbours in batches
   to be able to stop the retrieval early in case a limit has been reached.
 

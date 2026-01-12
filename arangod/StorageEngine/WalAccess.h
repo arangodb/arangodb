@@ -34,6 +34,8 @@
 
 namespace arangodb {
 
+class MyWALDumper;
+
 struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
@@ -149,9 +151,13 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(ArangodServer& server, WalAccess::Filter const& filter,
+  WalAccessContext(DatabaseFeature& databaseFeature,
+                   WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
-      : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
+      : _databaseFeature(databaseFeature),
+        _filter(filter),
+        _callback(c),
+        _responseSize(0) {}
 
   ~WalAccessContext() = default;
 
@@ -171,9 +177,11 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  ArangodServer& _server;
+  DatabaseFeature& _databaseFeature;
 
- public:
+ protected:
+  friend class MyWALDumper;
+
   /// @brief arbitrary collection filter (inclusive)
   const WalAccess::Filter _filter;
   /// @brief callback for marker output
