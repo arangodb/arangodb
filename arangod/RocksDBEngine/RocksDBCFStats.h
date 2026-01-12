@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Josip Bajic
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -199,12 +199,6 @@ class RocksDBCFStatsCollector {
   static void parseBlockCacheEntryStats(
       std::map<std::string, std::string> const& cacheStatsMap,
       BlockCacheStats& stats);
-
-  /// @brief Helper: parse a double value from string
-  static double parseDouble(std::string const& s);
-
-  /// @brief Helper: parse a uint64 value from string
-  static uint64_t parseUint64(std::string const& s);
 
   /// @brief Get a uint64 property from DB
   static uint64_t getIntProperty(rocksdb::DB* db,

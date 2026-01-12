@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,10 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Josip Bajic
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCFStats.h"
+
+#include "Basics/StringUtils.h"
 
 #include <absl/strings/str_split.h>
 #include <absl/strings/match.h>
@@ -60,24 +62,6 @@ constexpr std::string_view kRblobGB = "RblobGB";
 constexpr std::string_view kWblobGB = "WblobGB";
 
 }  // namespace
-
-double RocksDBCFStatsCollector::parseDouble(std::string const& s) {
-  if (s.empty()) {
-    return 0.0;
-  }
-  double result = 0.0;
-  std::from_chars(s.data(), s.data() + s.size(), result);
-  return result;
-}
-
-uint64_t RocksDBCFStatsCollector::parseUint64(std::string const& s) {
-  if (s.empty()) {
-    return 0;
-  }
-  uint64_t result = 0;
-  std::from_chars(s.data(), s.data() + s.size(), result);
-  return result;
-}
 
 uint64_t RocksDBCFStatsCollector::getIntProperty(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cfHandle,
@@ -122,47 +106,47 @@ void RocksDBCFStatsCollector::parseCompactionStats(
 
     // Parse each property
     if (property == kNumFiles) {
-      levelStats.numFiles = parseUint64(value);
+      levelStats.numFiles = basics::StringUtils::uint64(value);
     } else if (property == kCompactedFiles) {
-      levelStats.compactedFiles = parseUint64(value);
+      levelStats.compactedFiles = basics::StringUtils::uint64(value);
     } else if (property == kSizeBytes) {
-      levelStats.sizeBytes = parseDouble(value);
+      levelStats.sizeBytes = basics::StringUtils::doubleDecimal(value);
     } else if (property == kScore) {
-      levelStats.score = parseDouble(value);
+      levelStats.score = basics::StringUtils::doubleDecimal(value);
     } else if (property == kReadGB) {
-      levelStats.readGB = parseDouble(value);
+      levelStats.readGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kRnGB) {
-      levelStats.rnGB = parseDouble(value);
+      levelStats.rnGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kRnp1GB) {
-      levelStats.rnp1GB = parseDouble(value);
+      levelStats.rnp1GB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kWriteGB) {
-      levelStats.writeGB = parseDouble(value);
+      levelStats.writeGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kWnewGB) {
-      levelStats.wnewGB = parseDouble(value);
+      levelStats.wnewGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kMovedGB) {
-      levelStats.movedGB = parseDouble(value);
+      levelStats.movedGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kWriteAmp) {
-      levelStats.writeAmp = parseDouble(value);
+      levelStats.writeAmp = basics::StringUtils::doubleDecimal(value);
     } else if (property == kReadMBps) {
-      levelStats.readMBps = parseDouble(value);
+      levelStats.readMBps = basics::StringUtils::doubleDecimal(value);
     } else if (property == kWriteMBps) {
-      levelStats.writeMBps = parseDouble(value);
+      levelStats.writeMBps = basics::StringUtils::doubleDecimal(value);
     } else if (property == kCompSec) {
-      levelStats.compSec = parseDouble(value);
+      levelStats.compSec = basics::StringUtils::doubleDecimal(value);
     } else if (property == kCompMergeCPU) {
-      levelStats.compMergeCPUSec = parseDouble(value);
+      levelStats.compMergeCPUSec = basics::StringUtils::doubleDecimal(value);
     } else if (property == kCompCount) {
-      levelStats.compCount = parseUint64(value);
+      levelStats.compCount = basics::StringUtils::uint64(value);
     } else if (property == kAvgSec) {
-      levelStats.avgSec = parseDouble(value);
+      levelStats.avgSec = basics::StringUtils::doubleDecimal(value);
     } else if (property == kKeyIn) {
-      levelStats.keyIn = parseUint64(value);
+      levelStats.keyIn = basics::StringUtils::uint64(value);
     } else if (property == kKeyDrop) {
-      levelStats.keyDrop = parseUint64(value);
+      levelStats.keyDrop = basics::StringUtils::uint64(value);
     } else if (property == kRblobGB) {
-      levelStats.rblobGB = parseDouble(value);
+      levelStats.rblobGB = basics::StringUtils::doubleDecimal(value);
     } else if (property == kWblobGB) {
-      levelStats.wblobGB = parseDouble(value);
+      levelStats.wblobGB = basics::StringUtils::doubleDecimal(value);
     }
   }
 
@@ -198,10 +182,7 @@ void RocksDBCFStatsCollector::parseWriteStallStats(
   auto getValue = [&writeStallMap](std::string const& key) -> uint64_t {
     auto it = writeStallMap.find(key);
     if (it != writeStallMap.end()) {
-      uint64_t result = 0;
-      std::from_chars(it->second.data(), it->second.data() + it->second.size(),
-                      result);
-      return result;
+      return basics::StringUtils::uint64(it->second);
     }
     return 0;
   };
@@ -246,7 +227,7 @@ void RocksDBCFStatsCollector::parseBlockCacheEntryStats(
     std::map<std::string, std::string> const& cacheStatsMap,
     BlockCacheStats& stats) {
   // Parse using BlockCacheEntryStatsMapKeys
-  auto getStringValue =
+  auto const getStringValue =
       [&cacheStatsMap](std::string const& key) -> std::string {
     auto it = cacheStatsMap.find(key);
     if (it != cacheStatsMap.end()) {
@@ -258,10 +239,7 @@ void RocksDBCFStatsCollector::parseBlockCacheEntryStats(
   auto getUint64Value = [&cacheStatsMap](std::string const& key) -> uint64_t {
     auto it = cacheStatsMap.find(key);
     if (it != cacheStatsMap.end()) {
-      uint64_t result = 0;
-      std::from_chars(it->second.data(), it->second.data() + it->second.size(),
-                      result);
-      return result;
+      return basics::StringUtils::uint64(it->second);
     }
     return 0;
   };
@@ -269,10 +247,7 @@ void RocksDBCFStatsCollector::parseBlockCacheEntryStats(
   auto getDoubleValue = [&cacheStatsMap](std::string const& key) -> double {
     auto it = cacheStatsMap.find(key);
     if (it != cacheStatsMap.end()) {
-      double result = 0.0;
-      std::from_chars(it->second.data(), it->second.data() + it->second.size(),
-                      result);
-      return result;
+      return basics::StringUtils::doubleDecimal(it->second);
     }
     return 0.0;
   };
