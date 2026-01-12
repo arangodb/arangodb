@@ -3598,13 +3598,11 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         family, RocksDBColumnFamilyManager::NameMode::External);
     rocksdb::ColumnFamilyHandle* c = RocksDBColumnFamilyManager::get(family);
 
-    // Collect structured CF stats using direct RocksDB APIs
-    auto cfStats = RocksDBCFStatsCollector::collect(_db, c, name);
-
     // re-add this line to count all keys in the column family (slow!!!)
     // builder.add("keys", VPackValue(rocksutils::countKeys(_db, c)));
 
     // Estimate size on disk and in memtables
+    uint64_t out = 0;
     rocksdb::Range r(rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8),
                      rocksdb::Slice("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
                                     "\xff\xff\xff\xff\xff\xff",
@@ -3612,9 +3610,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
     rocksdb::SizeApproximationOptions options{.include_memtables = true,
                                               .include_files = true};
-    _db->GetApproximateSizes(options, c, &r, 1, &cfStats.memory);
+    _db->GetApproximateSizes(options, c, &r, 1, &out);
 
-    // Serialize using inspection to a temporary builder, then add to main
+    // Collect structured CF stats using direct RocksDB APIs
+    auto cfStats = RocksDBCFStatsCollector::collect(_db, c, name);
     VPackBuilder tempBuilder;
     velocypack::serialize(tempBuilder, cfStats);
     builder.add(name, tempBuilder.slice());

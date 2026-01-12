@@ -178,9 +178,6 @@ struct ColumnFamilyStats {
   // Write stall stats
   WriteStallStats writeStallStats;
 
-  // Approximate memory usage (size on disk and in memtables)
-  uint64_t memory{0};
-
   template<class Inspector>
   friend auto inspect(Inspector& f, ColumnFamilyStats& x) {
     return f.object(x).fields(
@@ -207,8 +204,7 @@ struct ColumnFamilyStats {
         f.field("numBlobFiles", x.numBlobFiles),
         f.field("liveBlobFileSize", x.liveBlobFileSize),
         f.field("liveBlobFileGarbageSize", x.liveBlobFileGarbageSize),
-        f.field("writeStallStats", x.writeStallStats),
-        f.field("memory", x.memory));
+        f.field("writeStallStats", x.writeStallStats));
   }
 };
 
