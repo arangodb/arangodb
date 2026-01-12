@@ -65,6 +65,11 @@ bool IResearchViewExecutor<ExecutionTraits>::readPK(LocalDocumentId& documentId,
   if constexpr (Base::isMaterialized) {
     TRI_ASSERT(reader.doc);
     commonReadPK(reader.pkReader, reader.doc->value, documentId);
+    {
+      std::ostringstream oss;
+      oss << "After commonReadPK: reader.doc->value (" << reader.doc->value << ") -> documentId (" << documentId << ")";
+      IRS_LOG_INFO(oss.str());
+    }
   }
   return true;
 }
@@ -94,7 +99,25 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     }
     LocalDocumentId documentId;
     // try to read a document PK from iresearch
+    // {
+    //   std::ostringstream oss;
+    //   oss << "KDOCITR: readSegment: reader.itr.value (before): " << reader.itr->value();
+    //   IRS_LOG_INFO(oss.str());
+    // }
+
     bool const iteratorExhausted = !readPK(documentId, reader);
+    {
+      std::ostringstream oss;
+      oss << "KDOCITR: readSegment: reader.itr.value (after): " << reader.itr->value();
+      IRS_LOG_INFO(oss.str());
+    }
+
+    {
+      std::ostringstream oss;
+      oss << "KDOCITR: readSegment: documentID: " << documentId.id() << ", iteratorExhausted: " << std::boolalpha << iteratorExhausted;
+      IRS_LOG_INFO(oss.str());
+      IRS_LOG_INFO("");
+    }
 
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next
