@@ -108,5 +108,3 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       .setLongDescription(
           R"(Each thread that is involved in the task-registry needs to garbage collect its finished tasks regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
-
-Feature::~Feature() { registry.set_metrics(nullptr); }

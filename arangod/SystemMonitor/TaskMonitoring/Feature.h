@@ -42,8 +42,6 @@ class Feature final : public ArangodFeature {
 
   Feature(Server& server);
 
-  ~Feature();
-
   void start() override final;
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
