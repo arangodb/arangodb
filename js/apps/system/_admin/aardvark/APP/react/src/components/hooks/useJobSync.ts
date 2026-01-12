@@ -1,5 +1,10 @@
 import { useInterval } from "@chakra-ui/react";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import {
+  checkAsyncJobStatus,
+  deleteFrontendJob,
+  getFrontendJobs,
+  FrontendJob
+} from "../../utils/frontendJobs";
 
 export const useJobSync = ({
   onError,
@@ -12,53 +17,53 @@ export const useJobSync = ({
   onQueue: () => void;
   jobCollectionName: string;
 }) => {
-  const checkState = function (
-    error: boolean,
-    jobsList: { id: string; collection: string }[]
-  ) {
-    if (error) {
-      window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
-    } else {
-      const readJob = function (data: any, jobId: string) {
-        if (data.status === 204) {
-          // job is still in queue or pending
-          onQueue();
-          return;
-        }
-        // this means the job is complete so we can delete it
-        window.arangoHelper.deleteAardvarkJob(jobId);
-        onSuccess();
-      };
+  const checkState = async () => {
+    try {
+      const jobsList = await getFrontendJobs();
 
-      const onJobError = (error: any, jobId: string) => {
-        const statusCode = error?.response?.parsedBody?.code;
-        const message = error.message;
-        window.arangoHelper.arangoError(
-          `Something went wrong while creating the index ${
-            message ? `: ${message}` : ""
-          }`
-        );
-        if (statusCode === 404 || statusCode === 400) {
-          // delete non existing aardvark job
-          window.arangoHelper.deleteAardvarkJob(jobId);
-          return;
+      for (const job of jobsList) {
+        if (job.collection !== jobCollectionName) {
+          continue;
         }
-        onError(error);
-      };
-      // if a job is in the list, this checks for status
-      // by calling 'put /job/:jobId'
-      jobsList.forEach(job => {
-        if (job.collection === jobCollectionName) {
-          getApiRouteForCurrentDB()
-            .put(`/job/${job.id}`)
-            .then(data => readJob(data, job.id))
-            .catch(error => onJobError(error, job.id));
+
+        try {
+          const { complete, error } = await checkAsyncJobStatus(job.id);
+
+          if (!complete) {
+            // Job still in queue or pending
+            onQueue();
+            continue;
+          }
+
+          // Job is complete, clean it up
+          await deleteFrontendJob(job.id);
+
+          if (error) {
+            const statusCode = error?.response?.status;
+            const message = error.message;
+            window.arangoHelper.arangoError(
+              `Something went wrong while updating the view${
+                message ? `: ${message}` : ""
+              }`
+            );
+            if (statusCode === 404 || statusCode === 400) {
+              // Job already processed, just continue
+              continue;
+            }
+            onError(error);
+          } else {
+            onSuccess();
+          }
+        } catch (error: any) {
+          onError(error);
         }
-      });
+      }
+    } catch (error) {
+      window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
     }
   };
 
   useInterval(() => {
-    window.arangoHelper.getAardvarkJobs(checkState);
+    checkState();
   }, 10000);
 };

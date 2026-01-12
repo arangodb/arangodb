@@ -4,6 +4,7 @@ import {
   getCurrentDB
 } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
+import { addFrontendJob } from "../../../utils/frontendJobs";
 import { ViewPropertiesType } from "../View.types";
 
 type GetPropertiesType = ({
@@ -156,12 +157,14 @@ async function patchProperties({
     }
   );
   const asyncId = result.headers.get("x-arango-async-id");
-  window.arangoHelper.addAardvarkJob({
-    id: asyncId,
-    type: "view",
-    desc: "Patching View",
-    collection: view.name
-  });
+  if (asyncId) {
+    await addFrontendJob({
+      id: asyncId,
+      type: "view",
+      desc: "Patching View",
+      collection: view.name
+    });
+  }
 
   return result;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { getCurrentDB } from "../../utils/arangoClient";
+import { syncFrontendJobs } from "../../utils/frontendJobs";
 import { ViewDescription } from "./View.types";
 
 export interface LockableViewDescription extends ViewDescription {
@@ -16,21 +17,22 @@ export const useFetchViews = () => {
     result
   );
 
-  const checkProgress = () => {
-    const callback = (_: any, lockedViews?: { collection: string }[]) => {
-      const newViews = result?.map(view => {
-        if (
-          lockedViews?.find(lockedView => lockedView.collection === view.name)
-        ) {
-          return { ...view, isLocked: true };
-        }
-        return { ...view, isLocked: false };
-      });
+  const checkProgress = async () => {
+    try {
+      const pendingJobs = await syncFrontendJobs("view");
+      const lockedViewNames = new Set(pendingJobs.map(job => job.collection));
+
+      const newViews = result?.map(view => ({
+        ...view,
+        isLocked: lockedViewNames.has(view.name)
+      }));
+
       if (newViews) {
         setViews(newViews);
       }
-    };
-    window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", callback);
+    } catch (error) {
+      console.error("Failed to check view job progress:", error);
+    }
   };
 
   useEffect(() => {
