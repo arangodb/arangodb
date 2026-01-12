@@ -115,9 +115,9 @@ auto serialize(IndexedForestWithRoots<TaskSnapshot> const& tasks)
 }  // namespace
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need super user rights for task monitoring operations");
+                  "you need admin user rights for task monitoring operations");
     co_return;
   }
 

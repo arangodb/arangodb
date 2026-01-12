@@ -116,9 +116,9 @@ auto serialize(IndexedForestWithRoots<PromiseSnapshot> const& promises)
 }  // namespace
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need super user rights for async-registry operations");
+                  "you need admin user rights for async-registry operations");
   }
 
   if (_request->requestType() != rest::RequestType::GET) {
