@@ -2,6 +2,7 @@ add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
+  RocksDBCFStats.cpp
   RocksDBChecksumEnv.cpp
   RocksDBCollection.cpp
   RocksDBColumnFamilyManager.cpp

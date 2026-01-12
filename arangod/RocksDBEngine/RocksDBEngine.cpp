@@ -90,6 +90,7 @@
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCFStats.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -3594,11 +3595,12 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     std::string name = RocksDBColumnFamilyManager::name(
         family, RocksDBColumnFamilyManager::NameMode::External);
     rocksdb::ColumnFamilyHandle* c = RocksDBColumnFamilyManager::get(family);
-    std::string v;
+
     builder.add(name, VPackValue(VPackValueType::Object));
-    if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
-      builder.add("dbstats", VPackValue(v));
-    }
+
+    // Collect structured CF stats using direct RocksDB APIs and serialize
+    auto cfStats = RocksDBCFStatsCollector::collect(_db, c, name);
+    cfStats.toVPack(builder);
 
     // re-add this line to count all keys in the column family (slow!!!)
     // builder.add("keys", VPackValue(rocksutils::countKeys(_db, c)));
