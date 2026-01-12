@@ -22,43 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <atomic>
-#include "Containers/Concurrent/ListOfNonOwnedLists.h"
-#include "Containers/Concurrent/metrics.h"
-#include "Containers/Concurrent/ThreadOwnedList.h"
+#include "Containers/Concurrent/Registry.h"
 #include "TaskMonitoring/task.h"
 
 namespace arangodb::task_monitoring {
 
-using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {
-  // all thread registries that are added to this registry will use these
-  // metrics
-  std::shared_ptr<containers::Metrics> metrics;
-  std::atomic<bool> metricsAreSet = false;
-  /**
-    Metrics-feature is only available after startup, therefore we need to update
-    the metrics after construction via this function; is only allowed to be
-    called once due to the TRI_ASSERT
-  */
-  auto set_metrics(std::shared_ptr<containers::Metrics> new_metrics) -> void {
-    auto guard = std::lock_guard(_mutex);
-    TRI_ASSERT(not metricsAreSet.load(std::memory_order_relaxed));
-    metrics = new_metrics;
-    metricsAreSet.store(true, std::memory_order_release);
-  }
-  /**
-    Gets metrics, spins if they are not yet set. Spinning is fine because
-    metrics are set at startup
-   */
-  auto get_metrics() -> std::shared_ptr<containers::Metrics> {
-    while (true) {
-      if (metricsAreSet.load(std::memory_order_acquire)) {
-        return metrics;
-      }
-    }
-  }
-};
+using ThreadRegistry = containers::ThreadRegistry<TaskInRegistry>;
+using Registry = containers::Registry<TaskInRegistry>;
 
 /**
    Global variable that holds all active tasks.

@@ -20,6 +20,7 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "TaskMonitoring/task_registry_variable.h"
 
 namespace arangodb::task_monitoring {
