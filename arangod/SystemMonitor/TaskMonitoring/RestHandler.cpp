@@ -56,7 +56,7 @@ auto inspect(Inspector& f, Entry& x) {
    An edge between two tasks means that the lower hierarchy tasks started the
  larger hierarchy task.
  **/
-auto all_undeleted_promises() -> ForestWithRoots<TaskSnapshot> {
+auto all_undeleted_tasks() -> ForestWithRoots<TaskSnapshot> {
   auto forest = Forest<TaskSnapshot>{};
   std::vector<Id> roots;
   registry.for_node([&](TaskSnapshot task) {
@@ -77,30 +77,30 @@ auto all_undeleted_promises() -> ForestWithRoots<TaskSnapshot> {
 }
 
 /**
-   Converts a forest of tasks into a list of stacktraces inside a
- velocypack.
+   Serializes a task dependency-forest into a list of trees.
 
-   The list of stacktraces include one stacktrace per tree in the forest. To
- create one stacktrace, it uses a depth first search to traverse the forest in
- post order, such that tasks with the highest hierarchy in a tree are given
- first and the root task is given last.
+   Each tree is given as a list of tasks, where its hierachy number and position
+ inside the list defines its location in the tree. To create one tree, it uses a
+ depth first search to traverse the forest in post order, such that tasks with
+ the highest hierarchy in a tree are given first and the root task with
+ hierarchy zero is given last.
  **/
-auto getStacktraceData(IndexedForestWithRoots<TaskSnapshot> const& promises)
+auto serialize(IndexedForestWithRoots<TaskSnapshot> const& tasks)
     -> VPackBuilder {
   VPackBuilder builder;
   builder.openObject();
   builder.add(VPackValue("task_stacktraces"));
   builder.openArray();
-  for (auto const& root : promises.roots()) {
+  for (auto const& root : tasks.roots()) {
     builder.openArray();
-    auto dfs = DFS_PostOrder{promises, root};
+    auto dfs = DFS_PostOrder{tasks, root};
     do {
       auto next = dfs.next();
       if (next == std::nullopt) {
         break;
       }
       auto [id, hierarchy] = next.value();
-      auto data = promises.node(id);
+      auto data = tasks.node(id);
       if (data != std::nullopt) {
         auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
         velocypack::serialize(builder, entry);
@@ -134,8 +134,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
 
   auto lock_guard = co_await _feature.asyncLock();
 
-  // do actual work
-  auto promises = all_undeleted_promises().index_by_awaitee();
-  generateResult(rest::ResponseCode::OK, getStacktraceData(promises).slice());
+  auto tasks = all_undeleted_tasks().index_by_parent();
+  generateResult(rest::ResponseCode::OK, serialize(tasks).slice());
   co_return;
 }

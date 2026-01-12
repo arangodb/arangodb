@@ -86,7 +86,7 @@ auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
  post order, such that promises with the highest hierarchy in a tree are given
  first and the root promise is given last.
  **/
-auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
+auto serialize(IndexedForestWithRoots<PromiseSnapshot> const& promises)
     -> VPackBuilder {
   VPackBuilder builder;
   builder.openObject();
@@ -134,8 +134,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
 
   auto lock_guard = co_await _feature.asyncLock();
 
-  // do actual work
-  auto promises = all_undeleted_promises().index_by_awaitee();
-  generateResult(rest::ResponseCode::OK, getStacktraceData(promises).slice());
+  auto promises = all_undeleted_promises().index_by_parent();
+  generateResult(rest::ResponseCode::OK, serialize(promises).slice());
   co_return;
 }
