@@ -25,7 +25,6 @@
 
 #include <rocksdb/db.h>
 #include <rocksdb/cache.h>
-#include <velocypack/Builder.h>
 
 #include <cstdint>
 #include <map>
@@ -60,8 +59,22 @@ struct CompactionLevelStats {
   double rblobGB{0.0};
   double wblobGB{0.0};
 
-  /// @brief Serialize to VelocyPack
-  void toVPack(velocypack::Builder& builder) const;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionLevelStats& x) {
+    return f.object(x).fields(
+        f.field("level", x.level), f.field("numFiles", x.numFiles),
+        f.field("compactedFiles", x.compactedFiles),
+        f.field("sizeBytes", x.sizeBytes), f.field("score", x.score),
+        f.field("readGB", x.readGB), f.field("rnGB", x.rnGB),
+        f.field("rnp1GB", x.rnp1GB), f.field("writeGB", x.writeGB),
+        f.field("wnewGB", x.wnewGB), f.field("movedGB", x.movedGB),
+        f.field("writeAmp", x.writeAmp), f.field("readMBps", x.readMBps),
+        f.field("writeMBps", x.writeMBps), f.field("compSec", x.compSec),
+        f.field("compMergeCPUSec", x.compMergeCPUSec),
+        f.field("compCount", x.compCount), f.field("avgSec", x.avgSec),
+        f.field("keyIn", x.keyIn), f.field("keyDrop", x.keyDrop),
+        f.field("rblobGB", x.rblobGB), f.field("wblobGB", x.wblobGB));
+  }
 };
 
 /// @brief Write stall statistics
@@ -77,8 +90,22 @@ struct WriteStallStats {
   uint64_t totalDelays{0};
   uint64_t totalStops{0};
 
-  /// @brief Serialize to VelocyPack
-  void toVPack(velocypack::Builder& builder) const;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, WriteStallStats& x) {
+    return f.object(x).fields(
+        f.field("cfL0FileCountLimitDelaysWithOngoingCompaction",
+                x.cfL0FileCountLimitDelaysWithOngoingCompaction),
+        f.field("cfL0FileCountLimitStopsWithOngoingCompaction",
+                x.cfL0FileCountLimitStopsWithOngoingCompaction),
+        f.field("l0FileCountLimitDelays", x.l0FileCountLimitDelays),
+        f.field("l0FileCountLimitStops", x.l0FileCountLimitStops),
+        f.field("memtableLimitDelays", x.memtableLimitDelays),
+        f.field("memtableLimitStops", x.memtableLimitStops),
+        f.field("pendingCompactionBytesDelays", x.pendingCompactionBytesDelays),
+        f.field("pendingCompactionBytesStops", x.pendingCompactionBytesStops),
+        f.field("totalDelays", x.totalDelays),
+        f.field("totalStops", x.totalStops));
+  }
 };
 
 /// @brief Block cache entry statistics for a specific role
@@ -87,8 +114,12 @@ struct BlockCacheRoleStats {
   uint64_t usedBytes{0};
   double usedPercent{0.0};
 
-  /// @brief Serialize to VelocyPack
-  void toVPack(velocypack::Builder& builder) const;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, BlockCacheRoleStats& x) {
+    return f.object(x).fields(f.field("count", x.count),
+                              f.field("usedBytes", x.usedBytes),
+                              f.field("usedPercent", x.usedPercent));
+  }
 };
 
 /// @brief Block cache statistics
@@ -101,8 +132,15 @@ struct BlockCacheStats {
   // Stats per cache entry role
   std::map<std::string, BlockCacheRoleStats> roleStats;
 
-  /// @brief Serialize to VelocyPack
-  void toVPack(velocypack::Builder& builder) const;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, BlockCacheStats& x) {
+    return f.object(x).fields(
+        f.field("cacheId", x.cacheId),
+        f.field("capacityBytes", x.capacityBytes),
+        f.field("lastCollectionDurationSecs", x.lastCollectionDurationSecs),
+        f.field("lastCollectionAgeSecs", x.lastCollectionAgeSecs),
+        f.field("roleStats", x.roleStats));
+  }
 };
 
 /// @brief Complete statistics for a column family
@@ -140,8 +178,38 @@ struct ColumnFamilyStats {
   // Write stall stats
   WriteStallStats writeStallStats;
 
-  /// @brief Serialize to VelocyPack (adds fields to an already-open object)
-  void toVPack(velocypack::Builder& builder) const;
+  // Approximate memory usage (size on disk and in memtables)
+  uint64_t memory{0};
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, ColumnFamilyStats& x) {
+    return f.object(x).fields(
+        f.field("columnFamilyName", x.columnFamilyName),
+        f.field("levelStats", x.levelStats), f.field("sumStats", x.sumStats),
+        f.field("numImmutableMemTable", x.numImmutableMemTable),
+        f.field("numImmutableMemTableFlushed", x.numImmutableMemTableFlushed),
+        f.field("memTableFlushPending", x.memTableFlushPending),
+        f.field("compactionPending", x.compactionPending),
+        f.field("curSizeActiveMemTable", x.curSizeActiveMemTable),
+        f.field("curSizeAllMemTables", x.curSizeAllMemTables),
+        f.field("sizeAllMemTables", x.sizeAllMemTables),
+        f.field("numEntriesActiveMemTable", x.numEntriesActiveMemTable),
+        f.field("numEntriesImmMemTables", x.numEntriesImmMemTables),
+        f.field("numDeletesActiveMemTable", x.numDeletesActiveMemTable),
+        f.field("numDeletesImmMemTables", x.numDeletesImmMemTables),
+        f.field("estimateNumKeys", x.estimateNumKeys),
+        f.field("estimateTableReadersMem", x.estimateTableReadersMem),
+        f.field("numLiveVersions", x.numLiveVersions),
+        f.field("estimateLiveDataSize", x.estimateLiveDataSize),
+        f.field("liveSstFilesSize", x.liveSstFilesSize),
+        f.field("estimatePendingCompactionBytes",
+                x.estimatePendingCompactionBytes),
+        f.field("numBlobFiles", x.numBlobFiles),
+        f.field("liveBlobFileSize", x.liveBlobFileSize),
+        f.field("liveBlobFileGarbageSize", x.liveBlobFileGarbageSize),
+        f.field("writeStallStats", x.writeStallStats),
+        f.field("memory", x.memory));
+  }
 };
 
 /// @brief Database-wide statistics
@@ -158,8 +226,18 @@ struct DatabaseStats {
   // Block cache entry stats
   std::optional<BlockCacheStats> blockCacheStats;
 
-  /// @brief Serialize to VelocyPack (adds fields to an already-open object)
-  void toVPack(velocypack::Builder& builder) const;
+  template<class Inspector>
+  friend auto inspect(Inspector& f, DatabaseStats& x) {
+    return f.object(x).fields(
+        f.field("numSnapshots", x.numSnapshots),
+        f.field("oldestSnapshotTime", x.oldestSnapshotTime),
+        f.field("numRunningCompactions", x.numRunningCompactions),
+        f.field("numRunningFlushes", x.numRunningFlushes),
+        f.field("blockCacheCapacity", x.blockCacheCapacity),
+        f.field("blockCacheUsage", x.blockCacheUsage),
+        f.field("blockCachePinnedUsage", x.blockCachePinnedUsage),
+        f.field("blockCacheStats", x.blockCacheStats));
+  }
 };
 
 /// @brief Collector for RocksDB column family statistics using direct APIs
