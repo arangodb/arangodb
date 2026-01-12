@@ -32,7 +32,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 
 namespace {
 auto get_all_tasks() -> std::vector<TaskSnapshot> {

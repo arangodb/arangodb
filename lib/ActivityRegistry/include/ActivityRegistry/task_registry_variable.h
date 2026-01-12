@@ -25,7 +25,7 @@
 #include "Containers/Concurrent/Registry.h"
 #include "ActivityRegistry/task.h"
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
 using ThreadRegistry = containers::ThreadRegistry<TaskInRegistry>;
 using Registry = containers::Registry<TaskInRegistry>;
@@ -46,4 +46,4 @@ extern Registry registry;
  */
 auto get_thread_registry() noexcept -> ThreadRegistry&;
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry

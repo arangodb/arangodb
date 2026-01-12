@@ -27,7 +27,7 @@
 #include "RestServer/arangod.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
 class Feature final : public ArangodFeature {
  private:
@@ -61,4 +61,4 @@ class Feature final : public ArangodFeature {
   AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry

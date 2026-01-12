@@ -32,7 +32,7 @@
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 using namespace arangodb::containers;
 
 RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,

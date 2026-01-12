@@ -23,7 +23,7 @@
 
 #include "ActivityRegistry/task_registry_variable.h"
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
 Registry registry;
 
@@ -40,4 +40,4 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
   return *registry_guard._registry;
 }
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry

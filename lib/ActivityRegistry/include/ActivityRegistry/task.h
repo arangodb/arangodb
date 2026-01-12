@@ -34,7 +34,7 @@
 #include <source_location>
 #include <string>
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
 struct RootTask {
   bool operator==(RootTask const&) const = default;
@@ -170,8 +170,8 @@ struct Task {
 
 auto get_current_task() -> Task**;
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry
 
 auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
+                arangodb::activity_registry::TaskSnapshot const& task)
     -> std::ostream&;

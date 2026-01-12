@@ -44,10 +44,10 @@ overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 
 auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
+                arangodb::activity_registry::TaskSnapshot const& task)
     -> std::ostream& {
   return out << inspection::json(task);
 }
@@ -125,7 +125,7 @@ auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
 
    Points to nullptr if there is no task running on the current thread.
  */
-auto arangodb::task_monitoring::get_current_task() -> Task** {
+auto arangodb::activity_registry::get_current_task() -> Task** {
   struct Guard {
     Task* task = nullptr;
   };

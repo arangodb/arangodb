@@ -28,7 +28,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 
 DECLARE_COUNTER(
     arangodb_monitoring_tasks_total,
@@ -72,7 +72,7 @@ struct Feature::CleanupThread {
             std::unique_lock guard(_mutex);
             auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
             if (status == std::cv_status::timeout) {
-              task_monitoring::registry.run_external_cleanup();
+              activity_registry::registry.run_external_cleanup();
             }
           }
         }) {}
