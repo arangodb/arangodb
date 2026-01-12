@@ -126,7 +126,7 @@ auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need super user rights for log operations");
+                  "you need super user rights for async-registry operations");
   }
 
   if (_request->requestType() != rest::RequestType::GET) {

@@ -88,9 +88,9 @@ struct Feature::CleanupThread {
 };
 
 void Feature::start() {
-  metrics = create_metrics(
+  _metrics = create_metrics(
       server().template getFeature<arangodb::metrics::MetricsFeature>());
-  registry.set_metrics(metrics);
+  registry.set_metrics(_metrics);
   _cleanupThread = std::make_shared<CleanupThread>(_options.gc_timeout);
 }
 

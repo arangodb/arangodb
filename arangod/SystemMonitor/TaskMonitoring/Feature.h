@@ -54,7 +54,7 @@ class Feature final : public ArangodFeature {
   };
   Options _options;
 
-  std::shared_ptr<RegistryMetrics> metrics;
+  std::shared_ptr<RegistryMetrics> _metrics;
 
   struct CleanupThread;
   std::shared_ptr<CleanupThread> _cleanupThread;
