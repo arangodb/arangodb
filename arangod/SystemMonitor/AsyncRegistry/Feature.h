@@ -42,8 +42,6 @@ class Feature final : public ArangodFeature {
 
   Feature(Server& server);
 
-  ~Feature();
-
   void prepare() override final;
   void start() override final;
   void stop() override final;

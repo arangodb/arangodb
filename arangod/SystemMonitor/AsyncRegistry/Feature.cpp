@@ -110,5 +110,3 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       .setLongDescription(
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
-
-Feature::~Feature() { registry.set_metrics(nullptr); }
