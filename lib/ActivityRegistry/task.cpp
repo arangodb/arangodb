@@ -20,13 +20,13 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "TaskMonitoring/task.h"
+#include "ActivityRegistry/task.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
-#include "TaskMonitoring/task_registry_variable.h"
+#include "ActivityRegistry/task_registry_variable.h"
 #include <atomic>
 #include <optional>
 #include <source_location>

@@ -20,24 +20,32 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "TaskMonitoring/task_registry_variable.h"
+#include "SystemMonitor/ActivityRegistry/Feature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb::task_monitoring {
 
-Registry registry;
+/**
+   Task monitoring REST handler
 
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard()
-        : _registry{ThreadRegistry::make(registry.get_metrics())} {
-      registry.add(_registry);
-    }
+   GET: Returns all currently existing (non-deleted) tasks in the task-registry
+   as a dependency forest. The forest is given as a list of trees. Each tree is
+   given as a list of tasks, where its hierachy number and position inside
+   the list defines its location in the tree. Inside one tree, a task that
+   is created by another task sits one hierarchy-level below its parent task.
+ */
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
-}
+ public:
+  char const* name() const override final { return "TaskRegistryRestHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  futures::Future<futures::Unit> executeAsync() override;
+
+  Feature& _feature;
+};
 
 }  // namespace arangodb::task_monitoring

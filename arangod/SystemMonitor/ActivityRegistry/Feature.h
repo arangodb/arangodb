@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "TaskMonitoring/task_registry_variable.h"
-#include "SystemMonitor/TaskMonitoring/Metrics.h"
+#include "ActivityRegistry/task_registry_variable.h"
+#include "SystemMonitor/ActivityRegistry/Metrics.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
