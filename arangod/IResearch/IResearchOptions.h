@@ -18,41 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Andrey Abramov
+/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
-namespace arangodb {
-namespace consensus {
-class Agent;
-}
+namespace arangodb::iresearch {
 
-class AgencyFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "Agency"; }
+struct IResearchOptions {
+  // whether or not to fail queries on links/indexes that are marked as
+  // out of sync
+  bool failQueriesOnOutOfSync = false;
 
-  explicit AgencyFeature(Server& server);
-  ~AgencyFeature();
+  // names/ids of links/indexes to *NOT* recover. all entries should
+  // be in format "collection-name/index-name" or "collection/index-id".
+  // the pseudo-entry "all" skips recovering data for all links/indexes
+  // found during recovery.
+  std::vector<std::string> skipRecoveryItems;
+  uint32_t deprecatedOptions = 0;
+  uint32_t consolidationThreads = 0;
+  uint32_t commitThreads = 0;
+  uint32_t threads = 0;
+  uint32_t threadsLimit = 0;
+  uint32_t searchExecutionThreadsLimit = 0;
+  uint32_t defaultParallelism = 1;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool activated() const noexcept { return _options.activated; }
-
-  consensus::Agent* agent() const;
-
- private:
-  AgencyOptions _options;
-  std::unique_ptr<consensus::Agent> _agent;
+#ifdef USE_ENTERPRISE
+  bool columnsCacheOnlyLeader = false;
+#endif
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

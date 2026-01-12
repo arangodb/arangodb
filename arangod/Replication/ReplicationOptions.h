@@ -18,46 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
-#include "Aql/QueryInfoLoggerOptions.h"
+#include <cstdint>
 
-#include <velocypack/String.h>
+namespace arangodb {
 
-#include <memory>
+struct ReplicationOptions {
+  bool replicationApplierAutoStart = true;
 
-namespace arangodb::aql {
-class QueryInfoLoggerThread;
+  /// maximum number of parallel tailing operations invocations
+  uint64_t maxParallelTailingInvocations = 0;
 
-class QueryInfoLoggerFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept {
-    return "QueryInfoLogger";
-  }
+  /// quick replication keys limit
+  uint64_t quickKeysLimit = 1000000;
 
-  explicit QueryInfoLoggerFeature(Server& server);
+  /// Use the revision-based replication protocol
+  bool syncByRevision = true;
 
-  ~QueryInfoLoggerFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void beginShutdown() override;
-  void start() override;
-  void stop() override;
-
-  bool shouldLog(bool isSystem, bool isSlowQuery) const noexcept;
-
-  void log(std::shared_ptr<velocypack::String> const& query);
-
- private:
-  void stopThread();
-
-  std::unique_ptr<QueryInfoLoggerThread> _loggerThread;
-  QueryInfoLoggerOptions _options;
+  /// automatically repair revision trees of shards after too many failed
+  /// shard synchronization attempts
+  bool autoRepairRevisionTrees = true;
 };
 
-}  // namespace arangodb::aql
+}  // namespace arangodb
