@@ -24,7 +24,12 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Auth/UserManager.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -38,6 +43,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
@@ -52,8 +58,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(Server& server, int* result,
-                               std::span<const size_t> nonServerFeatures)
+UpgradeFeature::UpgradeFeature(
+    Server& server, int* result,
+    std::span<const std::type_index> nonServerFeatures)
     : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
@@ -105,12 +112,12 @@ in the `VERSION` file, the server refuses to start.)");
       ->addOption("--database.auto-upgrade-full-compaction",
                   "Perform a full RocksDB compaction after database upgrade.",
                   new BooleanParameter(&_upgradeFullCompaction))
-      .setLongDescription(R"(If this option is specified together with 
---database.auto-upgrade, the server will perform a full RocksDB compaction 
+      .setLongDescription(R"(If this option is specified together with
+--database.auto-upgrade, the server will perform a full RocksDB compaction
 after the database upgrade has completed successfully but before shutting down.
 
-This performs a complete compaction of all column families with both 
-changeLevel and compactBottomMostLevel options enabled, which can help 
+This performs a complete compaction of all column families with both
+changeLevel and compactBottomMostLevel options enabled, which can help
 optimize the database files after an upgrade.
 
 The server will exit with an error code if the compaction fails.)");
@@ -167,21 +174,25 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
     auto disableDaemonAndSupervisor = [&]() {
-      if constexpr (Server::contains<DaemonFeature>()) {
-        server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
+      if constexpr (ArangodFeatures::contains<DaemonFeature>()) {
+        std::array daemonFeature{std::type_index(typeid(DaemonFeature))};
+        server().forceDisableFeatures(daemonFeature);
       }
-      if constexpr (Server::contains<SupervisorFeature>()) {
-        server().forceDisableFeatures(
-            std::array{Server::id<SupervisorFeature>()});
+      if constexpr (ArangodFeatures::contains<SupervisorFeature>()) {
+        std::array supervisorFeature{
+            std::type_index(typeid(SupervisorFeature))};
+        server().forceDisableFeatures(supervisorFeature);
       }
     };
 
-    server().forceDisableFeatures(std::array{Server::id<GreetingsFeature>()});
+    std::array greetingsFeature{std::type_index(typeid(GreetingsFeature))};
+    server().forceDisableFeatures(greetingsFeature);
     disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    server().forceDisableFeatures(std::array{
-        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()});
+    std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
+                                 std::type_index(typeid(HttpEndpointProvider))};
+    server().forceDisableFeatures(bootstrapFeatures);
   }
 
   ReplicationFeature& replicationFeature =

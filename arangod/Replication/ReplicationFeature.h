@@ -42,7 +42,7 @@ class ReplicationFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(Server& server);
+  explicit ReplicationFeature(Server& server, metrics::MetricsFeature& metrics);
   ~ReplicationFeature();
 
   void collectOptions(

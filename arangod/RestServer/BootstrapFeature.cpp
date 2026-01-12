@@ -24,17 +24,15 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -46,6 +44,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/FoxxFeature.h"
 #endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"

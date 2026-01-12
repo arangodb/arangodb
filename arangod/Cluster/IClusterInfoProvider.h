@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,41 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <span>
-#include <typeindex>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
-class CheckVersionFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "CheckVersion"; }
+class ClusterInfo;
 
-  explicit CheckVersionFeature(Server& server, int* result,
-                               std::span<const std::type_index> nonServerFeatures);
-
- private:
-  bool _checkVersion;
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- private:
-  void checkVersion();
-
-  int* _result;
-  std::span<const std::type_index> _nonServerFeatures;
+struct IClusterInfoProvider {
+  virtual ~IClusterInfoProvider() = default;
+  virtual ClusterInfo& clusterInfo();
 };
 
 }  // namespace arangodb

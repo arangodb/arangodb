@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "Agency/AgencyFeature.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 
 namespace arangodb::application_features {
 

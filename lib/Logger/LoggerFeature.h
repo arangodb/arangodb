@@ -46,7 +46,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   LoggerFeature(Server& server, bool threaded)
-      : LoggerFeature(server, Server::template id<LoggerFeature>(), threaded) {
+      : LoggerFeature(server, typeid(LoggerFeature), threaded) {
     startsAfter<ShellColorsFeature, Server>();
     startsAfter<VersionFeature, Server>();
   }
@@ -68,7 +68,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
  private:
   LoggerFeature(application_features::ApplicationServer& server,
-                size_t registration, bool threaded);
+                std::type_index registration, bool threaded);
 
   LoggerOptions _options;
   bool _supervisor = false;

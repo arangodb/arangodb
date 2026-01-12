@@ -23,19 +23,18 @@
 
 #include "EnvironmentFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/OptionsCheckFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
-#include "Basics/application-exit.h"
-#include "Basics/operating-system.h"
-#include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 
 #include <array>
 #include <atomic>
@@ -85,8 +84,6 @@ std::string_view trimProcName(std::string_view content) {
 using namespace arangodb::basics;
 
 namespace arangodb {
-class OptionsCheckFeature;
-class SharedPRNGFeature;
 
 EnvironmentFeature::EnvironmentFeature(Server& server)
     : ArangodFeature{server, *this} {

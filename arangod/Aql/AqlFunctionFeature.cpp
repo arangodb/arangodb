@@ -23,10 +23,11 @@
 
 #include "AqlFunctionFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/VectorIndexFeature.h"
 
 using namespace arangodb::application_features;

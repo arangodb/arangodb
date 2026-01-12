@@ -24,7 +24,7 @@
 #pragma once
 
 #include <atomic>
-#include <cstddef>
+#include <array>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -32,6 +32,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <typeindex>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -134,8 +136,7 @@ class ApplicationServer {
 
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                    char const* binaryPath,
-                    std::span<std::unique_ptr<ApplicationFeature>> features);
+                    char const* binaryPath);
 
   virtual ~ApplicationServer() = default;
 
@@ -221,10 +222,16 @@ class ApplicationServer {
   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
-  void disableFeatures(std::span<const size_t>);
-  void forceDisableFeatures(std::span<const size_t>);
+  template<class... Features>
+  void disableFeatures() {
+    std::array<std::type_index, sizeof...(Features)> features{
+        typeid(Features)...};
+    disableFeatures(features, false);
+  }
+  void disableFeatures(std::span<const std::type_index>);
+  void forceDisableFeatures(std::span<const std::type_index>);
 
- private:
+ protected:
   friend class ApplicationFeature;
 
   // set the current progress (string versions)
@@ -232,20 +239,22 @@ class ApplicationServer {
 
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
-  bool hasFeature(size_t type) const noexcept {
-    return type < _features.size() && nullptr != _features[type];
+  bool hasFeature(std::type_index type) const noexcept {
+    return _features.contains(type);
   }
 
-  ApplicationFeature& getFeature(size_t type) const {
-    if (ADB_LIKELY(hasFeature(type))) {
-      return *_features[type];
+  ApplicationFeature& getFeature(std::type_index type) const {
+    auto it = _features.find(type);
+    if (ADB_LIKELY(it != _features.end())) {
+      return *it->second;
     }
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
+        TRI_ERROR_INTERNAL,
+        std::string("unknown feature '") + type.name() + "'");
   }
 
-  void disableFeatures(std::span<const size_t> types, bool force);
+  void disableFeatures(std::span<const std::type_index> types, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature&)>, bool enabledOnly);
@@ -287,6 +296,8 @@ class ApplicationServer {
   void reportFeatureProgress(State, std::string_view);
 
  private:
+  // TODO
+ protected:
   // the current state
   std::atomic<State> _state;
 
@@ -294,7 +305,8 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> _options;
 
   // application features
-  std::span<std::unique_ptr<ApplicationFeature>> _features;
+  std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>
+      _features;
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
@@ -373,38 +385,18 @@ server.addFeatures(Visitor{
 template<typename Features>
 class ApplicationServerT : public ApplicationServer {
  public:
-  // Returns feature identifier.
-  template<typename T>
-  static constexpr size_t id() noexcept {
-    return Features::template id<T>();
-  }
-
-  // Returns true if a feature denoted by `T` is registered with the server.
-  template<typename T>
-  static constexpr bool contains() noexcept {
-    return Features::template contains<T>();
-  }
-
-  // Returns true if a feature denoted by `Feature` is created before other
-  // feautures denoted by `OtherFeatures`.
-  template<typename Feature, typename... OtherFeatures>
-  static constexpr bool isCreatedAfter() noexcept {
-    return (std::greater{}(id<Feature>(), id<OtherFeatures>()) && ...);
-  }
-
   ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
                      char const* binaryPath)
-      : ApplicationServer{opts, binaryPath, _features} {}
+      : ApplicationServer{opts, binaryPath} {}
 
   // Adds all registered features to the application server.
   template<typename Initializer>
   void addFeatures(Initializer&& initializer) {
     Features::visit([&]<typename T>(TypeTag<T>) {
       static_assert(std::is_base_of_v<ApplicationFeature, T>);
-      constexpr auto featureId = Features::template id<T>();
 
       TRI_ASSERT(!hasFeature<T>());
-      _features[featureId] =
+      _features[typeid(T)] =
           std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
       TRI_ASSERT(hasFeature<T>());
     });
@@ -419,10 +411,9 @@ class ApplicationServerT : public ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
     static_assert(std::is_base_of_v<Type, Impl>);
-    constexpr auto featureId = Features::template id<Type>();
 
     TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[featureId];
+    auto& slot = _features[typeid(Type)];
     slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
 
     return static_cast<Impl&>(*slot);
@@ -434,10 +425,9 @@ class ApplicationServerT : public ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
     static_assert(std::is_base_of_v<Type, Impl>);
-    constexpr auto featureId = Features::template id<Type>();
 
     TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[featureId];
+    auto& slot = _features[typeid(Type)];
     slot = constructor(*this);
 
     return static_cast<Impl&>(*slot);
@@ -470,9 +460,7 @@ class ApplicationServerT : public ApplicationServer {
   template<typename Type>
   bool hasFeature() const noexcept {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-
-    constexpr auto featureId = Features::template id<Type>();
-    return nullptr != _features[featureId];
+    return ApplicationServer::hasFeature(typeid(Type));
   }
 
   // Returns a const reference to a feature. will throw when used for
@@ -482,11 +470,10 @@ class ApplicationServerT : public ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     static_assert(std::is_base_of_v<Type, Impl> ||
                   std::is_base_of_v<Impl, Type>);
-    constexpr auto featureId = Features::template id<Type>();
 
     TRI_ASSERT(hasFeature<Type>())
         << "Feature missing: " << typeid(Type).name();
-    auto& feature = *_features[featureId];
+    auto& feature = ApplicationServer::getFeature(typeid(Type));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto obj = dynamic_cast<Impl*>(&feature);
     TRI_ASSERT(obj != nullptr);
@@ -508,9 +495,6 @@ class ApplicationServerT : public ApplicationServer {
     }
     return feature;
   }
-
- private:
-  std::array<std::unique_ptr<ApplicationFeature>, Features::size()> _features;
 };
 
 }  // namespace application_features

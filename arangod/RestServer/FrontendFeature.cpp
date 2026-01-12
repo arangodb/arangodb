@@ -24,10 +24,9 @@
 #include "FrontendFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;

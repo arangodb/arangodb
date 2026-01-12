@@ -22,9 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "RestServer/ConsoleFeature.h"
+#include "RestServer/ScriptFeature.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"

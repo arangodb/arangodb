@@ -39,8 +39,6 @@ class OptionsCheckFeature final
   template<typename Server>
   OptionsCheckFeature(Server& server)
       : application_features::ApplicationFeature{server, *this} {
-    static_assert(Server::template isCreatedAfter<LoggerFeature>());
-
     setOptional(false);
     startsAfter<LoggerFeature, Server>();
   }

@@ -29,7 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ScopeGuard.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
@@ -41,7 +41,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 
@@ -52,7 +51,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    Server& server, std::span<const size_t> nonServerFeatures)
+    Server& server, std::span<const std::type_index> nonServerFeatures)
     : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -90,8 +89,7 @@ void InitDatabaseFeature::validateOptions(
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(
-        std::array{ArangodServer::id<EnvironmentFeature>()});
+    server().disableFeatures<EnvironmentFeature>();
   }
 }
 

@@ -57,17 +57,12 @@ class ClientFeature final : public HttpEndpointProvider {
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
       : ClientFeature{server,
                       server.template getFeature<CommunicationFeaturePhase>(),
-                      Server::template id<HttpEndpointProvider>(),
+                      typeid(HttpEndpointProvider),
                       allowJwtSecret,
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
-                                                  CommunicationFeaturePhase>());
-
     if constexpr (Server::template contains<ShellConsoleFeature>()) {
-      static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
-                                                    ShellConsoleFeature>());
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
 
@@ -143,7 +138,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                size_t registration, bool allowJwtSecret,
+                std::type_index registration, bool allowJwtSecret,
                 size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);

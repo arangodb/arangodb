@@ -36,6 +36,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -875,7 +876,7 @@ cache is strictly enforced. You can set this option to limit the memory usage of
 the block cache to at most the specified size. If inserting a data block into
 the cache would exceed the cache's capacity, the data block is not inserted.
 If disabled, a data block may still get inserted into the cache. It is evicted
-later, but the cache may temporarily grow beyond its capacity limit. 
+later, but the cache may temporarily grow beyond its capacity limit.
 
 The default value for `--rocksdb.enforce-block-cache-size-limit` was `false`
 before version 3.10, but was changed to `true` from version 3.10 onwards.
@@ -902,7 +903,7 @@ towards RocksDB's block cache memory limit.
 If you set this option to `false`, the memory usage for index and filter blocks
 is not accounted for.
 
-The default value of `--rocksdb.cache-index-and-filter-blocks` was `false` in 
+The default value of `--rocksdb.cache-index-and-filter-blocks` was `false` in
 versions before 3.10, and was changed to `true` from version 3.10 onwards.
 
 To improve stability of memory usage and avoid untracked memory allocations by
@@ -1308,7 +1309,7 @@ downgrading.)");
       .setIntroducedIn(31100)
       .setLongDescription(
           R"(The jemalloc-based memory allocator for the RocksDB block cache
-will also exclude the block cache contents from coredumps, potentially making generated 
+will also exclude the block cache contents from coredumps, potentially making generated
 coredumps a lot smaller.
 In order to use this option, the executable needs to be compiled with jemalloc
 support (which is the default on Linux).)");
@@ -1392,7 +1393,7 @@ option to `0`.)");
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the document data for different collections/shards
-into different .sst files. Otherwise the document data from different 
+into different .sst files. Otherwise the document data from different
 collections/shards can be mixed and written into the same .sst files.
 
 Enabling this option usually has the benefit of making the RocksDB
@@ -1404,7 +1405,7 @@ these .sst files can be higher than if there are fewer .sst files (this
 is because there is some per-.sst file overhead).
 In particular on deployments with many collections/shards
 this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process 
+of outgrowing the maximum number of file descriptors the ArangoDB process
 can open. Thus the option should only be enabled on deployments with a
 limited number of collections/shards.)");
 
@@ -1424,7 +1425,7 @@ limited number of collections/shards.)");
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the primary index data for different collections/shards
-into different .sst files. Otherwise the primary index data from different 
+into different .sst files. Otherwise the primary index data from different
 collections/shards can be mixed and written into the same .sst files.
 
 Enabling this option usually has the benefit of making the RocksDB
@@ -1436,7 +1437,7 @@ these .sst files can be higher than if there are fewer .sst files (this
 is because there is some per-.sst file overhead).
 In particular on deployments with many collections/shards
 this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process 
+of outgrowing the maximum number of file descriptors the ArangoDB process
 can open. Thus the option should only be enabled on deployments with a
 limited number of collections/shards.)");
 
@@ -1455,7 +1456,7 @@ limited number of collections/shards.)");
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the edge index data for different edge collections/shards
-into different .sst files. Otherwise the edge index data from different 
+into different .sst files. Otherwise the edge index data from different
 edge collections/shards can be mixed and written into the same .sst files.
 
 Enabling this option usually has the benefit of making the RocksDB
@@ -1467,7 +1468,7 @@ these .sst files can be higher than if there are fewer .sst files (this
 is because there is some per-.sst file overhead).
 In particular on deployments with many edge collections/shards
 this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process 
+of outgrowing the maximum number of file descriptors the ArangoDB process
 can open. Thus the option should only be enabled on deployments with a
 limited number of edge collections/shards.)");
 
@@ -1486,8 +1487,8 @@ limited number of edge collections/shards.)");
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
 compaction write the persistent index data for different persistent
-indexes (also indexes from different collections/shards) into different 
-.sst files. Otherwise the persistent index data from different 
+indexes (also indexes from different collections/shards) into different
+.sst files. Otherwise the persistent index data from different
 collections/shards/indexes can be mixed and written into the same .sst files.
 
 Enabling this option usually has the benefit of making the RocksDB
@@ -1499,7 +1500,7 @@ these .sst files can be higher than if there are fewer .sst files (this
 is because there is some per-.sst file overhead).
 In particular on deployments with many collections/shards/indexes
 this can lead to a very high number of .sst files, with the potential
-of outgrowing the maximum number of file descriptors the ArangoDB process 
+of outgrowing the maximum number of file descriptors the ArangoDB process
 can open. Thus the option should only be enabled on deployments with a
 limited number of edge collections/shards/indexes.)");
 

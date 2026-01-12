@@ -34,27 +34,27 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<ActionFeature>(),
-               ArangodServer::id<AgencyFeature>(),
-               ArangodServer::id<ClusterFeature>(),
+auto const kNonServerFeatures =
+    std::array{std::type_index(typeid(ActionFeature)),
+               std::type_index(typeid(AgencyFeature)),
+               std::type_index(typeid(ClusterFeature)),
 #ifdef ARANGODB_HAVE_FORK
-               ArangodServer::id<SupervisorFeature>(),
-               ArangodServer::id<DaemonFeature>(),
+               std::type_index(typeid(SupervisorFeature)),
+               std::type_index(typeid(DaemonFeature)),
 #endif
 #ifdef USE_V8
-               ArangodServer::id<FoxxFeature>(),
+               std::type_index(typeid(FoxxFeature)),
 #endif
-               ArangodServer::id<GeneralServerFeature>(),
-               ArangodServer::id<GreetingsFeature>(),
+               std::type_index(typeid(GeneralServerFeature)),
+               std::type_index(typeid(GreetingsFeature)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-               ArangodServer::id<ProcessEnvironmentFeature>(),
+               std::type_index(typeid(ProcessEnvironmentFeature)),
 #endif
-               ArangodServer::id<HttpEndpointProvider>(),
-               ArangodServer::id<LogBufferFeature>(),
-               ArangodServer::id<ServerFeature>(),
-               ArangodServer::id<SslServerFeature>(),
-               ArangodServer::id<StatisticsFeature>()};
+               std::type_index(typeid(HttpEndpointProvider)),
+               std::type_index(typeid(LogBufferFeature)),
+               std::type_index(typeid(ServerFeature)),
+               std::type_index(typeid(SslServerFeature)),
+               std::type_index(typeid(StatisticsFeature))};
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -117,6 +117,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<GeneralServerFeature>) {
           return std::make_unique<GeneralServerFeature>(
+              server, server.template getFeature<metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<ReplicationFeature>) {
+          return std::make_unique<ReplicationFeature>(
               server, server.template getFeature<metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<InitDatabaseFeature>) {
@@ -196,9 +200,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server,
 #ifdef USE_V8
-              std::array { ArangodServer::id<ScriptFeature>() }
+              std::array{std::type_index(typeid(ScriptFeature))}
 #else
-              std::array { ArangodServer::id<AgencyFeaturePhase>() }
+              std::array{std::type_index(typeid(AgencyFeaturePhase))}
 #endif
           );
         },

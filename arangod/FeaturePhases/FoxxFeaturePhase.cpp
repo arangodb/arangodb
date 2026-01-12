@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FoxxFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "FeaturePhases/ServerFeaturePhase.h"
+#include "RestServer/BootstrapFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "V8Server/FoxxFeature.h"
 
 namespace arangodb::application_features {
 

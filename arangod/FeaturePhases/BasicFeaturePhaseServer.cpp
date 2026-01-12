@@ -22,7 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicFeaturePhaseServer.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "RestServer/CpuUsageFeature.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/MaxMapCountFeature.h"
+#include "RestServer/NonceFeature.h"
+#include "RestServer/PrivilegeFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
+#include "RestServer/SupervisorFeature.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Sharding/ShardingFeature.h"
+#include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 namespace arangodb::application_features {
 
@@ -31,10 +52,10 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase, ArangodServer>();
 
-  if constexpr (ArangodServer::contains<DaemonFeature>()) {
+  if (server.hasFeature<DaemonFeature>()) {
     startsAfter<DaemonFeature, ArangodServer>();
   }
-  if constexpr (ArangodServer::contains<SupervisorFeature>()) {
+  if (server.hasFeature<SupervisorFeature>()) {
     startsAfter<SupervisorFeature, ArangodServer>();
   }
   startsAfter<CpuUsageFeature, ArangodServer>();
@@ -50,13 +71,13 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   startsAfter<SslFeature, ArangodServer>();
   startsAfter<TempFeature, ArangodServer>();
 
-  if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {
+  if (server.hasFeature<FileDescriptorsFeature>()) {
     startsAfter<FileDescriptorsFeature, ArangodServer>();
   }
-  if constexpr (ArangodServer::contains<AuditFeature>()) {
+  if (server.hasFeature<AuditFeature>()) {
     startsAfter<AuditFeature, ArangodServer>();
   }
-  if constexpr (ArangodServer::contains<EncryptionFeature>()) {
+  if (server.hasFeature<EncryptionFeature>()) {
     startsAfter<EncryptionFeature, ArangodServer>();
   }
 }

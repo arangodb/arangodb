@@ -22,7 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "Network/NetworkFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Statistics/StatisticsFeature.h"
 
 namespace arangodb {
 class SslServerFeature;

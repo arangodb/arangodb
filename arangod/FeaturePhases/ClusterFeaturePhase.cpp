@@ -22,7 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "V8/V8PlatformFeature.h"
 
 namespace arangodb::application_features {
 

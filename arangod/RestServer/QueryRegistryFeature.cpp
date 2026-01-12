@@ -26,8 +26,8 @@
 #include "QueryRegistryFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/NumberOfCores.h"
@@ -35,12 +35,12 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -240,9 +240,6 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
           metrics.add(arangodb_aql_query_plan_cache_misses_total{})),
       _queryPlanCacheMemoryUsage(
           metrics.add(arangodb_aql_query_plan_cache_memory_usage{})) {
-  static_assert(
-      Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
-
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();
@@ -317,7 +314,7 @@ limit value, the query is aborted with a *resource limit exceeded* exception.
 In a cluster, the memory accounting is done per server, so the limit value is
 effectively a memory limit per query per server node.
 
-Some operations, namely calls to AQL functions and their intermediate results, 
+Some operations, namely calls to AQL functions and their intermediate results,
 are not properly tracked.
 
 You can override the limit by setting the `memoryLimit` option for individual
@@ -354,9 +351,9 @@ Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %me
 You can set a global memory limit for the total memory used by all AQL queries
 that currently execute via the `--query.global-memory-limit` option.
 
-From ArangoDB 3.8 on, the per-query memory tracking has a granularity of 32 KB 
-chunks. That means checking for memory limits such as "1" (e.g. for testing) 
-may not make a query fail if the total memory allocations in the query don't 
+From ArangoDB 3.8 on, the per-query memory tracking has a granularity of 32 KB
+chunks. That means checking for memory limits such as "1" (e.g. for testing)
+may not make a query fail if the total memory allocations in the query don't
 exceed 32 KiB. The effective lowest memory limit value that can be enforced is
 thus 32 KiB. Memory limit values higher than 32 KiB will be checked whenever the
 total memory allocations cross a 32 KiB boundary.)");

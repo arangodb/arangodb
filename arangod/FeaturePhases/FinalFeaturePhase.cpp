@@ -22,7 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FinalFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "RestServer/ConsoleFeature.h"
+#include "RestServer/ScriptFeature.h"
+#include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb::application_features {
 

@@ -22,7 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 namespace arangodb::application_features {
 

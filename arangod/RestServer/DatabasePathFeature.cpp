@@ -24,7 +24,10 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -36,7 +39,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -49,7 +51,7 @@ DatabasePathFeature::DatabasePathFeature(Server& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
-  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+  if constexpr (ArangodFeatures::contains<FileDescriptorsFeature>()) {
     startsAfter<FileDescriptorsFeature>();
   }
   startsAfter<LanguageFeature>();

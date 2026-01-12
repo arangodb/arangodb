@@ -24,6 +24,7 @@
 #include "RestServer/FortuneFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
