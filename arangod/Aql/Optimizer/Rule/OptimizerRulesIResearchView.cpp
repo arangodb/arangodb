@@ -435,8 +435,9 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
         if (fieldSize < a.attr.size()) {
           sortBucket.postfix = a.attr[fieldSize].name;
-          for (size_t i = fieldSize + 1; i < a.attr.size(); i++)
+          for (size_t i = fieldSize + 1; i < a.attr.size(); i++) {
             sortBucket.postfix += ("." + a.attr[i].name);
+          }
         }
       }
     } else {

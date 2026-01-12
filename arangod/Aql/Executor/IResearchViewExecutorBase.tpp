@@ -68,15 +68,18 @@ inline velocypack::Slice getStoredValue(
   auto splitPostfixAttrs = [](const std::string& input) {
     std::string_view view = input;
     std::vector<std::string> postfixAttrs;
-    for (auto part : std::views::split(view, '.'))
+    for (auto part : std::views::split(view, '.')) {
       postfixAttrs.emplace_back(part.begin(), part.end());
+    }
 
     return postfixAttrs;
   };
 
   auto attrs = splitPostfixAttrs(sort.postfix);
   slice = slice.get(attrs.begin(), attrs.end());
-  if (slice.isNone()) return velocypack::Slice::nullSlice();
+  if (slice.isNone()) {
+    return velocypack::Slice::nullSlice();
+  }
 
   return slice;
 }

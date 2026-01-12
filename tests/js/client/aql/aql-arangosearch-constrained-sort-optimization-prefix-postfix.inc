@@ -148,8 +148,8 @@ const { assert, log } = require("console");
         for (let i = 0; i < testcases.length; i++) {
 
           let testcase = testcases[i];
-          let results = db._query(testcase.query);
-          let resultKeys = results['data']['result'].map(row => row['_key']);
+          let results = db._query(testcase.query).toArray();
+          let resultKeys = results.map(row => row['_key']);
           assertEqual(resultKeys, testcase.expected, "Failed test description: (" + testcase.description + ")");
         }
 
