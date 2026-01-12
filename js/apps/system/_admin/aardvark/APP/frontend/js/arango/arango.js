@@ -6,11 +6,14 @@
 
   // In cluster mode, the web UI is always served by a coordinator.
   // No need to call the Foxx endpoint - use frontendConfig directly.
+  // Note: Must be async to allow caller's initialization to complete first.
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       isCoordinator = frontendConfig.isCluster;
     }
-    callback(false, isCoordinator);
+    window.setTimeout(function () {
+      callback(false, isCoordinator);
+    }, 0);
   };
 
   window.versionHelper = {
