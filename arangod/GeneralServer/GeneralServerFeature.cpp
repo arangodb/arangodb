@@ -169,23 +169,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
     : ArangodFeature{server, *this},
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
-      _telemetricsMaxRequestsPerInterval(3),
-      _startedListening(false),
-      _allowEarlyConnections(false),
-      _handleContentEncodingForUnauthenticatedRequests(false),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _enableTelemetrics(false),
-#else
-      _enableTelemetrics(true),
-#endif
-      _proxyCheck(true),
-      _returnQueueTimeHeader(true),
-      _permanentRootRedirect(true),
-      _compressResponseThreshold(0),
-      _redirectRootTo("/_admin/aardvark/index.html"),
-      _supportInfoApiPolicy("admin"),
-      _optionsApiPolicy("jwt"),
-      _numIoThreads(NetworkFeature::defaultIOThreads()),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
@@ -214,7 +197,7 @@ void GeneralServerFeature::collectOptions(
   options
       ->addOption("--server.telemetrics-api",
                   "Whether to enable the telemetrics API.",
-                  new options::BooleanParameter(&_enableTelemetrics),
+                  new options::BooleanParameter(&_options.enableTelemetrics),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::DefaultNoComponents,
@@ -224,16 +207,16 @@ void GeneralServerFeature::collectOptions(
       .setIntroducedIn(31100);
 
   options
-      ->addOption(
-          "--server.telemetrics-api-max-requests",
-          "The maximum number of requests from arangosh that the "
-          "telemetrics API responds to without rate-limiting.",
-          new options::UInt64Parameter(&_telemetricsMaxRequestsPerInterval),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
+      ->addOption("--server.telemetrics-api-max-requests",
+                  "The maximum number of requests from arangosh that the "
+                  "telemetrics API responds to without rate-limiting.",
+                  new options::UInt64Parameter(
+                      &_options.telemetricsMaxRequestsPerInterval),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100)
       .setLongDescription(R"(This option limits requests from the arangosh to
 the telemetrics API, but not any other requests to the API.
@@ -248,7 +231,7 @@ batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_numIoThreads, /*base*/ 1, /*minValue*/ 1),
+      new UInt64Parameter(&_options.numIoThreads, /*base*/ 1, /*minValue*/ 1),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
@@ -256,7 +239,7 @@ batch processing.)");
                   "The policy for exposing the support info and also the "
                   "telemetrics API.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_supportInfoApiPolicy,
+                      &_options.supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
                                                       "admin", "public"}))
       .setIntroducedIn(30900);
@@ -265,7 +248,7 @@ batch processing.)");
       ->addOption("--server.options-api",
                   "The policy for exposing the options API.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_optionsApiPolicy,
+                      &_options.optionsApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
                                                       "admin", "public"}))
       .setIntroducedIn(31200);
@@ -280,7 +263,7 @@ batch processing.)");
   options
       ->addOption("--http.keep-alive-timeout",
                   "The keep-alive timeout for HTTP connections (in seconds).",
-                  new DoubleParameter(&_keepAliveTimeout))
+                  new DoubleParameter(&_options.keepAliveTimeout))
       .setLongDescription(R"(Idle keep-alive connections are closed by the
 server automatically when the timeout is reached. A keep-alive-timeout value of
 `0` disables the keep-alive feature entirely.)");
@@ -293,20 +276,21 @@ server automatically when the timeout is reached. A keep-alive-timeout value of
   options->addOption(
       "--http.trusted-origin",
       "The trusted origin URLs for CORS requests with credentials.",
-      new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
+      new VectorParameter<StringParameter>(
+          &_options.accessControlAllowOrigins));
 
   options->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                     new StringParameter(&_redirectRootTo));
+                     new StringParameter(&_options.redirectRootTo));
 
   options->addOption("--http.permanently-redirect-root",
                      "Whether to use a permanent or temporary redirect.",
-                     new BooleanParameter(&_permanentRootRedirect));
+                     new BooleanParameter(&_options.permanentRootRedirect));
 
   options
       ->addOption("--http.return-queue-time-header",
                   "Whether to return the `x-arango-queue-time-seconds` header "
                   "in all responses.",
-                  new BooleanParameter(&_returnQueueTimeHeader))
+                  new BooleanParameter(&_options.returnQueueTimeHeader))
       .setIntroducedIn(30900)
       .setLongDescription(R"(The value contained in this header indicates the
 current queueing/dequeuing time for requests in the scheduler (in seconds).
@@ -317,15 +301,15 @@ and also react on overload.)");
       ->addOption("--http.compress-response-threshold",
                   "The HTTP response body size from which on responses are "
                   "transparently compressed in case the client asks for it.",
-                  new UInt64Parameter(&_compressResponseThreshold))
+                  new UInt64Parameter(&_options.compressResponseThreshold))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Automatically compress outgoing HTTP responses with the
 deflate or gzip compression format, in case the client request advertises
 support for this. Compression will only happen for HTTP/1.1 and HTTP/2
-connections, if the size of the uncompressed response body exceeds 
+connections, if the size of the uncompressed response body exceeds
 the threshold value controlled by this startup option,
-and if the response body size after compression is less than the original 
+and if the response body size after compression is less than the original
 response body size.
 Using the value 0 disables the automatic response compression.")");
 
@@ -333,7 +317,7 @@ Using the value 0 disables the automatic response compression.")");
       ->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",
-                  new BooleanParameter(&_allowEarlyConnections))
+                  new BooleanParameter(&_options.allowEarlyConnections))
       .setIntroducedIn(31000);
 
   options->addOldOption("frontend.proxy-request-check",
@@ -341,7 +325,7 @@ Using the value 0 disables the automatic response compression.")");
 
   options->addOption("--web-interface.proxy-request-check",
                      "Enable proxy request checking.",
-                     new BooleanParameter(&_proxyCheck),
+                     new BooleanParameter(&_options.proxyCheck),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
@@ -354,7 +338,7 @@ Using the value 0 disables the automatic response compression.")");
       "--web-interface.trusted-proxy",
       "The list of proxies to trust (can be IP or network). Make "
       "sure `--web-interface.proxy-request-check` is enabled.",
-      new VectorParameter<StringParameter>(&_trustedProxies),
+      new VectorParameter<StringParameter>(&_options.trustedProxies),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
@@ -365,7 +349,7 @@ Using the value 0 disables the automatic response compression.")");
       "--server.failure-point",
       "The failure point to set during server startup (requires compilation "
       "with failure points support).",
-      new VectorParameter<StringParameter>(&_failurePoints),
+      new VectorParameter<StringParameter>(&_options.failurePoints),
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
 #endif
@@ -375,26 +359,26 @@ Using the value 0 disables the automatic response compression.")");
           "--http.handle-content-encoding-for-unauthenticated-requests",
           "Handle Content-Encoding headers for unauthenticated requests.",
           new BooleanParameter(
-              &_handleContentEncodingForUnauthenticatedRequests))
+              &_options.handleContentEncodingForUnauthenticatedRequests))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(If the option is set to `true`, the server will automatically 
+          R"(If the option is set to `true`, the server will automatically
 uncompress incoming HTTP requests with Content-Encodings gzip and deflate
 even if the request is not authenticated.)");
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_accessControlAllowOrigins.empty()) {
+  if (!_options.accessControlAllowOrigins.empty()) {
     // trim trailing slash from all members
-    for (auto& it : _accessControlAllowOrigins) {
+    for (auto& it : _options.accessControlAllowOrigins) {
       if (it == "*" || it == "all") {
         // special members "*" or "all" means all origins are allowed
-        _accessControlAllowOrigins.clear();
-        _accessControlAllowOrigins.push_back("*");
+        _options.accessControlAllowOrigins.clear();
+        _options.accessControlAllowOrigins.push_back("*");
         break;
       } else if (it == "none") {
         // "none" means no origins are allowed
-        _accessControlAllowOrigins.clear();
+        _options.accessControlAllowOrigins.clear();
         break;
       } else if (it.ends_with('/')) {
         // strip trailing slash
@@ -403,17 +387,17 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     }
 
     // remove empty members
-    _accessControlAllowOrigins.erase(
-        std::remove_if(_accessControlAllowOrigins.begin(),
-                       _accessControlAllowOrigins.end(),
+    _options.accessControlAllowOrigins.erase(
+        std::remove_if(_options.accessControlAllowOrigins.begin(),
+                       _options.accessControlAllowOrigins.end(),
                        [](std::string const& value) {
                          return basics::StringUtils::trim(value).empty();
                        }),
-        _accessControlAllowOrigins.end());
+        _options.accessControlAllowOrigins.end());
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  for (auto const& it : _failurePoints) {
+  for (auto const& it : _options.failurePoints) {
     TRI_AddFailurePointDebugging(it);
   }
 #endif
@@ -424,7 +408,7 @@ void GeneralServerFeature::prepare() {
 
   if (ServerState::instance()->isAgent()) {
     // telemetrics automatically and always turned off on agents
-    _enableTelemetrics = false;
+    _options.enableTelemetrics = false;
   }
 
   _jobManager = std::make_unique<AsyncJobManager>();
@@ -442,7 +426,7 @@ void GeneralServerFeature::prepare() {
 
   buildServers();
 
-  if (_allowEarlyConnections) {
+  if (_options.allowEarlyConnections) {
     // open HTTP interface early if this is requested.
     startListening();
   }
@@ -469,12 +453,12 @@ void GeneralServerFeature::start() {
   hf->seal();
 
   std::atomic_store(&_handlerFactory, std::move(hf));
-  TRI_ASSERT(!_allowEarlyConnections || _startedListening);
-  if (!_allowEarlyConnections) {
+  TRI_ASSERT(!_options.allowEarlyConnections || _options.startedListening);
+  if (!_options.allowEarlyConnections) {
     // if HTTP interface is not open yet, open it now
     startListening();
   }
-  TRI_ASSERT(_startedListening);
+  TRI_ASSERT(_options.startedListening);
 
   ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
 }
@@ -507,27 +491,29 @@ void GeneralServerFeature::unprepare() {
 }
 
 double GeneralServerFeature::keepAliveTimeout() const noexcept {
-  return _keepAliveTimeout;
+  return _options.keepAliveTimeout;
 }
 
 bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
     const noexcept {
-  return _handleContentEncodingForUnauthenticatedRequests;
+  return _options.handleContentEncodingForUnauthenticatedRequests;
 }
 
-bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
+bool GeneralServerFeature::proxyCheck() const noexcept {
+  return _options.proxyCheck;
+}
 
 bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
-  return _returnQueueTimeHeader;
+  return _options.returnQueueTimeHeader;
 }
 
 std::vector<std::string> GeneralServerFeature::trustedProxies() const {
-  return _trustedProxies;
+  return _options.trustedProxies;
 }
 
 std::vector<std::string> const&
 GeneralServerFeature::accessControlAllowOrigins() const {
-  return _accessControlAllowOrigins;
+  return _options.accessControlAllowOrigins;
 }
 
 Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
@@ -542,23 +528,23 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
 }
 
 bool GeneralServerFeature::permanentRootRedirect() const noexcept {
-  return _permanentRootRedirect;
+  return _options.permanentRootRedirect;
 }
 
 std::string GeneralServerFeature::redirectRootTo() const {
-  return _redirectRootTo;
+  return _options.redirectRootTo;
 }
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
-  return _supportInfoApiPolicy;
+  return _options.supportInfoApiPolicy;
 }
 
 std::string const& GeneralServerFeature::optionsApiPolicy() const noexcept {
-  return _optionsApiPolicy;
+  return _options.optionsApiPolicy;
 }
 
 uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
-  return _compressResponseThreshold;
+  return _options.compressResponseThreshold;
 }
 
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
@@ -588,11 +574,11 @@ void GeneralServerFeature::buildServers() {
   }
 
   _servers.emplace_back(std::make_unique<GeneralServer>(
-      *this, _numIoThreads, _allowEarlyConnections));
+      *this, _options.numIoThreads, _options.allowEarlyConnections));
 }
 
 void GeneralServerFeature::startListening() {
-  TRI_ASSERT(!_startedListening);
+  TRI_ASSERT(!_options.startedListening);
 
   EndpointFeature& endpoint =
       server().getFeature<HttpEndpointProvider, EndpointFeature>();
@@ -601,7 +587,7 @@ void GeneralServerFeature::startListening() {
   for (auto& server : _servers) {
     server->startListening(endpointList);
   }
-  _startedListening = true;
+  _options.startedListening = true;
 }
 
 void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
@@ -855,7 +841,7 @@ void GeneralServerFeature::defineRemainingHandlers(
       "/_admin/deployment",
       RestHandlerCreator<arangodb::RestAdminDeploymentHandler>::createNoData);
 
-  if (_supportInfoApiPolicy != "disabled") {
+  if (_options.supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
 
@@ -863,7 +849,7 @@ void GeneralServerFeature::defineRemainingHandlers(
                  RestHandlerCreator<RestTelemetricsHandler>::createNoData);
   }
 
-  if (_optionsApiPolicy != "disabled") {
+  if (_options.optionsApiPolicy != "disabled") {
     f.addHandler("/_admin/options",
                  RestHandlerCreator<RestOptionsHandler>::createNoData);
     f.addHandler(
