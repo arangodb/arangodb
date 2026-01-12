@@ -230,11 +230,37 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
     return VPackValueType::Object;
   }
 
-  // we should never get here
-  TRI_ASSERT(false);
-
-  // return null in case assertions are turned off
-  return VPackValueType::Null;
+  // Non-constant types for structural comparison
+  switch (node->type) {
+    case NODE_TYPE_OPERATOR_NARY_AND:
+    case NODE_TYPE_OPERATOR_NARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+    case NODE_TYPE_REFERENCE:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_FCALL:
+      return VPackValueType::Custom;
+    case NODE_TYPE_SUBQUERY:
+      TRI_ASSERT(false);
+      return VPackValueType::Null;
+    default:
+      return VPackValueType::Custom;
+  }
 }
 
 int compareDoubleValues(double lhs, double rhs) {
@@ -406,6 +432,186 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
       return basics::VelocyPackHelper::compare(
           builder.slice() /*lhs*/, VPackSlice(builder.start() + split) /*rhs*/,
           compareUtf8);
+    }
+
+    case VPackValueType::Custom: {
+      // Non-constant nodes - structural comparison for duplicate detection
+
+      if (lhs->type != rhs->type) {
+        return (lhs->type < rhs->type ? -1 : 1);
+      }
+
+      if (lhs->type == NODE_TYPE_SUBQUERY) {
+        TRI_ASSERT(false);
+        return 0;
+      }
+
+      size_t lhsMembers = lhs->numMembers();
+      size_t rhsMembers = rhs->numMembers();
+      if (lhsMembers != rhsMembers) {
+        return (lhsMembers < rhsMembers ? -1 : 1);
+      }
+
+      // Commutative operators: compare in canonical order
+      bool isCommutative = (lhs->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+                            lhs->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+                            lhs->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+                            lhs->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+                            lhs->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+                            lhs->type == NODE_TYPE_OPERATOR_BINARY_OR);
+
+      if (isCommutative && lhsMembers == 2) {
+        AstNode const* lhsLeft = lhs->getMemberUnchecked(0);
+        AstNode const* lhsRight = lhs->getMemberUnchecked(1);
+        AstNode const* rhsLeft = rhs->getMemberUnchecked(0);
+        AstNode const* rhsRight = rhs->getMemberUnchecked(1);
+
+        int lhsCmp = compareAstNodes<resolveAttributeAccess>(lhsLeft, lhsRight,
+                                                             compareUtf8);
+        int rhsCmp = compareAstNodes<resolveAttributeAccess>(rhsLeft, rhsRight,
+                                                             compareUtf8);
+
+        if (lhsCmp > 0) {
+          std::swap(lhsLeft, lhsRight);
+        }
+        if (rhsCmp > 0) {
+          std::swap(rhsLeft, rhsRight);
+        }
+
+        int cmp1 = compareAstNodes<resolveAttributeAccess>(lhsLeft, rhsLeft,
+                                                           compareUtf8);
+        if (cmp1 != 0) {
+          return cmp1;
+        }
+        int cmp2 = compareAstNodes<resolveAttributeAccess>(lhsRight, rhsRight,
+                                                           compareUtf8);
+        return cmp2;
+      }
+
+      // NARY_AND/OR: sort children for canonical comparison
+      if (lhs->type == NODE_TYPE_OPERATOR_NARY_AND ||
+          lhs->type == NODE_TYPE_OPERATOR_NARY_OR) {
+        std::vector<AstNode const*> lhsChildren;
+        std::vector<AstNode const*> rhsChildren;
+
+        for (size_t i = 0; i < lhsMembers; ++i) {
+          lhsChildren.push_back(lhs->getMemberUnchecked(i));
+        }
+        for (size_t i = 0; i < rhsMembers; ++i) {
+          rhsChildren.push_back(rhs->getMemberUnchecked(i));
+        }
+
+        auto comparator = [compareUtf8](AstNode const* a, AstNode const* b) {
+          return compareAstNodes<resolveAttributeAccess>(a, b, compareUtf8) < 0;
+        };
+        std::sort(lhsChildren.begin(), lhsChildren.end(), comparator);
+        std::sort(rhsChildren.begin(), rhsChildren.end(), comparator);
+
+        for (size_t i = 0; i < lhsChildren.size(); ++i) {
+          int cmp = compareAstNodes<resolveAttributeAccess>(
+              lhsChildren[i], rhsChildren[i], compareUtf8);
+          if (cmp != 0) {
+            return cmp;
+          }
+        }
+        return 0;
+      }
+
+      // IN/NIN: sort array elements for canonical comparison
+      if ((lhs->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+           lhs->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
+          lhsMembers == 2) {
+        int cmp = compareAstNodes<resolveAttributeAccess>(
+            lhs->getMemberUnchecked(0), rhs->getMemberUnchecked(0),
+            compareUtf8);
+        if (cmp != 0) {
+          return cmp;
+        }
+
+        AstNode const* lhsArray = lhs->getMemberUnchecked(1);
+        AstNode const* rhsArray = rhs->getMemberUnchecked(1);
+
+        if (lhsArray->type != NODE_TYPE_ARRAY ||
+            rhsArray->type != NODE_TYPE_ARRAY) {
+          return compareAstNodes<resolveAttributeAccess>(lhsArray, rhsArray,
+                                                         compareUtf8);
+        }
+
+        size_t const numLhs = lhsArray->numMembers();
+        size_t const numRhs = rhsArray->numMembers();
+        if (numLhs != numRhs) {
+          return (numLhs < numRhs ? -1 : 1);
+        }
+
+        std::vector<AstNode const*> lhsElements;
+        std::vector<AstNode const*> rhsElements;
+
+        for (size_t i = 0; i < numLhs; ++i) {
+          lhsElements.push_back(lhsArray->getMemberUnchecked(i));
+        }
+        for (size_t i = 0; i < numRhs; ++i) {
+          rhsElements.push_back(rhsArray->getMemberUnchecked(i));
+        }
+
+        auto comparator = [compareUtf8](AstNode const* a, AstNode const* b) {
+          return compareAstNodes<resolveAttributeAccess>(a, b, compareUtf8) < 0;
+        };
+        std::sort(lhsElements.begin(), lhsElements.end(), comparator);
+        std::sort(rhsElements.begin(), rhsElements.end(), comparator);
+
+        for (size_t i = 0; i < lhsElements.size(); ++i) {
+          int cmp = compareAstNodes<resolveAttributeAccess>(
+              lhsElements[i], rhsElements[i], compareUtf8);
+          if (cmp != 0) {
+            return cmp;
+          }
+        }
+        return 0;
+      }
+
+      // REFERENCE: compare variable IDs
+      if (lhs->type == NODE_TYPE_REFERENCE) {
+        auto lhsVar = static_cast<Variable const*>(lhs->getData());
+        auto rhsVar = static_cast<Variable const*>(rhs->getData());
+        if (lhsVar->id != rhsVar->id) {
+          return (lhsVar->id < rhsVar->id ? -1 : 1);
+        }
+        return 0;
+      }
+
+      // ATTRIBUTE_ACCESS: compare names then fall through to children
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        std::string_view lhsName = lhs->getStringView();
+        std::string_view rhsName = rhs->getStringView();
+        int cmp = lhsName.compare(rhsName);
+        if (cmp != 0) {
+          return (cmp < 0 ? -1 : 1);
+        }
+      }
+
+      // FCALL: compare function names then fall through to arguments
+      if (lhs->type == NODE_TYPE_FCALL) {
+        auto lhsFunc = static_cast<Function const*>(lhs->getData());
+        auto rhsFunc = static_cast<Function const*>(rhs->getData());
+        if (lhsFunc != rhsFunc) {
+          int cmp = lhsFunc->name.compare(rhsFunc->name);
+          if (cmp != 0) {
+            return (cmp < 0 ? -1 : 1);
+          }
+        }
+      }
+
+      // Recursive comparison of children
+      for (size_t i = 0; i < lhsMembers; ++i) {
+        int cmp = compareAstNodes<resolveAttributeAccess>(
+            lhs->getMemberUnchecked(i), rhs->getMemberUnchecked(i),
+            compareUtf8);
+        if (cmp != 0) {
+          return cmp;
+        }
+      }
+
+      return 0;
     }
 
     default: {

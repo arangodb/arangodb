@@ -87,58 +87,40 @@ void clearAttributeAccess(
 // is a condition that excludes null (e.g. != null). if this is tracked first,
 // we are sure the index attribute value cannot be null and we can still use
 // the sparse index
-bool isSafeForComparison(AstNode const* node) noexcept {
+
+/// @brief helper to check if a node or any of its children contains a subquery
+bool containsSubquery(AstNode const* node) noexcept {
   if (node == nullptr) {
     return false;
   }
-
-  switch (node->type) {
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-    case NODE_TYPE_OPERATOR_BINARY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-    case NODE_TYPE_OPERATOR_BINARY_IN:
-    case NODE_TYPE_OPERATOR_BINARY_NIN:
-    case NODE_TYPE_ATTRIBUTE_ACCESS:
-    case NODE_TYPE_INDEXED_ACCESS:
-      return true;
-    case NODE_TYPE_OPERATOR_NARY_AND:
-    case NODE_TYPE_OPERATOR_NARY_OR:
-    case NODE_TYPE_SUBQUERY:
-      return false;
-    default:
-      return node->isConstant();
+  if (node->type == NODE_TYPE_SUBQUERY) {
+    return true;
   }
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (containsSubquery(node->getMemberUnchecked(i))) {
+      return true;
+    }
+  }
+  return false;
 }
 
+/// @brief compares two AST nodes for equality
 bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     return lhs == rhs;
   }
 
-  if (lhs->type != rhs->type || lhs->numMembers() != rhs->numMembers()) {
+  // Never compare subqueries - too expensive
+  if (lhs->type == NODE_TYPE_SUBQUERY || rhs->type == NODE_TYPE_SUBQUERY) {
     return false;
   }
 
-  if (!isSafeForComparison(lhs) || !isSafeForComparison(rhs)) {
-    return lhs->toNormalizedString() == rhs->toNormalizedString();
+  if (containsSubquery(lhs) || containsSubquery(rhs)) {
+    return false;
   }
 
-  if (lhs->isConstant() && rhs->isConstant()) {
-    return compareAstNodes(lhs, rhs, false) == 0;
-  }
-
-  size_t const n = lhs->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    if (!areNodesEqual(lhs->getMemberUnchecked(i),
-                       rhs->getMemberUnchecked(i))) {
-      return false;
-    }
-  }
-
-  return lhs->type == rhs->type;
+  return compareAstNodes(lhs, rhs, true) == 0;
 }
 
 int operationWeight(AstNode const* node) noexcept {
