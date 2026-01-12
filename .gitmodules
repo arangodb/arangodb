@@ -35,6 +35,3 @@
 [submodule "3rdParty/lz4"]
 	path = 3rdParty/lz4
 	url = https://github.com/lz4/lz4.git
-[submodule "3rdParty/abseil-cpp"]
-	path = 3rdParty/abseil-cpp
-	url = https://github.com/arangodb/abseil-cpp.git
