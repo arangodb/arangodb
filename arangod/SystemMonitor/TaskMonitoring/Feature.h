@@ -24,9 +24,8 @@
 
 #include "TaskMonitoring/task_registry_variable.h"
 #include "SystemMonitor/TaskMonitoring/Metrics.h"
-#include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/AsyncLockWithScheduler.h"
 
 namespace arangodb::task_monitoring {
 
@@ -34,25 +33,12 @@ class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
-  struct SchedulerWrapper {
-    using WorkHandle = Scheduler::WorkHandle;
-    template<typename F>
-    void queue(F&& fn) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
-                                         std::forward<F>(fn));
-    }
-    template<typename F>
-    WorkHandle queueDelayed(F&& fn, std::chrono::milliseconds timeout) {
-      return SchedulerFeature::SCHEDULER->queueDelayed(
-          "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
-          timeout, std::forward<F>(fn));
-    }
-  };
 
  public:
   static constexpr std::string_view name() { return "Tasks"; }
-  auto asyncLock() -> futures::Future<
-      futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
+  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
+    return _asyncLock.lock();
+  };
 
   Feature(Server& server);
 
@@ -73,8 +59,7 @@ class Feature final : public ArangodFeature {
   struct CleanupThread;
   std::shared_ptr<CleanupThread> _cleanupThread;
 
-  SchedulerWrapper _schedulerWrapper;
-  futures::FutureSharedLock<SchedulerWrapper> _async_mutex;
+  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
 }  // namespace arangodb::task_monitoring

@@ -49,8 +49,7 @@ DECLARE_GAUGE(
     arangodb_monitoring_tasks_existing_thread_registries, std::uint64_t,
     "Number of threads that started currently existing monitoring tasks");
 
-Feature::Feature(Server& server)
-    : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
+Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
@@ -66,11 +65,6 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(
           arangodb_monitoring_tasks_existing_thread_registries{}));
 }
-auto Feature::asyncLock()
-    -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
-  return _async_mutex.asyncLockExclusive();
-}
-
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
