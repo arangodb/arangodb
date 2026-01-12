@@ -18,41 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "GeneralServerOptions.h"
 
-#include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include "Network/NetworkFeature.h"
 
 namespace arangodb {
-namespace consensus {
-class Agent;
-}
 
-class AgencyFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "Agency"; }
-
-  explicit AgencyFeature(Server& server);
-  ~AgencyFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool activated() const noexcept { return _options.activated; }
-
-  consensus::Agent* agent() const;
-
- private:
-  AgencyOptions _options;
-  std::unique_ptr<consensus::Agent> _agent;
-};
+GeneralServerOptions::GeneralServerOptions()
+    : numIoThreads(NetworkFeature::defaultIOThreads()) {}
 
 }  // namespace arangodb

@@ -27,6 +27,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
+#include "Cluster/MaintenanceOptions.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -173,7 +174,7 @@ class MaintenanceFeature : public ArangodFeature {
   /// increased.
   bool increaseNumberOfSyncShardActionsQueued() noexcept {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
-    return n <= _maximalNumberOfSyncShardActionsQueued;
+    return n <= _options.maximalNumberOfSyncShardActionsQueued;
   }
 
   void decreaseNumberOfSyncShardActionsQueued() noexcept {
@@ -231,7 +232,9 @@ class MaintenanceFeature : public ArangodFeature {
 
   /// @brief Return number of seconds to say "not done" to block retries too
   /// soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
+  uint32_t getSecondsActionsBlock() const {
+    return _options.secondsActionsBlock;
+  }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -469,30 +472,11 @@ class MaintenanceFeature : public ArangodFeature {
  protected:
   ClusterFeature* _clusterFeature;
 
-  /// @brief option for forcing this feature to always be enable - used by the
-  /// catch tests
-  bool _forceActivation;
-
-  bool _resignLeadershipOnShutdown;
+  /// @brief All configurable options for MaintenanceFeature
+  MaintenanceOptions _options;
 
   /// @brief detect fresh start
   bool _firstRun;
-
-  /// @brief tunable option for thread pool size
-  uint32_t _maintenanceThreadsMax;
-
-  /// @brief tunable option for number of slow threads
-  uint32_t _maintenanceThreadsSlowMax;
-
-  /// @brief tunable option for number of seconds COMPLETE or FAILED actions
-  /// block
-  ///  duplicates from adding to _actionRegistry
-  int32_t _secondsActionsBlock;
-
-  /// @brief tunable option for number of seconds COMPLETE and FAILED actions
-  /// remain
-  ///  within _actionRegistry
-  int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
@@ -608,7 +592,6 @@ class MaintenanceFeature : public ArangodFeature {
   // still has a SynchronizeShard action queued from its previous life as
   // a shard follower for the shard.
   std::atomic<uint64_t> _numberOfSyncShardActionsQueued = 0;
-  uint64_t _maximalNumberOfSyncShardActionsQueued = 32;
 
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec =
