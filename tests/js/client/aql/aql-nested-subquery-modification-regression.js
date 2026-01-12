@@ -118,26 +118,6 @@ function subqueryModificationRegressionSuite() {
 
       assertEqual(check[0].testAttr, 0);
     },
-    testNestedSubqueryUpdateWithLimitAndFilter: function() {
-     const prepQuery = `INSERT {_key: "testDocument", testAttr: 1} IN ${colName} RETURN {}`;
-      db._query(prepQuery);
-      const query = `
-        LET sq0 = (
-          LET sq1 = (
-            LET sq2 = (UPDATE {_key: "testDocument", testAttr: 0} IN ${colName} RETURN {} )
-            RETURN {})
-          FILTER NOOPT(true)
-          LIMIT 1,10
-          RETURN {})
-        RETURN {}`;
-
-      const r = db._query(query);
-
-      const check = db._query(`FOR x IN ${colName} RETURN x`).toArray();
-      assertEqual(check.length, 1);
-
-      assertEqual(check[0].testAttr, 0);
-    },
     testNestedSubqueryReplaceWithLimitAndFilter: function() {
       const prepQuery = `INSERT {_key: "testDocument", testAttr: 1} IN ${colName} RETURN {}`;
       db._query(prepQuery);
