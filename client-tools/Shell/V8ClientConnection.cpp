@@ -2082,11 +2082,10 @@ static void ClientConnection_importCsv(
 
   ArangoshServer& server = v8connection->server();
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   auto* client = static_cast<ClientFeature*>(wrap->Value());
@@ -2180,11 +2179,10 @@ static void ClientConnection_importJson(
   ArangoshServer& server = v8connection->server();
 
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());

@@ -271,11 +271,10 @@ void ExportFeature::validateOptions(
 void ExportFeature::prepare() {
   logLGPLNotice();
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);
@@ -741,8 +740,8 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   writeToFile(*fd, xmlHeader);
   writeToFile(*fd, _graphName);
 
-  xmlHeader = R"(" 
-xmlns="http://www.cs.rpi.edu/XGMML" 
+  xmlHeader = R"("
+xmlns="http://www.cs.rpi.edu/XGMML"
 directed="1">
 )";
   writeToFile(*fd, xmlHeader);

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
 
+#include <frozen/string.h>
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 

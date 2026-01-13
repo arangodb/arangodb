@@ -488,9 +488,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
-  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }

@@ -273,7 +273,7 @@ void DatabaseManagerThread::run() {
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
-  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();

@@ -777,9 +777,9 @@ DumpFeature::DumpFeature(Server& server, int& exitCode)
       _exitCode{exitCode} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
-    startsAfter<BumpFileDescriptorsFeature>();
-  }
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<BumpFileDescriptorsFeature>();
+#endif
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -913,7 +913,7 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(This option enables a highly parallel variant
-of the dump protocol on the server side. It is only supported with ArangoDB 
+of the dump protocol on the server side. It is only supported with ArangoDB
 servers running version 3.12 or higher.
 If the dump should be restored into versions of ArangoDB older than 3.12, this
 option should be turned off.)")
@@ -1106,11 +1106,10 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         << "Dumping database '" << dbName << "' (" << dbId << ")";
 
     EncryptionFeature* encryption{};
-    if constexpr (Server::contains<EncryptionFeature>()) {
-      if (server().hasFeature<EncryptionFeature>()) {
-        encryption = &server().getFeature<EncryptionFeature>();
-      }
-    }
+#ifdef USE_ENTERPRISE
+    TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+    encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
     _directory = std::make_unique<ManagedDirectory>(
         encryption,
@@ -1450,11 +1449,10 @@ void DumpFeature::start() {
   double const start = TRI_microtime();
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(

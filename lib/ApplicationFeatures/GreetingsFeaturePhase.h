@@ -25,15 +25,15 @@
 
 #include "ApplicationFeaturePhase.h"
 
-namespace arangodb {
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeature.h"
 
-class ConfigFeature;
-class FileSystemFeature;
-class LoggerFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class VersionFeature;
-class GreetingsFeature;
+namespace arangodb {
 
 namespace application_features {
 

@@ -229,8 +229,22 @@ class ApplicationServer {
     disableFeatures(features, false);
   }
   void disableFeatures(std::span<const std::type_index>);
+
+  template<class... Features>
+  void forceDisableFeatures() {
+    std::array<std::type_index, sizeof...(Features)> features{
+        typeid(Features)...};
+    disableFeatures(features, true);
+  }
   void forceDisableFeatures(std::span<const std::type_index>);
 
+  // Checks for the existence of a feature. will not throw when used for
+  // a non-existing feature.
+  template<typename Type>
+  bool hasFeature() const noexcept {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    return hasFeature(typeid(Type));
+  }
  protected:
   friend class ApplicationFeature;
 

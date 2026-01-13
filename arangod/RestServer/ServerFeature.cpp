@@ -193,12 +193,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   auto disableDeamonAndSupervisor = [&]() {
-    if constexpr (ArangodFeatures::contains<DaemonFeature>()) {
-      server().disableFeatures<DaemonFeature>();
-    }
-    if constexpr (ArangodFeatures::contains<SupervisorFeature>()) {
-      server().disableFeatures<SupervisorFeature>();
-    }
+#ifdef ARANGODB_HAVE_FORK
+    server().disableFeatures<DaemonFeature>();
+    server().disableFeatures<SupervisorFeature>();
+#endif
   };
 
   if (!_restServer) {

@@ -24,13 +24,16 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 namespace arangodb {
-class EncryptionFeature;
-class SslFeature;
-class HttpEndpointProvider;
 namespace application_features {
-class GreetingsFeaturePhase;
 
 class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
  public:
@@ -42,16 +45,16 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
   explicit BasicFeaturePhaseClient(Server& server)
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
-    if constexpr (Server::template contains<GreetingsFeaturePhase>()) {
+    if (server.template hasFeature<GreetingsFeaturePhase>()) {
       startsAfter<GreetingsFeaturePhase, Server>();
     }
-    if constexpr (Server::template contains<EncryptionFeature>()) {
-      startsAfter<EncryptionFeature, Server>();
-    }
-    if constexpr (Server::template contains<SslFeature>()) {
+#ifdef USE_ENTERPRISE
+    startsAfter<EncryptionFeature, Server>();
+#endif
+    if (server.template hasFeature<SslFeature>()) {
       startsAfter<SslFeature, Server>();
     }
-    if constexpr (Server::template contains<HttpEndpointProvider>()) {
+    if (server.template hasFeature<HttpEndpointProvider>()) {
       startsAfter<HttpEndpointProvider, Server>();
     }
   }

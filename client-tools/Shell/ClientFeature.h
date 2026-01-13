@@ -28,6 +28,7 @@
 #include <string_view>
 
 #include "Shell/arangosh.h"
+#include "Shell/ShellConsoleFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/ReadWriteLock.h"
 
@@ -62,7 +63,7 @@ class ClientFeature final : public HttpEndpointProvider {
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    if constexpr (Server::template contains<ShellConsoleFeature>()) {
+    if (server.template hasFeature<ShellConsoleFeature>()) {
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
 

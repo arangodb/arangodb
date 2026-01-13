@@ -1157,11 +1157,10 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
         EncryptionFeature* encryption{};
-        if constexpr (Server::contains<EncryptionFeature>()) {
-          if (server().hasFeature<EncryptionFeature>()) {
-            encryption = &server().getFeature<EncryptionFeature>();
-          }
-        }
+#ifdef USE_ENTERPRISE
+        TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+        encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
         ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
@@ -1908,13 +1907,11 @@ RestoreFeature::RestoreFeature(Server& server, int& exitCode)
                      Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
-  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
-
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
-    startsAfter<BumpFileDescriptorsFeature>();
-  }
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<BumpFileDescriptorsFeature>();
+#endif
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -1978,9 +1975,9 @@ void RestoreFeature::collectOptions(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(Maximum cumulated size of in-memory buffers to keep around for 
+          R"(Maximum cumulated size of in-memory buffers to keep around for
 sending batches.
-A value > 0 will increase the memory usage of arangorestore, but can help in 
+A value > 0 will increase the memory usage of arangorestore, but can help in
 avoiding repeated memory allocations for building new in-memory buffers.)");
 
   options->addOption(
@@ -2211,11 +2208,10 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(
@@ -2383,11 +2379,10 @@ void RestoreFeature::start() {
           << "Restoring database '" << db.name << "'";
 
       EncryptionFeature* encryption{};
-      if constexpr (Server::contains<EncryptionFeature>()) {
-        if (server().hasFeature<EncryptionFeature>()) {
-          encryption = &server().getFeature<EncryptionFeature>();
-        }
-      }
+#ifdef USE_ENTERPRISE
+      TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+      encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
       _directory = std::make_unique<ManagedDirectory>(
           encryption,

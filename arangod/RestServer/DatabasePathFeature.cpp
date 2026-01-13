@@ -51,9 +51,9 @@ DatabasePathFeature::DatabasePathFeature(Server& server)
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
-  if constexpr (ArangodFeatures::contains<FileDescriptorsFeature>()) {
-    startsAfter<FileDescriptorsFeature>();
-  }
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
 }
