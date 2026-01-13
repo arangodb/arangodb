@@ -38,7 +38,7 @@ class Builder;
 }
 
 namespace aql {
-class AstNode;
+struct AstNode;
 class ExecutionNode;
 class ExecutionPlan;
 struct Variable;
@@ -98,7 +98,7 @@ class AttributeDetector final
                                     CollectionAccess& access);
 
   ExecutionPlan* _plan;
-  containers::FlatHashMap<std::string, CollectionAccess> _collectionAccessMap;
+  containers::FlatHashMap<std::string, std::unique_ptr<CollectionAccess>> _collectionAccessMap;
   std::vector<CollectionAccess> _collectionAccesses;
 
   // Map variables to their source collections for tracking in CALCULATION nodes

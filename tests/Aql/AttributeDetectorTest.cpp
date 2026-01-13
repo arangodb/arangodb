@@ -87,13 +87,24 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e3", _from:"users/u2", _to:"products/p3", qty:1, orderedAt:"2026-01-03"} INTO ordered)aql");
   }
-};
+
+  std::shared_ptr<Query> executeQuery(std::string const& queryString) {
+    auto ctx = std::make_shared<transaction::StandaloneContext>(
+        vocbase, transaction::OperationOriginTestCase{});
+
+    auto bindParams = VPackParser::fromJson("{}");
+    auto query =
+        Query::create(std::move(ctx), QueryString(queryString), bindParams);
+
+    waitForAsync(query->prepareQuery());
+    return query;
+  }
+};;
 
 // Functional tests - test actual query analysis
 TEST_F(AttributeDetectorTest, SimpleProjection) {
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "FOR doc IN users RETURN doc.name");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR doc IN users RETURN doc.name");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -103,9 +114,8 @@ TEST_F(AttributeDetectorTest, SimpleProjection) {
 }
 
 TEST_F(AttributeDetectorTest, MultipleAttributes) {
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "FOR doc IN users RETURN {name: doc.name, age: doc.age}");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR doc IN users RETURN {name: doc.name, age: doc.age}");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -116,9 +126,8 @@ TEST_F(AttributeDetectorTest, MultipleAttributes) {
 }
 
 TEST_F(AttributeDetectorTest, FullDocumentAccess) {
-  auto query =
-      arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR doc IN users RETURN doc");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -126,9 +135,8 @@ TEST_F(AttributeDetectorTest, FullDocumentAccess) {
 }
 
 TEST_F(AttributeDetectorTest, InsertOperation) {
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "INSERT {name: 'Alice', age: 30} INTO users");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("INSERT {name: 'Alice', age: 30} INTO users");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -136,9 +144,8 @@ TEST_F(AttributeDetectorTest, InsertOperation) {
 }
 
 TEST_F(AttributeDetectorTest, UpdateOperation) {
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "FOR doc IN users UPDATE doc WITH {age: 31} IN users");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR doc IN users UPDATE doc WITH {age: 31} IN users");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -146,11 +153,9 @@ TEST_F(AttributeDetectorTest, UpdateOperation) {
 }
 
 TEST_F(AttributeDetectorTest, MultipleCollections) {
-  auto query = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: "
+  auto query = executeQuery("FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: "
       "u.name, post: p.title}");
-  auto const& accesses = query.data->abacAccesses();
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 2);
 
@@ -175,9 +180,8 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
 // Edge case tests based on query plan analysis
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes) {
   // FILTER uses p.name, RETURN uses p.age - must track both
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "FOR p IN users FILTER p.name IN ['Alice', 'Bob'] RETURN p.age");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR p IN users FILTER p.name IN ['Alice', 'Bob'] RETURN p.age");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -191,10 +195,8 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes) {
 
 TEST_F(AttributeDetectorTest, NOOPTPreventProjection) {
   // NOOPT() might prevent projection optimization
-  auto query = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR p IN users FILTER NOOPT(p.name) IN ['Alice', 'Bob'] RETURN p.age");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR p IN users FILTER NOOPT(p.name) IN ['Alice', 'Bob'] RETURN p.age");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -205,11 +207,9 @@ TEST_F(AttributeDetectorTest, NOOPTPreventProjection) {
 
 TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
   // LET statement creates a CALCULATION node
-  auto query = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR u IN users LET fullName = CONCAT(u.name, ' - ', u.age) RETURN "
+  auto query = executeQuery("FOR u IN users LET fullName = CONCAT(u.name, ' - ', u.age) RETURN "
       "fullName");
-  auto const& accesses = query.data->abacAccesses();
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -223,9 +223,8 @@ TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
 
 TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
   // Nested attributes like doc.address.city
-  auto query =
-      arangodb::tests::executeQuery(vocbase, "FOR u IN users RETURN u.name");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("FOR u IN users RETURN u.name");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
@@ -237,9 +236,8 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
 
 TEST_F(AttributeDetectorTest, UpdateWithSpecificFields) {
   // UPDATE should mark requiresAllAttributesWrite = true
-  auto query = arangodb::tests::executeQuery(
-      vocbase, "UPDATE {_key: 'u1', name: 'Carol'} IN users");
-  auto const& accesses = query.data->abacAccesses();
+  auto query = executeQuery("UPDATE {_key: 'u1', name: 'Carol'} IN users");
+  auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");

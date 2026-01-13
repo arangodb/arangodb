@@ -59,7 +59,7 @@ void AttributeDetector::detect() {
   _collectionAccesses.clear();
   _collectionAccesses.reserve(_collectionAccessMap.size());
   for (auto const& [name, access] : _collectionAccessMap) {
-    _collectionAccesses.push_back(access);
+    _collectionAccesses.push_back(*access);
   }
 }
 
@@ -120,7 +120,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
       Variable const* outVar = enumNode->outVariable();
 
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+      }
+      access->collectionName = collName;
 
       // Check projections first
       if (auto const& projections = enumNode->projections();
@@ -128,11 +131,11 @@ bool AttributeDetector::before(ExecutionNode* node) {
         for (auto const& proj : projections.projections()) {
           auto const& path = proj.path.get();
           if (!path.empty()) {
-            access.readAttributes.insert(path[0]);
+            access->readAttributes.insert(path[0]);
           }
         }
       } else {
-        access.requiresAllAttributesRead = true;
+        access->requiresAllAttributesRead = true;
       }
 
       // Store variable mapping for later calculation node analysis
@@ -146,18 +149,21 @@ bool AttributeDetector::before(ExecutionNode* node) {
       Variable const* outVar = idxNode->outVariable();
 
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+      }
+      access->collectionName = collName;
 
       if (auto const& projections = idxNode->projections();
           !projections.empty()) {
         for (auto const& proj : projections.projections()) {
           auto const& path = proj.path.get();
           if (!path.empty()) {
-            access.readAttributes.insert(path[0]);
+            access->readAttributes.insert(path[0]);
           }
         }
       } else {
-        access.requiresAllAttributesRead = true;
+        access->requiresAllAttributesRead = true;
       }
 
       _variableToCollection[outVar] = collName;
@@ -174,14 +180,20 @@ bool AttributeDetector::before(ExecutionNode* node) {
 
       for (auto* edgeColl : travNode->edgeColls()) {
         auto& access = _collectionAccessMap[edgeColl->name()];
-        access.collectionName = edgeColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = edgeColl->name();
+        access->requiresAllAttributesRead = true;
       }
 
       for (auto* vertexColl : travNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
-        access.collectionName = vertexColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = vertexColl->name();
+        access->requiresAllAttributesRead = true;
       }
       break;
     }
@@ -191,14 +203,20 @@ bool AttributeDetector::before(ExecutionNode* node) {
 
       for (auto* edgeColl : pathNode->edgeColls()) {
         auto& access = _collectionAccessMap[edgeColl->name()];
-        access.collectionName = edgeColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = edgeColl->name();
+        access->requiresAllAttributesRead = true;
       }
 
       for (auto* vertexColl : pathNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
-        access.collectionName = vertexColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = vertexColl->name();
+        access->requiresAllAttributesRead = true;
       }
       break;
     }
@@ -208,14 +226,20 @@ bool AttributeDetector::before(ExecutionNode* node) {
 
       for (auto* edgeColl : pathNode->edgeColls()) {
         auto& access = _collectionAccessMap[edgeColl->name()];
-        access.collectionName = edgeColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = edgeColl->name();
+        access->requiresAllAttributesRead = true;
       }
 
       for (auto* vertexColl : pathNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
-        access.collectionName = vertexColl->name();
-        access.requiresAllAttributesRead = true;
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+        }
+        access->collectionName = vertexColl->name();
+        access->requiresAllAttributesRead = true;
       }
       break;
     }
@@ -234,7 +258,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
           auto it = _variableToCollection.find(var);
           if (it != _variableToCollection.end()) {
             auto& access = _collectionAccessMap[it->second];
-            extractAttributesFromAstNode(astNode, var, access);
+            extractAttributesFromAstNode(astNode, var, *access);
           }
         }
       }
@@ -246,8 +270,11 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = modNode->collection()->name();
 
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
-      access.requiresAllAttributesWrite = true;
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+      }
+      access->collectionName = collName;
+      access->requiresAllAttributesWrite = true;
       break;
     }
 
@@ -258,9 +285,12 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = modNode->collection()->name();
 
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
-      access.requiresAllAttributesRead = true;
-      access.requiresAllAttributesWrite = true;
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+      }
+      access->collectionName = collName;
+      access->requiresAllAttributesRead = true;
+      access->requiresAllAttributesWrite = true;
       break;
     }
 
@@ -269,8 +299,11 @@ bool AttributeDetector::before(ExecutionNode* node) {
       std::string collName = modNode->collection()->name();
 
       auto& access = _collectionAccessMap[collName];
-      access.collectionName = collName;
-      access.requiresAllAttributesRead = true;
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+      }
+      access->collectionName = collName;
+      access->requiresAllAttributesRead = true;
       break;
     }
 
