@@ -1,0 +1,14 @@
+name: arangodb_monitoring_tasks_ready_for_deletion
+introducedIn: "3.12.5"
+help: |
+  Number of currently existing monitoring tasks that wait for their garbage collection.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+description: |
+  Number of currently existing monitoring tasks that wait for their garbage collection.

@@ -1,0 +1,14 @@
+name: arangodb_monitoring_tasks_existing_thread_registries
+introducedIn: "3.12.5"
+help: |
+  Number of threads that started currently existing monitoring tasks.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+description: |
+  Number of threads that started currently existing monitoring tasks. The thread itself does not need to exist any more. This number also includes still running threads that have started monitoring tasks that do not exist any more.
