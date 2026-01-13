@@ -23,42 +23,145 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/Query.h"
 #include "Aql/AttributeDetector.h"
+#include "Aql/Executor/AqlExecutorTestCase.h"
+#include "Aql/Query.h"
 #include "Async/async.h"
 #include "Inspection/VPack.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "IResearch/common.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
-#include "IResearch/common.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
-
-#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::tests;
 
 namespace arangodb::tests::aql {
 
 class AttributeDetectorTest : public ::testing::Test {
- protected:
+protected:
   mocks::MockAqlServer server;
+  TRI_vocbase_t& vocbase;
 
-  std::shared_ptr<Query> createTestQuery(std::string const& queryString) {
-    auto ctx = std::make_shared<transaction::StandaloneContext>(
-        server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  AttributeDetectorTest() : vocbase(server.getSystemDatabase()) {}
 
-    auto bindParams = VPackParser::fromJson("{}");
-    auto query =
-        Query::create(std::move(ctx), QueryString(queryString), bindParams);
-    return query;
+public:
+  void SetUp() override {
+    SCOPED_TRACE("SetUp");
+    createDummyGraphData();
+  }
+
+  void createDummyGraphData() {
+    auto usersColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"users\"}")->slice());
+    ASSERT_NE(usersColl.get(), nullptr) << "Failed to create users";
+    auto postsColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"posts\"}")->slice());
+    ASSERT_NE(postsColl.get(), nullptr) << "Failed to create posts";
+    auto productsColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"products\"}")->slice());
+    ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
+    auto orderedColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"ordered\"}")->slice());
+    ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
+
+    auto run = [&](std::string const& q) {
+      SCOPED_TRACE(q);
+      auto bind = VPackParser::fromJson("{ }");
+      auto qr = arangodb::tests::executeQuery(vocbase, q, bind);
+      ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
+    };
+
+    run(R"aql(INSERT {_key:"u1", name:"Alice", age:30} INTO users)aql");
+    run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24} INTO users)aql");
+
+    run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival"} INTO posts)aql");
+    run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday"} INTO posts)aql");
+
+    run(R"aql(INSERT {_key:"p1", name:"Keyboard", price:49.99} INTO products)aql");
+    run(R"aql(INSERT {_key:"p2", name:"Mouse",    price:19.99} INTO products)aql");
+    run(R"aql(INSERT {_key:"p3", name:"Monitor",  price:199.0} INTO products)aql");
+
+    run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e3", _from:"users/u2", _to:"products/p3", qty:1, orderedAt:"2026-01-03"} INTO ordered)aql");
   }
 };
 
-TEST_F(AttributeDetectorTest, InspectorFormatTest) {
+// Functional tests - test actual query analysis
+TEST_F(AttributeDetectorTest, SimpleProjection) {
+  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc.name");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MultipleAttributes) {
+  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN {name: doc.name, age: doc.age}");
+  auto const& accesses = query.data->abacAccesses();
+  
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, FullDocumentAccess) {
+  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc");
+  auto const& accesses = query.data->abacAccesses();
+  
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, InsertOperation) {
+  auto query = arangodb::tests::executeQuery(vocbase, "INSERT {name: 'Alice', age: 30} INTO users");
+  auto const& accesses = query.data->abacAccesses();
+  
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, UpdateOperation) {
+  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users UPDATE doc WITH {age: 31} IN users");
+  auto const& accesses = query.data->abacAccesses();
+  
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MultipleCollections) {
+  auto query = arangodb::tests::executeQuery(vocbase, "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: u.name, post: p.title}");
+  auto const& accesses = query.data->abacAccesses();
+  
+  ASSERT_EQ(accesses.size(), 2);
+  
+  bool foundUsers = false;
+  bool foundPosts = false;
+  
+  for (auto const& access : accesses) {
+    if (access.collectionName == "users") {
+      foundUsers = true;
+      EXPECT_TRUE(access.readAttributes.contains("name"));
+    } else if (access.collectionName == "posts") {
+      foundPosts = true;
+      EXPECT_TRUE(access.readAttributes.contains("title"));
+      EXPECT_TRUE(access.readAttributes.contains("userId"));
+    }
+  }
+  
+  EXPECT_TRUE(foundUsers);
+  EXPECT_TRUE(foundPosts);
+}
+
+// Inspector pattern tests - test serialization
+TEST_F(AttributeDetectorTest, InspectorFormat) {
   AttributeDetector::CollectionAccess access;
   access.collectionName = "testCollection";
   access.readAttributes.insert("name");
