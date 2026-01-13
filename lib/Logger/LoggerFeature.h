@@ -23,12 +23,10 @@
 
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <string>
-#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -65,46 +63,16 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void disableThreaded() noexcept { _threaded = false; }
   void setSupervisor(bool supervisor) noexcept { _supervisor = supervisor; }
 
-  bool isAPIEnabled() const noexcept { return _apiEnabled; }
-  bool onlySuperUser() const noexcept { return _apiSwitch == "jwt"; }
+  bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
+  bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
 
  private:
   LoggerFeature(application_features::ApplicationServer& server,
                 size_t registration, bool threaded);
 
-  std::vector<std::string> _output;
-  std::vector<std::string> _levels;
-  std::string _prefix;
-  std::string _hostname;
-  std::string _file;
-  std::string _fileMode;
-  std::string _fileGroup;
-  std::string _timeFormatString;
-  std::string _apiSwitch = "true";
-  std::vector<std::string> _structuredLogParams;
-  uint32_t _maxEntryLength = 128U * 1048576U;
-  uint32_t _maxQueuedLogMessages = 16384;
-  bool _useJson = false;
-  bool _useLocalTime = false;
-  bool _useColor = true;
-  bool _useControlEscaped = true;
-  bool _useUnicodeEscaped = false;
-  bool _lineNumber = false;
-  bool _shortenFilenames = true;
-  bool _processId = true;
-  bool _threadId = true;
-  bool _threadName = false;
-  bool _performance = false;
-  bool _keepLogRotate = false;
-  bool _foregroundTty = false;
-  bool _forceDirect = false;
-  bool _useMicrotime = false;
-  bool _showIds = true;
-  bool _showRole = false;
-  bool _logRequestParameters = true;
+  LoggerOptions _options;
   bool _supervisor = false;
   bool _threaded = false;
-  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb

@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/Concurrent/ListOfNonOwnedLists.h"
-#include "Containers/Concurrent/ThreadOwnedList.h"
+#include "Containers/Concurrent/Registry.h"
 #include "TaskMonitoring/task.h"
 
 namespace arangodb::task_monitoring {
 
-using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
+using ThreadRegistry = containers::ThreadRegistry<TaskInRegistry>;
+using Registry = containers::Registry<TaskInRegistry>;
 
 /**
    Global variable that holds all active tasks.
@@ -42,8 +41,8 @@ extern Registry registry;
 /**
    Get thread registry of all active tasks on current thread.
 
-   Creates the thread registry when called for the first time and adds it to the
-   global registry.
+   Creates the thread registry when called for the first time and adds it to
+   the global registry.
  */
 auto get_thread_registry() noexcept -> ThreadRegistry&;
 
