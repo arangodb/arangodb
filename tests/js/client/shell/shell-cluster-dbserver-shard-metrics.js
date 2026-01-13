@@ -428,7 +428,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       });
 
       // Insert some data to trigger replication
-      db._query(`FOR i IN 0..10 INSERT {val: i, val2: HASH(i), val3: CONCAT(HASH(i), i * 10)} INTO ${collectionName}`);
+      db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${collectionName}`);
 
       eventuallyAssertMetric([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0");
 
