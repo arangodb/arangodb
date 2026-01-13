@@ -26,7 +26,7 @@ const TABLE_COLUMNS = [
         >
           <>
             {cellValue}
-            {info.row.getValue("isLocked") && (
+            {info.row.original.isLocked && (
               <Spinner size={"xs"} marginLeft={1} />
             )}
           </>
