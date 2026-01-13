@@ -48,7 +48,7 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
 }
 
 ApiRecordingFeature::ApiRecordingFeature(Server& server,
-                                         CrashHandlerInterface* crashHandler)
+                                         CrashHandlerRegistry* crashHandler)
     : ArangodFeature{server, *this},
       CrashHandlerDataSource(crashHandler),
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(

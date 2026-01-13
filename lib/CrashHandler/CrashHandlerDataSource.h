@@ -27,15 +27,15 @@
 #include <vector>
 
 #include <velocypack/SharedSlice.h>
-#include "CrashHandlerInterface.h"
+#include "CrashHandlerRegistry.h"
 
 namespace arangodb {
 
-class CrashHandlerInterface;
+class CrashHandlerRegistry;
 
 class CrashHandlerDataSource {
  public:
-  CrashHandlerDataSource(CrashHandlerInterface* crashHandlerInterface);
+  CrashHandlerDataSource(CrashHandlerRegistry* crashHandlerInterface);
 
   virtual ~CrashHandlerDataSource();
 
@@ -44,7 +44,7 @@ class CrashHandlerDataSource {
   virtual std::string_view getDataSourceName() const = 0;
 
  private:
-  CrashHandlerInterface* _crashHandlerInterface;
+  CrashHandlerRegistry* _crashHandlerInterface;
 };
 
 }  // namespace arangodb

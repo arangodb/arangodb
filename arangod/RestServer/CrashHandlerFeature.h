@@ -32,7 +32,7 @@
 
 namespace arangodb {
 
-class CrashHandlerInterface;
+class CrashHandlerRegistry;
 
 /// @brief Feature to control crash dump logging to the database directory.
 /// The CrashHandler itself always runs for crash handling, but this feature
@@ -42,7 +42,7 @@ class CrashHandlerFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
   explicit CrashHandlerFeature(Server& server,
-                               CrashHandlerInterface* crashHandler);
+                               CrashHandlerRegistry* crashHandler);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -50,7 +50,7 @@ class CrashHandlerFeature final : public ArangodFeature {
   bool isEnabled() const noexcept { return _enabled; }
 
   /// @brief returns the crash handler interface pointer
-  CrashHandlerInterface* crashHandler() const noexcept { return _crashHandler; }
+  CrashHandlerRegistry* crashHandler() const noexcept { return _crashHandler; }
 
   /// @brief sets the database directory for crash dumps
   void setDatabaseDirectory(std::string path);
@@ -69,7 +69,7 @@ class CrashHandlerFeature final : public ArangodFeature {
   /// @brief pointer to the CrashHandler interface (not owned)
   /// This is so we don't directly link with CrashHandler
   /// which breaks test dependencies
-  CrashHandlerInterface* _crashHandler;
+  CrashHandlerRegistry* _crashHandler;
 
   /// @brief whether crash dump logging is enabled
   bool _enabled;

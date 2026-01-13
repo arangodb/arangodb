@@ -134,7 +134,7 @@ velocypack::Builder collectAsyncRegistryData() {
 }
 }  // namespace arangodb::async_registry
 
-Feature::Feature(Server& server, CrashHandlerInterface* crashHandler)
+Feature::Feature(Server& server, CrashHandlerRegistry* crashHandler)
     : ArangodFeature{server, *this},
       arangodb::CrashHandlerDataSource(crashHandler),
       _async_mutex{_schedulerWrapper} {

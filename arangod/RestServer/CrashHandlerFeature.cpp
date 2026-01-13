@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "CrashHandler/CrashHandlerInterface.h"
+#include "CrashHandler/CrashHandlerRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 CrashHandlerFeature::CrashHandlerFeature(Server& server,
-                                         CrashHandlerInterface* crashHandler)
+                                         CrashHandlerRegistry* crashHandler)
     : ArangodFeature{server, *this},
       _crashHandler(crashHandler),
       _enabled(true) {

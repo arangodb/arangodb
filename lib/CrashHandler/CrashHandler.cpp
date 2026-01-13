@@ -802,7 +802,7 @@ std::string CrashHandler::getCrashesDirectory() {
   return ::databaseDirectoryPath;
 }
 
-// CrashHandlerInterface instance method implementations
+// CrashHandlerRegistry instance method implementations
 void CrashHandler::setDatabaseDirectory(std::string path) {
   ::databaseDirectoryPath =
       arangodb::basics::FileUtils::buildFilename(path, "crashes");

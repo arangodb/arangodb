@@ -28,7 +28,7 @@
 namespace arangodb {
 
 CrashHandlerDataSource::CrashHandlerDataSource(
-    CrashHandlerInterface* crashHandlerInterface)
+    CrashHandlerRegistry* crashHandlerInterface)
     : _crashHandlerInterface(crashHandlerInterface) {}
 
 CrashHandlerDataSource::~CrashHandlerDataSource() {

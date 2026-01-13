@@ -29,7 +29,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "CrashHandler/CrashHandlerInterface.h"
+#include "CrashHandler/CrashHandlerRegistry.h"
 
 namespace arangodb {
 
@@ -49,7 +49,7 @@ enum class CrashHandlerState : int {
   SHUTDOWN = 3            ///< shutdown requested
 };
 
-class CrashHandler : public CrashHandlerInterface {
+class CrashHandler : public CrashHandlerRegistry {
   std::atomic<bool> _threadRunning{false};
   // This needs to be static for the signal handlers to reach!
   static std::atomic<CrashHandler*> _theCrashHandler;
@@ -75,7 +75,7 @@ class CrashHandler : public CrashHandlerInterface {
 
   static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
 
-  // CrashHandlerInterface implementation
+  // CrashHandlerRegistry implementation
   void setDatabaseDirectory(std::string path) override;
   std::vector<std::string> listCrashes() override;
   std::unordered_map<std::string, std::string> getCrashContents(

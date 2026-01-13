@@ -36,9 +36,9 @@ class CrashHandlerDataSource;
 /// @brief Interface for crash handler operations that can be accessed
 /// through the CrashHandlerFeature. This allows decoupling the feature
 /// from the concrete CrashHandler implementation.
-class CrashHandlerInterface {
+class CrashHandlerRegistry {
  public:
-  virtual ~CrashHandlerInterface() = default;
+  virtual ~CrashHandlerRegistry() = default;
 
   /// @brief sets the database directory for crash dumps
   virtual void setDatabaseDirectory(std::string path) = 0;
