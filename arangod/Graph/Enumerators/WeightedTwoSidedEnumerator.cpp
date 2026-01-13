@@ -31,12 +31,9 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
@@ -51,14 +48,11 @@ namespace arangodb::graph {
  * Class: Ball (internally used in WeightedTwoSidedEnumerator)
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::Ball(Direction dir, ProviderType&& provider,
-                               GraphOptions const& options,
-                               PathValidatorOptions validatorOptions,
-                               arangodb::ResourceMonitor& resourceMonitor)
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::Ball::Ball(
+    Direction dir, ProviderType&& provider, GraphOptions const& options,
+    PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -69,26 +63,20 @@ WeightedTwoSidedEnumerator<
       _diameter(-std::numeric_limits<double>::infinity()),
       _haveSeenOtherSide(false) {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::Ball::~Ball() = default;
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::Ball::~Ball() = default;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::reset(VertexRef center,
-                                                            size_t depth) {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::Ball::reset(VertexRef center,
+                                                           size_t depth) {
   clear();
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
   _queue.append(std::move(firstStep));
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::clear() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::Ball::clear() {
   _visitedNodes.clear();
 
   _queue.clear();
@@ -101,10 +89,8 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   clearProvider();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::clearProvider() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::Ball::clearProvider() {
   // We need to make sure, no one holds references to _provider.
   // Guarantee that the used Queue is empty and we do not hold any reference to
   // PathStore. Info: Steps do contain VertexRefs which are hold in PathStore.
@@ -117,43 +103,33 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _provider.clear();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::doneWithDepth() const
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::doneWithDepth() const
     -> bool {
   return _queue.isEmpty();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::noPathLeft() const
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::noPathLeft() const
     -> bool {
   return doneWithDepth();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::peekQueue() const
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::peekQueue() const
     -> Step const& {
   return _queue.peek();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::isQueueEmpty() const
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::isQueueEmpty() const
     -> bool {
   return _queue.isEmpty();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::fetchResult(CalculatedCandidate& candidate) -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::fetchResult(
+    CalculatedCandidate& candidate) -> void {
   std::vector<Step*> looseEnds{};
   auto& [weight, leftMeetingPoint, rightMeetingPoint] = candidate;
 
@@ -177,11 +153,9 @@ auto WeightedTwoSidedEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::fetchResults(CandidatesStore& candidates) -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::fetchResults(
+    CandidatesStore& candidates) -> void {
   auto looseEnds = [&]() {
     if (_direction == FORWARD) {
       return candidates.getLeftLooseEnds();
@@ -198,23 +172,18 @@ auto WeightedTwoSidedEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::hasBeenVisited(Step const&
-                                                                         step)
-    -> bool {
-  if (_visitedNodes.contains(step.getVertex().getID())) {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::hasBeenVisited(
+    Step const& step) -> bool {
+  if (_visitedNodes.contains(step.getVertex())) {
     return true;
   }
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
+template<class ProviderType>
 auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::ensureQueueHasProcessableElement() -> void {
+    ProviderType>::Ball::ensureQueueHasProcessableElement() -> void {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -228,18 +197,16 @@ auto WeightedTwoSidedEnumerator<
   TRI_ASSERT(_queue.hasProcessableElement());
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::validateSingletonPath(CandidatesStore& candidates)
-    -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::validateSingletonPath(
+    CandidatesStore& candidates) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
 
   TRI_ASSERT(_queue.isEmpty());
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
   ValidationResult res = _validator.validatePath(step);
 
@@ -248,21 +215,21 @@ auto WeightedTwoSidedEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
         -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
+  auto tmpStep = std::get<Step>(tmp);
 
   // if the other side has explored this vertex, don't add it again
-  if (other.hasBeenVisited(tmp)) {
+  if (other.hasBeenVisited(tmpStep)) {
     _haveSeenOtherSide = true;
   }
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(tmpStep));
   auto& step = _interior.getStepReference(posPrevious);
 
   TRI_ASSERT(step.getWeight() >= _diameter);
@@ -270,10 +237,10 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   ValidationResult res = _validator.validatePath(step);
 
   if (!res.isFiltered()) {
-    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    _visitedNodes[step.getVertex()].emplace_back(posPrevious);
   }
 
-  if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
+  if (!res.isPruned() && step.getVertex() != other.getCenter()) {
     // We do not want to go further than the center of the other side!
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       // TODO: maybe the pathStore could be asked whether a vertex has been
@@ -301,13 +268,11 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::
-    matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
-                        PathValidator const& otherSideValidator) -> void {
-  auto positions = _visitedNodes.at(otherStep.getVertex().getID());
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::matchResultsInShell(
+    Step const& otherStep, CandidatesStore& candidates,
+    PathValidatorType const& otherSideValidator) -> void {
+  auto positions = _visitedNodes.at(otherStep.getVertex());
 
   for (auto const& position : positions) {
     auto ourStep = _interior.getStepReference(position);
@@ -329,13 +294,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::buildPath(Step const& vertexInShell,
-                                    PathResult<ProviderType, Step>& path)
-    -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::buildPath(
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {
@@ -343,10 +304,8 @@ auto WeightedTwoSidedEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::Ball::provider()
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::Ball::provider()
     -> ProviderType& {
   return _provider;
 }
@@ -355,31 +314,22 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * Class: ResultCache (internally used in WeightedTwoSidedEnumerator)
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::ResultCache::ResultCache(Ball& left,
-                                                                    Ball& right)
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::ResultCache::ResultCache(Ball& left,
+                                                                   Ball& right)
     : _internalLeft(left), _internalRight(right), _internalResultsCache{} {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::ResultCache::~ResultCache() =
-    default;
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::ResultCache::~ResultCache() = default;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::ResultCache::clear() -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::ResultCache::clear() -> void {
   _internalResultsCache.clear();
 };
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::ResultCache::
-    tryAddResult(CalculatedCandidate const& candidate) -> bool {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::ResultCache::tryAddResult(
+    CalculatedCandidate const& candidate) -> bool {
   auto const& [weight, first, second] = candidate;
   PathResult<ProviderType, typename ProviderType::Step> resultPathCandidate{
       _internalLeft.provider(), _internalRight.provider()};
@@ -403,15 +353,11 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * Class: WeightedTwoSidedEnumerator
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::
-    WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
-                               ProviderType&& backwardProvider,
-                               TwoSidedEnumeratorOptions&& options,
-                               PathValidatorOptions validatorOptions,
-                               arangodb::ResourceMonitor& resourceMonitor)
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::WeightedTwoSidedEnumerator(
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+    TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider), _options,
             validatorOptions, resourceMonitor},
@@ -425,24 +371,18 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::~WeightedTwoSidedEnumerator() {}
+template<class ProviderType>
+WeightedTwoSidedEnumerator<ProviderType>::~WeightedTwoSidedEnumerator() {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::destroyEngines() -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::destroyEngines() -> void {
   // Note: Left & Right Provider use the same traversal engines.
   //   => Destroying one of them is enough.
   _left.provider().destroyEngines();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::clear() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::clear() {
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _candidatesStore.clear();
@@ -463,10 +403,8 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::isDone() const {
+template<class ProviderType>
+bool WeightedTwoSidedEnumerator<ProviderType>::isDone() const {
   if (!_candidatesStore.isEmpty()) {
     return false;
   }
@@ -484,12 +422,10 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @param source The source vertex to start the paths
  * @param target The target vertex to end the paths
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::reset(VertexRef source,
-                                                      VertexRef target,
-                                                      size_t depth) {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::reset(VertexRef source,
+                                                     VertexRef target,
+                                                     size_t depth) {
   clear();
 
   _left.reset(source, 0);
@@ -528,11 +464,9 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::getNextPath(VPackBuilder&
-                                                                result) {
+template<class ProviderType>
+bool WeightedTwoSidedEnumerator<ProviderType>::getNextPath(
+    VPackBuilder& result) {
   auto handleResult = [&]() {
     /*
      * Helper method to take care of stored results (in: _results)
@@ -621,10 +555,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::searchMoreResults() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::searchMoreResults() {
   while (!searchDone()) {
     _resultsFetched = false;
 
@@ -724,24 +656,18 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::setAlgorithmFinished() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::setAlgorithmFinished() {
   _algorithmFinished = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::setAlgorithmUnfinished() {
+template<class ProviderType>
+void WeightedTwoSidedEnumerator<ProviderType>::setAlgorithmUnfinished() {
   _algorithmFinished = false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::isAlgorithmFinished() const {
+template<class ProviderType>
+bool WeightedTwoSidedEnumerator<ProviderType>::isAlgorithmFinished() const {
   return _algorithmFinished;
 }
 
@@ -752,10 +678,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return false No path found.
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::skipPath() {
+template<class ProviderType>
+bool WeightedTwoSidedEnumerator<ProviderType>::skipPath() {
   auto skipResult = [&]() {
     /*
      * Helper method to take care of stored results (in: _results)
@@ -812,12 +736,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::BallSearchLocation
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::getBallToContinueSearch() const {
+template<class ProviderType>
+typename WeightedTwoSidedEnumerator<ProviderType>::BallSearchLocation
+WeightedTwoSidedEnumerator<ProviderType>::getBallToContinueSearch() const {
   if (_left.isQueueEmpty() and _right.isQueueEmpty()) {
     return BallSearchLocation::FINISH;
   }
@@ -858,10 +779,8 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return BallSearchLocation::RIGHT;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::searchDone() const -> bool {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::searchDone() const -> bool {
   if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
     return true;
   }
@@ -882,10 +801,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::fetchResults() -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::fetchResults() -> void {
   if (!_resultsFetched && !_candidatesStore.isEmpty()) {
     _left.fetchResults(_candidatesStore);
     _right.fetchResults(_candidatesStore);
@@ -893,10 +810,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _resultsFetched = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::fetchResult() -> void {
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::fetchResult() -> void {
   if (!_resultsFetched && !_candidatesStore.isEmpty()) {
     _left.fetchResult(_candidatesStore.peek());
     _right.fetchResult(_candidatesStore.peek());
@@ -904,10 +819,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _resultsFetched = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::stealStats()
+template<class ProviderType>
+auto WeightedTwoSidedEnumerator<ProviderType>::stealStats()
     -> aql::TraversalStats {
   aql::TraversalStats stats = _left.provider().stealStats();
   stats += _right.provider().stealStats();
@@ -923,12 +836,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 // # Weighted K-Shortest-Paths (legacy):
 // >WKShortestPath (single)        We      No      Si      Va<Pa,Pa>
 // >WKShortestPath (cluster)       We      No      Cl      Va<Pa,Pa>
-// >TracedWKShortestPath (single)  Tr<We>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
-// >TracedWKShortestPath (cluster) Tr<We>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
 //
 // Where:
 //   Si/Cl    Single or Cluster provider
-//   No/Tr    Non-traced or traced
 //   Fi/We    Fifo-Queue or WeightedQueue (prio)
 //   Va/Ta    Path validator or Taboo validator (wrapping normal)
 //   No/Pa/Gl For validator: no uniqueness vs. path uniq. vs. global uniq.
@@ -939,41 +849,13 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 // WeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-// TracedWeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<SingleProvider>,
-                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+template class WeightedTwoSidedEnumerator<SingleProvider>;
 
 /* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 // WeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
-
-// TracedWeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<ClustProvider>,
-                      PathStoreTracer<PathStore<ClusterProviderStep>>,
-                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+template class WeightedTwoSidedEnumerator<ClustProvider>;
 
 }  // namespace arangodb::graph

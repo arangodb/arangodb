@@ -28,15 +28,15 @@
 if (getOptions === true) {
   return {
     'javascript.endpoints-denylist': [
-      'tcp://127.0.0.1:8888',     // Will match http:// 
-      '127.0.0.1:8899',           // will match at http and https.
-      'ssl://127.0.0.1:7777',     // will match https://
-      'arangodb.org',             // will match https + http
-      'http://127.0.0.1:9999'            // won't match at all.
+      'tcp://127\\.0\\.0\\.1:8888', // Will match http:// 
+      '127\\.0\\.0\\.1:8899',       // will match at http and https.
+      'ssl://127\\.0\\.0\\.1:7777', // will match https://
+      'arangodb\\.com',             // will match https + http
+      'http://127\\.0\\.0\\.1:9999' // won't match at all.
     ],
     'javascript.endpoints-allowlist': [
-      'allow.arangodb.org',
-      'arangodb.com',             // will match https + http
+      'allow\\.arangodb\\.com',
+      'arango\\.ai',                // will match https + http
     ]
   };
 }
@@ -101,15 +101,15 @@ function testSuite() {
       downloadForbidden('https://127.0.0.1:7777/testbla', 'GET');
       downloadForbidden('https://127.0.0.1:7777', 'GET');
       downloadForbidden('https://127.0.0.1:777/testbla', 'GET');
-      downloadForbidden('http://arangodb.org/testbla', 'GET');
-      downloadForbidden('https://arangodb.org/testbla', 'GET');
+      downloadForbidden('http://arangodb.com/testbla', 'GET');
+      downloadForbidden('https://arangodb.com/testbla', 'GET');
       downloadForbidden('http://heise.de', 'GET');
       downloadForbidden('http://127.0.0.1:9999', 'POST');
 
-      downloadPermitted('https://allow.arangodb.org/bla', 'GET');
-      downloadPermitted('http://allow.arangodb.org/bla', 'GET');
-      downloadPermitted('https://arangodb.com/blog', 'GET');
-      downloadPermitted('http://arangodb.com/blog', 'GET');
+      downloadPermitted('https://allow.arangodb.com/bla', 'GET');
+      downloadPermitted('http://allow.arangodb.com/bla', 'GET');
+      downloadPermitted('https://arango.ai/blog', 'GET');
+      downloadPermitted('http://arango.ai/blog', 'GET');
 
       reconnectForbidden('http://127.0.0.1:8888/testbla');
       reconnectForbidden('http://127.0.0.1:8888/testbla');
@@ -117,15 +117,15 @@ function testSuite() {
       reconnectForbidden('https://127.0.0.1:7777/testbla');
       reconnectForbidden('https://127.0.0.1:7777');
       reconnectForbidden('https://127.0.0.1:777/testbla');
-      reconnectForbidden('http://arangodb.org/testbla');
-      reconnectForbidden('https://arangodb.org/testbla');
+      reconnectForbidden('http://arangodb.com/testbla');
+      reconnectForbidden('https://arangodb.com/testbla');
       reconnectForbidden('http://heise.de');
       reconnectForbidden('http://127.0.0.1:9999');
 
-      reconnectPermitted('https://allow.arangodb.org/bla');
-      reconnectPermitted('http://allow.arangodb.org/bla');
-      reconnectPermitted('https://arangodb.com/blog');
-      reconnectPermitted('http://arangodb.com/blog');
+      reconnectPermitted('https://allow.arangodb.com/bla');
+      reconnectPermitted('http://allow.arangodb.com/bla');
+      reconnectPermitted('https://arango.ai/blog');
+      reconnectPermitted('http://arango.ai/blog');
     }
   };
 }

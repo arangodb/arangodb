@@ -94,7 +94,7 @@
       selCol.html('');
       this.cols.getList(dbName, function (list) {
         _.each(_.pluck(list, 'name'), function (c) {
-          selCol.append('<option id="' + c + '">' + c + '</option>');
+          selCol.append('<option id="' + _.escape(c) + '">' + _.escape(c) + '</option>');
         });
         var colToSel = $('#' + colName, selCol);
         if (colToSel.length === 1) {
@@ -151,7 +151,7 @@
       selDB.html('');
       this.dbs.getList(function (dbList) {
         _.each(_.pluck(dbList, 'name'), function (c) {
-          selDB.append('<option id="' + c + '">' + c + '</option>');
+          selDB.append('<option id="' + _.escape(c) + '">' + _.escape(c) + '</option>');
         });
         var dbToSel = $('#' + dbName, selDB);
         if (dbToSel.length === 1) {

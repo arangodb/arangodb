@@ -569,10 +569,11 @@ function ahuacatlProfilerTestSuite() {
       });
 
       const genNodeList = (rows, batches) => {
+        let calls = rows % defaultBatchSize === 0 ? batches + 1 : batches;
         return [
           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: TraversalBlock, calls: calls, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: calls, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(

@@ -72,7 +72,7 @@ AqlValue functions::IsSameCollection(ExpressionContext* expressionContext,
 /// @brief function COLLECTIONS
 AqlValue functions::Collections(ExpressionContext* exprCtx, AstNode const&,
                                 VPackFunctionParametersView parameters) {
-  transaction::BuilderLeaser builder(&exprCtx->trx());
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
 
   auto& vocbase = exprCtx->vocbase();

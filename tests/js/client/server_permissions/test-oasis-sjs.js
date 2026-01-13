@@ -33,8 +33,8 @@ if (getOptions === true) {
 
     'javascript.startup-options-allowlist': [ '.*' ],
     'javascript.endpoints-allowlist' : [
-      //'ssl://arangodb.com:443'
-      'arangodb.com'
+      //'ssl://arango.ai:443'
+      'arango.ai'
     ],
     'javascript.files-allowlist' : [
       '^$'

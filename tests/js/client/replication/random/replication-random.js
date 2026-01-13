@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global assertEqual, assertTrue, arango, ARGUMENTS */
+/*global assertEqual, assertTrue, arango, ARGUMENTS, SYS_IS_V8_BUILD, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -274,6 +274,92 @@ function ReplicationSuite() {
         return trx;
       };
 
+      ////////////////////////////////////////////////////////////////////////////////
+      // client transactions
+      let generateInsertNew = function(collections) {
+        let c = collections[Math.floor(Math.random() * collections.length)];
+        let key = nextKey();
+        keys[c][key] = 1;
+
+        return "tx.collection(" + JSON.stringify(c) + ").insert({ _key: " + JSON.stringify(key) + ", value: \"thisIsSomeStringValue\" });";
+      };
+
+      let generateUpdateNew = function(collections) {
+        let c = collections[Math.floor(Math.random() * collections.length)];
+        let all = Object.keys(keys[c]);
+        if (all.length === 0) {
+          // still empty, turn into an insert first
+          return generateInsertNew(collections);
+        }
+        let key = all[Math.floor(Math.random() * all.length)];
+        return "tx.collection(" + JSON.stringify(c) + ").update(" + JSON.stringify(key) + ", { value: \"thisIsSomeUpdatedStringValue\" });";
+      };
+
+      let generateReplaceNew = function(collections) {
+        let c = collections[Math.floor(Math.random() * collections.length)];
+        let all = Object.keys(keys[c]);
+        if (all.length === 0) {
+          // still empty, turn into an insert first
+          return generateInsertNew(collections);
+        }
+        let key = all[Math.floor(Math.random() * all.length)];
+        return "tx.collection(" + JSON.stringify(c) + ").replace(" + JSON.stringify(key) + ", { value: \"thisIsSomeReplacedStringValue\" });";
+      };
+
+      let generateRemoveNew = function(collections) {
+        let c = collections[Math.floor(Math.random() * collections.length)];
+        let all = Object.keys(keys[c]);
+        if (all.length === 0) {
+          // still empty, turn into an insert first
+          return generateInsertNew(collections);
+        }
+        let key = all[Math.floor(Math.random() * all.length)];
+        delete keys[c][key];
+        return "tx.collection(" + JSON.stringify(c) + ").remove(" + JSON.stringify(key) + ");";
+      };
+
+      let generateTruncateNew = function(collections) {
+        let c = collections[Math.floor(Math.random() * collections.length)];
+        keys[c] = {};
+        return "tx.collection(" + JSON.stringify(c) + ").truncate();";
+      };
+
+      let allNewOps = [
+        { name: "insert", generate: generateInsertNew },
+        { name: "update", generate: generateUpdateNew },
+        { name: "replace", generate: generateReplaceNew },
+        { name: "remove", generate: generateRemoveNew },
+//        { name: "truncate", generate: generateTruncateNew }
+      ];
+      let executeTransaction = function(state) {
+        let trx = { collections: { read: [], write: [] } };
+
+        // determine collections
+        do {
+          if (Math.random() >= 0.5) {
+            trx.collections.write.push(cn);
+          }
+          if (Math.random() >= 0.5) {
+            trx.collections.write.push(cn2);
+          }
+          if (Math.random() >= 0.5) {
+            trx.collections.write.push(cn3);
+          }
+        } while (trx.collections.write.length === 0);
+
+        const tx = db._createTransaction(trx);
+        let txFn;
+        let n = Math.floor(Math.random() * 100) + 1;
+        let ops = "txFn = function(tx) {\n  let db = require('internal').db;\n  ";
+        for (let i = 0; i < n; ++i) {
+          ops += allNewOps[Math.floor(Math.random() * allNewOps.length)].generate(trx.collections.write) + "\n  ";
+        }
+        ops += "\n}";
+        eval(ops);
+        txFn(tx);
+        return tx.commit();
+      };
+
       db._useDatabase(cn);
       connectToLeader();
 
@@ -283,8 +369,13 @@ function ReplicationSuite() {
 
         function(state) {
           for (let i = 0; i < 10000; ++i) {
-            let trx = createTransaction(state);
-            db._executeTransaction(trx);
+            if (SYS_IS_V8_BUILD) {
+              let trx = createTransaction(state);
+              db._executeTransaction(trx);
+            } else {
+              print('.');
+              executeTransaction();
+            }
           }
 
           state.checksum = collectionChecksum(cn);

@@ -137,66 +137,33 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 using KPath = arangodb::graph::KPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using KPathTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
-using AllShortestPathsTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
-using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-
 using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedYenPathsTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
-
 using WeightedYenPathsCluster =
     arangodb::graph::WeightedYenEnumeratorWithProvider<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using WeightedYenPathsClusterTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using WeightedKShortestPathsTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
@@ -204,49 +171,26 @@ using WeightedShortestPath =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
-using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
 using KPathCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathClusterTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using AllShortestPathsClusterTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using KShortestPathsClusterTracer =
-    arangodb::graph::TracedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPathsCluster =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using WeightedKShortestPathsClusterTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -856,37 +800,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
               (is_one_of_v<
                   Executor, FilterExecutor, ShortestPathExecutor<ShortestPath>,
-                  ShortestPathExecutor<ShortestPathTracer>,
                   ShortestPathExecutor<ShortestPathCluster>,
-                  ShortestPathExecutor<ShortestPathClusterTracer>,
                   ShortestPathExecutor<WeightedShortestPath>,
-                  ShortestPathExecutor<WeightedShortestPathTracer>,
                   ShortestPathExecutor<WeightedShortestPathCluster>,
-                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor, EnumeratePathsExecutor<KPath>,
-                  EnumeratePathsExecutor<KPathTracer>,
                   EnumeratePathsExecutor<KPathCluster>,
-                  EnumeratePathsExecutor<KPathClusterTracer>,
                   EnumeratePathsExecutor<AllShortestPaths>,
-                  EnumeratePathsExecutor<AllShortestPathsTracer>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
-                  EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<KShortestPaths>,
-                  EnumeratePathsExecutor<KShortestPathsTracer>,
                   EnumeratePathsExecutor<KShortestPathsCluster>,
-                  EnumeratePathsExecutor<KShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPaths>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<YenPaths>,
-                  EnumeratePathsExecutor<YenPathsTracer>,
                   EnumeratePathsExecutor<YenPathsCluster>,
-                  EnumeratePathsExecutor<YenPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedYenPaths>,
-                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
                   EnumeratePathsExecutor<WeightedYenPathsCluster>,
-                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,

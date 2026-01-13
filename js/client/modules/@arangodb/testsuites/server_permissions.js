@@ -297,8 +297,8 @@ function server_parameters(options) {
 }
 
 function server_secrets(options) {
-  let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
-  fs.makeDirectory(secretsDir);
+  let secretsDir = fs.join(fs.getTempPath(), options.suffix, 'arango_jwt_secrets');
+  fs.makeDirectoryRecursive(secretsDir);
   let secretFiles = [
     fs.join(secretsDir, 'secret1'),
     fs.join(secretsDir, 'secret2')
@@ -309,9 +309,9 @@ function server_secrets(options) {
   process.env["jwt-secret-folder"] = secretsDir;
 
   // Now set up TLS with the first server key:
-  let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
+  let keyfileDir = fs.join(fs.getTempPath(), options.suffix, 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
-  fs.makeDirectory(keyfileDir);
+  fs.makeDirectoryRecursive(keyfileDir);
 
   fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
 
@@ -332,7 +332,7 @@ function server_secrets(options) {
   };
   if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./etc/testing/tls.keyfile";
+      = "hans.arango.ai=./etc/testing/tls.keyfile";
   }
   let rc = new trs.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {

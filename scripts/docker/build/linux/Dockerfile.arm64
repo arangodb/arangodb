@@ -111,7 +111,7 @@ RUN cd / ; git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/ar
 
 FROM nodejs
 
-MAINTAINER Max Neunhoeffer <max@arangodb.com>
+MAINTAINER Max Neunhoeffer <max@arango.ai>
 
 ARG ARCH="aarch64"
 ARG COMPILER_VERSION

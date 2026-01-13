@@ -29,7 +29,7 @@
     },
 
     breadcrumb: function (name) {
-      $('#subNavigationBar .breadcrumb').html('Node: ' + name);
+      $('#subNavigationBar .breadcrumb').html('Node: ' + _.escape(name));
     },
 
     render: function () {

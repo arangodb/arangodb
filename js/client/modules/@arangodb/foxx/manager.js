@@ -184,7 +184,7 @@ var help = function () {
   if (!version.match(/^(\d+\.\d+)$/)) {
     version = 'stable';
   }
-  arangodb.print('https://docs.arangodb.com/' + version + '/develop/foxx-microservices/');
+  arangodb.print('https://docs.arango.ai/arangodb/' + version + '/develop/foxx-microservices/');
 
   // additional newline
   arangodb.print();
@@ -557,7 +557,7 @@ var tests = function (mount, options) {
 var run = function (args) {
   var version = internal.version.split('.').slice(0, 2).join('.');
   arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB v4.0.');
-  arangodb.print(`Please use foxx-cli instead: https://docs.arangodb.com/${version}/components/tools/foxx-cli/\n`);
+  arangodb.print(`Please use foxx-cli instead: https://docs.arango.ai/arangodb/${version}/components/tools/foxx-cli/\n`);
 
   if (args === undefined || args.length === 0) {
     arangodb.print('Expecting a command, please try:\n');

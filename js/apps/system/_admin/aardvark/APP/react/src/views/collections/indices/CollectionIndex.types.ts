@@ -8,6 +8,7 @@ type MdiPrefixed = Omit<MdiIndex, "type"> & {
 type Vector = {
   type: "vector";
   fields: string[];
+  storedValues?: string[];
   name?: string;
   params: {
     metric: "cosine" | "l2" | "innerProduct" | string;

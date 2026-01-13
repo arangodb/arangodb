@@ -29,6 +29,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -201,7 +202,7 @@ class ShortestPathExecutor {
   FinderType& _finder;
 
   /// @brief builder we tmp. store the path in
-  transaction::BuilderLeaser _pathBuilder;
+  ThreadLocalBuilderLeaser::Lease _pathBuilder;
   /// @brief current computed path.
   size_t _posInPath;
   /// @brief path length based on amount of vertices

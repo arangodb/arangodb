@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -576,7 +577,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     }
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
-    transaction::BuilderLeaser builder(trx.transactionContextPtr());
+    auto builder = ThreadLocalBuilderLeaser::lease();
     ::buildTransactionBody(state, server, *builder);
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
@@ -613,7 +614,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       value.append(" aql");  // This is a single AQL query
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      auto builder = ThreadLocalBuilderLeaser::lease();
       ::buildTransactionBody(state, server, *builder);
       headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction

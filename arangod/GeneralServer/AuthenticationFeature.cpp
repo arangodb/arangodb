@@ -209,7 +209,7 @@ trimmed, leading to authentication problems:
 - Carriage Return (`\r`, U+000D)
 - Space (U+0020)
 - Next Line (U+0085)
-- No-Nreak Space (U+00A0)
+- No-Break Space (U+00A0)
 
 In single server setups, ArangoDB generates a secret if none is specified.
 
@@ -263,7 +263,8 @@ void AuthenticationFeature::validateOptions(
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
-          << "Given JWT secret too long. Max length is " << kMaxSecretLength;
+          << "Given JWT secret too long. Max length is " << kMaxSecretLength
+          << " have " << _jwtSecretProgramOption.length();
       FATAL_ERROR_EXIT();
     }
   }

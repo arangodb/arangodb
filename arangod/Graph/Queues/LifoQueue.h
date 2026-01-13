@@ -26,6 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "Graph/Queues/ExpansionMarker.h"
 
 #include <queue>
 
@@ -45,6 +46,8 @@ class LifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~LifoQueue() { this->clear(); }
 
+  bool isBatched() { return false; }
+
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
@@ -59,6 +62,8 @@ class LifoQueue {
     _queue.push_front(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
   }
+
+  void append(Expansion expansion) { TRI_ASSERT(false); }
 
   void setStartContent(std::vector<Step> startSteps) {
     arangodb::ResourceUsageScope guard(_resourceMonitor,
@@ -114,14 +119,14 @@ class LifoQueue {
     return first;
   }
 
-  Step pop() {
+  QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
         << "<LifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return first;
+    return {first};
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
@@ -141,6 +146,8 @@ class LifoQueue {
       }
     }
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, LifoQueue<S>& x);
 
  private:
   /// @brief queue datastore
@@ -149,6 +156,9 @@ class LifoQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, LifoQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

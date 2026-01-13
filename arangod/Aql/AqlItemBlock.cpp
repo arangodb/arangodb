@@ -33,9 +33,8 @@
 #include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/HashSet.h"
-#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "Containers/SmallVector.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>

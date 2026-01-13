@@ -37,6 +37,7 @@
 #include "Transaction/Methods.h"
 
 #include "Graph/Providers/BaseStep.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <velocypack/HashedStringRef.h>
 
@@ -91,7 +92,6 @@ class MockGraphProviderOptions {
 };
 
 class MockGraphProvider {
-  using VertexType = arangodb::velocypack::HashedStringRef;
   using MockEdgeType = MockGraph::EdgeDef;
 
  public:
@@ -102,27 +102,6 @@ class MockGraphProvider {
   class Step : public arangodb::graph::BaseStep {
    public:
     using EdgeType = arangodb::velocypack::HashedStringRef;
-    using VertexType = arangodb::velocypack::HashedStringRef;
-
-    class Vertex {
-     public:
-      explicit Vertex(VertexType v) : _vertex(v){};
-
-      VertexType getID() const { return _vertex; }
-
-      // Make the set work on the VertexRef attribute only
-      bool operator<(Vertex const& other) const noexcept {
-        return _vertex < other._vertex;
-      }
-
-      bool operator>(Vertex const& other) const noexcept {
-        return !operator<(other);
-      }
-
-     private:
-      VertexType _vertex;
-    };
-
     class Edge {
      public:
       Edge(MockEdgeType e) : _edge(e) {
@@ -184,15 +163,17 @@ class MockGraphProvider {
       std::string _id;
     };
 
-    Step(VertexType v, bool isProcessable);
-    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable);
-    Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
-    Step(size_t prev, VertexType v, bool isProcessable, size_t depth,
-         double weight);
-    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
+    Step(arangodb::graph::VertexRef v, bool isProcessable);
+    Step(size_t prev, arangodb::graph::VertexRef v, MockEdgeType e,
+         bool isProcessable);
+    Step(size_t prev, arangodb::graph::VertexRef v, bool isProcessable,
          size_t depth);
-    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
+    Step(size_t prev, arangodb::graph::VertexRef v, bool isProcessable,
          size_t depth, double weight);
+    Step(size_t prev, arangodb::graph::VertexRef v, MockEdgeType e,
+         bool isProcessable, size_t depth);
+    Step(size_t prev, arangodb::graph::VertexRef v, MockEdgeType e,
+         bool isProcessable, size_t depth, double weight);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -213,7 +194,7 @@ class MockGraphProvider {
     static bool vertexFetched() { return true; }
     static bool edgeFetched() { return true; }
 
-    Vertex getVertex() const {
+    arangodb::graph::VertexRef getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "Accessing vertex (" +
@@ -232,18 +213,12 @@ class MockGraphProvider {
       return _edge;
     }
 
-    VertexType getVertexIdentifier() const { return getVertex().getID(); }
+    arangodb::graph::VertexRef getVertexIdentifier() const {
+      return getVertex();
+    }
     arangodb::velocypack::HashedStringRef getEdgeIdentifier() const {
       return _edge.getID();
     }
-
-    std::string getCollectionName() const {
-      auto collectionNameResult = extractCollectionName(_vertex.getID());
-      if (collectionNameResult.fail()) {
-        THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-      }
-      return collectionNameResult.get().first;
-    };
 
     void setLocalSchreierIndex(size_t index) {
       TRI_ASSERT(index != std::numeric_limits<size_t>::max());
@@ -272,7 +247,7 @@ class MockGraphProvider {
         -> std::ostream&;
 
    private:
-    Vertex _vertex;
+    arangodb::graph::VertexRef _vertex;
     Edge _edge;
     bool _isProcessable;
     size_t _localSchreierIndex;
@@ -291,10 +266,9 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
   void destroyEngines(){};
-  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
-      -> Step;
-  auto fetchVertices(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;
+  auto startVertex(arangodb::graph::VertexRef vertex, size_t depth = 0,
+                   double weight = 0.0) -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
   // dummy function, needed for OneSidedEnumerator::Provider
   static auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
 
@@ -303,9 +277,25 @@ class MockGraphProvider {
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> callback) -> void;
+  using CursorId = size_t;
+  auto addExpansionIterator(CursorId id, Step const& from) -> void {
+    _startedIterators.emplace(id);
+    return;
+  }
+  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
+                         std::function<void(Step)> const& callback) -> bool {
+    // expand everything and remove step from _startedIterators
+    auto iterator = _startedIterators.find(id);
+    if (iterator == _startedIterators.end()) {
+      return false;
+    }
+    expand(step, previous, callback);
+    _startedIterators.erase(iterator);
+    return true;
+  }
   auto clear() -> void;
 
-  void addVertexToBuilder(Step::Vertex const& vertex,
+  void addVertexToBuilder(arangodb::graph::VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
@@ -351,7 +341,12 @@ class MockGraphProvider {
   arangodb::aql::TraversalStats _stats;
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+  std::unordered_set<CursorId> _startedIterators;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MockGraphProvider::Step& x) {
+  return f.object(x).fields();
+}
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb

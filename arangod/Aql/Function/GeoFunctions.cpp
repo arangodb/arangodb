@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Result.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
@@ -241,7 +242,7 @@ struct GeoPosition {
   double y;
   std::optional<double> z;
 
-  void addToBuilder(transaction::BuilderLeaser& builder) const {
+  void addToBuilder(ThreadLocalBuilderLeaser::Lease& builder) const {
     builder->openArray();
     builder->add(VPackValue(x));
     builder->add(VPackValue(y));
@@ -646,7 +647,6 @@ AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
 AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
                              AstNode const&,
                              VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &expressionContext->trx();
   size_t const n = parameters.size();
 
   if (n < 2) {
@@ -689,7 +689,7 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("type", VPackValue("Point"));
   builder->add("coordinates", VPackValue(VPackValueType::Array));
@@ -732,7 +732,7 @@ AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
 
   builder->openObject();
   builder->add("type", VPackValue("MultiPoint"));
@@ -778,7 +778,7 @@ AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("type", VPackValue("Polygon"));
   builder->add("coordinates", VPackValue(VPackValueType::Array));
@@ -852,7 +852,7 @@ AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("type", VPackValue("MultiPolygon"));
   builder->add("coordinates", VPackValue(VPackValueType::Array));
@@ -918,7 +918,7 @@ AqlValue functions::GeoLinestring(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
 
   builder->add(VPackValue(VPackValueType::Object));
   builder->add("type", VPackValue("LineString"));
@@ -971,7 +971,7 @@ AqlValue functions::GeoMultiLinestring(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
 
   builder->add(VPackValue(VPackValueType::Object));
   builder->add("type", VPackValue("MultiLineString"));

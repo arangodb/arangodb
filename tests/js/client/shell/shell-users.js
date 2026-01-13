@@ -53,7 +53,7 @@ function UsersSuite () {
     }
 
     [
-      "hackers@arangodb.com",
+      "hackers@arango.ai",
       "this+is+also+a+username",
       "this-is-also-a-username",
       "this.is.also.a.username"
@@ -169,7 +169,7 @@ function UsersSuite () {
 
     testSaveWithSomePatterns : function () {
       var usernames = [
-        "hackers@arangodb.com",
+        "hackers@arango.ai",
         "this+is+also+a+username",
         "this-is-also-a-username",
         "this.is.also.a.username"

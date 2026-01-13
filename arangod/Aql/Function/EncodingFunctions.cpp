@@ -50,7 +50,7 @@ AqlValue functions::ToBase64(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);
@@ -66,7 +66,7 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);
@@ -83,7 +83,7 @@ AqlValue functions::EncodeURIComponent(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);

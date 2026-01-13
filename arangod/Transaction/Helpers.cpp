@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
@@ -469,7 +470,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
                              BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -655,7 +656,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
                           BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
 
   b->openObject();
 
@@ -769,7 +770,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            RevisionId& revisionId, VPackBuilder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   // add system attributes first, in this order:
@@ -883,37 +884,6 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
 
 }  // namespace helpers
 
-StringLeaser::StringLeaser(Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _string(_transactionContext->leaseString()) {}
-
-StringLeaser::StringLeaser(Methods* trx)
-    : StringLeaser{trx->transactionContextPtr()} {}
-
-StringLeaser::~StringLeaser() {
-  if (_string != nullptr) {
-    _transactionContext->returnString(_string);
-  }
-}
-
-BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _transactionContext{transactionContext},
-      _builder{_transactionContext->leaseBuilder()} {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-BuilderLeaser::BuilderLeaser(Methods* trx)
-    : BuilderLeaser{trx->transactionContextPtr()} {}
-
-BuilderLeaser::~BuilderLeaser() { clear(); }
-
-void BuilderLeaser::clear() {
-  if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder);
-    _builder = nullptr;
-  }
-}
-
 Result extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed, velocypack::Builder& builder) {
@@ -953,14 +923,14 @@ Result extractAttributeValues(
   return {};
 }
 
-ResultT<transaction::BuilderLeaser> extractAttributeValues(
+ResultT<ThreadLocalBuilderLeaser::Lease> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed) {
-  transaction::BuilderLeaser leased(&trx);
+  auto leased = ThreadLocalBuilderLeaser::lease();
 
-  if (auto const res = extractAttributeValues(storedValues, doc, nullAllowed,
-                                              *leased.builder());
+  if (auto const res =
+          extractAttributeValues(storedValues, doc, nullAllowed, *leased.get());
       res.fail()) {
     return res;
   }

@@ -23,15 +23,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OneSidedEnumerator.h"
+#include <variant>
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
+#include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/QueueTracer.h"
+#include "Graph/Queues/ExpansionMarker.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
@@ -43,6 +45,8 @@
 #endif
 
 #include <velocypack/Builder.h>
+
+#define LOG_TRAVERSAL LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -107,25 +111,41 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
-    -> void {
-  // Pull next element from Queue
-  // Do 1 step search
+auto OneSidedEnumerator<Configuration>::popFromQueue() -> QueueEntry<Step> {
   TRI_ASSERT(!_queue.isEmpty());
-  if (!_queue.firstIsVertexFetched()) {
+  if (!ServerState::instance()->isSingleServer() &&
+      !_queue.firstIsVertexFetched()) {
     std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
-    futures::Future<std::vector<Step*>> futureEnds =
-        _provider.fetchVertices(looseEnds);
-
-    // Will throw all network errors here
-    std::vector<Step*> preparedEnds = std::move(futureEnds.waitAndGet());
+    auto preparedEnds = _provider.fetchVertices(looseEnds);
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
-
-  TRI_ASSERT(!_queue.isEmpty());
-  auto tmp = _queue.pop();
-  auto posPrevious = _interior.append(std::move(tmp));
+  return _queue.pop();
+}
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
+    -> void {
+  auto tmp = popFromQueue();
+  if (std::holds_alternative<Expansion>(tmp)) {
+    auto expansion = std::get<Expansion>(tmp);
+    _queue.append(std::move(std::get<Expansion>(
+        tmp)));  // push it back because iteration could not yet be over
+    auto& step = _interior.getStepReference(expansion.from);
+    auto stepsAdded =
+        _provider.expandToNextBatch(expansion.id, step, expansion.from,
+                                    [&](Step n) -> void { _queue.append(n); });
+    if (not stepsAdded) {  // means that nothing was added to the queue in
+                           // expandToNextBatch
+      _queue.pop();        // now we can pop NextBatch item savely
+    }
+    LOG_TRAVERSAL << "Expanded " << inspection::json(step) << " | "
+                  << inspection::json(_queue);
+    return;
+  }
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
+  LOG_TRAVERSAL << "Popped   " << inspection::json(std::get<Step>(tmp)) << " | "
+                << inspection::json(_queue);
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
 
   if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
@@ -157,19 +177,29 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      if (!step.edgeFetched()) {
-        // NOTE: The step we have should be the first, s.t. we are guaranteed
-        // to work on it, as the ordering here gives the priority to the
-        // Provider in how important it is to get responses for a particular
-        // step.
-        std::vector<Step*> stepsToFetch{&step};
-        _queue.getStepsWithoutFetchedEdges(stepsToFetch);
-        TRI_ASSERT(!stepsToFetch.empty());
-        _provider.fetchEdges(stepsToFetch);
-        TRI_ASSERT(step.edgeFetched());
+      if (_queue.isBatched()) {
+        auto cursorId = _nextCursorId++;
+        _provider.addExpansionIterator(cursorId, step);
+        _queue.append(Expansion{cursorId, posPrevious});
+        LOG_TRAVERSAL << "Pushed   " << inspection::json(step) << " | "
+                      << inspection::json(_queue);
+      } else {
+        if (!step.edgeFetched()) {
+          // NOTE: The step we have should be the first, s.t. we are guaranteed
+          // to work on it, as the ordering here gives the priority to the
+          // Provider in how important it is to get responses for a particular
+          // step.
+          std::vector<Step*> stepsToFetch{&step};
+          _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+          TRI_ASSERT(!stepsToFetch.empty());
+          _provider.fetchEdges(stepsToFetch);
+          TRI_ASSERT(step.edgeFetched());
+        }
+        _provider.expand(step, posPrevious,
+                         [&](Step n) -> void { _queue.append(n); });
+        LOG_TRAVERSAL << "Expanded " << inspection::json(step) << " | "
+                      << inspection::json(_queue);
       }
-      _provider.expand(step, posPrevious,
-                       [&](Step n) -> void { _queue.append(n); });
     }
   } else if constexpr (std::is_same_v<
                            ResultList,
@@ -222,7 +252,8 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
   for (auto const& v : vertices) {
     VPackHashedStringRef source{v.id.data(),
                                 static_cast<uint32_t>(v.id.size())};
-    startSteps.emplace_back(_provider.startVertex(source, v.depth, v.weight));
+    startSteps.emplace_back(
+        _provider.startVertex(VertexRef{source}, v.depth, v.weight));
   }
   _queue.setStartContent(std::move(startSteps));
 }
@@ -328,10 +359,7 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
       }
 
       if (!looseEnds.empty()) {
-        // Will throw all network errors here
-        futures::Future<std::vector<Step*>> futureEnds =
-            _provider.fetchVertices(looseEnds);
-        futureEnds.waitAndGet();
+        _provider.fetchVertices(looseEnds);
         // Notes for the future:
         // Vertices are now fetched. Think about other less-blocking and
         // batch-wise fetching (e.g. re-fetch at some later point).
@@ -407,26 +435,24 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
 /* SingleServerProvider Section */
 using SingleServerProviderStep = graph::SingleServerProviderStep;
 
-#define MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                           vertexUniqueness, edgeUniqueness) \
-  template class graph::OneSidedEnumerator<                                  \
-      configuration<provider, vertexUniqueness, edgeUniqueness, false>>;     \
-  template class graph::OneSidedEnumerator<                                  \
-      configuration<provider, vertexUniqueness, edgeUniqueness, true>>;
+#define MAKE_ONE_SIDED_ENUMERATORS(provider, configuration, vertexUniqueness, \
+                                   edgeUniqueness)                            \
+  template class graph::OneSidedEnumerator<                                   \
+      configuration<provider, vertexUniqueness, edgeUniqueness>>;
 
 #define MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, configuration) \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::NONE,      \
-                                     EdgeUniquenessLevel::NONE)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::NONE,      \
-                                     EdgeUniquenessLevel::PATH)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::PATH,      \
-                                     EdgeUniquenessLevel::PATH)        \
-  MAKE_ONE_SIDED_ENUMERATORS_TRACING(provider, configuration,          \
-                                     VertexUniquenessLevel::GLOBAL,    \
-                                     EdgeUniquenessLevel::PATH)
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::NONE,              \
+                             EdgeUniquenessLevel::NONE)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::NONE,              \
+                             EdgeUniquenessLevel::PATH)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::PATH,              \
+                             EdgeUniquenessLevel::PATH)                \
+  MAKE_ONE_SIDED_ENUMERATORS(provider, configuration,                  \
+                             VertexUniquenessLevel::GLOBAL,            \
+                             EdgeUniquenessLevel::PATH)
 
 #define MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(provider)          \
   MAKE_ONE_SIDED_ENUMERATORS_UNIQUENESS(provider, BFSConfiguration) \

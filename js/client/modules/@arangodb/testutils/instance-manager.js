@@ -867,6 +867,13 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      this.arangods.forEach(arangod => {
+        if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
+          delete arangod.args['server.jwt-secret-keyfile'];
+        } else if (arangod.args.hasOwnProperty('server.jwt-secret-folder')) {
+          delete arangod.args['server.jwt-secret-folder'];
+        }
+      });
     }
 
     this.arangods.forEach(arangod => {
@@ -1165,6 +1172,57 @@ class instanceManager {
         arangod.id = res['id'];
       }
     });
+  }
+
+  waitForAllShardsInSync() {
+    if (!this.isCluster) {
+      return true;
+    }
+    let count = 0;
+    let collections = [];
+    let dbs = db._databases();
+    while (count < 500) {
+      let dbsOk = 0;
+      dbs.forEach(oneDb => {
+        db._useDatabase(oneDb);
+        collections = [];
+        let found = 0;
+        let shardDist = arango.GET("/_admin/cluster/shardDistribution");
+        if (shardDist.code !== 200 || typeof shardDist.results !== "object") {
+          ++count;
+          return;
+        }
+        let cols = Object.keys(shardDist.results);
+        cols.forEach((c) => {
+          let col = shardDist.results[c];
+          let shards = Object.keys(col.Plan);
+          shards.forEach((s) => {
+            try {
+              if (col.Current.hasOwnProperty(s) && (col.Plan[s].leader !== col.Current[s].leader)) {
+                ++found;
+                collections.push([c, s]);
+              }
+            } catch (ex) {
+              print(`${Date()} 015: ${s}`);
+              print(`${Date()} 015: ${JSON.stringify(col)}`);
+              print(`${Date()} 015: ${ex}`);
+            }
+          });
+        });
+        if (found > 0) {
+          print(`${Date()} 015: ${found} found - Waiting - ${JSON.stringify(collections)}`);
+          internal.sleep(1);
+          count += 1;
+        } else {
+          dbsOk += 1;
+          return;
+        }
+      });
+      if (dbs.length === dbsOk) {
+        break;
+      }
+    }
+    return count < 500;
   }
 
   stopServerWaitFailed(urlIDOrShortName) {
@@ -1557,7 +1615,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'coordinators': 1,
     'dbServers': 2,
     'disableClusterMonitor': true,
-    'encryptionAtRest': false,
+    'encryptionAtRest': true,
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,

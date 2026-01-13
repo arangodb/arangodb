@@ -284,7 +284,7 @@ AqlValue functions::Unset(ExpressionContext* expressionContext, AstNode const&,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   unsetOrKeep(trx, slice, names, true, false, *builder.get());
   return AqlValue(builder->slice(), builder->size());
 }
@@ -311,7 +311,7 @@ AqlValue functions::UnsetRecursive(ExpressionContext* expressionContext,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   unsetOrKeep(trx, slice, names, true, true, *builder.get());
   return AqlValue(builder->slice(), builder->size());
 }
@@ -337,7 +337,7 @@ AqlValue functions::Keep(ExpressionContext* expressionContext, AstNode const&,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   unsetOrKeep(trx, slice, names, false, false, *builder.get());
   return AqlValue(builder->slice(), builder->size());
 }
@@ -364,7 +364,7 @@ AqlValue functions::KeepRecursive(ExpressionContext* expressionContext,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   unsetOrKeep(trx, slice, names, false, true, *builder.get());
   return AqlValue(builder->slice(), builder->size());
 }
@@ -396,7 +396,7 @@ AqlValue functions::Translate(ExpressionContext* expressionContext,
   if (key.isString()) {
     result = slice.get(key.slice().copyString());
   } else {
-    transaction::StringLeaser buffer(trx);
+    auto buffer = ThreadLocalStringLeaser::lease();
     velocypack::StringSink adapter(buffer.get());
     functions::stringify(vopts, adapter, key.slice());
     result = slice.get(*buffer);
@@ -452,7 +452,7 @@ AqlValue functions::Has(ExpressionContext* expressionContext, AstNode const&,
       aql::functions::extractFunctionParameterValue(parameters, 1);
   if (!name.isString()) {
     auto const& vopts = trx->vpackOptions();
-    transaction::StringLeaser buffer(trx);
+    auto buffer = ThreadLocalStringLeaser::lease();
     velocypack::StringSink adapter(buffer.get());
     appendAsString(vopts, adapter, name);
     return AqlValue(AqlValueHintBool(value.hasKey(*buffer)));
@@ -500,7 +500,7 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
         keys;
 
     VPackCollection::keys(slice, keys);
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
@@ -517,7 +517,7 @@ AqlValue functions::Attributes(ExpressionContext* expressionContext,
   std::unordered_set<std::string_view> keys;
   VPackCollection::keys(slice, keys);
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
   for (auto const& it : keys) {
     if (removeInternal && it.starts_with('_')) {
@@ -560,7 +560,7 @@ AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
 
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
   for (auto entry : VPackObjectIterator(slice, true)) {
     if (!entry.key.isString()) {
@@ -694,7 +694,7 @@ AqlValue functions::Matches(ExpressionContext* expressionContext,
 
   TRI_ASSERT(docSlice.isObject());
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   AqlValueMaterializer exampleMaterializer(vopts);
   VPackSlice examples = exampleMaterializer.slice(exampleDocs);
 
@@ -782,12 +782,12 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   AqlValueMaterializer valueMaterializer(vopts);
   VPackSlice valuesSlice = valueMaterializer.slice(values);
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
 
   // Buffer will temporarily hold the keys
   containers::FlatHashSet<std::string> keysSeen;
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   VPackArrayIterator keysIt(keysSlice);
@@ -837,7 +837,7 @@ AqlValue functions::Entries(ExpressionContext* expressionContext,
   AqlValueMaterializer objectMaterializer(vopts);
   VPackSlice objectSlice = objectMaterializer.slice(object);
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
 
   for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {

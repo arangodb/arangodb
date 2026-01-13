@@ -32,12 +32,9 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
@@ -52,14 +49,11 @@ namespace arangodb::graph {
  * Class: Ball (internally used in WeightedShortestPathEnumerator)
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::Ball(Direction dir, ProviderType&& provider,
-                               GraphOptions const& options,
-                               PathValidatorOptions validatorOptions,
-                               arangodb::ResourceMonitor& resourceMonitor)
+template<class ProviderType>
+WeightedShortestPathEnumerator<ProviderType>::Ball::Ball(
+    Direction dir, ProviderType&& provider, GraphOptions const& options,
+    PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -69,20 +63,15 @@ WeightedShortestPathEnumerator<
       _graphOptions(options),
       _diameter(-std::numeric_limits<double>::infinity()) {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::Ball::~Ball() {
+template<class ProviderType>
+WeightedShortestPathEnumerator<ProviderType>::Ball::~Ball() {
   clear();
   clearProvider();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::reset(VertexRef
-                                                                    center,
-                                                                size_t depth) {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::Ball::reset(VertexRef center,
+                                                               size_t depth) {
   clear();
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
@@ -92,10 +81,8 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _foundVertices.emplace(center, VertexInfo(0.0));
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::clear() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::Ball::clear() {
   _foundVertices.clear();
   _queue.clear();
   _interior.reset();  // PathStore
@@ -106,10 +93,8 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   // The provider is only cleared in the destructor.
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::clearProvider() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::Ball::clearProvider() {
   // We need to make sure, no one holds references to _provider.
   // Guarantee that the used Queue is empty and we do not hold any reference to
   // PathStore. Info: Steps do contain VertexRefs which are hold in PathStore.
@@ -122,19 +107,15 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _provider.clear();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::isQueueEmpty() const
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::isQueueEmpty() const
     -> bool {
   return _queue.isEmpty();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::fetchResult(CalculatedCandidate& candidate) -> void {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::fetchResult(
+    CalculatedCandidate& candidate) -> void {
   std::vector<Step*> looseEnds{};
   auto& [weight, leftMeetingPoint, rightMeetingPoint] = candidate;
 
@@ -158,23 +139,19 @@ auto WeightedShortestPathEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::hasBeenVisited(Step const& step) -> bool {
-  auto it = _foundVertices.find(step.getVertex().getID());
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::hasBeenVisited(
+    Step const& step) -> bool {
+  auto it = _foundVertices.find(step.getVertex());
   if (it == _foundVertices.end()) {
     return false;
   }
   return it->second.expanded;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
+template<class ProviderType>
 auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::ensureQueueHasProcessableElement() -> void {
+    ProviderType>::Ball::ensureQueueHasProcessableElement() -> void {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
@@ -188,18 +165,16 @@ auto WeightedShortestPathEnumerator<
   TRI_ASSERT(_queue.hasProcessableElement());
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::
-    validateSingletonPath(std::optional<CalculatedCandidate>& bestPath)
-        -> void {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::validateSingletonPath(
+    std::optional<CalculatedCandidate>& bestPath) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
 
   TRI_ASSERT(_queue.isEmpty());
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
   ValidationResult res = _validator.validatePath(step);
 
@@ -209,24 +184,23 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::
     computeNeighbourhoodOfNextVertex(
         Ball& other, std::optional<CalculatedCandidate>& bestPath) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
 
   TRI_ASSERT(step.getWeight() >= _diameter);
   _diameter = step.getWeight();
   ValidationResult res = _validator.validatePath(step);
 
-  if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
-    auto it = _foundVertices.find(step.getVertex().getID());
+  if (!res.isPruned() && step.getVertex() != other.getCenter()) {
+    auto it = _foundVertices.find(step.getVertex());
     TRI_ASSERT(it != _foundVertices.end());
     if (it->second.cancelled) {
       // This happens if we have later found a shorter path to the vertex
@@ -242,20 +216,19 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       // We check for
       if (_forbiddenVertices != nullptr &&
-          _forbiddenVertices->contains(n.getVertex().getID())) {
+          _forbiddenVertices->contains(n.getVertex())) {
         return;
       }
       if (_forbiddenEdges != nullptr &&
           _forbiddenEdges->contains(n.getEdge().getID())) {
         return;
       }
-      auto reachedIt = _foundVertices.find(n.getVertex().getID());
+      auto reachedIt = _foundVertices.find(n.getVertex());
       bool needToQueue = true;
       bool weightReduced = false;
       if (reachedIt == _foundVertices.end()) {
         reachedIt =
-            _foundVertices
-                .emplace(n.getVertex().getID(), VertexInfo(n.getWeight()))
+            _foundVertices.emplace(n.getVertex(), VertexInfo(n.getWeight()))
                 .first;
       } else if (reachedIt->second.weight > n.getWeight()) {
         // Reduce the weight of the vertex, note that the old Step will
@@ -299,14 +272,11 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::
-    matchResultsInShell(Step const& otherStep,
-                        std::optional<CalculatedCandidate>& bestPath,
-                        PathValidator const& otherSideValidator) -> void {
-  auto it = _foundVertices.find(otherStep.getVertex().getID());
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::matchResultsInShell(
+    Step const& otherStep, std::optional<CalculatedCandidate>& bestPath,
+    PathValidatorType const& otherSideValidator) -> void {
+  auto it = _foundVertices.find(otherStep.getVertex());
   TRI_ASSERT(it != _foundVertices.end());
   TRI_ASSERT(it->second.expanded);
   auto position = it->second.position;
@@ -327,13 +297,9 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::buildPath(Step const& vertexInShell,
-                                    PathResult<ProviderType, Step>& path)
-    -> void {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::buildPath(
+    Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {
@@ -341,10 +307,8 @@ auto WeightedShortestPathEnumerator<
   }
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::provider()
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::Ball::provider()
     -> ProviderType& {
   return _provider;
 }
@@ -353,15 +317,11 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
  * Class: WeightedShortestPathEnumerator
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::
-    WeightedShortestPathEnumerator(ProviderType&& forwardProvider,
-                                   ProviderType&& backwardProvider,
-                                   TwoSidedEnumeratorOptions&& options,
-                                   PathValidatorOptions validatorOptions,
-                                   arangodb::ResourceMonitor& resourceMonitor)
+template<class ProviderType>
+WeightedShortestPathEnumerator<ProviderType>::WeightedShortestPathEnumerator(
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+    TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider), _options,
             validatorOptions, resourceMonitor},
@@ -369,25 +329,19 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
              std::move(validatorOptions), resourceMonitor},
       _resultPath{_left.provider(), _right.provider()} {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
+template<class ProviderType>
 WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::~WeightedShortestPathEnumerator() {}
+    ProviderType>::~WeightedShortestPathEnumerator() {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::destroyEngines() -> void {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::destroyEngines() -> void {
   // Note: Left & Right Provider use the same traversal engines.
   //   => Destroying one of them is enough.
   _left.provider().destroyEngines();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::clear() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::clear() {
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _bestPath.reset();
@@ -406,10 +360,8 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::isDone() const {
+template<class ProviderType>
+bool WeightedShortestPathEnumerator<ProviderType>::isDone() const {
   TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
   return !_bestPath.has_value() && searchDone();
 }
@@ -424,12 +376,10 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
  * @param source The source vertex to start the paths
  * @param target The target vertex to end the paths
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::reset(VertexRef source,
-                                                          VertexRef target,
-                                                          size_t depth) {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::reset(VertexRef source,
+                                                         VertexRef target,
+                                                         size_t depth) {
   clear();
 
   _left.reset(source, 0);
@@ -468,11 +418,9 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::getNextPath(VPackBuilder&
-                                                                    result) {
+template<class ProviderType>
+bool WeightedShortestPathEnumerator<ProviderType>::getNextPath(
+    VPackBuilder& result) {
   auto handleResult = [&]() {
     // Helper method to take care of a found result:
     if (!isAlgorithmFinished() || !_bestPath.has_value()) {
@@ -524,10 +472,8 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::searchMoreResults() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::searchMoreResults() {
   while (!searchDone()) {
     _resultsFetched = false;
 
@@ -609,34 +555,24 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   fetchResult();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::setAlgorithmFinished() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::setAlgorithmFinished() {
   _algorithmFinished = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::setAlgorithmUnfinished() {
+template<class ProviderType>
+void WeightedShortestPathEnumerator<ProviderType>::setAlgorithmUnfinished() {
   _algorithmFinished = false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::isAlgorithmFinished()
-    const {
+template<class ProviderType>
+bool WeightedShortestPathEnumerator<ProviderType>::isAlgorithmFinished() const {
   return _algorithmFinished;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-typename WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                        PathValidator>::BallSearchLocation
-WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::getBallToContinueSearch() {
+template<class ProviderType>
+typename WeightedShortestPathEnumerator<ProviderType>::BallSearchLocation
+WeightedShortestPathEnumerator<ProviderType>::getBallToContinueSearch() {
   if (_left.isQueueEmpty() and _right.isQueueEmpty()) {
     return BallSearchLocation::FINISH;
   }
@@ -683,10 +619,8 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   return BallSearchLocation::RIGHT;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::searchDone() const -> bool {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::searchDone() const -> bool {
   if ((_left.isQueueEmpty() && _right.isQueueEmpty()) ||
       isAlgorithmFinished()) {
     return true;
@@ -708,10 +642,8 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   return false;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::fetchResult() -> void {
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::fetchResult() -> void {
   if (_bestPath.has_value()) {
     _left.fetchResult(_bestPath.value());
     _right.fetchResult(_bestPath.value());
@@ -719,10 +651,8 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _resultsFetched = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::stealStats()
+template<class ProviderType>
+auto WeightedShortestPathEnumerator<ProviderType>::stealStats()
     -> aql::TraversalStats {
   aql::TraversalStats stats = _left.provider().stealStats();
   stats += _right.provider().stealStats();
@@ -738,18 +668,13 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
 // # Weighted ShortestPath:
 // WShortestPath (single)          We      No      Si      Va<Gl,Pa>
 // WShortestPath (cluster)         We      No      Cl      Va<Gl,Pa>
-// TracedWShortestPath (single)    Tr<We>  Tr      Tr<Si>  Va<Tr,Gl,Pa>
-// TracedWShortestPath (cluster)   Tr<We>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
 //
 // # Weighted ShortestPath for Yen:
 // WShortestPath (yen, single)     We      No      Si      Va<No,No>
 // WShortestPath (yen, cluster)    We      No      Cl      Va<No,No>
-// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Tr<Va<No,No>>
-// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Tr<Va<No,No>>
 //
 // Where:
 //   Si/Cl    Single or Cluster provider
-//   No/Tr    Non-traced or traced
 //   Fi/We    Fifo-Queue or WeightedQueue (prio)
 //   Va/Ta    Path validator or Taboo validator (wrapping normal)
 //   No/Pa/Gl For validator: no uniqueness vs. path uniq. vs. global uniq.
@@ -760,41 +685,13 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 // WeightedShortestPathEnumerator<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
-                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
-
-// TracedWeightedShortestPathEnumerator<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<SingleProvider>,
-                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
-                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
+template class WeightedShortestPathEnumerator<SingleProvider>;
 
 /* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 // WeightedShortestPathEnumerator<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
-
-// TracedWeightedShortestPathEnumerator<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<
-        PathValidator<ProviderTracer<ClustProvider>,
-                      PathStoreTracer<PathStore<ClusterProviderStep>>,
-                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
+template class WeightedShortestPathEnumerator<ClustProvider>;
 
 }  // namespace arangodb::graph

@@ -19,4 +19,4 @@ troubleshoot: |
   However, if the situation persists, something is wrong, potentially
   some constant server crash (maybe out of memory crashes?) or another
   situation preventing shards to get in sync.
-  Contact ArangoDB customer support in this case.
+  Contact the Arango customer support in this case.

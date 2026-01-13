@@ -33,8 +33,8 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
-
 #include "Graph/Steps/ClusterProviderStep.h"
+#include "Network/Methods.h"
 
 #include <vector>
 
@@ -90,8 +90,12 @@ class ClusterProvider {
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
+  using CursorId = size_t;
+  auto addExpansionIterator(CursorId id, Step const& from) -> void;
+  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
+                         std::function<void(Step)> const& callback) -> bool;
 
-  void addVertexToBuilder(typename Step::Vertex const& vertex,
+  void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
@@ -148,6 +152,9 @@ class ClusterProvider {
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;
+
+  using EngineRequest = std::pair<ServerID, futures::Future<network::Response>>;
+  std::unordered_map<CursorId, std::vector<EngineRequest>> _edgeRequests;
 };
 }  // namespace graph
 }  // namespace arangodb

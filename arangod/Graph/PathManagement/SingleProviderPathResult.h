@@ -66,8 +66,8 @@ class SingleProviderPathResult : public PathResultInterface {
   Step& getStep() { return _step; }
 
  private:
-  auto appendVertex(typename Step::Vertex v) -> void;
-  auto prependVertex(typename Step::Vertex v) -> void;
+  auto appendVertex(VertexRef v) -> void;
+  auto prependVertex(VertexRef v) -> void;
   auto prependWeight(double) -> void;
   auto appendEdge(typename Step::Edge e) -> void;
   auto prependEdge(typename Step::Edge e) -> void;
@@ -81,7 +81,7 @@ class SingleProviderPathResult : public PathResultInterface {
  private:
   Step _step;
 
-  std::vector<typename Step::Vertex> _vertices;
+  std::vector<VertexRef> _vertices;
   std::vector<typename Step::Edge> _edges;
   std::vector<double> _weights;
 

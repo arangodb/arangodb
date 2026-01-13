@@ -16,7 +16,6 @@ from enum import Enum
 from typing import Dict, List, Optional, Any, Union, TypeVar, Mapping
 import yaml
 
-
 # ============================================================================
 # Enumerations
 # ============================================================================
@@ -91,23 +90,48 @@ class ResourceSize(Enum):
         return _enum_from_string(cls, value)
 
 
-class Sanitizer(Enum):
+class BuildVariant(Enum):
     """
-    Sanitizer types used in production builds.
+    Build instrumentation variant.
 
-    TSAN = Thread Sanitizer
-    ALUBSAN = Address + Leak + UndefinedBehavior Sanitizer combined
+    Represents different types of build instrumentation that can be enabled.
     """
 
-    TSAN = "tsan"
-    ALUBSAN = "alubsan"
+    NORMAL = "normal"  # Non-instrumented build
+    TSAN = "tsan"  # Thread Sanitizer
+    ALUBSAN = "alubsan"  # Address + Leak + UB Sanitizer
+    COVERAGE = "coverage"  # Coverage build
 
     @classmethod
-    def from_string(cls, value: str) -> Optional["Sanitizer"]:
-        """Parse sanitizer from string, case-insensitive."""
-        if value == "none":
-            return None
+    def from_string(cls, value: str) -> "BuildVariant":
+        """Parse build variant from string, case-insensitive."""
         return _enum_from_string(cls, value)
+
+    def get_suffix(self) -> str:
+        """Get workflow name suffix for this variant."""
+        if self == BuildVariant.NORMAL:
+            return ""
+        return f"-{self.value}"
+
+    @property
+    def is_instrumented(self) -> bool:
+        """Check if this is an instrumented build (TSAN, ALUBSAN, or COVERAGE)."""
+        return self in (BuildVariant.TSAN, BuildVariant.ALUBSAN, BuildVariant.COVERAGE)
+
+    @property
+    def is_tsan(self) -> bool:
+        """Check if this is a Thread Sanitizer build."""
+        return self == BuildVariant.TSAN
+
+    @property
+    def is_alubsan(self) -> bool:
+        """Check if this is an Address+Leak+UB Sanitizer build."""
+        return self == BuildVariant.ALUBSAN
+
+    @property
+    def is_coverage(self) -> bool:
+        """Check if this is a coverage build."""
+        return self == BuildVariant.COVERAGE
 
 
 class Architecture(Enum):
@@ -138,9 +162,89 @@ class Architecture(Enum):
 
 
 @dataclass
+class TestRequirements:
+    """
+    Requirements that determine when a test job should be included.
+
+    These are filtering criteria checked against the build context.
+    All fields are optional to support partial specifications.
+    """
+
+    full: Optional[bool] = None  # Only run if full test set is enabled
+    instrumentation: Optional[bool] = (
+        None  # Include/exclude for instrumented builds (TSAN/ALUBSAN/COVERAGE)
+    )
+    coverage: Optional[bool] = None  # Include/exclude for coverage builds only
+    v8: Optional[bool] = None  # Include/exclude for v8 builds
+    architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestRequirements":
+        """
+        Create TestRequirements from a dictionary.
+
+        Args:
+            data: Dictionary from YAML 'requires' section, or None
+
+        Returns:
+            TestRequirements instance with all None fields if data is None
+        """
+        if data is None:
+            return cls()
+
+        kwargs: Dict[str, Any] = {}
+
+        # Direct field mappings
+        if "full" in data:
+            kwargs["full"] = data["full"]
+        if "instrumentation" in data:
+            kwargs["instrumentation"] = data["instrumentation"]
+        if "coverage" in data:
+            kwargs["coverage"] = data["coverage"]
+        if "v8" in data:
+            kwargs["v8"] = data["v8"]
+
+        # Handle arch field
+        if "arch" in data and data["arch"] is not None:
+            kwargs["architecture"] = Architecture.from_string(data["arch"])
+
+        return cls(**kwargs)
+
+    def merge_with(self, override: Optional["TestRequirements"]) -> "TestRequirements":
+        """
+        Create a new TestRequirements with values from override taking precedence.
+
+        Args:
+            override: TestRequirements that should override self's values
+
+        Returns:
+            New TestRequirements with merged values
+        """
+        if override is None:
+            return TestRequirements(
+                full=self.full,
+                instrumentation=self.instrumentation,
+                coverage=self.coverage,
+                v8=self.v8,
+                architecture=self.architecture,
+            )
+
+        def merge_field(override_val, self_val):
+            return override_val if override_val is not None else self_val
+
+        return TestRequirements(
+            full=merge_field(override.full, self.full),
+            instrumentation=merge_field(override.instrumentation, self.instrumentation),
+            coverage=merge_field(override.coverage, self.coverage),
+            v8=merge_field(override.v8, self.v8),
+            architecture=merge_field(override.architecture, self.architecture),
+        )
+
+
+@dataclass
 class TestOptions:
     """
-    Test execution options that can be specified at job or suite level.
+    Test execution configuration options at job or suite level.
 
     Suite-level options override job-level options. All fields are optional
     to support partial overrides.
@@ -153,10 +257,7 @@ class TestOptions:
     buckets: Optional[Union[int, str]] = None  # int or "auto"
     replication_version: Optional[str] = None
     suffix: Optional[str] = None  # Job name suffix for disambiguation
-    full: Optional[bool] = None  # Only run in full/nightly builds if True
-    coverage: Optional[bool] = None  # Run coverage analysis
     time_limit: Optional[int] = None  # Time limit in seconds
-    architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     def __post_init__(self):
         """Validate option values."""
@@ -184,12 +285,16 @@ class TestOptions:
                 )
 
     @classmethod
-    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestOptions":
+    def from_dict(
+        cls, data: Optional[Dict[str, Any]], *, apply_defaults: bool = True
+    ) -> "TestOptions":
         """
         Create TestOptions from a dictionary, handling type conversions.
 
         Args:
             data: Dictionary from YAML, or None
+            apply_defaults: If True, apply deployment-based size defaults (for job-level options).
+                          If False, leave size as None when not specified (for suite-level options).
 
         Returns:
             TestOptions instance with all None fields if data is None
@@ -211,9 +316,10 @@ class TestOptions:
         # Handle size with deployment type-based defaults (matching old generator logic)
         if "size" in data and data["size"] is not None:
             kwargs["size"] = ResourceSize.from_string(data["size"])
-        else:
+        elif apply_defaults:
             # Default size based on deployment type (old generator compatibility)
             # cluster and mixed default to medium, single defaults to small
+            # Only apply these defaults for job-level options, not suite-level
             deployment_type = kwargs.get("deployment_type")
             if deployment_type in (DeploymentType.CLUSTER, DeploymentType.MIXED):
                 kwargs["size"] = ResourceSize.MEDIUM
@@ -227,18 +333,12 @@ class TestOptions:
             "buckets": "buckets",
             "replication_version": "replication_version",
             "suffix": "suffix",
-            "full": "full",
-            "coverage": "coverage",
             "timeLimit": "time_limit",
         }
 
         for yaml_field, our_field in field_mappings.items():
             if yaml_field in data:
                 kwargs[our_field] = data[yaml_field]
-
-        # Handle arch field (parse single architecture string)
-        if "arch" in data and data["arch"] is not None:
-            kwargs["architecture"] = Architecture.from_string(data["arch"])
 
         return cls(**kwargs)
 
@@ -262,10 +362,7 @@ class TestOptions:
                 buckets=self.buckets,
                 replication_version=self.replication_version,
                 suffix=self.suffix,
-                full=self.full,
-                coverage=self.coverage,
                 time_limit=self.time_limit,
-                architecture=self.architecture,
             )
 
         # Helper to merge a single field
@@ -282,10 +379,7 @@ class TestOptions:
                 override.replication_version, self.replication_version
             ),
             suffix=merge_field(override.suffix, self.suffix),
-            full=merge_field(override.full, self.full),
-            coverage=merge_field(override.coverage, self.coverage),
             time_limit=merge_field(override.time_limit, self.time_limit),
-            architecture=merge_field(override.architecture, self.architecture),
         )
 
 
@@ -411,6 +505,7 @@ class SuiteConfig:
     name: str
     options: TestOptions = field(default_factory=TestOptions)
     arguments: TestArguments = field(default_factory=TestArguments)
+    requires: TestRequirements = field(default_factory=TestRequirements)
 
     def __post_init__(self):
         """Validate suite configuration."""
@@ -428,12 +523,17 @@ class SuiteConfig:
 
         return cls(
             name=data["name"],
-            options=TestOptions.from_dict(data.get("options")),
+            # Suite-level options should not get default size values
+            options=TestOptions.from_dict(data.get("options"), apply_defaults=False),
             arguments=TestArguments.from_dict(data.get("arguments")),
+            requires=TestRequirements.from_dict(data.get("requires")),
         )
 
     def with_merged_options(
-        self, job_options: TestOptions, job_arguments: TestArguments
+        self,
+        job_options: TestOptions,
+        job_arguments: TestArguments,
+        job_requires: TestRequirements,
     ) -> "SuiteConfig":
         """
         Create a new SuiteConfig with job-level options as defaults.
@@ -441,6 +541,7 @@ class SuiteConfig:
         Args:
             job_options: TestJob-level options to use as defaults
             job_arguments: TestJob-level arguments to prepend
+            job_requires: TestJob-level requirements to use as defaults
 
         Returns:
             New SuiteConfig with merged options
@@ -449,6 +550,7 @@ class SuiteConfig:
             name=self.name,
             options=job_options.merge_with(self.options),
             arguments=job_arguments.merge_with(self.arguments),
+            requires=job_requires.merge_with(self.requires),
         )
 
 
@@ -498,6 +600,7 @@ class TestJob:
     suites: List[SuiteConfig]
     options: TestOptions = field(default_factory=TestOptions)
     arguments: TestArguments = field(default_factory=TestArguments)
+    requires: TestRequirements = field(default_factory=TestRequirements)
     repository: Optional[RepositoryConfig] = None
     job_type: str = "run-linux-tests"  # CircleCI job template to use
 
@@ -657,6 +760,7 @@ class TestJob:
             suites=suites,
             options=TestOptions.from_dict(data.get("options")),
             arguments=TestArguments.from_dict(args_data),
+            requires=TestRequirements.from_dict(data.get("requires")),
             repository=RepositoryConfig.from_dict(data.get("repository")),
             job_type=job_type,
         )
@@ -673,7 +777,7 @@ class TestJob:
             List of SuiteConfig with merged options
         """
         return [
-            suite.with_merged_options(self.options, self.arguments)
+            suite.with_merged_options(self.options, self.arguments, self.requires)
             for suite in self.suites
         ]
 
@@ -916,5 +1020,5 @@ class BuildConfig:
     """Build context information for test execution (enterprise-only)."""
 
     architecture: Architecture
-    sanitizer: Optional[Sanitizer] = None
+    build_variant: BuildVariant = BuildVariant.NORMAL
     nightly: bool = False

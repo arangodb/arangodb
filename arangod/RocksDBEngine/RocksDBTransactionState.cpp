@@ -27,6 +27,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -40,6 +41,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
@@ -380,7 +382,8 @@ RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
 
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
-    : _ctx(trx->transactionContextPtr()), _key(_ctx->leaseString()) {
+    : _ctx(trx->transactionContextPtr()),
+      _key(ThreadLocalStringLeaser::lease().release().release()) {
   TRI_ASSERT(_ctx != nullptr);
   TRI_ASSERT(_key.buffer() != nullptr);
 }
@@ -388,6 +391,8 @@ RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
 /// @brief destructor
 RocksDBKeyLeaser::~RocksDBKeyLeaser() {
   if (!_key.usesInlineBuffer()) {
-    _ctx->returnString(_key.buffer());
+    // TODO: this is very ugly.
+    ThreadLocalStringLeaser::acquire(
+        std::unique_ptr<std::string>(_key.buffer()));
   }
 }

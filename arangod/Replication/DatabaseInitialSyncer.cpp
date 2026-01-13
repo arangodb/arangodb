@@ -32,6 +32,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Indexes/Index.h"
@@ -121,7 +122,7 @@ Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
     options.isRestore = true;
     options.waitForSync = false;
 
-    transaction::BuilderLeaser tempBuilder(&trx);
+    auto tempBuilder = ThreadLocalBuilderLeaser::lease();
     auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
     double t = TRI_microtime();
@@ -213,7 +214,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       absl::StrCat("fetching documents by revision for collection '",
                    collection.name(), "' from ", path));
 
-  transaction::BuilderLeaser tempBuilder(&trx);
+  auto tempBuilder = ThreadLocalBuilderLeaser::lease();
   auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {

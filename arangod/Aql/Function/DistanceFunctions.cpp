@@ -30,6 +30,7 @@
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/SupervisedBuffer.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -152,7 +153,7 @@ AqlValue functions::LevenshteinDistance(
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
   // we use one buffer to stringify both arguments
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   // stringify argument 1
