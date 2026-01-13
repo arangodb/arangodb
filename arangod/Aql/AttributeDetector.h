@@ -63,6 +63,7 @@ class AttributeDetector final
     containers::FlatHashSet<std::string> writeAttributes;
     bool requiresAllAttributesRead{false};
     bool requiresAllAttributesWrite{false};
+    Variable const* outVariable{nullptr};
 
     template<class Inspector>
     friend auto inspect(Inspector& f, CollectionAccess& x) {
@@ -94,15 +95,10 @@ class AttributeDetector final
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
-  void extractAttributesFromAstNode(AstNode const* node, Variable const* var,
-                                    CollectionAccess& access);
-
   ExecutionPlan* _plan;
-  containers::FlatHashMap<std::string, std::unique_ptr<CollectionAccess>> _collectionAccessMap;
+  containers::FlatHashMap<std::string, std::unique_ptr<CollectionAccess>>
+      _collectionAccessMap;
   std::vector<CollectionAccess> _collectionAccesses;
-
-  // Map variables to their source collections for tracking in CALCULATION nodes
-  containers::FlatHashMap<Variable const*, std::string> _variableToCollection;
 };
 
 }  // namespace aql

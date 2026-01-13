@@ -19,89 +19,65 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Julia Puget
-/// @author Koichi Nakata
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeDetector.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Collection.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/ExecutionNode/IndexNode.h"
-#include "Aql/ExecutionNode/ModificationNode.h"
-#include "Aql/ExecutionNode/TraversalNode.h"
-#include "Aql/ExecutionNode/ShortestPathNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Projections.h"
 #include "Aql/Variable.h"
-#include "Inspection/VPack.h"
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 AttributeDetector::AttributeDetector(ExecutionPlan* plan) : _plan(plan) {}
 
 void AttributeDetector::detect() {
-  TRI_ASSERT(_plan != nullptr);
-
-  if (_plan->root() != nullptr) {
-    _plan->root()->walk(*this);
-  }
-
-  _collectionAccesses.clear();
-  _collectionAccesses.reserve(_collectionAccessMap.size());
-  for (auto const& [name, access] : _collectionAccessMap) {
-    _collectionAccesses.push_back(*access);
-  }
-}
-
-void AttributeDetector::extractAttributesFromAstNode(AstNode const* node,
-                                                     Variable const* var,
-                                                     CollectionAccess& access) {
-  if (node == nullptr) {
+  if (_plan == nullptr) {
     return;
   }
 
-  switch (node->type) {
-    case NODE_TYPE_ATTRIBUTE_ACCESS: {
-      AstNode const* accessed = node->getMember(0);
-      if (accessed->type == NODE_TYPE_REFERENCE) {
-        auto* refVar = static_cast<Variable const*>(accessed->getData());
-        if (refVar == var) {
-          access.readAttributes.insert(std::string(node->getStringView()));
-        }
-      } else {
-        // Nested attribute access
-        extractAttributesFromAstNode(accessed, var, access);
+  _collectionAccessMap.clear();
+  _collectionAccesses.clear();
+
+  ExecutionNode* root = _plan->root();
+  if (root != nullptr) {
+    root->walk(*this);
+  }
+
+  if (_plan->getAst()->functionsMayAccessDocuments()) {
+    for (auto& [collName, access] : _collectionAccessMap) {
+      if (access) {
+        access->requiresAllAttributesRead = true;
       }
-      break;
     }
+  }
 
-    case NODE_TYPE_REFERENCE: {
-      auto* refVar = static_cast<Variable const*>(node->getData());
-      if (refVar == var) {
-        access.requiresAllAttributesRead = true;
-      }
-      break;
+  for (auto& [collName, access] : _collectionAccessMap) {
+    if (access && access->outVariable && access->readAttributes.empty() &&
+        !access->requiresAllAttributesRead &&
+        !access->requiresAllAttributesWrite) {
+      access->requiresAllAttributesRead = true;
     }
+  }
 
-    case NODE_TYPE_VALUE:
-      break;
-
-    default: {
-      size_t const n = node->numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        extractAttributesFromAstNode(node->getMember(i), var, access);
-      }
-      break;
+  _collectionAccesses.reserve(_collectionAccessMap.size());
+  for (auto const& [name, access] : _collectionAccessMap) {
+    if (access) {
+      _collectionAccesses.push_back(*access);
     }
   }
 }
@@ -111,67 +87,69 @@ bool AttributeDetector::before(ExecutionNode* node) {
     return false;
   }
 
-  auto nodeType = node->getType();
-
-  switch (nodeType) {
+  switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       auto* enumNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
       std::string collName = enumNode->collection()->name();
-      Variable const* outVar = enumNode->outVariable();
 
       auto& access = _collectionAccessMap[collName];
       if (!access) {
         access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
       }
-      access->collectionName = collName;
 
-      // Check projections first
-      if (auto const& projections = enumNode->projections();
-          !projections.empty()) {
-        for (auto const& proj : projections.projections()) {
-          auto const& path = proj.path.get();
-          if (!path.empty()) {
-            access->readAttributes.insert(path[0]);
+      access->outVariable = enumNode->outVariable();
+
+      Projections const& projs = enumNode->projections();
+      if (!projs.empty()) {
+        access->requiresAllAttributesRead = false;
+        for (auto const& proj : projs.projections()) {
+          for (auto const& attrName : proj.path.get()) {
+            access->readAttributes.insert(std::string(attrName));
           }
         }
-      } else {
-        access->requiresAllAttributesRead = true;
       }
-
-      // Store variable mapping for later calculation node analysis
-      _variableToCollection[outVar] = collName;
+      access->requiresAllAttributesWrite = false;
       break;
     }
 
     case ExecutionNode::INDEX: {
       auto* idxNode = ExecutionNode::castTo<IndexNode*>(node);
       std::string collName = idxNode->collection()->name();
-      Variable const* outVar = idxNode->outVariable();
 
       auto& access = _collectionAccessMap[collName];
       if (!access) {
         access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
       }
-      access->collectionName = collName;
 
-      if (auto const& projections = idxNode->projections();
-          !projections.empty()) {
-        for (auto const& proj : projections.projections()) {
-          auto const& path = proj.path.get();
-          if (!path.empty()) {
-            access->readAttributes.insert(path[0]);
+      access->outVariable = idxNode->outVariable();
+
+      Projections const& projs = idxNode->projections();
+      if (!projs.empty()) {
+        access->requiresAllAttributesRead = false;
+        for (auto const& proj : projs.projections()) {
+          for (auto const& attrName : proj.path.get()) {
+            access->readAttributes.insert(std::string(attrName));
           }
         }
-      } else {
-        access->requiresAllAttributesRead = true;
       }
-
-      _variableToCollection[outVar] = collName;
+      access->requiresAllAttributesWrite = false;
       break;
     }
 
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      // TODO: Implement IResearch view tracking
+      auto* viewNode =
+          ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+      for (auto const& coll : viewNode->collections()) {
+        auto& access = _collectionAccessMap[coll.first.get().name()];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = coll.first.get().name();
+        }
+        access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
+      }
       break;
     }
 
@@ -182,18 +160,20 @@ bool AttributeDetector::before(ExecutionNode* node) {
         auto& access = _collectionAccessMap[edgeColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
         }
-        access->collectionName = edgeColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
 
       for (auto* vertexColl : travNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = vertexColl->name();
         }
-        access->collectionName = vertexColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
       break;
     }
@@ -205,18 +185,20 @@ bool AttributeDetector::before(ExecutionNode* node) {
         auto& access = _collectionAccessMap[edgeColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
         }
-        access->collectionName = edgeColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
 
       for (auto* vertexColl : pathNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = vertexColl->name();
         }
-        access->collectionName = vertexColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
       break;
     }
@@ -228,38 +210,44 @@ bool AttributeDetector::before(ExecutionNode* node) {
         auto& access = _collectionAccessMap[edgeColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
         }
-        access->collectionName = edgeColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
 
       for (auto* vertexColl : pathNode->vertexColls()) {
         auto& access = _collectionAccessMap[vertexColl->name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
+          access->collectionName = vertexColl->name();
         }
-        access->collectionName = vertexColl->name();
         access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
       }
       break;
     }
 
     case ExecutionNode::CALCULATION: {
       auto* calcNode = ExecutionNode::castTo<CalculationNode*>(node);
-      Expression* expr = calcNode->expression();
+      AstNode const* expr = calcNode->expression()->node();
 
-      if (expr != nullptr && expr->node() != nullptr) {
-        AstNode const* astNode = expr->node();
+      for (auto& [collName, access] : _collectionAccessMap) {
+        if (!access || !access->outVariable) {
+          continue;
+        }
 
-        VarSet usedVars;
-        calcNode->getVariablesUsedHere(usedVars);
-
-        for (auto* var : usedVars) {
-          auto it = _variableToCollection.find(var);
-          if (it != _variableToCollection.end()) {
-            auto& access = _collectionAccessMap[it->second];
-            extractAttributesFromAstNode(astNode, var, *access);
+        containers::FlatHashSet<aql::AttributeNamePath> attributes;
+        if (Ast::getReferencedAttributesRecursive(
+                expr, access->outVariable, "", attributes,
+                _plan->getAst()->query().resourceMonitor())) {
+          for (auto const& attr : attributes) {
+            for (auto const& attrName : attr.get()) {
+              access->readAttributes.insert(std::string(attrName));
+            }
           }
+        } else {
+          access->requiresAllAttributesRead = true;
         }
       }
       break;
@@ -272,14 +260,42 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto& access = _collectionAccessMap[collName];
       if (!access) {
         access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
       }
-      access->collectionName = collName;
+      access->requiresAllAttributesRead = false;
       access->requiresAllAttributesWrite = true;
       break;
     }
 
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE: {
+      auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
+      std::string collName = modNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+      access->requiresAllAttributesRead = true;
+      access->requiresAllAttributesWrite = true;
+      break;
+    }
+
+    case ExecutionNode::REPLACE: {
+      auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
+      std::string collName = modNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+      access->readAttributes.insert("_key");
+      access->requiresAllAttributesRead = true;
+      access->requiresAllAttributesWrite = true;
+      break;
+    }
+
     case ExecutionNode::UPSERT: {
       auto* modNode = ExecutionNode::castTo<ModificationNode*>(node);
       std::string collName = modNode->collection()->name();
@@ -287,8 +303,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto& access = _collectionAccessMap[collName];
       if (!access) {
         access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
       }
-      access->collectionName = collName;
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
@@ -301,9 +317,11 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto& access = _collectionAccessMap[collName];
       if (!access) {
         access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
       }
-      access->collectionName = collName;
+      access->readAttributes.insert("_key");
       access->requiresAllAttributesRead = true;
+      access->requiresAllAttributesWrite = true;
       break;
     }
 
@@ -321,5 +339,11 @@ bool AttributeDetector::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 void AttributeDetector::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::serialize(builder, _collectionAccesses);
+  builder.openArray();
+  for (auto const& access : _collectionAccesses) {
+    velocypack::serialize(builder, access);
+  }
+  builder.close();
 }
+
+}  // namespace arangodb::aql
