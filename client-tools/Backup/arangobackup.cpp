@@ -68,36 +68,25 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY));
     ArangoBackupServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoBackupServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
+    // Add features in order
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    server.addFeature<VersionFeature>();
+    server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(BackupFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoBackupServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
-        [&](ArangoBackupServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoBackupServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoBackupServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(server, false);
-        },
-        [&](ArangoBackupServer& server, TypeTag<BackupFeature>) {
-          return std::make_unique<BackupFeature>(server, ret);
-        },
-        [](ArangoBackupServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoBackupServer::id<BackupFeature>()});
-        }});
+    server.addFeature<SslFeature>();
+    server.addFeature<BackupFeature>(ret);
 
     try {
       server.run(argc, argv);

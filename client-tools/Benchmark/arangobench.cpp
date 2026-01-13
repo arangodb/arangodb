@@ -71,41 +71,28 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoBenchServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
+    // Add features in order
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    server.addFeature<VersionFeature>();
+    // provide max number of endpoints
+    server.addFeature<HttpEndpointProvider, ClientFeature>(
+        false, std::numeric_limits<size_t>::max());
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(BenchFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoBenchServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
-        [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoBenchServer& server, TypeTag<HttpEndpointProvider>) {
-          // provide max number of endpoints
-          return std::make_unique<ClientFeature>(
-              server, false, std::numeric_limits<size_t>::max());
-        },
-        [](ArangoBenchServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [&](ArangoBenchServer& server, TypeTag<BenchFeature>) {
-          return std::make_unique<BenchFeature>(server, &ret);
-        },
-        [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoBenchServer::id<BenchFeature>()});
-        },
-        [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        }});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>(context.binaryName());
+    server.addFeature<BenchFeature>(&ret);
 
     try {
       server.run(argc, argv);

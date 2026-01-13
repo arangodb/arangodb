@@ -84,42 +84,38 @@ int main(int argc, char* argv[]) {
             ));
     ArangoshServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoshServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(server, true);
-        },
-        [](ArangoshServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoshServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    // Add features in order (based on ArangoshFeaturesList)
+    // Phases first
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    // Features
+    server.addFeature<VersionFeature>();
+#ifdef USE_ENTERPRISE
+    server.addFeature<EncryptionFeature>();
 #endif
-        [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoshServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [&](ArangoshServer& server, TypeTag<ShellFeature>) {
-          return std::make_unique<ShellFeature>(server, &ret);
-        },
-        [&](ArangoshServer& server, TypeTag<V8ShellFeature>) {
-          return std::make_unique<V8ShellFeature>(server, context.binaryName());
-        },
-        [&](ArangoshServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        },
-        [](ArangoshServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoshServer::id<ShellFeature>()});
-        }});
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
+#endif
+    server.addFeature<ShellConsoleFeature>();
+    server.addFeature<HttpEndpointProvider, ClientFeature>(true);
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(ShellFeature))});
+    server.addFeature<SslFeature>();
+    server.addFeature<V8ShellFeaturePhase>();
+    server.addFeature<ShellFeature>(&ret);
+    server.addFeature<V8PlatformFeature>();
+    server.addFeature<V8ShellFeature>(context.binaryName());
+    server.addFeature<LanguageFeature>();
+    server.addFeature<V8SecurityFeature>();
+    server.addFeature<ProcessMonitoringFeature>();
+    server.addFeature<TempFeature>(context.binaryName());
 
     try {
       server.run(argc, argv);

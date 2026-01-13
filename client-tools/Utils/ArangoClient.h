@@ -23,16 +23,14 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/TypeList.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 
 namespace arangodb {
 namespace application_features {
-
-template<typename Features>
-class ApplicationServerT;
-class BasicFeaturePhaseClient;
-class CommunicationFeaturePhase;
-class GreetingsFeaturePhase;
 }  // namespace application_features
 
 class ClientFeature;

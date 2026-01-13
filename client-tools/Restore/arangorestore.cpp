@@ -69,46 +69,33 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     ArangoRestoreServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-#ifdef TRI_HAVE_GETRLIMIT
-        [](ArangoRestoreServer& server, TypeTag<BumpFileDescriptorsFeature>) {
-          return std::make_unique<BumpFileDescriptorsFeature>(
-              server, "--descriptors-minimum");
-        },
-#endif
-        [](ArangoRestoreServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
+    // Add features in order
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    server.addFeature<VersionFeature>();
+    server.addFeature<HttpEndpointProvider, ClientFeature>(
+        true, std::numeric_limits<size_t>::max());
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(RestoreFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&](ArangoRestoreServer& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
-        [&](ArangoRestoreServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoRestoreServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoRestoreServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(
-              server, true, std::numeric_limits<size_t>::max());
-        },
-        [&ret](ArangoRestoreServer& server, TypeTag<RestoreFeature>) {
-          return std::make_unique<RestoreFeature>(server, ret);
-        },
-        [](ArangoRestoreServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoRestoreServer::id<RestoreFeature>()});
-        },
-        [&](ArangoRestoreServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        }});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>(context.binaryName());
+#ifdef TRI_HAVE_GETRLIMIT
+    server.addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
+#endif
+#ifdef USE_ENTERPRISE
+    server.addFeature<EncryptionFeature>();
+#endif
+    server.addFeature<RestoreFeature>(ret);
 
     try {
       server.run(argc, argv);
