@@ -30,24 +30,22 @@
 
 using namespace arangodb::activity_registry;
 
-DECLARE_COUNTER(
-    arangodb_monitoring_tasks_total,
-    "Total number of created monitoring tasks since database creation");
+DECLARE_COUNTER(arangodb_activity_activities_total,
+                "Total number of created activities since database creation");
 
-DECLARE_GAUGE(arangodb_monitoring_tasks_existing, std::uint64_t,
-              "Number of currently existing monitoring tasks");
+DECLARE_GAUGE(arangodb_activity_existing_activities, std::uint64_t,
+              "Number of currently existing activities");
 
-DECLARE_GAUGE(arangodb_monitoring_tasks_ready_for_deletion, std::uint64_t,
-              "Number of currently existing monitoring tasks that wait "
+DECLARE_GAUGE(arangodb_activity_ready_for_deletion_activities, std::uint64_t,
+              "Number of currently existing activities that wait "
               "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_monitoring_tasks_thread_registries_total,
-                "Total number of threads that started monitoring tasks "
+DECLARE_COUNTER(arangodb_activity_thread_registries_total,
+                "Total number of threads that started actities "
                 "since database creation");
 
-DECLARE_GAUGE(
-    arangodb_monitoring_tasks_existing_thread_registries, std::uint64_t,
-    "Number of threads that started currently existing monitoring tasks");
+DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
+              "Number of currently existing activity thread registries");
 
 Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
@@ -57,13 +55,13 @@ Feature::Feature(Server& server) : ArangodFeature{server, *this} {
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_monitoring_tasks_total{}),
-      metrics_feature.addShared(arangodb_monitoring_tasks_existing{}),
-      metrics_feature.addShared(arangodb_monitoring_tasks_ready_for_deletion{}),
+      metrics_feature.addShared(arangodb_activity_activities_total{}),
+      metrics_feature.addShared(arangodb_activity_existing_activities{}),
       metrics_feature.addShared(
-          arangodb_monitoring_tasks_thread_registries_total{}),
+          arangodb_activity_ready_for_deletion_activities{}),
+      metrics_feature.addShared(arangodb_activity_thread_registries_total{}),
       metrics_feature.addShared(
-          arangodb_monitoring_tasks_existing_thread_registries{}));
+          arangodb_activity_existing_thread_registries{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)

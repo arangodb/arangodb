@@ -27,18 +27,20 @@
 
 using namespace arangodb::activity_registry;
 
-auto RegistryMetrics::increment_total_nodes() -> void { tasks_total->count(); }
+auto RegistryMetrics::increment_total_nodes() -> void {
+  activities_total->count();
+}
 auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_tasks->fetch_add(1);
+  existing_activities->fetch_add(1);
 }
 auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_tasks->fetch_sub(1);
+  existing_activities->fetch_sub(1);
 }
 auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_tasks->fetch_add(1);
+  ready_for_deletion_activities->fetch_add(1);
 }
 auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_tasks->fetch_sub(1);
+  ready_for_deletion_activities->fetch_sub(1);
 }
 auto RegistryMetrics::increment_total_lists() -> void {
   thread_registries_total->count();
