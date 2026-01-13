@@ -73,6 +73,8 @@ class CrashHandler : public CrashHandlerInterface {
     _theCrashHandler.store(nullptr);
   }
 
+  static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
+
   // CrashHandlerInterface implementation
   void setDatabaseDirectory(std::string path) override;
   std::vector<std::string> listCrashes() override;

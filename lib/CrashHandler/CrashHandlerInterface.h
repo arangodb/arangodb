@@ -23,12 +23,15 @@
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
+
+class CrashHandlerDataSource;
 
 /// @brief Interface for crash handler operations that can be accessed
 /// through the CrashHandlerFeature. This allows decoupling the feature
@@ -51,6 +54,22 @@ class CrashHandlerInterface {
   /// @brief deletes a specific crash directory
   /// Returns true if successful, false if not found
   virtual bool deleteCrash(std::string_view crashId) = 0;
+
+  void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+    _dataSources.push_back(dataSource);
+  }
+
+  std::vector<CrashHandlerDataSource const*> const& getCrashHandlerDataSources()
+      const {
+    return _dataSources;
+  }
+
+  void removeCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+    std::ranges::remove(_dataSources, dataSource);
+  }
+
+ private:
+  std::vector<arangodb::CrashHandlerDataSource const*> _dataSources;
 };
 
 }  // namespace arangodb

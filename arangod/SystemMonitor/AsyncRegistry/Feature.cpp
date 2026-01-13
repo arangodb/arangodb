@@ -23,6 +23,7 @@
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 
 #include "Basics/FutureSharedLock.h"
+#include "CrashHandler/CrashHandlerDataSource.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -133,8 +134,10 @@ velocypack::Builder collectAsyncRegistryData() {
 }
 }  // namespace arangodb::async_registry
 
-Feature::Feature(Server& server)
-    : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
+Feature::Feature(Server& server, CrashHandlerInterface* crashHandler)
+    : ArangodFeature{server, *this},
+      arangodb::CrashHandlerDataSource(crashHandler),
+      _async_mutex{_schedulerWrapper} {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }

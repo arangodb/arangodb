@@ -27,21 +27,12 @@
 
 namespace arangodb {
 
-namespace {
-/// @brief stores the data sources
-std::vector<arangodb::CrashHandlerDataSource const*> dataSources;
-}  // namespace
-
-void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
-  dataSources.push_back(dataSource);
-}
-
-std::vector<CrashHandlerDataSource const*>& getCrashHandlerDataSources() {
-  return dataSources;
-}
+CrashHandlerDataSource::CrashHandlerDataSource(
+    CrashHandlerInterface* crashHandlerInterface)
+    : _crashHandlerInterface(crashHandlerInterface) {}
 
 CrashHandlerDataSource::~CrashHandlerDataSource() {
-  std::ranges::remove(dataSources, this);
+  _crashHandlerInterface->removeCrashHandlerDataSource(this);
 }
 
 }  // namespace arangodb

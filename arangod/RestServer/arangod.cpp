@@ -72,7 +72,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ServerState state{server};
 
     server.addReporter(
-        {[&server](ArangodServer::State state) {
+        {[&server, &crashHandler](ArangodServer::State state) {
            CrashHandler::setState(ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
@@ -80,9 +80,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
              // Register crash handler data sources if crash handler is enabled
              if (server.getFeature<CrashHandlerFeature>().isEnabled()) {
-               addCrashHandlerDataSource(
+               crashHandler.addCrashHandlerDataSource(
                    &server.getFeature<ApiRecordingFeature>());
-               addCrashHandlerDataSource(
+               crashHandler.addCrashHandlerDataSource(
                    &server.getFeature<async_registry::Feature>());
              }
            }
@@ -93,8 +93,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
-        [](auto& server, TypeTag<async_registry::Feature>) {
-          return std::make_unique<async_registry::Feature>(server);
+        [&crashHandler](auto& server, TypeTag<async_registry::Feature>) {
+          return std::make_unique<async_registry::Feature>(server,
+                                                           &crashHandler);
+        },
+        [&crashHandler](auto& server, TypeTag<ApiRecordingFeature>) {
+          return std::make_unique<ApiRecordingFeature>(server, &crashHandler);
         },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {

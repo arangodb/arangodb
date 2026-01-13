@@ -593,7 +593,12 @@ void actuallyDumpCrashInfo() {
       arangodb::basics::FileUtils::createDirectory(crashDirectory);
 
       // Dump data from all registered and alive data sources
-      for (auto const* dataSource : arangodb::getCrashHandlerDataSources()) {
+      auto const* crashHandler = arangodb::CrashHandler::getCrashHandler();
+      if (crashHandler == nullptr) {
+        return;
+      }
+      for (auto const* dataSource :
+           crashHandler->getCrashHandlerDataSources()) {
         std::string filename = arangodb::basics::FileUtils::buildFilename(
             crashDirectory,
             std::format("{}.json", dataSource->getDataSourceName()));

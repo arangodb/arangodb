@@ -68,7 +68,7 @@ class Feature final : public ArangodFeature,
   auto asyncLock() -> futures::Future<
       futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
 
-  Feature(Server& server);
+  Feature(Server& server, CrashHandlerInterface* crashHandler);
 
   ~Feature();
 
