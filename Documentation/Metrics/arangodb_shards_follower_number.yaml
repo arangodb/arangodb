@@ -1,5 +1,5 @@
 name: arangodb_shards_follower_number
-introducedIn: "3.12.7"
+introducedIn: "3.12.8"
 help: |
   Number of follower shards on this machine.
 unit: number
@@ -8,6 +8,7 @@ category: Replication
 complexity: simple
 exposedBy:
   - dbserver
+  - coordinator
 description: |
   Number of follower shards on this machine. Every shard has a leader and
   potentially multiple followers. This metrics should be equal to the number of

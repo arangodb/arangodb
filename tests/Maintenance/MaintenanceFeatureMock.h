@@ -93,11 +93,11 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       : arangodb::MaintenanceFeature(as) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)
-    _forceActivation = true;
+    _options.forceActivation = true;
 
     // begin with no threads to allow queue validation
-    _maintenanceThreadsMax = 0;
-    _maintenanceThreadsSlowMax = 0;
+    _options.maintenanceThreadsMax = 0;
+    _options.maintenanceThreadsSlowMax = 0;
     as.addReporter(_progressHandler);
     initializeMetrics();
   }
@@ -108,7 +108,7 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 
   void setSecondsActionsBlock(uint32_t seconds) {
-    _secondsActionsBlock = seconds;
+    _options.secondsActionsBlock = seconds;
   }
 
   /// @brief set thread count, then activate the threads via start().  One time
@@ -121,8 +121,8 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       _progressHandler._serverReadyCond.cv.wait(clock);
     }  // while
 
-    _maintenanceThreadsMax = threads;
-    _maintenanceThreadsSlowMax = threads / 2;
+    _options.maintenanceThreadsMax = threads;
+    _options.maintenanceThreadsSlowMax = threads / 2;
     start();
   }  // setMaintenanceThreadsMax
 

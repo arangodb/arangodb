@@ -1,5 +1,5 @@
 name: arangodb_shard_followers_out_of_sync_number
-introducedIn: "3.12.7"
+introducedIn: "3.12.8"
 help: |
   Number of follower shards on this machine that are out of sync with their leader.
 unit: number
@@ -8,6 +8,7 @@ category: Replication
 complexity: simple
 exposedBy:
   - dbserver
+  - coordinator
 description: |
   Number of follower shards on this machine that are not in sync with their leader.
   This is the follower-perspective counterpart to arangodb_shards_out_of_sync, which
@@ -19,5 +20,7 @@ troubleshoot: |
   - Network issues between this DBServer and the leaders
   - This DBServer being overloaded or slow
   - Large amounts of data being replicated
+  - Collection locks (write or exclusive) preventing the follower from getting in sync
+
   Investigate the replication logs and check the server's resource utilization.
   If the problem persists, contact ArangoDB customer support.

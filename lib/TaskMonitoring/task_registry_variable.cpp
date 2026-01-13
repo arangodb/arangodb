@@ -20,6 +20,7 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "TaskMonitoring/task_registry_variable.h"
 
 namespace arangodb::task_monitoring {
@@ -28,7 +29,8 @@ Registry registry;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+    ThreadRegistryGuard()
+        : _registry{ThreadRegistry::make(registry.get_metrics())} {
       registry.add(_registry);
     }
 

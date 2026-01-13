@@ -32,6 +32,7 @@
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
@@ -44,14 +45,8 @@ namespace arangodb::metrics {
 
 class MetricsFeature final : public ApplicationFeature {
  public:
-  enum class UsageTrackingMode {
-    // no tracking
-    kDisabled,
-    // tracking per shard (one-dimensional)
-    kEnabledPerShard,
-    // tracking per shard and per user (two-dimensional)
-    kEnabledPerShardPerUser,
-  };
+  // Maintain backward compatibility for existing code
+  using UsageTrackingMode = metrics::UsageTrackingMode;
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
@@ -168,14 +163,7 @@ class MetricsFeature final : public ApplicationFeature {
   mutable bool hasShortname = false;
   mutable bool hasRole = false;
 
-  bool _export;
-  bool _exportReadWriteMetrics;
-  // ensure that there is whitespace before the reported value, regardless
-  // of whether it is preceeded by labels or not.
-  bool _ensureWhitespace;
-
-  std::string _usageTrackingModeString;
-  UsageTrackingMode _usageTrackingMode;
+  MetricsOptions _options;
 };
 
 }  // namespace arangodb::metrics
