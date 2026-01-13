@@ -77,6 +77,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t handlerId() const noexcept { return _handlerId; }
   uint64_t messageId() const;
 
+  /// @brief called when the handler is created to set the correct name
+  /// for the activity
+  void startActivity();
+
   /// @brief called when the handler is queued for execution in the scheduler
   void trackQueueStart() noexcept;
 
@@ -225,9 +229,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<RestStatus>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<RestStatus>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
     co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                         [&]() -> std::optional<std::monostate> {
@@ -241,9 +245,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
+    requires requires(F f) {
+      { f() } -> std::same_as<std::optional<T>>;
+    }
   [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
     co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                                   std::forward<F>(fun));
@@ -273,6 +277,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
 
   std::atomic<bool> _canceled;
+
+  std::unique_ptr<activity_registry::Activity> _activity;
 };
 
 }  // namespace rest

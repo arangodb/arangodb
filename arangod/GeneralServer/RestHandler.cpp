@@ -161,6 +161,10 @@ RequestLane RestHandler::determineRequestLane() {
   return _lane;
 }
 
+void RestHandler::startActivity() {
+  _activity = std::make_unique<activity_registry::Activity>(name());
+}
+
 void RestHandler::trackQueueStart() noexcept {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _statistics.SET_QUEUE_START(
