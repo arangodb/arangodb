@@ -207,6 +207,7 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
     if (access.collectionName == "users") {
       foundUsers = true;
       EXPECT_TRUE(access.readAttributes.contains("name"));
+      EXPECT_TRUE(access.readAttributes.contains("_key"));
     } else if (access.collectionName == "posts") {
       foundPosts = true;
       EXPECT_TRUE(access.readAttributes.contains("title"));
@@ -225,8 +226,8 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, NOOPTPreventProjection) {

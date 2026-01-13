@@ -25,8 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/AttributeNamePath.h"
-#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
@@ -35,7 +34,6 @@
 #include "Aql/ExecutionNode/ShortestPathNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
 #include "Aql/Projections.h"
 #include "Aql/Variable.h"
 
@@ -102,14 +100,21 @@ bool AttributeDetector::before(ExecutionNode* node) {
 
       Projections const& projs = enumNode->projections();
       if (!projs.empty()) {
-        access->requiresAllAttributesRead = false;
         for (auto const& proj : projs.projections()) {
           for (auto const& attrName : proj.path.get()) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
       }
-      access->requiresAllAttributesWrite = false;
+
+      Projections const& filterProjections = enumNode->filterProjections();
+      if (!filterProjections.empty()) {
+        for (auto const& proj : filterProjections.projections()) {
+          for (auto const& attrName : proj.path.get()) {
+            access->readAttributes.insert(std::string(attrName));
+          }
+        }
+      }
       break;
     }
 
@@ -127,14 +132,37 @@ bool AttributeDetector::before(ExecutionNode* node) {
 
       Projections const& projs = idxNode->projections();
       if (!projs.empty()) {
-        access->requiresAllAttributesRead = false;
         for (auto const& proj : projs.projections()) {
           for (auto const& attrName : proj.path.get()) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
       }
-      access->requiresAllAttributesWrite = false;
+
+      Projections const& filterProjections = idxNode->filterProjections();
+      if (!filterProjections.empty()) {
+        for (auto const& proj : filterProjections.projections()) {
+          for (auto const& attrName : proj.path.get()) {
+            access->readAttributes.insert(std::string(attrName));
+          }
+        }
+      }
+
+      Condition* cond = idxNode->condition();
+      if (cond && !cond->isEmpty()) {
+        containers::FlatHashSet<aql::AttributeNamePath> attributes;
+        if (Ast::getReferencedAttributesRecursive(
+                cond->root(), access->outVariable, "", attributes,
+                _plan->getAst()->query().resourceMonitor())) {
+          for (auto const& attr : attributes) {
+            for (auto const& attrName : attr.get()) {
+              access->readAttributes.insert(std::string(attrName));
+            }
+          }
+        } else {
+          access->requiresAllAttributesRead = true;
+        }
+      }
       break;
     }
 
@@ -224,31 +252,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
         }
         access->requiresAllAttributesRead = true;
         access->requiresAllAttributesWrite = false;
-      }
-      break;
-    }
-
-    case ExecutionNode::CALCULATION: {
-      auto* calcNode = ExecutionNode::castTo<CalculationNode*>(node);
-      AstNode const* expr = calcNode->expression()->node();
-
-      for (auto& [collName, access] : _collectionAccessMap) {
-        if (!access || !access->outVariable) {
-          continue;
-        }
-
-        containers::FlatHashSet<aql::AttributeNamePath> attributes;
-        if (Ast::getReferencedAttributesRecursive(
-                expr, access->outVariable, "", attributes,
-                _plan->getAst()->query().resourceMonitor())) {
-          for (auto const& attr : attributes) {
-            for (auto const& attrName : attr.get()) {
-              access->readAttributes.insert(std::string(attrName));
-            }
-          }
-        } else {
-          access->requiresAllAttributesRead = true;
-        }
       }
       break;
     }
