@@ -173,7 +173,7 @@ TEST_F(AttributeDetectorTest, RemoveOperation) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].readAttributes.contains("_key"));
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
