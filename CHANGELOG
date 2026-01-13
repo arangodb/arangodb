@@ -1,6 +1,8 @@
 4.0
 ---
 
+* Make `vector-index` flag obsolete.
+
 * Remove V8 server code.
 
 * Remove aardvark and system Foxx apps code.
