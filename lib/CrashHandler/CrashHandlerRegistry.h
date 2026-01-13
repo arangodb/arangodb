@@ -24,6 +24,7 @@
 #pragma once
 
 #include <algorithm>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -56,6 +57,7 @@ class CrashHandlerRegistry {
   virtual bool deleteCrash(std::string_view crashId) = 0;
 
   void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+    std::lock_guard guard(_dataSourceMtx);
     _dataSources.push_back(dataSource);
   }
 
@@ -65,10 +67,12 @@ class CrashHandlerRegistry {
   }
 
   void removeCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+    std::lock_guard guard(_dataSourceMtx);
     std::ranges::remove(_dataSources, dataSource);
   }
 
  private:
+  std::mutex _dataSourceMtx;
   std::vector<arangodb::CrashHandlerDataSource const*> _dataSources;
 };
 
