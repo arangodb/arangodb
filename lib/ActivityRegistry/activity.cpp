@@ -104,17 +104,11 @@ Activity::Activity(std::string name, std::source_location loc)
             }
             return ActivityInRegistry::root(std::move(name), std::move(loc));
           })),
-          mark_finished_nodes_for_deletion)} {
-  // remember its parent activity to switch the current activity back to the
-  // parent activity when this activity is destroyed
-  parent = *get_current_activity();
-  *get_current_activity() = this;
-}
+          mark_finished_nodes_for_deletion)} {}
 
 Activity::~Activity() {
   _node_in_registry->data.state.store(State::Finished,
                                       std::memory_order_relaxed);
-  *get_current_activity() = parent;
 }
 
 auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }

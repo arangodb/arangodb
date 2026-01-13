@@ -189,7 +189,7 @@ struct Activity {
   auto id() -> ActivityId;
 
  private:
-  Activity* parent;
+  //  Activity* parent;
   NodeReference _node_in_registry;
 };
 
