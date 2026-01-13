@@ -2,8 +2,7 @@ import { useInterval } from "@chakra-ui/react";
 import {
   checkAsyncJobStatus,
   deleteFrontendJob,
-  getFrontendJobs,
-  FrontendJob
+  getFrontendJobs
 } from "../../utils/frontendJobs";
 
 export const useJobSync = ({

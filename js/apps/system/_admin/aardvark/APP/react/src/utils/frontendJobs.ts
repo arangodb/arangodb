@@ -105,7 +105,7 @@ export const getPendingAsyncJobs = async (): Promise<string[]> => {
   const route = getApiRouteForCurrentDB();
   try {
     const result = await route.get("/job/pending");
-    return result.body || [];
+    return result.parsedBody || [];
   } catch (error) {
     console.error("Failed to get pending jobs:", error);
     return [];
@@ -125,7 +125,7 @@ export const checkAsyncJobStatus = async (jobId: string): Promise<{ complete: bo
       return { complete: false };
     }
     // Job complete
-    return { complete: true, result: result.body };
+    return { complete: true, result: result.parsedBody };
   } catch (error: any) {
     const statusCode = error?.response?.status;
     if (statusCode === 404 || statusCode === 400) {
