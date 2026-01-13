@@ -27,12 +27,12 @@
 #include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "TaskMonitoring/task.h"
-#include "TaskMonitoring/task_registry_variable.h"
+#include "ActivityRegistry/activity.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 using namespace arangodb::containers;
 
 RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
@@ -43,7 +43,7 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
 namespace {
 struct Entry {
   TreeHierarchy hierarchy;
-  TaskSnapshot data;
+  ActivityInRegistrySnapshot data;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Entry& x) {
@@ -51,56 +51,56 @@ auto inspect(Inspector& f, Entry& x) {
                             f.field("data", x.data));
 }
 /**
-   Creates a forest of all current tasks
+   Creates a forest of all current activities
 
-   An edge between two tasks means that the lower hierarchy tasks started the
- larger hierarchy task.
+   An edge between two activities means that the lower hierarchy activity
+ started the larger hierarchy activity.
  **/
-auto all_undeleted_tasks() -> ForestWithRoots<TaskSnapshot> {
-  auto forest = Forest<TaskSnapshot>{};
+auto all_undeleted_activities() -> ForestWithRoots<ActivityInRegistrySnapshot> {
+  auto forest = Forest<ActivityInRegistrySnapshot>{};
   std::vector<Id> roots;
-  registry.for_node([&](TaskSnapshot task) {
-    if (task.state != State::Deleted) {
+  registry.for_node([&](ActivityInRegistrySnapshot activity) {
+    if (activity.state != State::Deleted) {
       std::visit(overloaded{
-                     [&](TaskId parent) {
-                       forest.insert(task.id.id, parent.id, task);
+                     [&](ActivityId parent) {
+                       forest.insert(activity.id.id, parent.id, activity);
                      },
-                     [&](RootTask root) {
-                       forest.insert(task.id.id, nullptr, task);
-                       roots.emplace_back(task.id.id);
+                     [&](RootActivity root) {
+                       forest.insert(activity.id.id, nullptr, activity);
+                       roots.emplace_back(activity.id.id);
                      },
                  },
-                 task.parent);
+                 activity.parent);
     }
   });
   return ForestWithRoots{forest, roots};
 }
 
 /**
-   Serializes a task dependency-forest into a list of trees.
+   Serializes an activity dependency-forest into a list of trees.
 
-   Each tree is given as a list of tasks, where its hierachy number and position
- inside the list defines its location in the tree. To create one tree, it uses a
- depth first search to traverse the forest in post order, such that tasks with
- the highest hierarchy in a tree are given first and the root task with
- hierarchy zero is given last.
+   Each tree is given as a list of activities, where its hierachy number and
+ position inside the list defines its location in the tree. To create one tree,
+ it uses a depth first search to traverse the forest in post order, such that
+ activities with the highest hierarchy in a tree are given first and the root
+ activity with hierarchy zero is given last.
  **/
-auto serialize(IndexedForestWithRoots<TaskSnapshot> const& tasks)
+auto serialize(IndexedForestWithRoots<ActivityInRegistrySnapshot> const& forest)
     -> VPackBuilder {
   VPackBuilder builder;
   builder.openObject();
-  builder.add(VPackValue("task_stacktraces"));
+  builder.add(VPackValue("activity_dependencies"));
   builder.openArray();
-  for (auto const& root : tasks.roots()) {
+  for (auto const& root : forest.roots()) {
     builder.openArray();
-    auto dfs = DFS_PostOrder{tasks, root};
+    auto dfs = DFS_PostOrder{forest, root};
     do {
       auto next = dfs.next();
       if (next == std::nullopt) {
         break;
       }
       auto [id, hierarchy] = next.value();
-      auto data = tasks.node(id);
+      auto data = forest.node(id);
       if (data != std::nullopt) {
         auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
         velocypack::serialize(builder, entry);
@@ -116,8 +116,9 @@ auto serialize(IndexedForestWithRoots<TaskSnapshot> const& tasks)
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin user rights for task monitoring operations");
+    generateError(
+        rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+        "you need admin user rights for activity-registry operations");
     co_return;
   }
 
@@ -134,7 +135,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
 
   auto lock_guard = co_await _feature.asyncLock();
 
-  auto tasks = all_undeleted_tasks().index_by_parent();
-  generateResult(rest::ResponseCode::OK, serialize(tasks).slice());
+  auto activities = all_undeleted_activities().index_by_parent();
+  generateResult(rest::ResponseCode::OK, serialize(activities).slice());
   co_return;
 }

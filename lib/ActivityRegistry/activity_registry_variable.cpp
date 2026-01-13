@@ -20,30 +20,24 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Containers/Concurrent/Registry.h"
-#include "TaskMonitoring/task.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<TaskInRegistry>;
-using Registry = containers::Registry<TaskInRegistry>;
+Registry registry;
 
-/**
-   Global variable that holds all active tasks.
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard()
+        : _registry{ThreadRegistry::make(registry.get_metrics())} {
+      registry.add(_registry);
+    }
 
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-/**
-   Get thread registry of all active tasks on current thread.
-
-   Creates the thread registry when called for the first time and adds it to
-   the global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry
