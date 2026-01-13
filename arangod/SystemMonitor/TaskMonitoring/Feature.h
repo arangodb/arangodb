@@ -20,24 +20,45 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
 #include "TaskMonitoring/task_registry_variable.h"
+#include "SystemMonitor/TaskMonitoring/Metrics.h"
+#include "RestServer/arangod.h"
+#include "Scheduler/AsyncLockWithScheduler.h"
 
 namespace arangodb::task_monitoring {
 
-Registry registry;
+class Feature final : public ArangodFeature {
+ private:
+  static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+      -> std::shared_ptr<RegistryMetrics>;
 
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard()
-        : _registry{ThreadRegistry::make(registry.get_metrics())} {
-      registry.add(_registry);
-    }
-
-    std::shared_ptr<ThreadRegistry> _registry;
+ public:
+  static constexpr std::string_view name() { return "Tasks"; }
+  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
+    return _asyncLock.lock();
   };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
-}
+
+  Feature(Server& server);
+
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
+ private:
+  struct Options {
+    size_t gc_timeout{1};
+  };
+  Options _options;
+
+  std::shared_ptr<RegistryMetrics> _metrics;
+
+  struct CleanupThread;
+  std::shared_ptr<CleanupThread> _cleanupThread;
+
+  AsyncLockWithScheduler _asyncLock{std::string{name()}};
+};
 
 }  // namespace arangodb::task_monitoring
