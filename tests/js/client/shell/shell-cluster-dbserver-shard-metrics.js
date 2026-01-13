@@ -439,17 +439,6 @@ function ClusterDBServerShardMetricsTestSuite() {
       dbServerFollower.resume();
 
       eventuallyAssertMetric([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0");
-/*      let followersOutOfSyncNumMetricValue;*/
-      /*for(let i = 0; i < 2000; i++) {*/
-        /*internal.wait(0.1);*/
-        /*followersOutOfSyncNumMetricValue = getDBServerMetricSum([dbServerFollower], followersOutOfSyncNumMetric);*/
-        /*print(`followersOutOfSyncNumMetricValue: ${followersOutOfSyncNumMetricValue}`)*/
-        /*if (followersOutOfSyncNumMetricValue !== 0) {*/
-          /*break;*/
-        /*}*/
-      /*}*/
-
-      /*assertTrue(followersOutOfSyncNumMetricValue > 0);*/
 
       // Resume all down servers
       dbServerLeader.resume();
