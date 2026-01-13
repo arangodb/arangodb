@@ -28,7 +28,6 @@
 const internal = require('internal');
 const actions = require('@arangodb/actions');
 const FoxxManager = require('@arangodb/foxx/manager');
-const store = require('@arangodb/foxx/store');
 const request = require('@arangodb/request');
 const { ArangoError, db, errors } = require('@arangodb');
 const { join: joinPath } = require('path');
@@ -105,13 +104,6 @@ function resolveAppInfo (appInfo, refresh) {
   }
   if (fs.exists(appInfo)) {
     return fs.readFileSync(appInfo);
-  }
-  if (refresh !== false) {
-    try {
-      store.update();
-    } catch (e) {
-      console.warnStack(e);
-    }
   }
   return {source: appInfo};
 }

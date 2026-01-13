@@ -76,8 +76,7 @@ function config (options) {
     'arangoimport',
     'arangorestore',
     'arangoexport',
-    'arangosh',
-    'foxx-manager'
+    'arangosh'
   ];
 
   let rootDir = fs.join(fs.getTempPath(), 'config');
