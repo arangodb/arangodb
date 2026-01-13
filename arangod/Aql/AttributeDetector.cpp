@@ -73,9 +73,9 @@ void AttributeDetector::detect() {
   }
 
   _collectionAccesses.reserve(_collectionAccessMap.size());
-  for (auto const& [name, access] : _collectionAccessMap) {
+  for (auto& [name, access] : _collectionAccessMap) {
     if (access) {
-      _collectionAccesses.push_back(*access);
+      _collectionAccesses.push_back(std::move(*access));
     }
   }
 }
