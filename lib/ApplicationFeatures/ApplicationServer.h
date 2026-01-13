@@ -245,6 +245,98 @@ class ApplicationServer {
     static_assert(std::is_base_of_v<ApplicationFeature, Type>);
     return hasFeature(typeid(Type));
   }
+
+  // Returns a reference to a feature. will throw when used for
+  // a non-existing feature.
+  template<typename Type, typename Impl = Type>
+  Impl& getFeature() const {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<Type, Impl> ||
+                  std::is_base_of_v<Impl, Type>);
+
+    TRI_ASSERT(hasFeature<Type>())
+        << "Feature missing: " << typeid(Type).name();
+    auto& feature = getFeature(typeid(Type));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto obj = dynamic_cast<Impl*>(&feature);
+    TRI_ASSERT(obj != nullptr);
+    return *obj;
+#else
+    return static_cast<Impl&>(feature);
+#endif
+  }
+
+  // Returns the feature with the given name if known and enabled
+  // throws otherwise.
+  template<typename Type, typename Impl = Type>
+  Impl& getEnabledFeature() const {
+    auto& feature = getFeature<Type, Impl>();
+    if (!feature.isEnabled()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "feature '" + std::string{feature.name()} + "' is not enabled");
+    }
+    return feature;
+  }
+
+  // Return whether or not a feature is enabled
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isEnabled() const {
+    return getFeature<T>().isEnabled();
+  }
+
+  // Return whether or not a feature is optional
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isOptional() const {
+    return getFeature<T>().isOptional();
+  }
+
+  // Return whether or not a feature is required
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isRequired() const {
+    return getFeature<T>().isRequired();
+  }
+
+  // For backward compatibility - returns type_index for feature type.
+  template<typename T>
+  static std::type_index id() noexcept {
+    return typeid(T);
+  }
+
+  // Adds a feature to the application server. The application server
+  // will take ownership of the feature object and destroy it in its
+  // destructor.
+  template<typename Type, typename Impl = Type, typename... Args>
+  Impl& addFeature(Args&&... args) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[typeid(Type)];
+    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
+  }
+
+  // Adds a feature to the application server using a factory function.
+  // This is useful for features with template constructors that cannot
+  // be explicitly instantiated - they can provide a static `construct`
+  // factory method instead.
+  template<typename Type, typename Factory>
+  Type& addFeatureFactory(Factory&& factory) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[typeid(Type)];
+    slot = std::forward<Factory>(factory)();
+
+    return static_cast<Type&>(*slot);
+  }
+
  protected:
   friend class ApplicationFeature;
 
@@ -361,155 +453,12 @@ class ApplicationServer {
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 };
-/**
-// ApplicationServerT is intended to provide statically checked access to
-// application features. Whenever you need to create an application server
-// consider the following usage pattern:
-//
-// Declare a list of all features in header file:
 
-namespace arangodb {
-class Feature1;
-class Feature2;
-using namespace arangodb::application_features;
-using ServerFeaturesList = basics::TypeList<Feature1, Feature2>;
-// struct ServerFeatures is needed to make stacktrace, compile error messages,
-// etc more readable.
-struct ServerFeatures : ServerFeaturesList {};
-using Server = ApplicationServerT<ServerFeatures>;
-using ServerFeature = ApplicationFeatureT<ServerFeatures>;
-}
-
-// Note that the order of features in basics::TypeList<Feature1, Feature2> is
-// significant and defines creation order, i.e. Feature1 is constructed before
-// Feature2.
-//
-// To instantiate server and its features consider the following snippet:
-
-Server server;
-server.addFeatures(Visitor{
-  []<typename T>(Server& server, TypeTag<T>) {
-    return std::make_unique<T>(server);
-  },
-  [](Server& server, TypeTag<Feature2>) {
-    // Feature constructor requires extra argument
-    return std::make_unique<Feature2>(server, "arg");
-  }});
-*/
+// ApplicationServerT is kept for backward compatibility with client-tools.
+// The Features template parameter is ignored - all servers now use the same
+// base ApplicationServer class with runtime feature registration.
 template<typename Features>
-class ApplicationServerT : public ApplicationServer {
- public:
-  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
-                     char const* binaryPath)
-      : ApplicationServer{opts, binaryPath} {}
-
-  // Adds all registered features to the application server.
-  template<typename Initializer>
-  void addFeatures(Initializer&& initializer) {
-    Features::visit([&]<typename T>(TypeTag<T>) {
-      static_assert(std::is_base_of_v<ApplicationFeature, T>);
-
-      TRI_ASSERT(!hasFeature<T>());
-      _features[typeid(T)] =
-          std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
-      TRI_ASSERT(hasFeature<T>());
-    });
-  }
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Adds a feature to the application server. the application server
-  // will take ownership of the feature object and destroy it in its
-  // destructor.
-  template<typename Type, typename Impl = Type, typename... Args>
-  Impl& addFeature(Args&&... args) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
-    static_assert(std::is_base_of_v<Type, Impl>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
-
-    return static_cast<Impl&>(*slot);
-  }
-  template<typename Type, typename Impl = Type, typename... Args>
-  Impl& addFeature2(
-      std::function<std::unique_ptr<Type>(ApplicationServerT<Features>&)> const&
-          constructor) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
-    static_assert(std::is_base_of_v<Type, Impl>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = constructor(*this);
-
-    return static_cast<Impl&>(*slot);
-  }
-#endif
-
-  // Return whether or not a feature is enabled
-  // will throw when called for a non-existing feature.
-  template<typename T>
-  bool isEnabled() const {
-    return getFeature<T>().isEnabled();
-  }
-
-  // Return whether or not a feature is optional
-  // will throw when called for a non-existing feature.
-  template<typename T>
-  bool isOptional() const {
-    return getFeature<T>().isOptional();
-  }
-
-  // Return whether or not a feature is required
-  // will throw when called for a non-existing feature.
-  template<typename T>
-  bool isRequired() const {
-    return getFeature<T>().isRequired();
-  }
-
-  // Checks for the existence of a feature. will not throw when used for
-  // a non-existing feature.
-  template<typename Type>
-  bool hasFeature() const noexcept {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    return ApplicationServer::hasFeature(typeid(Type));
-  }
-
-  // Returns a const reference to a feature. will throw when used for
-  // a non-existing feature.
-  template<typename Type, typename Impl = Type>
-  Impl& getFeature() const {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    static_assert(std::is_base_of_v<Type, Impl> ||
-                  std::is_base_of_v<Impl, Type>);
-
-    TRI_ASSERT(hasFeature<Type>())
-        << "Feature missing: " << typeid(Type).name();
-    auto& feature = ApplicationServer::getFeature(typeid(Type));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<Impl*>(&feature);
-    TRI_ASSERT(obj != nullptr);
-    return *obj;
-#else
-    return static_cast<Impl&>(feature);
-#endif
-  }
-
-  // Returns the feature with the given name if known and enabled
-  // throws otherwise.
-  template<typename Type, typename Impl = Type>
-  Impl& getEnabledFeature() const {
-    auto& feature = getFeature<Type, Impl>();
-    if (!feature.isEnabled()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "feature '" + std::string{feature.name()} + "' is not enabled");
-    }
-    return feature;
-  }
-};
+using ApplicationServerT = ApplicationServer;
 
 }  // namespace application_features
 }  // namespace arangodb
