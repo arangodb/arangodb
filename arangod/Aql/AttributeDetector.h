@@ -38,8 +38,10 @@ class Builder;
 }
 
 namespace aql {
+class AstNode;
 class ExecutionNode;
 class ExecutionPlan;
+struct Variable;
 
 class AttributeDetector final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -50,9 +52,8 @@ class AttributeDetector final
 
     template<class Inspector>
     friend auto inspect(Inspector& f, AttributeAccessInfo& x) {
-      return f.object(x).fields(
-          f.field("requiresAll", x.requiresAll),
-          f.field("attributes", x.attributes));
+      return f.object(x).fields(f.field("requiresAll", x.requiresAll),
+                                f.field("attributes", x.attributes));
     }
   };
 
@@ -65,16 +66,16 @@ class AttributeDetector final
 
     template<class Inspector>
     friend auto inspect(Inspector& f, CollectionAccess& x) {
-      AttributeAccessInfo read{x.requiresAllAttributesRead,
-                               std::vector<std::string>(x.readAttributes.begin(),
-                                                        x.readAttributes.end())};
-      AttributeAccessInfo write{x.requiresAllAttributesWrite,
-                                std::vector<std::string>(x.writeAttributes.begin(),
-                                                         x.writeAttributes.end())};
-      return f.object(x).fields(
-          f.field("collection", x.collectionName),
-          f.field("read", read),
-          f.field("write", write));
+      AttributeAccessInfo read{
+          x.requiresAllAttributesRead,
+          std::vector<std::string>(x.readAttributes.begin(),
+                                   x.readAttributes.end())};
+      AttributeAccessInfo write{
+          x.requiresAllAttributesWrite,
+          std::vector<std::string>(x.writeAttributes.begin(),
+                                   x.writeAttributes.end())};
+      return f.object(x).fields(f.field("collection", x.collectionName),
+                                f.field("read", read), f.field("write", write));
     }
   };
 
@@ -93,9 +94,15 @@ class AttributeDetector final
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
  private:
+  void extractAttributesFromAstNode(AstNode const* node, Variable const* var,
+                                    CollectionAccess& access);
+
   ExecutionPlan* _plan;
-  containers::FlatHashMap<std::string, std::unique_ptr<CollectionAccess>> _collectionAccessMap;
+  containers::FlatHashMap<std::string, CollectionAccess> _collectionAccessMap;
   std::vector<CollectionAccess> _collectionAccesses;
+
+  // Map variables to their source collections for tracking in CALCULATION nodes
+  containers::FlatHashMap<Variable const*, std::string> _variableToCollection;
 };
 
 }  // namespace aql

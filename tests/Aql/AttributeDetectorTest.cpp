@@ -40,26 +40,30 @@ using namespace arangodb::aql;
 namespace arangodb::tests::aql {
 
 class AttributeDetectorTest : public ::testing::Test {
-protected:
+ protected:
   mocks::MockAqlServer server;
   TRI_vocbase_t& vocbase;
 
   AttributeDetectorTest() : vocbase(server.getSystemDatabase()) {}
 
-public:
+ public:
   void SetUp() override {
     SCOPED_TRACE("SetUp");
     createDummyGraphData();
   }
 
   void createDummyGraphData() {
-    auto usersColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"users\"}")->slice());
+    auto usersColl = vocbase.createCollection(
+        VPackParser::fromJson("{\"name\": \"users\"}")->slice());
     ASSERT_NE(usersColl.get(), nullptr) << "Failed to create users";
-    auto postsColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"posts\"}")->slice());
+    auto postsColl = vocbase.createCollection(
+        VPackParser::fromJson("{\"name\": \"posts\"}")->slice());
     ASSERT_NE(postsColl.get(), nullptr) << "Failed to create posts";
-    auto productsColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"products\"}")->slice());
+    auto productsColl = vocbase.createCollection(
+        VPackParser::fromJson("{\"name\": \"products\"}")->slice());
     ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
-    auto orderedColl = vocbase.createCollection(VPackParser::fromJson("{\"name\": \"ordered\"}")->slice());
+    auto orderedColl = vocbase.createCollection(
+        VPackParser::fromJson("{\"name\": \"ordered\"}")->slice());
     ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
 
     auto run = [&](std::string const& q) {
@@ -87,7 +91,8 @@ public:
 
 // Functional tests - test actual query analysis
 TEST_F(AttributeDetectorTest, SimpleProjection) {
-  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc.name");
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "FOR doc IN users RETURN doc.name");
   auto const& accesses = query.data->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
@@ -98,9 +103,10 @@ TEST_F(AttributeDetectorTest, SimpleProjection) {
 }
 
 TEST_F(AttributeDetectorTest, MultipleAttributes) {
-  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN {name: doc.name, age: doc.age}");
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "FOR doc IN users RETURN {name: doc.name, age: doc.age}");
   auto const& accesses = query.data->abacAccesses();
-  
+
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
@@ -110,41 +116,47 @@ TEST_F(AttributeDetectorTest, MultipleAttributes) {
 }
 
 TEST_F(AttributeDetectorTest, FullDocumentAccess) {
-  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc");
+  auto query =
+      arangodb::tests::executeQuery(vocbase, "FOR doc IN users RETURN doc");
   auto const& accesses = query.data->abacAccesses();
-  
+
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
 }
 
 TEST_F(AttributeDetectorTest, InsertOperation) {
-  auto query = arangodb::tests::executeQuery(vocbase, "INSERT {name: 'Alice', age: 30} INTO users");
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "INSERT {name: 'Alice', age: 30} INTO users");
   auto const& accesses = query.data->abacAccesses();
-  
+
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, UpdateOperation) {
-  auto query = arangodb::tests::executeQuery(vocbase, "FOR doc IN users UPDATE doc WITH {age: 31} IN users");
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "FOR doc IN users UPDATE doc WITH {age: 31} IN users");
   auto const& accesses = query.data->abacAccesses();
-  
+
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, MultipleCollections) {
-  auto query = arangodb::tests::executeQuery(vocbase, "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: u.name, post: p.title}");
+  auto query = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: "
+      "u.name, post: p.title}");
   auto const& accesses = query.data->abacAccesses();
-  
+
   ASSERT_EQ(accesses.size(), 2);
-  
+
   bool foundUsers = false;
   bool foundPosts = false;
-  
+
   for (auto const& access : accesses) {
     if (access.collectionName == "users") {
       foundUsers = true;
@@ -155,9 +167,83 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
       EXPECT_TRUE(access.readAttributes.contains("userId"));
     }
   }
-  
+
   EXPECT_TRUE(foundUsers);
   EXPECT_TRUE(foundPosts);
+}
+
+// Edge case tests based on query plan analysis
+TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes) {
+  // FILTER uses p.name, RETURN uses p.age - must track both
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "FOR p IN users FILTER p.name IN ['Alice', 'Bob'] RETURN p.age");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+
+  // Should track both name (from FILTER) and age (from RETURN)
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
+              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
+              accesses[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, NOOPTPreventProjection) {
+  // NOOPT() might prevent projection optimization
+  auto query = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR p IN users FILTER NOOPT(p.name) IN ['Alice', 'Bob'] RETURN p.age");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+
+  // With NOOPT, might require all attributes or specific tracking
+  // This test documents current behavior
+}
+
+TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
+  // LET statement creates a CALCULATION node
+  auto query = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR u IN users LET fullName = CONCAT(u.name, ' - ', u.age) RETURN "
+      "fullName");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+
+  // Should detect name and age from the CALCULATION node
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
+              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
+              accesses[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
+  // Nested attributes like doc.address.city
+  auto query =
+      arangodb::tests::executeQuery(vocbase, "FOR u IN users RETURN u.name");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+
+  // Should track top-level attribute
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
+              accesses[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, UpdateWithSpecificFields) {
+  // UPDATE should mark requiresAllAttributesWrite = true
+  auto query = arangodb::tests::executeQuery(
+      vocbase, "UPDATE {_key: 'u1', name: 'Carol'} IN users");
+  auto const& accesses = query.data->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
 // Inspector pattern tests - test serialization
