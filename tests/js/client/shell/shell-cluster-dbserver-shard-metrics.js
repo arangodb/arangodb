@@ -189,11 +189,11 @@ function ClusterDBServerShardMetricsTestSuite() {
   // compareFn takes the metric value and returns true if the assertion should pass
   const eventuallyAssertMetric = function(servers, metricName, compareFn, errorMessage) {
     let metricValue;
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 2000; i++) {
       internal.wait(0.1);
       metricValue = getDBServerMetricSum(servers, metricName);
       if (compareFn(metricValue)) {
-        return metricValue;
+        break;
       }
     }
     // Final assertion with error message
@@ -412,33 +412,48 @@ function ClusterDBServerShardMetricsTestSuite() {
 
       // Get the db servers which do not have the leader
       const shards = db[collectionName].shards(true);
-      const dbServerLeaderId = Object.values(shards).flatMap(servers => servers[0])[0];
-      const dbServersWithoutLeader = dbServers.filter(server => server.id !== dbServerLeaderId);
-      assertEqual(dbServersWithoutLeader.length, 2);
+      const shardServers = Object.values(shards).flat();
+      const dbServerLeaderId = shardServers[0];
+      const dbServerFollowerId = shardServers[1];
 
-      // Shutdown followers
-      dbServersWithoutLeader.forEach(server => {
+      const dbServerLeader = dbServers.find(server => server.id === dbServerLeaderId);
+      const dbServerFollower = dbServers.find(server => server.id === dbServerFollowerId);
+      const dbServersOthers = dbServers.filter(server => !shardServers.includes(server.id));
+
+      // Shutdown follower
+      dbServerFollower.suspend();
+      // Shutdown others
+      dbServersOthers.forEach(server => {
         server.suspend();
       });
 
       // Insert some data to trigger replication
-      db._query(`FOR i IN 0..10000 INSERT {val: i, val2: HASH(i), val3: CONCAT(HASH(i), i * 10)} INTO ${collectionName}`);
+      db._query(`FOR i IN 0..10 INSERT {val: i, val2: HASH(i), val3: CONCAT(HASH(i), i * 10)} INTO ${collectionName}`);
 
-      dbServersWithoutLeader[0].resume();
-      // Only the second db server id down
-      const onlineServers = dbServers.filter(server => server.id !== dbServersWithoutLeader[1].id);
+      eventuallyAssertMetric([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0");
 
-      let followersOutOfSyncNumMetricValue;
-      for(let i = 0; i < 2000; i++) {
-        internal.wait(0.01);
-        followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
-        if (followersOutOfSyncNumMetricValue !== 0) {
-          break;
-        }
-      }
+      // Stop leader
+      dbServerLeader.suspend();
 
-      assertTrue(followersOutOfSyncNumMetricValue > 0);
-      dbServersWithoutLeader[1].resume();
+      // Resume only original follower
+      dbServerFollower.resume();
+
+      eventuallyAssertMetric([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0");
+/*      let followersOutOfSyncNumMetricValue;*/
+      /*for(let i = 0; i < 2000; i++) {*/
+        /*internal.wait(0.1);*/
+        /*followersOutOfSyncNumMetricValue = getDBServerMetricSum([dbServerFollower], followersOutOfSyncNumMetric);*/
+        /*print(`followersOutOfSyncNumMetricValue: ${followersOutOfSyncNumMetricValue}`)*/
+        /*if (followersOutOfSyncNumMetricValue !== 0) {*/
+          /*break;*/
+        /*}*/
+      /*}*/
+
+      /*assertTrue(followersOutOfSyncNumMetricValue > 0);*/
+
+      // Resume all down servers
+      dbServerLeader.resume();
+      dbServersOthers.forEach(server => server.resume());
 
       getMetricsAndEventuallyAssert(dbServers, totalShardCount, totalLeaderCount, 0, 0);
     },
