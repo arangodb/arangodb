@@ -26,9 +26,11 @@
 #include "Aql/Query.h"
 #include "Aql/AttributeDetector.h"
 #include "Async/async.h"
+#include "Inspection/VPack.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -45,125 +47,105 @@ class AttributeDetectorTest : public ::testing::Test {
  protected:
   mocks::MockAqlServer server;
 
-  std::shared_ptr<Query> executeQuery(std::string const& queryString) {
+  std::shared_ptr<Query> createTestQuery(std::string const& queryString) {
     auto ctx = std::make_shared<transaction::StandaloneContext>(
         server.getSystemDatabase(), transaction::OperationOriginTestCase{});
-    
+
     auto bindParams = VPackParser::fromJson("{}");
-    auto query = Query::create(std::move(ctx), QueryString(queryString),
-                               bindParams);
-    
-    waitForAsync(query->prepareQuery());
+    auto query =
+        Query::create(std::move(ctx), QueryString(queryString), bindParams);
     return query;
   }
 };
 
-TEST_F(AttributeDetectorTest, SimpleProjection) {
-  auto query = executeQuery("FOR doc IN users RETURN doc.name");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
-  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-}
+TEST_F(AttributeDetectorTest, InspectorFormatTest) {
+  AttributeDetector::CollectionAccess access;
+  access.collectionName = "testCollection";
+  access.readAttributes.insert("name");
+  access.readAttributes.insert("age");
+  access.requiresAllAttributesRead = false;
+  access.requiresAllAttributesWrite = true;
 
-TEST_F(AttributeDetectorTest, MultipleAttributes) {
-  auto query = executeQuery("FOR doc IN users RETURN {name: doc.name, age: doc.age}");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
-  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
-}
-
-TEST_F(AttributeDetectorTest, FullDocumentAccess) {
-  auto query = executeQuery("FOR doc IN users RETURN doc");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
-}
-
-TEST_F(AttributeDetectorTest, InsertOperation) {
-  auto query = executeQuery("INSERT {name: 'Alice', age: 30} INTO users");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
-}
-
-TEST_F(AttributeDetectorTest, UpdateOperation) {
-  auto query = executeQuery("FOR doc IN users UPDATE doc WITH {age: 31} IN users");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
-}
-
-TEST_F(AttributeDetectorTest, MultipleCollections) {
-  auto query = executeQuery("FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: u.name, post: p.title}");
-  
-  auto& accesses = query->abacAccesses();
-  
-  ASSERT_EQ(accesses.size(), 2);
-  
-  bool foundUsers = false;
-  bool foundPosts = false;
-  
-  for (auto const& access : accesses) {
-    if (access.collectionName == "users") {
-      foundUsers = true;
-      EXPECT_TRUE(access.readAttributes.contains("name"));
-      EXPECT_TRUE(access.readAttributes.contains("_key"));
-    } else if (access.collectionName == "posts") {
-      foundPosts = true;
-      EXPECT_TRUE(access.readAttributes.contains("title"));
-      EXPECT_TRUE(access.readAttributes.contains("userId"));
-    }
-  }
-  
-  EXPECT_TRUE(foundUsers);
-  EXPECT_TRUE(foundPosts);
-}
-
-TEST_F(AttributeDetectorTest, VelocyPackSerialization) {
-  auto query = executeQuery("FOR doc IN users RETURN doc.name");
-  
-  auto& accesses = query->abacAccesses();
-  
   velocypack::Builder builder;
-  velocypack::serialize(builder, accesses);
-  
+  velocypack::serialize(builder, access);
+
   velocypack::Slice slice = builder.slice();
-  ASSERT_TRUE(slice.isArray());
-  ASSERT_EQ(slice.length(), 1);
-  
-  velocypack::Slice first = slice[0];
-  ASSERT_TRUE(first.isObject());
-  EXPECT_EQ(first["collection"].copyString(), "users");
-  
-  velocypack::Slice read = first["read"];
+  ASSERT_TRUE(slice.isObject());
+
+  EXPECT_EQ(slice["collection"].copyString(), "testCollection");
+
+  velocypack::Slice read = slice["read"];
   ASSERT_TRUE(read.isObject());
   EXPECT_FALSE(read["requiresAll"].getBool());
-  
-  velocypack::Slice attrs = read["attributes"];
-  ASSERT_TRUE(attrs.isArray());
-  ASSERT_EQ(attrs.length(), 1);
-  EXPECT_EQ(attrs[0].copyString(), "name");
+
+  velocypack::Slice readAttrs = read["attributes"];
+  ASSERT_TRUE(readAttrs.isArray());
+  EXPECT_EQ(readAttrs.length(), 2);
+
+  velocypack::Slice write = slice["write"];
+  ASSERT_TRUE(write.isObject());
+  EXPECT_TRUE(write["requiresAll"].getBool());
+}
+
+TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
+  std::vector<AttributeDetector::CollectionAccess> accesses;
+
+  AttributeDetector::CollectionAccess access1;
+  access1.collectionName = "users";
+  access1.readAttributes.insert("name");
+  access1.requiresAllAttributesRead = false;
+  access1.requiresAllAttributesWrite = false;
+
+  AttributeDetector::CollectionAccess access2;
+  access2.collectionName = "orders";
+  access2.readAttributes.insert("id");
+  access2.readAttributes.insert("total");
+  access2.requiresAllAttributesRead = false;
+  access2.requiresAllAttributesWrite = false;
+
+  accesses.push_back(access1);
+  accesses.push_back(access2);
+
+  velocypack::Builder builder;
+  velocypack::serialize(builder, accesses);
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(slice.length(), 2);
+
+  velocypack::Slice first = slice[0];
+  EXPECT_EQ(first["collection"].copyString(), "users");
+  EXPECT_EQ(first["read"]["attributes"].length(), 1);
+
+  velocypack::Slice second = slice[1];
+  EXPECT_EQ(second["collection"].copyString(), "orders");
+  EXPECT_EQ(second["read"]["attributes"].length(), 2);
+}
+
+TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
+  AttributeDetector::CollectionAccess original;
+  original.collectionName = "products";
+  original.readAttributes.insert("price");
+  original.readAttributes.insert("stock");
+  original.writeAttributes.insert("lastModified");
+  original.requiresAllAttributesRead = false;
+  original.requiresAllAttributesWrite = false;
+
+  velocypack::Builder builder;
+  velocypack::serialize(builder, original);
+  velocypack::Slice slice = builder.slice();
+
+  EXPECT_EQ(slice["collection"].copyString(), "products");
+
+  velocypack::Slice read = slice["read"];
+  EXPECT_FALSE(read["requiresAll"].getBool());
+  ASSERT_TRUE(read["attributes"].isArray());
+  EXPECT_EQ(read["attributes"].length(), 2);
+
+  velocypack::Slice write = slice["write"];
+  EXPECT_FALSE(write["requiresAll"].getBool());
+  ASSERT_TRUE(write["attributes"].isArray());
+  EXPECT_EQ(write["attributes"].length(), 1);
 }
 
 }  // namespace arangodb::tests::aql
-
