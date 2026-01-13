@@ -100,14 +100,15 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("task-registry", "Options for the task-registry");
+  options->addSection("activity-registry", "Options for the activity-registry");
 
   options
-      ->addOption("--task-registry.cleanup-timeout",
-                  "Timeout in seconds between task-registry garbage collection "
-                  "swipes.",
-                  new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
-                                              /*minValue*/ 1))
+      ->addOption(
+          "--activity-registry.cleanup-timeout",
+          "Timeout in seconds between activity-registry garbage collection "
+          "swipes.",
+          new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
+                                      /*minValue*/ 1))
       .setLongDescription(
-          R"(Each thread that is involved in the task-registry needs to garbage collect its finished tasks regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+          R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }

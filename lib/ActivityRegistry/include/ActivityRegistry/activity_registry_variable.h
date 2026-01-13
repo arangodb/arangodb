@@ -27,11 +27,11 @@
 
 namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<TaskInRegistry>;
-using Registry = containers::Registry<TaskInRegistry>;
+using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
+using Registry = containers::Registry<ActivityInRegistry>;
 
 /**
-   Global variable that holds all active tasks.
+   Global variable that holds all active activities.
 
    Includes a list of thread owned lists, one for each initialized
    thread.
@@ -39,7 +39,7 @@ using Registry = containers::Registry<TaskInRegistry>;
 extern Registry registry;
 
 /**
-   Get thread registry of all active tasks on current thread.
+   Get thread registry of all active activities on current thread.
 
    Creates the thread registry when called for the first time and adds it to
    the global registry.

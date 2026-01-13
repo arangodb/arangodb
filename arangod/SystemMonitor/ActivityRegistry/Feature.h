@@ -35,7 +35,7 @@ class Feature final : public ArangodFeature {
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
-  static constexpr std::string_view name() { return "Tasks"; }
+  static constexpr std::string_view name() { return "Activities"; }
   auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
     return _asyncLock.lock();
   };
