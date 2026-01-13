@@ -25,6 +25,7 @@
 
 #include "GeneralServer/RestHandler.h"
 
+#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
 namespace arangodb {
@@ -81,6 +82,9 @@ class RestBaseHandler : public rest::RestHandler {
   bool isAdminUser() const;
   bool isSelfUser(std::string const& user) const;
   bool canAccessUser(std::string const& user) const;
+  // forward request to another server
+  // server is taken from query string parameter "serverId"
+  auto tryForwarding() -> async<bool>;
 
   // parses the request body as VelocyPack, generates body
   velocypack::Slice parseVPackBody(bool& success);

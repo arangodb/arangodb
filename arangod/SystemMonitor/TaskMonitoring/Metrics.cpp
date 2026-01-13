@@ -20,30 +20,32 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "Metrics.h"
 
-#include "Async/Registry/promise.h"
-#include "Containers/Concurrent/Registry.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 
-namespace arangodb::async_registry {
+using namespace arangodb::task_monitoring;
 
-using ThreadRegistry = containers::ThreadRegistry<Promise>;
-using Registry = containers::Registry<Promise>;
-
-/**
-   Global variable that holds all active coroutines.
-
-   Includes a list of coroutine thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
-
-/**
-   Get thread registry of all active coroutine promises on current thread.
-
-   Creates the thread registry when called for the first time and adds it to the
-   global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::async_registry
+auto RegistryMetrics::increment_total_nodes() -> void { tasks_total->count(); }
+auto RegistryMetrics::increment_registered_nodes() -> void {
+  existing_tasks->fetch_add(1);
+}
+auto RegistryMetrics::decrement_registered_nodes() -> void {
+  existing_tasks->fetch_sub(1);
+}
+auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
+  ready_for_deletion_tasks->fetch_add(1);
+}
+auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
+  ready_for_deletion_tasks->fetch_sub(1);
+}
+auto RegistryMetrics::increment_total_lists() -> void {
+  thread_registries_total->count();
+}
+auto RegistryMetrics::increment_existing_lists() -> void {
+  existing_thread_registries->fetch_add(1);
+}
+auto RegistryMetrics::decrement_existing_lists() -> void {
+  existing_thread_registries->fetch_sub(1);
+}
