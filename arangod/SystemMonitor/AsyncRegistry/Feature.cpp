@@ -22,26 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 
-#include "Basics/FutureSharedLock.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
+#include "Containers/Forest/depth_first.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
-
-using namespace arangodb;
-using namespace arangodb::async_registry;
-using namespace arangodb::containers;
+#include "Inspection/VPack.h"
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
-    "Total number of created asynchronous promises since database creation");
+    "Total number of created asynchronous operations since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises");
+              "Number of currently existing asynchronous operations");
 
 DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises that wait "
+              "Number of currently existing asynchronous operations that wait "
               "for their garbage collection");
 
 DECLARE_COUNTER(arangodb_async_thread_registries_total,
@@ -49,15 +45,19 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing asynchronous "
-              "operations");
+              "Number of currently existing async thread registries");
 
-namespace arangodb::async_registry {
+using namespace arangodb;
+using namespace arangodb::async_registry;
+using namespace arangodb::containers;
+
+namespace aragndob::async_registry {
 
 struct Entry {
   TreeHierarchy hierarchy;
   PromiseSnapshot data;
 };
+
 template<typename Inspector>
 auto inspect(Inspector& f, Entry& x) {
   return f.object(x).fields(f.field("hierarchy", x.hierarchy),
@@ -98,8 +98,7 @@ auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
  post order, such that promises with the highest hierarchy in a tree are given
  first and the root promise is given last.
  **/
-auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
-    -> VPackBuilder {
+VPackBuilder serialize(IndexedForestWithRoots<PromiseSnapshot> const& promises) {
   VPackBuilder builder;
   builder.openObject();
   builder.add(VPackValue("promise_stacktraces"));
@@ -116,7 +115,7 @@ auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
       auto data = promises.node(id);
       if (data != std::nullopt) {
         auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
-        velocypack::serialize(builder, entry);
+        serialize(builder, entry);
       }
     } while (true);
     builder.close();
@@ -126,18 +125,9 @@ auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
   return builder;
 }
 
-velocypack::Builder collectAsyncRegistryData() {
-  // Collect all undeleted promises and index them by awaitee
-  auto promises = all_undeleted_promises().index_by_awaitee();
-  // Convert to stacktrace data
-  return getStacktraceData(promises);
-}
-}  // namespace arangodb::async_registry
+}  // namespace aragndob::async_registry
 
-Feature::Feature(Server& server, CrashHandlerRegistry* crashHandler)
-    : ArangodFeature{server, *this},
-      arangodb::CrashHandlerDataSource(crashHandler),
-      _async_mutex{_schedulerWrapper} {
+Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
@@ -151,11 +141,6 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(arangodb_async_thread_registries_total{}),
       metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
 }
-auto Feature::asyncLock()
-    -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
-  return _async_mutex.asyncLockExclusive();
-}
-
 struct Feature::PromiseCleanupThread {
   PromiseCleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
@@ -179,9 +164,9 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  metrics = create_metrics(
+  _metrics = create_metrics(
       server().template getFeature<arangodb::metrics::MetricsFeature>());
-  registry.set_metrics(metrics);
+  registry.set_metrics(_metrics);
 }
 
 void Feature::start() {
@@ -203,11 +188,3 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       .setLongDescription(
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
-
-velocypack::SharedSlice Feature::getCrashData() const {
-  return collectAsyncRegistryData().sharedSlice();
-}
-
-std::string_view Feature::getDataSourceName() const { return name(); }
-
-Feature::~Feature() { registry.set_metrics(nullptr); }

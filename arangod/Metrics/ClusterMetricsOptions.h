@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,33 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Containers/Concurrent/ListOfNonOwnedLists.h"
-#include "Containers/Concurrent/ThreadOwnedList.h"
-#include "TaskMonitoring/task.h"
+#include <cstdint>
 
-namespace arangodb::task_monitoring {
+namespace arangodb::metrics {
 
-using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
+struct ClusterMetricsOptions {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint32_t timeout = 10;
+#else
+  uint32_t timeout = 0;
+#endif
+};
 
-/**
-   Global variable that holds all active tasks.
-
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
-
-/**
-   Get thread registry of all active tasks on current thread.
-
-   Creates the thread registry when called for the first time and adds it to the
-   global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::metrics

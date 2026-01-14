@@ -25,6 +25,7 @@
 
 #include "Metrics/Fwd.h"
 #include "Network/ConnectionPool.h"
+#include "Network/NetworkOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
@@ -112,11 +113,8 @@ class NetworkFeature final : public ArangodFeature {
                            fuerte::Request& req) const;
 
   // configuration
-  std::string _protocol;
-  uint64_t _maxOpenConnections;
-  uint64_t _idleTtlMilli;
-  uint32_t _numIOThreads;
-  bool _verifyHosts;
+  NetworkOptions _options;
+  using CompressionType = NetworkOptions::CompressionType;
 
   std::atomic<bool> _prepared;
 
@@ -137,7 +135,6 @@ class NetworkFeature final : public ArangodFeature {
   /// is used)
   metrics::Counter& _forwardedRequests;
 
-  std::uint64_t _maxInFlight;
   metrics::Gauge<std::uint64_t>& _requestsInFlight;
 
   metrics::Counter& _requestTimeouts;
@@ -148,11 +145,6 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 
-  uint64_t _compressRequestThreshold;
-
-  enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
-  CompressionType _compressionType;
-  std::string _compressionTypeLabel;
   metrics::MetricsFeature& _metrics;
 };
 

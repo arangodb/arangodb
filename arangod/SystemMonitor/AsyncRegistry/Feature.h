@@ -22,16 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Async/Registry/registry_variable.h"
 #include "SystemMonitor/AsyncRegistry/Metrics.h"
-#include "Basics/FutureSharedLock.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/AsyncLockWithScheduler.h"
 #include "Async/Registry/promise.h"
-#include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb::async_registry {
 
@@ -43,43 +38,26 @@ auto getStacktraceData(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises)
     -> velocypack::Builder;
 
-class Feature final : public ArangodFeature,
-                      public arangodb::CrashHandlerDataSource {
+
+VPackBuilder serialize(containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
+
+class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
-  struct SchedulerWrapper {
-    using WorkHandle = Scheduler::WorkHandle;
-    template<typename F>
-    void queue(F&& fn) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
-                                         std::forward<F>(fn));
-    }
-    template<typename F>
-    WorkHandle queueDelayed(F&& fn, std::chrono::milliseconds timeout) {
-      return SchedulerFeature::SCHEDULER->queueDelayed(
-          "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
-          timeout, std::forward<F>(fn));
-    }
-  };
 
  public:
-  static constexpr std::string_view name() { return "AsyncRegistry"; }
-  auto asyncLock() -> futures::Future<
-      futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
+  static constexpr std::string_view name() { return "Coroutines"; }
+  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
+    return _asyncLock.lock();
+  };
 
-  Feature(Server& server, CrashHandlerRegistry* crashHandler);
-
-  ~Feature();
+  Feature(Server& server);
 
   void prepare() override final;
   void start() override final;
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  velocypack::SharedSlice getCrashData() const override;
-
-  std::string_view getDataSourceName() const override;
 
  private:
   struct Options {
@@ -87,13 +65,12 @@ class Feature final : public ArangodFeature,
   };
   Options _options;
 
-  std::shared_ptr<RegistryMetrics> metrics;
+  std::shared_ptr<RegistryMetrics> _metrics;
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;
 
-  SchedulerWrapper _schedulerWrapper;
-  futures::FutureSharedLock<SchedulerWrapper> _async_mutex;
+  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
 }  // namespace arangodb::async_registry

@@ -100,6 +100,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [&crashHandler](auto& server, TypeTag<ApiRecordingFeature>) {
           return std::make_unique<ApiRecordingFeature>(server, &crashHandler);
         },
+        [](auto& server, TypeTag<activity_registry::Feature>) {
+          return std::make_unique<activity_registry::Feature>(server);
+        },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(
