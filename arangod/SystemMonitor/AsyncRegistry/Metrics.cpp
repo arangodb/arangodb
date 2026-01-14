@@ -25,6 +25,8 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 
+using namespace arangodb::async_registry;
+
 auto RegistryMetrics::increment_total_nodes() -> void {
   promises_total->count();
 }

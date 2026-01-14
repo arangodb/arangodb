@@ -268,8 +268,6 @@ void queueGarbageCollection(std::mutex& mutex,
 }
 
 constexpr double CongestionRatio = 0.5;
-constexpr std::uint64_t MaxAllowedInFlight = 65536;
-constexpr std::uint64_t MinAllowedInFlight = 64;
 }  // namespace
 
 namespace arangodb {
@@ -315,15 +313,10 @@ DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
 NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
                                network::ConnectionPool::Config config)
     : ArangodFeature{server, *this},
-      _protocol(),
-      _maxOpenConnections(config.maxOpenConnections),
-      _idleTtlMilli(config.idleConnectionMilli),
-      _numIOThreads(defaultIOThreads()),
-      _verifyHosts(config.verifyHosts),
+      _options(config),
       _prepared(false),
       _forwardedRequests(
           metrics.add(arangodb_network_forwarded_requests_total{})),
-      _maxInFlight(::MaxAllowedInFlight),
       _requestsInFlight(metrics.add(arangodb_network_requests_in_flight{})),
       _requestTimeouts(metrics.add(arangodb_network_request_timeouts_total{})),
       _requestDurations(metrics.add(
@@ -332,16 +325,6 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
       _dequeueDurations(metrics.add(arangodb_network_dequeue_duration{})),
       _sendDurations(metrics.add(arangodb_network_send_duration{})),
       _responseDurations(metrics.add(arangodb_network_response_duration{})),
-      _compressRequestThreshold(200),
-      // note: we cannot use any compression method by default here for the
-      // 3.12 release because that could cause upgrades from 3.11 to 3.12
-      // to break. for example, if we enable compression here and during the
-      // upgrade the 3.12 servers could pick it up and send compressed
-      // requests to 3.11 servers which cannot handle them.
-      // we should set the compression type "auto" for future releases though
-      // to save some traffic.
-      _compressionType(CompressionType::kNone),
-      _compressionTypeLabel("none"),
       _metrics(metrics) {
   setOptional(true);
   startsAfter<ClusterFeature>();
@@ -364,21 +347,21 @@ void NetworkFeature::collectOptions(
       "--network.io-threads",
       "The number of network I/O threads for cluster-internal "
       "communication.",
-      new UInt32Parameter(&_numIOThreads, /*base*/ 1, /*minValue*/ 1));
-  options->addOption(
-      "--network.max-open-connections",
-      "The maximum number of open TCP connections for "
-      "cluster-internal communication per endpoint",
-      new UInt64Parameter(&_maxOpenConnections, /*base*/ 1, /*minValue*/ 8));
+      new UInt32Parameter(&_options.numIOThreads, /*base*/ 1, /*minValue*/ 1));
+  options->addOption("--network.max-open-connections",
+                     "The maximum number of open TCP connections for "
+                     "cluster-internal communication per endpoint",
+                     new UInt64Parameter(&_options.maxOpenConnections,
+                                         /*base*/ 1, /*minValue*/ 8));
   options->addOption("--network.idle-connection-ttl",
                      "The default time-to-live of idle connections for "
                      "cluster-internal communication (in milliseconds).",
-                     new UInt64Parameter(&_idleTtlMilli));
+                     new UInt64Parameter(&_options.idleTtlMilli));
   options->addOption(
       "--network.verify-hosts",
       "Verify peer certificates when using TLS in cluster-internal "
       "communication.",
-      new BooleanParameter(&_verifyHosts));
+      new BooleanParameter(&_options.verifyHosts));
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
 
@@ -388,7 +371,8 @@ void NetworkFeature::collectOptions(
       ->addOption(
           "--network.protocol",
           "The network protocol to use for cluster-internal communication.",
-          new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
+          new DiscreteValuesParameter<StringParameter>(&_options.protocol,
+                                                       protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
       .setDeprecatedIn(30900);
 
@@ -396,7 +380,7 @@ void NetworkFeature::collectOptions(
       ->addOption("--network.max-requests-in-flight",
                   "The number of internal requests that can be in "
                   "flight at a given point in time.",
-                  new options::UInt64Parameter(&_maxInFlight),
+                  new options::UInt64Parameter(&_options.maxInFlight),
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
@@ -404,7 +388,7 @@ void NetworkFeature::collectOptions(
       ->addOption("--network.compress-request-threshold",
                   "The HTTP request body size from which on cluster-internal "
                   "requests are transparently compressed.",
-                  new UInt64Parameter(&_compressRequestThreshold),
+                  new UInt64Parameter(&_options.compressRequestThreshold),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -413,9 +397,9 @@ void NetworkFeature::collectOptions(
       .setLongDescription(
           R"(Automatically compress outgoing HTTP requests in cluster-internal
 traffic with the deflate, gzip or lz4 compression format.
-Compression will only happen if the size of the uncompressed request body exceeds 
+Compression will only happen if the size of the uncompressed request body exceeds
 the threshold value controlled by this startup option,
-and if the request body size after compression is less than the original 
+and if the request body size after compression is less than the original
 request body size.
 Using the value 0 disables the automatic compression.")");
 
@@ -426,7 +410,7 @@ Using the value 0 disables the automatic compression.")");
       ->addOption("--network.compression-method",
                   "The compression method used for cluster-internal requests.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_compressionTypeLabel, types),
+                      &_options.compressionTypeLabel, types),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -437,9 +421,9 @@ Using the value 0 disables the automatic compression.")");
 cluster-internal requests.
 To enable compression for cluster-internal requests, set this option to either
 'deflate', 'gzip', 'lz4' or 'auto'.
-The 'deflate' and 'gzip' compression methods are general purpose, 
-but have significant CPU overhead for performing the compression work. 
-The 'lz4' compression method compresses slightly worse, but has a lot lower 
+The 'deflate' and 'gzip' compression methods are general purpose,
+but have significant CPU overhead for performing the compression work.
+The 'lz4' compression method compresses slightly worse, but has a lot lower
 CPU overhead for performing the compression.
 The 'auto' compression method will use 'deflate' by default, and 'lz4' for
 requests which have a size that is at least 3 times the configured threshold
@@ -453,36 +437,37 @@ void NetworkFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> opts) {
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
     auto& gs = server().getFeature<GeneralServerFeature>();
-    _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
+    _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
   }
-  if (_idleTtlMilli < 10000) {
-    _idleTtlMilli = 10000;
+  if (_options.idleTtlMilli < 10000) {
+    _options.idleTtlMilli = 10000;
   }
 
   uint64_t clamped =
-      std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
-  if (clamped != _maxInFlight) {
+      std::clamp(_options.maxInFlight, NetworkOptions::MinAllowedInFlight,
+                 NetworkOptions::MaxAllowedInFlight);
+  if (clamped != _options.maxInFlight) {
     LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
         << "Must set --network.max-requests-in-flight between "
-        << ::MinAllowedInFlight << " and " << ::MaxAllowedInFlight
-        << ", clamping value";
-    _maxInFlight = clamped;
+        << NetworkOptions::MinAllowedInFlight << " and "
+        << NetworkOptions::MaxAllowedInFlight << ", clamping value";
+    _options.maxInFlight = clamped;
   }
 
-  if (_compressionTypeLabel == StaticStrings::EncodingGzip) {
-    _compressionType = CompressionType::kGzip;
-  } else if (_compressionTypeLabel == StaticStrings::EncodingDeflate) {
-    _compressionType = CompressionType::kDeflate;
-  } else if (_compressionTypeLabel == StaticStrings::EncodingLz4) {
-    _compressionType = CompressionType::kLz4;
-  } else if (_compressionTypeLabel == "auto") {
-    _compressionType = CompressionType::kAuto;
-  } else if (_compressionTypeLabel == "none") {
-    _compressionType = CompressionType::kNone;
+  if (_options.compressionTypeLabel == StaticStrings::EncodingGzip) {
+    _options.compressionType = CompressionType::kGzip;
+  } else if (_options.compressionTypeLabel == StaticStrings::EncodingDeflate) {
+    _options.compressionType = CompressionType::kDeflate;
+  } else if (_options.compressionTypeLabel == StaticStrings::EncodingLz4) {
+    _options.compressionType = CompressionType::kLz4;
+  } else if (_options.compressionTypeLabel == "auto") {
+    _options.compressionType = CompressionType::kAuto;
+  } else if (_options.compressionTypeLabel == "none") {
+    _options.compressionType = CompressionType::kNone;
   } else {
     LOG_TOPIC("339d5", FATAL, Logger::CONFIG)
         << "invalid value for `--network.compression-method` ('"
-        << _compressionTypeLabel << "')";
+        << _options.compressionTypeLabel << "')";
     FATAL_ERROR_EXIT();
   }
 }
@@ -496,10 +481,10 @@ void NetworkFeature::prepare() {
   }
 
   network::ConnectionPool::Config config;
-  config.numIOThreads = static_cast<unsigned>(_numIOThreads);
-  config.maxOpenConnections = _maxOpenConnections;
-  config.idleConnectionMilli = _idleTtlMilli;
-  config.verifyHosts = _verifyHosts;
+  config.numIOThreads = _options.numIOThreads;
+  config.maxOpenConnections = _options.maxOpenConnections;
+  config.idleConnectionMilli = _options.idleTtlMilli;
+  config.verifyHosts = _options.verifyHosts;
   config.clusterInfo = ci;
   config.name = "ClusterComm";
   config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
@@ -511,9 +496,9 @@ void NetworkFeature::prepare() {
   // note: we plan to upgrade the internal protocol to HTTP/2 at
   // some point in the future
   config.protocol = fuerte::ProtocolType::Http;
-  if (_protocol == "http" || _protocol == "h1") {
+  if (_options.protocol == "http" || _options.protocol == "h1") {
     config.protocol = fuerte::ProtocolType::Http;
-  } else if (_protocol == "http2" || _protocol == "h2") {
+  } else if (_options.protocol == "http2" || _options.protocol == "h2") {
     config.protocol = fuerte::ProtocolType::Http2;
   }
 
@@ -620,11 +605,11 @@ std::size_t NetworkFeature::requestsInFlight() const noexcept {
 }
 
 bool NetworkFeature::isCongested() const noexcept {
-  return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
+  return _requestsInFlight.load() >= (_options.maxInFlight * ::CongestionRatio);
 }
 
 bool NetworkFeature::isSaturated() const noexcept {
-  return _requestsInFlight.load() >= _maxInFlight;
+  return _requestsInFlight.load() >= _options.maxInFlight;
 }
 
 uint64_t NetworkFeature::defaultIOThreads() {
@@ -845,24 +830,24 @@ void NetworkFeature::injectAcceptEncodingHeader(fuerte::Request& req) const {
     return;
   }
 
-  if (_compressionType == CompressionType::kNone) {
+  if (_options.compressionType == CompressionType::kNone) {
     return;
   }
 
-  if (_compressionType == CompressionType::kDeflate) {
+  if (_options.compressionType == CompressionType::kDeflate) {
     // if cluster-internal compression type is set to "deflate", add
     // "accept-encoding: deflate" header
     req.header.addMeta(StaticStrings::AcceptEncoding,
                        StaticStrings::EncodingDeflate);
-  } else if (_compressionType == CompressionType::kGzip) {
+  } else if (_options.compressionType == CompressionType::kGzip) {
     // if cluster-internal compression type is set to "gzip", add
     // "accept-encoding: gzip, deflate" header. we leave "deflate" in
     // as a general fallback
     req.header.addMeta(StaticStrings::AcceptEncoding,
                        absl::StrCat(StaticStrings::EncodingGzip, ",",
                                     StaticStrings::EncodingDeflate));
-  } else if (_compressionType == CompressionType::kLz4 ||
-             _compressionType == CompressionType::kAuto) {
+  } else if (_options.compressionType == CompressionType::kLz4 ||
+             _options.compressionType == CompressionType::kAuto) {
     // if cluster-internal compression type is set to "lz4", add
     // "accept-encoding: lz4, deflate" header. we leave "deflate" in
     // as a general fallback
@@ -881,13 +866,13 @@ bool NetworkFeature::compressRequestBody(network::RequestOptions const& opts,
     return false;
   }
 
-  uint64_t threshold = _compressRequestThreshold;
+  uint64_t threshold = _options.compressRequestThreshold;
   if (threshold == 0) {
     // opted out of compression by configuration
     return false;
   }
 
-  if (_compressionType == CompressionType::kNone) {
+  if (_options.compressionType == CompressionType::kNone) {
     return false;
   }
 
@@ -903,7 +888,7 @@ bool NetworkFeature::compressRequestBody(network::RequestOptions const& opts,
     return false;
   }
 
-  auto compressionType = _compressionType;
+  auto compressionType = _options.compressionType;
 
   if (compressionType == CompressionType::kAuto) {
     // "auto" compression means that we will pick deflate for all

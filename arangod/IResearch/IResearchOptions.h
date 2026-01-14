@@ -18,24 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Andrey Abramov
+/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "TaskMonitoring/task_registry_variable.h"
 
-namespace arangodb::task_monitoring {
+#pragma once
 
-Registry registry;
+#include <cstdint>
+#include <string>
+#include <vector>
 
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
-      registry.add(_registry);
-    }
+namespace arangodb::iresearch {
 
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
-}
+struct IResearchOptions {
+  // whether or not to fail queries on links/indexes that are marked as
+  // out of sync
+  bool failQueriesOnOutOfSync = false;
 
-}  // namespace arangodb::task_monitoring
+  // names/ids of links/indexes to *NOT* recover. all entries should
+  // be in format "collection-name/index-name" or "collection/index-id".
+  // the pseudo-entry "all" skips recovering data for all links/indexes
+  // found during recovery.
+  std::vector<std::string> skipRecoveryItems;
+  uint32_t deprecatedOptions = 0;
+  uint32_t consolidationThreads = 0;
+  uint32_t commitThreads = 0;
+  uint32_t threads = 0;
+  uint32_t threadsLimit = 0;
+  uint32_t searchExecutionThreadsLimit = 0;
+  uint32_t defaultParallelism = 1;
+
+#ifdef USE_ENTERPRISE
+  bool columnsCacheOnlyLeader = false;
+#endif
+};
+
+}  // namespace arangodb::iresearch

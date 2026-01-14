@@ -45,12 +45,17 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public ArangodFeature,
+class RocksDBOptionFeature final : public ApplicationFeature,
                                    public RocksDBOptionsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
-  explicit RocksDBOptionFeature(Server& server);
+  template<typename Server>
+  explicit RocksDBOptionFeature(Server& server,
+                                AgencyFeature const* agencyFeature);
+  template<typename Server>
+  static auto construct(Server& server, AgencyFeature const* agencyFeature)
+      -> std::unique_ptr<RocksDBOptionFeature>;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -80,6 +85,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
+  AgencyFeature const* _agencyFeature{nullptr};
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
