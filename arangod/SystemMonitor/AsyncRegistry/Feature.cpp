@@ -32,13 +32,13 @@ using namespace arangodb::async_registry;
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
-    "Total number of created asynchronous promises since database creation");
+    "Total number of created asynchronous operations since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises");
+              "Number of currently existing asynchronous operations");
 
 DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises that wait "
+              "Number of currently existing asynchronous operations that wait "
               "for their garbage collection");
 
 DECLARE_COUNTER(arangodb_async_thread_registries_total,
@@ -46,8 +46,7 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing asynchronous "
-              "operations");
+              "Number of currently existing async thread registries");
 
 Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();

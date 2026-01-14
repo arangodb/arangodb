@@ -1,7 +1,7 @@
 name: arangodb_async_existing_thread_registries
 introducedIn: "3.12.4"
 help: |
-  Number of threads that started currently existing asyncronous operations.
+  Number of currently existing async thread registires
 unit: number
 type: gauge
 category: Statistics
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - coordinator
 description: |
-  Number of threads that started currently existing asyncronous operations. The thread itself does not need to exist any more. This number also includes still running threads that have started asyncronous operations which do not exist any more.
+  Number of currently existing async thread registries. One thread registry is created when the first async operation is created on a thread. The registry lives at least as long as long as the thread itself but also at least as long as the last async operation inside it - therefore it can exist longer than the thread itself.
