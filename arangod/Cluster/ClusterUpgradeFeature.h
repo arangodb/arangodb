@@ -34,11 +34,11 @@ namespace arangodb {
 // in the startup sequence, so it can use the full cluster functionality when
 // run. after the feature has executed the upgrade, it will shut down the
 // server.
-class ClusterUpgradeFeature final : public ArangodFeature {
+class ClusterUpgradeFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
 
-  ClusterUpgradeFeature(ArangodServer& server,
+  ClusterUpgradeFeature(application_features::ApplicationServer& server,
                         DatabaseFeature& databaseFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

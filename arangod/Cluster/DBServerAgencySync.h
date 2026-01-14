@@ -27,9 +27,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+
 
 namespace replication2 {
 namespace maintenance {
@@ -65,7 +68,7 @@ class DBServerAgencySync {
   DBServerAgencySync& operator=(DBServerAgencySync const&) = delete;
 
  public:
-  explicit DBServerAgencySync(ArangodServer& server,
+  explicit DBServerAgencySync(application_features::ApplicationServer& server,
                               HeartbeatThread* heartbeat);
 
   void work();
@@ -96,7 +99,7 @@ class DBServerAgencySync {
   DBServerAgencySyncResult execute();
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   HeartbeatThread* _heartbeat;
   double _requestTimeout;
 };

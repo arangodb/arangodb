@@ -37,8 +37,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheOptionsFeature::CacheOptionsFeature(Server& server)
-    : ArangodFeature{server, *this} {
+CacheOptionsFeature::CacheOptionsFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

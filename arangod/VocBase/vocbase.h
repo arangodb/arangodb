@@ -157,7 +157,7 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
-  arangodb::ArangodServer& _server;
+  arangodb::application_features::ApplicationServer& _server;
   arangodb::StorageEngine& _engine;
   arangodb::VersionTracker& _versionTracker;
   bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
@@ -269,7 +269,9 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::DatabaseJavaScriptCache> _cacheData;
 #endif
 
-  arangodb::ArangodServer& server() const noexcept { return _server; }
+  arangodb::application_features::ApplicationServer& server() const noexcept {
+    return _server;
+  }
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   decltype(auto) name() const { return _info.getName(); }

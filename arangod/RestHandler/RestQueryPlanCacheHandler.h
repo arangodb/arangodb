@@ -26,7 +26,7 @@
 namespace arangodb {
 class RestQueryPlanCacheHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestQueryPlanCacheHandler(ArangodServer&, GeneralRequest*,
+  explicit RestQueryPlanCacheHandler(application_features::ApplicationServer&, GeneralRequest*,
                                      GeneralResponse*);
 
   char const* name() const override final {

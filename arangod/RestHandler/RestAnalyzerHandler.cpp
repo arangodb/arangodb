@@ -47,7 +47,7 @@ constexpr std::string_view moduleName("analyzers management");
 namespace arangodb {
 namespace iresearch {
 
-RestAnalyzerHandler::RestAnalyzerHandler(ArangodServer& server,
+RestAnalyzerHandler::RestAnalyzerHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request,
                                          GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}

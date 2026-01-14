@@ -32,7 +32,7 @@ struct ReplicatedLogMethods;
 
 class RestLogInternalHandler : public RestVocbaseBaseHandler {
  public:
-  RestLogInternalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestLogInternalHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   ~RestLogInternalHandler() override;
 
  public:

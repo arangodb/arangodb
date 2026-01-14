@@ -46,8 +46,8 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(Server& server)
-    : ArangodFeature{server, *this},
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _streamingMaxTransactionSize(defaultStreamingMaxTransactionSize),
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),

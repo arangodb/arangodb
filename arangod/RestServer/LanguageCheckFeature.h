@@ -26,11 +26,11 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-class LanguageCheckFeature final : public ArangodFeature {
+class LanguageCheckFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "LanguageCheck"; }
 
-  explicit LanguageCheckFeature(Server& server);
+  explicit LanguageCheckFeature(application_features::ApplicationServer& server);
 
   void start() override final;
 };

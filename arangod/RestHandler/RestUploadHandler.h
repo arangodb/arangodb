@@ -30,7 +30,7 @@ namespace arangodb {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {
  public:
-  RestUploadHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestUploadHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
   ~RestUploadHandler();
 

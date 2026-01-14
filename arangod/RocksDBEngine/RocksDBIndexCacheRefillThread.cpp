@@ -45,9 +45,11 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
 
+using application_features::ApplicationServer;
+
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
-    ArangodServer& server, size_t maxCapacity)
-    : ServerThread<ArangodServer>(server, "RocksDBCacheRefiller"),
+    ApplicationServer& server, size_t maxCapacity)
+    : ServerThread<ApplicationServer>(server, "RocksDBCacheRefiller"),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _maxCapacity(maxCapacity),
       _numQueued(0),

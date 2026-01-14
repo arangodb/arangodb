@@ -38,7 +38,8 @@ class SslServerFeature;
 
 namespace arangodb::application_features {
 
-ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)
+ServerFeaturePhase::ServerFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<AqlFeaturePhase>();

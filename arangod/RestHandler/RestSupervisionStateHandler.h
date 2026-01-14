@@ -29,7 +29,7 @@ namespace arangodb {
 
 class RestSupervisionStateHandler : public RestVocbaseBaseHandler {
  public:
-  RestSupervisionStateHandler(ArangodServer&, GeneralRequest*,
+  RestSupervisionStateHandler(application_features::ApplicationServer&, GeneralRequest*,
                               GeneralResponse*);
   ~RestSupervisionStateHandler() = default;
 

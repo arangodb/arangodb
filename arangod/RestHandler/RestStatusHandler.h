@@ -30,7 +30,7 @@ class ServerSecurityFeature;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
-  RestStatusHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestStatusHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestStatusHandler"; }

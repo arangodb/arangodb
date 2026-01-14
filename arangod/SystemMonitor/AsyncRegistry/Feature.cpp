@@ -127,9 +127,9 @@ VPackBuilder serialize(
 }
 
 Feature::Feature(
-    Server& server,
+    application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
-    : ArangodFeature{server, *this},
+    : application_features::ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();

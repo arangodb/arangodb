@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestOptionsBaseHandler::RestOptionsBaseHandler(ArangodServer& server,
+RestOptionsBaseHandler::RestOptionsBaseHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

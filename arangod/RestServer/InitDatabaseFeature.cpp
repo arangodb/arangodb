@@ -53,8 +53,8 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    Server& server, std::span<const std::type_index> nonServerFeatures)
-    : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
+    ApplicationServer& server, std::span<const std::type_index> nonServerFeatures)
+    : ApplicationFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }

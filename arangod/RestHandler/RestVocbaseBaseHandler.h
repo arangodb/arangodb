@@ -128,7 +128,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   static std::string const TRAVERSER_PATH_VERTEX;
 
-  RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(application_features::ApplicationServer&, GeneralRequest*,
+                         GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
   virtual void cancel() override {

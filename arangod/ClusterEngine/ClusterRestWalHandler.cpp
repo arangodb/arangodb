@@ -41,7 +41,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(ArangodServer& server,
+ClusterRestWalHandler::ClusterRestWalHandler(application_features::ApplicationServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

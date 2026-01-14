@@ -31,7 +31,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(ArangodServer& server,
+RestDebugHandler::RestDebugHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

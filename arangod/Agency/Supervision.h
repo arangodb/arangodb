@@ -88,13 +88,15 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
     Node const& snapshot, Node const& transient, std::string const& type,
     double gracePeriod);
 
-class Supervision : public ServerThread<ArangodServer> {
+class Supervision
+    : public ServerThread<application_features::ApplicationServer> {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
 
   /// @brief Construct cluster consistency checking
-  Supervision(ArangodServer& server, metrics::MetricsFeature& metrics);
+  Supervision(application_features::ApplicationServer& server,
+              metrics::MetricsFeature& metrics);
 
   /// @brief Default dtor
   ~Supervision();

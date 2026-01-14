@@ -37,7 +37,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestAdminStatisticsHandler::RestAdminStatisticsHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {

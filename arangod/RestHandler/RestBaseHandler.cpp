@@ -42,7 +42,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request,
                                  GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
 

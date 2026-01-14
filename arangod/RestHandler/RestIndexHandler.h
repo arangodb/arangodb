@@ -40,7 +40,7 @@ struct async;
 
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestIndexHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
   char const* name() const final { return "RestIndexHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }

@@ -34,7 +34,7 @@ class IResearchAnalyzerFeature;
 
 class RestAnalyzerHandler : public RestVocbaseBaseHandler {
  public:
-  RestAnalyzerHandler(ArangodServer& server, GeneralRequest* request,
+  RestAnalyzerHandler(application_features::ApplicationServer& server, GeneralRequest* request,
                       GeneralResponse* response);
 
   virtual RestStatus execute() override;

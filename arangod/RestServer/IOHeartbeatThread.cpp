@@ -49,10 +49,12 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// The purpose of this thread is to try to perform a simple IO write
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
-IOHeartbeatThread::IOHeartbeatThread(Server& server,
-                                     metrics::MetricsFeature& metricsFeature,
-                                     DatabasePathFeature& databasePathFeature)
-    : ServerThread<ArangodServer>(server, "IOHeartbeat"),
+IOHeartbeatThread::IOHeartbeatThread(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metricsFeature,
+    DatabasePathFeature& databasePathFeature)
+    : ServerThread<application_features::ApplicationServer>(server,
+                                                             "IOHeartbeat"),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),

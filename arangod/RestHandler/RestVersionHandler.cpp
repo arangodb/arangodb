@@ -34,7 +34,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static void addVersionDetails(ArangodServer& server, VPackBuilder& result) {
+static void addVersionDetails(application_features::ApplicationServer& server, VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
@@ -57,12 +57,12 @@ static void addVersionDetails(ArangodServer& server, VPackBuilder& result) {
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(ArangodServer& server,
+RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request,
                                        GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-void RestVersionHandler::getVersion(ArangodServer& server, bool allowInfo,
+void RestVersionHandler::getVersion(application_features::ApplicationServer& server, bool allowInfo,
                                     bool includeDetails, VPackBuilder& result) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));

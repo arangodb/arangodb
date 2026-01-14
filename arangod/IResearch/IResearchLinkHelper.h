@@ -30,7 +30,7 @@
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -74,7 +74,8 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(ArangodServer& server, velocypack::Slice lhs,
+  static bool equal(application_features::ApplicationServer& server,
+                    velocypack::Slice lhs,
                     velocypack::Slice rhs, std::string_view dbname);
 
   //////////////////////////////////////////////////////////////////////////////

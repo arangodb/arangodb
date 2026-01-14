@@ -70,13 +70,15 @@ using namespace arangodb;
 
 namespace arangodb::aql {
 
-class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
+class QueryInfoLoggerThread final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
-  explicit QueryInfoLoggerThread(ArangodServer& server,
-                                 size_t maxBufferedQueries,
-                                 uint64_t pushInterval,
-                                 uint64_t cleanupInterval, double retentionTime)
-      : ServerThread<ArangodServer>(server, "QueryInfoLogger"),
+  explicit QueryInfoLoggerThread(
+      application_features::ApplicationServer& server,
+      size_t maxBufferedQueries, uint64_t pushInterval,
+      uint64_t cleanupInterval, double retentionTime)
+      : ServerThread<application_features::ApplicationServer>(
+            server, "QueryInfoLogger"),
         _maxBufferedQueries(maxBufferedQueries),
         _pushInterval(pushInterval),
         _cleanupInterval(cleanupInterval),
@@ -485,8 +487,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   Scheduler::WorkHandle _workItem;
 };
 
-QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
-    : ArangodFeature{server, *this} {
+QueryInfoLoggerFeature::QueryInfoLoggerFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();

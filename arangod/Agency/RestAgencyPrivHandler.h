@@ -36,7 +36,7 @@ namespace arangodb {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  RestAgencyPrivHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+  RestAgencyPrivHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
                         consensus::Agent*);
 
  public:

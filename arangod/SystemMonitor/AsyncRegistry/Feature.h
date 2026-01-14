@@ -37,7 +37,7 @@ auto all_undeleted_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
 VPackBuilder serialize(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
 
-class Feature final : public ArangodFeature,
+class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
@@ -50,7 +50,7 @@ class Feature final : public ArangodFeature,
   };
 
   Feature(
-      Server& server,
+      application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   void prepare() override final;

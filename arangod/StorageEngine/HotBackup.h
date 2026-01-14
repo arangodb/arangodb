@@ -44,7 +44,7 @@ enum BACKUP_ENGINE { ROCKSDB, CLUSTER };
 
 class HotBackup {
  public:
-  explicit HotBackup(ArangodServer& server);
+  explicit HotBackup(application_features::ApplicationServer& server);
   virtual ~HotBackup() = default;
 
   /**
@@ -75,7 +75,7 @@ class HotBackup {
                                       VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 #endif
   BACKUP_ENGINE _engine;
 

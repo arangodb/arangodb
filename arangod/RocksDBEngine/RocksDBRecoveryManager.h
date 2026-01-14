@@ -39,11 +39,11 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final : public ArangodFeature {
+class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
-  explicit RocksDBRecoveryManager(Server& server);
+  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
 
   void start() override;
 

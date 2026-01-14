@@ -1040,8 +1040,8 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
-                                           ArangodServer& server)
+  explicit ReplicatedLogMethodsCoordinator(
+      DatabaseID vocbase, application_features::ApplicationServer& server)
       : vocbaseName(std::move(vocbase)),
         clusterFeature(server.getFeature<ClusterFeature>()),
         clusterInfo(clusterFeature.clusterInfo()),

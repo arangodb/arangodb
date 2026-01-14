@@ -98,7 +98,8 @@ using namespace arangodb;
 using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : ServerThread<ArangodServer>(vocbase.server(), "StatisticsWorker"),
+    : ServerThread<application_features::ApplicationServer>(vocbase.server(),
+                                                            "StatisticsWorker"),
       _gcTask(GC_STATS),
       _vocbase(vocbase) {
   _bytesSentDistribution.openArray();

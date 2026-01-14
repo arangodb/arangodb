@@ -36,7 +36,7 @@ namespace rest {
 
 class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyCallbacksHandler(ArangodServer& server, GeneralRequest* request,
+  RestAgencyCallbacksHandler(application_features::ApplicationServer& server, GeneralRequest* request,
                              GeneralResponse* response,
                              AgencyCallbackRegistry* agencyCallbackRegistry);
 

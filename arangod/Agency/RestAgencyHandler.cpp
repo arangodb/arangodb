@@ -49,7 +49,7 @@ using namespace arangodb::velocypack;
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
+RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}

@@ -41,7 +41,8 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final : public ServerThread<ArangodServer> {
+class ConsoleThread final
+    : public ServerThread<application_features::ApplicationServer> {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 

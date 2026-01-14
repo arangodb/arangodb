@@ -59,7 +59,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-AgencyFeature::AgencyFeature(Server& server) : ArangodFeature{server, *this} {
+AgencyFeature::AgencyFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::FoxxFeaturePhase>();

@@ -586,7 +586,8 @@ class AgencyComm {
  public:
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] explicit AgencyComm(ArangodServer&);
+      "dependency")]] explicit AgencyComm(application_features::
+                                              ApplicationServer&);
   AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
              DatabaseFeature&);
 

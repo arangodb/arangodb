@@ -38,7 +38,7 @@ class BaseEngine;
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(ArangodServer&, GeneralRequest*,
+  explicit InternalRestTraverserHandler(application_features::ApplicationServer&, GeneralRequest*,
                                         GeneralResponse*, aql::QueryRegistry*);
 
  public:

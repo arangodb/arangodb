@@ -39,7 +39,7 @@ struct AutoRebalanceProblem;
 }
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminClusterHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAdminClusterHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   ~RestAdminClusterHandler() override = default;
 
  public:

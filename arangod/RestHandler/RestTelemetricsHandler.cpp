@@ -118,7 +118,7 @@ RequestTracker& ensureRequestTracker(GeneralServerFeature& gf) {
 
 }  // namespace
 
-RestTelemetricsHandler::RestTelemetricsHandler(ArangodServer& server,
+RestTelemetricsHandler::RestTelemetricsHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

@@ -784,7 +784,7 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  */
 auto ensureIndexCoordinatorReplication2Inner(
     LogicalCollection const& collection, IndexId iid, VPackSlice index,
-    bool create, double timeout, ArangodServer& server)
+    bool create, double timeout, application_features::ApplicationServer& server)
     -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
@@ -978,7 +978,7 @@ auto ensureIndexCoordinatorReplication2Inner(
 Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
                                    IndexId iid, VPackSlice slice, bool create,
                                    VPackBuilder& resultBuilder, double timeout,
-                                   ArangodServer& server) {
+                                   application_features::ApplicationServer& server) {
   using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);

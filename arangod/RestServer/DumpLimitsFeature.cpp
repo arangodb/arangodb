@@ -49,8 +49,8 @@ uint64_t defaultMemoryUsage() {
 
 namespace arangodb {
 
-DumpLimitsFeature::DumpLimitsFeature(Server& server)
-    : ArangodFeature{server, *this} {
+DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 

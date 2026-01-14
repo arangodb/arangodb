@@ -44,9 +44,10 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server,
+ClusterUpgradeFeature::ClusterUpgradeFeature(ApplicationServer& server,
                                              DatabaseFeature& databaseFeature)
-    : ArangodFeature{server, *this}, _databaseFeature(databaseFeature) {
+    : application_features::ApplicationFeature{server, *this},
+      _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 

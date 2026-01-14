@@ -95,9 +95,10 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
-             config_t const& config)
-    : arangodb::ServerThread<ArangodServer>(server, "Agent"),
+Agent::Agent(application_features::ApplicationServer& server,
+             metrics::MetricsFeature& metrics, config_t const& config)
+    : arangodb::ServerThread<application_features::ApplicationServer>(server,
+                                                                      "Agent"),
       _constituent(server),
       _supervision(std::make_unique<Supervision>(server, metrics)),
       _state(metrics),

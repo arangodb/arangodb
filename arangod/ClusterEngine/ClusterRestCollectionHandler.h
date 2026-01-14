@@ -29,7 +29,7 @@ namespace arangodb {
 
 class ClusterRestCollectionHandler : public RestCollectionHandler {
  public:
-  ClusterRestCollectionHandler(ArangodServer&, GeneralRequest*,
+  ClusterRestCollectionHandler(application_features::ApplicationServer&, GeneralRequest*,
                                GeneralResponse*);
 
  protected:

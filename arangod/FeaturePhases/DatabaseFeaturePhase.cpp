@@ -42,7 +42,8 @@
 
 namespace arangodb::application_features {
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
+DatabaseFeaturePhase::DatabaseFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();

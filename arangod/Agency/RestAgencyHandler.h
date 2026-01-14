@@ -36,7 +36,7 @@ namespace arangodb {
 
 class RestAgencyHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+  RestAgencyHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
                     consensus::Agent*);
 
  public:

@@ -27,17 +27,17 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "RestServer/arangod.h"
 #include "RestServer/ScriptFeatureOptions.h"
-#include "GeneralServer/OperationMode.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class ScriptFeature final : public ArangodFeature {
+class ScriptFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Script"; }
 
-  explicit ScriptFeature(ArangodServer& server, int* result);
+  explicit ScriptFeature(application_features::ApplicationServer& server,
+                         int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;

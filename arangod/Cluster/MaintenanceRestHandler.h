@@ -35,7 +35,7 @@ namespace arangodb {
 
 class MaintenanceRestHandler : public RestBaseHandler {
  public:
-  MaintenanceRestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  MaintenanceRestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override { return "MaintenanceRestHandler"; }

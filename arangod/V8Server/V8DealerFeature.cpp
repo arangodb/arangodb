@@ -127,9 +127,10 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server,
-                                 metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
+V8DealerFeature::V8DealerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : ApplicationFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxExecutorAge(60.0),

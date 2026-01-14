@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestExplainHandler : public RestVocbaseBaseHandler {
  public:
-  RestExplainHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestExplainHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

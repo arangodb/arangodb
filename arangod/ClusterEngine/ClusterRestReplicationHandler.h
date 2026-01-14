@@ -31,7 +31,7 @@ namespace arangodb {
 /// @brief replication request handler
 class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  ClusterRestReplicationHandler(ArangodServer&, GeneralRequest*,
+  ClusterRestReplicationHandler(application_features::ApplicationServer&, GeneralRequest*,
                                 GeneralResponse*);
   ~ClusterRestReplicationHandler() = default;
 

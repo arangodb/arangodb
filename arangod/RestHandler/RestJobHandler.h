@@ -38,7 +38,7 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+  RestJobHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
                  rest::AsyncJobManager*);
 
  public:

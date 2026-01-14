@@ -323,7 +323,7 @@ void buildHealthResult(
 
 }  // namespace
 
-RestAdminClusterHandler::RestAdminClusterHandler(ArangodServer& server,
+RestAdminClusterHandler::RestAdminClusterHandler(application_features::ApplicationServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}

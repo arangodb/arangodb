@@ -41,7 +41,8 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(ArangodServer& server,
+RocksDBRestWalHandler::RocksDBRestWalHandler(
+    application_features::ApplicationServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

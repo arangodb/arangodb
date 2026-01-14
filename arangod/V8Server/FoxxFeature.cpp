@@ -29,6 +29,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/arangod.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
@@ -40,8 +41,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, *this},
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _queueVersion(0),
       _localQueueInserts(0),
       _queuesPollInterval(1.0),

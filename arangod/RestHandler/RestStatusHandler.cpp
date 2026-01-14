@@ -60,7 +60,7 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatusHandler::RestStatusHandler(ArangodServer& server,
+RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

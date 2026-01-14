@@ -35,13 +35,13 @@
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
-class FileDescriptorsFeature : public ArangodFeature {
+class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(Server& server);
+  explicit FileDescriptorsFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

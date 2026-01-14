@@ -39,7 +39,7 @@
 
 namespace arangodb {
 
-RestUsageMetricsHandler::RestUsageMetricsHandler(ArangodServer& server,
+RestUsageMetricsHandler::RestUsageMetricsHandler(application_features::ApplicationServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}

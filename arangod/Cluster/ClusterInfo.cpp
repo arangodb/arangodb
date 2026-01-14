@@ -381,9 +381,10 @@ using namespace cluster;
 using namespace methods;
 
 class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<ArangodServer> {
+    : public arangodb::ServerThread<application_features::ApplicationServer> {
  public:
-  explicit SyncerThread(Server&, std::string const& section,
+  explicit SyncerThread(application_features::ApplicationServer&,
+                        std::string const& section,
                         std::function<consensus::index_t()> const&,
                         AgencyCache&);
   ~SyncerThread() override;
@@ -436,7 +437,8 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
               "Global number of shards");
 
-ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+                         AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
                          metrics::MetricsFeature& metrics)
@@ -5865,7 +5867,9 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-ArangodServer& ClusterInfo::server() const { return _server; }
+application_features::ApplicationServer& ClusterInfo::server() const {
+  return _server;
+}
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
   return _agencyCallbackRegistry;
@@ -5949,9 +5953,11 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    Server& server, std::string const& section,
+    application_features::ApplicationServer& server,
+    std::string const& section,
     std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread<Server>(server, section + "Syncer"),
+    : ServerThread<application_features::ApplicationServer>(server,
+                                                             section + "Syncer"),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

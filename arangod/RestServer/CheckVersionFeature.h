@@ -34,12 +34,13 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class CheckVersionFeature final : public ArangodFeature {
+class CheckVersionFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "CheckVersion"; }
 
   explicit CheckVersionFeature(
-      Server& server, int* result,
+      application_features::ApplicationServer& server, int* result,
       std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -31,11 +31,11 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class EnvironmentFeature final : public ArangodFeature {
+class EnvironmentFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Environment"; }
 
-  explicit EnvironmentFeature(Server& server);
+  explicit EnvironmentFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
 

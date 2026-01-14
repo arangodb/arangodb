@@ -50,7 +50,7 @@ class Agent;
 // RAFT leader election
 class Constituent : public Thread {
  public:
-  explicit Constituent(ArangodServer&);
+  explicit Constituent(application_features::ApplicationServer&);
 
   // clean up and exit election
   virtual ~Constituent();

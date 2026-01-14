@@ -29,7 +29,7 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }

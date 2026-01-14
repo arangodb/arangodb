@@ -33,7 +33,7 @@ namespace arangodb {
 
 class RestAdminLogHandler : public RestBaseHandler {
  public:
-  explicit RestAdminLogHandler(ArangodServer&, GeneralRequest*,
+  explicit RestAdminLogHandler(application_features::ApplicationServer&, GeneralRequest*,
                                GeneralResponse*);
 
  public:

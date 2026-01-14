@@ -32,11 +32,11 @@ namespace arangodb {
 
 class ShardingInfo;
 
-class ShardingFeature : public ArangodFeature {
+class ShardingFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Sharding"; }
 
-  explicit ShardingFeature(Server& server);
+  explicit ShardingFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
   void start() override final;

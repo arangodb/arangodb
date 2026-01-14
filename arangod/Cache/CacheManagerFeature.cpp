@@ -44,9 +44,10 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(Server& server,
+CacheManagerFeature::CacheManagerFeature(ApplicationServer& server,
                                          CacheOptionsProvider const& provider)
-    : ArangodFeature{server, *this}, _provider(provider) {
+    : application_features::ApplicationFeature{server, *this},
+      _provider(provider) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<CacheOptionsFeature>();

@@ -28,12 +28,12 @@
 
 namespace arangodb {
 
-class CacheOptionsFeature final : public ArangodFeature,
+class CacheOptionsFeature final : public application_features::ApplicationFeature,
                                   public CacheOptionsProvider {
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
-  explicit CacheOptionsFeature(Server& server);
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

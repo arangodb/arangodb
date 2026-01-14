@@ -33,7 +33,7 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-RestLogInternalHandler::RestLogInternalHandler(ArangodServer& server,
+RestLogInternalHandler::RestLogInternalHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* req,
                                                GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}

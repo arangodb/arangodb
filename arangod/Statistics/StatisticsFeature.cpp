@@ -571,10 +571,12 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread<ArangodServer> {
+class StatisticsThread final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
   explicit StatisticsThread(Server& server)
-      : ServerThread<ArangodServer>(server, "Statistics") {}
+      : ServerThread<application_features::ApplicationServer>(server,
+                                                              "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -624,8 +626,9 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(Server& server)
-    : ArangodFeature{server, *this},
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),

@@ -47,7 +47,7 @@ std::mutex RestSystemReportHandler::_exclusive;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(ArangodServer& server,
+RestSystemReportHandler::RestSystemReportHandler(application_features::ApplicationServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response)
     : RestBaseHandler(server, request, response),

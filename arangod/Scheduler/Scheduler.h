@@ -57,7 +57,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler(ArangodServer&);
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class Scheduler {
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   // Returns the scheduler's server object
-  ArangodServer& server() noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   struct WorkItemBase {
     virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
@@ -183,7 +183,7 @@ class Scheduler {
   };
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {

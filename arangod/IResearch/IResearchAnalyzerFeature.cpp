@@ -706,7 +706,8 @@ inline std::string normalizedAnalyzerName(std::string_view database,
   return absl::StrCat(database, "::", analyzer);
 }
 
-bool analyzerInUse(ArangodServer& server, std::string_view dbName,
+bool analyzerInUse(application_features::ApplicationServer& server,
+                   std::string_view dbName,
                    AnalyzerPool::ptr const& analyzerPtr) {
   TRI_ASSERT(analyzerPtr);
 
@@ -780,7 +781,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    ArangodServer& server, std::string_view vocbase) {
+    application_features::ApplicationServer& server, std::string_view vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<ClusterFeature>() &&
                server.getFeature<ClusterFeature>().isEnabled());
@@ -1094,8 +1095,9 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   return {};
 }
 
-IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
-    : ArangodFeature{server, *this},
+IResearchAnalyzerFeature::IResearchAnalyzerFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
 #ifdef USE_V8

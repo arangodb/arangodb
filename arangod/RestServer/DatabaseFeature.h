@@ -30,7 +30,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -70,7 +70,8 @@ DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
               "Global number of databases");
 
-class DatabaseManagerThread final : public ServerThread<ArangodServer> {
+class DatabaseManagerThread final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
@@ -78,7 +79,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   /// @brief database manager thread main loop
   /// the purpose of this thread is to physically remove directories of
   /// databases that have been dropped
-  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+  DatabaseManagerThread(application_features::ApplicationServer&,
+                        DatabaseFeature& databaseFeature,
                         StorageEngine& engine);
   ~DatabaseManagerThread() final;
 
@@ -96,13 +98,13 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
 #endif
 };
 
-class DatabaseFeature final : public ArangodFeature {
+class DatabaseFeature final : public application_features::ApplicationFeature {
   friend class DatabaseManagerThread;
 
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
-  explicit DatabaseFeature(Server& server);
+  explicit DatabaseFeature(application_features::ApplicationServer& server);
   ~DatabaseFeature() final;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -214,7 +216,8 @@ class DatabaseFeature final : public ArangodFeature {
   void decrementCollectionCount(size_t count = 1);
 
  private:
-  static void initCalculationVocbase(ArangodServer& server);
+  static void initCalculationVocbase(
+      application_features::ApplicationServer& server);
 
   void stopAppliers();
 

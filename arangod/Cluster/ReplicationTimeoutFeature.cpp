@@ -45,8 +45,8 @@ namespace arangodb {
 // reboot id is increased. As a consequence, the connection is aborted and we
 // run into an error anyway. This is when a follower will be dropped.
 
-ReplicationTimeoutFeature::ReplicationTimeoutFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

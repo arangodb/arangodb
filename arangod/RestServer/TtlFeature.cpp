@@ -176,10 +176,12 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public ServerThread<ArangodServer> {
+class TtlThread final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
-  explicit TtlThread(ArangodServer& server, TtlFeature& ttlFeature)
-      : ServerThread<ArangodServer>(server, "TTL"),
+  explicit TtlThread(application_features::ApplicationServer& server,
+                     TtlFeature& ttlFeature)
+      : ServerThread<application_features::ApplicationServer>(server, "TTL"),
         _ttlFeature(ttlFeature),
         _working(false) {}
 
@@ -650,8 +652,8 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
 }  // namespace arangodb
 
-TtlFeature::TtlFeature(Server& server)
-    : ArangodFeature{server, *this}, _active(true) {
+TtlFeature::TtlFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this}, _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }

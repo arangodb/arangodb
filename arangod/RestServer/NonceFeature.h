@@ -27,11 +27,11 @@
 
 namespace arangodb {
 
-class NonceFeature : public ArangodFeature {
+class NonceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Nonce"; }
 
-  explicit NonceFeature(Server& server);
+  explicit NonceFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 };

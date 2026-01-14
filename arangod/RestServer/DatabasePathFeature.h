@@ -29,11 +29,11 @@
 
 namespace arangodb {
 
-class DatabasePathFeature final : public ArangodFeature {
+class DatabasePathFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 
-  explicit DatabasePathFeature(Server& server);
+  explicit DatabasePathFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

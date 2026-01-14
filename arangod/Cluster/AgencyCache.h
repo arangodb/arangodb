@@ -41,7 +41,8 @@ namespace cluster::paths {
 class Path;
 }
 
-class AgencyCache final : public ServerThread<ArangodServer> {
+class AgencyCache final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
   using databases_t = containers::FlatHashMap<std::string, consensus::query_t>;
 
@@ -62,7 +63,7 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(ArangodServer& server,
+  explicit AgencyCache(application_features::ApplicationServer& server,
                        AgencyCallbackRegistry& callbackRegistry,
                        ErrorCode shutdownCode);
 

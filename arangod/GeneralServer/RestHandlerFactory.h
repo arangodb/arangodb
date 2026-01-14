@@ -28,8 +28,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "RestServer/arangod.h"
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -46,17 +44,16 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef std::shared_ptr<RestHandler> (*create_fptr)(ArangodServer&,
-                                                      GeneralRequest*,
-                                                      GeneralResponse*,
-                                                      void* data);
+  typedef std::shared_ptr<RestHandler> (*create_fptr)(
+      application_features::ApplicationServer&, GeneralRequest*,
+      GeneralResponse*, void* data);
 
   RestHandlerFactory();
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
-      ArangodServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>) const;
+      application_features::ApplicationServer&,
+      std::unique_ptr<GeneralRequest>, std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);

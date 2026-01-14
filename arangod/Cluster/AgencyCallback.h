@@ -106,15 +106,19 @@ class AgencyCallback {
                  bool needsInitialValue = true);
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] AgencyCallback(ArangodServer& server, std::string const&,
+      "dependency")]] AgencyCallback(application_features::ApplicationServer&
+                                         server,
+                                     std::string const&,
                                      std::function<
                                          bool(velocypack::Slice const&)> const&,
                                      bool needsValue,
                                      bool needsInitialValue = true);
   [[deprecated(
       "Avoid this constructor to get rid of the ArangodServer "
-      "dependency")]] AgencyCallback(ArangodServer& server, std::string key,
-                                     CallbackType, bool needsValue,
+      "dependency")]] AgencyCallback(application_features::ApplicationServer&
+                                         server,
+                                     std::string key, CallbackType,
+                                     bool needsValue,
                                      bool needsInitialValue = true);
 
   std::string const key;

@@ -53,14 +53,14 @@ AgencyCallback::AgencyCallback(ApplicationServer& server,
       _needsValue(needsValue),
       _needsInitialValue(needsInitialValue) {}
 
-AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
+AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string key,
                                CallbackType cb, bool needsValue,
                                bool needsInitialValue)
     : AgencyCallback(server, server.getFeature<ClusterFeature>().agencyCache(),
                      std::move(key), std::move(cb), needsValue,
                      needsInitialValue) {}
 
-AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
+AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
     : AgencyCallback(

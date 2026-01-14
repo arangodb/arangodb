@@ -60,7 +60,7 @@ namespace {
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::ArangodServer& server) {
+    arangodb::application_features::ApplicationServer& server) {
   if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
         << "failure to find feature '"
@@ -80,7 +80,7 @@ using namespace arangodb::rest;
 
 namespace arangodb::auth {
 
-UserManagerImpl::UserManagerImpl(ArangodServer& server)
+UserManagerImpl::UserManagerImpl(application_features::ApplicationServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 
 UserManagerImpl::~UserManagerImpl() { shutdown(); }
@@ -103,7 +103,8 @@ static UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(
+    application_features::ApplicationServer& server) {
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -469,7 +470,7 @@ void UserManagerImpl::triggerGlobalReload() const {
 }
 
 /// Trigger eventual reload, user facing API call
-void UserManagerImpl::triggerGlobalReload(ArangodServer& server) {
+void UserManagerImpl::triggerGlobalReload(application_features::ApplicationServer& server) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -683,7 +684,8 @@ VPackBuilder UserManagerImpl::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(ArangodServer& server, User const& entry) {
+static Result RemoveUserInternal(
+    application_features::ApplicationServer& server, User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 

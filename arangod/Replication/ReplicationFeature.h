@@ -38,11 +38,12 @@ class ApplicationServer;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
-class ReplicationFeature final : public ArangodFeature {
+class ReplicationFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(Server& server, metrics::MetricsFeature& metrics);
+  explicit ReplicationFeature(application_features::ApplicationServer& server,
+                              metrics::MetricsFeature& metrics);
   ~ReplicationFeature();
 
   void collectOptions(

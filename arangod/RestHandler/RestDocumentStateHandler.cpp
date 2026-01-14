@@ -59,7 +59,7 @@ struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
 };
 }  // namespace
 
-RestDocumentStateHandler::RestDocumentStateHandler(ArangodServer& server,
+RestDocumentStateHandler::RestDocumentStateHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),

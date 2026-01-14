@@ -96,9 +96,9 @@ struct InvertedIndexField {
             std::string_view const defaultVocbase, bool rootMode,
             std::string& errorField);
 
-  bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
-            InvertedIndexField const& parent, bool rootMode,
-            TRI_vocbase_t const* defaultVocbase = nullptr) const;
+  bool json(arangodb::application_features::ApplicationServer& server,
+            VPackBuilder& builder, InvertedIndexField const& parent,
+            bool rootMode, TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
   std::string_view path() const noexcept;
   std::string_view attributeString() const;
@@ -220,7 +220,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::ArangodServer& server, VPackSlice const& slice,
+  bool init(arangodb::application_features::ApplicationServer& server,
+            VPackSlice const& slice,
             bool readAnalyzerDefinition, std::string& errorField,
             std::string_view const defaultVocbase);
 
@@ -237,8 +238,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
-            bool writeAnalyzerDefinition,
+  bool json(arangodb::application_features::ApplicationServer& server,
+            VPackBuilder& builder, bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;

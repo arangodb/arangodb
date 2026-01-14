@@ -36,11 +36,11 @@ class Builder;
 
 namespace aql {
 
-class AqlFunctionFeature final : public ArangodFeature {
+class AqlFunctionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "AQLFunctions"; }
 
-  explicit AqlFunctionFeature(Server& server);
+  explicit AqlFunctionFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
 

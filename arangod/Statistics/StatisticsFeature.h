@@ -86,11 +86,11 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final : public ArangodFeature {
+class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
-  explicit StatisticsFeature(Server& server);
+  explicit StatisticsFeature(application_features::ApplicationServer& server);
 
   static double time();
 

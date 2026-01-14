@@ -33,13 +33,13 @@
 namespace arangodb::aql {
 class QueryInfoLoggerThread;
 
-class QueryInfoLoggerFeature final : public ArangodFeature {
+class QueryInfoLoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "QueryInfoLogger";
   }
 
-  explicit QueryInfoLoggerFeature(Server& server);
+  explicit QueryInfoLoggerFeature(application_features::ApplicationServer& server);
 
   ~QueryInfoLoggerFeature();
 

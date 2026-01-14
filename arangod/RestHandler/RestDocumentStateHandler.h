@@ -35,7 +35,7 @@ struct SnapshotParams;
 
 class RestDocumentStateHandler : public RestVocbaseBaseHandler {
  public:
-  RestDocumentStateHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestDocumentStateHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   RestStatus execute() final;
   char const* name() const final { return "RestDocumentStateHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }

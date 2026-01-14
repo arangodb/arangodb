@@ -42,7 +42,7 @@ using namespace arangodb::velocypack;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(ArangodServer& server,
+RestAgencyPrivHandler::RestAgencyPrivHandler(application_features::ApplicationServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response,
                                              Agent* agent)

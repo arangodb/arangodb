@@ -54,7 +54,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(ArangodServer& server,
+RestQueryHandler::RestQueryHandler(application_features::ApplicationServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}

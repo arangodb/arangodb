@@ -55,8 +55,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(Server& server, int* res)
-    : ArangodFeature{server, *this},
+ServerFeature::ServerFeature(ApplicationServer& server, int* res)
+    : ApplicationFeature{server, *this},
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);

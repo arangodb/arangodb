@@ -31,11 +31,11 @@ namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public ArangodFeature {
+class AgencyFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
-  explicit AgencyFeature(Server& server);
+  explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

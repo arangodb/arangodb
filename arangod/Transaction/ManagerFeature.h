@@ -35,13 +35,13 @@
 namespace arangodb::transaction {
 class Manager;
 
-class ManagerFeature final : public ArangodFeature {
+class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TransactionManager";
   }
 
-  explicit ManagerFeature(Server& server);
+  explicit ManagerFeature(application_features::ApplicationServer& server);
   ~ManagerFeature();
 
   void collectOptions(

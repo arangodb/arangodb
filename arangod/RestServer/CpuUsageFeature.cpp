@@ -101,8 +101,8 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   return offset;
 }
 
-CpuUsageFeature::CpuUsageFeature(Server& server)
-    : ArangodFeature{server, *this},
+CpuUsageFeature::CpuUsageFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {
   setOptional(true);

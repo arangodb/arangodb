@@ -381,7 +381,7 @@ auto RestLogHandler::handleDeleteRequest(ReplicatedLogMethods const& methods)
   }
 }
 
-RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
+RestLogHandler::RestLogHandler(application_features::ApplicationServer& server, GeneralRequest* req,
                                GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
 

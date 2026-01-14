@@ -34,11 +34,11 @@ namespace arangodb {
 
 class ApiRecordingFeature;
 
-class AqlFeature final : public ArangodFeature {
+class AqlFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Aql"; }
 
-  explicit AqlFeature(ArangodServer& server);
+  explicit AqlFeature(application_features::ApplicationServer& server);
   ~AqlFeature();
 
   static bool lease() noexcept;

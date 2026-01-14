@@ -45,7 +45,8 @@ using namespace arangodb::options;
 
 namespace {
 
-using EngineResolver = StorageEngine& (*)(ArangodServer&);
+using EngineResolver =
+    StorageEngine& (*)(application_features::ApplicationServer&);
 
 struct EngineInfo {
   EngineResolver resolver;
@@ -57,7 +58,7 @@ struct EngineInfo {
 
 constexpr std::array<std::pair<std::string_view, EngineInfo>, 1> kEngines{
     {{RocksDBEngine::kEngineName,
-      {[](ArangodServer& server) -> StorageEngine& {
+      {[](application_features::ApplicationServer& server) -> StorageEngine& {
          return server.getFeature<RocksDBEngine>();
        },
        false, true}}}};
@@ -66,8 +67,9 @@ constexpr std::array<std::pair<std::string_view, EngineInfo>, 1> kEngines{
 
 namespace arangodb {
 
-EngineSelectorFeature::EngineSelectorFeature(Server& server)
-    : ArangodFeature{server, *this},
+EngineSelectorFeature::EngineSelectorFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _engine(nullptr),
       _engineName("auto"),
       _selected(false),

@@ -28,10 +28,10 @@
 namespace arangodb {
 class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
-  RestVersionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestVersionHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  static void getVersion(ArangodServer& server, bool allowInfo,
+  static void getVersion(application_features::ApplicationServer& server, bool allowInfo,
                          bool includeDetails, VPackBuilder& result);
 
   char const* name() const override final { return "RestVersionHandler"; }

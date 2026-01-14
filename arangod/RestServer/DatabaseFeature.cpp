@@ -97,7 +97,8 @@ void waitUnique(std::shared_ptr<T> const& ptr) {
   std::atomic_thread_fence(std::memory_order_acquire);
 }
 
-CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
+CreateDatabaseInfo createExpressionVocbaseInfo(
+    application_features::ApplicationServer& server) {
   CreateDatabaseInfo info{server, ExecContext::current()};
   // name does not matter. We just need validity check to pass.
   auto r = info.load("Z", std::numeric_limits<uint64_t>::max());
@@ -118,10 +119,11 @@ CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
-DatabaseManagerThread::DatabaseManagerThread(Server& server,
-                                             DatabaseFeature& databaseFeature,
-                                             StorageEngine& engine)
-    : ServerThread<ArangodServer>(server, "DatabaseManager"),
+DatabaseManagerThread::DatabaseManagerThread(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, StorageEngine& engine)
+    : ServerThread<application_features::ApplicationServer>(server,
+                                                             "DatabaseManager"),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8
@@ -270,8 +272,8 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, *this} {
+DatabaseFeature::DatabaseFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -412,7 +414,8 @@ void DatabaseFeature::validateOptions(
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
+void DatabaseFeature::initCalculationVocbase(
+    application_features::ApplicationServer& server) {
   auto& df = server.getFeature<DatabaseFeature>();
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       createExpressionVocbaseInfo(server), df.versionTracker(),

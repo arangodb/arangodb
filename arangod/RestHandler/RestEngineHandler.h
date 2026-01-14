@@ -28,7 +28,7 @@
 namespace arangodb {
 class RestEngineHandler : public arangodb::RestBaseHandler {
  public:
-  RestEngineHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestEngineHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestEngineHandler"; }

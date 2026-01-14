@@ -65,11 +65,11 @@ struct TtlProperties {
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
 };
 
-class TtlFeature final : public ArangodFeature {
+class TtlFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Ttl"; }
 
-  explicit TtlFeature(Server& server);
+  explicit TtlFeature(application_features::ApplicationServer& server);
   ~TtlFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

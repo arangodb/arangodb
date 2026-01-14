@@ -30,7 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestKeyGeneratorsHandler::RestKeyGeneratorsHandler(ArangodServer& server,
+RestKeyGeneratorsHandler::RestKeyGeneratorsHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}

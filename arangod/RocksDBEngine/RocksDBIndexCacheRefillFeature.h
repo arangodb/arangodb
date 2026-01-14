@@ -40,13 +40,15 @@ class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
+class RocksDBIndexCacheRefillFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "RocksDBIndexCacheRefill";
   }
 
-  explicit RocksDBIndexCacheRefillFeature(Server& server);
+  explicit RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server);
 
   ~RocksDBIndexCacheRefillFeature();
 

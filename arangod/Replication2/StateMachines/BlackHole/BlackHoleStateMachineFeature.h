@@ -22,16 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb::replication2::replicated_state::black_hole {
 
-struct BlackHoleStateMachineFeature : public ArangodFeature {
+struct BlackHoleStateMachineFeature : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept {
     return "BlackHoleStateMachine";
   }
 
-  explicit BlackHoleStateMachineFeature(Server& server);
+  explicit BlackHoleStateMachineFeature(
+      application_features::ApplicationServer& server);
   void start() override;
 };
 

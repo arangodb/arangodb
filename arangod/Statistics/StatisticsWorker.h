@@ -35,7 +35,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class StatisticsWorker final : public ServerThread<ArangodServer> {
+class StatisticsWorker final
+    : public ServerThread<application_features::ApplicationServer> {
  public:
   explicit StatisticsWorker(TRI_vocbase_t& vocbase);
   ~StatisticsWorker() { shutdown(); }

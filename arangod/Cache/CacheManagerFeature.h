@@ -35,11 +35,11 @@ namespace cache {
 class Manager;
 }
 
-class CacheManagerFeature final : public ArangodFeature {
+class CacheManagerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 
-  explicit CacheManagerFeature(Server& server,
+  explicit CacheManagerFeature(application_features::ApplicationServer& server,
                                CacheOptionsProvider const& provider);
   ~CacheManagerFeature();
 

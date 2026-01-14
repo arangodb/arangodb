@@ -78,11 +78,11 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public ArangodFeature {
+class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
-  explicit MaintenanceFeature(Server& server);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server);
 
   virtual ~MaintenanceFeature();
 

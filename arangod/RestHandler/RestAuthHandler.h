@@ -30,7 +30,7 @@
 namespace arangodb {
 class RestAuthHandler : public RestVocbaseBaseHandler {
  public:
-  RestAuthHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAuthHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }

@@ -33,11 +33,11 @@ struct ReplicatedLogMetrics;
 }
 
 namespace arangodb {
-class ReplicatedLogFeature final : public ArangodFeature {
+class ReplicatedLogFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ReplicatedLog"; }
 
-  explicit ReplicatedLogFeature(Server& server);
+  explicit ReplicatedLogFeature(application_features::ApplicationServer& server);
   ~ReplicatedLogFeature() override;
 
   void start() override;

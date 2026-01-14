@@ -45,7 +45,8 @@ constexpr std::string_view kDefaultLangKey = "default";
 constexpr std::string_view kIcuLangKey = "icu-language";
 
 /// @brief reads previous default langauge from file
-arangodb::Result readLanguage(arangodb::ArangodServer& server,
+arangodb::Result readLanguage(
+    arangodb::application_features::ApplicationServer& server,
                               std::string& language, LanguageType& type) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
@@ -97,7 +98,9 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
 }
 
 /// @brief writes the default language to file
-ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
+ErrorCode writeLanguage(
+    arangodb::application_features::ApplicationServer& server,
+    std::string_view lang,
                         LanguageType currLangType) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
@@ -153,7 +156,8 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
 }
 
 std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
-    arangodb::ArangodServer& server, std::string_view collatorLang,
+    arangodb::application_features::ApplicationServer& server,
+    std::string_view collatorLang,
     LanguageType currLangType) {
   std::string prevLanguage;
   LanguageType prevType = LanguageType::INVALID;
@@ -187,8 +191,9 @@ bool compareLangWithPrev(std::string const& lang, std::string const& prevLang) {
 
 namespace arangodb {
 
-LanguageCheckFeature::LanguageCheckFeature(Server& server)
-    : ArangodFeature{server, *this} {
+LanguageCheckFeature::LanguageCheckFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<DatabasePathFeature>();
   startsAfter<LanguageFeature>();

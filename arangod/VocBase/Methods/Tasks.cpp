@@ -224,8 +224,8 @@ void Task::removeTasksForDatabase(std::string const& name) {
   }
 }
 
-bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
-                      std::string const& command) {
+bool Task::tryCompile(application_features::ApplicationServer& server,
+                      v8::Isolate* isolate, std::string const& command) {
   if (!server.hasFeature<V8DealerFeature>() ||
       !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {

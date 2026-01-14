@@ -26,6 +26,7 @@
 #include <memory>
 #include <string>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -33,11 +34,11 @@ namespace options {
 class ProgramOptions;
 }
 
-class TimeZoneFeature final : public ArangodFeature {
+class TimeZoneFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "TimeZone"; }
 
-  explicit TimeZoneFeature(Server& server);
+  explicit TimeZoneFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
   void start() override final;

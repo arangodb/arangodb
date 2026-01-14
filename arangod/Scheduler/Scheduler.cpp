@@ -47,11 +47,14 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : public ServerThread<ArangodServer> {
+class SchedulerThread
+    : public ServerThread<application_features::ApplicationServer> {
  public:
-  explicit SchedulerThread(Server& server, Scheduler& scheduler,
+  explicit SchedulerThread(application_features::ApplicationServer& server,
+                           Scheduler& scheduler,
                            std::string const& name = "Scheduler")
-      : ServerThread<ArangodServer>(server, name), _scheduler(scheduler) {}
+      : ServerThread<application_features::ApplicationServer>(server, name),
+        _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;
@@ -62,7 +65,8 @@ class SchedulerThread : public ServerThread<ArangodServer> {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
+  explicit SchedulerCronThread(application_features::ApplicationServer& server,
+                               Scheduler& scheduler)
       : SchedulerThread(server, scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
@@ -72,7 +76,7 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler(ArangodServer& server)
+Scheduler::Scheduler(application_features::ApplicationServer& server)
     : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where

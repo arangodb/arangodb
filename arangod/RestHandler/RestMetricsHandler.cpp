@@ -83,7 +83,7 @@ bool isOutdated(
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
+RestMetricsHandler::RestMetricsHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request,
                                        GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
