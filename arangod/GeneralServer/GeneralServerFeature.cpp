@@ -130,7 +130,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "SystemMonitor/TaskMonitoring/RestHandler.h"
+#include "SystemMonitor/ActivityRegistry/RestHandler.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -830,8 +830,9 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
-      "/_admin/task-monitoring",
-      RestHandlerCreator<arangodb::task_monitoring::RestHandler>::createNoData);
+      "/_admin/activity-registry",
+      RestHandlerCreator<
+          arangodb::activity_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

@@ -22,30 +22,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "SystemMonitor/TaskMonitoring/Feature.h"
+#include "SystemMonitor/ActivityRegistry/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace arangodb::task_monitoring {
+namespace arangodb::activity_registry {
 
 /**
-   Task monitoring REST handler
+   Activity-registry REST handler
 
-   GET: Returns all currently existing (non-deleted) tasks in the task-registry
-   as a dependency forest. The forest is given as a list of trees. Each tree is
-   given as a list of tasks, where its hierachy number and position inside
-   the list defines its location in the tree. Inside one tree, a task that
-   is created by another task sits one hierarchy-level below its parent task.
+   GET: Returns all currently existing (non-deleted) activities in the
+   activity-registry as a dependency forest. The forest is given as a list of
+   trees. Each tree is given as a list of activities, where its hierachy number
+   and position inside the list defines its location in the tree. Inside one
+   tree, an activity that is created by another activity sits one
+   hierarchy-level below its parent activity.
  */
 class RestHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "TaskRegistryRestHandler"; }
+  char const* name() const override final {
+    return "ActivityRegistryRestHandler";
+  }
   RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
   futures::Future<futures::Unit> executeAsync() override;
 
   Feature& _feature;
 };
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::activity_registry
