@@ -194,9 +194,6 @@ function CollectionSuite () {
       var r5 = c1.revision();
       assertEqual(1, testHelper.compareStringIds(r5, r4));
 
-      // unload
-      c1.unload();
-
       // compare rev
       c1 = db._collection(cn);
       var r6 = c1.revision();
@@ -208,9 +205,6 @@ function CollectionSuite () {
         r6 = c1.revision();
       }
 
-      // unload
-      c1.unload();
-
       // compare rev
       c1 = db._collection(cn);
       var r7 = c1.revision();
@@ -218,9 +212,6 @@ function CollectionSuite () {
 
       c1.truncate({ compact: false });
       var r8 = c1.revision();
-
-      // unload
-      c1.unload();
 
       // compare rev
       c1 = db._collection(cn);
@@ -466,42 +457,6 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check type of document collection after unload
-////////////////////////////////////////////////////////////////////////////////
-
-    testTypeDocumentCollection : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._createDocumentCollection(cn);
-      c1.unload();
-      c1 = null;
-
-      var c2 = db[cn];
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c2.type());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check type of edge collection after unload
-////////////////////////////////////////////////////////////////////////////////
-
-    testTypeEdgeCollection : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._createEdgeCollection(cn);
-      c1.unload();
-      c1 = null;
-
-      var c2 = db[cn];
-      assertEqual(ArangoCollection.TYPE_EDGE, c2.type());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creating with defaults
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -647,63 +602,6 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop loaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingLoaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      c1.drop();
-
-      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop unloaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingUnloaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-      c1.unload();
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      c1.drop();
-
-      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate new-born
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -722,60 +620,6 @@ function CollectionSuite () {
       c1.truncate({ compact: false });
 
       assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate loaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingLoaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      c1.truncate({ compact: false });
-
-      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate unloaded
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingUnloaded : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-      c1.unload();
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      c1.truncate({ compact: false });
-
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertEqual(0, c1.count());
 
@@ -805,8 +649,6 @@ function CollectionSuite () {
       assertTypeOf("string", r3);
       assertEqual(1, testHelper.compareStringIds(r3, r2));
 
-      // unload
-      c1.unload();
       c1 = db._collection(cn);
 
       var r4 = c1.revision();
@@ -817,7 +659,7 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test system collection dropping / renaming / unloading
+    /// @brief test system collection dropping / renaming
 ////////////////////////////////////////////////////////////////////////////////
 
     testSystemSpecial : function () {
@@ -871,8 +713,6 @@ function CollectionSuite () {
       assertNotEqual("0", r3.checksum);
       assertNotEqual(r2.checksum, r3.checksum);
 
-      // test after unloading
-      c1.unload();
       var r4 = c1.checksum(true);
       assertTypeOf("string", r4.revision);
       assertEqual(r3.revision, r4.revision);
@@ -935,7 +775,6 @@ function CollectionSuite () {
       assertNotEqual("0", r3.checksum);
       assertNotEqual(r2.checksum, r3.checksum);
 
-      c1.unload();
       var r4 = c1.checksum(true);
       assertTypeOf("string", r4.revision);
       assertEqual(r3.revision, r4.revision);
@@ -1121,63 +960,6 @@ function CollectionDbSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop loaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingLoadedDB : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      db._drop(cn);
-
-      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop unloaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testDroppingUnloadedDB : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-      c1.unload();
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      db._drop(cn);
-
-      assertEqual(ArangoCollection.STATUS_DELETED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate new-born (DB)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1201,60 +983,6 @@ function CollectionDbSuite () {
 
       db._drop(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate loaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingLoadedDB : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      db._truncate(cn);
-
-      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief truncate unloaded (DB)
-////////////////////////////////////////////////////////////////////////////////
-
-    testTruncatingUnloadedDB : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-      c1.unload();
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      db._truncate(cn);
-
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertEqual(0, c1.count());
-
-      db._drop(cn);
-    }
   };
 }
 

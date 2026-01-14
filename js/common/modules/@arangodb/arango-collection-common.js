@@ -61,14 +61,6 @@ ArangoCollection.STATUS_LOADED = 3;
 
 ArangoCollection.STATUS_DELETED = 5;
 
-/// note: the following collection statuses are not used by arangod anymore.
-/// they are only here for backwards-compatibility, but they will be rmeoved
-/// in a future version
-ArangoCollection.STATUS_NEW_BORN = 1;
-ArangoCollection.STATUS_UNLOADED = 2;
-ArangoCollection.STATUS_UNLOADING = 4;
-ArangoCollection.STATUS_LOADING = 6;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief document collection
 // //////////////////////////////////////////////////////////////////////////////
@@ -93,9 +85,6 @@ ArangoCollection.prototype._PRINT = function (context) {
   var name = this.name();
 
   switch (this.status()) {
-    case ArangoCollection.STATUS_LOADED:
-      status = 'loaded';
-      break;
     case ArangoCollection.STATUS_CORRUPTED:
       status = 'corrupted';
       break;
