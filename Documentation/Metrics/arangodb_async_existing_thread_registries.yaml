@@ -1,7 +1,7 @@
 name: arangodb_async_existing_thread_registries
 introducedIn: "3.12.4"
 help: |
-  Number of currently existing async thread registires
+  Number of currently existing async thread registires.
 unit: number
 type: gauge
 category: Statistics
