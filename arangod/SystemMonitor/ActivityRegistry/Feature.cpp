@@ -28,26 +28,24 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 
-DECLARE_COUNTER(
-    arangodb_monitoring_tasks_total,
-    "Total number of created monitoring tasks since database creation");
+DECLARE_COUNTER(arangodb_activity_activities_total,
+                "Total number of created activities since database creation");
 
-DECLARE_GAUGE(arangodb_monitoring_tasks_existing, std::uint64_t,
-              "Number of currently existing monitoring tasks");
+DECLARE_GAUGE(arangodb_activity_existing_activities, std::uint64_t,
+              "Number of currently existing activities");
 
-DECLARE_GAUGE(arangodb_monitoring_tasks_ready_for_deletion, std::uint64_t,
-              "Number of currently existing monitoring tasks that wait "
+DECLARE_GAUGE(arangodb_activity_ready_for_deletion_activities, std::uint64_t,
+              "Number of currently existing activities that wait "
               "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_monitoring_tasks_thread_registries_total,
-                "Total number of threads that started monitoring tasks "
+DECLARE_COUNTER(arangodb_activity_thread_registries_total,
+                "Total number of threads that started actities "
                 "since database creation");
 
-DECLARE_GAUGE(
-    arangodb_monitoring_tasks_existing_thread_registries, std::uint64_t,
-    "Number of threads that started currently existing monitoring tasks");
+DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
+              "Number of currently existing activity thread registries");
 
 Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
@@ -57,13 +55,13 @@ Feature::Feature(Server& server) : ArangodFeature{server, *this} {
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_monitoring_tasks_total{}),
-      metrics_feature.addShared(arangodb_monitoring_tasks_existing{}),
-      metrics_feature.addShared(arangodb_monitoring_tasks_ready_for_deletion{}),
+      metrics_feature.addShared(arangodb_activity_activities_total{}),
+      metrics_feature.addShared(arangodb_activity_existing_activities{}),
       metrics_feature.addShared(
-          arangodb_monitoring_tasks_thread_registries_total{}),
+          arangodb_activity_ready_for_deletion_activities{}),
+      metrics_feature.addShared(arangodb_activity_thread_registries_total{}),
       metrics_feature.addShared(
-          arangodb_monitoring_tasks_existing_thread_registries{}));
+          arangodb_activity_existing_thread_registries{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
@@ -72,7 +70,7 @@ struct Feature::CleanupThread {
             std::unique_lock guard(_mutex);
             auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
             if (status == std::cv_status::timeout) {
-              task_monitoring::registry.run_external_cleanup();
+              activity_registry::registry.run_external_cleanup();
             }
           }
         }) {}
@@ -100,14 +98,15 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("task-registry", "Options for the task-registry");
+  options->addSection("activity-registry", "Options for the activity-registry");
 
   options
-      ->addOption("--task-registry.cleanup-timeout",
-                  "Timeout in seconds between task-registry garbage collection "
-                  "swipes.",
-                  new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
-                                              /*minValue*/ 1))
+      ->addOption(
+          "--activity-registry.cleanup-timeout",
+          "Timeout in seconds between activity-registry garbage collection "
+          "swipes.",
+          new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
+                                      /*minValue*/ 1))
       .setLongDescription(
-          R"(Each thread that is involved in the task-registry needs to garbage collect its finished tasks regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+          R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }

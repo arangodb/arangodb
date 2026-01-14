@@ -62,7 +62,7 @@ namespace async_registry {
 class Feature;
 
 }
-namespace task_monitoring {
+namespace activity_registry {
 
 class Feature;
 
@@ -213,7 +213,7 @@ using ArangodFeaturesList = TypeList<
     ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
-    task_monitoring::Feature,
+    activity_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT
