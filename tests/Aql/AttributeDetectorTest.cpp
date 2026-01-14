@@ -242,10 +242,8 @@ TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
-              accesses[0].requiresAllAttributesRead);
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
 }
 
 TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
@@ -254,8 +252,7 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, UpdateWithSpecificFields) {
@@ -412,8 +409,8 @@ TEST_F(AttributeDetectorTest, FilterWithIndex) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, SortWithAttributes) {
@@ -426,10 +423,8 @@ TEST_F(AttributeDetectorTest, SortWithAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
-              accesses[0].requiresAllAttributesRead);
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, ComplexCalculation) {
@@ -442,10 +437,8 @@ TEST_F(AttributeDetectorTest, ComplexCalculation) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age") ||
-              accesses[0].requiresAllAttributesRead);
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name") ||
-              accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, InsertDoesNotRead) {
