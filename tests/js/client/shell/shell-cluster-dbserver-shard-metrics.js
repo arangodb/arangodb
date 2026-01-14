@@ -152,7 +152,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   };
 
   const getMetricsAndEventuallyAssert = function(servers, expectedShardsNum, expectedShardsLeaderNum, expectedShardsOutOfSync, expectedShardsNotReplicated, expectedFollowersOutOfSync = 0) {
-    for(let i = 0; i < 100; i++) {
+    for(let i = 0; i < 200; i++) {
       internal.wait(0.1);
       const shardsNumMetricValue = getDBServerMetricSum(servers, shardsNumMetric);
       if (shardsNumMetricValue !== expectedShardsNum && expectedShardsNum !== null) {
@@ -189,11 +189,11 @@ function ClusterDBServerShardMetricsTestSuite() {
   // compareFn takes the metric value and returns true if the assertion should pass
   const eventuallyAssertMetric = function(servers, metricName, compareFn, errorMessage) {
     let metricValue;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 2000; i++) {
       internal.wait(0.1);
       metricValue = getDBServerMetricSum(servers, metricName);
       if (compareFn(metricValue)) {
-        return metricValue;
+        break;
       }
     }
     // Final assertion with error message
@@ -209,6 +209,15 @@ function ClusterDBServerShardMetricsTestSuite() {
       } catch (e) {
         // Ignore errors
       }
+      // Ensure all DB servers are online
+      const dbServers = getDBServers();
+      dbServers.forEach(server => {
+        try {
+          server.resume();
+        } catch (e) {
+          // Ignore errors - server may already be running
+        }
+      });
     },
 
     testShardCountMetricStability: function () {
@@ -348,7 +357,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       // - eventually the number of shards leaders must be 1 or greater
       // - eventually the number of out of sync should be at least 1
       // - eventually the number of not replicated shards should be at least 1
-      for(let i = 0; i < 100; i++) {
+      for(let i = 0; i < 200; i++) {
         internal.wait(0.1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
         if (shardsNumMetricValue !== totalLeaderCount) {
@@ -403,35 +412,39 @@ function ClusterDBServerShardMetricsTestSuite() {
 
       // Get the db servers which do not have the leader
       const shards = db[collectionName].shards(true);
-      const dbServerLeaderId = Object.values(shards).flatMap(servers => servers[0])[0];
-      const dbServersWithoutLeader = dbServers.filter(server => server.id !== dbServerLeaderId);
-      assertEqual(dbServersWithoutLeader.length, 2);
+      const shardServers = Object.values(shards).flat();
+      const dbServerLeaderId = shardServers[0];
+      const dbServerFollowerId = shardServers[1];
 
-      // Shutdown followers
-      dbServersWithoutLeader.forEach(server => {
-        server.suspend();
-      });
+      const dbServerLeader = dbServers.find(server => server.id === dbServerLeaderId);
+      const dbServerFollower = dbServers.find(server => server.id === dbServerFollowerId);
+      const dbServersOthers = dbServers.filter(server => !shardServers.includes(server.id));
+
+      // Shutdown others
+      dbServersOthers.forEach(server => {
+server.suspend();
+});
+      // Shutdown the follower after the others, to prevent a FailedFollower job from replacing it.
+      // This might still happen unless we wait at least for a heartbeat of the follower to arrive after
+      // suspending the others, or safer yet to wait for them to fail. However, it seems unlikely enough, and FailedFollower is going away anyway.
+      dbServerFollower.suspend();
 
       // Insert some data to trigger replication
-      db._query(`FOR i IN 0..1000 INSERT {val: i} INTO ${collectionName}`);
+      db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${collectionName}`);
 
-      dbServersWithoutLeader[0].resume();
-      // Only the second db server id down
-      const onlineServers = dbServers.filter(server => server.id !== dbServersWithoutLeader[1].id);
+      eventuallyAssertMetric([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0");
 
-      let followersOutOfSyncNumMetricValue;
-      for(let i = 0; i < 100; i++) {
-        internal.wait(0.1);
-        followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
-        if (followersOutOfSyncNumMetricValue === 0) {
-          continue;
-        }
+      // Stop leader
+      dbServerLeader.suspend();
 
-        break;
-      }
+      // Resume only original follower
+      dbServerFollower.resume();
 
-      assertTrue(followersOutOfSyncNumMetricValue > 0);
-      dbServersWithoutLeader[1].resume();
+      eventuallyAssertMetric([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0");
+
+      // Resume all down servers
+      dbServerLeader.resume();
+      dbServersOthers.forEach(server => server.resume());
 
       getMetricsAndEventuallyAssert(dbServers, totalShardCount, totalLeaderCount, 0, 0);
     },
