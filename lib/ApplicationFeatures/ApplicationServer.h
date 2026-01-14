@@ -43,10 +43,6 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-
-template<typename T>
-struct TypeTag;
-
 namespace options {
 class ProgramOptions;
 }
@@ -453,12 +449,6 @@ class ApplicationServer {
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 };
-
-// ApplicationServerT is kept for backward compatibility with client-tools.
-// The Features template parameter is ignored - all servers now use the same
-// base ApplicationServer class with runtime feature registration.
-template<typename Features>
-using ApplicationServerT = ApplicationServer;
 
 }  // namespace application_features
 }  // namespace arangodb

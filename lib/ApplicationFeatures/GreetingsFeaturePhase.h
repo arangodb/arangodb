@@ -47,16 +47,16 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
       : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
 
-    startsAfter<ConfigFeature, Server>();
-    startsAfter<FileSystemFeature, Server>();
-    startsAfter<LoggerFeature, Server>();
-    startsAfter<RandomFeature, Server>();
-    startsAfter<ShellColorsFeature, Server>();
-    startsAfter<VersionFeature, Server>();
+    startsAfter<ConfigFeature>();
+    startsAfter<FileSystemFeature>();
+    startsAfter<LoggerFeature>();
+    startsAfter<RandomFeature>();
+    startsAfter<ShellColorsFeature>();
+    startsAfter<VersionFeature>();
 
     if constexpr (!IsClient) {
       // These are server only features
-      startsAfter<GreetingsFeature, Server>();
+      startsAfter<GreetingsFeature>();
     }
   }
 };

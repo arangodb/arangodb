@@ -43,9 +43,9 @@ EndpointFeature::EndpointFeature(ArangodServer& server)
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);
-  startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
+  startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter<ServerFeature, ArangodServer>();
+  startsAfter<ServerFeature>();
 
   // if our default value is too high, we'll use half of the max value provided
   // by the system

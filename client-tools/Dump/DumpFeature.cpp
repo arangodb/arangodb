@@ -769,8 +769,9 @@ Result DumpFeature::DumpShardJob::run(
   return res;
 }
 
-DumpFeature::DumpFeature(Server& server, int& exitCode)
-    : ArangoDumpFeature{server, *this},
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
+                         int& exitCode)
+    : ApplicationFeature{server, *this},
       _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
                      Logger::DUMP},
       _clientTaskQueue{server, ::processJob},

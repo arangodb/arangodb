@@ -408,12 +408,12 @@ StorageEngine::StorageEngine(Server& server, std::string_view engineName,
   // startup
   setOptional(true);
   // storage engines must not use elevated privileges for files etc
-  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
-  startsAfter<CacheManagerFeature, Server>();
-  startsBefore<StorageEngineFeature, Server>();
-  startsAfter<transaction::ManagerFeature, Server>();
-  startsAfter<ViewTypesFeature, Server>();
+  startsAfter<CacheManagerFeature>();
+  startsBefore<StorageEngineFeature>();
+  startsAfter<transaction::ManagerFeature>();
+  startsAfter<ViewTypesFeature>();
 }
 
 }  // namespace arangodb

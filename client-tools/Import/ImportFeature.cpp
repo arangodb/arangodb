@@ -55,8 +55,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(Server& server, int* result)
-    : ArangoImportFeature{server, *this},
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result)
+    : ApplicationFeature{server, *this},
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),

@@ -21,8 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangobackup.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -66,7 +64,7 @@ int main(int argc, char* argv[]) {
             "Usage: arangobackup " + BackupFeature::operationList("|") +
                 " [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ArangoBackupServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
     // Add features in order
     server.addFeature<BasicFeaturePhaseClient>();

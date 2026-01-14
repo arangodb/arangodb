@@ -40,7 +40,7 @@ class OptionsCheckFeature final
   OptionsCheckFeature(Server& server)
       : application_features::ApplicationFeature{server, *this} {
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<LoggerFeature>();
   }
 
   void prepare() override final;

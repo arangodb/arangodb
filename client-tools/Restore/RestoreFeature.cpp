@@ -280,7 +280,7 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(
-    arangodb::ArangoRestoreServer& server, std::string const& name,
+    arangodb::application_features::ApplicationServer& server, std::string const& name,
     VPackSlice properties, arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
@@ -410,7 +410,7 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
+arangodb::Result checkDumpDatabase(arangodb::application_features::ApplicationServer& server,
                                    arangodb::ManagedDirectory& directory,
                                    bool forceSameDatabase, bool& useEnvelope,
                                    bool& useVPack) {
@@ -1901,8 +1901,9 @@ Result RestoreFeature::RestoreSendJob::run(
   return res;
 }
 
-RestoreFeature::RestoreFeature(Server& server, int& exitCode)
-    : ArangoRestoreFeature{server, *this},
+RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
+                               int& exitCode)
+    : ApplicationFeature{server, *this},
       _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
                      Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},

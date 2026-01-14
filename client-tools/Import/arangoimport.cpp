@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangoimport.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -69,7 +67,7 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY));
 
     int ret = EXIT_SUCCESS;
-    ArangoImportServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
     // Add features in order
     server.addFeature<BasicFeaturePhaseClient>();

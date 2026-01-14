@@ -37,16 +37,16 @@ namespace arangodb::application_features {
 ClusterFeaturePhase::ClusterFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<DatabaseFeaturePhase, ArangodServer>();
+  startsAfter<DatabaseFeaturePhase>();
 
-  startsAfter<ClusterFeature, ArangodServer>();
-  startsAfter<MaintenanceFeature, ArangodServer>();
-  startsAfter<ReplicationTimeoutFeature, ArangodServer>();
-  startsAfter<ReplicatedLogFeature, ArangodServer>();
+  startsAfter<ClusterFeature>();
+  startsAfter<MaintenanceFeature>();
+  startsAfter<ReplicationTimeoutFeature>();
+  startsAfter<ReplicatedLogFeature>();
 
 #ifdef USE_V8
   // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature, ArangodServer>();
+  startsBefore<V8PlatformFeature>();
 #endif
 }
 

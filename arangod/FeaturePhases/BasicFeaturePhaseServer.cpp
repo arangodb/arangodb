@@ -50,35 +50,35 @@ namespace arangodb::application_features {
 BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<GreetingsFeaturePhase, ArangodServer>();
+  startsAfter<GreetingsFeaturePhase>();
 
   if (server.hasFeature<DaemonFeature>()) {
-    startsAfter<DaemonFeature, ArangodServer>();
+    startsAfter<DaemonFeature>();
   }
   if (server.hasFeature<SupervisorFeature>()) {
-    startsAfter<SupervisorFeature, ArangodServer>();
+    startsAfter<SupervisorFeature>();
   }
-  startsAfter<CpuUsageFeature, ArangodServer>();
-  startsAfter<DatabasePathFeature, ArangodServer>();
-  startsAfter<EnvironmentFeature, ArangodServer>();
-  startsAfter<LanguageFeature, ArangodServer>();
-  startsAfter<MaxMapCountFeature, ArangodServer>();
-  startsAfter<NonceFeature, ArangodServer>();
-  startsAfter<PrivilegeFeature, ArangodServer>();
-  startsAfter<SchedulerFeature, ArangodServer>();
-  startsAfter<SharedPRNGFeature, ArangodServer>();
-  startsAfter<ShardingFeature, ArangodServer>();
-  startsAfter<SslFeature, ArangodServer>();
-  startsAfter<TempFeature, ArangodServer>();
+  startsAfter<CpuUsageFeature>();
+  startsAfter<DatabasePathFeature>();
+  startsAfter<EnvironmentFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<MaxMapCountFeature>();
+  startsAfter<NonceFeature>();
+  startsAfter<PrivilegeFeature>();
+  startsAfter<SchedulerFeature>();
+  startsAfter<SharedPRNGFeature>();
+  startsAfter<ShardingFeature>();
+  startsAfter<SslFeature>();
+  startsAfter<TempFeature>();
 
   if (server.hasFeature<FileDescriptorsFeature>()) {
-    startsAfter<FileDescriptorsFeature, ArangodServer>();
+    startsAfter<FileDescriptorsFeature>();
   }
   if (server.hasFeature<AuditFeature>()) {
-    startsAfter<AuditFeature, ArangodServer>();
+    startsAfter<AuditFeature>();
   }
   if (server.hasFeature<EncryptionFeature>()) {
-    startsAfter<EncryptionFeature, ArangodServer>();
+    startsAfter<EncryptionFeature>();
   }
 }
 

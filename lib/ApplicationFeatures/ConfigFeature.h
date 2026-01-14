@@ -56,8 +56,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
         _checkConfiguration(false),
         _honorNsswitch(false) {
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
-    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<LoggerFeature>();
+    startsAfter<ShellColorsFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

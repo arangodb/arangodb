@@ -33,11 +33,11 @@ AgencyFeaturePhase::AgencyFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
 #ifdef USE_V8
-  startsAfter<FoxxFeaturePhase, ArangodServer>();
+  startsAfter<FoxxFeaturePhase>();
 #else
-  startsAfter<application_features::ServerFeaturePhase, ArangodServer>();
+  startsAfter<application_features::ServerFeaturePhase>();
 #endif
-  startsAfter<AgencyFeature, ArangodServer>();
+  startsAfter<AgencyFeature>();
 }
 
 }  // namespace arangodb::application_features

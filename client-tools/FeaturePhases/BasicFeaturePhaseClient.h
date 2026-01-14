@@ -46,16 +46,16 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
     if (server.template hasFeature<GreetingsFeaturePhase>()) {
-      startsAfter<GreetingsFeaturePhase, Server>();
+      startsAfter<GreetingsFeaturePhase>();
     }
 #ifdef USE_ENTERPRISE
-    startsAfter<EncryptionFeature, Server>();
+    startsAfter<EncryptionFeature>();
 #endif
     if (server.template hasFeature<SslFeature>()) {
-      startsAfter<SslFeature, Server>();
+      startsAfter<SslFeature>();
     }
     if (server.template hasFeature<HttpEndpointProvider>()) {
-      startsAfter<HttpEndpointProvider, Server>();
+      startsAfter<HttpEndpointProvider>();
     }
   }
 };

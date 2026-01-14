@@ -27,7 +27,6 @@
 #include <string>
 #include <string_view>
 
-#include "Shell/arangosh.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -73,8 +72,8 @@ class ClientFeature final : public HttpEndpointProvider {
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
 
-    startsAfter<CommunicationFeaturePhase, Server>();
-    startsAfter<GreetingsFeaturePhase, Server>();
+    startsAfter<CommunicationFeaturePhase>();
+    startsAfter<GreetingsFeaturePhase>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

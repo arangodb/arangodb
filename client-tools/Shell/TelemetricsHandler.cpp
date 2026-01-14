@@ -54,7 +54,7 @@ std::string const kTelemetricsGatheringUrl =
 }
 
 namespace arangodb {
-TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
+TelemetricsHandler::TelemetricsHandler(application_features::ApplicationServer& server,
                                        bool sendToEndpoint)
     : _server(server), _sendToEndpoint(sendToEndpoint) {}
 

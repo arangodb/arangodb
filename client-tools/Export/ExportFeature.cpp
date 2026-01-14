@@ -67,8 +67,9 @@ constexpr double ttlValue = 1200.;
 
 namespace arangodb {
 
-ExportFeature::ExportFeature(Server& server, int* result)
-    : ArangoExportFeature{server, *this},
+ExportFeature::ExportFeature(application_features::ApplicationServer& server,
+                             int* result)
+    : ApplicationFeature{server, *this},
       _xgmmlLabelAttribute("label"),
       _typeExport("jsonl"),
       _customQueryMaxRuntime(0.0),

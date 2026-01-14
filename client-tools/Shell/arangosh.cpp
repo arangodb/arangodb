@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangosh.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -47,7 +45,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
-#include "Shell/arangosh.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
@@ -82,7 +79,7 @@ int main(int argc, char* argv[]) {
             arangodb::options::ParseJsOps::parseJS
 #endif
             ));
-    ArangoshServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
     // Add features in order (based on ArangoshFeaturesList)
     // Phases first

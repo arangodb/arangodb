@@ -205,7 +205,7 @@ static void JS_AddPidToMonitor(
   ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
 
-  auto& monitoringFeature = static_cast<ArangoshServer&>(v8g->_server)
+  auto& monitoringFeature = v8g->_server
                                 .getFeature<ProcessMonitoringFeature>();
   monitoringFeature.addMonitorPID(pid);
 
@@ -243,7 +243,7 @@ static void JS_RemovePidFromMonitor(
   ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
 
-  auto& monitoringFeature = static_cast<ArangoshServer&>(v8g->_server)
+  auto& monitoringFeature = v8g->_server
                                 .getFeature<ProcessMonitoringFeature>();
   monitoringFeature.removeMonitorPID(pid);
 

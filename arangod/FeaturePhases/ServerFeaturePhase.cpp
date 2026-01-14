@@ -41,14 +41,14 @@ namespace arangodb::application_features {
 ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<AqlFeaturePhase, ArangodServer>();
+  startsAfter<AqlFeaturePhase>();
 
-  startsAfter<HttpEndpointProvider, ArangodServer>();
-  startsAfter<GeneralServerFeature, ArangodServer>();
-  startsAfter<NetworkFeature, ArangodServer>();
-  startsAfter<ServerFeature, ArangodServer>();
-  startsAfter<SslServerFeature, ArangodServer>();
-  startsAfter<StatisticsFeature, ArangodServer>();
-  startsAfter<UpgradeFeature, ArangodServer>();
+  startsAfter<HttpEndpointProvider>();
+  startsAfter<GeneralServerFeature>();
+  startsAfter<NetworkFeature>();
+  startsAfter<ServerFeature>();
+  startsAfter<SslServerFeature>();
+  startsAfter<StatisticsFeature>();
+  startsAfter<UpgradeFeature>();
 }
 }  // namespace arangodb::application_features

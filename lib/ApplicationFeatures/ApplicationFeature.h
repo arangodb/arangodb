@@ -99,18 +99,16 @@ class ApplicationFeature {
   std::vector<std::type_index> const& dependsOn() const { return _requires; }
 
   // whether the feature starts before another
-  template<typename T, typename Server>
+  template<typename T>
   bool doesStartBefore() const {
     static_assert(std::is_base_of_v<ApplicationFeature, T>);
-    static_assert(std::is_base_of_v<ApplicationServer, Server>);
-
     return doesStartBefore(typeid(T));
   }
 
   // whether the feature starts after another
-  template<typename T, typename Server>
+  template<typename T>
   bool doesStartAfter() const {
-    return !doesStartBefore<T, Server>();
+    return !doesStartBefore<T>();
   }
 
   // add the feature's options to the global list of options. this method will
@@ -178,16 +176,18 @@ class ApplicationFeature {
   void dependsOn(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
-  template<typename T, typename Server>
+  template<typename T>
   void startsAfter() {
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
     startsAfter(typeid(T));
   }
 
   void startsAfter(std::type_index type);
 
   // register a start dependency upon another feature
-  template<typename T, typename Server>
+  template<typename T>
   void startsBefore() {
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
     startsBefore(typeid(T));
   }
 
@@ -199,8 +199,9 @@ class ApplicationFeature {
     return _ancestors;
   }
 
-  template<typename T, typename Server>
+  template<typename T>
   void onlyEnabledWith() {
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
     _onlyEnabledWith.emplace(typeid(T));
   }
 
@@ -278,28 +279,28 @@ class ApplicationFeatureT : public ApplicationFeature {
   // register a start dependency upon another feature
   template<typename T>
   void startsAfter() {
-    ApplicationFeature::startsAfter<T, Server>();
+    ApplicationFeature::startsAfter<T>();
   }
 
   // register a start dependency upon another feature
   template<typename T>
   void startsBefore() {
-    ApplicationFeature::startsBefore<T, Server>();
+    ApplicationFeature::startsBefore<T>();
   }
 
   template<typename T>
   void onlyEnabledWith() {
-    ApplicationFeature::onlyEnabledWith<T, Server>();
+    ApplicationFeature::onlyEnabledWith<T>();
   }
 
   template<typename T>
   bool doesStartBefore() const {
-    return ApplicationFeature::doesStartBefore<T, Server>();
+    return ApplicationFeature::doesStartBefore<T>();
   }
 
   template<typename T>
   bool doesStartAfter() const {
-    return ApplicationFeature::doesStartAfter<T, Server>();
+    return ApplicationFeature::doesStartAfter<T>();
   }
 
  protected:

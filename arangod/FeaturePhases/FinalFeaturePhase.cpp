@@ -36,16 +36,16 @@ namespace arangodb::application_features {
 FinalFeaturePhase::FinalFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<AgencyFeaturePhase, ArangodServer>();
+  startsAfter<AgencyFeaturePhase>();
 
 #ifdef USE_V8
-  startsAfter<ConsoleFeature, ArangodServer>();
-  startsAfter<ScriptFeature, ArangodServer>();
+  startsAfter<ConsoleFeature>();
+  startsAfter<ScriptFeature>();
 #else
-  startsAfter<AgencyFeaturePhase, ArangodServer>();
+  startsAfter<AgencyFeaturePhase>();
 #endif
-  startsAfter<ShutdownFeature, ArangodServer>();
-  startsAfter<SoftShutdownFeature, ArangodServer>();
+  startsAfter<ShutdownFeature>();
+  startsAfter<SoftShutdownFeature>();
 }
 
 }  // namespace arangodb::application_features

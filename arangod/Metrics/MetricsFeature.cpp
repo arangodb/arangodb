@@ -65,8 +65,8 @@ MetricsFeature::MetricsFeature(
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
   setOptional(false);
-  startsAfter<LoggerFeature, Server>();
-  startsBefore<application_features::GreetingsFeaturePhase, Server>();
+  startsAfter<LoggerFeature>();
+  startsBefore<application_features::GreetingsFeaturePhase>();
 }
 
 template MetricsFeature::MetricsFeature(

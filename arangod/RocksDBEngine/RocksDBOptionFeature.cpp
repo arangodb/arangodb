@@ -338,7 +338,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server,
   }
 
   setOptional(true);
-  startsAfter<BasicFeaturePhaseServer, Server>();
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
 void RocksDBOptionFeature::collectOptions(

@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangodump.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -75,7 +73,7 @@ int main(int argc, char* argv[]) {
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
 
-    ArangoDumpServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
     // Add features in order
     server.addFeature<BasicFeaturePhaseClient>();

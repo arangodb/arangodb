@@ -41,7 +41,7 @@ class ShutdownFeature final : public application_features::ApplicationFeature {
   ShutdownFeature(Server& server, std::span<const std::type_index> features)
       : ApplicationFeature{server, *this} {
     setOptional(true);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
 
     for (auto feature : features) {
       if (feature != typeid(LoggerFeature)) {

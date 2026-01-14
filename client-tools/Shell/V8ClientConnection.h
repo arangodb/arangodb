@@ -24,13 +24,14 @@
 
 #pragma once
 
-#include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
 
 #include <memory>
+
+#include "Basics/ResultT.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -67,7 +68,7 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(ArangoshServer&, ClientFeature&);
+  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
@@ -106,7 +107,7 @@ class V8ClientConnection {
       return "not connected";
     }
   }
-  ArangoshServer& server();
+  application_features::ApplicationServer& server();
 
   v8::Handle<v8::Value> getData(
       v8::Isolate* isolate, std::string_view location,
@@ -210,7 +211,7 @@ class V8ClientConnection {
   void renewJwtToken();
 
  private:
-  ArangoshServer& _server;
+  application_features::ApplicationServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;

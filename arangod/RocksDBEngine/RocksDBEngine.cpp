@@ -367,13 +367,13 @@ RocksDBEngine::RocksDBEngine(
       _forceLegacySortingMethod(false),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
-  startsAfter<BasicFeaturePhaseServer, Server>();
-  startsAfter<VectorIndexFeature, Server>();
+  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
-  startsAfter<RocksDBOptionFeature, Server>();
-  startsAfter<LanguageFeature, Server>();
-  startsAfter<LanguageCheckFeature, Server>();
+  startsAfter<RocksDBOptionFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<LanguageCheckFeature>();
 }
 
 RocksDBEngine::~RocksDBEngine() {

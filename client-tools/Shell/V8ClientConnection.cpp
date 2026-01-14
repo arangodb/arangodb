@@ -105,7 +105,7 @@ static constexpr uint32_t kFuzzNotConnected = 1002;
 
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(ArangoshServer& server,
+V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
                                        ClientFeature& client)
     : _server(server),
       _client(client),
@@ -367,7 +367,7 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-ArangoshServer& V8ClientConnection::server() { return _server; }
+application_features::ApplicationServer& V8ClientConnection::server() { return _server; }
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
   _databaseName = value;
@@ -883,7 +883,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
@@ -2080,7 +2080,7 @@ static void ClientConnection_importCsv(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
   EncryptionFeature* encryption{};
 #ifdef USE_ENTERPRISE
   TRI_ASSERT(server.hasFeature<EncryptionFeature>());
@@ -2176,7 +2176,7 @@ static void ClientConnection_importJson(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
 
   EncryptionFeature* encryption{};
 #ifdef USE_ENTERPRISE

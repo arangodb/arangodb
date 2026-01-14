@@ -47,8 +47,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   template<typename Server>
   LoggerFeature(Server& server, bool threaded)
       : LoggerFeature(server, typeid(LoggerFeature), threaded) {
-    startsAfter<ShellColorsFeature, Server>();
-    startsAfter<VersionFeature, Server>();
+    startsAfter<ShellColorsFeature>();
+    startsAfter<VersionFeature>();
   }
 
   ~LoggerFeature();
