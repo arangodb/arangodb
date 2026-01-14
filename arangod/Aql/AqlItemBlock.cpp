@@ -508,7 +508,11 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            cache.emplace(a.data());
+            /*
+             * NOTE: Shadow rows are always clones of data,
+             * no referencing is possible, therefore we do not need to
+             * do the cache step here.
+             */
             res->setValue(row, col, a);
             // Transfer ownership to res - guard won't destroy it
             guard.steal();
@@ -802,7 +806,12 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
         currentState = Range;
       } else {
         TRI_ASSERT(pos >= 2);
-
+        // attempt an insert into the map without checking if the
+        // target element already exists. if it already exists,
+        // then the try_emplace does nothing, but we will get an
+        // iterator to the existing element.
+        // in case we inserted the value, we can simply go on and
+        // increase the global position counter.
         auto [it, inserted] = table.try_emplace(a, pos);
 
         if (inserted) {

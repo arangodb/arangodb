@@ -393,10 +393,12 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   VPackBuilder builder;
   builder.add(VPackValue(42));
-  AqlValue v2(builder.slice());  // Different storage type
+  AqlValue v2(builder.slice());
+
+  EXPECT_NE(v1.type(), v2.type());
 
   sourceBlock->setValue(0, 0, v1);
-  sourceBlock->setValue(0, 1, v2);  // Same number, different storage
+  sourceBlock->setValue(0, 1, v2);
 
   InputAqlItemRow sourceRow(sourceBlock, 0);
   RegIdFlatSet registers = {RegisterId{0}, RegisterId{1}};
