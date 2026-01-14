@@ -102,7 +102,8 @@ template<class ProviderType>
 class WeightedShortestPathEnumerator {
  private:
   using Step = typename ProviderType::Step;
-  using QueueType = WeightedQueue<Step>;
+  using QueueType =
+      WeightedQueue<Step, typename ProviderType::NeighbourProvider>;
   using PathStoreType = PathStore<Step>;
   using PathValidatorType =
       PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::NONE,
@@ -112,7 +113,7 @@ class WeightedShortestPathEnumerator {
 
   enum Direction { FORWARD, BACKWARD };
 
-  using Edge = ProviderType::Step::EdgeType;
+  using Edge = typename ProviderType::Step::EdgeType;
   using EdgeSet =
       arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 

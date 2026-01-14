@@ -76,15 +76,20 @@ class WeightedQueueTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 };
-
+template<typename Step>
+struct MockNeighbourCursor {
+  auto next() -> std::vector<Step> { return {}; };
+  auto hasMore() -> bool { return false; };
+  auto markForDeletion() -> void{};
+};
 TEST_F(WeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   ASSERT_EQ(queue.size(), 0U);
   ASSERT_TRUE(queue.isEmpty());
 }
 
 TEST_F(WeightedQueueTest, it_should_contain_element_after_insertion) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   auto step = Step{1, 1, false};
   queue.append(step);
   ASSERT_EQ(queue.size(), 1U);
@@ -92,7 +97,7 @@ TEST_F(WeightedQueueTest, it_should_contain_element_after_insertion) {
 }
 
 TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 4, false});
   queue.append(Step{3, 2, false});
@@ -103,7 +108,7 @@ TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
 }
 
 TEST_F(WeightedQueueTest, it_should_contain_processable_elements) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 5, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 2, true});
@@ -113,7 +118,7 @@ TEST_F(WeightedQueueTest, it_should_contain_processable_elements) {
 }
 
 TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 4, true});
   queue.append(Step{2, 1.6, true});
   queue.append(Step{3, 1.2, true});
@@ -126,7 +131,7 @@ TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
 TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   // 2 and 3 have identical and smallest weight.
   // 3 is processable, 2 not.
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 8, true});
   queue.append(Step{2, 2, true});
   queue.append(Step{3, 2, false});
@@ -174,7 +179,8 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
   for (auto [name, o] : orderings) {
     SCOPED_TRACE("Input ordered by " + name);
     std::sort(input.begin(), input.end(), o);
-    auto queue = WeightedQueue<Step>(_resourceMonitor);
+    auto queue =
+        WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
     for (auto s : input) {
       queue.append(s);
     }
@@ -200,7 +206,7 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
 }
 
 TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{2, 1.5, true});
   queue.append(Step{3, 5, true});
   queue.append(Step{1, 1, true});
@@ -216,7 +222,7 @@ TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
 }
 
 TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   std::vector<Step> input;
   input.emplace_back(Step{1, 1, false});
   input.emplace_back(Step{2, 2, false});
@@ -245,7 +251,7 @@ TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
 
 TEST_F(WeightedQueueTest,
        on_many_start_vertices_it_should_handle_appends_correctly) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue = WeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   std::vector<Step> input;
   input.emplace_back(Step{1, 1, false});
   input.emplace_back(Step{2, 2, false});

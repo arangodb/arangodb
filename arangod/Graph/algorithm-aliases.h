@@ -146,7 +146,7 @@ template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
 struct WeightedConfiguration {
   using Provider = ProviderType;
   using Step = typename Provider::Step;
-  using Queue = WeightedQueue<Step>;
+  using Queue = WeightedQueue<Step, typename ProviderType::NeighbourProvider>;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
