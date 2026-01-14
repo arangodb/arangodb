@@ -34,6 +34,7 @@
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "FeaturePhases/FoxxFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"

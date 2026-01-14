@@ -25,8 +25,10 @@
 
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
+#ifdef USE_V8
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/ScriptFeature.h"
+#endif
 #include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb::application_features {

@@ -29,10 +29,16 @@
 
 #include "Shell/arangosh.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
+
+using application_features::ApplicationServer;
+using application_features::CommunicationFeaturePhase;
+using application_features::GreetingsFeaturePhase;
 
 class Endpoint;
 

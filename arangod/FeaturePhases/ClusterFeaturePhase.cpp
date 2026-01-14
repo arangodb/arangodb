@@ -28,7 +28,9 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#ifdef USE_V8
 #include "V8/V8PlatformFeature.h"
+#endif
 
 namespace arangodb::application_features {
 
