@@ -420,12 +420,14 @@ function ClusterDBServerShardMetricsTestSuite() {
       const dbServerFollower = dbServers.find(server => server.id === dbServerFollowerId);
       const dbServersOthers = dbServers.filter(server => !shardServers.includes(server.id));
 
-      // Shutdown follower
-      dbServerFollower.suspend();
       // Shutdown others
       dbServersOthers.forEach(server => {
-        server.suspend();
-      });
+server.suspend();
+});
+      // Shutdown the follower after the others, to prevent a FailedFollower job from replacing it.
+      // This might still happen unless we wait at least for a heartbeat of the follower to arrive after
+      // suspending the others, or safer yet to wait for them to fail. However, it seems unlikely enough, and FailedFollower is going away anyway.
+      dbServerFollower.suspend();
 
       // Insert some data to trigger replication
       db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${collectionName}`);
