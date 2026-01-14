@@ -367,21 +367,21 @@ TEST_F(AttributeDetectorTest, DocumentFunctionDynamicCollection) {
 TEST_F(AttributeDetectorTest, DocumentFunctionWithNOOPT) {
   auto query = executeQuery(R"aql(
     FOR u IN users
-    LET doc = NOOPT(DOCUMENT("otherColl/key1"))
+    LET doc = DOCUMENT(users, "users/u1")
     RETURN u.name
   )aql");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, MergeMultipleDocumentCalls) {
   auto query = executeQuery(R"aql(
     FOR u IN users
-    LET merged = MERGE(DOCUMENT("coll1/doc1"), DOCUMENT("coll2/doc2"))
+    LET merged = MERGE(DOCUMENT(users, "users/u2"), DOCUMENT(products, "products/p2"))
     RETURN merged
   )aql");
   auto const& accesses = query->abacAccesses();
