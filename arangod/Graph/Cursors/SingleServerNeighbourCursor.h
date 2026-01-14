@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <s2/base/integral_types.h>
 #include "Basics/ResourceUsage.h"
 #include "Graph/Cursors/SingleServerEdgeCursor.h"
 

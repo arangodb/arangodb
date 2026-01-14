@@ -21,16 +21,6 @@ struct ClusterNeighbourCursor {
                          arangodb::transaction::Methods* trx,
                          ClusterBaseProviderOptions& options,
                          aql::TraversalStats& stats);
-  // TODO is this really necessary to do?
-  //      if yes, needs to be done from ClusterProvider destructor
-  // ~ClusterNeighbourCursor() {
-  // for (auto it = _requests.begin(); it != _requests.end(); ++it) {
-  //   try {
-  //     it->second.wait();
-  //   } catch (...) {
-  //   }
-  // }
-  // }
 
   /**
      Gets next batch of steps

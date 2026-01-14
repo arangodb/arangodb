@@ -34,20 +34,11 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
   }
   return VertexType{from};
 }
-ClusterProviderStep::FetchedType getFetchedType(bool vertexFetched,
-                                                bool edgesFetched) {
+ClusterProviderStep::FetchedType getFetchedType(bool vertexFetched) {
   if (vertexFetched) {
-    if (edgesFetched) {
-      return ClusterProviderStep::FetchedType::VERTEX_AND_EDGES_FETCHED;
-    } else {
-      return ClusterProviderStep::FetchedType::VERTEX_FETCHED;
-    }
+    return ClusterProviderStep::FetchedType::VERTEX_FETCHED;
   } else {
-    if (edgesFetched) {
-      return ClusterProviderStep::FetchedType::EDGES_FETCHED;
-    } else {
-      return ClusterProviderStep::FetchedType::UNFETCHED;
-    }
+    return ClusterProviderStep::FetchedType::UNFETCHED;
   }
 }
 }  // namespace
@@ -182,10 +173,9 @@ auto ClusterNeighbourCursor<Step>::next() -> std::vector<Step> {
           VertexType{getEdgeDestination(edge, _step.getVertex().getID())};
 
       bool vertexCached = _opts.getCache()->isVertexCached(vid);
-      bool edgesCached = false;  // currently we don't use this cache (see
-                                 // _vertexConnectedEdges in ClusterProvider)
-      typename Step::FetchedType fetchedType =
-          getFetchedType(vertexCached, edgesCached);
+      // currently we don't use edge cache (see _vertexConnectedEdges in
+      // ClusterProvider)
+      typename Step::FetchedType fetchedType = getFetchedType(vertexCached);
 
       newSteps.emplace_back(Step{VertexRef{vid}, std::move(edgeIdRef),
                                  _position, fetchedType, _step.getDepth() + 1,
