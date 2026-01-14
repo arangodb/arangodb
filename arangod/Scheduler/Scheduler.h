@@ -188,7 +188,9 @@ class Scheduler {
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {
+        : F(std::move(f)),
+          logContext(LogContext::current()),
+          activity("work item") {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() {
@@ -202,6 +204,7 @@ class Scheduler {
 
    private:
     LogContext logContext;
+    activity_registry::Activity activity;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler
