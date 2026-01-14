@@ -73,8 +73,8 @@ class AttributeDetectorTest : public ::testing::Test {
       ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
     };
 
-    run(R"aql(INSERT {_key:"u1", name:"Alice", age:30} INTO users)aql");
-    run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24} INTO users)aql");
+    run(R"aql(INSERT {_key:"u1", name:"Alice", age:30, address: "Cologne"} INTO users)aql");
+    run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24, address: "Tokyo"} INTO users)aql");
 
     run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival"} INTO posts)aql");
     run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday"} INTO posts)aql");
@@ -123,6 +123,7 @@ TEST_F(AttributeDetectorTest, MultipleAttributes) {
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, FullDocumentAccess) {
@@ -132,6 +133,7 @@ TEST_F(AttributeDetectorTest, FullDocumentAccess) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, InsertOperation) {
@@ -140,6 +142,7 @@ TEST_F(AttributeDetectorTest, InsertOperation) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
@@ -206,10 +209,14 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
   for (auto const& access : accesses) {
     if (access.collectionName == "users") {
       foundUsers = true;
+      EXPECT_FALSE(access.requiresAllAttributesRead);
+      EXPECT_FALSE(access.requiresAllAttributesWrite);
       EXPECT_TRUE(access.readAttributes.contains("name"));
       EXPECT_TRUE(access.readAttributes.contains("_key"));
     } else if (access.collectionName == "posts") {
       foundPosts = true;
+      EXPECT_FALSE(access.requiresAllAttributesRead);
+      EXPECT_FALSE(access.requiresAllAttributesWrite);
       EXPECT_TRUE(access.readAttributes.contains("title"));
       EXPECT_TRUE(access.readAttributes.contains("userId"));
     }
@@ -219,19 +226,42 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
   EXPECT_TRUE(foundPosts);
 }
 
-TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes) {
+TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes1) {
   auto query = executeQuery(
       "FOR p IN users FILTER p.name IN ['Alice', 'Bob'] RETURN p.age");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
-TEST_F(AttributeDetectorTest, NOOPTPreventProjection) {
-  GTEST_SKIP() << "NOOPT() is not supported in AttributeDetector tests";
+TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes2) {
+  auto query = executeQuery(
+      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == p.age RETURN q.address");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("address"));
+}
+
+TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes3) {
+  auto query = executeQuery(
+      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == p.age RETURN q");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
@@ -252,6 +282,8 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
@@ -354,16 +386,6 @@ TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
   EXPECT_EQ(write["attributes"].length(), 1);
 }
 
-TEST_F(AttributeDetectorTest, DocumentFunctionCrossCollection) {
-  GTEST_SKIP() << "DOCUMENT() not supported in unit tests due to AST "
-                  "optimization assertions";
-}
-
-TEST_F(AttributeDetectorTest, DocumentFunctionDynamicCollection) {
-  GTEST_SKIP() << "DOCUMENT() not supported in unit tests due to AST "
-                  "optimization assertions";
-}
-
 TEST_F(AttributeDetectorTest, DocumentFunction) {
   auto query = executeQuery(R"aql(
     RETURN DOCUMENT(users, "users/u1")
@@ -373,6 +395,7 @@ TEST_F(AttributeDetectorTest, DocumentFunction) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, DocumentFunctionWithNOOPT) {
@@ -386,6 +409,7 @@ TEST_F(AttributeDetectorTest, DocumentFunctionWithNOOPT) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
@@ -402,6 +426,7 @@ TEST_F(AttributeDetectorTest, MergeMultipleDocumentCalls) {
     EXPECT_TRUE(access.requiresAllAttributesRead)
         << "Collection " << access.collectionName
         << " should require all attributes read";
+    EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
   }
 }
 
@@ -418,12 +443,8 @@ TEST_F(AttributeDetectorTest, NOOPTMergeMultipleDocumentCalls) {
     EXPECT_TRUE(access.requiresAllAttributesRead)
         << "Collection " << access.collectionName
         << " should require all attributes read";
+    EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
   }
-}
-
-TEST_F(AttributeDetectorTest, UserDefinedFunctionDetection) {
-  GTEST_SKIP()
-      << "UDFs require V8 runtime, logic at AttributeDetector.cpp:83-86";
 }
 
 TEST_F(AttributeDetectorTest, FilterWithIndex) {
@@ -438,6 +459,8 @@ TEST_F(AttributeDetectorTest, FilterWithIndex) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, SortWithAttributes) {
@@ -452,6 +475,8 @@ TEST_F(AttributeDetectorTest, SortWithAttributes) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, ComplexCalculation) {
@@ -466,6 +491,8 @@ TEST_F(AttributeDetectorTest, ComplexCalculation) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, InsertDoesNotRead) {
@@ -474,7 +501,7 @@ TEST_F(AttributeDetectorTest, InsertDoesNotRead) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
   EXPECT_EQ(accesses[0].readAttributes.size(), 0);
 }
@@ -500,7 +527,7 @@ TEST_F(AttributeDetectorTest, MultipleModifications) {
 
   auto const& insertAccesses = insertQuery->abacAccesses();
   ASSERT_EQ(insertAccesses.size(), 1);
-  EXPECT_FALSE(insertAccesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(insertAccesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(insertAccesses[0].requiresAllAttributesWrite);
 
   auto const& updateAccesses = updateQuery->abacAccesses();

@@ -118,6 +118,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
+      } else {
+        // There is no projection -> full document acces
+        // e.g. FOR u IN users RETURN u
+        access->requiresAllAttributesRead = true;
       }
 
       Projections const& filterProjections = enumNode->filterProjections();
@@ -150,6 +154,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
+      } else {
+        // There is no projection -> full document acces
+        // e.g. FOR u IN users RETURN u
+        access->requiresAllAttributesRead = true;
       }
 
       Projections const& filterProjections = idxNode->filterProjections();
@@ -371,7 +379,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      access->requiresAllAttributesRead = false;
+      access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
     }
