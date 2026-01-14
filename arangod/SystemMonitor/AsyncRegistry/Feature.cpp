@@ -23,6 +23,8 @@
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 
 #include "Containers/Forest/depth_first.h"
+#include "Containers/Forest/forest.h"
+#include "CrashHandler/CrashHandlerDataSource.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -47,11 +49,9 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
               "Number of currently existing async thread registries");
 
-using namespace arangodb;
-using namespace arangodb::async_registry;
 using namespace arangodb::containers;
 
-namespace aragndob::async_registry {
+namespace arangodb::async_registry {
 
 struct Entry {
   TreeHierarchy hierarchy;
@@ -98,7 +98,8 @@ auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
  post order, such that promises with the highest hierarchy in a tree are given
  first and the root promise is given last.
  **/
-VPackBuilder serialize(IndexedForestWithRoots<PromiseSnapshot> const& promises) {
+VPackBuilder serialize(
+    IndexedForestWithRoots<PromiseSnapshot> const& promises) {
   VPackBuilder builder;
   builder.openObject();
   builder.add(VPackValue("promise_stacktraces"));
@@ -125,14 +126,14 @@ VPackBuilder serialize(IndexedForestWithRoots<PromiseSnapshot> const& promises) 
   return builder;
 }
 
-}  // namespace aragndob::async_registry
-
-Feature::Feature(Server& server) : ArangodFeature{server, *this} {
+Feature::Feature(Server& server, CrashHandlerRegistry* crashHandlerRegistry)
+    : ArangodFeature{server, *this},
+      CrashHandlerDataSource(crashHandlerRegistry) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
 
-auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       metrics_feature.addShared(arangodb_async_promises_total{}),
@@ -164,8 +165,8 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  _metrics = create_metrics(
-      server().template getFeature<arangodb::metrics::MetricsFeature>());
+  _metrics =
+      create_metrics(server().template getFeature<metrics::MetricsFeature>());
   registry.set_metrics(_metrics);
 }
 
@@ -188,3 +189,55 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       .setLongDescription(
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
+
+/**
+   Converts a forest of promises into a list of stacktraces inside a
+ velocypack.
+
+   The list of stacktraces include one stacktrace per tree in the forest. To
+ create one stacktrace, it uses a depth first search to traverse the forest in
+ post order, such that promises with the highest hierarchy in a tree are given
+ first and the root promise is given last.
+ **/
+VPackBuilder getStacktraceData(
+    IndexedForestWithRoots<PromiseSnapshot> const& promises) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("promise_stacktraces"));
+  builder.openArray();
+  for (auto const& root : promises.roots()) {
+    builder.openArray();
+    auto dfs = DFS_PostOrder{promises, root};
+    do {
+      auto next = dfs.next();
+      if (next == std::nullopt) {
+        break;
+      }
+      auto [id, hierarchy] = next.value();
+      auto data = promises.node(id);
+      if (data != std::nullopt) {
+        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
+        velocypack::serialize(builder, entry);
+      }
+    } while (true);
+    builder.close();
+  }
+  builder.close();
+  builder.close();
+  return builder;
+}
+
+velocypack::Builder collectAsyncRegistryData() {
+  // Collect all undeleted promises and index them by awaitee
+  auto promises = all_undeleted_promises().index_by_parent();
+  // Convert to stacktrace data
+  return getStacktraceData(promises);
+}
+
+velocypack::SharedSlice Feature::getCrashData() const {
+  return collectAsyncRegistryData().sharedSlice();
+}
+
+std::string_view Feature::getDataSourceName() const { return name(); }
+
+}  // namespace arangodb::async_registry

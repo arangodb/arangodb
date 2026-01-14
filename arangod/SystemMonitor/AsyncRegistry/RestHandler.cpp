@@ -24,7 +24,6 @@
 
 #include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::async_registry;
