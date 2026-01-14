@@ -25,21 +25,21 @@
 #include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"
 
-namespace arangodb::async_registry {
+namespace arangodb::activity_registry {
 
 struct RegistryMetrics : arangodb::containers::Metrics {
   RegistryMetrics(
-      std::shared_ptr<arangodb::metrics::Counter> promises_total,
+      std::shared_ptr<arangodb::metrics::Counter> activities_total,
       std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-          existing_promises,
+          existing_activities,
       std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-          ready_for_deletion_promises,
+          ready_for_deletion_activities,
       std::shared_ptr<arangodb::metrics::Counter> thread_registries_total,
       std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
           existing_thread_registries)
-      : promises_total{promises_total},
-        existing_promises{existing_promises},
-        ready_for_deletion_promises{ready_for_deletion_promises},
+      : activities_total{activities_total},
+        existing_activities{existing_activities},
+        ready_for_deletion_activities{ready_for_deletion_activities},
         thread_registries_total{thread_registries_total},
         existing_thread_registries{existing_thread_registries} {}
   ~RegistryMetrics() = default;
@@ -53,14 +53,14 @@ struct RegistryMetrics : arangodb::containers::Metrics {
   auto decrement_existing_lists() -> void override;
 
  private:
-  std::shared_ptr<arangodb::metrics::Counter> promises_total = nullptr;
-  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>> existing_promises =
+  std::shared_ptr<arangodb::metrics::Counter> activities_total = nullptr;
+  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>> existing_activities =
       nullptr;
   std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-      ready_for_deletion_promises = nullptr;
+      ready_for_deletion_activities = nullptr;
   std::shared_ptr<arangodb::metrics::Counter> thread_registries_total = nullptr;
   std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
       existing_thread_registries = nullptr;
 };
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::activity_registry

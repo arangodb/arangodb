@@ -20,31 +20,34 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "Metrics.h"
 
-#include "Containers/Concurrent/ListOfNonOwnedLists.h"
-#include "Containers/Concurrent/ThreadOwnedList.h"
-#include "TaskMonitoring/task.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 
-namespace arangodb::task_monitoring {
+using namespace arangodb::activity_registry;
 
-using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
-
-/**
-   Global variable that holds all active tasks.
-
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
-
-/**
-   Get thread registry of all active tasks on current thread.
-
-   Creates the thread registry when called for the first time and adds it to the
-   global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::task_monitoring
+auto RegistryMetrics::increment_total_nodes() -> void {
+  activities_total->count();
+}
+auto RegistryMetrics::increment_registered_nodes() -> void {
+  existing_activities->fetch_add(1);
+}
+auto RegistryMetrics::decrement_registered_nodes() -> void {
+  existing_activities->fetch_sub(1);
+}
+auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
+  ready_for_deletion_activities->fetch_add(1);
+}
+auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
+  ready_for_deletion_activities->fetch_sub(1);
+}
+auto RegistryMetrics::increment_total_lists() -> void {
+  thread_registries_total->count();
+}
+auto RegistryMetrics::increment_existing_lists() -> void {
+  existing_thread_registries->fetch_add(1);
+}
+auto RegistryMetrics::decrement_existing_lists() -> void {
+  existing_thread_registries->fetch_sub(1);
+}

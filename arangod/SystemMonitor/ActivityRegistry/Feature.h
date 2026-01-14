@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Async/Registry/registry_variable.h"
-#include "SystemMonitor/AsyncRegistry/Metrics.h"
+#include "ActivityRegistry/activity_registry_variable.h"
+#include "SystemMonitor/ActivityRegistry/Metrics.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
-namespace arangodb::async_registry {
+namespace arangodb::activity_registry {
 
 class Feature final : public ArangodFeature {
  private:
@@ -35,7 +35,7 @@ class Feature final : public ArangodFeature {
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
-  static constexpr std::string_view name() { return "Coroutines"; }
+  static constexpr std::string_view name() { return "Activities"; }
   auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
     return _asyncLock.lock();
   };
@@ -55,10 +55,10 @@ class Feature final : public ArangodFeature {
 
   std::shared_ptr<RegistryMetrics> _metrics;
 
-  struct PromiseCleanupThread;
-  std::shared_ptr<PromiseCleanupThread> _cleanupThread;
+  struct CleanupThread;
+  std::shared_ptr<CleanupThread> _cleanupThread;
 
   AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::activity_registry

@@ -20,30 +20,24 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Async/Registry/promise.h"
-#include "Containers/Concurrent/Registry.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 
-namespace arangodb::async_registry {
+namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<Promise>;
-using Registry = containers::Registry<Promise>;
+Registry registry;
 
-/**
-   Global variable that holds all active coroutines.
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard()
+        : _registry{ThreadRegistry::make(registry.get_metrics())} {
+      registry.add(_registry);
+    }
 
-   Includes a list of coroutine thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-/**
-   Get thread registry of all active coroutine promises on current thread.
-
-   Creates the thread registry when called for the first time and adds it to the
-   global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::activity_registry

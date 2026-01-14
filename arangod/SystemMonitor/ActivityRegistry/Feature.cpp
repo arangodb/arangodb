@@ -28,26 +28,24 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 
-using namespace arangodb::async_registry;
+using namespace arangodb::activity_registry;
 
-DECLARE_COUNTER(
-    arangodb_async_promises_total,
-    "Total number of created asynchronous promises since database creation");
+DECLARE_COUNTER(arangodb_activity_activities_total,
+                "Total number of created activities since database creation");
 
-DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises");
+DECLARE_GAUGE(arangodb_activity_existing_activities, std::uint64_t,
+              "Number of currently existing activities");
 
-DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises that wait "
+DECLARE_GAUGE(arangodb_activity_ready_for_deletion_activities, std::uint64_t,
+              "Number of currently existing activities that wait "
               "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_async_thread_registries_total,
-                "Total number of threads that started asynchronous operations "
+DECLARE_COUNTER(arangodb_activity_thread_registries_total,
+                "Total number of threads that started actities "
                 "since database creation");
 
-DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing asynchronous "
-              "operations");
+DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
+              "Number of currently existing activity thread registries");
 
 Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
@@ -57,25 +55,27 @@ Feature::Feature(Server& server) : ArangodFeature{server, *this} {
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_async_promises_total{}),
-      metrics_feature.addShared(arangodb_async_existing_promises{}),
-      metrics_feature.addShared(arangodb_async_ready_for_deletion_promises{}),
-      metrics_feature.addShared(arangodb_async_thread_registries_total{}),
-      metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
+      metrics_feature.addShared(arangodb_activity_activities_total{}),
+      metrics_feature.addShared(arangodb_activity_existing_activities{}),
+      metrics_feature.addShared(
+          arangodb_activity_ready_for_deletion_activities{}),
+      metrics_feature.addShared(arangodb_activity_thread_registries_total{}),
+      metrics_feature.addShared(
+          arangodb_activity_existing_thread_registries{}));
 }
-struct Feature::PromiseCleanupThread {
-  PromiseCleanupThread(size_t gc_timeout)
+struct Feature::CleanupThread {
+  CleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
           while (not stoken.stop_requested()) {
             std::unique_lock guard(_mutex);
             auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
             if (status == std::cv_status::timeout) {
-              async_registry::registry.run_external_cleanup();
+              activity_registry::registry.run_external_cleanup();
             }
           }
         }) {}
 
-  ~PromiseCleanupThread() {
+  ~CleanupThread() {
     _thread.request_stop();
     _cv.notify_one();
   }
@@ -92,21 +92,21 @@ void Feature::prepare() {
 }
 
 void Feature::start() {
-  _cleanupThread = std::make_shared<PromiseCleanupThread>(_options.gc_timeout);
+  _cleanupThread = std::make_shared<CleanupThread>(_options.gc_timeout);
 }
 
 void Feature::stop() { _cleanupThread.reset(); }
 
 void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("async-registry", "Options for the async-registry");
+  options->addSection("activity-registry", "Options for the activity-registry");
 
   options
       ->addOption(
-          "--async-registry.cleanup-timeout",
-          "Timeout in seconds between async-registry garbage collection "
+          "--activity-registry.cleanup-timeout",
+          "Timeout in seconds between activity-registry garbage collection "
           "swipes.",
           new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
                                       /*minValue*/ 1))
       .setLongDescription(
-          R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+          R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }

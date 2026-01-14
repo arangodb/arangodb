@@ -62,6 +62,11 @@ namespace async_registry {
 class Feature;
 
 }
+namespace activity_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
@@ -208,6 +213,7 @@ using ArangodFeaturesList = TypeList<
     ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
+    activity_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT
