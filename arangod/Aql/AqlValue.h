@@ -535,7 +535,7 @@ struct AqlValue final {
  private:
   /// @brief initializes value from a slice, when the length is already known
   void initFromSlice(velocypack::Slice slice,
-                     velocypack::ValueLength length = 0,
+                     velocypack::ValueLength length,
                      ResourceMonitor* rm = nullptr);
   void initFromUint(uint64_t v);
   void initFromInt(int64_t v);

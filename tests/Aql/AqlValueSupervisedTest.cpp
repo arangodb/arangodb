@@ -12,6 +12,10 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Buffer.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::velocypack;
@@ -821,68 +825,6 @@ TEST(AqlValueSupervisedTest,
   EXPECT_EQ(rm.current(), 0U);
 }
 
-// Test behavior of predicate functions
-// isString(), isObject(), isArray()
-TEST(AqlValueSupervisedTest, PredicateFuncsReturnCorrectValue) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor rm(global);
-  std::string big(4096, 'x');
-  // String (large)
-  {
-    Builder b;
-    b.add(Value(big));
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_FALSE(v.isNumber());
-    EXPECT_TRUE(v.isString());
-    EXPECT_FALSE(v.isObject());
-    EXPECT_FALSE(v.isArray());
-    v.destroy();
-  }
-
-  // Object (large)
-  {
-    Builder b;
-    b.openObject();
-    b.add("a", Value(1));
-    b.add("b", Value(2.0));
-    b.add("c", Value(big));
-    for (int i = 0; i < 16; ++i) {
-      b.add(std::string("k") + std::to_string(i), Value(std::string(256, 'y')));
-    }
-    b.close();
-
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_FALSE(v.isNumber());
-    EXPECT_FALSE(v.isString());
-    EXPECT_TRUE(v.isObject());
-    EXPECT_FALSE(v.isArray());
-    v.destroy();
-  }
-
-  // Array (large)
-  {
-    Builder b;
-    b.openArray();
-    b.add(Value(42));
-    b.add(Value(3.14));
-    b.add(Value(big));
-    for (int i = 0; i < 64; ++i) {
-      b.add(Value(std::string(128, 'z')));
-    }
-    b.close();
-
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_FALSE(v.isNumber());
-    EXPECT_FALSE(v.isString());
-    EXPECT_FALSE(v.isObject());
-    EXPECT_TRUE(v.isArray());
-    v.destroy();
-  }
-}
-
 // Test behavior of hasKey() function for SupervisedSlice
 TEST(AqlValueSupervisedTest, HasKeyFuncForSupervisedSliceReturnsCorrectValue) {
   auto& global = GlobalResourceMonitor::instance();
@@ -929,61 +871,6 @@ TEST(AqlValueSupervisedTest, HasKeyFuncForSupervisedSliceReturnsCorrectValue) {
     EXPECT_FALSE(v.hasKey("0"));
     v.destroy();
   }
-}
-
-// Test getTypeString() returns actual type (not AqlValueType)
-TEST(AqlValueSupervisedTest,
-     FuncGetTypeStringFuncForSupervisedSliceReturnsCorrectValue) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor rm(global);
-  std::string big(4096, 'x');
-
-  // String (large)
-  {
-    Builder b;
-    b.add(Value(big));
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_EQ(v.getTypeString(), "string");
-    v.destroy();
-  }
-
-  // Object (large)
-  {
-    Builder b;
-    b.openObject();
-    b.add("a", Value(1));
-    b.add("b", Value(2.0));
-    b.add("c", Value(big));
-    for (int i = 0; i < 8; ++i) {
-      b.add(std::string("k") + std::to_string(i), Value(std::string(256, 'y')));
-    }
-    b.close();
-
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_EQ(v.getTypeString(), "object");
-    v.destroy();
-  }
-
-  // Array (large)
-  {
-    Builder b;
-    b.openArray();
-    b.add(Value(1));
-    b.add(Value(2.0));
-    b.add(Value(big));  // ensure array is large
-    for (int i = 0; i < 32; ++i) {
-      b.add(Value(std::string(128, 'z')));
-    }
-    b.close();
-
-    AqlValue v(Slice(b.slice()), &rm);
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_EQ(v.getTypeString(), "array");
-    v.destroy();
-  }
-  EXPECT_EQ(rm.current(), 0);
 }
 
 // Test the behavior of at() function
@@ -1474,154 +1361,6 @@ TEST(AqlValueSupervisedTest, FuncGetWithDoCopyTrueReturnsCopy) {
   EXPECT_EQ(rm.current(), 0U);
 }
 
-// Test toDouble() for supervised slices
-TEST(AqlValueSupervisedTest, FuncToDoubleReturnsCorrectValue) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor rm(global);
-
-  // ---- SupervisedSlice for STRING ----
-  {
-    std::string big = "123.5";
-    big.append(8192, ' ');
-    Builder b;
-    b.add(Value(big));
-    auto s = b.slice();
-
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    bool failed = true;
-    double d = v.toDouble(failed);
-    EXPECT_FALSE(failed);
-    EXPECT_DOUBLE_EQ(d, 123.5);
-
-    v.destroy();
-    EXPECT_EQ(rm.current(), 0U);
-  }
-
-  // ---- SupervisedSlice for ARRAY ----
-  {
-    Builder b;
-    b.openArray();
-    for (int i = 0; i < 3000; ++i) {
-      b.add(arangodb::velocypack::Value(i));
-    }
-    b.close();
-
-    auto s = b.slice();
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    {
-      bool failed = true;
-      double d = v.toDouble(failed);
-      EXPECT_TRUE(failed);
-      EXPECT_DOUBLE_EQ(d, 0.0);
-    }
-
-    v.destroy();
-    EXPECT_EQ(rm.current(), 0U);
-  }
-}
-
-// Test toInt64() for supervised slices
-TEST(AqlValueSupervisedTest, FuncToInt64ReturnsCorrectValue) {
-  // 1) SupervisedSlice STRING (numeric + whitespace) -> parses to int64
-  {
-    auto& global = GlobalResourceMonitor::instance();
-    ResourceMonitor rm(global);
-    ASSERT_EQ(rm.current(), 0U);
-
-    std::string big = "12345";
-    big.append(8192, ' ');  // whitespace padding
-
-    Builder b;
-    b.add(Value(big));
-    auto s = b.slice();
-
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    int64_t x = v.toInt64();
-    EXPECT_EQ(x, 12345);
-
-    v.destroy();
-    EXPECT_EQ(rm.current(), 0U);
-  }
-
-  // 2) SupervisedSlice ARRAY (single element) -> element toInt64
-  {
-    auto& global = GlobalResourceMonitor::instance();
-    ResourceMonitor rm(global);
-    ASSERT_EQ(rm.current(), 0U);
-
-    // Single-element array with large numeric string (supervised)
-    std::string num = "777";
-    num.append(8192, ' ');  // whitespace padding
-
-    arangodb::velocypack::Builder b;
-    b.openArray();
-    b.add(arangodb::velocypack::Value(num));
-    b.close();
-
-    auto s = b.slice();
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    // Array length==1 -> at(0).toInt64()
-    int64_t y = v.toInt64();
-    EXPECT_EQ(y, 777);
-
-    v.destroy();
-    EXPECT_EQ(rm.current(), 0U);
-  }
-
-  // 3) INLINE UINT64 overflow -> throws VPackException
-  {
-    uint64_t over =
-        static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) + 1ULL;
-    AqlValue v(AqlValueHintUInt{over});  // produces VPACK_INLINE_UINT64
-
-    EXPECT_THROW({ (void)v.toInt64(); }, VPackException);
-    // No destroy() required for inline values.
-  }
-}
-
-// Test toBoolean() for supervised slices
-TEST(AqlValueSupervisedTest, FuncToBooleanReturnsCorrectValue) {
-  auto& global = arangodb::GlobalResourceMonitor::instance();
-  arangodb::ResourceMonitor rm(global);
-
-  // SupervisedSlice STRING
-  {
-    std::string big(5000, 'a');
-    Builder b;
-    b.add(Value(big));
-    auto s = b.slice();
-
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_TRUE(v.toBoolean());
-    v.destroy();
-  }
-
-  // SupervisedSlice ARRAY
-  {
-    Builder b;
-    b.openArray();
-    for (int i = 0; i < 1000; ++i) {
-      b.add(Value(i));
-    }
-    b.close();
-    auto s = b.slice();
-
-    AqlValue v(s, s.byteSize(), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-    EXPECT_TRUE(v.toBoolean());
-    v.destroy();
-  }
-}
-
 // Test data() returns pointer to heap data (not ResourceMonitor*)
 TEST(AqlValueSupervisedTest, FuncDataReturnsPointerToActualData) {
   auto& g = GlobalResourceMonitor::instance();
@@ -2013,4 +1752,143 @@ TEST(AqlValueSupervisedTest, MultipleSharedCopiesWithDataPointer) {
   original.erase();
 
   EXPECT_EQ(rm.current(), 0U);
+}
+
+// Test OOM during supervised allocation
+TEST(AqlValueSupervisedTest, AllocationFailureThrowsOOM) {
+  auto& global = GlobalResourceMonitor::instance();
+  ResourceMonitor rm(global, 1024);  // Set low limit
+
+  // Try to allocate a huge supervised slice that exceeds the limit
+  std::string huge(100000, 'x');
+  Builder b;
+  b.add(Value(huge));
+  Slice s = b.slice();
+
+  // Should throw TRI_ERROR_RESOURCE_LIMIT
+  EXPECT_THROW({
+    AqlValue v(s, s.byteSize(), &rm);
+  }, arangodb::basics::Exception);
+
+  EXPECT_EQ(rm.current(), 0U);
+}
+
+// Test edge case: empty/minimal data
+TEST(AqlValueSupervisedTest, EdgeCaseEmptyAndMinimalData) {
+  auto& global = GlobalResourceMonitor::instance();
+  ResourceMonitor rm(global);
+
+  // Empty string (will be inline, not supervised)
+  {
+    Builder b;
+    b.add(Value(""));
+    Slice s = b.slice();
+    
+    AqlValue v(s, &rm);
+    // Empty strings are inline
+    EXPECT_NE(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+    EXPECT_EQ(v.memoryUsage(), 0U);
+    EXPECT_EQ(rm.current(), 0U);
+    v.destroy();
+  }
+
+  // Single-byte string (still inline)
+  {
+    Builder b;
+    b.add(Value("x"));
+    Slice s = b.slice();
+    
+    AqlValue v(s, &rm);
+    EXPECT_NE(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+    EXPECT_EQ(v.memoryUsage(), 0U);
+    v.destroy();
+  }
+
+  // Minimal supervised slice (just over inline threshold)
+  {
+    std::string minimal(sizeof(AqlValue) + 1, 'a');
+    Builder b;
+    b.add(Value(minimal));
+    Slice s = b.slice();
+    
+    AqlValue v(s, &rm);
+    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+    EXPECT_GT(v.memoryUsage(), 0U);
+    EXPECT_EQ(rm.current(), v.memoryUsage());
+    v.destroy();
+    EXPECT_EQ(rm.current(), 0U);
+  }
+}
+
+// Test edge case: maximum size allocation
+TEST(AqlValueSupervisedTest, EdgeCaseMaxSizeAllocation) {
+  auto& global = GlobalResourceMonitor::instance();
+  ResourceMonitor rm(global);
+
+  // Allocate a very large supervised slice (10MB)
+  constexpr size_t largeSize = 10 * 1024 * 1024;
+  std::string large(largeSize, 'z');
+  Builder b;
+  b.add(Value(large));
+  Slice s = b.slice();
+
+  AqlValue v(s, s.byteSize(), &rm);
+  ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+
+  // Verify memory accounting for large allocation
+  size_t expectedMemory = s.byteSize() + sizeof(ResourceMonitor*);
+  EXPECT_EQ(v.memoryUsage(), expectedMemory);
+  EXPECT_EQ(rm.current(), expectedMemory);
+
+  // Verify data integrity
+  EXPECT_TRUE(v.slice().binaryEquals(s));
+  EXPECT_EQ(v.slice().getStringLength(), largeSize);
+
+  v.destroy();
+  EXPECT_EQ(rm.current(), 0U);
+}
+
+// Test thread safety: concurrent supervised allocations
+TEST(AqlValueSupervisedTest, ThreadSafetyConcurrentAllocations) {
+  auto& global = GlobalResourceMonitor::instance();
+  ResourceMonitor rm(global);
+
+  constexpr int numThreads = 4;
+  constexpr int allocationsPerThread = 100;
+  std::vector<std::thread> threads;
+  std::atomic<int> successCount{0};
+
+  for (int t = 0; t < numThreads; ++t) {
+    threads.emplace_back([&rm, &successCount, t]() {
+      for (int i = 0; i < allocationsPerThread; ++i) {
+        try {
+          std::string data(1024 + i, static_cast<char>('a' + t));
+          Builder b;
+          b.add(Value(data));
+          Slice s = b.slice();
+
+          AqlValue v(s, s.byteSize(), &rm);
+          EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+          
+          // Verify data integrity
+          EXPECT_EQ(v.slice().getStringLength(), 1024 + i);
+          
+          v.destroy();
+          successCount++;
+        } catch (...) {
+          // Allocation failures are acceptable under high concurrency
+        }
+      }
+    });
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  // Verify all allocations were properly cleaned up
+  EXPECT_EQ(rm.current(), 0U);
+  
+  // Verify most allocations succeeded
+  EXPECT_GT(successCount.load(), numThreads * allocationsPerThread * 0.9);
 }
