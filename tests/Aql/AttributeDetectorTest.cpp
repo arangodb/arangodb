@@ -364,10 +364,21 @@ TEST_F(AttributeDetectorTest, DocumentFunctionDynamicCollection) {
                   "optimization assertions";
 }
 
+TEST_F(AttributeDetectorTest, DocumentFunction) {
+  auto query = executeQuery(R"aql(
+    RETURN DOCUMENT(users, "users/u1")
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+}
+
 TEST_F(AttributeDetectorTest, DocumentFunctionWithNOOPT) {
   auto query = executeQuery(R"aql(
     FOR u IN users
-    LET doc = DOCUMENT(users, "users/u1")
+    LET doc = NOOPT(DOCUMENT(users, "users/u1"))
     RETURN u.name
   )aql");
   auto const& accesses = query->abacAccesses();
@@ -386,7 +397,23 @@ TEST_F(AttributeDetectorTest, MergeMultipleDocumentCalls) {
   )aql");
   auto const& accesses = query->abacAccesses();
 
-  ASSERT_GE(accesses.size(), 1);
+  ASSERT_EQ(accesses.size(), 2);
+  for (auto const& access : accesses) {
+    EXPECT_TRUE(access.requiresAllAttributesRead)
+        << "Collection " << access.collectionName
+        << " should require all attributes read";
+  }
+}
+
+TEST_F(AttributeDetectorTest, NOOPTMergeMultipleDocumentCalls) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+    LET merged = NOOPT(MERGE(DOCUMENT(users, "users/u2"), DOCUMENT(products, "products/p2")))
+    RETURN merged
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 2);
   for (auto const& access : accesses) {
     EXPECT_TRUE(access.requiresAllAttributesRead)
         << "Collection " << access.collectionName

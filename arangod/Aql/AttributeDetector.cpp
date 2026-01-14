@@ -60,11 +60,21 @@ void AttributeDetector::detect() {
   }
 
   if (_plan->getAst()->functionsMayAccessDocuments()) {
-    for (auto& [collName, access] : _collectionAccessMap) {
-      if (access) {
-        access->requiresAllAttributesRead = true;
+    auto& q = _plan->getAst()->query();
+
+    for (auto const& c : q.collectionNames()) {
+      auto& access = _collectionAccessMap[c];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = c;
       }
+      access->requiresAllAttributesRead = true;
     }
+    // for (auto& [collName, access] : _collectionAccessMap) {
+    //   if (access) {
+    //     access->requiresAllAttributesRead = true;
+    //   }
+    // }
   }
 
   for (auto& [collName, access] : _collectionAccessMap) {
