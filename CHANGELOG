@@ -1,6 +1,8 @@
 4.0
 ---
 
+* Remove endpoints to load/unload collections.
+
 * Remove V8 server code.
 
 * Remove aardvark and system Foxx apps code.
