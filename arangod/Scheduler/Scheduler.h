@@ -33,6 +33,7 @@
 #include <string_view>
 #include <utility>
 
+#include "ActivityRegistry/activity.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
@@ -199,6 +200,7 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
+      auto activityScope = activity.activate();
       this->operator()();
     }
 

@@ -95,6 +95,15 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }
 }  // namespace
 
+Activity::ActiveScope::ActiveScope(Activity* activity)
+    : _currentActivity{activity} {
+  _activityBefore = *get_current_activity();
+  *get_current_activity() = activity;
+}
+Activity::ActiveScope::~ActiveScope() {
+  *get_current_activity() = _activityBefore;
+}
+
 Activity::Activity(std::string name, std::source_location loc)
     : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
@@ -108,14 +117,14 @@ Activity::Activity(std::string name, std::source_location loc)
   // remember its parent activity to switch the current activity back to the
   // parent activity when this activity is destroyed
   parent = *get_current_activity();
-  *get_current_activity() = this;
 }
 
 Activity::~Activity() {
   _node_in_registry->data.state.store(State::Finished,
                                       std::memory_order_relaxed);
-  *get_current_activity() = parent;
 }
+
+auto Activity::activate() -> Activity::ActiveScope { return ActiveScope{this}; }
 
 auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
 
