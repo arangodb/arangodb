@@ -24,6 +24,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -31,10 +32,9 @@
 
 #include "CrashHandler/CrashRegistry.h"
 #include "CrashHandler/DataSourceRegistry.h"
+#include "CrashHandler/Dumper.h"
 
 namespace arangodb::crash_handler {
-
-class ICrashHandlerDataSource;
 
 /// @brief States for the crash handler thread coordination.
 /// The state of the dedicated crash handler starts with IDLE
@@ -50,29 +50,14 @@ enum class CrashHandlerState : int {
   SHUTDOWN = 3            ///< shutdown requested
 };
 
-class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
+class CrashHandler : public ICrashRegistry {
   std::atomic<bool> _threadRunning{false};
   // This needs to be static for the signal handlers to reach!
   static std::atomic<CrashHandler*> _theCrashHandler;
 
  public:
-  CrashHandler() {
-    // starts global background thread if not already done
-    bool threadRunning = _threadRunning.exchange(true);
-    if (!threadRunning) {
-      _theCrashHandler.store(this);
-      installCrashHandler();
-    }
-  }
-
-  ~CrashHandler() override {
-    // joins global background thread if running
-    bool threadRunning = _threadRunning.exchange(false);
-    if (threadRunning) {
-      shutdownCrashHandler();
-    }
-    _theCrashHandler.store(nullptr);
-  }
+  CrashHandler();
+  ~CrashHandler() override;
 
   static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
 
@@ -83,6 +68,10 @@ class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
       std::string_view crashId) override;
 
   bool deleteCrash(std::string_view crashId) override;
+
+  std::string const& crashesDirectory() const noexcept;
+  DataSourceRegistry* dataSourceRegistry() const noexcept;
+  Dumper* getDumper() const noexcept;
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
@@ -125,6 +114,8 @@ class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
 
   /// @brief shuts down the crash handler thread
   static void shutdownCrashHandler();
+
+  std::unique_ptr<Dumper> _dumper;
 };
 
 }  // namespace arangodb::crash_handler

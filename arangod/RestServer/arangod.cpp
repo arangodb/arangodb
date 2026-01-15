@@ -79,9 +79,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
              // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
              // Register crash handler data sources if crash handler is enabled
-             crashHandler.addDataSource(
+             crashHandler.dataSourceRegistry()->addDataSource(
                  &server.getFeature<ApiRecordingFeature>());
-             crashHandler.addDataSource(
+             crashHandler.dataSourceRegistry()->addDataSource(
                  &server.getFeature<async_registry::Feature>());
            }
          },
@@ -92,11 +92,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<T>(server);
         },
         [&crashHandler](auto& server, TypeTag<async_registry::Feature>) {
-          return std::make_unique<async_registry::Feature>(server,
-                                                           &crashHandler);
+          return std::make_unique<async_registry::Feature>(
+              server, crashHandler.dataSourceRegistry());
         },
         [&crashHandler](auto& server, TypeTag<ApiRecordingFeature>) {
-          return std::make_unique<ApiRecordingFeature>(server, &crashHandler);
+          return std::make_unique<ApiRecordingFeature>(
+              server, crashHandler.dataSourceRegistry());
         },
         [](auto& server, TypeTag<activity_registry::Feature>) {
           return std::make_unique<activity_registry::Feature>(server);

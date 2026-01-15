@@ -41,19 +41,14 @@
 #include <exception>
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <string_view>
 #include <thread>
 
 #include <boost/core/demangle.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 
 #include "BuildId/BuildId.h"
-#include "CrashHandler/DataSource.h"
+#include "CrashHandler/Dumper.h"
 #include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
@@ -145,9 +140,6 @@ siginfo_t* crashSiginfo = nullptr;
 
 /// @brief stores a pointer to the user context
 void* crashUcontext = nullptr;
-
-/// @brief stores the database directory
-std::string databaseDirectoryPath;
 
 /// @brief maximum number of crash directories to keep
 static constexpr size_t maxCrashDirectories{10};
@@ -528,31 +520,6 @@ void logProcessInfo() {
   LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << buffer.view();
 }
 
-void dumpSystemInfo(std::string const& crashDirectory) {
-  auto const sysInfoFilename = arangodb::basics::FileUtils::buildFilename(
-      crashDirectory, "system_info.txt");
-  std::string sysInfo;
-  sysInfo += "ArangoDB Version: ";
-  sysInfo += arangodb::rest::Version::getServerVersion();
-  sysInfo += "\n";
-  sysInfo += "Platform: ";
-  sysInfo += arangodb::rest::Version::getPlatform();
-  sysInfo += "\n";
-  sysInfo += "Number of Cores: ";
-  sysInfo += std::to_string(arangodb::NumberOfCores::getValue());
-  sysInfo += "\n";
-  sysInfo += "Effective Number of Cores: ";
-  sysInfo += std::to_string(arangodb::NumberOfCores::getEffectiveValue());
-  sysInfo += "\n";
-  sysInfo += "Physical Memory: ";
-  sysInfo += std::to_string(arangodb::PhysicalMemory::getValue());
-  sysInfo += " bytes\n";
-  sysInfo += "Effective Physical Memory: ";
-  sysInfo += std::to_string(arangodb::PhysicalMemory::getEffectiveValue());
-  sysInfo += " bytes\n";
-  arangodb::basics::FileUtils::spit(sysInfoFilename, sysInfo);
-}
-
 void actuallyDumpCrashInfo() {
   // Handle the crash logging in this dedicated thread
   // We can safely do all the work here since we're not in a signal
@@ -583,40 +550,20 @@ void actuallyDumpCrashInfo() {
 
     // Create a crash directory and dump data from all registered and alive data
     // sources
-    if (!databaseDirectoryPath.empty()) {
-      if (!arangodb::basics::FileUtils::exists(databaseDirectoryPath)) {
-        arangodb::basics::FileUtils::createDirectory(databaseDirectoryPath);
-      }
-      auto const uuid = to_string(boost::uuids::random_generator()());
-      auto const crashDirectory = arangodb::basics::FileUtils::buildFilename(
-          databaseDirectoryPath, uuid);
-      arangodb::basics::FileUtils::createDirectory(crashDirectory);
-
-      // Dump data from all registered and alive data sources
-      auto const* crashHandler =
-          arangodb::crash_handler::CrashHandler::getCrashHandler();
-      if (crashHandler == nullptr) {
-        return;
-      }
-      for (auto const* dataSource : crashHandler->getDataSources()) {
-        std::string filename = arangodb::basics::FileUtils::buildFilename(
-            crashDirectory,
-            std::format("{}.json", dataSource->getDataSourceName()));
-
-        auto data = dataSource->getCrashData();
-        arangodb::basics::FileUtils::spit(filename, data.toJson());
-      }
-
-      // Dump backtrace data
-      auto const backtraceFilename = arangodb::basics::FileUtils::buildFilename(
-          crashDirectory, "backtrace.txt");
-      arangodb::basics::FileUtils::spit(
-          backtraceFilename, ::backtraceBuffer.get(),
-          ::backtraceBufferUsed.load(std::memory_order_acquire));
-
-      // Dump system information
-      dumpSystemInfo(crashDirectory);
+    auto const* crashHandler =
+        arangodb::crash_handler::CrashHandler::getCrashHandler();
+    if (crashHandler == nullptr) {
+      return;
     }
+    auto* dumper = crashHandler->getDumper();
+    dumper->dumpDataSources();
+    size_t dumpBytesUsed =
+        ::backtraceBufferUsed.load(std::memory_order_acquire);
+    if (::backtraceBuffer != nullptr && dumpBytesUsed > 0) {
+      dumper->dumpBacktractInfo(
+          std::string_view(::backtraceBuffer.get(), dumpBytesUsed));
+    }
+    dumper->dumpSystemInfo();
   } catch (...) {
     // Ignore exceptions in crash handling
   }
@@ -744,6 +691,36 @@ namespace arangodb::crash_handler {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
+CrashHandler::CrashHandler() : _dumper(std::make_unique<Dumper>("")) {
+  // starts global background thread if not already done
+  bool threadRunning = _threadRunning.exchange(true);
+  if (!threadRunning) {
+    _theCrashHandler.store(this);
+    installCrashHandler();
+  }
+}
+
+CrashHandler::~CrashHandler() {
+  // joins global background thread if running
+  bool threadRunning = _threadRunning.exchange(false);
+  if (threadRunning) {
+    shutdownCrashHandler();
+  }
+  _theCrashHandler.store(nullptr);
+}
+
+std::string const& CrashHandler::crashesDirectory() const noexcept {
+  return _dumper->crashesDirectory();
+}
+
+DataSourceRegistry* CrashHandler::dataSourceRegistry() const noexcept {
+  return _dumper.get();
+}
+
+Dumper* CrashHandler::getDumper() const noexcept {
+  return _dumper.get();
+}
+
 void CrashHandler::triggerCrashHandler() {
   ::crashHandlerState.store(
       arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED,
@@ -765,64 +742,29 @@ void CrashHandler::waitForCrashHandlerCompletion() {
   }
 }
 
-/// @brief cleans up old crash directories, keeping only the most recent ones
-void cleanupOldCrashDirectories() {
-  if (::databaseDirectoryPath.empty() ||
-      !arangodb::basics::FileUtils::isDirectory(::databaseDirectoryPath)) {
-    return;
-  }
-
-  auto entries =
-      arangodb::basics::FileUtils::listFiles(::databaseDirectoryPath);
-
-  std::priority_queue<std::pair<int64_t, std::string>,
-                      std::vector<std::pair<int64_t, std::string>>,
-                      std::greater<>>
-      crashDirs;
-
-  for (auto const& entry : entries) {
-    auto fullPath = arangodb::basics::FileUtils::buildFilename(
-        ::databaseDirectoryPath, entry);
-    if (arangodb::basics::FileUtils::isDirectory(fullPath)) {
-      int64_t mtime{0};
-      if (TRI_MTimeFile(fullPath.c_str(), &mtime) == TRI_ERROR_NO_ERROR) {
-        crashDirs.emplace(mtime, entry);
-      }
-    }
-  }
-
-  // Remove the oldest directories until we're at the limit
-  while (crashDirs.size() > ::maxCrashDirectories) {
-    auto const& [mtime, dirName] = crashDirs.top();
-    auto const crashDir = arangodb::basics::FileUtils::buildFilename(
-        ::databaseDirectoryPath, dirName);
-    TRI_RemoveDirectory(crashDir.c_str());
-    crashDirs.pop();
-  }
-}
-
 // ICrashRegistry instance method implementations
 void CrashHandler::setDatabaseDirectory(std::string path) {
-  ::databaseDirectoryPath =
-      arangodb::basics::FileUtils::buildFilename(path, "crashes");
+  _dumper->setCrashesDirectory(
+      arangodb::basics::FileUtils::buildFilename(path, "crashes"));
 
   // Clean up old crash directories on startup
-  cleanupOldCrashDirectories();
+  Dumper::cleanupOldCrashDirectories(_dumper->crashesDirectory(),
+                                     ::maxCrashDirectories);
 }
 
 std::vector<std::string> CrashHandler::listCrashes() {
   std::vector<std::string> crashes;
 
-  if (::databaseDirectoryPath.empty() ||
-      !arangodb::basics::FileUtils::isDirectory(::databaseDirectoryPath)) {
+  auto const& crashesDirectory = _dumper->crashesDirectory();
+  if (crashesDirectory.empty() ||
+      !arangodb::basics::FileUtils::isDirectory(crashesDirectory)) {
     return crashes;
   }
 
-  auto entries =
-      arangodb::basics::FileUtils::listFiles(::databaseDirectoryPath);
+  auto entries = arangodb::basics::FileUtils::listFiles(crashesDirectory);
   for (auto const& entry : entries) {
-    auto fullPath = arangodb::basics::FileUtils::buildFilename(
-        ::databaseDirectoryPath, entry);
+    auto fullPath =
+        arangodb::basics::FileUtils::buildFilename(crashesDirectory, entry);
     if (arangodb::basics::FileUtils::isDirectory(fullPath)) {
       crashes.push_back(entry);
     }
@@ -835,12 +777,13 @@ std::unordered_map<std::string, std::string> CrashHandler::getCrashContents(
     std::string_view crashId) {
   std::unordered_map<std::string, std::string> contents;
 
-  if (::databaseDirectoryPath.empty()) {
+  auto const& crashesDirectory = _dumper->crashesDirectory();
+  if (crashesDirectory.empty()) {
     return contents;
   }
 
   auto crashDir = arangodb::basics::FileUtils::buildFilename(
-      ::databaseDirectoryPath, std::string(crashId));
+      crashesDirectory, std::string(crashId));
 
   if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
     return contents;
@@ -863,12 +806,13 @@ std::unordered_map<std::string, std::string> CrashHandler::getCrashContents(
 }
 
 bool CrashHandler::deleteCrash(std::string_view crashId) {
-  if (::databaseDirectoryPath.empty()) {
+  auto const& crashesDirectory = _dumper->crashesDirectory();
+  if (crashesDirectory.empty()) {
     return false;
   }
 
   auto crashDir = arangodb::basics::FileUtils::buildFilename(
-      ::databaseDirectoryPath, std::string(crashId));
+      crashesDirectory, std::string(crashId));
 
   if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
     return false;
