@@ -186,6 +186,14 @@ struct Activity {
            std::source_location loc = std::source_location::current());
   ~Activity();
 
+  struct ActiveScope {
+    ActiveScope(Activity* activity);
+    ~ActiveScope();
+    Activity* _currentActivity;
+    Activity* _activityBefore;
+  };
+
+  auto activate() -> ActiveScope;
   auto id() -> ActivityId;
 
  private:
