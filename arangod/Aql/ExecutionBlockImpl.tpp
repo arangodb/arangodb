@@ -1351,6 +1351,8 @@ auto ExecutionBlockImpl<Executor>::sideEffectSkipHandling(
     auto depthSkippingNow = maybeDepthSkippingNow.value();
     if (depthSkippingNow > shadowDepth) {
       if (!stack.modifyCallListAtDepth(depthSkippingNow).hasMoreCalls()) {
+        // We don't have a call for an outer subquery;
+        // we have to wait for the next one before we can make a decision what to do with the current shadow row.
         return SideEffectSkipResult::RETURN_DONE;
       }
       return SideEffectSkipResult::DROP_SHADOW_ROW;
