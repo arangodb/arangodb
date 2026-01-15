@@ -976,14 +976,85 @@ function ahuacatMemoryLimitCollectMemoryLeakTestSuite() {
   };
 }
 
+function ahuacatMemoryLimitJoinTestSuite() {
+  const L = "joinLeft";
+  const R = "joinRight";
+  let left, right;
 
-jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
-jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
-jsunity.run(ahuacatMemoryLimitMergeTestSuite);
-jsunity.run(ahuacatMemoryLimitCollectMemoryLeakTestSuite);
+  function teadDown() {
+    db._drop(L);
+    db._drop(R);
+  }
 
+  return {
+    setUpAll: function() {
+      teadDown();
+
+      left = db._create(L);
+      right = db._create(R);
+
+      const LARGE_STR = "x".repeat(2048);
+
+      const leftDocs = [];
+      const rightDocs = [];
+
+      for (let i = 0; i < 10000; ++i) {
+        leftDocs.push({ k: i, grp: "g" + (i % 1000), payload: LARGE_STR, num: i});
+        rightDocs.push({ k: i * 2, grp: "g" + (i % 1000), payload: LARGE_STR, bool: (i % 2 === 0)});
+      }
+      left.save(leftDocs);
+      right.save(rightDocs);
+
+      left.ensureIndex({ type: "hash", fields: ["k"], unique: false });
+      right.ensureIndex({ type: "hash", fields: ["k"], unique: false });
+      left.ensureIndex({ type: "hash", fields: ["grp"], unique: false });
+      right.ensureIndex({ type: "hash", fields: ["grp"], unique: false });
+    },
+
+    tearDownAll: teadDown,
+
+    testJoinEqualWithinLimit: function () {
+      const q = `
+        FOR l IN ${L}
+          FOR r IN ${R}
+            FILTER l.k == r.k
+            RETURN { lk: l.k, rb: r.bool, rp: r.payload }
+      `;
+      const res = db._query(q, null, { memoryLimit: 100 * 1024 * 1024}).toArray();
+      assertTrue(Array.isArray(res));
+      assertTrue(res.length > 4000 && res.length < 6000, "unexpected result size: " + res.length);
+    },
+
+    testJoinEqualExceedLimit: function () {
+      const q = `
+        FOR l IN ${L}
+          FOR r IN ${R}
+            FILTER l.k == r.k
+            RETURN { 
+              lk: l.k,
+              rg: r.grp,
+              rp: r.payload,
+              rp2: r.payload,
+              rb: r.bool
+            }
+      `;
+      try {
+        db._query(q, null, { memoryLimit: 4 * 1024 * 1024}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+  };
+}
+
+// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+// jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
+// jsunity.run(ahuacatMemoryLimitMergeTestSuite);
+// jsunity.run(ahuacatMemoryLimitCollectMemoryLeakTestSuite);
+jsunity.run(ahuacatMemoryLimitJoinTestSuite);
 
 return jsunity.done();

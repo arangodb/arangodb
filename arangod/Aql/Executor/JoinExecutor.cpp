@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/system-compiler.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
@@ -60,7 +61,7 @@ void JoinExecutorInfos::determineProjectionsForRegisters() {
 }
 
 JoinExecutor::~JoinExecutor() {
-  clearProjectionsBuilder();
+  _projectionsBuilder.clear();
 
   if (!_documents.empty()) {
     for (auto& docPtr : _documents) {
@@ -75,7 +76,11 @@ JoinExecutor::~JoinExecutor() {
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _trx{_infos.query->newTrxContext()},
-      _resourceMonitor(_infos.query->resourceMonitor()) {
+      _resourceMonitor(_infos.query->resourceMonitor()),
+      _projectionsBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          _infos.query->resourceMonitor())),
+      _constantBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          _infos.query->resourceMonitor())) {
   constructStrategy();
   _documents.resize(_infos.indexes.size());
 }
@@ -162,7 +167,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           _functionsCache,
                                           _currentRow,
                                           idx.expressionVarsToRegs,
-                                          _infos.query->resourceMonitor()};
+                                          resourceMonitor()};
 
             aql::AqlValue res = expr->execute(&ctx, mustDestroy);
             aql::AqlValueGuard guard{res, mustDestroy};
@@ -240,19 +245,11 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               proj.toVelocyPackFromIndexCompactArray(_projectionsBuilder, data,
                                                      &_trx);
               _projectionsBuilder.close();
+              LOG_JOIN_MEMORY
+                  << "(buildProjections1) Increased memory usage by: "
+                  << _projectionsBuilder.size()
+                  << "for the projections builder";
 
-              // handle increase of memory usage of the builder
-              try {
-                LOG_JOIN_MEMORY
-                    << "(buildProjections1) Increasing memory usage by: "
-                    << _projectionsBuilder.size()
-                    << "for the projections builder";
-                resourceMonitor().increaseMemoryUsage(
-                    _projectionsBuilder.bufferRef().byteSize());
-              } catch (...) {
-                clearProjectionsBuilder();
-                throw;
-              }
             } else {
               // write projections into individual output registers
               proj.produceFromIndexCompactArray(
@@ -267,18 +264,10 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                     output.moveValueInto(registerId, _currentRow, slice);
                   });
 
-              // handle increase of memory usage of the builder
-              try {
-                LOG_JOIN_MEMORY
-                    << "(buildProjections2) Increasing memory usage by: "
-                    << _projectionsBuilder.size()
-                    << " for the projections builder";
-                resourceMonitor().increaseMemoryUsage(
-                    _projectionsBuilder.bufferRef().byteSize());
-              } catch (...) {
-                clearProjectionsBuilder();
-                throw;
-              }
+              LOG_JOIN_MEMORY
+                  << "(buildProjections2) Increased memory usage by: "
+                  << _projectionsBuilder.size()
+                  << " for the projections builder";
             }
           };
 
@@ -410,7 +399,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                       _infos.indexes[k].documentOutputRegister,
                                       _currentRow, docPtr);
               } else if (!idx.hasProjectionsForRegisters) {
-                clearProjectionsBuilder();
+                _projectionsBuilder.clear();
 
                 // write all projections combined into the
                 // global output register recycle our
@@ -420,23 +409,14 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                                          doc, &_trx);
                 _projectionsBuilder.close();
 
-                // handle increase of memory usage of the builder
-                try {
-                  LOG_JOIN_MEMORY << "(docCB1) Increasing memory usage by: "
-                                  << _projectionsBuilder.size()
-                                  << "for the projections builder";
-                  resourceMonitor().increaseMemoryUsage(
-                      _projectionsBuilder.bufferRef().byteSize());
-                } catch (...) {
-                  clearProjectionsBuilder();
-                  throw;
-                }
+                LOG_JOIN_MEMORY << "(docCB1) Increased memory usage by: "
+                                << _projectionsBuilder.size()
+                                << "for the projections builder";
 
                 output.moveValueInto(_infos.indexes[k].documentOutputRegister,
                                      _currentRow, _projectionsBuilder.slice());
               } else {
-                // handle decrease of memory usage of the builder
-                clearProjectionsBuilder();
+                _projectionsBuilder.clear();
 
                 // write projections into individual
                 // output registers
@@ -452,17 +432,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                       output.moveValueInto(registerId, _currentRow, slice);
                     });
 
-                // handle increase of memory usage of the builder
-                try {
-                  LOG_JOIN_MEMORY << "(docCB2) Increasing memory usage by: "
-                                  << _projectionsBuilder.size()
-                                  << "for the projections builder";
-                  resourceMonitor().increaseMemoryUsage(
-                      _projectionsBuilder.bufferRef().byteSize());
-                } catch (...) {
-                  _projectionsBuilder.clear();
-                  throw;
-                }
+                LOG_JOIN_MEMORY << "(docCB2) Increased memory usage by: "
+                                << _projectionsBuilder.size()
+                                << "for the projections builder";
               }
             };
 
@@ -482,7 +454,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               docPtr.reset();
             } else if (idx.projections.usesCoveringIndex(idx.index) &&
                        !idx.projections.empty()) {
-              clearProjectionsBuilder();
+              _projectionsBuilder.clear();
               buildProjections(k, idx.projections,
                                idx.hasProjectionsForRegisters);
               if (!idx.hasProjectionsForRegisters) {
@@ -528,12 +500,6 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   }
 
   return {inputRange.upstreamState(), stats, upstreamCall};
-}
-
-void JoinExecutor::clearProjectionsBuilder() noexcept {
-  auto const& buffer = _projectionsBuilder.bufferRef();
-  resourceMonitor().decreaseMemoryUsage(buffer.byteSize());
-  _projectionsBuilder.clear();
 }
 
 auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,

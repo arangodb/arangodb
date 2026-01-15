@@ -148,7 +148,6 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
-  void clearProjectionsBuilder() noexcept;
   [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;
