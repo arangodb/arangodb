@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
 * Improve the output of fields `dbStats` for every column family
   when calling `db._engineStats()` or calling the API `_api/engine/stats`.
 
