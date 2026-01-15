@@ -93,8 +93,6 @@ class SortedCollectExecutorInfos {
 
   ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }
 
-  ResourceUsageScope& resourceUsageScope() const { return *_usageScope; }
-
  private:
   /// @brief aggregate types
   std::vector<std::string> _aggregateTypes;
@@ -128,9 +126,6 @@ class SortedCollectExecutorInfos {
 
   /// @brief the reference of "global" ResourceMonitor
   ResourceMonitor& _resourceMonitor;
-
-  /// @brief necessary for monitoring AqlValue (COLLECT value)
-  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;

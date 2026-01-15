@@ -319,7 +319,9 @@ void AqlItemBlock::destroy() noexcept {
             TRI_ASSERT(valueInfo.refCount > 0);
 
             if (--valueInfo.refCount == 0) {
-              totalUsed += valueInfo.memoryUsage;
+              if (it.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+                totalUsed += valueInfo.memoryUsage;
+              }
               it.destroy();
               // destroy() calls erase, so no need to call erase() again later
               continue;
@@ -390,7 +392,9 @@ void AqlItemBlock::shrink(size_t numRows) {
         TRI_ASSERT(valueInfo.refCount > 0);
 
         if (--valueInfo.refCount == 0) {
-          totalUsed += valueInfo.memoryUsage;
+          if (a.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+            totalUsed += valueInfo.memoryUsage;
+          }
           // destroy calls erase() for AqlValues with dynamic memory,
           // no need for an extra a.erase() here
           a.destroy();
@@ -465,7 +469,9 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
           TRI_ASSERT(valueInfo.refCount > 0);
 
           if (--valueInfo.refCount == 0) {
-            totalUsed += valueInfo.memoryUsage;
+            if (a.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+              totalUsed += valueInfo.memoryUsage;
+            }
             // destroy calls erase() for AqlValues with dynamic memory,
             // no need for an extra a.erase() here
             a.destroy();
@@ -508,12 +514,13 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a, (*it)));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            /*
+            *  NOTE: ShadowRow content is never referenced
+            *  as the SubqueryStartNode always creates clones, so
+            *  we will never use identical data pointer.
+            */
+            res->setValue(row, col, a);
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }
@@ -1009,7 +1016,9 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
-      increaseMemoryUsage(memoryUsage);
+      if (value.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+        increaseMemoryUsage(memoryUsage);
+      }
       valueInfo.setMemoryUsage(memoryUsage);
     }
   }
@@ -1032,7 +1041,9 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
     if (it != _valueCount.end()) {
       auto& valueInfo = (*it).second;
       if (--valueInfo.refCount == 0) {
-        decreaseMemoryUsage(valueInfo.memoryUsage);
+        if (element.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+          decreaseMemoryUsage(valueInfo.memoryUsage);
+        }
         _valueCount.erase(it);
         element.destroy();
         // no need for an extra element.erase() in this case, as
@@ -1049,15 +1060,28 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
 
 void AqlItemBlock::eraseAll() {
   size_t const n = maxModifiedEntries();
+
+  containers::FlatHashMap<void const*, AqlValue::AqlValueType>
+      aqlValuePtrsToTypes;
+  aqlValuePtrsToTypes.reserve(_valueCount.size());
   for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
+    if (it.requiresDestruction()) {
+      aqlValuePtrsToTypes[it.data()] = it.type();
+    }
     it.erase();
   }
 
   size_t totalUsed = 0;
   for (auto const& it : _valueCount) {
     if (ADB_LIKELY(it.second.refCount > 0)) {
-      totalUsed += it.second.memoryUsage;
+      // For supervised slices, memory is already accounted for during
+      // deallocation, so we don't account for it here
+      auto typeIt = aqlValuePtrsToTypes.find(it.first);
+      if (typeIt != aqlValuePtrsToTypes.end() &&
+          typeIt->second != AqlValue::VPACK_SUPERVISED_SLICE) {
+        totalUsed += it.second.memoryUsage;
+      }
     }
   }
   decreaseMemoryUsage(totalUsed);
@@ -1092,7 +1116,9 @@ void AqlItemBlock::steal(AqlValue const& value) {
   if (value.requiresDestruction()) {
     auto it = _valueCount.find(value.data());
     if (it != _valueCount.end()) {
-      decreaseMemoryUsage((*it).second.memoryUsage);
+      if (value.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+        decreaseMemoryUsage((*it).second.memoryUsage);
+      }
       _valueCount.erase(it);
     }
   }

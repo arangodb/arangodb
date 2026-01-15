@@ -27,8 +27,8 @@
 
 if (getOptions === true) {
   return {
-    'query.global-memory-limit': "6000000",
-    'query.memory-limit': "5000000"
+    'query.global-memory-limit': "20000000",
+    'query.memory-limit': "19000000"
   };
 }
 const jsunity = require('jsunity');

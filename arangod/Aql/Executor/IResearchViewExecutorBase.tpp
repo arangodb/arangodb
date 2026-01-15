@@ -803,7 +803,7 @@ template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
     ReadContext& ctx, iresearch::SearchDoc const& doc, RegisterId reg) {
   TRI_ASSERT(doc.isValid());
-  AqlValue value{doc.encode(_buf)};
+  AqlValue value{doc.encode(_buf), &_infos.getQuery().resourceMonitor()};
   AqlValueGuard guard{value, true};
   ctx.outputRow.moveValueInto(reg, ctx.inputRow, &guard);
 }

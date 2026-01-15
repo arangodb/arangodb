@@ -54,6 +54,7 @@ struct ModificationExecutorInfos {
   ~ModificationExecutorInfos() = default;
 
   ExecutionEngine* engine() const { return _engine; }
+  QueryContext& query() const { return _query; }
 
   /// @brief the variable produced by Return
   arangodb::aql::ExecutionEngine* _engine;

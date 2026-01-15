@@ -104,12 +104,13 @@ ModifierOutput UpsertModifier::OutputIterator::operator*() const {
       return ModifierOutput{_operationsIterator->second,
                             ModifierOutput::Type::SkipRow};
     } else {
+      ResourceMonitor* rm = &_modifier._infos.query().resourceMonitor();
       return ModifierOutput{_operationsIterator->second,
                             ModifierOutput::Type::ReturnIfRequired,
                             ModificationExecutorHelpers::getDocumentOrNull(
-                                elm, StaticStrings::Old),
+                                elm, StaticStrings::Old, rm),
                             ModificationExecutorHelpers::getDocumentOrNull(
-                                elm, StaticStrings::New)};
+                                elm, StaticStrings::New, rm)};
     }
   } else {
     switch (_operationsIterator->first) {

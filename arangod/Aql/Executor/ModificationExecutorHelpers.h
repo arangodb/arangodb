@@ -94,7 +94,8 @@ OperationOptions convertOptions(ModificationOptions const& in,
                                 Variable const* outVariableNew,
                                 Variable const* outVariableOld);
 
-AqlValue getDocumentOrNull(velocypack::Slice elm, std::string const& key);
+AqlValue getDocumentOrNull(velocypack::Slice elm, std::string const& key,
+                           ResourceMonitor* rm);
 
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql

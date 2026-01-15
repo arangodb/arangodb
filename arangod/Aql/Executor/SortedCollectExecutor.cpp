@@ -89,9 +89,7 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
-      auto mem = it.memoryUsage();
       it.destroy();
-      infos.resourceUsageScope().decrease(mem);
     }
   }
 
@@ -109,7 +107,6 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
       auto& ref = input.getValue(it.second);
-      infos.resourceUsageScope().increase(ref.memoryUsage());
       this->groupValues[i] = ref.clone();
       ++i;
     }
@@ -136,8 +133,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
       _vpackOptions(opts),
-      _resourceMonitor(resourceMonitor),
-      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
+      _resourceMonitor(resourceMonitor) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos) {
@@ -252,13 +248,9 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
 
-    auto memUsage = val.memoryUsage();
-
     output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
-
-    infos.resourceUsageScope().decrease(memUsage);
     ++i;
   }
 
@@ -276,7 +268,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
-    AqlValue val(std::move(_buffer));
+    AqlValue val(std::move(_buffer), &infos.resourceMonitor());
     AqlValueGuard guard{val, true};
     TRI_ASSERT(_buffer.size() == 0);
     _builder.clear();

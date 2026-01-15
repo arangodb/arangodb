@@ -118,8 +118,7 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024, AqlValueGroupHash(_infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getVPackOptions())),
-      _isInitialized(false),
-      _memoryUsageForInto(0) {
+      _isInitialized(false) {
   _aggregatorFactories = createAggregatorFactories(_infos);
   _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 };
@@ -132,17 +131,11 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 }
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
-  size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
-    memoryUsage += memoryUsageForGroup(it.first, true);
     for (auto& it2 : it.first.values) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
-  memoryUsage += _memoryUsageForInto;
-
-  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
-  _memoryUsageForInto = 0;
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
@@ -173,7 +166,6 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 void HashedCollectExecutor::writeCurrentGroupToOutput(
     OutputAqlItemRow& output) {
   // build the result
-  size_t memoryUsage = memoryUsageForGroup(_currentGroup->first, false);
   auto& keys = _currentGroup->first.values;
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
@@ -186,7 +178,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     key.erase();  // to prevent double-freeing later
   }
 
-  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
   if (!_infos.getAggregatedRegisters().empty()) {
     TRI_ASSERT(_currentGroup->second.first != nullptr);
     auto& aggregators = *_currentGroup->second.first;
@@ -203,7 +194,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     auto& builder = *_currentGroup->second.second;
     builder.close();
-    AqlValue val(std::move(*builder.steal()));
+    AqlValue val(std::move(*builder.steal()), &_infos.getResourceMonitor());
     AqlValueGuard guard{val, true};
     _currentGroup->second.second.reset();
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
@@ -377,9 +368,6 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
-  ResourceUsageScope guard(_infos.getResourceMonitor(),
-                           memoryUsageForGroup(_nextGroup, true));
-
   std::unique_ptr<velocypack::Builder> builder;
 
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -399,8 +387,6 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
       std::make_pair(std::move(aggregateValues), std::move(builder)));
   // emplace must not fail
   TRI_ASSERT(emplaced);
-
-  guard.steal();
 
   // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
@@ -455,29 +441,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     }
     builder.close();
   }
-}
-
-size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
-                                                  bool withBase) const {
-  // track memory usage of unordered_map entry (somewhat)
-  size_t memoryUsage = 0;
-  if (withBase) {
-    memoryUsage += 4 * sizeof(void*) + /* generic overhead */
-                   group.values.size() * sizeof(AqlValue) +
-                   _aggregatorFactories.size() * sizeof(void*);
-
-    if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
-      // add overhead per per-group Builder object (allocated on the heap)
-      memoryUsage += sizeof(void*) + sizeof(velocypack::Builder);
-    }
-  }
-
-  for (auto const& it : group.values) {
-    if (it.requiresDestruction()) {
-      memoryUsage += it.memoryUsage();
-    }
-  }
-  return memoryUsage;
 }
 
 std::unique_ptr<HashedCollectExecutor::ValueAggregators>

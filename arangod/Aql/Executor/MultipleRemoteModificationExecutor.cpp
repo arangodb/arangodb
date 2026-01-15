@@ -238,7 +238,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
 
   // place documents as in the out variable slots of the result
   if (_info._outputRegisterId.isValid()) {
-    AqlValue value(outDocument);
+    AqlValue value(outDocument, &_info.query().resourceMonitor());
     AqlValueGuard guard(value, true);
     output.moveValueInto(_info._outputRegisterId, input, &guard);
   }
@@ -246,7 +246,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
   // RETURN OLD: current unsupported
   if (_info._outputOldRegisterId.isValid()) {
     TRI_ASSERT(options.returnOld);
-    AqlValue value(oldDocument);
+    AqlValue value(oldDocument, &_info.query().resourceMonitor());
     AqlValueGuard guard(value, true);
     output.moveValueInto(_info._outputOldRegisterId, input, &guard);
   }
@@ -254,7 +254,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
   // RETURN NEW: current unsupported
   if (_info._outputNewRegisterId.isValid()) {
     TRI_ASSERT(options.returnNew);
-    AqlValue value(newDocument);
+    AqlValue value(newDocument, &_info.query().resourceMonitor());
     AqlValueGuard guard(value, true);
     output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }

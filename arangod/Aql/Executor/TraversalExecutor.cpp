@@ -394,7 +394,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     if (_infos.useVertexOutput()) {
       tmp->clear();
       currentPath->lastVertexToVelocyPack(*tmp.get());
-      AqlValue path{tmp->slice()};
+      AqlValue path{tmp->slice(), &_infos.getQuery().resourceMonitor()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.vertexRegister(), _inputRow, &guard);
     }
@@ -403,7 +403,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     if (_infos.useEdgeOutput()) {
       tmp->clear();
       currentPath->lastEdgeToVelocyPack(*tmp.get());
-      AqlValue path{tmp->slice()};
+      AqlValue path{tmp->slice(), &_infos.getQuery().resourceMonitor()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.edgeRegister(), _inputRow, &guard);
     }
@@ -412,7 +412,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     if (_infos.usePathOutput()) {
       tmp->clear();
       currentPath->toVelocyPack(*tmp.get());
-      AqlValue path{tmp->slice()};
+      AqlValue path{tmp->slice(), &_infos.getQuery().resourceMonitor()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.pathRegister(), _inputRow, &guard);
     }

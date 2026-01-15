@@ -198,7 +198,7 @@ AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
 
   // Here we have all data *and* the relevant shadow row,
   // so we can now submit
-  result = AqlValue{std::move(_buffer)};
+  result = AqlValue{std::move(_buffer), &_resourceMonitor};
   TRI_ASSERT(_buffer.size() == 0);
   _builder.clear();
 

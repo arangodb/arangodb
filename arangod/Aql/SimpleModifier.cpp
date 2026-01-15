@@ -23,6 +23,7 @@
 
 #include "SimpleModifier.h"
 
+#include "QueryContext.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
@@ -92,12 +93,13 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator*() const {
           return ModifierOutput{_operationsIterator->second,
                                 ModifierOutput::Type::SkipRow};
         } else {
+          ResourceMonitor* rm = &_modifier.getInfos().query().resourceMonitor();
           return ModifierOutput{_operationsIterator->second,
                                 ModifierOutput::Type::ReturnIfRequired,
                                 ModificationExecutorHelpers::getDocumentOrNull(
-                                    elm, StaticStrings::Old),
+                                    elm, StaticStrings::Old, rm),
                                 ModificationExecutorHelpers::getDocumentOrNull(
-                                    elm, StaticStrings::New)};
+                                    elm, StaticStrings::New, rm)};
         }
       } else {
         return ModifierOutput{_operationsIterator->second,
