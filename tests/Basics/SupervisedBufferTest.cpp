@@ -13,6 +13,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::velocypack;
 
+// These tests verify that supervised buffer allocations and AqlValue copies
+// can be accounted consistently via ResourceMonitor/ResourceUsageScope.
 TEST(SupervisedBufferTest, AccountsMemoryLargeAndSmallValuesNormalBuffer) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor monitor{global};

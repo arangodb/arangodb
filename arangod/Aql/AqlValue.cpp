@@ -390,7 +390,7 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue{found, found.byteSize(), rm};
+            return AqlValue{found, rm};
           }
           // return a reference to an existing slice
           return AqlValue{found.begin()};
@@ -427,7 +427,7 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue{found, found.byteSize(), rm};
+            return AqlValue{found, rm};
           }
           // return a reference to an existing slice
           return AqlValue{found.begin()};
@@ -457,7 +457,7 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue{found, found.byteSize(), rm};
+            return AqlValue{found, rm};
           }
           // return a reference to an existing slice
           return AqlValue{found.begin()};
@@ -487,7 +487,7 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
         if (!found.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue{found, found.byteSize(), rm};
+            return AqlValue{found, rm};
           }
           // return a reference to an existing slice
           return AqlValue{found.begin()};
@@ -585,7 +585,7 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
         if (!s.isNone()) {
           if (doCopy) {
             mustDestroy = true;
-            return AqlValue{s, s.byteSize(), rm};
+            return AqlValue{s, rm};
           }
           // return a reference to an existing slice
           return AqlValue{s.begin()};
@@ -1389,8 +1389,10 @@ AqlValue::AqlValue(AqlValueHintSliceNoCopy v) noexcept
 AqlValue::AqlValue(AqlValueHintSliceCopy v, arangodb::ResourceMonitor* rm)
     : AqlValue{v.slice, rm} {}
 
-AqlValue::AqlValue(VPackSlice slice, arangodb::ResourceMonitor* rm)
-    : AqlValue{slice, slice.byteSize(), rm} {}
+AqlValue::AqlValue(VPackSlice slice, arangodb::ResourceMonitor* rm) {
+  TRI_ASSERT(!slice.isExternal());
+  initFromSlice(slice, slice.byteSize(), rm);
+}
 
 AqlValue::AqlValue(VPackSlice slice, velocypack::ValueLength length,
                    arangodb::ResourceMonitor* rm) {

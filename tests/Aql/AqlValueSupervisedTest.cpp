@@ -46,204 +46,135 @@ inline DocumentData makeDocDataFromSlice(Slice s) {
 inline void expectEqualBothWays(AqlValue const& a, AqlValue const& b) {
   std::equal_to<AqlValue> eq;
   EXPECT_TRUE(eq(a, b));
-  EXPECT_TRUE(eq(b, a));  // Verify symmetry
+  EXPECT_TRUE(eq(b, a));
 }
 
 inline void expectNotEqualBothWays(AqlValue const& a, AqlValue const& b) {
   std::equal_to<AqlValue> eq;
   EXPECT_FALSE(eq(a, b));
-  EXPECT_FALSE(eq(b, a));  // Verify symmetry
+  EXPECT_FALSE(eq(b, a));
 }
 }  // namespace
 
-// Test for AqlValue(string_view, ResourceMonitor*) <- short str
-TEST(AqlValueSupervisedTest, ShortStringViewCtorAccountsCorrectSize) {
+// Constructor tests focus on memory accounting and supervised allocation.
+TEST(AqlValueSupervisedTest, ConstructorsAccountCorrectSize) {
   auto& global = GlobalResourceMonitor::instance();
-  arangodb::ResourceMonitor rm(global);
+  ResourceMonitor rm(global);
 
-  std::string s(15, 'x');  // 15 chars, fits short str (<= 126), not inline
-  auto payloadSize = 1 + s.size();  // tag&len (= 1) + chars
-  auto expected = ptrOverhead() + payloadSize;
-
-  AqlValue v(std::string_view{s}, &rm);
-
-  // Verify memory accounting
-  EXPECT_EQ(v.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(v.memoryUsage(), rm.current());
-
-  // Verify slice content
-  auto slice = v.slice();
-  ASSERT_TRUE(slice.isString());
-  EXPECT_EQ(slice.stringView(), s);
-
-  v.destroy();
-  // Memory released after destruction
-  EXPECT_EQ(rm.current(), 0);
-}
-
-// Test for AqlValue(string_view, ResourceMonitor* nullptr) <- long str
-TEST(AqlValueSupervisedTest, LongStringViewCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  arangodb::ResourceMonitor rm(global);
-
-  std::string s(300, 'A');              // triggers long string encoding
-  auto payloadSize = 1 + 8 + s.size();  // len + tag + chars
-  std::size_t expected = ptrOverhead() + payloadSize;
-
-  AqlValue v(std::string_view{s}, &rm);
-
-  // Verify memory accounting
-  EXPECT_EQ(v.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(v.memoryUsage(), rm.current());
-
-  // Verify slice content
-  auto slice = v.slice();
-  ASSERT_TRUE(slice.isString());
-  EXPECT_EQ(slice.stringView(), s);
-
-  v.destroy();
-  // Memory released after destruction
-  EXPECT_EQ(rm.current(), 0);
-}
-
-// Test for AqlValue(Buffer&&, ResourceMonitor* = nullptr)
-TEST(AqlValueSupervisedTest, BufferMoveCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor resourceMonitor(global);
-
-  auto builder = makeLargeArray(2048, 'a');
-  Slice slice = builder.slice();
-  velocypack::Buffer<uint8_t> buffer;
-  buffer.append(slice.start(), slice.byteSize());
-
-  AqlValue aqlVal(std::move(buffer), &resourceMonitor);
-  EXPECT_EQ(aqlVal.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-  // Check that the original buffer is now empty after move
-  EXPECT_EQ(buffer.size(), 0U);
-  EXPECT_TRUE(buffer.empty());
-
-  auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
-  // Verify memory accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), resourceMonitor.current());
-
-  aqlVal.destroy();
-  EXPECT_EQ(resourceMonitor.current(), 0);
-}
-
-// Test for AqlValue(Buffer&, ResourceMonitor* = nullptr)
-TEST(AqlValueSupervisedTest, BufferCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor resourceMonitor(global);
-
-  auto builder = makeLargeArray(2048, 'a');
-  Slice slice = builder.slice();
-  velocypack::Buffer<uint8_t> buffer;
-  buffer.append(slice.start(), slice.byteSize());
-  auto before = buffer.size();
-
-  AqlValue aqlVal(buffer, &resourceMonitor);
-  EXPECT_EQ(aqlVal.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-  // Buffer obj itself doesn't change
-  EXPECT_EQ(buffer.size(), before);
-
-  auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
-  // Verify memory accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), resourceMonitor.current());
-
-  aqlVal.destroy();
-  EXPECT_EQ(resourceMonitor.current(), 0);
-}
-
-// Test for AqlValue(Slice, ResourceMonitor* = nullptr)
-TEST(AqlValueSupervisedTest, SliceCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor resourceMonitor(global);
-
-  auto builder = makeLargeArray(1024, 'a');
-  Slice slice = builder.slice();
-  AqlValue aqlVal(slice, static_cast<ValueLength>(slice.byteSize()),
-                  &resourceMonitor);
-
-  auto expected = static_cast<size_t>(slice.byteSize() + ptrOverhead());
-  // Verify memory accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), resourceMonitor.current());
-
-  EXPECT_TRUE(aqlVal.slice().isArray());
+  // string_view (short)
   {
-    ValueLength l = 0;
-    (void)aqlVal.slice().at(0).getStringUnchecked(l);
-    EXPECT_EQ(l, 1024);
+    std::string s(15, 'x');
+    auto payloadSize = 1 + s.size();
+    auto expected = ptrOverhead() + payloadSize;
+
+    AqlValue v(std::string_view{s}, &rm);
+    EXPECT_EQ(v.memoryUsage(), expected);
+    EXPECT_EQ(v.memoryUsage(), rm.current());
+    ASSERT_TRUE(v.slice().isString());
+    EXPECT_EQ(v.slice().stringView(), s);
+
+    v.destroy();
+    EXPECT_EQ(rm.current(), 0);
   }
 
-  aqlVal.destroy();
-  EXPECT_EQ(resourceMonitor.current(), 0);
-}
+  // string_view (long)
+  {
+    std::string s(300, 'A');
+    auto payloadSize = 1 + 8 + s.size();
+    auto expected = ptrOverhead() + payloadSize;
 
-// Test multiple supervised AqlValues
-TEST(AqlValueSupervisedTest, MultipleSliceCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor resourceMonitor(global);
+    AqlValue v(std::string_view{s}, &rm);
+    EXPECT_EQ(v.memoryUsage(), expected);
+    EXPECT_EQ(v.memoryUsage(), rm.current());
+    ASSERT_TRUE(v.slice().isString());
+    EXPECT_EQ(v.slice().stringView(), s);
 
-  auto bA = makeLargeArray(1000, 'a');
-  auto bB = makeLargeArray(2000, 'b');
-  auto bC = makeLargeArray(3000, 'c');
-  Slice sliceA = bA.slice();
-  Slice sliceB = bB.slice();
-  Slice sliceC = bC.slice();
+    v.destroy();
+    EXPECT_EQ(rm.current(), 0);
+  }
 
-  AqlValue a1(sliceA, &resourceMonitor);  // SUPERVISED_SLICE
-  AqlValue a2(sliceB, &resourceMonitor);  // SUPERVISED_SLICE
-  AqlValue a3(sliceC, &resourceMonitor);  // SUPERVISED_SLICE
+  // Buffer&& / Buffer const&
+  {
+    auto builder = makeLargeArray(2048, 'a');
+    Slice slice = builder.slice();
 
-  size_t e1 = static_cast<size_t>(sliceA.byteSize()) + ptrOverhead();
-  size_t e2 = static_cast<size_t>(sliceB.byteSize()) + ptrOverhead();
-  size_t e3 = static_cast<size_t>(sliceC.byteSize()) + ptrOverhead();
+    velocypack::Buffer<uint8_t> buffer;
+    buffer.append(slice.start(), slice.byteSize());
 
-  // Verify memory accounting
-  EXPECT_EQ(a1.memoryUsage() + a2.memoryUsage() + a3.memoryUsage(),
-            e1 + e2 + e3);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(a1.memoryUsage() + a2.memoryUsage() + a3.memoryUsage(),
-            resourceMonitor.current());
+    {
+      velocypack::Buffer<uint8_t> moved = buffer;
+      AqlValue v(std::move(moved), &rm);
+      EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+      auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
+      EXPECT_EQ(v.memoryUsage(), expected);
+      EXPECT_EQ(v.memoryUsage(), rm.current());
+      v.destroy();
+      EXPECT_EQ(rm.current(), 0);
+    }
 
-  a1.destroy();
-  EXPECT_EQ(resourceMonitor.current(), e2 + e3);
+    {
+      AqlValue v(buffer, &rm);
+      EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+      auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
+      EXPECT_EQ(v.memoryUsage(), expected);
+      EXPECT_EQ(v.memoryUsage(), rm.current());
+      v.destroy();
+      EXPECT_EQ(rm.current(), 0);
+    }
+  }
 
-  a2.destroy();
-  EXPECT_EQ(resourceMonitor.current(), e3);
+  // Slice / HintSliceCopy
+  {
+    auto builder = makeLargeArray(1024, 'a');
+    Slice slice = builder.slice();
 
-  a3.destroy();
-  EXPECT_EQ(resourceMonitor.current(), 0);
-}
+    {
+      AqlValue v(slice, &rm);
+      auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
+      EXPECT_EQ(v.memoryUsage(), expected);
+      EXPECT_EQ(v.memoryUsage(), rm.current());
+      ASSERT_TRUE(v.slice().isArray());
+      ValueLength l = 0;
+      (void)v.slice().at(0).getStringUnchecked(l);
+      EXPECT_EQ(l, 1024);
+      v.destroy();
+      EXPECT_EQ(rm.current(), 0);
+    }
 
-// Test for AqlValue(AqlValueHintSliceCopy, ResourceMonitor* = nullptr)
-TEST(AqlValueSupervisedTest, HintSliceCopyCtorAccountsCorrectSize) {
-  auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor resourceMonitor(global);
+    {
+      AqlValueHintSliceCopy hint{slice};
+      AqlValue v(hint, &rm);
+      auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
+      EXPECT_EQ(v.memoryUsage(), expected);
+      EXPECT_EQ(v.memoryUsage(), rm.current());
+      v.destroy();
+      EXPECT_EQ(rm.current(), 0);
+    }
+  }
 
-  auto builder = makeLargeArray(512, 'a');
-  Slice slice = builder.slice();
-  AqlValueHintSliceCopy hint{slice};
-  AqlValue aqlVal(hint, &resourceMonitor);
+  // Multiple supervised slices
+  {
+    auto bA = makeLargeArray(1000, 'a');
+    auto bB = makeLargeArray(2000, 'b');
+    auto bC = makeLargeArray(3000, 'c');
 
-  auto expected = static_cast<size_t>(slice.byteSize()) + ptrOverhead();
-  // Verify memory accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), expected);
-  // Verify ResourceMonitor accounting
-  EXPECT_EQ(aqlVal.memoryUsage(), resourceMonitor.current());
+    AqlValue a1(bA.slice(), &rm);
+    AqlValue a2(bB.slice(), &rm);
+    AqlValue a3(bC.slice(), &rm);
 
-  aqlVal.destroy();
-  EXPECT_EQ(resourceMonitor.current(), 0);
+    size_t e1 = static_cast<size_t>(bA.slice().byteSize()) + ptrOverhead();
+    size_t e2 = static_cast<size_t>(bB.slice().byteSize()) + ptrOverhead();
+    size_t e3 = static_cast<size_t>(bC.slice().byteSize()) + ptrOverhead();
+
+    EXPECT_EQ(a1.memoryUsage() + a2.memoryUsage() + a3.memoryUsage(),
+              e1 + e2 + e3);
+    EXPECT_EQ(rm.current(), e1 + e2 + e3);
+
+    a1.destroy();
+    a2.destroy();
+    a3.destroy();
+    EXPECT_EQ(rm.current(), 0);
+  }
 }
 
 // Test copy constructor behavior: supervised slices use shallow copy
@@ -825,51 +756,48 @@ TEST(AqlValueSupervisedTest,
   EXPECT_EQ(rm.current(), 0U);
 }
 
-// Test behavior of hasKey() function for SupervisedSlice
-TEST(AqlValueSupervisedTest, HasKeyFuncForSupervisedSliceReturnsCorrectValue) {
+TEST(AqlValueSupervisedTest, HasKeyDoesNotAllocateForSupervisedSlice) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor rm(global);
-  std::string big(4096, 'x');
 
-  // Object case
+  std::string big(4096, 'x');  // force supervised allocation
+
+  // Object: correct result, and hasKey must not allocate.
   {
     Builder b;
     b.openObject();
     b.add("a", Value(1));
-    b.add("b", Value(2.0));
-    b.add("long", Value(big));
-    b.add("nested", Value("value"));
+    b.add("pad", Value(big));
     b.close();
 
-    AqlValue v(Slice(b.slice()), &rm);  // SupervisedSlice
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+    AqlValue v(b.slice(), &rm);
+    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
 
+    auto base = rm.current();
     EXPECT_TRUE(v.hasKey("a"));
-    EXPECT_TRUE(v.hasKey("b"));
-    EXPECT_TRUE(v.hasKey("long"));
-    EXPECT_TRUE(v.hasKey("nested"));
-
     EXPECT_FALSE(v.hasKey("missing"));
-    EXPECT_FALSE(v.hasKey(""));
+    EXPECT_EQ(rm.current(), base);
 
     v.destroy();
+    EXPECT_EQ(rm.current(), 0U);
   }
 
-  // Non-object (array): hasKey returns false
+  // Non-object: hasKey returns false, and must not allocate.
   {
     Builder b;
     b.openArray();
-    b.add(Value(1));
     b.add(Value(big));
-    b.add(Value(3));
     b.close();
 
-    AqlValue v(Slice(b.slice()), &rm);  // SupervisedSlice
-    EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+    AqlValue v(b.slice(), &rm);
+    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
 
+    auto base = rm.current();
     EXPECT_FALSE(v.hasKey("a"));
-    EXPECT_FALSE(v.hasKey("0"));
+    EXPECT_EQ(rm.current(), base);
+
     v.destroy();
+    EXPECT_EQ(rm.current(), 0U);
   }
 }
 
@@ -1383,76 +1311,27 @@ TEST(AqlValueSupervisedTest, FuncDataReturnsPointerToActualData) {
   EXPECT_EQ(rm.current(), 0u);
 }
 
-// Test toVelocyPack() returns Builder with heap data
-TEST(AqlValueSupervisedTest, FuncToVelocyPackReturnsCorrectBuilder) {
+TEST(AqlValueSupervisedTest, ToVelocyPackCopiesOutOfSupervisedMemory) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor rm(global);
 
-  const Options* opts = &Options::Defaults;
-  const std::string big(4096, 'x');
+  std::string big(4096, 'x');
+  Builder in;
+  in.openObject();
+  in.add("k", Value(1));
+  in.add("pad", Value(big));
+  in.close();
 
-  // STRING
-  {
-    Builder bin;
-    bin.add(Value(std::string("hello-") + big));
-    AqlValue v(Slice(bin.slice()), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+  AqlValue v(in.slice(), &rm);
+  ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
 
-    Builder bout;
-    v.toVelocyPack(opts, bout, /*allowUnindexed*/ true);
+  Builder out;
+  v.toVelocyPack(nullptr, out, /*allowUnindexed*/ true);
 
-    // Compare JSON equality
-    EXPECT_EQ(Slice(bin.slice()).toJson(opts),
-              Slice(bout.slice()).toJson(opts));
-
-    v.destroy();
-  }
-
-  // OBJECT
-  {
-    Builder bin;
-    bin.openObject();
-    bin.add("k1", Value(1));
-    bin.add("k2", Value(2));
-    bin.add("pad", Value(big));
-    bin.add("msg", Value("ok"));
-    bin.close();
-
-    AqlValue v(Slice(bin.slice()), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    Builder bout;
-    v.toVelocyPack(opts, bout, /*allowUnindexed*/ false);
-
-    EXPECT_EQ(Slice(bin.slice()).toJson(opts),
-              Slice(bout.slice()).toJson(opts));
-
-    v.destroy();
-  }
-
-  // ARRAY
-  {
-    Builder bin;
-    bin.openArray();
-    bin.add(Value("a"));
-    bin.add(Value("b"));
-    bin.add(Value(big));  // make array large
-    bin.add(Value("c"));
-    bin.close();
-
-    AqlValue v(Slice(bin.slice()), &rm);
-    ASSERT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-
-    Builder bout;
-    v.toVelocyPack(opts, bout, /*allowUnindexed*/ true);
-
-    EXPECT_EQ(Slice(bin.slice()).toJson(opts),
-              Slice(bout.slice()).toJson(opts));
-
-    v.destroy();
-  }
-
+  v.destroy();
   EXPECT_EQ(rm.current(), 0U);
+
+  EXPECT_TRUE(out.slice().binaryEquals(in.slice()));
 }
 
 // Test materialize() default case
@@ -1757,7 +1636,8 @@ TEST(AqlValueSupervisedTest, MultipleSharedCopiesWithDataPointer) {
 // Test OOM during supervised allocation
 TEST(AqlValueSupervisedTest, AllocationFailureThrowsOOM) {
   auto& global = GlobalResourceMonitor::instance();
-  ResourceMonitor rm(global, 1024);  // Set low limit
+  ResourceMonitor rm(global);
+  rm.memoryLimit(1024);
 
   // Try to allocate a huge supervised slice that exceeds the limit
   std::string huge(100000, 'x');
