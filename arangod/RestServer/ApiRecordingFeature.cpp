@@ -24,7 +24,7 @@
 #include "ApiRecordingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
+#include "CrashHandler/DataSource.h"
 #include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -47,10 +47,10 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
          bindVars.byteSize();
 }
 
-ApiRecordingFeature::ApiRecordingFeature(Server& server,
-                                         CrashHandlerRegistry* crashHandler)
+ApiRecordingFeature::ApiRecordingFeature(
+    Server& server, crash_handler::CrashHandlerRegistry* crashHandler)
     : ArangodFeature{server, *this},
-      CrashHandlerDataSource(crashHandler),
+      crash_handler::CrashHandlerDataSource(crashHandler),
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_api_recording_call_time{})),
       _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(

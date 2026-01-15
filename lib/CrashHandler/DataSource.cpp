@@ -21,11 +21,11 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CrashHandler/CrashHandlerDataSource.h"
+#include "CrashHandler/DataSource.h"
 
 #include <velocypack/SharedSlice.h>
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
 CrashHandlerDataSource::CrashHandlerDataSource(
     CrashHandlerRegistry* crashHandlerInterface)
@@ -35,4 +35,4 @@ CrashHandlerDataSource::~CrashHandlerDataSource() {
   _crashHandlerInterface->removeCrashHandlerDataSource(this);
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

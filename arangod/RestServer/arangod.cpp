@@ -23,7 +23,6 @@
 
 #include "RestServer/arangod.h"
 
-#include <string_view>
 #include <type_traits>
 #include "RestServer/DatabaseFeature.h"
 
@@ -58,8 +57,8 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler crashHandler;  // initializes the crash handler and starts its
-                                // thread the destructor will stop it.
+    arangodb::crash_handler::CrashHandler crashHandler;
+    // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
 
@@ -73,18 +72,17 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&server, &crashHandler](ArangodServer::State state) {
-           CrashHandler::setState(ArangodServer::stringifyState(state));
+           crash_handler::CrashHandler::setState(
+               ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
              // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
              // Register crash handler data sources if crash handler is enabled
-             if (server.getFeature<CrashHandlerFeature>().isEnabled()) {
-               crashHandler.addCrashHandlerDataSource(
-                   &server.getFeature<ApiRecordingFeature>());
-               crashHandler.addCrashHandlerDataSource(
-                   &server.getFeature<async_registry::Feature>());
-             }
+             crashHandler.addCrashHandlerDataSource(
+                 &server.getFeature<ApiRecordingFeature>());
+             crashHandler.addCrashHandlerDataSource(
+                 &server.getFeature<async_registry::Feature>());
            }
          },
          {}});

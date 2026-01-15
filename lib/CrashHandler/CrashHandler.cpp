@@ -51,7 +51,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "BuildId/BuildId.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
+#include "CrashHandler/DataSource.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
@@ -118,8 +118,8 @@ std::atomic<char const*> stateString = nullptr;
 
 /// @brief atomic variable for coordinating between signal handler and crash
 /// handler thread
-std::atomic<arangodb::CrashHandlerState> crashHandlerState(
-    arangodb::CrashHandlerState::IDLE);
+std::atomic<arangodb::crash_handler::CrashHandlerState> crashHandlerState(
+    arangodb::crash_handler::CrashHandlerState::IDLE);
 
 /// @brief dedicated crash handler thread
 std::unique_ptr<std::jthread> crashHandlerThread = nullptr;
@@ -593,7 +593,8 @@ void actuallyDumpCrashInfo() {
       arangodb::basics::FileUtils::createDirectory(crashDirectory);
 
       // Dump data from all registered and alive data sources
-      auto const* crashHandler = arangodb::CrashHandler::getCrashHandler();
+      auto const* crashHandler =
+          arangodb::crash_handler::CrashHandler::getCrashHandler();
       if (crashHandler == nullptr) {
         return;
       }
@@ -627,30 +628,31 @@ void actuallyDumpCrashInfo() {
 void crashHandlerThreadFunction() {
   while (true) {
     // Wait for the state to change from IDLE using C++20 atomic wait
-    arangodb::CrashHandlerState expectedState =
-        arangodb::CrashHandlerState::IDLE;
+    arangodb::crash_handler::CrashHandlerState expectedState =
+        arangodb::crash_handler::CrashHandlerState::IDLE;
     crashHandlerState.wait(expectedState, std::memory_order_acquire);
 
-    arangodb::CrashHandlerState state =
+    arangodb::crash_handler::CrashHandlerState state =
         crashHandlerState.load(std::memory_order_acquire);
 
     switch (state) {
-      case arangodb::CrashHandlerState::IDLE:
+      case arangodb::crash_handler::CrashHandlerState::IDLE:
         // Spurious wakeup or race condition, continue waiting
         break;
 
-      case arangodb::CrashHandlerState::CRASH_DETECTED: {
+      case arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED: {
         actuallyDumpCrashInfo();
 
         // Signal that we're done with crash handling and notify waiters
-        crashHandlerState.store(arangodb::CrashHandlerState::HANDLING_COMPLETE,
-                                std::memory_order_release);
+        crashHandlerState.store(
+            arangodb::crash_handler::CrashHandlerState::HANDLING_COMPLETE,
+            std::memory_order_release);
         crashHandlerState
             .notify_all();  // tell the crashed thread to continue crashing
         return;
       }
 
-      case arangodb::CrashHandlerState::SHUTDOWN:
+      case arangodb::crash_handler::CrashHandlerState::SHUTDOWN:
         // shutdown requested
         return;
 
@@ -714,10 +716,10 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
       // Signal the dedicated crash handler thread (force trigger even if not
       // idle), due to this static assertion we know that it is allowed to
       // use `notify_all` here in the signal handler.
-      arangodb::CrashHandler::triggerCrashHandler();
+      arangodb::crash_handler::CrashHandler::triggerCrashHandler();
 
       // Busy wait for the dedicated thread to complete its work
-      arangodb::CrashHandler::waitForCrashHandlerCompletion();
+      arangodb::crash_handler::CrashHandler::waitForCrashHandlerCompletion();
     }
 
     // Final cleanup
@@ -739,21 +741,23 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 }  // namespace
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
 void CrashHandler::triggerCrashHandler() {
-  ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
-                            std::memory_order_release);
+  ::crashHandlerState.store(
+      arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED,
+      std::memory_order_release);
   ::crashHandlerState.notify_all();
 }
 
 void CrashHandler::waitForCrashHandlerCompletion() {
   while (true) {
-    arangodb::CrashHandlerState currentState =
+    arangodb::crash_handler::CrashHandlerState currentState =
         ::crashHandlerState.load(std::memory_order_acquire);
-    if (currentState == arangodb::CrashHandlerState::CRASH_DETECTED) {
+    if (currentState ==
+        arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED) {
       // Wait for the state to change from the current state
       ::crashHandlerState.wait(currentState, std::memory_order_acquire);
     } else {
@@ -972,8 +976,9 @@ void CrashHandler::installCrashHandler() {
   {
     std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
     if (::crashHandlerThread == nullptr) {
-      ::crashHandlerState.store(arangodb::CrashHandlerState::IDLE,
-                                std::memory_order_relaxed);
+      ::crashHandlerState.store(
+          arangodb::crash_handler::CrashHandlerState::IDLE,
+          std::memory_order_relaxed);
       ::crashHandlerThread =
           std::make_unique<std::jthread>(::crashHandlerThreadFunction);
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -1081,14 +1086,17 @@ void CrashHandler::shutdownCrashHandler() {
     // with the signal handler waiting upon completion of the crash handler
     // thread. Note that the signal handler must not finish before the crash
     // handler, due to object lifetimes.
-    auto expected = arangodb::CrashHandlerState::IDLE;
+    auto expected = arangodb::crash_handler::CrashHandlerState::IDLE;
     if (::crashHandlerState.compare_exchange_strong(
-            expected, arangodb::CrashHandlerState::SHUTDOWN,
+            expected, arangodb::crash_handler::CrashHandlerState::SHUTDOWN,
             std::memory_order_relaxed, std::memory_order_relaxed)) {
       ::crashHandlerState.notify_all();
     } else {
-      TRI_ASSERT(expected == arangodb::CrashHandlerState::CRASH_DETECTED ||
-                 expected == arangodb::CrashHandlerState::HANDLING_COMPLETE);
+      TRI_ASSERT(
+          expected ==
+              arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED ||
+          expected ==
+              arangodb::crash_handler::CrashHandlerState::HANDLING_COMPLETE);
     }
 
     // Wait for the thread to finish
@@ -1098,11 +1106,11 @@ void CrashHandler::shutdownCrashHandler() {
 
     // Clean up
     ::crashHandlerThread.reset();
-    ::crashHandlerState.store(arangodb::CrashHandlerState::IDLE,
+    ::crashHandlerState.store(arangodb::crash_handler::CrashHandlerState::IDLE,
                               std::memory_order_relaxed);
   }
 
   ::backtraceBuffer.reset();  // release memory
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

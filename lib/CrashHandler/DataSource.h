@@ -27,9 +27,9 @@
 #include <vector>
 
 #include <velocypack/SharedSlice.h>
-#include "CrashHandlerRegistry.h"
+#include "CrashHandler/Registry.h"
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
 class CrashHandlerRegistry;
 
@@ -47,4 +47,4 @@ class CrashHandlerDataSource {
   CrashHandlerRegistry* _crashHandlerInterface;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

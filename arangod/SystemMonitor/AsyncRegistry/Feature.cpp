@@ -24,7 +24,7 @@
 
 #include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
+#include "CrashHandler/DataSource.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -126,9 +126,10 @@ VPackBuilder serialize(
   return builder;
 }
 
-Feature::Feature(Server& server, CrashHandlerRegistry* crashHandlerRegistry)
+Feature::Feature(Server& server,
+                 crash_handler::CrashHandlerRegistry* crashHandlerRegistry)
     : ArangodFeature{server, *this},
-      CrashHandlerDataSource(crashHandlerRegistry) {
+      crash_handler::CrashHandlerDataSource(crashHandlerRegistry) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }

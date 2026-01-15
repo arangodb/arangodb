@@ -30,7 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
 class CrashHandlerDataSource;
 
@@ -73,7 +73,7 @@ class CrashHandlerRegistry {
 
  private:
   std::mutex _dataSourceMtx;
-  std::vector<arangodb::CrashHandlerDataSource const*> _dataSources;
+  std::vector<CrashHandlerDataSource const*> _dataSources;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

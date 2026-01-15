@@ -29,9 +29,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "CrashHandler/CrashHandlerRegistry.h"
+#include "CrashHandler/Registry.h"
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
 class CrashHandlerDataSource;
 
@@ -143,4 +143,4 @@ class CrashHandler : public CrashHandlerRegistry {
   static void shutdownCrashHandler();
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

@@ -27,16 +27,18 @@
 #include "Scheduler/AsyncLockWithScheduler.h"
 #include "Async/Registry/promise.h"
 #include "Containers/Forest/forest.h"
-#include "CrashHandler/CrashHandlerDataSource.h"
-#include "CrashHandler/CrashHandlerRegistry.h"
+#include "CrashHandler/DataSource.h"
+#include "CrashHandler/Registry.h"
 
 namespace arangodb::async_registry {
 
 auto all_undeleted_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
 
-VPackBuilder serialize(containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
+VPackBuilder serialize(
+    containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
 
-class Feature final : public ArangodFeature, public CrashHandlerDataSource {
+class Feature final : public ArangodFeature,
+                      public crash_handler::CrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
@@ -47,7 +49,8 @@ class Feature final : public ArangodFeature, public CrashHandlerDataSource {
     return _asyncLock.lock();
   };
 
-  Feature(Server& server, CrashHandlerRegistry* crashHandlerRegistry);
+  Feature(Server& server,
+          crash_handler::CrashHandlerRegistry* crashHandlerRegistry);
 
   void prepare() override final;
   void start() override final;
