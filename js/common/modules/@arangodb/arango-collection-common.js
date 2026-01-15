@@ -85,6 +85,9 @@ ArangoCollection.prototype._PRINT = function (context) {
   var name = this.name();
 
   switch (this.status()) {
+    case ArangoCollection.STATUS_LOADED:
+      status = 'loaded';
+      break;
     case ArangoCollection.STATUS_CORRUPTED:
       status = 'corrupted';
       break;
