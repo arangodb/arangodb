@@ -24,8 +24,10 @@
 #include "RestServer/CrashHandlerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "CrashHandler/CrashRegistry.h"
+#include "CrashHandler/CrashHandler.h"
+#include "CrashHandler/Dumper.h"
+#include "Basics/FileUtils.h"
+#include "Basics/files.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -34,7 +36,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 CrashHandlerFeature::CrashHandlerFeature(
-    Server& server, crash_handler::ICrashRegistry* crashHandler)
+    Server& server, crash_handler::CrashHandler* crashHandler)
     : ArangodFeature{server, *this},
       _crashHandler(crashHandler),
       _enabled(true) {
@@ -44,8 +46,8 @@ CrashHandlerFeature::CrashHandlerFeature(
 }
 
 void CrashHandlerFeature::start() {
-  if (_enabled && _crashHandler != nullptr) {
-    _crashHandler->setDatabaseDirectory(
+  if (_enabled) {
+    setDatabaseDirectory(
         server().getFeature<DatabasePathFeature>().directory());
   }
 }
@@ -65,29 +67,71 @@ void CrashHandlerFeature::collectOptions(
 }
 
 void CrashHandlerFeature::setDatabaseDirectory(std::string path) {
-  if (_enabled && _crashHandler != nullptr) {
-    _crashHandler->setDatabaseDirectory(std::move(path));
+  if (!_enabled) {
+    return;
   }
+  _crashesDirectory =
+      arangodb::basics::FileUtils::buildFilename(path, "crashes");
+  if (_crashHandler != nullptr) {
+    _crashHandler->getDumper()->setCrashesDirectory(_crashesDirectory);
+  }
+  // Clean up old crash directories on startup
+  crash_handler::Dumper::cleanupOldCrashDirectories(_crashesDirectory,
+                                                    /*max*/ 10);
 }
 
-std::vector<std::string> CrashHandlerFeature::listCrashes() const {
-  if (!_enabled || _crashHandler == nullptr) {
+std::vector<std::string> CrashHandlerFeature::listCrashes() {
+  std::vector<std::string> crashes;
+  if (!_enabled || _crashesDirectory.empty() ||
+      !arangodb::basics::FileUtils::isDirectory(_crashesDirectory)) {
     return {};
   }
-  return _crashHandler->listCrashes();
+  auto entries = arangodb::basics::FileUtils::listFiles(_crashesDirectory);
+  for (auto const& entry : entries) {
+    auto fullPath =
+        arangodb::basics::FileUtils::buildFilename(_crashesDirectory, entry);
+    if (arangodb::basics::FileUtils::isDirectory(fullPath)) {
+      crashes.push_back(entry);
+    }
+  }
+  return crashes;
 }
 
 std::unordered_map<std::string, std::string>
-CrashHandlerFeature::getCrashContents(std::string_view crashId) const {
-  if (!_enabled || _crashHandler == nullptr) {
-    return {};
+CrashHandlerFeature::getCrashContents(std::string_view crashId) {
+  std::unordered_map<std::string, std::string> contents;
+  if (!_enabled || _crashesDirectory.empty()) {
+    return contents;
   }
-  return _crashHandler->getCrashContents(crashId);
+  auto crashDir = arangodb::basics::FileUtils::buildFilename(
+      _crashesDirectory, std::string(crashId));
+  if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
+    return contents;
+  }
+  auto const files = arangodb::basics::FileUtils::listFiles(crashDir);
+  for (auto const& file : files) {
+    auto const filePath =
+        arangodb::basics::FileUtils::buildFilename(crashDir, file);
+    if (arangodb::basics::FileUtils::isRegularFile(filePath)) {
+      try {
+        contents[file] = arangodb::basics::FileUtils::slurp(filePath);
+      } catch (...) {
+        // Skip files that can't be read
+      }
+    }
+  }
+  return contents;
 }
 
-bool CrashHandlerFeature::deleteCrash(std::string_view crashId) const {
-  if (!_enabled || _crashHandler == nullptr) {
+bool CrashHandlerFeature::deleteCrash(std::string_view crashId) {
+  if (!_enabled || _crashesDirectory.empty()) {
     return false;
   }
-  return _crashHandler->deleteCrash(crashId);
+  auto crashDir = arangodb::basics::FileUtils::buildFilename(
+      _crashesDirectory, std::string(crashId));
+  if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
+    return false;
+  }
+  auto res = TRI_RemoveDirectory(crashDir.c_str());
+  return res == TRI_ERROR_NO_ERROR;
 }

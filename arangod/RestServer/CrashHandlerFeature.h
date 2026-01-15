@@ -28,23 +28,25 @@
 #include <unordered_map>
 #include <vector>
 
+#include "CrashHandler/CrashRegistry.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
 
 namespace crash_handler {
-class ICrashRegistry;
+class CrashHandler;
 }  // namespace crash_handler
 
 /// @brief Feature to control crash dump logging to the database directory.
 /// The CrashHandler itself always runs for crash handling, but this feature
 /// controls whether additional crash information is written to disk.
-class CrashHandlerFeature final : public ArangodFeature {
+class CrashHandlerFeature final : public ArangodFeature,
+                                  public crash_handler::ICrashRegistry {
  public:
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
   explicit CrashHandlerFeature(Server& server,
-                               crash_handler::ICrashRegistry* crashHandler);
+                               crash_handler::CrashHandler* crashHandler);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -53,29 +55,25 @@ class CrashHandlerFeature final : public ArangodFeature {
 
   void start() override final;
 
-  /// @brief returns the crash handler interface pointer
-  crash_handler::ICrashRegistry* crashHandler() const noexcept {
-    return _crashHandler;
-  }
-
   /// @brief sets the database directory for crash dumps
-  void setDatabaseDirectory(std::string path);
+  void setDatabaseDirectory(std::string path) override;
 
   /// @brief lists all crash directories (returns UUIDs)
-  std::vector<std::string> listCrashes() const;
+  std::vector<std::string> listCrashes() override;
 
   /// @brief gets the contents of a specific crash directory
   std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) const;
+      std::string_view crashId) override;
 
   /// @brief deletes a specific crash directory
-  bool deleteCrash(std::string_view crashId) const;
+  bool deleteCrash(std::string_view crashId) override;
 
  private:
-  /// @brief pointer to the CrashHandler interface (not owned)
-  /// This is so we don't directly link with CrashHandler
-  /// which breaks test dependencies
-  crash_handler::ICrashRegistry* _crashHandler;
+  /// @brief pointer to the CrashHandler implementation (not owned)
+  crash_handler::CrashHandler* _crashHandler;
+
+  /// @brief crashes directory path used by this feature
+  std::string _crashesDirectory;
 
   /// @brief whether crash dump logging is enabled
   bool _enabled;

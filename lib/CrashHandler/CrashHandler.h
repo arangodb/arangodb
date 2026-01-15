@@ -25,12 +25,8 @@
 
 #include <atomic>
 #include <memory>
-#include <string>
 #include <string_view>
-#include <unordered_map>
-#include <vector>
 
-#include "CrashHandler/CrashRegistry.h"
 #include "CrashHandler/DataSourceRegistry.h"
 #include "CrashHandler/Dumper.h"
 
@@ -50,27 +46,19 @@ enum class CrashHandlerState : int {
   SHUTDOWN = 3            ///< shutdown requested
 };
 
-class CrashHandler : public ICrashRegistry {
+class CrashHandler {
   std::atomic<bool> _threadRunning{false};
   // This needs to be static for the signal handlers to reach!
   static std::atomic<CrashHandler*> _theCrashHandler;
 
  public:
   CrashHandler();
-  ~CrashHandler() override;
+  ~CrashHandler();
 
   static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
 
-  // ICrashRegistry implementation
-  void setDatabaseDirectory(std::string path) override;
-  std::vector<std::string> listCrashes() override;
-  std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) override;
-
-  bool deleteCrash(std::string_view crashId) override;
-
-  std::string const& crashesDirectory() const noexcept;
   DataSourceRegistry* dataSourceRegistry() const noexcept;
+
   Dumper* getDumper() const noexcept;
 
   /// @brief log backtrace for current thread to logfile
