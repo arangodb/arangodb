@@ -99,9 +99,9 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     l = prefix->size() + 1;
   }
 
-  // we must have found a handler - at least the catch-all handler must be
-  // present
-  TRI_ASSERT(it != _constructors.end());
+  if (it == _constructors.end()) {
+    return nullptr;
+  }
 
   size_t n = path.find('/', l);
 
