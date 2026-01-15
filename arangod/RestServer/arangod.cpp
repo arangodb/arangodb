@@ -239,15 +239,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<EndpointFeature>(server);
         }});
 
-    // If the feature is not enabled we don't set the database directory
-    // which makes crashes directory not being dumped
-    if (server.getFeature<CrashHandlerFeature>().isEnabled()) {
-      server.getFeature<DatabasePathFeature>().setCrashHandlerDatabaseDirectory(
-          [&server](std::string& path) {
-            server.getFeature<CrashHandlerFeature>().setDatabaseDirectory(path);
-          });
-    }
-
     try {
       server.run(argc, argv);
       if (server.helpShown()) {

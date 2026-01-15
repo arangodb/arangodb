@@ -226,13 +226,6 @@ void DatabasePathFeature::start() {
       FATAL_ERROR_EXIT();
     }
   }
-
-  _setCrashHandlerDatabaseDirectory(_directory);
-}
-
-void DatabasePathFeature::setCrashHandlerDatabaseDirectory(
-    std::function<void(std::string&)>&& callback) {
-  _setCrashHandlerDatabaseDirectory = std::move(callback);
 }
 
 std::string DatabasePathFeature::subdirectoryName(

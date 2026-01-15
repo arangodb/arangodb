@@ -51,6 +51,8 @@ class CrashHandlerFeature final : public ArangodFeature {
   /// @brief returns true if crash dump logging is enabled
   bool isEnabled() const noexcept { return _enabled; }
 
+  void start() override final;
+
   /// @brief returns the crash handler interface pointer
   crash_handler::ICrashRegistry* crashHandler() const noexcept {
     return _crashHandler;

@@ -28,6 +28,7 @@
 #include "CrashHandler/CrashRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -39,7 +40,14 @@ CrashHandlerFeature::CrashHandlerFeature(
       _enabled(true) {
   setOptional(false);
   // This feature should start very early
-  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<DatabasePathFeature>();
+}
+
+void CrashHandlerFeature::start() {
+  if (_enabled && _crashHandler != nullptr) {
+    _crashHandler->setDatabaseDirectory(
+        server().getFeature<DatabasePathFeature>().directory());
+  }
 }
 
 void CrashHandlerFeature::collectOptions(

@@ -48,13 +48,9 @@ class DatabasePathFeature final : public ArangodFeature {
     _directory = path;
   }
 
-  void setCrashHandlerDatabaseDirectory(
-      std::function<void(std::string&)>&& callback);
-
  private:
   std::string _directory;
   std::string _requiredDirectoryState;
-  std::function<void(std::string&)> _setCrashHandlerDatabaseDirectory;
 };
 
 }  // namespace arangodb
