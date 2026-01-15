@@ -92,7 +92,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
   if (node == nullptr) {
     return false;
   }
-  LOG_DEVEL << "before(): nodeType: " << node->getType();
 
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
@@ -225,29 +224,31 @@ bool AttributeDetector::before(ExecutionNode* node) {
         }
       }
 
-      Projections const& vertexProjs =
-          travNode->options()->getVertexProjections();
-      if (!vertexProjs.empty()) {
-        for (auto* vertexColl : travNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
-          }
-          for (auto const& proj : vertexProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+      if (travNode->options()->produceVertices()) {
+        Projections const& vertexProjs =
+            travNode->options()->getVertexProjections();
+        if (!vertexProjs.empty()) {
+          for (auto* vertexColl : travNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            for (auto const& proj : vertexProjs.projections()) {
+              for (auto const& attrName : proj.path.get()) {
+                access->readAttributes.insert(std::string(attrName));
+              }
             }
           }
-        }
-      } else {
-        for (auto* vertexColl : travNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
+        } else {
+          for (auto* vertexColl : travNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            access->requiresAllAttributesRead = true;
           }
-          access->requiresAllAttributesRead = true;
         }
       }
       break;
@@ -281,29 +282,31 @@ bool AttributeDetector::before(ExecutionNode* node) {
         }
       }
 
-      Projections const& vertexProjs =
-          pathNode->options()->getVertexProjections();
-      if (!vertexProjs.empty()) {
-        for (auto* vertexColl : pathNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
-          }
-          for (auto const& proj : vertexProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+      if (pathNode->options()->produceVertices()) {
+        Projections const& vertexProjs =
+            pathNode->options()->getVertexProjections();
+        if (!vertexProjs.empty()) {
+          for (auto* vertexColl : pathNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            for (auto const& proj : vertexProjs.projections()) {
+              for (auto const& attrName : proj.path.get()) {
+                access->readAttributes.insert(std::string(attrName));
+              }
             }
           }
-        }
-      } else {
-        for (auto* vertexColl : pathNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
+        } else {
+          for (auto* vertexColl : pathNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            access->requiresAllAttributesRead = true;
           }
-          access->requiresAllAttributesRead = true;
         }
       }
       break;
@@ -337,29 +340,31 @@ bool AttributeDetector::before(ExecutionNode* node) {
         }
       }
 
-      Projections const& vertexProjs =
-          pathNode->options()->getVertexProjections();
-      if (!vertexProjs.empty()) {
-        for (auto* vertexColl : pathNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
-          }
-          for (auto const& proj : vertexProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+      if (pathNode->options()->produceVertices()) {
+        Projections const& vertexProjs =
+            pathNode->options()->getVertexProjections();
+        if (!vertexProjs.empty()) {
+          for (auto* vertexColl : pathNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            for (auto const& proj : vertexProjs.projections()) {
+              for (auto const& attrName : proj.path.get()) {
+                access->readAttributes.insert(std::string(attrName));
+              }
             }
           }
-        }
-      } else {
-        for (auto* vertexColl : pathNode->vertexColls()) {
-          auto& access = _collectionAccessMap[vertexColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = vertexColl->name();
+        } else {
+          for (auto* vertexColl : pathNode->vertexColls()) {
+            auto& access = _collectionAccessMap[vertexColl->name()];
+            if (!access) {
+              access = std::make_unique<CollectionAccess>();
+              access->collectionName = vertexColl->name();
+            }
+            access->requiresAllAttributesRead = true;
           }
-          access->requiresAllAttributesRead = true;
         }
       }
       break;
