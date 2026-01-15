@@ -70,11 +70,6 @@ void AttributeDetector::detect() {
       }
       access->requiresAllAttributesRead = true;
     }
-    // for (auto& [collName, access] : _collectionAccessMap) {
-    //   if (access) {
-    //     access->requiresAllAttributesRead = true;
-    //   }
-    // }
   }
 
   for (auto& [collName, access] : _collectionAccessMap) {
@@ -118,10 +113,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
-      } else {
-        // There is no projection -> full document acces
-        // e.g. FOR u IN users RETURN u
-        access->requiresAllAttributesRead = true;
       }
 
       Projections const& filterProjections = enumNode->filterProjections();
@@ -132,11 +123,14 @@ bool AttributeDetector::before(ExecutionNode* node) {
           }
         }
       }
+
+      if (projs.empty() && enumNode->isVarUsedLater(enumNode->outVariable())) {
+        access->requiresAllAttributesRead = true;
+      }
       break;
     }
 
     case ExecutionNode::INDEX: {
-      LOG_DEVEL << "IndexNode is used";
       auto* idxNode = ExecutionNode::castTo<IndexNode*>(node);
       std::string collName = idxNode->collection()->name();
 
@@ -155,10 +149,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
-      } else {
-        // There is no projection -> full document acces
-        // e.g. FOR u IN users RETURN u
-        access->requiresAllAttributesRead = true;
       }
 
       Projections const& filterProjections = idxNode->filterProjections();
@@ -168,6 +158,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->readAttributes.insert(std::string(attrName));
           }
         }
+      }
+
+      if (projs.empty() && idxNode->isVarUsedLater(idxNode->outVariable())) {
+        access->requiresAllAttributesRead = true;
       }
 
       Condition* cond = idxNode->condition();
@@ -198,7 +192,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access->collectionName = coll.first.get().name();
         }
         access->requiresAllAttributesRead = true;
-        access->requiresAllAttributesWrite = false;
       }
       break;
     }

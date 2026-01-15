@@ -219,6 +219,17 @@ TEST_F(AttributeDetectorTest, UpsertOperation) {
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
+
+
+TEST_F(AttributeDetectorTest, FilterOnAttributeReturnFullDocument) {
+  auto query = executeQuery("FOR u IN users FILTER u.name == 'Alice' RETURN u");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
 TEST_F(AttributeDetectorTest, MultipleCollections) {
   auto query = executeQuery(
       "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: "
@@ -517,6 +528,27 @@ TEST_F(AttributeDetectorTest, ComplexCalculation) {
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, ReadAndInsertSameCollectionDoesNotLoseReadFlag) {
+  auto query = executeQuery("FOR d IN users INSERT d INTO users");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, InsertRequiresAllReadAndWrite) {
+  auto query = executeQuery("INSERT {name: 'Eve', age: 35} INTO users");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
+  EXPECT_EQ(accesses[0].readAttributes.size(), 0);
 }
 
 TEST_F(AttributeDetectorTest, UpdateInLoop) {
