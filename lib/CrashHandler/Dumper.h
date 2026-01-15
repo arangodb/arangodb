@@ -40,8 +40,6 @@ class Dumper {
 
   void setCrashesDirectory(std::string const& crashesDirectory);
 
-  void dumpData() const;
-
   static void cleanupOldCrashDirectories(std::string const& crashesDirectory,
                                          size_t maxCrashDirectories);
 

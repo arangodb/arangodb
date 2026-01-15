@@ -27,7 +27,6 @@
 #include <string_view>
 #include <memory>
 
-#include "CrashHandler/DataSourceRegistry.h"
 #include "CrashHandler/Dumper.h"
 
 namespace arangodb::crash_handler {

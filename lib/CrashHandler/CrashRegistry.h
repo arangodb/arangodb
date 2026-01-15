@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -31,13 +30,9 @@
 
 namespace arangodb::crash_handler {
 
-
 class ICrashRegistry {
  public:
   virtual ~ICrashRegistry() = default;
-
-  /// @brief sets the database directory for crash dumps
-  virtual void setDatabaseDirectory(std::string path) = 0;
 
   /// @brief lists all crash directories (returns UUIDs)
   virtual std::vector<std::string> listCrashes() = 0;

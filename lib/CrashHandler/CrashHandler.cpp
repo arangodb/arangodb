@@ -551,7 +551,6 @@ void actuallyDumpCrashInfo() {
     }
     auto dumper = crashHandler->getDumper();
     dumper->createCrashDirectory();
-    dumper->dumpData();
     dumper->dumpDataSources();
     size_t dumpBytesUsed =
         ::backtraceBufferUsed.load(std::memory_order_acquire);

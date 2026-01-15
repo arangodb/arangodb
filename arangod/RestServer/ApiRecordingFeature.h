@@ -112,8 +112,9 @@ class ApiRecordingFeature : public ArangodFeature,
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(Server& server,
-                               crash_handler::DataSourceRegistry* crashHandler);
+  explicit ApiRecordingFeature(
+      Server& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

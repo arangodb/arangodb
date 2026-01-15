@@ -125,9 +125,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
-        [&crashHandler](auto& server, TypeTag<CrashHandlerFeature>) {
-          return std::make_unique<CrashHandlerFeature>(
-              server, &crashHandler.getDumper());
+        [&crashDumper](auto& server, TypeTag<CrashHandlerFeature>) {
+          return std::make_unique<CrashHandlerFeature>(server, crashDumper);
         },
         [](auto& server, TypeTag<ClusterUpgradeFeature>) {
           return std::make_unique<ClusterUpgradeFeature>(

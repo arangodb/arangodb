@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -34,7 +34,8 @@ class DataSourceRegistry;
 
 class ICrashHandlerDataSource {
  public:
-  ICrashHandlerDataSource(DataSourceRegistry* dataSourceRegistry);
+  ICrashHandlerDataSource(
+      std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
 
   virtual ~ICrashHandlerDataSource();
 
@@ -43,7 +44,7 @@ class ICrashHandlerDataSource {
   virtual std::string_view getDataSourceName() const = 0;
 
  private:
-  DataSourceRegistry* _dataSourceRegistry;
+  std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
 
 }  // namespace arangodb::crash_handler

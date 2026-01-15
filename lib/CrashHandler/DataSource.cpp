@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -28,7 +28,7 @@
 namespace arangodb::crash_handler {
 
 ICrashHandlerDataSource::ICrashHandlerDataSource(
-    DataSourceRegistry* dataSourceRegistry)
+    std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(dataSourceRegistry) {}
 
 ICrashHandlerDataSource::~ICrashHandlerDataSource() {

@@ -49,8 +49,9 @@ class Feature final : public ArangodFeature,
     return _asyncLock.lock();
   };
 
-  Feature(Server& server,
-          crash_handler::DataSourceRegistry* crashHandlerRegistry);
+  Feature(
+      Server& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   void prepare() override final;
   void start() override final;
