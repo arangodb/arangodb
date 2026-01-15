@@ -55,15 +55,9 @@ function calculating_statisticsSuite () {
       let cmd = "/_admin/statistics-description/asd123";
       let doc = arango.GET_RAW(cmd) ;
 
-      if (SYS_IS_V8_BUILD) {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      } else {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_IMPLEMENTED.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_NOT_IMPLEMENTED.code);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertTrue(doc.error);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     ////////////////////////////////////////////////////////////////////////////////;
@@ -85,15 +79,9 @@ function calculating_statisticsSuite () {
       let cmd = "/_admin/statistics/asd123";
       let doc = arango.GET_RAW(cmd) ;
 
-      if (SYS_IS_V8_BUILD) {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      } else {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_IMPLEMENTED.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_NOT_IMPLEMENTED.code);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertTrue(doc.error);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
     ////////////////////////////////////////////////////////////////////////////////;
