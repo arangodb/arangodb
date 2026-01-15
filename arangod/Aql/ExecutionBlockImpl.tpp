@@ -1355,9 +1355,9 @@ auto ExecutionBlockImpl<Executor>::sideEffectSkipHandling(
         // we have to wait for the next one before we can make a decision what to do with the current shadow row.
         return SideEffectSkipResult::RETURN_DONE;
       }
-      return SideEffectSkipResult::DROP_SHADOW_ROW;
-      // We are skipping the outermost Subquery.
+      // We are skipping an outer Subquery.
       // Simply drop this ShadowRow
+      return SideEffectSkipResult::DROP_SHADOW_ROW;
     } else if (depthSkippingNow == shadowDepth) {
       AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
       // We are skipping on this subquery level.
