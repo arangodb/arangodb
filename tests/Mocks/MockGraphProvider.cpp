@@ -95,6 +95,70 @@ MockGraphProvider::Step::Step(size_t prev, arangodb::graph::VertexRef v,
       _edge(e),
       _isProcessable(isProcessable) {}
 
+template<typename Step>
+auto MockGraphProvider::MockGraphNeighbourCursor<Step>::next()
+    -> std::vector<Step> {
+  std::vector<Step> result{};
+  if (_reverse) {
+    LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
+        << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
+    if (_toIndex.find(_step.getVertex().getID().toString()) != _toIndex.end()) {
+      for (auto const& edge : _toIndex[_step.getVertex().getID().toString()]) {
+        VPackHashedStringRef fromH{edge._from.c_str(),
+                                   static_cast<uint32_t>(edge._from.length())};
+        if (_weightCallback.has_value()) {
+          VPackBuilder builder;
+          edge.addToBuilder(builder);
+          result.push_back(
+              Step{_previous, arangodb::graph::VertexRef{fromH}, edge,
+                   _processable, (_step.getDepth() + 1),
+                   (*_weightCallback)(_step.getWeight(), builder.slice())});
+        } else {
+          result.push_back(Step{_previous, arangodb::graph::VertexRef{fromH},
+                                edge, _processable, (_step.getDepth() + 1)});
+        }
+
+        LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
+            << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
+            << ", Edge: " << edge.toString() << ", previous: " << _previous;
+      }
+    }
+  } else {
+    LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
+        << "<MockGraphProvider - default> _fromIndex size: "
+        << _fromIndex.size();
+
+    if (_fromIndex.find(_step.getVertex().getID().toString()) !=
+        _fromIndex.end()) {
+      for (auto const& edge :
+           _fromIndex[_step.getVertex().getID().toString()]) {
+        VPackHashedStringRef toH{edge._to.c_str(),
+                                 static_cast<uint32_t>(edge._to.length())};
+        if (_weightCallback.has_value()) {
+          VPackBuilder builder;
+          edge.addToBuilder(builder);
+          result.push_back(
+              Step{_previous, arangodb::graph::VertexRef{toH}, edge,
+                   _processable, (_step.getDepth() + 1),
+                   (*_weightCallback)(_step.getWeight(), builder.slice())});
+        } else {
+          result.push_back(Step{_previous, arangodb::graph::VertexRef{toH},
+                                edge, _processable, (_step.getDepth() + 1)});
+        }
+
+        LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
+            << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH
+            << ", Edge: " << edge.toString() << ", previous: " << _previous;
+      }
+    }
+  }
+  _hasMore = false;
+  _stats.incrScannedIndex(result.size());
+  return result;
+
+  return {};
+}
+
 MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
                                      MockGraphProviderOptions opts,
                                      arangodb::ResourceMonitor&)
@@ -159,8 +223,16 @@ auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
 
 auto MockGraphProvider::expand(Step const& step, size_t previous,
                                std::function<void(Step)> callback) -> void {
-  std::vector<Step> results{};
-  results = expand(step, previous);
+  auto cursor =
+      MockGraphNeighbourCursor<Step>{._step = step,
+                                     ._previous = previous,
+                                     ._fromIndex = _fromIndex,
+                                     ._toIndex = _toIndex,
+                                     ._weightCallback = _weightCallback,
+                                     ._processable = decideProcessable(),
+                                     ._reverse = _reverse,
+                                     ._stats = _stats};
+  auto results = cursor.next();
   for (auto const& s : results) {
     callback(s);
   }
@@ -234,77 +306,6 @@ auto MockGraphProvider::getEdgeIdRef(const Step::Edge& edge)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
-    -> std::vector<Step> {
-  LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Expanding...";
-  std::vector<Step> result{};
-
-  LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Searching: "
-      << source.getVertex().getID().toString();
-
-  if (_reverse) {
-    LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-        << "<MockGraphProvider - reverse> _toIndex size: " << _toIndex.size();
-    if (_toIndex.find(source.getVertex().getID().toString()) !=
-        _toIndex.end()) {
-      for (auto const& edge : _toIndex[source.getVertex().getID().toString()]) {
-        VPackHashedStringRef fromH{edge._from.c_str(),
-                                   static_cast<uint32_t>(edge._from.length())};
-        if (_weightCallback.has_value()) {
-          VPackBuilder builder;
-          edge.addToBuilder(builder);
-          result.push_back(
-              Step{previousIndex, arangodb::graph::VertexRef{fromH}, edge,
-                   decideProcessable(), (source.getDepth() + 1),
-                   (*_weightCallback)(source.getWeight(), builder.slice())});
-        } else {
-          result.push_back(Step{previousIndex,
-                                arangodb::graph::VertexRef{fromH}, edge,
-                                decideProcessable(), (source.getDepth() + 1)});
-        }
-
-        LOG_TOPIC("78158", TRACE, Logger::GRAPHS)
-            << "  <MockGraphProvider> added <Step><Vertex>: " << fromH
-            << ", Edge: " << edge.toString() << ", previous: " << previousIndex;
-      }
-    }
-  } else {
-    LOG_TOPIC("78157", TRACE, Logger::GRAPHS)
-        << "<MockGraphProvider - default> _fromIndex size: "
-        << _fromIndex.size();
-    if (_fromIndex.find(source.getVertex().getID().toString()) !=
-        _fromIndex.end()) {
-      for (auto const& edge :
-           _fromIndex[source.getVertex().getID().toString()]) {
-        VPackHashedStringRef toH{edge._to.c_str(),
-                                 static_cast<uint32_t>(edge._to.length())};
-        if (_weightCallback.has_value()) {
-          VPackBuilder builder;
-          edge.addToBuilder(builder);
-          result.push_back(
-              Step{previousIndex, arangodb::graph::VertexRef{toH}, edge,
-                   decideProcessable(), (source.getDepth() + 1),
-                   (*_weightCallback)(source.getWeight(), builder.slice())});
-        } else {
-          result.push_back(Step{previousIndex, arangodb::graph::VertexRef{toH},
-                                edge, decideProcessable(),
-                                (source.getDepth() + 1)});
-        }
-
-        LOG_TOPIC("78159", TRACE, Logger::GRAPHS)
-            << "  <MockGraphProvider - default> added <Step><Vertex>: " << toH
-            << ", Edge: " << edge.toString() << ", previous: " << previousIndex;
-      }
-    }
-  }
-  LOG_TOPIC("78160", TRACE, Logger::GRAPHS)
-      << "<MockGraphProvider> Expansion length: " << result.size();
-  _stats.incrScannedIndex(result.size());
-  return result;
-}
-
 void MockGraphProvider::prepareIndexExpressions(aql::Ast* ast) {
   // Nothing to do here. We do not have any special index conditions
 }
@@ -336,3 +337,6 @@ aql::TraversalStats MockGraphProvider::stealStats() {
   new (&_stats) aql::TraversalStats{};
   return t;
 }
+
+template struct MockGraphProvider::MockGraphNeighbourCursor<
+    MockGraphProvider::Step>;
