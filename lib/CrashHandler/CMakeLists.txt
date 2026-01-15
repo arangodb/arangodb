@@ -1,16 +1,6 @@
-add_library(arango_crashhandler_datasource STATIC
-    CrashHandlerDataSource.cpp)
-
-target_include_directories(arango_crashhandler_datasource
-  PUBLIC
-    ${PROJECT_SOURCE_DIR}/lib)
-
-target_link_libraries(arango_crashhandler_datasource
-    velocypack
-)
-
 add_library(arango_crashhandler STATIC
-    CrashHandler.cpp)
+    CrashHandler.cpp
+    CrashHandlerDataSource.cpp)
 
 target_include_directories(arango_crashhandler
   PUBLIC
@@ -31,7 +21,6 @@ target_link_libraries(arango_crashhandler
   PRIVATE
     arango_basic_errors
     arango_build_id
-    arango_crashhandler_datasource
     boost_system
     velocypack)
 
