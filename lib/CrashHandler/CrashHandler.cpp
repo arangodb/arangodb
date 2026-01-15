@@ -801,10 +801,6 @@ void cleanupOldCrashDirectories() {
   }
 }
 
-std::string CrashHandler::getCrashesDirectory() {
-  return ::databaseDirectoryPath;
-}
-
 // ICrashRegistry instance method implementations
 void CrashHandler::setDatabaseDirectory(std::string path) {
   ::databaseDirectoryPath =

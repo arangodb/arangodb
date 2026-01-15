@@ -81,6 +81,7 @@ class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
   std::vector<std::string> listCrashes() override;
   std::unordered_map<std::string, std::string> getCrashContents(
       std::string_view crashId) override;
+
   bool deleteCrash(std::string_view crashId) override;
 
   /// @brief log backtrace for current thread to logfile
@@ -117,24 +118,6 @@ class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
   /// This is used in the signal handlers and in the std::terminate handler
   /// for assertion failures.
   static void waitForCrashHandlerCompletion();
-
-  /// @brief sets the database directory
-  static void setDatabaseDirectoryStatic(std::string path);
-
-  /// @brief gets the crashes directory path
-  static std::string getCrashesDirectory();
-
-  /// @brief lists all crash directories (returns UUIDs)
-  static std::vector<std::string> listCrashesStatic();
-
-  /// @brief gets the contents of a specific crash directory
-  /// Returns a map of filename -> file contents
-  static std::unordered_map<std::string, std::string> getCrashContentsStatic(
-      std::string_view crashId);
-
-  /// @brief deletes a specific crash directory
-  /// Returns true if successful, false if not found
-  static bool deleteCrashStatic(std::string_view crashId);
 
  private:
   /// @brief installs the crash handler globally
