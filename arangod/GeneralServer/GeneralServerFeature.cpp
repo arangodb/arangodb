@@ -24,7 +24,6 @@
 #include "GeneralServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
@@ -880,12 +879,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/test",
                      RestHandlerCreator<RestTestHandler>::createNoData);
 #endif
-
-  // ...........................................................................
-  // actions defined in v8
-  // ...........................................................................
-
-  f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();

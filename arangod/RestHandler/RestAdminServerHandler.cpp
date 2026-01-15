@@ -23,7 +23,6 @@
 
 #include "RestAdminServerHandler.h"
 
-#include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Handler.h"
 #include "Auth/UserManager.h"

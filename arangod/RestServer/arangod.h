@@ -54,7 +54,6 @@ class ClusterMetricsFeature;
 
 class AqlFeature;
 class AgencyFeature;
-class ActionFeature;
 class AuthenticationFeature;
 namespace async_registry {
 
@@ -196,7 +195,6 @@ using ArangodFeaturesList = TypeList<
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
     VersionFeature,
-    ActionFeature,
     AgencyFeature,
     ApiRecordingFeature,
     AqlFeature,
