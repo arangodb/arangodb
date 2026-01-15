@@ -363,7 +363,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * created on demand when the first async request is spawned, later tasks
    * can reuse that instance. The async task is queued on the global scheduler
    * so it can be picked up by some worker thread. However, sometimes the
-   * original thread might that created the task might be faster, in which
+   * original thread that created the task might be faster, in which
    * case we don't want to wait until a worker has picked up the task.
    * Instead, any thread that wants to process the task has to _claim_ it.
    * This is managed via the task's `state`.
