@@ -284,7 +284,9 @@ void runPingPong(WorkSimulation work) {
     if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
       // the SupervisedScheduler needs at least 4 threads, otherwise it will
       // assert
-      continue;
+      if (t < 4) {
+        continue;
+      }
     }
     std::cout << std::setw(2) << t << " threads: " << std::flush;
     for (auto b : balls) {
