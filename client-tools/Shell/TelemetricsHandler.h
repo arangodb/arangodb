@@ -45,7 +45,8 @@ class Builder;
 
 class TelemetricsHandler {
  public:
-  TelemetricsHandler(application_features::ApplicationServer& server, bool sendToEndpoint);
+  TelemetricsHandler(application_features::ApplicationServer& server,
+                     bool sendToEndpoint);
 
   ~TelemetricsHandler();
 

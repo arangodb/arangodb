@@ -205,8 +205,7 @@ static void JS_AddPidToMonitor(
   ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
 
-  auto& monitoringFeature = v8g->_server
-                                .getFeature<ProcessMonitoringFeature>();
+  auto& monitoringFeature = v8g->_server.getFeature<ProcessMonitoringFeature>();
   monitoringFeature.addMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();
@@ -243,8 +242,7 @@ static void JS_RemovePidFromMonitor(
   ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
 
-  auto& monitoringFeature = v8g->_server
-                                .getFeature<ProcessMonitoringFeature>();
+  auto& monitoringFeature = v8g->_server.getFeature<ProcessMonitoringFeature>();
   monitoringFeature.removeMonitorPID(pid);
 
   TRI_V8_RETURN_UNDEFINED();

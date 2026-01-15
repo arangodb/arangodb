@@ -149,9 +149,7 @@ void ProcessMonitorThread::run() {  // override
 
 std::optional<ExternalProcessStatus> getHistoricStatus(
     TRI_pid_t pid, application_features::ApplicationServer& server) {
-  return server
-      .getFeature<ProcessMonitoringFeature>()
-      .getHistoricStatus(pid);
+  return server.getFeature<ProcessMonitoringFeature>().getHistoricStatus(pid);
 }
 
 }  // namespace arangodb

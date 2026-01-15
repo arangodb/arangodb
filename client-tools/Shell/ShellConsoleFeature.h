@@ -29,7 +29,8 @@ namespace arangodb {
 
 class ClientFeature;
 
-class ShellConsoleFeature final : public application_features::ApplicationFeature {
+class ShellConsoleFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Console"; }
 

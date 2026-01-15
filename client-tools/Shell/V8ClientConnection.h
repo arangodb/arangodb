@@ -68,7 +68,8 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
+  explicit V8ClientConnection(application_features::ApplicationServer&,
+                              ClientFeature&);
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);

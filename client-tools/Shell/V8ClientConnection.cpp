@@ -105,8 +105,8 @@ static constexpr uint32_t kFuzzNotConnected = 1002;
 
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
-                                       ClientFeature& client)
+V8ClientConnection::V8ClientConnection(
+    application_features::ApplicationServer& server, ClientFeature& client)
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
@@ -367,7 +367,9 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-application_features::ApplicationServer& V8ClientConnection::server() { return _server; }
+application_features::ApplicationServer& V8ClientConnection::server() {
+  return _server;
+}
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
   _databaseName = value;
