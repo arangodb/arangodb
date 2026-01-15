@@ -49,7 +49,6 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
   Feature& _feature;
-  Activity _activity{"activity registry REST"};
 };
 
 }  // namespace arangodb::activity_registry
