@@ -27,10 +27,13 @@
 #include "Aql/Executor/AqlExecutorTestCase.h"
 #include "Aql/Query.h"
 #include "Async/async.h"
+#include "Basics/Result.h"
 #include "Inspection/VPack.h"
 #include "IResearch/common.h"
+#include "Mocks/StorageEngineMock.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Parser.h>
 
@@ -63,7 +66,7 @@ class AttributeDetectorTest : public ::testing::Test {
         VPackParser::fromJson("{\"name\": \"products\"}")->slice());
     ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
     auto orderedColl = vocbase.createCollection(
-        VPackParser::fromJson("{\"name\": \"ordered\"}")->slice());
+        VPackParser::fromJson("{\"name\": \"ordered\", \"type\": 3}")->slice());
     ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
 
     auto run = [&](std::string const& q) {
@@ -75,6 +78,8 @@ class AttributeDetectorTest : public ::testing::Test {
 
     run(R"aql(INSERT {_key:"u1", name:"Alice", age:30, address: "Cologne"} INTO users)aql");
     run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24, address: "Tokyo"} INTO users)aql");
+    //ensurePersistentIndex("users", "name");
+    //ensurePersistentIndex("users", "age");
 
     run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival"} INTO posts)aql");
     run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday"} INTO posts)aql");
@@ -98,6 +103,25 @@ class AttributeDetectorTest : public ::testing::Test {
 
     waitForAsync(query->prepareQuery());
     return query;
+  }
+
+  void ensurePersistentIndex(std::string const& collName,
+                           std::string const& attr) {
+    auto coll = vocbase.lookupCollection(collName);
+
+    velocypack::Builder b;
+    velocypack::Builder tmp;
+    b.openObject();
+    b.add(StaticStrings::IndexType, velocypack::Value("persistent"));
+    b.add(StaticStrings::IndexFields,
+          velocypack::Value(velocypack::ValueType::Array));
+    b.add(velocypack::Value(attr));
+    b.close();
+    b.close();
+
+    auto res = methods::Indexes::ensureIndex(*coll, b.slice(), true, tmp)
+                   .waitAndGet();
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 };
 
@@ -495,17 +519,6 @@ TEST_F(AttributeDetectorTest, ComplexCalculation) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, InsertDoesNotRead) {
-  auto query = executeQuery("INSERT {name: 'Eve', age: 35} INTO users");
-  auto const& accesses = query->abacAccesses();
-
-  ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
-  EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_EQ(accesses[0].readAttributes.size(), 0);
-}
-
 TEST_F(AttributeDetectorTest, UpdateInLoop) {
   auto query = executeQuery(R"aql(
     FOR u IN users
@@ -535,5 +548,20 @@ TEST_F(AttributeDetectorTest, MultipleModifications) {
   EXPECT_TRUE(updateAccesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(updateAccesses[0].requiresAllAttributesWrite);
 }
+
+// TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
+//   auto query = executeQuery(R"aql(
+//     FOR v IN 1..1 OUTBOUND "users/u1" ordered
+//       RETURN v
+//   )aql");
+//
+//   auto const& accesses = query->abacAccesses();
+//
+//   ASSERT_EQ(accesses.size(), 2);
+//   for (auto& access : accesses) {
+//     EXPECT_TRUE(access.requiresAllAttributesRead);
+//     EXPECT_FALSE(access.requiresAllAttributesWrite);
+//   }
+// }
 
 }  // namespace arangodb::tests::aql

@@ -136,6 +136,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
     }
 
     case ExecutionNode::INDEX: {
+      LOG_DEVEL << "IndexNode is used";
       auto* idxNode = ExecutionNode::castTo<IndexNode*>(node);
       std::string collName = idxNode->collection()->name();
 
