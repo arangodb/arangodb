@@ -508,12 +508,14 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a, (*it)));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            /*
+             * NOTE: Shadow rows are always clones of data,
+             * no referencing is possible, therefore we do not need to
+             * do the cache step here.
+             */
+            res->setValue(row, col, a);
+            // Transfer ownership to res - guard won't destroy it
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }

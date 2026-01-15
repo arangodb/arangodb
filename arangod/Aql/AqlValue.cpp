@@ -57,6 +57,7 @@ void AqlValue::setPointer(uint8_t const* pointer) noexcept {
 uint64_t AqlValue::hash(uint64_t seed) const {
   auto t = type();
   if (ADB_UNLIKELY(t == RANGE)) {
+    TRI_ASSERT(_data.rangeMeta.range != nullptr);
     uint64_t const n = _data.rangeMeta.range->size();
 
     // simon: copied from VPackSlice::normalizedHash()
@@ -72,6 +73,13 @@ uint64_t AqlValue::hash(uint64_t seed) const {
     }
 
     return value;
+  }
+  if (ADB_UNLIKELY(t == VPACK_INLINE_DOUBLE)) {
+    double v = asDouble();
+    if (v == -0.0) {
+      v = 0.0;
+    }
+    return VELOCYPACK_HASH(&v, sizeof(v), seed);
   }
   // we must use the slow hash function here, because a value may have
   // different representations in case it's an array/object/number
@@ -1042,20 +1050,25 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_MANAGED_STRING:
       return basics::VelocyPackHelper::compare(
           left.slice(leftType), right.slice(rightType), compareUtf8, options);
-    case RANGE:
-      if (left.range()->_low < right.range()->_low) {
+    case RANGE: {
+      auto const* rl = left.range();
+      auto const* rr = right.range();
+      TRI_ASSERT(rl != nullptr);
+      TRI_ASSERT(rr != nullptr);
+      if (rl->_low < rr->_low) {
         return -1;
       }
-      if (left.range()->_low > right.range()->_low) {
+      if (rl->_low > rr->_low) {
         return 1;
       }
-      if (left.range()->_high < right.range()->_high) {
+      if (rl->_high < rr->_high) {
         return -1;
       }
-      if (left.range()->_high > right.range()->_high) {
+      if (rl->_high > rr->_high) {
         return 1;
       }
       return 0;
+    }
   }
   return 0;
 }
@@ -1371,59 +1384,79 @@ namespace std {
 using arangodb::aql::AqlValue;
 
 size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
-  auto t = x.type();
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.inlineSliceMeta.slice).volatileHash());
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      return static_cast<size_t>(
-          VPackSlice(x._data.longNumberMeta.data.slice.slice).volatileHash());
-      // TODO(MBkkt) these hashes have bad distribution
-    case AqlValue::VPACK_SLICE_POINTER:
-      return std::hash<void const*>()(x._data.slicePointerMeta.pointer);
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return std::hash<void const*>()(x._data.managedSliceMeta.pointer);
-    case AqlValue::VPACK_MANAGED_STRING:
-      return std::hash<void const*>()(x._data.managedStringMeta.pointer);
-    case AqlValue::RANGE:
-      return std::hash<void const*>()(x._data.rangeMeta.range);
-  }
-  return 0;
+  auto hash64 = x.hash(
+      AqlValue::kDefaultSeed);  // make a normalized hash, for the semantics of
+                                // the value regardless of the storage type
+  return static_cast<size_t>(hash64);
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
                                     AqlValue const& b) const noexcept {
-  // TODO(MBkkt) can be just compare two uint64_t?
-  auto t = a.type();
-  if (t != b.type()) {
+  using T = AqlValue::AqlValueType;
+  auto ta = a.type();
+  auto tb = b.type();
+
+  if (ta == tb) {
+    switch (ta) {
+      case T::VPACK_INLINE:
+      case T::VPACK_SLICE_POINTER:
+      case T::VPACK_MANAGED_SLICE:
+      case T::VPACK_MANAGED_STRING: {
+        auto sa = a.slice(ta);
+        auto sb = b.slice(tb);
+        TRI_ASSERT(arangodb::velocypack::Options::Defaults.customTypeHandler !=
+                   nullptr)
+            << "VelocyPackHelper must be initialized before AqlValue "
+               "comparison";
+        // handles Custom types and normalized comparison
+        return arangodb::basics::VelocyPackHelper::equal(
+            sa, sb, false, &arangodb::velocypack::Options::Defaults, &sa, &sb);
+      }
+
+      case T::VPACK_INLINE_INT64:
+      case T::VPACK_INLINE_UINT64:
+        return a._data.longNumberMeta.data.intLittleEndian.val ==
+               b._data.longNumberMeta.data.intLittleEndian.val;
+
+      case T::VPACK_INLINE_DOUBLE: {
+        double da = a.asDouble();
+        double db = b.asDouble();
+        if (da == -0.0) {
+          da = 0.0;
+        }
+        if (db == -0.0) {
+          db = 0.0;
+        }
+        return da == db;
+      }
+
+      case T::RANGE: {
+        auto const* ra = a._data.rangeMeta.range;
+        auto const* rb = b._data.rangeMeta.range;
+        TRI_ASSERT(ra != nullptr);
+        TRI_ASSERT(rb != nullptr);
+        return ra->_low == rb->_low && ra->_high == rb->_high;
+      }
+
+      default:
+        // Should not happen
+        TRI_ASSERT(false);
+        return false;
+    }
+  }
+
+  if (ta == T::RANGE || tb == T::RANGE) {
     return false;
   }
-  switch (t) {
-    case AqlValue::VPACK_INLINE:
-      return VPackSlice(a._data.inlineSliceMeta.slice)
-          .binaryEquals(VPackSlice(b._data.inlineSliceMeta.slice));
-    case AqlValue::VPACK_INLINE_INT64:
-    case AqlValue::VPACK_INLINE_UINT64:
-    case AqlValue::VPACK_INLINE_DOUBLE:
-      // equal is equal. sign/endianess does not matter
-      return a._data.longNumberMeta.data.intLittleEndian.val ==
-             b._data.longNumberMeta.data.intLittleEndian.val;
-    case AqlValue::VPACK_SLICE_POINTER:
-      return a._data.slicePointerMeta.pointer ==
-             b._data.slicePointerMeta.pointer;
-    case AqlValue::VPACK_MANAGED_SLICE:
-      return a._data.managedSliceMeta.pointer ==
-             b._data.managedSliceMeta.pointer;
-    case AqlValue::VPACK_MANAGED_STRING:
-      return a._data.managedStringMeta.pointer ==
-             b._data.managedStringMeta.pointer;
-    case AqlValue::RANGE:
-      return a._data.rangeMeta.range == b._data.rangeMeta.range;
-  }
-  return false;
+
+  auto sa = a.slice(ta);
+  auto sb = b.slice(tb);
+  // handles Custom types and normalized comparison for different storage types
+  TRI_ASSERT(arangodb::velocypack::Options::Defaults.customTypeHandler !=
+             nullptr)
+      << "VelocyPackHelper must be initialized before AqlValue comparison";
+  return arangodb::basics::VelocyPackHelper::equal(
+      sa, sb, false, &arangodb::velocypack::Options::Defaults, &sa, &sb);
 }
 
 }  // namespace std
