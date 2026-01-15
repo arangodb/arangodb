@@ -21,26 +21,27 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "CrashHandler/DataSourceRegistry.h"
 
-#include <mutex>
-#include <vector>
+#include <algorithm>
 
 namespace arangodb::crash_handler {
 
-class ICrashHandlerDataSource;
+void DataSourceRegistry::addDataSource(
+    ICrashHandlerDataSource const* dataSource) {
+  std::lock_guard guard(_dataSourceMtx);
+  _dataSources.push_back(dataSource);
+}
 
-class DataSourceRegistry {
- public:
-  void addDataSource(ICrashHandlerDataSource const* dataSource);
+std::vector<ICrashHandlerDataSource const*> const&
+DataSourceRegistry::getDataSources() const {
+  return _dataSources;
+}
 
-  std::vector<ICrashHandlerDataSource const*> const& getDataSources() const;
-
-  void removeDataSource(ICrashHandlerDataSource const* dataSource);
-
- private:
-  std::mutex _dataSourceMtx;
-  std::vector<ICrashHandlerDataSource const*> _dataSources;
-};
+void DataSourceRegistry::removeDataSource(
+    ICrashHandlerDataSource const* dataSource) {
+  std::lock_guard guard(_dataSourceMtx);
+  std::ranges::remove(_dataSources, dataSource);
+}
 
 }  // namespace arangodb::crash_handler

@@ -29,13 +29,10 @@
 #include <vector>
 
 #include "CrashHandler/CrashRegistry.h"
+#include "CrashHandler/Dumper.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
-
-namespace crash_handler {
-class CrashHandler;
-}  // namespace crash_handler
 
 /// @brief Feature to control crash dump logging to the database directory.
 /// The CrashHandler itself always runs for crash handling, but this feature
@@ -46,7 +43,7 @@ class CrashHandlerFeature final : public ArangodFeature,
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
   explicit CrashHandlerFeature(Server& server,
-                               crash_handler::CrashHandler* crashHandler);
+                               std::shared_ptr<crash_handler::Dumper> dumper);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -54,9 +51,6 @@ class CrashHandlerFeature final : public ArangodFeature,
   bool isEnabled() const noexcept { return _enabled; }
 
   void start() override final;
-
-  /// @brief sets the database directory for crash dumps
-  void setDatabaseDirectory(std::string path) override;
 
   /// @brief lists all crash directories (returns UUIDs)
   std::vector<std::string> listCrashes() override;
@@ -69,14 +63,16 @@ class CrashHandlerFeature final : public ArangodFeature,
   bool deleteCrash(std::string_view crashId) override;
 
  private:
-  /// @brief pointer to the CrashHandler implementation (not owned)
-  crash_handler::CrashHandler* _crashHandler;
+  bool canAccessCrashesDirectory() const noexcept;
+
+  /// @brief pointer to the Crash Handler Dumper
+  std::shared_ptr<crash_handler::Dumper> _dumper;
 
   /// @brief crashes directory path used by this feature
   std::string _crashesDirectory;
 
   /// @brief whether crash dump logging is enabled
-  bool _enabled;
+  bool _enabled{true};
 };
 
 }  // namespace arangodb

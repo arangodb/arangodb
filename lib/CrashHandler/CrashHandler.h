@@ -24,8 +24,8 @@
 #pragma once
 
 #include <atomic>
-#include <memory>
 #include <string_view>
+#include <memory>
 
 #include "CrashHandler/DataSourceRegistry.h"
 #include "CrashHandler/Dumper.h"
@@ -51,15 +51,17 @@ class CrashHandler {
   // This needs to be static for the signal handlers to reach!
   static std::atomic<CrashHandler*> _theCrashHandler;
 
+  /// @brief Dumper instance for dumping crash data
+  std::shared_ptr<Dumper> _dumper;
+
  public:
-  CrashHandler();
+  CrashHandler(std::shared_ptr<Dumper> dumper);
+
   ~CrashHandler();
 
-  static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
+  static CrashHandler* getCrashHandler() { return _theCrashHandler; }
 
-  DataSourceRegistry* dataSourceRegistry() const noexcept;
-
-  Dumper* getDumper() const noexcept;
+  std::shared_ptr<Dumper> getDumper() noexcept { return _dumper; }
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
@@ -102,8 +104,6 @@ class CrashHandler {
 
   /// @brief shuts down the crash handler thread
   static void shutdownCrashHandler();
-
-  std::unique_ptr<Dumper> _dumper;
 };
 
 }  // namespace arangodb::crash_handler

@@ -57,7 +57,11 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    crash_handler::CrashHandler crashHandler;
+    auto dataSourceRegistry =
+        std::make_shared<crash_handler::DataSourceRegistry>();
+    auto crashDumper =
+        std::make_shared<crash_handler::Dumper>(dataSourceRegistry);
+    crash_handler::CrashHandler crashHandler(crashDumper);
     // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
@@ -71,17 +75,17 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ServerState state{server};
 
     server.addReporter(
-        {[&server, &crashHandler](ArangodServer::State state) {
+        {[&server, &dataSourceRegistry](ArangodServer::State state) {
            crash_handler::CrashHandler::setState(
                ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
              // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
-             // Register crash handler data sources if crash handler is enabled
-             crashHandler.dataSourceRegistry()->addDataSource(
+             // Register crash handler data sources
+             dataSourceRegistry->addDataSource(
                  &server.getFeature<ApiRecordingFeature>());
-             crashHandler.dataSourceRegistry()->addDataSource(
+             dataSourceRegistry->addDataSource(
                  &server.getFeature<async_registry::Feature>());
            }
          },
@@ -91,13 +95,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
-        [&crashHandler](auto& server, TypeTag<async_registry::Feature>) {
-          return std::make_unique<async_registry::Feature>(
-              server, crashHandler.dataSourceRegistry());
+        [&dataSourceRegistry](auto& server, TypeTag<async_registry::Feature>) {
+          return std::make_unique<async_registry::Feature>(server,
+                                                           dataSourceRegistry);
         },
-        [&crashHandler](auto& server, TypeTag<ApiRecordingFeature>) {
-          return std::make_unique<ApiRecordingFeature>(
-              server, crashHandler.dataSourceRegistry());
+        [&dataSourceRegistry](auto& server, TypeTag<ApiRecordingFeature>) {
+          return std::make_unique<ApiRecordingFeature>(server,
+                                                       dataSourceRegistry);
         },
         [](auto& server, TypeTag<activity_registry::Feature>) {
           return std::make_unique<activity_registry::Feature>(server);
@@ -122,7 +126,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
                                                        kNonServerFeatures);
         },
         [&crashHandler](auto& server, TypeTag<CrashHandlerFeature>) {
-          return std::make_unique<CrashHandlerFeature>(server, &crashHandler);
+          return std::make_unique<CrashHandlerFeature>(
+              server, &crashHandler.getDumper());
         },
         [](auto& server, TypeTag<ClusterUpgradeFeature>) {
           return std::make_unique<ClusterUpgradeFeature>(

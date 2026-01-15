@@ -24,17 +24,29 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <memory>
 
 #include "CrashHandler/DataSourceRegistry.h"
 
 namespace arangodb::crash_handler {
 
 /// Dumps the data of crash handler to the disk
-class Dumper : public DataSourceRegistry {
+class Dumper {
  public:
-  explicit Dumper(std::string crashesDirectory);
+  Dumper(std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
+
+  void setCrashesDirectory(std::string const& crashesDirectory);
+
+  void dumpData() const;
+
+  static void cleanupOldCrashDirectories(std::string const& crashesDirectory,
+                                         size_t maxCrashDirectories);
+
+  // Create a new crash directory for the current crash
+  void createCrashDirectory();
 
   void dumpDataSources();
 
@@ -42,24 +54,13 @@ class Dumper : public DataSourceRegistry {
 
   void dumpBacktractInfo(std::string_view backtrace);
 
-  std::string const& crashesDirectory() const noexcept {
-    return _crashesDirectory;
-  }
-
-  void setCrashesDirectory(std::string crashesDirectory) {
-    _crashesDirectory = std::move(crashesDirectory);
-  }
-
-  static void cleanupOldCrashDirectories(std::string const& crashesDirectory,
-                                         size_t maxCrashDirectories);
-
  private:
-  bool ensureCrashDirectoryInitialized();
+  // Ensure that the crashes directory exists
+  void ensureCrashesDirectory();
 
-  static std::string ensureCrashDirectory(std::string const& crashesDirectory);
+  std::optional<std::string> _crashesDirectory;
 
-  std::string _crashesDirectory;
-  std::string _crashDirectory;
+  std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
 
 }  // namespace arangodb::crash_handler

@@ -1,5 +1,6 @@
 add_library(arango_crashhandler STATIC
     CrashHandler.cpp
+    DataSourceRegistry.cpp
     Dumper.cpp
     DataSource.cpp)
 

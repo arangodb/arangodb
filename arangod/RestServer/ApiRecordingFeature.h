@@ -38,10 +38,6 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/HistogramBuilder.h"
 
-namespace arangodb::crash_handler {
-class DataSourceRegistry;
-}
-
 namespace arangodb {
 
 // Define a struct for the LogScale used in the histogram

@@ -16,24 +16,29 @@
 
 namespace arangodb::crash_handler {
 
-Dumper::Dumper(std::string crashesDirectory)
-    : _crashesDirectory(std::move(crashesDirectory)) {}
+Dumper::Dumper(std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
+    : _dataSourceRegistry(std::move(dataSourceRegistry)) {}
 
-bool Dumper::ensureCrashDirectoryInitialized() {
-  if (_crashDirectory.empty()) {
-    _crashDirectory = ensureCrashDirectory(_crashesDirectory);
-  }
-  return !_crashDirectory.empty();
+void Dumper::setCrashesDirectory(std::string const& crashesDirectory) {
+  _crashesDirectory = crashesDirectory;
+  ensureCrashesDirectory();
+}
+
+void Dumper::createCrashDirectory() {
+  auto const uuid = to_string(boost::uuids::random_generator()());
+  auto const crashDirectory =
+      arangodb::basics::FileUtils::buildFilename(*_crashesDirectory, uuid);
+  arangodb::basics::FileUtils::createDirectory(crashDirectory);
 }
 
 void Dumper::dumpDataSources() {
-  if (!ensureCrashDirectoryInitialized()) {
+  if (_crashesDirectory.has_value()) {
     return;
   }
 
-  for (auto const* dataSource : getDataSources()) {
+  for (auto const* dataSource : _dataSourceRegistry->getDataSources()) {
     std::string filename = arangodb::basics::FileUtils::buildFilename(
-        _crashDirectory,
+        *_crashesDirectory,
         std::format("{}.json", dataSource->getDataSourceName()));
     auto data = dataSource->getCrashData();
     arangodb::basics::FileUtils::spit(filename, data.toJson());
@@ -41,12 +46,12 @@ void Dumper::dumpDataSources() {
 }
 
 void Dumper::dumpSystemInfo() {
-  if (!ensureCrashDirectoryInitialized()) {
+  if (!_crashesDirectory.has_value()) {
     return;
   }
 
   auto const sysInfoFilename = arangodb::basics::FileUtils::buildFilename(
-      _crashDirectory, "system_info.txt");
+      *_crashesDirectory, "system_info.txt");
 
   std::string sysInfo = std::format(
       "ArangoDB Version: {}\n"
@@ -66,34 +71,27 @@ void Dumper::dumpSystemInfo() {
 }
 
 void Dumper::dumpBacktractInfo(std::string_view backtrace) {
-  if (backtrace.empty() || !ensureCrashDirectoryInitialized()) {
+  if (backtrace.empty() || !_crashesDirectory.has_value()) {
     return;
   }
   auto const backtraceFilename = arangodb::basics::FileUtils::buildFilename(
-      _crashDirectory, "backtrace.txt");
+      *_crashesDirectory, "backtrace.txt");
   arangodb::basics::FileUtils::spit(backtraceFilename, backtrace.data(),
                                     backtrace.size());
 }
 
-std::string Dumper::ensureCrashDirectory(
-    std::string const& crashesDirectory) {
-  if (crashesDirectory.empty()) {
-    return {};
+void Dumper::ensureCrashesDirectory() {
+  if (!_crashesDirectory.has_value()) {
+    return;
   }
 
-  if (!arangodb::basics::FileUtils::exists(crashesDirectory)) {
-    arangodb::basics::FileUtils::createDirectory(crashesDirectory);
+  if (!arangodb::basics::FileUtils::exists(*_crashesDirectory)) {
+    arangodb::basics::FileUtils::createDirectory(*_crashesDirectory);
   }
-
-  auto const uuid = to_string(boost::uuids::random_generator()());
-  auto const crashDirectory =
-      arangodb::basics::FileUtils::buildFilename(crashesDirectory, uuid);
-  arangodb::basics::FileUtils::createDirectory(crashDirectory);
-  return crashDirectory;
 }
 
-void Dumper::cleanupOldCrashDirectories(
-    std::string const& crashesDirectory, size_t maxCrashDirectories) {
+void Dumper::cleanupOldCrashDirectories(std::string const& crashesDirectory,
+                                        size_t maxCrashDirectories) {
   if (crashesDirectory.empty() ||
       !arangodb::basics::FileUtils::isDirectory(crashesDirectory)) {
     return;

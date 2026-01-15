@@ -24,7 +24,7 @@
 #include "RestServer/CrashHandlerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "CrashHandler/CrashHandler.h"
+#include "Assertions/Assert.h"
 #include "CrashHandler/Dumper.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
@@ -36,19 +36,28 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 CrashHandlerFeature::CrashHandlerFeature(
-    Server& server, crash_handler::CrashHandler* crashHandler)
-    : ArangodFeature{server, *this},
-      _crashHandler(crashHandler),
-      _enabled(true) {
+    Server& server, std::shared_ptr<crash_handler::Dumper> dumper)
+    : ArangodFeature{server, *this}, _dumper(std::move(dumper)) {
   setOptional(false);
-  // This feature should start very early
+  // Feature must start after DatabasePathFeature
+  // otherwise it won't be able to set the crashes directory
   startsAfter<DatabasePathFeature>();
 }
 
 void CrashHandlerFeature::start() {
-  if (_enabled) {
-    setDatabaseDirectory(
-        server().getFeature<DatabasePathFeature>().directory());
+  if (!_enabled || _dumper == nullptr) {
+    auto const path = server().getFeature<DatabasePathFeature>().directory();
+
+    if (!_enabled || _dumper == nullptr) {
+      return;
+    }
+
+    _crashesDirectory =
+        arangodb::basics::FileUtils::buildFilename(path, "crashes");
+    _dumper->setCrashesDirectory(_crashesDirectory);
+    // Clean up old crash directories on startup
+    crash_handler::Dumper::cleanupOldCrashDirectories(_crashesDirectory,
+                                                      /*max*/ 10);
   }
 }
 
@@ -66,26 +75,12 @@ void CrashHandlerFeature::collectOptions(
           arangodb::options::Flags::OnSingle));
 }
 
-void CrashHandlerFeature::setDatabaseDirectory(std::string path) {
-  if (!_enabled) {
-    return;
-  }
-  _crashesDirectory =
-      arangodb::basics::FileUtils::buildFilename(path, "crashes");
-  if (_crashHandler != nullptr) {
-    _crashHandler->getDumper()->setCrashesDirectory(_crashesDirectory);
-  }
-  // Clean up old crash directories on startup
-  crash_handler::Dumper::cleanupOldCrashDirectories(_crashesDirectory,
-                                                    /*max*/ 10);
-}
-
 std::vector<std::string> CrashHandlerFeature::listCrashes() {
   std::vector<std::string> crashes;
-  if (!_enabled || _crashesDirectory.empty() ||
-      !arangodb::basics::FileUtils::isDirectory(_crashesDirectory)) {
+  if (!canAccessCrashesDirectory()) {
     return {};
   }
+
   auto entries = arangodb::basics::FileUtils::listFiles(_crashesDirectory);
   for (auto const& entry : entries) {
     auto fullPath =
@@ -99,10 +94,11 @@ std::vector<std::string> CrashHandlerFeature::listCrashes() {
 
 std::unordered_map<std::string, std::string>
 CrashHandlerFeature::getCrashContents(std::string_view crashId) {
-  std::unordered_map<std::string, std::string> contents;
-  if (!_enabled || _crashesDirectory.empty()) {
-    return contents;
+  if (!canAccessCrashesDirectory()) {
+    return {};
   }
+
+  std::unordered_map<std::string, std::string> contents;
   auto crashDir = arangodb::basics::FileUtils::buildFilename(
       _crashesDirectory, std::string(crashId));
   if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
@@ -124,7 +120,7 @@ CrashHandlerFeature::getCrashContents(std::string_view crashId) {
 }
 
 bool CrashHandlerFeature::deleteCrash(std::string_view crashId) {
-  if (!_enabled || _crashesDirectory.empty()) {
+  if (!canAccessCrashesDirectory()) {
     return false;
   }
   auto crashDir = arangodb::basics::FileUtils::buildFilename(
@@ -134,4 +130,8 @@ bool CrashHandlerFeature::deleteCrash(std::string_view crashId) {
   }
   auto res = TRI_RemoveDirectory(crashDir.c_str());
   return res == TRI_ERROR_NO_ERROR;
+}
+
+bool CrashHandlerFeature::canAccessCrashesDirectory() const noexcept {
+  return _enabled && !_crashesDirectory.empty() && _dumper != nullptr;
 }

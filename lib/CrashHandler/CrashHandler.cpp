@@ -544,14 +544,14 @@ void actuallyDumpCrashInfo() {
     // Flush logs
     arangodb::Logger::flush();
 
-    // Create a crash directory and dump data from all registered and alive data
-    // sources
-    auto const* crashHandler =
+    auto* crashHandler =
         arangodb::crash_handler::CrashHandler::getCrashHandler();
     if (crashHandler == nullptr) {
       return;
     }
-    auto* dumper = crashHandler->getDumper();
+    auto dumper = crashHandler->getDumper();
+    dumper->createCrashDirectory();
+    dumper->dumpData();
     dumper->dumpDataSources();
     size_t dumpBytesUsed =
         ::backtraceBufferUsed.load(std::memory_order_acquire);
@@ -687,7 +687,8 @@ namespace arangodb::crash_handler {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
-CrashHandler::CrashHandler() : _dumper(std::make_unique<Dumper>("")) {
+CrashHandler::CrashHandler(std::shared_ptr<Dumper> dumper)
+    : _dumper(std::move(dumper)) {
   // starts global background thread if not already done
   bool threadRunning = _threadRunning.exchange(true);
   if (!threadRunning) {
@@ -704,12 +705,6 @@ CrashHandler::~CrashHandler() {
   }
   _theCrashHandler.store(nullptr);
 }
-
-DataSourceRegistry* CrashHandler::dataSourceRegistry() const noexcept {
-  return _dumper.get();
-}
-
-Dumper* CrashHandler::getDumper() const noexcept { return _dumper.get(); }
 
 void CrashHandler::triggerCrashHandler() {
   ::crashHandlerState.store(
