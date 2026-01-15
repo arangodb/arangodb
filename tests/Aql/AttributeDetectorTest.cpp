@@ -32,6 +32,7 @@
 #include "IResearch/common.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Transaction/StandaloneContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -65,9 +66,17 @@ class AttributeDetectorTest : public ::testing::Test {
     auto productsColl = vocbase.createCollection(
         VPackParser::fromJson("{\"name\": \"products\"}")->slice());
     ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
+    auto graphs = vocbase.createCollection(
+      VPackParser::fromJson(R"({"name":"_graphs","isSystem":true})")->slice());
+    ASSERT_NE(graphs.get(), nullptr) << "Failed to create _graphs";
     auto orderedColl = vocbase.createCollection(
         VPackParser::fromJson("{\"name\": \"ordered\", \"type\": 3}")->slice());
     ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
+    bool created = false;
+    auto def = VPackParser::fromJson(R"({"type":"edge"})");
+    auto idx = orderedColl->createIndex(def->slice(), created).waitAndGet();
+    ASSERT_TRUE(idx);
+    ASSERT_TRUE(created);
 
     auto run = [&](std::string const& q) {
       SCOPED_TRACE(q);
@@ -115,6 +124,7 @@ class AttributeDetectorTest : public ::testing::Test {
     b.add(StaticStrings::IndexType, velocypack::Value("persistent"));
     b.add(StaticStrings::IndexFields,
           velocypack::Value(velocypack::ValueType::Array));
+
     b.add(velocypack::Value(attr));
     b.close();
     b.close();
@@ -549,19 +559,19 @@ TEST_F(AttributeDetectorTest, MultipleModifications) {
   EXPECT_TRUE(updateAccesses[0].requiresAllAttributesWrite);
 }
 
-// TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
-//   auto query = executeQuery(R"aql(
-//     FOR v IN 1..1 OUTBOUND "users/u1" ordered
-//       RETURN v
-//   )aql");
-//
-//   auto const& accesses = query->abacAccesses();
-//
-//   ASSERT_EQ(accesses.size(), 2);
-//   for (auto& access : accesses) {
-//     EXPECT_TRUE(access.requiresAllAttributesRead);
-//     EXPECT_FALSE(access.requiresAllAttributesWrite);
-//   }
-// }
+TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
+  auto query = executeQuery(R"aql(
+    FOR v IN 1..1 OUTBOUND "users/u1" ordered
+      RETURN v
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  //ASSERT_EQ(accesses.size(), 2);
+  for (auto& access : accesses) {
+    EXPECT_TRUE(access.requiresAllAttributesRead);
+    EXPECT_FALSE(access.requiresAllAttributesWrite);
+  }
+}
 
 }  // namespace arangodb::tests::aql
