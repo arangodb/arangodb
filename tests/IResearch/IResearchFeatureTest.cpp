@@ -1829,8 +1829,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
-                                                       std::span<const std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::span<const std::type_index>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();
@@ -1938,8 +1938,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
       "{ \"version\": 0, \"tasks\": {} }");
 
   // add the UpgradeFeature, but make sure it is not prepared
-  server.addFeatureUntracked<arangodb::UpgradeFeature>(nullptr,
-                                                       std::span<const std::type_index>{});
+  server.addFeatureUntracked<arangodb::UpgradeFeature>(
+      nullptr, std::span<const std::type_index>{});
 
   auto& feature =
       server.addFeatureUntracked<arangodb::iresearch::IResearchFeature>();

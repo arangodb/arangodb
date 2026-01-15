@@ -92,8 +92,8 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
   TestApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  auto& feature1 = server.addFeature<TestFeatureA>(std::vector<std::type_index>{},
-                                                   std::vector<std::type_index>{});
+  auto& feature1 = server.addFeature<TestFeatureA>(
+      std::vector<std::type_index>{}, std::vector<std::type_index>{});
 
   auto& feature2 = server.addFeature<TestFeatureB>(
       std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},

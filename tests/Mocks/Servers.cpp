@@ -152,7 +152,8 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
 };
 
 static void SetupGreetingsPhase(MockServer& server) {
-  server.addFeature<application_features::GreetingsFeaturePhase>(false, std::false_type{});
+  server.addFeature<application_features::GreetingsFeaturePhase>(
+      false, std::false_type{});
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
@@ -173,14 +174,16 @@ static void SetupBasicFeaturePhase(MockServer& server) {
 
 static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
-  server.addFeature<application_features::DatabaseFeaturePhase>(false);  // true ??
+  server.addFeature<application_features::DatabaseFeaturePhase>(
+      false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false);
   server.addFeature<DatabaseFeature>(false);
   server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
-  server.addFeature<InitDatabaseFeature>(true, std::span<const std::type_index>{});
+  server.addFeature<InitDatabaseFeature>(true,
+                                         std::span<const std::type_index>{});
   server.addFeature<ViewTypesFeature>(false);  // true ??
   server.addFeature<VectorIndexFeature>(true);
 
@@ -573,7 +576,8 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   _server.getFeature<ClusterFeature>().allocateMembers();
 
-  addFeature<UpgradeFeature>(false, &_dummy, std::span<const std::type_index>{});
+  addFeature<UpgradeFeature>(false, &_dummy,
+                             std::span<const std::type_index>{});
   addFeature<ServerSecurityFeature>(false);
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
   addFeature<ReplicatedLogFeature>(false);
