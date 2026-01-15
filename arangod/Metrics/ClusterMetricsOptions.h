@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,35 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <variant>
-#include "Inspection/Types.h"
+#include <cstdint>
 
-namespace arangodb::graph {
+namespace arangodb::metrics {
 
-using CursorId = std::size_t;
-
-/**
-   Marker struct for queues to do an expansion when such a type is popped.
- **/
-struct Expansion {
-  CursorId id;
-  std::size_t from;
+struct ClusterMetricsOptions {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  uint32_t timeout = 10;
+#else
+  uint32_t timeout = 0;
+#endif
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Expansion& x) {
-  return f.object(x).fields(f.field("id", x.id), f.field("from", x.from));
-}
 
-template<typename Step>
-struct QueueEntry : std::variant<Step, Expansion> {};
-template<typename Step, typename Inspector>
-auto inspect(Inspector& f, QueueEntry<Step>& x) {
-  return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<Step>(), inspection::inlineType<Expansion>());
-}
-
-}  // namespace arangodb::graph
+}  // namespace arangodb::metrics

@@ -1,0 +1,14 @@
+name: arangodb_activity_existing_activities
+introducedIn: "3.12.8"
+help: |
+  Number of currently existing activities.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+  - agent
+description: |
+  Number of currently existing activities.

@@ -161,9 +161,46 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  RocksDBEngine(Server& server, RocksDBOptionsProvider const& optionsProvider,
-                metrics::MetricsFeature& metrics);
+  template<typename Server>
+  RocksDBEngine(Server& server, RocksDBOptionsProvider& optionsProvider,
+                metrics::MetricsFeature& metrics,
+                DatabasePathFeature const& databasePathFeature,
+                VectorIndexFeature const& vectorIndexFeature,
+                FlushFeature& flushFeature,
+                DumpLimitsFeature const& dumpLimitsFeature,
+                SchedulerFeature& schedulerFeature,
+                ReplicatedLogFeature* replicatedLogFeature,
+                RocksDBRecoveryManager const& rocksDbRecoveryManager,
+                DatabaseFeature& databaseFeature,
+                RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
+                CacheManagerFeature& cacheManagerFeature,
+                AgencyFeature const& agencyFeature);
   ~RocksDBEngine();
+
+  template<typename Server>
+  static auto construct(
+      Server& server, RocksDBOptionsProvider& optionsProvider,
+      metrics::MetricsFeature& metrics,
+      DatabasePathFeature const& databasePathFeature,
+      VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
+      DumpLimitsFeature const& dumpLimitsFeature,
+      SchedulerFeature& schedulerFeature,
+      ReplicatedLogFeature* replicatedLogFeature,
+      RocksDBRecoveryManager const& rocksDbRecoveryManager,
+      DatabaseFeature& databaseFeature,
+      RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
+      CacheManagerFeature& cacheManagerFeature,
+      AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine>;
+
+  // Temporary, for easier refactoring:
+  template<typename Type>
+  auto getFeature() const -> Type&;
+
+  auto getDatabaseFeature() const -> DatabaseFeature&;
+
+  auto getMetricsFeature() const -> metrics::MetricsFeature&;
+
+  auto getFlushFeature() const -> FlushFeature&;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -589,7 +626,18 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  RocksDBOptionsProvider const& _optionsProvider;
+  DatabasePathFeature const& _databasePathFeature;
+  VectorIndexFeature const& _vectorIndexFeature;
+  FlushFeature& _flushFeature;
+  DumpLimitsFeature const& _dumpLimitsFeature;
+  SchedulerFeature& _schedulerFeature;
+  ReplicatedLogFeature* _replicatedLogFeature;
+  RocksDBRecoveryManager const& _rocksDbRecoveryManager;
+  DatabaseFeature& _databaseFeature;
+  RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
+  CacheManagerFeature& _cacheManagerFeature;
+  AgencyFeature const& _agencyFeature;
+  RocksDBOptionsProvider& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;
 

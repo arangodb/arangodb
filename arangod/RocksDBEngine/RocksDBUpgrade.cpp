@@ -23,7 +23,6 @@
 
 #include "RocksDBUpgrade.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,26 +34,18 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/convenience.h>
-#include <rocksdb/db.h>
-#include <rocksdb/env.h>
-#include <rocksdb/filter_policy.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/statistics.h>
-#include <rocksdb/table.h>
-#include <rocksdb/transaction_log.h>
 #include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/write_batch.h>
-
-#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 
-void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
-                                          rocksdb::TransactionDB* db,
-                                          bool dbExisted,
-                                          bool forceLittleEndianKeys) {
+void arangodb::rocksdbStartupVersionCheck(
+    options::ProgramOptions const& programOptions,
+    DatabaseFeature& databaseFeature, rocksdb::TransactionDB* db,
+    bool dbExisted, bool forceLittleEndianKeys) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
       "RocksDBEndianness has wrong type");
@@ -183,9 +174,10 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
   }
 
   // fetch stored values of startup options
-  auto checkSetting = [&db, &server, dbExisted](RocksDBSettingsType keyType,
-                                                std::string_view optionName,
-                                                bool localValue, auto cb) {
+  auto checkSetting = [&db, &programOptions, dbExisted](
+                          RocksDBSettingsType keyType,
+                          std::string_view optionName, bool localValue,
+                          auto cb) {
     // fetch stored value for option
     RocksDBKey extendedNamesKey;
     extendedNamesKey.constructSettingsValue(keyType);
@@ -200,7 +192,7 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
 
       if (s.ok() && storedValue.size() == 1) {
         if (storedValue[0] == '1') {
-          if (!localValue && server.options()->processingResult().touched(
+          if (!localValue && programOptions.processingResult().touched(
                                  std::string{optionName})) {
             // user is trying to switch back from extended names to traditional
             // names. this is unsupported
@@ -249,10 +241,10 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
   };
 
   // read settings for extended names from persisted storage
-  auto& df = server.getFeature<DatabaseFeature>();
 
   // --database.extended-names
-  checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
-               "database.extended-names", df.extendedNames(),
-               [&df](bool value) { df.extendedNames(value); });
+  checkSetting(
+      RocksDBSettingsType::ExtendedNamesDatabases, "database.extended-names",
+      databaseFeature.extendedNames(),
+      [&databaseFeature](bool value) { databaseFeature.extendedNames(value); });
 }
