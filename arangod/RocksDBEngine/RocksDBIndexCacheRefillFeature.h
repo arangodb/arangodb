@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillThread.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <memory>
@@ -35,17 +36,29 @@
 #include <vector>
 
 namespace arangodb {
+class RocksDBEngine;
+class BootstrapFeature;
+
+class ClusterFeature;
 class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
+namespace metrics {
+class MetricsFeature;
+}
+
+class RocksDBIndexCacheRefillFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "RocksDBIndexCacheRefill";
   }
 
-  explicit RocksDBIndexCacheRefillFeature(Server& server);
+  template<typename Server>
+  explicit RocksDBIndexCacheRefillFeature(
+      Server& server, DatabaseFeature& databaseFeature,
+      ClusterFeature* clusterFeature, metrics::MetricsFeature& metricsFeature);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -90,11 +103,18 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // the method can indirectly schedule itself.
   void scheduleIndexRefillTasks();
 
+  static metrics::Counter& addTotalFullIndexRefills(
+      metrics::MetricsFeature& metrics);
+
+  static size_t defaultConcurrentIndexFillTasks();
+
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
 
   DatabaseFeature& _databaseFeature;
+  ClusterFeature* _clusterFeature{};
+  metrics::MetricsFeature& _metricsFeature;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
@@ -136,4 +156,31 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   size_t _currentlyRunningIndexFillTasks;
 };
+
+template<typename Server>
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    Server& server, DatabaseFeature& databaseFeature,
+    ClusterFeature* clusterFeature, metrics::MetricsFeature& metricsFeature)
+    : ApplicationFeature{server, *this},
+      _databaseFeature(databaseFeature),
+      _clusterFeature(clusterFeature),
+      _metricsFeature(metricsFeature),
+      _maxCapacity(128 * 1024),
+      _maxConcurrentIndexFillTasks(defaultConcurrentIndexFillTasks()),
+      _autoRefill(false),
+      _fillOnStartup(false),
+      _autoRefillOnFollowers(true),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
+      _currentlyRunningIndexFillTasks(0) {
+  setOptional(true);
+
+  // we want to be late in the startup sequence
+  startsAfter<BootstrapFeature, Server>();
+  startsAfter<DatabaseFeature, Server>();
+  startsAfter<RocksDBEngine, Server>();
+
+  // default value must be at least 1, as the minimum allowed value is also 1.
+  TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
+}
+
 }  // namespace arangodb

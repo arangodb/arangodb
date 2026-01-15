@@ -50,8 +50,7 @@
 
 using namespace arangodb;
 
-namespace {
-size_t defaultConcurrentIndexFillTasks() {
+size_t RocksDBIndexCacheRefillFeature::defaultConcurrentIndexFillTasks() {
   size_t n = NumberOfCores::getValue();
   if (n >= 16) {
     return n >> 3U;
@@ -59,31 +58,8 @@ size_t defaultConcurrentIndexFillTasks() {
   return 1;
 }
 
-}  // namespace
-
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
-
-RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _databaseFeature(server.getFeature<DatabaseFeature>()),
-      _maxCapacity(128 * 1024),
-      _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
-      _autoRefill(false),
-      _fillOnStartup(false),
-      _autoRefillOnFollowers(true),
-      _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_full_index_refills_total{})),
-      _currentlyRunningIndexFillTasks(0) {
-  setOptional(true);
-  // we want to be late in the startup sequence
-  startsAfter<BootstrapFeature>();
-  startsAfter<DatabaseFeature>();
-  startsAfter<RocksDBEngine>();
-
-  // default value must be at least 1, as the minimum allowed value is also 1.
-  TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
-}
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
@@ -199,8 +175,8 @@ void RocksDBIndexCacheRefillFeature::start() {
     return;
   }
 
-  _refillThread =
-      std::make_unique<RocksDBIndexCacheRefillThread>(server(), _maxCapacity);
+  _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
+      _databaseFeature, _metricsFeature, _maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -265,7 +241,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // get names of all databases
-  for (auto const& database : methods::Databases::list(server(), "")) {
+  for (auto const& database :
+       methods::Databases::list(_databaseFeature, _clusterFeature, "")) {
     try {
       DatabaseGuard guard(_databaseFeature, database);
 
@@ -363,9 +340,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
 
 Result RocksDBIndexCacheRefillFeature::warmupIndex(
     std::string const& database, std::string const& collection, IndexId iid) {
-  auto& df = server().getFeature<DatabaseFeature>();
-
-  DatabaseGuard guard(df, database);
+  DatabaseGuard guard(_databaseFeature, database);
 
   auto c =
       guard.database().useCollection(collection, /*checkPermissions*/ false);
@@ -392,4 +367,9 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
   }
 
   return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+}
+
+metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
+    metrics::MetricsFeature& metrics) {
+  return metrics.add(rocksdb_cache_full_index_refills_total{});
 }

@@ -89,6 +89,21 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<async_registry::Feature>) {
           return std::make_unique<async_registry::Feature>(server);
         },
+        [](auto& server, TypeTag<BootstrapFeature>) {
+          return std::make_unique<BootstrapFeature>(
+              server, server.template getFeature<ClusterFeature>(),
+              server.template getFeature<EngineSelectorFeature>(),
+              server.template getFeature<DatabaseFeature>(),
+              server.template hasFeature<SystemDatabaseFeature>()
+                  ? &server.template getFeature<SystemDatabaseFeature>()
+                  : nullptr,
+              server.template hasFeature<ClusterUpgradeFeature>()
+                  ? &server.template getFeature<ClusterUpgradeFeature>()
+                  : nullptr,
+              server.template hasFeature<V8DealerFeature>()
+                  ? &server.template getFeature<V8DealerFeature>()
+                  : nullptr);
+        },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(
@@ -158,6 +173,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
                           ? &server.template getFeature<AgencyFeature>()
                           : nullptr);
         },
+        [](auto& server, TypeTag<RocksDBIndexCacheRefillFeature>) {
+          return std::make_unique<RocksDBIndexCacheRefillFeature>(
+              server, server.template getFeature<DatabaseFeature>(),
+              &server.template getFeature<ClusterFeature>(),
+              server.template getFeature<metrics::MetricsFeature>());
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return RocksDBEngine::construct(
               server, server.template getFeature<RocksDBOptionFeature>(),
@@ -190,7 +211,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<CacheManagerFeature>) {
           return std::make_unique<CacheManagerFeature>(
-              server, server.template getFeature<CacheOptionsFeature>());
+              server, server.template getFeature<CacheOptionsFeature>(),
+              server.template getFeature<SharedPRNGFeature>());
         },
         [](auto& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(
@@ -282,7 +304,6 @@ int main(int argc, char* argv[]) {
 
   std::string workdir(basics::FileUtils::currentDirectory().result());
 
-  TRI_GET_ARGV(argc, argv);
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;

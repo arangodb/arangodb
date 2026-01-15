@@ -25,9 +25,12 @@
 
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsProvider.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
+class CacheOptionsFeature;
+namespace application_features {
+class BasicFeaturePhaseServer;
+}
 struct CacheOptionsProvider;
 class CacheRebalancerThread;
 
@@ -35,12 +38,15 @@ namespace cache {
 class Manager;
 }
 
-class CacheManagerFeature final : public ArangodFeature {
+class CacheManagerFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 
+  template<typename Server>
   explicit CacheManagerFeature(Server& server,
-                               CacheOptionsProvider const& provider);
+                               CacheOptionsProvider const& provider,
+                               SharedPRNGFeature& sharedPRNGFeature);
   ~CacheManagerFeature();
 
   void start() override final;
@@ -58,7 +64,20 @@ class CacheManagerFeature final : public ArangodFeature {
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
 
   CacheOptionsProvider const& _provider;
+  SharedPRNGFeature& _sharedPRNGFeature;
   CacheOptions _options;
 };
+
+template<typename Server>
+CacheManagerFeature::CacheManagerFeature(Server& server,
+                                         CacheOptionsProvider const& provider,
+                                         SharedPRNGFeature& sharedPRNGFeature)
+    : ApplicationFeature{server, *this},
+      _provider(provider),
+      _sharedPRNGFeature(sharedPRNGFeature) {
+  setOptional(true);
+  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
+  startsAfter<CacheOptionsFeature, Server>();
+}
 
 }  // namespace arangodb

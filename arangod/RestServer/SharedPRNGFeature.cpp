@@ -69,12 +69,6 @@ static thread_local SeededPRNG threadLocalPRNG;
 }  // namespace
 
 namespace arangodb {
-
-SharedPRNGFeature::SharedPRNGFeature(Server& server)
-    : ArangodFeature{server, *this} {
-  setOptional(true);
-}
-
 void SharedPRNGFeature::prepare() {}
 
 uint64_t SharedPRNGFeature::rand() noexcept { return ::threadLocalPRNG.next(); }

@@ -24,17 +24,33 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
-#include "RestServer/arangod.h"
 
-namespace arangodb {
-namespace application_features {
+namespace arangodb::application_features {
 
 class AqlFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "AQLPhase"; }
 
-  explicit AqlFeaturePhase(ArangodServer& server);
+  template<typename Server>
+  explicit AqlFeaturePhase(Server& server);
 };
 
-}  // namespace application_features
-}  // namespace arangodb
+template<typename Server>
+AqlFeaturePhase::AqlFeaturePhase(Server& server)
+    : ApplicationFeaturePhase{server, *this} {
+  setOptional(false);
+  startsAfter<CommunicationFeaturePhase, Server>();
+#ifdef USE_V8
+  startsAfter<V8FeaturePhase, Server>();
+#endif
+
+  startsAfter<AqlFeature, Server>();
+  startsAfter<aql::AqlFunctionFeature, Server>();
+  startsAfter<iresearch::IResearchAnalyzerFeature, Server>();
+  startsAfter<iresearch::IResearchFeature, Server>();
+  startsAfter<aql::OptimizerRulesFeature, Server>();
+  startsAfter<QueryRegistryFeature, Server>();
+  startsAfter<SystemDatabaseFeature, Server>();
+}
+
+}  // namespace arangodb::application_features

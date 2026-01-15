@@ -28,13 +28,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -53,8 +51,8 @@
 #include <velocypack/Iterator.h>
 
 namespace {
-static std::string const bootstrapKey = "Bootstrap";
-static std::string const healthKey = "Supervision/Health";
+std::string const bootstrapKey = "Bootstrap";
+std::string const healthKey = "Supervision/Health";
 }  // namespace
 
 namespace arangodb {
@@ -66,32 +64,31 @@ class Query;
 using namespace arangodb;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(Server& server)
-    : ArangodFeature{server, *this}, _isReady(false), _bark(false) {
-  startsAfter<application_features::ServerFeaturePhase>();
-
-  startsAfter<SystemDatabaseFeature>();
-
-#ifdef USE_V8
-  // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxFeature>();
-#else
-  startsAfter<application_features::ServerFeaturePhase>();
-#endif
-
-  // If this is Sorted out we can go down to ServerPhase
-  // And activate the following dependencies:
-  /*
-  startsAfter("Endpoint");
-  startsAfter("GeneralServer");
-  startsAfter("Server");
-  startsAfter("Upgrade");
-  */
-}
-
 bool BootstrapFeature::isReady() const {
   TRI_IF_FAILURE("BootstrapFeature_not_ready") { return false; }
   return _isReady;
+}
+
+ClusterFeature& BootstrapFeature::clusterFeature() { return _clusterFeature; }
+
+EngineSelectorFeature& BootstrapFeature::engineSelectorFeature() {
+  return _engineSelectorFeature;
+}
+
+DatabaseFeature& BootstrapFeature::databaseFeature() {
+  return _databaseFeature;
+}
+
+SystemDatabaseFeature* BootstrapFeature::systemDatabaseFeature() {
+  return _systemDatabaseFeature;
+}
+
+ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
+  return _clusterUpgradeFeature;
+}
+
+V8DealerFeature* BootstrapFeature::v8DealerFeature() {
+  return _v8DealerFeature;
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -107,8 +104,9 @@ namespace {
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
-  AgencyComm agency(feature.server());
-  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
+  AgencyComm agency(feature.server(), feature.clusterFeature(),
+                    feature.engineSelectorFeature(), feature.databaseFeature());
+  auto& ci = feature.clusterFeature().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
     if (!result.successful()) {
@@ -166,12 +164,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
       continue;
     }
 
-    arangodb::SystemDatabaseFeature::ptr vocbase =
-        feature.server().hasFeature<arangodb::SystemDatabaseFeature>()
-            ? feature.server()
-                  .getFeature<arangodb::SystemDatabaseFeature>()
-                  .use()
-            : nullptr;
+    auto vocbase = feature.systemDatabaseFeature() != nullptr
+                       ? feature.systemDatabaseFeature()->use()
+                       : nullptr;
     auto upgradeRes =
         vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -205,10 +200,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     if (result.successful()) {
       // store current version number in agency to avoid unnecessary upgrades
       // to the same version
-      if (feature.server().hasFeature<ClusterUpgradeFeature>()) {
-        ClusterUpgradeFeature& clusterUpgradeFeature =
-            feature.server().getFeature<ClusterUpgradeFeature>();
-        clusterUpgradeFeature.setBootstrapVersion();
+      if (auto* clusterUpgradeFeature = feature.clusterUpgradeFeature();
+          clusterUpgradeFeature != nullptr) {
+        clusterUpgradeFeature->setBootstrapVersion();
       }
       return;
     }
@@ -267,16 +261,14 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
 }  // namespace
 
 void BootstrapFeature::start() {
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  auto& databaseFeature = _databaseFeature;
 
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      server().hasFeature<arangodb::SystemDatabaseFeature>()
-          ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
-          : nullptr;
+      _systemDatabaseFeature != nullptr ? _systemDatabaseFeature->use()
+                                        : nullptr;
 #ifdef USE_V8
-  bool const v8Enabled = server().hasFeature<V8DealerFeature>() &&
-                         server().isEnabled<V8DealerFeature>() &&
-                         server().getFeature<V8DealerFeature>().isEnabled();
+  bool const v8Enabled =
+      _v8DealerFeature != nullptr && _v8DealerFeature->isEnabled();
 #endif
   TRI_ASSERT(vocbase.get() != nullptr);
 
@@ -330,7 +322,7 @@ void BootstrapFeature::start() {
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllExecutors(
+      _v8DealerFeature->loadJavaScriptFileInAllExecutors(
           vocbase.get(), "server/server.js", nullptr);
     }
 #endif
@@ -381,10 +373,8 @@ void BootstrapFeature::unprepare() {
 }
 
 void BootstrapFeature::killRunningQueries() {
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
-
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    auto vocbase = databaseFeature.useDatabase(name);
+  for (auto& name : _databaseFeature.getDatabaseNames()) {
+    auto vocbase = _databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
@@ -396,7 +386,8 @@ void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER)
       << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency(server());
+  AgencyComm agency(server(), _clusterFeature, _engineSelectorFeature,
+                    _databaseFeature);
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);
@@ -421,7 +412,7 @@ void BootstrapFeature::waitForHealthEntry() {
 }
 
 void BootstrapFeature::waitForDatabases() const {
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   uint64_t iterations = 0;
   while (ci.databases().empty() && !server().isStopping()) {

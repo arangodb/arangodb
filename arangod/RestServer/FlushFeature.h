@@ -43,7 +43,7 @@ class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
-/// @brief subscription is intenteded to notify FlushFeature
+/// @brief subscription is intended to notify FlushFeature
 ///        on the WAL tick which can be safely released
 //////////////////////////////////////////////////////////////////////////////
 struct FlushSubscription {

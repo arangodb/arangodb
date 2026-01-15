@@ -46,12 +46,10 @@ add_library(arangoserver STATIC
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
-  FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
   FeaturePhases/ClusterFeaturePhase.cpp
   FeaturePhases/DatabaseFeaturePhase.cpp
   FeaturePhases/FinalFeaturePhase.cpp
-  FeaturePhases/ServerFeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AcceptorUnixDomain.cpp

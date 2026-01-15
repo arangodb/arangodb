@@ -50,14 +50,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(Server& server,
-                                         CacheOptionsProvider const& provider)
-    : ArangodFeature{server, *this}, _provider(provider) {
-  setOptional(true);
-  startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<CacheOptionsFeature>();
-}
-
 CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::start() {
@@ -96,8 +88,8 @@ void CacheManagerFeature::start() {
       << ", max spare allocation: " << _options.maxSpareAllocation
       << ", enable windowed stats: " << _options.enableWindowedStats;
 
-  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _options);
+  _manager = std::make_unique<Manager>(_sharedPRNGFeature, std::move(postFn),
+                                       _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _options.rebalancingInterval);
