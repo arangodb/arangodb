@@ -21,18 +21,35 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CrashHandler/DataSource.h"
+#pragma once
 
-#include <velocypack/SharedSlice.h>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb::crash_handler {
 
-ICrashHandlerDataSource::ICrashHandlerDataSource(
-    DataSourceRegistry* crashHandlerInterface)
-    : _crashHandlerInterface(crashHandlerInterface) {}
 
-ICrashHandlerDataSource::~ICrashHandlerDataSource() {
-  _crashHandlerInterface->removeDataSource(this);
-}
+class ICrashRegistry {
+ public:
+  virtual ~ICrashRegistry() = default;
+
+  /// @brief sets the database directory for crash dumps
+  virtual void setDatabaseDirectory(std::string path) = 0;
+
+  /// @brief lists all crash directories (returns UUIDs)
+  virtual std::vector<std::string> listCrashes() = 0;
+
+  /// @brief gets the contents of a specific crash directory
+  /// Returns a map of filename -> file contents
+  virtual std::unordered_map<std::string, std::string> getCrashContents(
+      std::string_view crashId) = 0;
+
+  /// @brief deletes a specific crash directory
+  /// Returns true if successful, false if not found
+  virtual bool deleteCrash(std::string_view crashId) = 0;
+};
 
 }  // namespace arangodb::crash_handler

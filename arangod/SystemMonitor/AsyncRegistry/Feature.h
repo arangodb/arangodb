@@ -28,7 +28,7 @@
 #include "Async/Registry/promise.h"
 #include "Containers/Forest/forest.h"
 #include "CrashHandler/DataSource.h"
-#include "CrashHandler/Registry.h"
+#include "CrashHandler/DataSourceRegistry.h"
 
 namespace arangodb::async_registry {
 
@@ -38,7 +38,7 @@ VPackBuilder serialize(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
 
 class Feature final : public ArangodFeature,
-                      public crash_handler::CrashHandlerDataSource {
+                      public crash_handler::ICrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
@@ -50,7 +50,7 @@ class Feature final : public ArangodFeature,
   };
 
   Feature(Server& server,
-          crash_handler::CrashHandlerRegistry* crashHandlerRegistry);
+          crash_handler::DataSourceRegistry* crashHandlerRegistry);
 
   void prepare() override final;
   void start() override final;

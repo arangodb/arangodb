@@ -57,7 +57,7 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    arangodb::crash_handler::CrashHandler crashHandler;
+    crash_handler::CrashHandler crashHandler;
     // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
@@ -79,9 +79,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
              // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
              // Register crash handler data sources if crash handler is enabled
-             crashHandler.addCrashHandlerDataSource(
+             crashHandler.addDataSource(
                  &server.getFeature<ApiRecordingFeature>());
-             crashHandler.addCrashHandlerDataSource(
+             crashHandler.addDataSource(
                  &server.getFeature<async_registry::Feature>());
            }
          },

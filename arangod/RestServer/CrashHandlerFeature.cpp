@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "CrashHandler/Registry.h"
+#include "CrashHandler/CrashRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 CrashHandlerFeature::CrashHandlerFeature(
-    Server& server, crash_handler::CrashHandlerRegistry* crashHandler)
+    Server& server, crash_handler::ICrashRegistry* crashHandler)
     : ArangodFeature{server, *this},
       _crashHandler(crashHandler),
       _enabled(true) {
@@ -45,7 +45,7 @@ CrashHandlerFeature::CrashHandlerFeature(
 void CrashHandlerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--crash-handler.enabled",
+      "--crash-handler.enable-dumps",
       "Enable crash dump logging to write crash information to disk.",
       new BooleanParameter(&_enabled),
       arangodb::options::makeDefaultFlags(

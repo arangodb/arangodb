@@ -598,8 +598,7 @@ void actuallyDumpCrashInfo() {
       if (crashHandler == nullptr) {
         return;
       }
-      for (auto const* dataSource :
-           crashHandler->getCrashHandlerDataSources()) {
+      for (auto const* dataSource : crashHandler->getDataSources()) {
         std::string filename = arangodb::basics::FileUtils::buildFilename(
             crashDirectory,
             std::format("{}.json", dataSource->getDataSourceName()));
@@ -806,7 +805,7 @@ std::string CrashHandler::getCrashesDirectory() {
   return ::databaseDirectoryPath;
 }
 
-// CrashHandlerRegistry instance method implementations
+// ICrashRegistry instance method implementations
 void CrashHandler::setDatabaseDirectory(std::string path) {
   ::databaseDirectoryPath =
       arangodb::basics::FileUtils::buildFilename(path, "crashes");

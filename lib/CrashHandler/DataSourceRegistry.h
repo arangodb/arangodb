@@ -32,48 +32,33 @@
 
 namespace arangodb::crash_handler {
 
-class CrashHandlerDataSource;
+class ICrashHandlerDataSource;
 
 /// @brief Interface for crash handler operations that can be accessed
 /// through the CrashHandlerFeature. This allows decoupling the feature
 /// from the concrete CrashHandler implementation.
-class CrashHandlerRegistry {
+class DataSourceRegistry {
  public:
-  virtual ~CrashHandlerRegistry() = default;
+  virtual ~DataSourceRegistry() = default;
 
-  /// @brief sets the database directory for crash dumps
-  virtual void setDatabaseDirectory(std::string path) = 0;
-
-  /// @brief lists all crash directories (returns UUIDs)
-  virtual std::vector<std::string> listCrashes() = 0;
-
-  /// @brief gets the contents of a specific crash directory
-  /// Returns a map of filename -> file contents
-  virtual std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) = 0;
-
-  /// @brief deletes a specific crash directory
-  /// Returns true if successful, false if not found
-  virtual bool deleteCrash(std::string_view crashId) = 0;
-
-  void addCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+  void addDataSource(ICrashHandlerDataSource const* dataSource) {
     std::lock_guard guard(_dataSourceMtx);
     _dataSources.push_back(dataSource);
   }
 
-  std::vector<CrashHandlerDataSource const*> const& getCrashHandlerDataSources()
+  std::vector<ICrashHandlerDataSource const*> const& getDataSources()
       const {
     return _dataSources;
   }
 
-  void removeCrashHandlerDataSource(CrashHandlerDataSource const* dataSource) {
+  void removeDataSource(ICrashHandlerDataSource const* dataSource) {
     std::lock_guard guard(_dataSourceMtx);
     std::ranges::remove(_dataSources, dataSource);
   }
 
  private:
   std::mutex _dataSourceMtx;
-  std::vector<CrashHandlerDataSource const*> _dataSources;
+  std::vector<ICrashHandlerDataSource const*> _dataSources;
 };
 
 }  // namespace arangodb::crash_handler

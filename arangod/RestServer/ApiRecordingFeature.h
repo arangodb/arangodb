@@ -39,7 +39,7 @@
 #include "Metrics/HistogramBuilder.h"
 
 namespace arangodb::crash_handler {
-class CrashHandlerRegistry;
+class DataSourceRegistry;
 }
 
 namespace arangodb {
@@ -110,14 +110,14 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
 }
 
 class ApiRecordingFeature : public ArangodFeature,
-                            public crash_handler::CrashHandlerDataSource {
+                            public crash_handler::ICrashHandlerDataSource {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(
-      Server& server, crash_handler::CrashHandlerRegistry* crashHandler);
+  explicit ApiRecordingFeature(Server& server,
+                               crash_handler::DataSourceRegistry* crashHandler);
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

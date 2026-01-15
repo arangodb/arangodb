@@ -127,9 +127,9 @@ VPackBuilder serialize(
 }
 
 Feature::Feature(Server& server,
-                 crash_handler::CrashHandlerRegistry* crashHandlerRegistry)
+                 crash_handler::DataSourceRegistry* crashHandlerRegistry)
     : ArangodFeature{server, *this},
-      crash_handler::CrashHandlerDataSource(crashHandlerRegistry) {
+      crash_handler::ICrashHandlerDataSource(crashHandlerRegistry) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }

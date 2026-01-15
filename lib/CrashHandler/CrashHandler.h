@@ -29,11 +29,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "CrashHandler/Registry.h"
+#include "CrashHandler/CrashRegistry.h"
+#include "CrashHandler/DataSourceRegistry.h"
 
 namespace arangodb::crash_handler {
 
-class CrashHandlerDataSource;
+class ICrashHandlerDataSource;
 
 /// @brief States for the crash handler thread coordination.
 /// The state of the dedicated crash handler starts with IDLE
@@ -49,7 +50,7 @@ enum class CrashHandlerState : int {
   SHUTDOWN = 3            ///< shutdown requested
 };
 
-class CrashHandler : public CrashHandlerRegistry {
+class CrashHandler : public ICrashRegistry, public DataSourceRegistry {
   std::atomic<bool> _threadRunning{false};
   // This needs to be static for the signal handlers to reach!
   static std::atomic<CrashHandler*> _theCrashHandler;
@@ -75,7 +76,7 @@ class CrashHandler : public CrashHandlerRegistry {
 
   static CrashHandler const* getCrashHandler() { return _theCrashHandler; }
 
-  // CrashHandlerRegistry implementation
+  // ICrashRegistry implementation
   void setDatabaseDirectory(std::string path) override;
   std::vector<std::string> listCrashes() override;
   std::unordered_map<std::string, std::string> getCrashContents(
