@@ -30,7 +30,9 @@
 #include "Basics/Result.h"
 #include "Inspection/VPack.h"
 #include "IResearch/common.h"
+#include "IResearch/IResearchView.h"
 #include "Mocks/StorageEngineMock.h"
+#include "RestServer/FlushFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -45,10 +47,15 @@ namespace arangodb::tests::aql {
 
 class AttributeDetectorTest : public ::testing::Test {
  protected:
-  mocks::MockAqlServer server;
-  TRI_vocbase_t& vocbase;
+  mocks::MockAqlServer server{false};
+  TRI_vocbase_t* vocbase{nullptr};
 
-  AttributeDetectorTest() : vocbase(server.getSystemDatabase()) {}
+  AttributeDetectorTest() {
+    init();
+    server.addFeature<FlushFeature>(false);
+    server.startFeatures();
+    vocbase = &server.getSystemDatabase();
+  }
 
  public:
   void SetUp() override {
@@ -57,19 +64,20 @@ class AttributeDetectorTest : public ::testing::Test {
   }
 
   void createDummyGraphData() {
-    auto usersColl = vocbase.createCollection(
+    auto usersColl = vocbase->createCollection(
         VPackParser::fromJson("{\"name\": \"users\"}")->slice());
     ASSERT_NE(usersColl.get(), nullptr) << "Failed to create users";
-    auto postsColl = vocbase.createCollection(
+    auto postsColl = vocbase->createCollection(
         VPackParser::fromJson("{\"name\": \"posts\"}")->slice());
     ASSERT_NE(postsColl.get(), nullptr) << "Failed to create posts";
-    auto productsColl = vocbase.createCollection(
+    auto productsColl = vocbase->createCollection(
         VPackParser::fromJson("{\"name\": \"products\"}")->slice());
     ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
-    auto graphs = vocbase.createCollection(
-      VPackParser::fromJson(R"({"name":"_graphs","isSystem":true})")->slice());
+    auto graphs = vocbase->createCollection(
+        VPackParser::fromJson(R"({"name":"_graphs","isSystem":true})")
+            ->slice());
     ASSERT_NE(graphs.get(), nullptr) << "Failed to create _graphs";
-    auto orderedColl = vocbase.createCollection(
+    auto orderedColl = vocbase->createCollection(
         VPackParser::fromJson("{\"name\": \"ordered\", \"type\": 3}")->slice());
     ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
     bool created = false;
@@ -81,7 +89,7 @@ class AttributeDetectorTest : public ::testing::Test {
     auto run = [&](std::string const& q) {
       SCOPED_TRACE(q);
       auto bind = VPackParser::fromJson("{ }");
-      auto qr = arangodb::tests::executeQuery(vocbase, q, bind);
+      auto qr = tests::executeQuery(*vocbase, q, bind);
       ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
     };
 
@@ -100,11 +108,52 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e3", _from:"users/u2", _to:"products/p3", qty:1, orderedAt:"2026-01-03"} INTO ordered)aql");
+
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"usersView\", \"type\": \"arangosearch\" }");
+    auto logicalView = vocbase->createView(createJson->slice(), false);
+    ASSERT_FALSE(!logicalView);
+
+    auto* impl = dynamic_cast<iresearch::IResearchView*>(logicalView.get());
+    ASSERT_FALSE(!impl);
+
+    {
+      auto doc0 = arangodb::velocypack::Parser::fromJson(
+          R"({ "_key":"u3", "name":"Carol", "age":42, "address":"SF" })");
+
+      static std::vector<std::string> const EMPTY;
+      std::vector<std::string> writeCols{"users"};
+
+      transaction::Methods trx(
+          transaction::StandaloneContext::create(
+              *vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY, writeCols, EMPTY, transaction::Options());
+
+      ASSERT_TRUE(trx.begin().ok());
+      ASSERT_TRUE(
+          trx.insert("users", doc0->slice(), arangodb::OperationOptions())
+              .ok());
+      ASSERT_TRUE(trx.commit().ok());
+    }
+
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson(R"({
+    "links": {
+      "users": {
+        "fields": {
+          "name": { "analyzers": ["text_en"] }
+        }
+      }
+    }
+  })");
+      auto res = impl->properties(updateJson->slice(), true, false);
+      ASSERT_TRUE(res.ok()) << res.errorMessage();
+    }
   }
 
   std::shared_ptr<Query> executeQuery(std::string const& queryString) {
     auto ctx = std::make_shared<transaction::StandaloneContext>(
-        vocbase, transaction::OperationOriginTestCase{});
+        *vocbase, transaction::OperationOriginTestCase{});
 
     auto bindParams = VPackParser::fromJson("{}");
     auto query =
@@ -115,14 +164,16 @@ class AttributeDetectorTest : public ::testing::Test {
   }
 
   void ensureHashIndex(std::string const& collName, std::string const& attr) {
-    auto coll = vocbase.lookupCollection(collName);
+    auto coll = vocbase->lookupCollection(collName);
     ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
 
     auto createIndexJson = VPackParser::fromJson(
-        std::string("{ \"type\": \"hash\", \"fields\": [ \"") + attr + "\" ] }");
+        std::string("{ \"type\": \"hash\", \"fields\": [ \"") + attr +
+        "\" ] }");
 
     bool created = false;
-    auto idx = coll->createIndex(createIndexJson->slice(), created).waitAndGet();
+    auto idx =
+        coll->createIndex(createIndexJson->slice(), created).waitAndGet();
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
@@ -222,8 +273,6 @@ TEST_F(AttributeDetectorTest, UpsertOperation) {
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
 
-
-
 TEST_F(AttributeDetectorTest, FilterOnAttributeReturnFullDocument) {
   auto query = executeQuery("FOR u IN users FILTER u.name == 'Alice' RETURN u");
   auto const& accesses = query->abacAccesses();
@@ -279,7 +328,8 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes1) {
 
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes2) {
   auto query = executeQuery(
-      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == p.age RETURN q.address");
+      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == "
+      "p.age RETURN q.address");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
@@ -293,7 +343,8 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes2) {
 
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes3) {
   auto query = executeQuery(
-      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == p.age RETURN q");
+      "FOR p IN users FILTER p.name == 'Alice' FOR q IN users FILTER q.age == "
+      "p.age RETURN q");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
@@ -592,11 +643,28 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
 
   auto const& accesses = query->abacAccesses();
 
-  //ASSERT_EQ(accesses.size(), 2);
+  // ASSERT_EQ(accesses.size(), 3);
   for (auto& access : accesses) {
+    LOG_DEVEL << "collName: " << access.collectionName;
     EXPECT_TRUE(access.requiresAllAttributesRead);
     EXPECT_FALSE(access.requiresAllAttributesWrite);
   }
 }
+
+TEST_F(AttributeDetectorTest, ArangoSearch_ReturnDoc) {
+  auto query = executeQuery(R"aql(
+    FOR d IN usersView
+      SEARCH d.name == "Alice"
+      RETURN d
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
 
 }  // namespace arangodb::tests::aql

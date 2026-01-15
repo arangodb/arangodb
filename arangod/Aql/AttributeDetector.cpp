@@ -93,6 +93,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
     return false;
   }
 
+  LOG_DEVEL << "ExecutionNodeType: " << node->getType();
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       auto* enumNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
