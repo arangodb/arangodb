@@ -87,8 +87,6 @@ class AttributeDetectorTest : public ::testing::Test {
 
     run(R"aql(INSERT {_key:"u1", name:"Alice", age:30, address: "Cologne"} INTO users)aql");
     run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24, address: "Tokyo"} INTO users)aql");
-    //ensurePersistentIndex("users", "name");
-    //ensurePersistentIndex("users", "age");
 
     run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival"} INTO posts)aql");
     run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday"} INTO posts)aql");
@@ -96,6 +94,8 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"p1", name:"Keyboard", price:49.99} INTO products)aql");
     run(R"aql(INSERT {_key:"p2", name:"Mouse",    price:19.99} INTO products)aql");
     run(R"aql(INSERT {_key:"p3", name:"Monitor",  price:199.0} INTO products)aql");
+    ensureHashIndex("products", "name");
+    ensureHashIndex("products", "price");
 
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
@@ -114,24 +114,17 @@ class AttributeDetectorTest : public ::testing::Test {
     return query;
   }
 
-  void ensurePersistentIndex(std::string const& collName,
-                           std::string const& attr) {
+  void ensureHashIndex(std::string const& collName, std::string const& attr) {
     auto coll = vocbase.lookupCollection(collName);
+    ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
 
-    velocypack::Builder b;
-    velocypack::Builder tmp;
-    b.openObject();
-    b.add(StaticStrings::IndexType, velocypack::Value("persistent"));
-    b.add(StaticStrings::IndexFields,
-          velocypack::Value(velocypack::ValueType::Array));
+    auto createIndexJson = VPackParser::fromJson(
+        std::string("{ \"type\": \"hash\", \"fields\": [ \"") + attr + "\" ] }");
 
-    b.add(velocypack::Value(attr));
-    b.close();
-    b.close();
-
-    auto res = methods::Indexes::ensureIndex(*coll, b.slice(), true, tmp)
-                   .waitAndGet();
-    ASSERT_TRUE(res.ok()) << res.errorMessage();
+    bool created = false;
+    auto idx = coll->createIndex(createIndexJson->slice(), created).waitAndGet();
+    ASSERT_TRUE(idx) << "createIndex returned nullptr";
+    ASSERT_TRUE(created) << "index was not created";
   }
 };
 
@@ -483,16 +476,16 @@ TEST_F(AttributeDetectorTest, NOOPTMergeMultipleDocumentCalls) {
 
 TEST_F(AttributeDetectorTest, FilterWithIndex) {
   auto query = executeQuery(R"aql(
-    FOR u IN users
-    FILTER u.age > 25
-    RETURN u.name
+    FOR p IN products
+    FILTER p.price > 20
+    RETURN p.name
   )aql");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_EQ(accesses[0].collectionName, "products");
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }

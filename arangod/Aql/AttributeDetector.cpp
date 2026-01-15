@@ -97,6 +97,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
   if (node == nullptr) {
     return false;
   }
+  LOG_DEVEL << "before(): nodeType: " << node->getType();
 
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
