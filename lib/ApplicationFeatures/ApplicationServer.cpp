@@ -116,11 +116,13 @@ bool ApplicationServer::isStoppingState(State state) const {
          state == State::ABORTED;
 }
 
-void ApplicationServer::disableFeatures(std::span<const std::type_index> types) {
+void ApplicationServer::disableFeatures(
+    std::span<const std::type_index> types) {
   disableFeatures(types, false);
 }
 
-void ApplicationServer::forceDisableFeatures(std::span<const std::type_index> types) {
+void ApplicationServer::forceDisableFeatures(
+    std::span<const std::type_index> types) {
   disableFeatures(types, true);
 }
 

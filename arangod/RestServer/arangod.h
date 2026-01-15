@@ -33,7 +33,8 @@ namespace arangodb {
 // Forward declaration of ArangodServer
 class ArangodServer;
 
-// Forward declarations of all features (needed by ArangodFeature and other headers)
+// Forward declarations of all features (needed by ArangodFeature and other
+// headers)
 namespace application_features {
 class AgencyFeaturePhase;
 class CommunicationFeaturePhase;

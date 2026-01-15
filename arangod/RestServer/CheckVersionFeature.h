@@ -37,8 +37,9 @@ class CheckVersionFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "CheckVersion"; }
 
-  explicit CheckVersionFeature(Server& server, int* result,
-                               std::span<const std::type_index> nonServerFeatures);
+  explicit CheckVersionFeature(
+      Server& server, int* result,
+      std::span<const std::type_index> nonServerFeatures);
 
  private:
   bool _checkVersion;
