@@ -22,31 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <variant>
-#include "Inspection/Types.h"
+#include "Containers/Concurrent/Registry.h"
+#include "ActivityRegistry/activity.h"
 
-namespace arangodb::graph {
+namespace arangodb::activity_registry {
 
-using CursorId = std::size_t;
+using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
+using Registry = containers::Registry<ActivityInRegistry>;
 
 /**
-   Marker struct for queues to do an expansion when such a type is popped.
- **/
-struct Expansion {
-  CursorId id;
-  std::size_t from;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Expansion& x) {
-  return f.object(x).fields(f.field("id", x.id), f.field("from", x.from));
-}
+   Global variable that holds all active activities.
 
-template<typename Step>
-struct QueueEntry : std::variant<Step, Expansion> {};
-template<typename Step, typename Inspector>
-auto inspect(Inspector& f, QueueEntry<Step>& x) {
-  return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<Step>(), inspection::inlineType<Expansion>());
-}
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
 
-}  // namespace arangodb::graph
+/**
+   Get thread registry of all active activities on current thread.
+
+   Creates the thread registry when called for the first time and adds it to
+   the global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::activity_registry

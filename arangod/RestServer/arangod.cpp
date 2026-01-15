@@ -88,6 +88,7 @@ void ArangodServer::addFeatures(int* ret, std::string_view binaryName) {
   addFeature<ApiRecordingFeature>();
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>();
+  addFeature<activity_registry::Feature>();
   addFeature<AuthenticationFeature>();
   addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT

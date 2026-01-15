@@ -91,6 +91,9 @@
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCFStats.h"
+
+#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -3594,16 +3597,11 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     std::string name = RocksDBColumnFamilyManager::name(
         family, RocksDBColumnFamilyManager::NameMode::External);
     rocksdb::ColumnFamilyHandle* c = RocksDBColumnFamilyManager::get(family);
-    std::string v;
-    builder.add(name, VPackValue(VPackValueType::Object));
-    if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
-      builder.add("dbstats", VPackValue(v));
-    }
 
     // re-add this line to count all keys in the column family (slow!!!)
     // builder.add("keys", VPackValue(rocksutils::countKeys(_db, c)));
 
-    // estimate size on disk and in memtables
+    // Estimate size on disk and in memtables
     uint64_t out = 0;
     rocksdb::Range r(rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8),
                      rocksdb::Slice("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
@@ -3614,8 +3612,11 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                                               .include_files = true};
     _db->GetApproximateSizes(options, c, &r, 1, &out);
 
-    builder.add("memory", VPackValue(out));
-    builder.close();
+    // Collect structured CF stats using direct RocksDB APIs
+    auto cfStats = RocksDBCFStatsCollector::collect(_db, c, name);
+    VPackBuilder tempBuilder;
+    velocypack::serialize(tempBuilder, cfStats);
+    builder.add(name, tempBuilder.slice());
   };
 
   builder.openObject(/*unindexed*/ true);

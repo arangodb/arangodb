@@ -27,6 +27,7 @@
 #include <ostream>
 #include <unordered_map>
 #include <vector>
+#include <list>
 
 #include "Mocks/MockGraph.h"
 #include "Aql/TraversalStats.h"
@@ -253,6 +254,29 @@ class MockGraphProvider {
     size_t _localSchreierIndex;
   };
 
+  template<typename Step>
+  struct MockGraphNeighbourCursor {
+    auto next() -> std::vector<Step>;
+    auto hasMore() -> bool { return _hasMore; };
+    auto markForDeletion() -> void { deletable = true; };
+
+    bool deletable = false;
+    Step _step;
+    size_t _previous;
+    std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>>&
+        _fromIndex;
+    std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>>& _toIndex;
+    // Optional callback to compute the weight of an edge.
+    std::optional<WeightCallback>& _weightCallback;
+    bool _processable;  // looseEnds == NEVER: true, looseEnds == ALWAYS: false,
+                        // otherwise: true
+    bool _reverse;
+    arangodb::aql::TraversalStats& _stats;
+    bool _hasMore = true;
+  };
+
+  using NeighbourProvider = MockGraphNeighbourCursor<Step>;
+
   MockGraphProvider() = delete;
   MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                     arangodb::ResourceMonitor& resourceMonitor);
@@ -274,24 +298,23 @@ class MockGraphProvider {
 
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
-  auto expand(Step const& from, size_t previous) -> std::vector<Step>;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> callback) -> void;
-  using CursorId = size_t;
-  auto addExpansionIterator(CursorId id, Step const& from) -> void {
-    _startedIterators.emplace(id);
-    return;
-  }
-  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
-                         std::function<void(Step)> const& callback) -> bool {
-    // expand everything and remove step from _startedIterators
-    auto iterator = _startedIterators.find(id);
-    if (iterator == _startedIterators.end()) {
-      return false;
-    }
-    expand(step, previous, callback);
-    _startedIterators.erase(iterator);
-    return true;
+  auto createNeighbourCursor(Step const& step, size_t position)
+      -> MockGraphNeighbourCursor<Step>& {
+    _neighbourCursors.remove_if(
+        [](MockGraphNeighbourCursor<Step> const& cursor) {
+          return cursor.deletable;
+        });
+    return _neighbourCursors.emplace_back(
+        MockGraphNeighbourCursor<Step>{._step = step,
+                                       ._previous = position,
+                                       ._fromIndex = _fromIndex,
+                                       ._toIndex = _toIndex,
+                                       ._weightCallback = _weightCallback,
+                                       ._processable = decideProcessable(),
+                                       ._reverse = _reverse,
+                                       ._stats = _stats});
   }
   auto clear() -> void;
 
@@ -341,10 +364,15 @@ class MockGraphProvider {
   arangodb::aql::TraversalStats _stats;
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
-  std::unordered_set<CursorId> _startedIterators;
+  std::list<MockGraphNeighbourCursor<Step>> _neighbourCursors;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, MockGraphProvider::Step& x) {
+  return f.object(x).fields();
+}
+template<typename Inspector, typename Step>
+auto inspect(Inspector& f,
+             MockGraphProvider::MockGraphNeighbourCursor<Step>& x) {
   return f.object(x).fields();
 }
 }  // namespace graph

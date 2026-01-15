@@ -61,6 +61,11 @@ class AuthenticationFeature;
 namespace async_registry {
 class Feature;
 }
+namespace activity_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
