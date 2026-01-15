@@ -28,11 +28,11 @@
 namespace arangodb::crash_handler {
 
 ICrashHandlerDataSource::ICrashHandlerDataSource(
-    DataSourceRegistry* crashHandlerInterface)
-    : _crashHandlerInterface(crashHandlerInterface) {}
+    DataSourceRegistry* dataSourceRegistry)
+    : _dataSourceRegistry(dataSourceRegistry) {}
 
 ICrashHandlerDataSource::~ICrashHandlerDataSource() {
-  _crashHandlerInterface->removeDataSource(this);
+  _dataSourceRegistry->removeDataSource(this);
 }
 
 }  // namespace arangodb::crash_handler

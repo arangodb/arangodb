@@ -25,18 +25,12 @@
 
 #include <algorithm>
 #include <mutex>
-#include <string>
-#include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb::crash_handler {
 
 class ICrashHandlerDataSource;
 
-/// @brief Interface for crash handler operations that can be accessed
-/// through the CrashHandlerFeature. This allows decoupling the feature
-/// from the concrete CrashHandler implementation.
 class DataSourceRegistry {
  public:
   virtual ~DataSourceRegistry() = default;

@@ -24,7 +24,6 @@
 #pragma once
 
 #include <string_view>
-#include <vector>
 
 #include <velocypack/SharedSlice.h>
 #include "CrashHandler/DataSourceRegistry.h"
@@ -35,7 +34,7 @@ class DataSourceRegistry;
 
 class ICrashHandlerDataSource {
  public:
-  ICrashHandlerDataSource(DataSourceRegistry* crashHandlerInterface);
+  ICrashHandlerDataSource(DataSourceRegistry* dataSourceRegistry);
 
   virtual ~ICrashHandlerDataSource();
 
@@ -44,7 +43,7 @@ class ICrashHandlerDataSource {
   virtual std::string_view getDataSourceName() const = 0;
 
  private:
-  DataSourceRegistry* _crashHandlerInterface;
+  DataSourceRegistry* _dataSourceRegistry;
 };
 
 }  // namespace arangodb::crash_handler
