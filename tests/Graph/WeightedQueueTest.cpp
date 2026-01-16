@@ -134,8 +134,8 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   EXPECT_EQ(queue.size(), 4U);
   EXPECT_TRUE(queue.hasProcessableElement());
   auto s = queue.pop();
-  ASSERT_TRUE(std::holds_alternative<Step>(s));
-  EXPECT_EQ(std::get<Step>(s).id(), 3U);
+  ASSERT_TRUE(s.has_value());
+  EXPECT_EQ(s.value().id(), 3U);
   EXPECT_FALSE(queue.hasProcessableElement());
   EXPECT_EQ(queue.size(), 3U);
 }
@@ -189,9 +189,9 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     // It needs to be in increasing weight order.
     while (queue.hasProcessableElement()) {
       auto myStep = queue.pop();
-      ASSERT_TRUE(std::holds_alternative<Step>(myStep));
-      EXPECT_GE(std::get<Step>(myStep).getWeight(), weightBefore);
-      weightBefore = std::get<Step>(myStep).getWeight();
+      ASSERT_TRUE(myStep.has_value());
+      EXPECT_GE(myStep.value().getWeight(), weightBefore);
+      weightBefore = myStep.value().getWeight();
     }
     // As all inputs are processable this queue shall be empty now.
     ASSERT_EQ(queue.size(), 0U);
@@ -234,8 +234,8 @@ TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
   // So do not revert it,but just run from first to last
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -262,8 +262,8 @@ TEST_F(WeightedQueueTest,
   {
     // Pop First entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{8, 8, false});
     queue.append(Step{4, 4, false});
@@ -271,8 +271,8 @@ TEST_F(WeightedQueueTest,
   {
     // Pop Second entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std ::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{5, 5, false});
     queue.append(Step{3, 3, false});
@@ -282,8 +282,8 @@ TEST_F(WeightedQueueTest,
   ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_TRUE(std::holds_alternative<Step>(step));
-    ASSERT_EQ(std::get<Step>(step).id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
