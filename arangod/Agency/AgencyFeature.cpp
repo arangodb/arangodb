@@ -23,7 +23,6 @@
 
 #include "AgencyFeature.h"
 
-#include "Actions/ActionFeature.h"
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
@@ -329,8 +328,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
   server().disableFeatures(
       std::array{ArangodServer::id<iresearch::IResearchFeature>(),
-                 ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
-                 ArangodServer::id<ActionFeature>()});
+                 ArangodServer::id<iresearch::IResearchAnalyzerFeature>()});
 }
 
 void AgencyFeature::prepare() {

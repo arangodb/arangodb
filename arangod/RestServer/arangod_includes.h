@@ -28,7 +28,6 @@
 // since both use ArangodServer and therefore need to know all the features.
 // This also helps to avoid accidentally breaking the sepp build.
 
-#include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
