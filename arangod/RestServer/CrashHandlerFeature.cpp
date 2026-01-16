@@ -24,7 +24,6 @@
 #include "RestServer/CrashHandlerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Assertions/Assert.h"
 #include "CrashHandler/Dumper.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
@@ -45,12 +44,8 @@ CrashHandlerFeature::CrashHandlerFeature(
 }
 
 void CrashHandlerFeature::start() {
-  if (!_enabled || _dumper == nullptr) {
+  if (_enabled) {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
-
-    if (!_enabled || _dumper == nullptr) {
-      return;
-    }
 
     _crashesDirectory =
         arangodb::basics::FileUtils::buildFilename(path, "crashes");
