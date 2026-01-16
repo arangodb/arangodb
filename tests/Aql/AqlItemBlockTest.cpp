@@ -29,6 +29,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <boost/container/vector.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -45,6 +46,7 @@ class AqlItemBlockTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
               "a",
@@ -523,6 +525,788 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
     compareWithDummy(testee, 0, 1, 1);
     assertShadowRowIndexes(testee, {});
   }
+}
+
+// ============================================================================
+// Tests for AqlItemBlock::cloneDataAndMoveShadow()
+// ============================================================================
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_NoShadowRows) {
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  // Clone data and move shadow (but there are no shadow rows)
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), block->numRows());
+  EXPECT_EQ(cloned->numRegisters(), block->numRegisters());
+  EXPECT_FALSE(cloned->hasShadowRows());
+
+  // Verify data is cloned (deep copy)
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+
+  // Verify original is unchanged
+  EXPECT_EQ(block->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(block->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(block->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(block->getValueReference(1, 1).toInt64(), 4);
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_WithShadowRows) {
+  auto block = buildBlock<2>(itemBlockManager,
+                             {{{{1}, {2}}}, {{{3}, {4}}}, {{{5}, {6}}}},
+                             /* shadow row */ {{/* row */ 1, /* depth */ 0}});
+
+  // Row 1 is a shadow row
+  ASSERT_TRUE(block->isShadowRow(1));
+  ASSERT_FALSE(block->isShadowRow(0));
+  ASSERT_FALSE(block->isShadowRow(2));
+
+  // Clone data and move shadow rows
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), block->numRows());
+  EXPECT_EQ(cloned->numRegisters(), block->numRegisters());
+  EXPECT_TRUE(cloned->hasShadowRows());
+  EXPECT_TRUE(cloned->isShadowRow(1));
+  EXPECT_EQ(cloned->getShadowRowDepth(1), 0);
+
+  // Verify data rows are cloned (deep copy)
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(cloned->getValueReference(2, 0).toInt64(), 5);
+  EXPECT_EQ(cloned->getValueReference(2, 1).toInt64(), 6);
+
+  // Shadow row data should be moved (stolen from original)
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+
+  // Original shadow row should be empty (values were stolen)
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(1, 1).isEmpty());
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_SharedManagedSlices) {
+  auto block = itemBlockManager.requestBlock(3, 1);
+
+  // Create a managed slice and use it in multiple rows
+  AqlValue shared = AqlValue(AqlValueHintInt(100));
+  block->setValue(0, 0, shared);
+  block->setValue(1, 0, shared);
+  block->setValue(2, 0, shared);
+
+  // Make row 1 a shadow row
+  block->makeShadowRow(1, 0);
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), 3);
+  EXPECT_EQ(cloned->numRegisters(), 1);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  // Data rows (0, 2) should be cloned
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 100);
+  EXPECT_EQ(cloned->getValueReference(2, 0).toInt64(), 100);
+
+  // Shadow row (1) should be moved
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 100);
+  EXPECT_TRUE(
+      block->getValueReference(1, 0).isEmpty());  // Stolen from original
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_SharedSupervisedSlices) {
+  auto block = itemBlockManager.requestBlock(3, 1);
+
+  // Create a supervised slice and use it in multiple rows
+  std::string content = "Supervised slice content";
+  arangodb::velocypack::Builder b;
+  b.add(arangodb::velocypack::Value(content));
+  AqlValue supervised = AqlValue(
+      b.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+
+  block->setValue(0, 0, supervised);
+  block->setValue(1, 0, supervised);
+  block->setValue(2, 0, supervised);
+  auto initialMemory = monitor.current();
+
+  // Make row 1 a shadow row
+  block->makeShadowRow(1, 0);
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+  // This assertion is tricky
+  // The first row's SupervisedSlide was clone (new allocation)
+  // The second row's SupervisedSlice was moved (no new allocation)
+  // The third row's SupervisedSlice was shared because it was cached by the
+  // first row (no new allocation)
+  EXPECT_EQ(monitor.current(), initialMemory * 2);
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), 3);
+  EXPECT_EQ(cloned->numRegisters(), 1);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  // Data rows (0, 2) should be cloned
+  EXPECT_EQ(cloned->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned->getValueReference(2, 0).slice().stringView(), content);
+
+  // Shadow row (1) should be moved
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content);
+  EXPECT_TRUE(
+      block->getValueReference(1, 0).isEmpty());  // Stolen from original
+
+  // Clean up
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+
+  // All memory should be released
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_SupervisedSlices) {
+  auto block = itemBlockManager.requestBlock(3, 1);
+
+  size_t memSize = 0;
+  std::string content = "Supervised slice content";
+  for (size_t i = 0; i < 3; i++) {
+    velocypack::Builder b;
+    b.add(velocypack::Value(content));
+    AqlValue supervised = AqlValue(b.slice(), &monitor);
+    block->setValue(i, 0, supervised);
+    memSize = supervised.memoryUsage();
+  }
+  auto initialMemory = monitor.current();
+
+  // Make row 1 a shadow row
+  block->makeShadowRow(1, 0);
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+  // The original block has independent three SupervisedSlices
+  // The cloned block should also have three independent SupervisedSlices
+  // but, the original second one was stolen by the cloned block
+  // so we subtract one memSize
+  EXPECT_EQ(monitor.current(), initialMemory * 2 - memSize);
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), 3);
+  EXPECT_EQ(cloned->numRegisters(), 1);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  // Data rows (0, 2) should be cloned
+  EXPECT_EQ(cloned->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned->getValueReference(2, 0).slice().stringView(), content);
+
+  // Shadow row (1) should be moved
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content);
+  EXPECT_TRUE(
+      block->getValueReference(1, 0).isEmpty());  // Stolen from original
+
+  // Clean up
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+
+  // All memory should be released
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_MultipleShadowRows) {
+  auto block =
+      buildBlock<1>(itemBlockManager, {{{{1}}, {{2}}, {{3}}, {{4}}, {{5}}}},
+                    {{1, 0}, {3, 1}});
+
+  // Rows 1 and 3 are shadow rows
+  ASSERT_TRUE(block->isShadowRow(1));
+  ASSERT_TRUE(block->isShadowRow(3));
+  ASSERT_EQ(block->getShadowRowDepth(1), 0);
+  ASSERT_EQ(block->getShadowRowDepth(3), 1);
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), 5);
+  EXPECT_TRUE(cloned->hasShadowRows());
+  EXPECT_TRUE(cloned->isShadowRow(1));
+  EXPECT_TRUE(cloned->isShadowRow(3));
+  EXPECT_EQ(cloned->getShadowRowDepth(1), 0);
+  EXPECT_EQ(cloned->getShadowRowDepth(3), 1);
+
+  // Data rows should be cloned
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(2, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(4, 0).toInt64(), 5);
+
+  // Shadow rows should be moved (stolen)
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 2);
+  EXPECT_EQ(cloned->getValueReference(3, 0).toInt64(), 4);
+
+  // Original shadow rows should be empty
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(3, 0).isEmpty());
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_MixedManagedAndSupervised) {
+  auto block = itemBlockManager.requestBlock(3, 2);
+
+  // Row 0: managed slices
+  AqlValue managed1 = AqlValue(AqlValueHintInt(10));
+  AqlValue managed2 = AqlValue(AqlValueHintInt(20));
+  block->setValue(0, 0, managed1);
+  block->setValue(0, 1, managed2);
+
+  // Row 1: supervised slices (will be shadow row)
+  std::string content1 = "Supervised content 1";
+  std::string content2 = "Supervised content 2";
+  arangodb::velocypack::Builder b1, b2;
+  b1.add(arangodb::velocypack::Value(content1));
+  b2.add(arangodb::velocypack::Value(content2));
+  AqlValue supervised1 = AqlValue(
+      b1.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b1.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised1.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+  AqlValue supervised2 = AqlValue(
+      b2.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b2.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised2.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+  block->setValue(1, 0, supervised1);
+  block->setValue(1, 1, supervised2);
+  block->makeShadowRow(1, 0);
+
+  // Row 2: mixed
+  block->setValue(2, 0, managed1);     // Reuse managed
+  block->setValue(2, 1, supervised1);  // Reuse supervised
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->numRows(), 3);
+  EXPECT_EQ(cloned->numRegisters(), 2);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  // Row 0 (data): cloned
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 10);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 20);
+
+  // Row 1 (shadow): moved
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content1);
+  EXPECT_EQ(cloned->getValueReference(1, 1).slice().stringView(), content2);
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());  // Stolen
+  EXPECT_TRUE(block->getValueReference(1, 1).isEmpty());  // Stolen
+
+  // Row 2 (data): cloned
+  EXPECT_EQ(cloned->getValueReference(2, 0).toInt64(), 10);
+  EXPECT_EQ(cloned->getValueReference(2, 1).slice().stringView(), content1);
+
+  // Clean up
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+// ============================================================================
+// Aggressive tests to trigger potential double frees in
+// cloneDataAndMoveShadow()
+// ============================================================================
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_DestroyOriginalAfterClone) {
+  // Test: Clone block, then destroy original - cloned should still work
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 2);
+
+  // Destroy original block - cloned should still be valid
+  block.reset(nullptr);
+
+  // Access cloned values - should not crash or double-free
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+
+  cloned.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       cloneDataAndMoveShadow_DestroyValueInOriginalAfterClone) {
+  // Test: Clone block, then try to destroy values in original
+  // This should be safe because cloned values are independent copies
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+
+  // Destroy values in original block - should not affect cloned block
+  block->destroyValue(0, 0);
+  block->destroyValue(0, 1);
+  block->destroyValue(1, 0);
+  block->destroyValue(1, 1);
+
+  // Cloned values should still be valid
+  EXPECT_EQ(cloned->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       cloneDataAndMoveShadow_DestroyValueInClonedAfterOriginalDestroyed) {
+  // Test: Clone block, destroy original, then destroy values in cloned
+  // This tests that cloned block manages its own memory correctly
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+
+  // Destroy original
+  block.reset(nullptr);
+
+  // Now destroy values in cloned - should not cause double free
+  cloned->destroyValue(0, 0);
+  cloned->destroyValue(0, 1);
+  cloned->destroyValue(1, 0);
+  cloned->destroyValue(1, 1);
+
+  // Values should be empty now
+  EXPECT_TRUE(cloned->getValueReference(0, 0).isEmpty());
+  EXPECT_TRUE(cloned->getValueReference(0, 1).isEmpty());
+  EXPECT_TRUE(cloned->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(cloned->getValueReference(1, 1).isEmpty());
+
+  cloned.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       cloneDataAndMoveShadow_ShadowRowDestroyOriginalAfterMove) {
+  // Test: Move shadow row, then destroy original - should not double-free
+  auto block =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}}, {{1, 0}});
+
+  ASSERT_TRUE(block->isShadowRow(1));
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+
+  // Original shadow row should be empty (stolen)
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(1, 1).isEmpty());
+
+  // Destroy original block - cloned shadow row should still work
+  block.reset(nullptr);
+
+  // Access cloned shadow row - should not crash
+  EXPECT_EQ(cloned->getValueReference(1, 0).toInt64(), 3);
+  EXPECT_EQ(cloned->getValueReference(1, 1).toInt64(), 4);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  cloned.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, cloneDataAndMoveShadow_MultipleClonesSameBlock) {
+  // Test: Create multiple clones of the same block - each should be independent
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  SharedAqlItemBlockPtr cloned1 = block->cloneDataAndMoveShadow();
+  SharedAqlItemBlockPtr cloned2 = block->cloneDataAndMoveShadow();
+  SharedAqlItemBlockPtr cloned3 = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned1, nullptr);
+  ASSERT_NE(cloned2, nullptr);
+  ASSERT_NE(cloned3, nullptr);
+
+  // All clones should have independent copies
+  EXPECT_EQ(cloned1->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned2->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).toInt64(), 1);
+
+  // Destroy original
+  block.reset(nullptr);
+
+  // Destroy one clone
+  cloned1.reset(nullptr);
+
+  // Other clones should still work
+  EXPECT_EQ(cloned2->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).toInt64(), 1);
+
+  cloned2.reset(nullptr);
+  cloned3.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       cloneDataAndMoveShadow_SupervisedSlicesDestroyOriginalAfterClone) {
+  // Test: Clone supervised slices, destroy original - should not leak or
+  // double-free
+  auto block = itemBlockManager.requestBlock(2, 1);
+
+  std::string content = "Supervised slice for double-free test";
+  arangodb::velocypack::Builder b;
+  b.add(arangodb::velocypack::Value(content));
+  AqlValue supervised = AqlValue(
+      b.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b.slice().byteSize()),
+      &monitor);
+
+  block->setValue(0, 0, supervised);
+  block->setValue(1, 0, supervised);
+
+  size_t initialMemory = monitor.current();
+  EXPECT_GT(initialMemory, 0U);
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_EQ(cloned->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content);
+
+  // Destroy original block - cloned should still work
+  block.reset(nullptr);
+
+  // Access cloned values - should not crash
+  EXPECT_EQ(cloned->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content);
+
+  // Memory should still be tracked
+  EXPECT_GT(monitor.current(), 0U);
+
+  // Destroy cloned block - all memory should be released
+  cloned.reset(nullptr);
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+TEST_F(AqlItemBlockTest,
+       cloneDataAndMoveShadow_ShadowRowSupervisedSlicesDestroyAfterMove) {
+  // Test: Move shadow row with supervised slices, destroy original - should not
+  // double-free
+  auto block = itemBlockManager.requestBlock(3, 1);
+
+  // Row 0: data row with supervised slice
+  std::string content1 = "Data row supervised slice";
+  arangodb::velocypack::Builder b1;
+  b1.add(arangodb::velocypack::Value(content1));
+  AqlValue supervised1 = AqlValue(
+      b1.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b1.slice().byteSize()),
+      &monitor);
+  block->setValue(0, 0, supervised1);
+
+  // Row 1: shadow row with supervised slice (will be moved)
+  std::string content2 = "Shadow row supervised slice";
+  arangodb::velocypack::Builder b2;
+  b2.add(arangodb::velocypack::Value(content2));
+  AqlValue supervised2 = AqlValue(
+      b2.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b2.slice().byteSize()),
+      &monitor);
+  block->setValue(1, 0, supervised2);
+  block->makeShadowRow(1, 0);
+
+  // Row 2: data row with supervised slice
+  block->setValue(2, 0, supervised1);  // Reuse supervised1
+
+  size_t initialMemory = monitor.current();
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_TRUE(cloned->isShadowRow(1));
+
+  // Shadow row should be moved (stolen from original)
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content2);
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+
+  // Destroy original block - cloned should still work
+  block.reset(nullptr);
+
+  // Access all cloned values - should not crash
+  EXPECT_EQ(cloned->getValueReference(0, 0).slice().stringView(), content1);
+  EXPECT_EQ(cloned->getValueReference(1, 0).slice().stringView(), content2);
+  EXPECT_EQ(cloned->getValueReference(2, 0).slice().stringView(), content1);
+
+  // Memory should still be tracked
+  EXPECT_GT(monitor.current(), initialMemory);
+
+  // Destroy cloned block - all memory should be released
+  cloned.reset(nullptr);
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+// ============================================================================
+// Aggressive tests to trigger use-after-free in serialization (toVelocyPack)
+// Based on real bug: heap-use-after-free when serializing after
+// cloneDataAndMoveShadow
+// ============================================================================
+
+TEST_F(AqlItemBlockTest, toVelocyPack_AfterCloneDataAndMoveShadow) {
+  // Test: Serialize block after cloneDataAndMoveShadow - shadow rows were
+  // stolen This should not cause use-after-free when accessing stolen values
+  auto block =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}}, {{1, 0}});
+
+  ASSERT_TRUE(block->isShadowRow(1));
+
+  // Clone and move shadow row (steals values from original)
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());  // Stolen
+
+  // Try to serialize original block - should handle empty/stolen values
+  // gracefully This could trigger use-after-free if toVelocyPack accesses freed
+  // memory
+  velocypack::Builder result;
+  result.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result);
+  result.close();
+
+  // Verify serialization succeeded
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+  EXPECT_TRUE(result.slice().hasKey("raw"));
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, toVelocyPack_AfterStealAndEraseValue) {
+  // Test: Serialize block after stealing values - should not access freed
+  // memory
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  // Steal a value
+  AqlValue stolen = block->stealAndEraseValue(0, 0);
+  EXPECT_TRUE(block->getValueReference(0, 0).isEmpty());
+
+  // Try to serialize - should handle empty value gracefully
+  velocypack::Builder result;
+  result.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result);
+  result.close();
+
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+
+  // Destroy stolen value
+  stolen.destroy();
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       toVelocyPack_SupervisedSlicesAfterCloneDataAndMoveShadow) {
+  // Test: Serialize supervised slices after cloneDataAndMoveShadow
+  // This is the scenario from the error - supervised slices that were moved
+  auto block = itemBlockManager.requestBlock(3, 1);
+
+  std::string content1 = "Supervised slice 1";
+  std::string content2 = "Supervised slice 2";
+  std::string content3 = "Supervised slice 3";
+
+  arangodb::velocypack::Builder b1, b2, b3;
+  b1.add(arangodb::velocypack::Value(content1));
+  b2.add(arangodb::velocypack::Value(content2));
+  b3.add(arangodb::velocypack::Value(content3));
+
+  AqlValue supervised1 = AqlValue(
+      b1.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b1.slice().byteSize()),
+      &monitor);
+  AqlValue supervised2 = AqlValue(
+      b2.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b2.slice().byteSize()),
+      &monitor);
+  AqlValue supervised3 = AqlValue(
+      b3.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b3.slice().byteSize()),
+      &monitor);
+
+  block->setValue(0, 0, supervised1);
+  block->setValue(1, 0, supervised2);
+  block->setValue(2, 0, supervised3);
+  block->makeShadowRow(1, 0);  // Row 1 is shadow row
+
+  // Clone and move shadow row
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());  // Stolen
+
+  // CRITICAL: Try to serialize original block after shadow row was stolen
+  // This is where the use-after-free occurred in the real bug
+  velocypack::Builder result;
+  result.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result);
+  result.close();
+
+  // Should not crash or access freed memory
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+  EXPECT_TRUE(result.slice().hasKey("raw"));
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+  EXPECT_EQ(monitor.current(), 0U);
+}
+
+TEST_F(AqlItemBlockTest, rowToSimpleVPack_AfterStealAndEraseValue) {
+  // Test: Serialize a row after stealing its values
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  // Steal value from row 0
+  AqlValue stolen = block->stealAndEraseValue(0, 0);
+  EXPECT_TRUE(block->getValueReference(0, 0).isEmpty());
+
+  // Try to serialize row 0 - should handle empty value
+  velocypack::Builder result;
+  block->rowToSimpleVPack(0, options, result);
+
+  // Should not crash
+  EXPECT_TRUE(result.slice().isArray());
+
+  stolen.destroy();
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, toVelocyPack_AfterDestroyValue) {
+  // Test: Serialize after destroying some values
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  // Destroy a value
+  block->destroyValue(0, 0);
+  EXPECT_TRUE(block->getValueReference(0, 0).isEmpty());
+
+  // Try to serialize
+  velocypack::Builder result;
+  result.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result);
+  result.close();
+
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, toVelocyPack_MultipleSerializationsAfterClone) {
+  // Test: Serialize multiple times after cloning - values should remain valid
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  // Serialize original multiple times
+  for (int i = 0; i < 3; i++) {
+    velocypack::Builder result;
+    result.openObject();
+    block->toVelocyPack(0, block->numRows(), options, result);
+    result.close();
+    EXPECT_TRUE(result.slice().hasKey("nrItems"));
+  }
+
+  // Serialize cloned multiple times
+  for (int i = 0; i < 3; i++) {
+    velocypack::Builder result;
+    result.openObject();
+    cloned->toVelocyPack(0, cloned->numRows(), options, result);
+    result.close();
+    EXPECT_TRUE(result.slice().hasKey("nrItems"));
+  }
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest,
+       toVelocyPack_AfterCloneDataAndMoveShadow_AllShadowRows) {
+  // Test: All rows are shadow rows, all get stolen, then serialize
+  auto block = buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}},
+                             {{0, 0}, {1, 1}});
+
+  ASSERT_TRUE(block->isShadowRow(0));
+  ASSERT_TRUE(block->isShadowRow(1));
+
+  // Clone and move all shadow rows
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_TRUE(block->getValueReference(0, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(0, 1).isEmpty());
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(1, 1).isEmpty());
+
+  // Try to serialize original - all values are stolen/empty
+  velocypack::Builder result;
+  result.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result);
+  result.close();
+
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, toSimpleVPack_AfterCloneDataAndMoveShadow) {
+  // Test: Use toSimpleVPack after cloneDataAndMoveShadow
+  auto block =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}}, {{1, 0}});
+
+  SharedAqlItemBlockPtr cloned = block->cloneDataAndMoveShadow();
+
+  ASSERT_NE(cloned, nullptr);
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+  EXPECT_TRUE(block->getValueReference(1, 1).isEmpty());
+
+  // Try toSimpleVPack on original block
+  velocypack::Builder result;
+  block->toSimpleVPack(options, result);
+
+  EXPECT_TRUE(result.slice().hasKey("nrItems"));
+  EXPECT_TRUE(result.slice().hasKey("matrix"));
+
+  cloned.reset(nullptr);
+  block.reset(nullptr);
+}
+
+TEST_F(AqlItemBlockTest, toVelocyPack_ConcurrentAccessAfterSteal) {
+  // Test: Access block in multiple ways after stealing values
+  auto block = buildBlock<3>(itemBlockManager, {{{{1}}, {{2}}, {{3}}}});
+
+  // Steal middle value
+  AqlValue stolen = block->stealAndEraseValue(1, 0);
+
+  // Access in various ways that might trigger use-after-free
+  EXPECT_TRUE(block->getValueReference(1, 0).isEmpty());
+
+  // Serialize
+  velocypack::Builder result1;
+  result1.openObject();
+  block->toVelocyPack(0, block->numRows(), options, result1);
+  result1.close();
+
+  // Serialize specific row
+  velocypack::Builder result2;
+  block->rowToSimpleVPack(1, options, result2);
+
+  // Get value (should be empty)
+  AqlValue val = block->getValue(1, 0);
+  EXPECT_TRUE(val.isEmpty());
+
+  stolen.destroy();
+  block.reset(nullptr);
 }
 
 }  // namespace aql

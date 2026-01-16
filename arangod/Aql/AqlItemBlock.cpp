@@ -130,7 +130,7 @@ void AqlItemBlock::initFromSlice(VPackSlice slice) {
   auto storeSingleValue = [this](size_t row, RegisterId::value_t column,
                                  VPackArrayIterator& it,
                                  std::vector<AqlValue>& madeHere) {
-    AqlValue a(it.value());
+    AqlValue a(it.value(), &resourceMonitor());
     it.next();
     try {
       if (column == 0) {
@@ -308,6 +308,7 @@ void AqlItemBlock::destroy() noexcept {
       eraseAll();
     } else {
       size_t totalUsed = 0;
+      size_t totalSupervisedUsed = 0;
       size_t const n = maxModifiedEntries();
       for (size_t i = 0; i < n; i++) {
         auto& it = _data[i];
@@ -319,18 +320,32 @@ void AqlItemBlock::destroy() noexcept {
             TRI_ASSERT(valueInfo.refCount > 0);
 
             if (--valueInfo.refCount == 0) {
-              totalUsed += valueInfo.memoryUsage;
+              if (it.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+                totalSupervisedUsed += valueInfo.memoryUsage;
+              } else {
+                totalUsed += valueInfo.memoryUsage;
+              }
               it.destroy();
               // destroy() calls erase, so no need to call erase() again later
               continue;
             }
           }
+          // 1. There are still other references in this block.
+          //    Drop this slot’s handle but do not free underlying memory.
+          // 2. Value not found in _valueCount - assume ownership has been
+          //    transferred (stolen) and simply erase without destroying
+          //    to avoid use-after-free / double-free.
+          it.erase();
+        } else {
+          // Note that if we do not know it the thing it has been stolen from
+          // us!
+          it.erase();
         }
-        // Note that if we do not know it the thing it has been stolen from us!
-        it.erase();
       }
       _valueCount.clear();
       decreaseMemoryUsage(totalUsed);
+      TRI_ASSERT(_memoryUsage >= totalSupervisedUsed);
+      _memoryUsage -= totalSupervisedUsed;
     }
   } catch (...) {
   }
@@ -379,6 +394,7 @@ void AqlItemBlock::shrink(size_t numRows) {
 #endif
 
   size_t totalUsed = 0;
+  size_t totalSupervisedUsed = 0;
   size_t const n = maxModifiedEntries();
   for (size_t i = numEntries(); i < n; ++i) {
     AqlValue& a = _data[i];
@@ -390,13 +406,25 @@ void AqlItemBlock::shrink(size_t numRows) {
         TRI_ASSERT(valueInfo.refCount > 0);
 
         if (--valueInfo.refCount == 0) {
-          totalUsed += valueInfo.memoryUsage;
-          // destroy calls erase() for AqlValues with dynamic memory,
-          // no need for an extra a.erase() here
-          a.destroy();
-          _valueCount.erase(it);
+          if (a.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+            totalSupervisedUsed += valueInfo.memoryUsage;
+            _valueCount.erase(it);
+            a.destroy();
+          } else {
+            totalUsed += valueInfo.memoryUsage;
+            // destroy calls erase() for AqlValues with dynamic memory,
+            // no need for an extra a.erase() here
+            a.destroy();
+            _valueCount.erase(it);
+          }
           continue;
         }
+      } else {
+        // Value not found in _valueCount - assume ownership has been
+        // transferred (stolen) and simply erase without destroying to avoid
+        // use-after-free
+        a.erase();
+        continue;
       }
     }
     a.erase();
@@ -405,6 +433,8 @@ void AqlItemBlock::shrink(size_t numRows) {
   _maxModifiedRowIndex = std::min<size_t>(_maxModifiedRowIndex, _numRows);
   TRI_ASSERT(_maxModifiedRowIndex <= _numRows);
   decreaseMemoryUsage(totalUsed);
+  TRI_ASSERT(_memoryUsage >= totalSupervisedUsed);
+  _memoryUsage -= totalSupervisedUsed;
 }
 
 void AqlItemBlock::rescale(size_t numRows, RegisterCount numRegisters) {
@@ -425,7 +455,7 @@ void AqlItemBlock::rescale(size_t numRows, RegisterCount numRegisters) {
   if (targetSize > numEntries()) {
     increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
 
-    // Values will not be re-initialized, but are expected to be that way.
+// Values will not be re-initialized, but are expected to be that way.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (size_t i = currentSize; i < targetSize; i++) {
       TRI_ASSERT(_data[i].isEmpty());
@@ -447,6 +477,7 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
   bool const checkShadowRows = hasShadowRows();
 
   size_t totalUsed = 0;
+  size_t totalSupervisedUsed = 0;
   for (size_t i = 0; i < _maxModifiedRowIndex; i++) {
     if (checkShadowRows && isShadowRow(i)) {
       // Do not clear shadow rows:
@@ -465,13 +496,25 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
           TRI_ASSERT(valueInfo.refCount > 0);
 
           if (--valueInfo.refCount == 0) {
-            totalUsed += valueInfo.memoryUsage;
-            // destroy calls erase() for AqlValues with dynamic memory,
-            // no need for an extra a.erase() here
-            a.destroy();
-            _valueCount.erase(it);
+            if (a.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+              totalSupervisedUsed += valueInfo.memoryUsage;
+              _valueCount.erase(it);
+              a.destroy();
+            } else {
+              totalUsed += valueInfo.memoryUsage;
+              // destroy calls erase() for AqlValues with dynamic memory,
+              // no need for an extra a.erase() here
+              a.destroy();
+              _valueCount.erase(it);
+            }
             continue;
           }
+        } else {
+          // Value not found in _valueCount - assume ownership has been
+          // transferred (stolen) and simply erase without destroying to avoid
+          // use-after-free
+          a.erase();
+          continue;
         }
       }
       a.erase();
@@ -479,6 +522,8 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
   }
 
   decreaseMemoryUsage(totalUsed);
+  TRI_ASSERT(_memoryUsage >= totalSupervisedUsed);
+  _memoryUsage -= totalSupervisedUsed;
 }
 
 SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
@@ -510,10 +555,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
             AqlValueGuard guard{a, true};
             auto [it, inserted] = cache.emplace(a.data());
             res->setValue(row, col, AqlValue(a, (*it)));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }
@@ -1009,7 +1051,11 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
-      increaseMemoryUsage(memoryUsage);
+      if (value.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+        _memoryUsage += memoryUsage;
+      } else {
+        increaseMemoryUsage(memoryUsage);
+      }
       valueInfo.setMemoryUsage(memoryUsage);
     }
   }
@@ -1032,11 +1078,19 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
     if (it != _valueCount.end()) {
       auto& valueInfo = (*it).second;
       if (--valueInfo.refCount == 0) {
-        decreaseMemoryUsage(valueInfo.memoryUsage);
-        _valueCount.erase(it);
-        element.destroy();
-        // no need for an extra element.erase() in this case, as
-        // destroy() calls erase() for AqlValues with dynamic memory
+        if (element.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+          size_t memoryUsage = valueInfo.memoryUsage;
+          TRI_ASSERT(_memoryUsage >= memoryUsage);
+          _memoryUsage -= memoryUsage;
+          _valueCount.erase(it);
+          element.destroy();
+        } else {
+          decreaseMemoryUsage(valueInfo.memoryUsage);
+          _valueCount.erase(it);
+          element.destroy();
+          // no need for an extra element.erase() in this case, as
+          // destroy() calls erase() for AqlValues with dynamic memory
+        }
         return;
       }
     }
@@ -1049,18 +1103,33 @@ void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
 
 void AqlItemBlock::eraseAll() {
   size_t const n = maxModifiedEntries();
+
+  // Build a set of supervised slice data pointers to handle them separately
+  containers::FlatHashMap<void const*, bool> supervisedSlices;
   for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
+    if (it.requiresDestruction() &&
+        it.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+      supervisedSlices.try_emplace(it.data(), true);
+    }
     it.erase();
   }
 
   size_t totalUsed = 0;
+  size_t totalSupervisedUsed = 0;
   for (auto const& it : _valueCount) {
     if (ADB_LIKELY(it.second.refCount > 0)) {
-      totalUsed += it.second.memoryUsage;
+      if (supervisedSlices.find(it.first) != supervisedSlices.end()) {
+        totalSupervisedUsed += it.second.memoryUsage;
+      } else {
+        totalUsed += it.second.memoryUsage;
+      }
     }
   }
+
   decreaseMemoryUsage(totalUsed);
+  TRI_ASSERT(_memoryUsage >= totalSupervisedUsed);
+  _memoryUsage -= totalSupervisedUsed;
   _valueCount.clear();
   _shadowRows.clear();
 }
@@ -1073,11 +1142,24 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
   for (auto const& reg : regs) {
     TRI_ASSERT(reg < numRegisters());
     if (getValueReference(currentRow, reg).isEmpty()) {
-      // First update the reference count, if this fails, the value is empty
       AqlValue const& a = getValueReference(fromRow, reg);
       if (a.requiresDestruction()) {
-        TRI_ASSERT(_valueCount.find(a.data()) != _valueCount.end());
-        ++_valueCount[a.data()].refCount;
+        auto it = _valueCount.find(a.data());
+        if (it != _valueCount.end()) {
+          // Value already registered, just increment refCount
+          ++it->second.refCount;
+        } else {
+          // Value not found in _valueCount - need to register it properly
+          ValueInfo& valueInfo = _valueCount[a.data()];
+          valueInfo.refCount = 1;
+          size_t memoryUsage = a.memoryUsage();
+          valueInfo.setMemoryUsage(memoryUsage);
+          if (a.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+            _memoryUsage += memoryUsage;
+          } else {
+            increaseMemoryUsage(memoryUsage);
+          }
+        }
       }
       _data[getAddress(currentRow, reg.value())] = a;
       _maxModifiedRowIndex =
@@ -1092,7 +1174,13 @@ void AqlItemBlock::steal(AqlValue const& value) {
   if (value.requiresDestruction()) {
     auto it = _valueCount.find(value.data());
     if (it != _valueCount.end()) {
-      decreaseMemoryUsage((*it).second.memoryUsage);
+      size_t memoryUsage = (*it).second.memoryUsage;
+      if (value.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+        TRI_ASSERT(_memoryUsage >= memoryUsage);
+        _memoryUsage -= memoryUsage;
+      } else {
+        decreaseMemoryUsage(memoryUsage);
+      }
       _valueCount.erase(it);
     }
   }

@@ -474,6 +474,388 @@ TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
       ShadowAqlItemRow{block, 1}, options)));
 }
 
+// ============================================================================
+// Tests for InputAqlItemRow::cloneToBlock()
+// ============================================================================
+
+TEST_F(AqlItemRowsTest, cloneToBlock_ManagedSlices) {
+  auto inputBlock =
+      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}}, {{{4}, {5}, {6}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  // Clone row 0 to a new block, keeping all registers
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+  regs.insert(RegisterId::makeRegular(2));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 3);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->numRows(), 1);
+  EXPECT_EQ(clonedBlock->numRegisters(), 3);
+
+  // Verify values are cloned (deep copy)
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 2).toInt64(), 3);
+
+  // Verify original block is unchanged
+  EXPECT_EQ(inputBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(inputBlock->getValueReference(0, 1).toInt64(), 2);
+  EXPECT_EQ(inputBlock->getValueReference(0, 2).toInt64(), 3);
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_SubsetOfRegisters) {
+  auto inputBlock =
+      buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}}, {{{4}, {5}, {6}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  // Clone only registers 0 and 2 to a new block with 4 registers
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(2));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 4);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->numRows(), 1);
+  EXPECT_EQ(clonedBlock->numRegisters(), 4);
+
+  // Verify cloned registers
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 1).isEmpty());  // Not cloned
+  EXPECT_EQ(clonedBlock->getValueReference(0, 2).toInt64(), 3);
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 3).isEmpty());  // New register
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_SharedManagedSlices) {
+  // Create a block where multiple rows share the same managed slice
+  auto inputBlock = itemBlockManager.requestBlock(2, 1);
+  AqlValue sharedValue = AqlValue(AqlValueHintInt(42));
+
+  inputBlock->setValue(0, 0, sharedValue);
+  inputBlock->setValue(1, 0, sharedValue);
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 42);
+
+  // The cloned block should have its own copy (deep clone)
+  // Verify original is unchanged
+  EXPECT_EQ(inputBlock->getValueReference(0, 0).toInt64(), 42);
+  EXPECT_EQ(inputBlock->getValueReference(1, 0).toInt64(), 42);
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_SharedSupervisedSlices) {
+  // Create a block with supervised slices
+  auto inputBlock = itemBlockManager.requestBlock(2, 1);
+
+  std::string content = "This is a supervised slice that is long enough";
+  arangodb::velocypack::Builder b;
+  b.add(arangodb::velocypack::Value(content));
+  AqlValue supervised = AqlValue(
+      b.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+
+  inputBlock->setValue(0, 0, supervised);
+  inputBlock->setValue(1, 0, supervised);
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).slice().stringView(), content);
+
+  // Verify original is unchanged
+  EXPECT_EQ(inputBlock->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(inputBlock->getValueReference(1, 0).slice().stringView(), content);
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_EmptyRow) {
+  // All values are empty
+  auto inputBlock = itemBlockManager.requestBlock(1, 3);
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+  regs.insert(RegisterId::makeRegular(2));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 3);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->numRows(), 1);
+  EXPECT_EQ(clonedBlock->numRegisters(), 3);
+
+  // All values should be empty
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 0).isEmpty());
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 1).isEmpty());
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 2).isEmpty());
+}
+
+// ============================================================================
+// Aggressive tests to trigger potential double frees in cloneToBlock()
+// ============================================================================
+
+TEST_F(AqlItemRowsTest, cloneToBlock_DestroyOriginalAfterClone) {
+  // Test: Clone row to block, then destroy original - cloned should still work
+  auto inputBlock =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 1).toInt64(), 2);
+
+  // Destroy original block - cloned should still be valid
+  inputBlock.reset(nullptr);
+
+  // Access cloned values - should not crash or double-free
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 1).toInt64(), 2);
+
+  clonedBlock.reset(nullptr);
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_DestroyValueInOriginalAfterClone) {
+  // Test: Clone row, then destroy values in original
+  // Cloned values should be independent copies
+  auto inputBlock =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+
+  ASSERT_NE(clonedBlock, nullptr);
+
+  // Destroy values in original block - should not affect cloned block
+  inputBlock->destroyValue(0, 0);
+  inputBlock->destroyValue(0, 1);
+
+  // Cloned values should still be valid
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 1).toInt64(), 2);
+
+  clonedBlock.reset(nullptr);
+  inputBlock.reset(nullptr);
+}
+
+TEST_F(AqlItemRowsTest,
+       cloneToBlock_DestroyValueInClonedAfterOriginalDestroyed) {
+  // Test: Clone row, destroy original, then destroy values in cloned
+  auto inputBlock =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+
+  ASSERT_NE(clonedBlock, nullptr);
+
+  // Destroy original
+  inputBlock.reset(nullptr);
+
+  // Now destroy values in cloned - should not cause double free
+  clonedBlock->destroyValue(0, 0);
+  clonedBlock->destroyValue(0, 1);
+
+  // Values should be empty now
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 0).isEmpty());
+  EXPECT_TRUE(clonedBlock->getValueReference(0, 1).isEmpty());
+
+  clonedBlock.reset(nullptr);
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_MultipleClonesSameRow) {
+  // Test: Create multiple clones of the same row - each should be independent
+  auto inputBlock =
+      buildBlock<2>(itemBlockManager, {{{{1}, {2}}}, {{{3}, {4}}}});
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+  regs.insert(RegisterId::makeRegular(1));
+
+  SharedAqlItemBlockPtr cloned1 =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+  SharedAqlItemBlockPtr cloned2 =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+  SharedAqlItemBlockPtr cloned3 =
+      source.cloneToBlock(itemBlockManager, regs, 2);
+
+  ASSERT_NE(cloned1, nullptr);
+  ASSERT_NE(cloned2, nullptr);
+  ASSERT_NE(cloned3, nullptr);
+
+  // All clones should have independent copies
+  EXPECT_EQ(cloned1->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned2->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).toInt64(), 1);
+
+  // Destroy original
+  inputBlock.reset(nullptr);
+
+  // Destroy one clone
+  cloned1.reset(nullptr);
+
+  // Other clones should still work
+  EXPECT_EQ(cloned2->getValueReference(0, 0).toInt64(), 1);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).toInt64(), 1);
+
+  cloned2.reset(nullptr);
+  cloned3.reset(nullptr);
+}
+
+TEST_F(AqlItemRowsTest,
+       cloneToBlock_SupervisedSlicesDestroyOriginalAfterClone) {
+  // Test: Clone supervised slices, destroy original - should not leak or
+  // double-free
+  auto inputBlock = itemBlockManager.requestBlock(2, 1);
+
+  std::string content = "Supervised slice for double-free test";
+  arangodb::velocypack::Builder b;
+  b.add(arangodb::velocypack::Value(content));
+  AqlValue supervised = AqlValue(
+      b.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+
+  inputBlock->setValue(0, 0, supervised);
+  inputBlock->setValue(1, 0, supervised);
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+
+  size_t initialMemory = monitor.current();
+  EXPECT_GT(initialMemory, 0U);
+
+  SharedAqlItemBlockPtr clonedBlock =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+  EXPECT_GT(monitor.current(), initialMemory);
+
+  ASSERT_NE(clonedBlock, nullptr);
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).slice().stringView(), content);
+
+  // Destroy original block - cloned should still work
+  inputBlock.reset(nullptr);
+
+  // Access cloned value - should not crash
+  EXPECT_EQ(clonedBlock->getValueReference(0, 0).slice().stringView(), content);
+
+  // Memory should still be tracked (cloned value + original value in row 1)
+  EXPECT_GT(monitor.current(), 0);
+
+  // Destroy cloned block
+  clonedBlock.reset(nullptr);
+
+  // Original block is destroyed, but row 1's value should still be tracked
+  // until we explicitly clean up (this tests that cloning creates independent
+  // copies)
+}
+
+TEST_F(AqlItemRowsTest, cloneToBlock_SharedSupervisedSlicesMultipleClones) {
+  // Test: Clone row with shared supervised slice multiple times
+  // Each clone should get its own copy, no double frees
+  // This test verifies that cloning creates independent copies and
+  // destroying blocks in various orders doesn't cause double frees
+  auto inputBlock = itemBlockManager.requestBlock(1, 1);
+
+  std::string content = "Shared supervised slice";
+  arangodb::velocypack::Builder b;
+  b.add(arangodb::velocypack::Value(content));
+  AqlValue supervised = AqlValue(
+      b.slice(),
+      static_cast<arangodb::velocypack::ValueLength>(b.slice().byteSize()),
+      &monitor);
+  EXPECT_EQ(supervised.type(), AqlValue::VPACK_SUPERVISED_SLICE);
+
+  inputBlock->setValue(0, 0, supervised);
+  // supervised goes out of scope, but block now owns the memory
+
+  InputAqlItemRow source{inputBlock, 0};
+
+  RegIdFlatSet regs;
+  regs.insert(RegisterId::makeRegular(0));
+
+  // Create multiple clones - each should get independent copy
+  SharedAqlItemBlockPtr cloned1 =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+  SharedAqlItemBlockPtr cloned2 =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+  SharedAqlItemBlockPtr cloned3 =
+      source.cloneToBlock(itemBlockManager, regs, 1);
+
+  ASSERT_NE(cloned1, nullptr);
+  ASSERT_NE(cloned2, nullptr);
+  ASSERT_NE(cloned3, nullptr);
+
+  // All should have independent copies
+  EXPECT_EQ(cloned1->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned2->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).slice().stringView(), content);
+
+  // Destroy original block - clones should still work (no double free)
+  inputBlock.reset(nullptr);
+
+  // Destroy clones one by one - should not cause issues
+  cloned1.reset(nullptr);
+  EXPECT_EQ(cloned2->getValueReference(0, 0).slice().stringView(), content);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).slice().stringView(), content);
+
+  cloned2.reset(nullptr);
+  EXPECT_EQ(cloned3->getValueReference(0, 0).slice().stringView(), content);
+
+  // Last clone should still work
+  cloned3.reset(nullptr);
+
+  // Test passes if no crashes or double frees occurred
+  // Memory tracking may have some overhead, so we don't check exact values
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
