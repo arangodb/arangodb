@@ -60,7 +60,7 @@ if (runSetup === true) {
   }
   
   // Crash only the agent
-  agent.debugTerminate();
+  agent.debugTerminate("CRASH-HANDLER-TEST-TERMINATE");
   
   return 0;
 }

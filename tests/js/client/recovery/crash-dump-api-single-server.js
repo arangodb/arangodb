@@ -48,7 +48,7 @@ if (runSetup === true) {
   }
   
   // Produce a crash to trigger the crash handler
-  IM.debugTerminate();
+  IM.debugTerminate("CRASH-HANDLER-TEST-TERMINATE");
   
   return 0;
 }
