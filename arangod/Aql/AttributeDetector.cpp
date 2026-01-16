@@ -93,6 +93,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
     return false;
   }
 
+  LOG_DEVEL << "ExecutionNodeType: " << node->getType();
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       auto* enumNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
@@ -189,7 +190,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
         auto& access = _collectionAccessMap[coll.first.get().name()];
         if (!access) {
           access = std::make_unique<CollectionAccess>();
-          access->collectionName = coll.first.get().name();
+          access->collectionName = coll.first.get().getCollection()->name();
         }
         access->requiresAllAttributesRead = true;
       }
