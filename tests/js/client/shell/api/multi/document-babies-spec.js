@@ -53,7 +53,6 @@ describe('babies collection document', function () {
 
   afterEach(function () {
     if (collection) {
-      collection.unload();
       collection.drop();
       collection = null;
     }

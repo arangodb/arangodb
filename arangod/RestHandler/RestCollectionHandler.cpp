@@ -441,29 +441,6 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   TRI_ASSERT(coll);
 
-  if (sub == "load") {
-    // "load" is a no-op starting with 3.9
-    bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
-    co_await collectionRepresentation(
-        name, /*showProperties*/ false,
-        /*showFigures*/ FiguresType::None,
-        /*showCount*/ cc ? CountType::Standard : CountType::None);
-    co_return standardResponse();
-  }
-  if (sub == "unload") {
-    bool flush = _request->parsedValue("flush", false);
-
-    if (flush && !coll->deleted()) {
-      server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
-                                                                     false);
-    }
-
-    // apart from WAL flushing, unload is a no-op starting with 3.9
-    co_await collectionRepresentation(name, /*showProperties*/ false,
-                                      /*showFigures*/ FiguresType::None,
-                                      /*showCount*/ CountType::None);
-    co_return standardResponse();
-  }
   if (sub == "compact") {
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();

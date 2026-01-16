@@ -173,8 +173,6 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      collection.unload();
-
       idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
 
       assertNotEqual(id, idx.id);
@@ -214,8 +212,6 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      collection.unload();
-
       idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: false });
 
       assertNotEqual(id, idx.id);
@@ -244,8 +240,6 @@ function GeoIndexCreationSuite() {
       assertEqual("geo", idx.type);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
-
-      collection.unload();
 
       idx = collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
 
@@ -755,8 +749,7 @@ function SphericalIndexCreationSuite() {
       collection = internal.db._create(cn);
     },
 
-    tearDown : function () {
-      collection.unload();
+    tearDown: function () {
       collection.drop();
     },
 
@@ -866,8 +859,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      collection.unload();
-
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -911,8 +902,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      collection.unload();
-
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -942,8 +931,6 @@ function SphericalIndexCreationSuite() {
       assertEqual("geo", idx.type);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
-
-      collection.unload();
 
       idx = collection.ensureIndex({type: "geo", fields:["lat", "lon"], legacy: false});
 
