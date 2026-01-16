@@ -128,5 +128,6 @@ bool CrashHandlerFeature::deleteCrash(std::string_view crashId) {
 }
 
 bool CrashHandlerFeature::canAccessCrashesDirectory() const noexcept {
-  return _enabled && !_crashesDirectory.empty() && _dumper != nullptr;
+  return _enabled && !_crashesDirectory.empty() && _dumper != nullptr &&
+         basics::FileUtils::isDirectory(_crashesDirectory);
 }
