@@ -27,9 +27,12 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/IndexCollectNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
 #include "Aql/ExecutionNode/ShortestPathNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
@@ -442,6 +445,40 @@ bool AttributeDetector::before(ExecutionNode* node) {
       access->requiresAllAttributesWrite = true;
       break;
     }
+
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
+      auto* vectorNode =
+          ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
+      std::string collName = vectorNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+      access->requiresAllAttributesRead = true;
+      break;
+    }
+
+    case ExecutionNode::INDEX_COLLECT: {
+      auto* collectNode = ExecutionNode::castTo<IndexCollectNode*>(node);
+      std::string collName = collectNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+      access->requiresAllAttributesRead = true;
+      break;
+    }
+
+    case ExecutionNode::JOIN:
+      break;
+
+    case ExecutionNode::REMOTE_SINGLE:
+    case ExecutionNode::REMOTE_MULTIPLE:
+      break;
 
     default:
       break;

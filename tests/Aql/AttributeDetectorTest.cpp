@@ -222,6 +222,27 @@ class AttributeDetectorTest : public ::testing::Test {
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
+
+  void ensurePersistentIndex(std::string const& collName,
+                             std::vector<std::string> const& fields) {
+    auto coll = vocbase->lookupCollection(collName);
+    ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
+
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("type", VPackValue("persistent"));
+    builder.add("fields", VPackValue(VPackValueType::Array));
+    for (auto const& field : fields) {
+      builder.add(VPackValue(field));
+    }
+    builder.close();
+    builder.close();
+
+    bool created = false;
+    auto idx = coll->createIndex(builder.slice(), created).waitAndGet();
+    ASSERT_TRUE(idx) << "createIndex returned nullptr";
+    ASSERT_TRUE(created) << "index was not created";
+  }
 };
 
 TEST_F(AttributeDetectorTest, SimpleProjection) {
