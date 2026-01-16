@@ -20,13 +20,13 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "TaskMonitoring/task.h"
+#include "ActivityRegistry/activity.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
-#include "TaskMonitoring/task_registry_variable.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include <atomic>
 #include <optional>
 #include <source_location>
@@ -44,24 +44,25 @@ overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::task_monitoring;
+using namespace arangodb::activity_registry;
 
-auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
+auto operator<<(
+    std::ostream& out,
+    arangodb::activity_registry::ActivityInRegistrySnapshot const& activity)
     -> std::ostream& {
-  return out << inspection::json(task);
+  return out << inspection::json(activity);
 }
 
-auto TaskInRegistry::snapshot() -> TaskSnapshot {
-  return TaskSnapshot{
+auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
+  return ActivityInRegistrySnapshot{
       .name = name,
       .state = state,
       .id = id(),
       .parent = std::visit(
           overloaded{
-              [&](RootTask const& root) { return ParentTaskSnapshot{root}; },
+              [&](RootActivity const& root) { return ParentSnapshot{root}; },
               [&](NodeReference const& parent) {
-                return ParentTaskSnapshot{TaskId{parent->data.id()}};
+                return ParentSnapshot{ActivityId{parent->data.id()}};
               }},
           parent),
       .thread = running_thread,
@@ -73,21 +74,20 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
 
 namespace {
 /**
-   Marks itself for deletion and deletes a parent reference.
+   Marks incoming node for deletion and deletes the node's parent reference.
 
-   Deleting the parent reference makes sure that
-   a parent can directly be marked for deletion when all its children are
-   marked. Otherwise, we need to wait for the garbage collection to delete the
-   references, possibly requiring several garbage collection cycles to delete
-   all hierarchy levels.
+   Deleting the parent reference makes sure that a parent can directly be marked
+   for deletion when all its children are marked. Otherwise, we need to wait for
+   the garbage collection to delete the references, possibly requiring several
+   garbage collection cycles to delete all hierarchy levels.
  */
 auto mark_finished_nodes_for_deletion(Node* node) {
   auto specific_node =
-      reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
+      reinterpret_cast<containers::ThreadOwnedList<ActivityInRegistry>::Node*>(
           node);
 
-  // get rid of parent task and delete a shared reference
-  specific_node->data.parent = {RootTask{}};
+  // get rid of parent activity reference and delete a shared reference
+  specific_node->data.parent = {RootActivity{}};
 
   // mark node for deletion needs to be last action on specific_node, because
   // then a garbage collection run can destroy the node at any time
@@ -95,41 +95,35 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }
 }  // namespace
 
-Task::Task(std::string name, std::source_location loc)
+Activity::Activity(std::string name, std::source_location loc)
     : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
-            if (auto current = *get_current_task(); current != nullptr) {
-              return TaskInRegistry::child(
+            if (auto current = *get_current_activity(); current != nullptr) {
+              return ActivityInRegistry::child(
                   std::move(name), current->_node_in_registry, std::move(loc));
             }
-            return TaskInRegistry::root(std::move(name), std::move(loc));
+            return ActivityInRegistry::root(std::move(name), std::move(loc));
           })),
           mark_finished_nodes_for_deletion)} {
-  // remember its parent task to switch the current task back to the parent task
-  // when this task is destroyed
-  parent = *get_current_task();
-  *get_current_task() = this;
+  // remember its parent activity to switch the current activity back to the
+  // parent activity when this activity is destroyed
+  parent = *get_current_activity();
+  *get_current_activity() = this;
 }
 
-Task::~Task() {
+Activity::~Activity() {
   _node_in_registry->data.state.store(State::Finished,
                                       std::memory_order_relaxed);
-  *get_current_task() = parent;
+  *get_current_activity() = parent;
 }
 
-auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
+auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
 
-/**
-   Function to get and set global thread local variable of the currently running
-   task on the current thread
-
-   Points to nullptr if there is no task running on the current thread.
- */
-auto arangodb::task_monitoring::get_current_task() -> Task** {
+auto arangodb::activity_registry::get_current_activity() -> Activity** {
   struct Guard {
-    Task* task = nullptr;
+    Activity* activity = nullptr;
   };
   // make sure that this is only created once on a thread
   static thread_local auto current = Guard{};
-  return &current.task;
+  return &current.activity;
 }

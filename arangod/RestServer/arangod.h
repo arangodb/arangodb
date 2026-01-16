@@ -54,9 +54,13 @@ class ClusterMetricsFeature;
 
 class AqlFeature;
 class AgencyFeature;
-class ActionFeature;
 class AuthenticationFeature;
 namespace async_registry {
+
+class Feature;
+
+}
+namespace activity_registry {
 
 class Feature;
 
@@ -196,11 +200,11 @@ using ArangodFeaturesList = TypeList<
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
     VersionFeature,
-    ActionFeature,
     AgencyFeature,
     ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
+    activity_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT

@@ -18,31 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ActivityRegistry/activity_registry_variable.h"
 
-#include "RestServer/arangod.h"
+namespace arangodb::activity_registry {
 
-namespace arangodb {
-namespace application_features {
-class ClusterFeaturePhase;
+Registry registry;
+
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard()
+        : _registry{ThreadRegistry::make(registry.get_metrics())} {
+      registry.add(_registry);
+    }
+
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
 }
 
-class ActionFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Action"; }
-
-  explicit ActionFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void unprepare() override final;
-
-  bool allowUseDatabase() const;
-
- private:
-  bool _allowUseDatabase;
-};
-
-}  // namespace arangodb
+}  // namespace arangodb::activity_registry

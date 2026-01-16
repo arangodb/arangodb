@@ -27,7 +27,7 @@
 #include "Basics/debugging.h"
 #include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
-#include "Graph/Queues/ExpansionMarker.h"
+#include "Graph/Queues/QueueEntry.h"
 
 #include <queue>
 #include <variant>
@@ -36,21 +36,19 @@ namespace arangodb::graph {
 
 /**
    Queue-like structure (first-in-first-out) that can contain either steps
-   (which correspond to vertex-edges) or expansions that promise more
-   vertex-edges for a specific vertex.
+   (which correspond to vertex-edges) or neighbour cursors to get more steps.
 
    Internally, this queue includes two queues, the main queue (_queue) that
    includes steps and the continuation queue (_continuationQueue) that includes
-   the expansions. Basically, we want a queue that can include either a step or
-   an expansion, but if an expansion is epxanded, we need to add steps in the
-   middle of the queue (where the responsible expansion sits). This is
+   the cursors. Basically, we want a queue that can include either a step or
+   an cursor, but if a cursor gives more steps we would need to add these steps
+   in the middle of the queue (where the responsible cursor sits). This is
    complicated to do, therefore _queue includes all steps that are ready and
-   they are popped first. If _queue is empty when popping, an expansion from the
-   _continuationQueue is popped. From code that uses this BatchedFifoQueue this
-   expansion can then be expanded and these expansion steps can the be pushed
-   again to the queue (where they directly go into the main _queue).
- */
-template<class StepType>
+   they are popped first. If _queue is empty when popping, the next cursor in
+   the _continuationQueue is used to create more steps that are added to
+   _queue.
+*/
+template<class StepType, NeighbourCursor<StepType> Cursor>
 class BatchedFifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
@@ -72,35 +70,27 @@ class BatchedFifoQueue {
     }
     if (!_continuationQueue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_continuationQueue.size() *
-                                           sizeof(Expansion));
+                                           sizeof(CursorRef));
       _continuationQueue.clear();
     }
   }
 
   void append(Step step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-    _queue.push_back({std::move(step)});
+    _queue.push_back(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
   }
 
-  void append(Expansion expansion) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
-    auto cursorId = expansion.id;
-    if (_biggestCursorId.has_value() && cursorId <= _biggestCursorId.value()) {
-      // iterator already existed, put it at front! of continuation queue
-      _continuationQueue.push_front(std::move(expansion));
-    } else {
-      // new iterator
-      _biggestCursorId = cursorId;
-      _continuationQueue.push_back(std::move(expansion));
-    }
+  void append(Cursor& cursor) {
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(CursorRef));
+    _continuationQueue.push_back(CursorRef{cursor});
     guard.steal();  // now we are responsible for tracking the memory
   }
 
   void setStartContent(std::vector<Step> startSteps) {
     arangodb::ResourceUsageScope guard(_resourceMonitor,
                                        sizeof(Step) * startSteps.size());
-    TRI_ASSERT(_queue.empty());
+    TRI_ASSERT(isEmpty());
     for (auto& s : startSteps) {
       // For FIFO just append to the back,
       // The handed in vector will then be processed from start to end.
@@ -149,23 +139,31 @@ class BatchedFifoQueue {
     return _queue.front();
   }
 
-  QueueEntry<Step> pop() {
-    TRI_ASSERT(!isEmpty());
-    // if _queue is empty, pop next iterator
-    if (_queue.empty()) {
-      auto first = std::move(_continuationQueue.front());
-      LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
-          << "<BatchedFifoQueue> Pop: next batch";
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
-      _continuationQueue.pop_front();
+  std::optional<Step> pop() {
+    if (isEmpty()) {
+      return std::nullopt;
+    }
+    if (not _queue.empty()) {
+      auto first = std::move(_queue.front());
+      LOG_TOPIC("9c2a4", TRACE, Logger::GRAPHS)
+          << "<BatchedFifoQueue> Pop: " << first.toString();
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+      _queue.pop_front();
       return {first};
     }
-    auto first = std::move(_queue.front());
-    LOG_TOPIC("9c2a4", TRACE, Logger::GRAPHS)
-        << "<BatchedFifoQueue> Pop: " << first.toString();
-    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
-    _queue.pop_front();
-    return {first};
+    // if _queue is empty, pop next iterator
+    LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
+        << "<BatchedFifoQueue> Pop: next batch";
+    auto& cursor = _continuationQueue.front().get();
+    if (not cursor.hasMore()) {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(CursorRef));
+      _continuationQueue.pop_front();
+      return pop();
+    }
+    for (auto&& step : cursor.next()) {
+      append(step);
+    }
+    return pop();
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
@@ -185,20 +183,20 @@ class BatchedFifoQueue {
       }
     }
   }
-  template<class S, typename Inspector>
-  friend auto inspect(Inspector& f, BatchedFifoQueue<S>& x);
+  template<class S, NeighbourCursor<S> C, typename Inspector>
+  friend auto inspect(Inspector& f, BatchedFifoQueue<S, C>& x);
 
  private:
   /// @brief queue datastore
+  using CursorRef = std::reference_wrapper<Cursor>;
   std::deque<Step> _queue;
-  std::deque<Expansion> _continuationQueue;
-  std::optional<size_t> _biggestCursorId;
+  std::deque<CursorRef> _continuationQueue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-template<class StepType, typename Inspector>
-auto inspect(Inspector& f, BatchedFifoQueue<StepType>& x) {
+template<class StepType, NeighbourCursor<StepType> C, typename Inspector>
+auto inspect(Inspector& f, BatchedFifoQueue<StepType, C>& x) {
   return f.object(x).fields(f.field("queue", x._queue),
                             f.field("continuations", x._continuationQueue));
 }

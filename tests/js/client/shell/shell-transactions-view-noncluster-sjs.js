@@ -96,7 +96,6 @@ function TransactionsIResearchSuite() {
     tearDown: function () {
       // we need try...catch here because at least one test drops the collection itself!
       try {
-        c.unload();
         c.drop();
       } catch (err) {
       }
