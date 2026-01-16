@@ -1670,45 +1670,33 @@ size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
                                     AqlValue const& b) const noexcept {
   using T = AqlValue::AqlValueType;
-  auto ta = a.type();
-  auto tb = b.type();
-
-  if (ta == tb) {
-    switch (ta) {
-      case T::VPACK_INLINE:
-        return VPackSlice(a._data.inlineSliceMeta.slice)
-            .binaryEquals(VPackSlice(b._data.inlineSliceMeta.slice));
-      case T::VPACK_INLINE_INT64:
-      case T::VPACK_INLINE_UINT64:
-      case T::VPACK_INLINE_DOUBLE:
-        return a._data.longNumberMeta.data.intLittleEndian.val ==
-               b._data.longNumberMeta.data.intLittleEndian.val;
-      case T::VPACK_SLICE_POINTER:
-        return a._data.slicePointerMeta.pointer ==
-               b._data.slicePointerMeta.pointer;
-      case T::VPACK_MANAGED_SLICE:
-        return a._data.managedSliceMeta.pointer ==
-               b._data.managedSliceMeta.pointer;
-      case T::VPACK_MANAGED_STRING:
-        return a._data.managedStringMeta.pointer ==
-               b._data.managedStringMeta.pointer;
-      case T::VPACK_SUPERVISED_SLICE:
-        return a._data.supervisedSliceMeta.getPayloadPtr() ==
-               b._data.supervisedSliceMeta.getPayloadPtr();
-      case T::RANGE:
-        return a._data.rangeMeta.range == b._data.rangeMeta.range;
-    }
-    TRI_ASSERT(false);
+  auto t = a.type();
+  if (t != b.type()) {
     return false;
   }
-
-  // different types: allow supervised vs managed content-equality
-  auto isSup = [](T t) { return t == T::VPACK_SUPERVISED_SLICE; };
-  auto isMan = [](T t) {
-    return t == T::VPACK_MANAGED_SLICE || t == T::VPACK_MANAGED_STRING;
-  };
-  if ((isSup(ta) && isMan(tb)) || (isSup(tb) && isMan(ta))) {
-    return a.slice(ta).binaryEquals(b.slice(tb));
+  switch (t) {
+    case T::VPACK_INLINE:
+      return VPackSlice(a._data.inlineSliceMeta.slice)
+          .binaryEquals(VPackSlice(b._data.inlineSliceMeta.slice));
+    case T::VPACK_INLINE_INT64:
+    case T::VPACK_INLINE_UINT64:
+    case T::VPACK_INLINE_DOUBLE:
+      return a._data.longNumberMeta.data.intLittleEndian.val ==
+             b._data.longNumberMeta.data.intLittleEndian.val;
+    case T::VPACK_SLICE_POINTER:
+      return a._data.slicePointerMeta.pointer ==
+             b._data.slicePointerMeta.pointer;
+    case T::VPACK_MANAGED_SLICE:
+      return a._data.managedSliceMeta.pointer ==
+             b._data.managedSliceMeta.pointer;
+    case T::VPACK_MANAGED_STRING:
+      return a._data.managedStringMeta.pointer ==
+             b._data.managedStringMeta.pointer;
+    case T::VPACK_SUPERVISED_SLICE:
+      return a._data.supervisedSliceMeta.getPayloadPtr() ==
+             b._data.supervisedSliceMeta.getPayloadPtr();
+    case T::RANGE:
+      return a._data.rangeMeta.range == b._data.rangeMeta.range;
   }
   return false;
 }
