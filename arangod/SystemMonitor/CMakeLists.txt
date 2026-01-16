@@ -1,2 +1,2 @@
 add_subdirectory(AsyncRegistry)
-add_subdirectory(TaskMonitoring)
+add_subdirectory(ActivityRegistry)

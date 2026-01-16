@@ -20,32 +20,28 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Metrics.h"
+#pragma once
 
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
+#include <variant>
+#include <vector>
+#include "Inspection/Types.h"
 
-using namespace arangodb::task_monitoring;
+namespace arangodb::graph {
 
-auto RegistryMetrics::increment_total_nodes() -> void { tasks_total->count(); }
-auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_tasks->fetch_add(1);
+template<typename T, typename Step>
+concept NeighbourCursor = requires(T t) {
+  { t.next() } -> std::convertible_to<std::vector<Step>>;
+  { t.hasMore() } -> std::convertible_to<bool>;
+  { t.markForDeletion() };
+};
+
+template<typename Step, NeighbourCursor<Step> Cursor>
+struct QueueEntry : std::variant<Step, std::reference_wrapper<Cursor>> {};
+
+template<typename Step, NeighbourCursor<Step> Cursor, typename Inspector>
+auto inspect(Inspector& f, QueueEntry<Step, Cursor>& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<Step>(), inspection::type<Cursor>("cursor"));
 }
-auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_tasks->fetch_sub(1);
-}
-auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_tasks->fetch_add(1);
-}
-auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_tasks->fetch_sub(1);
-}
-auto RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
+
+}  // namespace arangodb::graph
