@@ -64,44 +64,62 @@ class AttributeDetectorTest : public ::testing::Test {
   }
 
   void createDummyGraphData() {
-    auto usersColl = vocbase->createCollection(
-        VPackParser::fromJson("{\"name\": \"users\"}")->slice());
-    ASSERT_NE(usersColl.get(), nullptr) << "Failed to create users";
-    auto postsColl = vocbase->createCollection(
-        VPackParser::fromJson("{\"name\": \"posts\"}")->slice());
-    ASSERT_NE(postsColl.get(), nullptr) << "Failed to create posts";
-    auto productsColl = vocbase->createCollection(
-        VPackParser::fromJson("{\"name\": \"products\"}")->slice());
-    ASSERT_NE(productsColl.get(), nullptr) << "Failed to create products";
-    auto graphs = vocbase->createCollection(
-        VPackParser::fromJson(R"({"name":"_graphs","isSystem":true})")
-            ->slice());
-    ASSERT_NE(graphs.get(), nullptr) << "Failed to create _graphs";
-    auto orderedColl = vocbase->createCollection(
-        VPackParser::fromJson("{\"name\": \"ordered\", \"type\": 3}")->slice());
-    ASSERT_NE(orderedColl.get(), nullptr) << "Failed to create ordered";
-    bool created = false;
-    auto def = VPackParser::fromJson(R"({"type":"edge"})");
-    auto idx = orderedColl->createIndex(def->slice(), created).waitAndGet();
-    ASSERT_TRUE(idx);
-    ASSERT_TRUE(created);
+    auto mkColl = [&](std::string const& name,
+                      std::string const& extra =
+                          "") -> std::shared_ptr<arangodb::LogicalCollection> {
+      auto json =
+          VPackParser::fromJson(std::string("{\"name\":\"") + name + "\"" +
+                                (extra.empty() ? "" : (", " + extra)) + "}");
+      auto c = vocbase->createCollection(json->slice());
+      EXPECT_NE(c.get(), nullptr) << "Failed to create " << name;
+      return c;
+    };
 
     auto run = [&](std::string const& q) {
       SCOPED_TRACE(q);
-      auto bind = VPackParser::fromJson("{ }");
-      auto qr = tests::executeQuery(*vocbase, q, bind);
+      auto qr = tests::executeQuery(*vocbase, q, VPackParser::fromJson("{ }"));
       ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
     };
 
-    run(R"aql(INSERT {_key:"u1", name:"Alice", age:30, address: "Cologne"} INTO users)aql");
-    run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24, address: "Tokyo"} INTO users)aql");
+    // Collections
+    auto usersColl = mkColl("users");
+    auto postsColl = mkColl("posts");
+    auto productsColl = mkColl("products");
+    auto graphsColl = mkColl("_graphs", "\"isSystem\":true");
+    auto orderedColl = mkColl("ordered", "\"type\":3");  // edge collection
 
-    run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival"} INTO posts)aql");
-    run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday"} INTO posts)aql");
+    // Edge index required for traversal
+    {
+      bool created = false;
+      auto idx =
+          orderedColl
+              ->createIndex(
+                  VPackParser::fromJson(R"({"type":"edge"})")->slice(), created)
+              .waitAndGet();
+      ASSERT_TRUE(idx);
+      ASSERT_TRUE(created);
+    }
 
-    run(R"aql(INSERT {_key:"p1", name:"Keyboard", price:49.99} INTO products)aql");
-    run(R"aql(INSERT {_key:"p2", name:"Mouse",    price:19.99} INTO products)aql");
-    run(R"aql(INSERT {_key:"p3", name:"Monitor",  price:199.0} INTO products)aql");
+    // Data
+    run(R"aql(INSERT {_key:"u1", name:"Alice", age:30, address:"Cologne",
+                     profile:{ bio:"likes databases", tags:["aql","graph"] } } INTO users)aql");
+    run(R"aql(INSERT {_key:"u2", name:"Bob",   age:24, address:"Tokyo",
+                     profile:{ bio:"search fan", tags:["arangosearch","text"] } } INTO users)aql");
+    run(R"aql(INSERT {_key:"u3", name:"Carol", age:42, address:"SF",
+                     profile:{ bio:"security", tags:["abac","rbac"] } } INTO users)aql");
+
+    run(R"aql(INSERT {_key:"post1", userId:"u1", title:"festival",
+                     body:"ArangoDB graph traversal", meta:{lang:"en", likes:3} } INTO posts)aql");
+    run(R"aql(INSERT {_key:"post2", userId:"u2", title:"birthday",
+                     body:"ArangoSearch analyzers", meta:{lang:"en", likes:7} } INTO posts)aql");
+
+    run(R"aql(INSERT {_key:"p1", name:"Keyboard", price:49.99,
+                     category:"input", specs:{ brand:"ACME", color:"black" } } INTO products)aql");
+    run(R"aql(INSERT {_key:"p2", name:"Mouse",    price:19.99,
+                     category:"input", specs:{ brand:"ACME", color:"white" } } INTO products)aql");
+    run(R"aql(INSERT {_key:"p3", name:"Monitor",  price:199.0,
+                     category:"display", specs:{ brand:"ViewCo", color:"black" } } INTO products)aql");
+
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
 
@@ -109,35 +127,26 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e3", _from:"users/u2", _to:"products/p3", qty:1, orderedAt:"2026-01-03"} INTO ordered)aql");
 
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"name\": \"usersView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase->createView(createJson->slice(), false);
-    ASSERT_FALSE(!logicalView);
+    auto viewSimple = createArangoSearchView("usersViewSimple");
+    auto viewComplicated = createArangoSearchView("usersViewComplicated");
+    linkUsersViewSimple(*viewSimple);
+    linkUsersViewComplicated(*viewComplicated);
+  }
 
-    auto* impl = dynamic_cast<iresearch::IResearchView*>(logicalView.get());
+  std::shared_ptr<arangodb::LogicalView> createArangoSearchView(
+      std::string const& name) {
+    auto createJson = VPackParser::fromJson(std::string("{\"name\":\"") + name +
+                                            "\",\"type\":\"arangosearch\"}");
+    auto v = vocbase->createView(createJson->slice(), false);
+    EXPECT_FALSE(!v) << "Failed to create view " << name;
+    return v;
+  }
+
+  void linkUsersViewSimple(LogicalView& logicalView) {
+    auto* impl = dynamic_cast<iresearch::IResearchView*>(&logicalView);
     ASSERT_FALSE(!impl);
 
-    {
-      auto doc0 = arangodb::velocypack::Parser::fromJson(
-          R"({ "_key":"u3", "name":"Carol", "age":42, "address":"SF" })");
-
-      static std::vector<std::string> const EMPTY;
-      std::vector<std::string> writeCols{"users"};
-
-      transaction::Methods trx(
-          transaction::StandaloneContext::create(
-              *vocbase, transaction::OperationOriginTestCase{}),
-          EMPTY, writeCols, EMPTY, transaction::Options());
-
-      ASSERT_TRUE(trx.begin().ok());
-      ASSERT_TRUE(
-          trx.insert("users", doc0->slice(), arangodb::OperationOptions())
-              .ok());
-      ASSERT_TRUE(trx.commit().ok());
-    }
-
-    {
-      auto updateJson = arangodb::velocypack::Parser::fromJson(R"({
+    auto linkJson = VPackParser::fromJson(R"({
     "links": {
       "users": {
         "fields": {
@@ -146,19 +155,58 @@ class AttributeDetectorTest : public ::testing::Test {
       }
     }
   })");
-      auto res = impl->properties(updateJson->slice(), true, false);
-      ASSERT_TRUE(res.ok()) << res.errorMessage();
-    }
+
+    auto res = impl->properties(linkJson->slice(), /*partialUpdate*/ true,
+                                /*doSync*/ false);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
+  }
+
+  void linkUsersViewComplicated(LogicalView& logicalView) {
+    auto* impl = dynamic_cast<iresearch::IResearchView*>(&logicalView);
+    ASSERT_FALSE(!impl);
+
+    auto updateJson = VPackParser::fromJson(R"({
+      "links": {
+        "users": {
+          "fields": {
+            "name":    { "analyzers": ["text_en"] },
+            "address": { "analyzers": ["text_en"] },
+            "profile": {
+              "fields": {
+                "bio":  { "analyzers": ["text_en"] },
+                "tags": { "analyzers": ["identity"] }
+              }
+            }
+          },
+          "storedValues": [
+            { "fields": ["name", "age"] }
+          ]
+        },
+        "posts": {
+          "fields": {
+            "title": { "analyzers": ["text_en"] },
+            "body":  { "analyzers": ["text_en"] },
+            "meta":  { "fields": { "lang": {}, "likes": {} } }
+          }
+        },
+        "products": {
+          "includeAllFields": true
+        },
+        "ordered": {
+          "includeAllFields": true
+        }
+      }
+    })");
+
+    auto res = impl->properties(updateJson->slice(), true, false);
+    ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 
   std::shared_ptr<Query> executeQuery(std::string const& queryString) {
     auto ctx = std::make_shared<transaction::StandaloneContext>(
         *vocbase, transaction::OperationOriginTestCase{});
-
-    auto bindParams = VPackParser::fromJson("{}");
-    auto query =
-        Query::create(std::move(ctx), QueryString(queryString), bindParams);
-
+    auto query = Query::create(std::move(ctx), QueryString(queryString),
+                               VPackParser::fromJson("{}"));
     waitForAsync(query->prepareQuery());
     return query;
   }
@@ -167,13 +215,10 @@ class AttributeDetectorTest : public ::testing::Test {
     auto coll = vocbase->lookupCollection(collName);
     ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
 
-    auto createIndexJson = VPackParser::fromJson(
-        std::string("{ \"type\": \"hash\", \"fields\": [ \"") + attr +
-        "\" ] }");
-
+    auto json = VPackParser::fromJson(
+        std::string("{\"type\":\"hash\",\"fields\":[\"") + attr + "\"]}");
     bool created = false;
-    auto idx =
-        coll->createIndex(createIndexJson->slice(), created).waitAndGet();
+    auto idx = coll->createIndex(json->slice(), created).waitAndGet();
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
@@ -640,20 +685,27 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
     FOR v IN 1..1 OUTBOUND "users/u1" ordered
       RETURN v
   )aql");
+  // Problem: edge coll doesn't know _from and _to
+  // Use graphName option for now (Markus's working on this)
+  // With users, products
+  // ordered (edge coll) -> _from and _to
 
   auto const& accesses = query->abacAccesses();
 
   // ASSERT_EQ(accesses.size(), 3);
   for (auto& access : accesses) {
     LOG_DEVEL << "collName: " << access.collectionName;
+    for (auto& attr : access.readAttributes) {
+      LOG_DEVEL << "attrName: " << attr;
+    }
     EXPECT_TRUE(access.requiresAllAttributesRead);
     EXPECT_FALSE(access.requiresAllAttributesWrite);
   }
 }
 
-TEST_F(AttributeDetectorTest, ArangoSearch_ReturnDoc) {
+TEST_F(AttributeDetectorTest, SimpleArangoSearchReturnDoc) {
   auto query = executeQuery(R"aql(
-    FOR d IN usersView
+    FOR d IN usersViewSimple
       SEARCH d.name == "Alice"
       RETURN d
   )aql");
@@ -661,10 +713,30 @@ TEST_F(AttributeDetectorTest, ArangoSearch_ReturnDoc) {
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "users");
+  ASSERT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
+TEST_F(AttributeDetectorTest, ComplicatedArangoSearchReturnDoc) {
+  auto query = executeQuery(R"aql(
+    FOR d IN usersViewComplicated
+      SEARCH d.name == "Alice"
+      RETURN d
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  const std::set<std::string> expected{"users", "products", "posts", "ordered"};
+  ASSERT_EQ(accesses.size(), expected.size());
+
+  std::set<std::string> actual;
+  for (auto const& access : accesses) {
+    actual.insert(access.collectionName);
+    EXPECT_TRUE(access.requiresAllAttributesRead);
+    EXPECT_FALSE(access.requiresAllAttributesWrite);
+  }
+  EXPECT_EQ(actual, expected);
+}
 
 }  // namespace arangodb::tests::aql
