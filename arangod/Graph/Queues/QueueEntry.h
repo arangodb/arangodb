@@ -20,22 +20,28 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "TaskMonitoring/task_registry_variable.h"
+#pragma once
 
-namespace arangodb::task_monitoring {
+#include <variant>
+#include <vector>
+#include "Inspection/Types.h"
 
-Registry registry;
+namespace arangodb::graph {
 
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
-      registry.add(_registry);
-    }
+template<typename T, typename Step>
+concept NeighbourCursor = requires(T t) {
+  { t.next() } -> std::convertible_to<std::vector<Step>>;
+  { t.hasMore() } -> std::convertible_to<bool>;
+  { t.markForDeletion() };
+};
 
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
+template<typename Step, NeighbourCursor<Step> Cursor>
+struct QueueEntry : std::variant<Step, std::reference_wrapper<Cursor>> {};
+
+template<typename Step, NeighbourCursor<Step> Cursor, typename Inspector>
+auto inspect(Inspector& f, QueueEntry<Step, Cursor>& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<Step>(), inspection::type<Cursor>("cursor"));
 }
 
-}  // namespace arangodb::task_monitoring
+}  // namespace arangodb::graph
