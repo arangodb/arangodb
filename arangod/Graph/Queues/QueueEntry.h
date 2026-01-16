@@ -23,30 +23,25 @@
 #pragma once
 
 #include <variant>
+#include <vector>
 #include "Inspection/Types.h"
 
 namespace arangodb::graph {
 
-using CursorId = std::size_t;
-
-/**
-   Marker struct for queues to do an expansion when such a type is popped.
- **/
-struct Expansion {
-  CursorId id;
-  std::size_t from;
+template<typename T, typename Step>
+concept NeighbourCursor = requires(T t) {
+  { t.next() } -> std::convertible_to<std::vector<Step>>;
+  { t.hasMore() } -> std::convertible_to<bool>;
+  { t.markForDeletion() };
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Expansion& x) {
-  return f.object(x).fields(f.field("id", x.id), f.field("from", x.from));
-}
 
-template<typename Step>
-struct QueueEntry : std::variant<Step, Expansion> {};
-template<typename Step, typename Inspector>
-auto inspect(Inspector& f, QueueEntry<Step>& x) {
+template<typename Step, NeighbourCursor<Step> Cursor>
+struct QueueEntry : std::variant<Step, std::reference_wrapper<Cursor>> {};
+
+template<typename Step, NeighbourCursor<Step> Cursor, typename Inspector>
+auto inspect(Inspector& f, QueueEntry<Step, Cursor>& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<Step>(), inspection::inlineType<Expansion>());
+      inspection::inlineType<Step>(), inspection::type<Cursor>("cursor"));
 }
 
 }  // namespace arangodb::graph
