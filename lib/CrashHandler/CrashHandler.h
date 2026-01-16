@@ -60,7 +60,7 @@ class CrashHandler {
 
   static CrashHandler* getCrashHandler() { return _theCrashHandler; }
 
-  std::shared_ptr<Dumper> getDumper() noexcept { return _dumper; }
+  std::shared_ptr<Dumper> getDumper() const noexcept { return _dumper; }
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();

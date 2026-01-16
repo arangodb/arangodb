@@ -51,8 +51,8 @@ void CrashHandlerFeature::start() {
         arangodb::basics::FileUtils::buildFilename(path, "crashes");
     _dumper->setCrashesDirectory(_crashesDirectory);
     // Clean up old crash directories on startup
-    crash_handler::Dumper::cleanupOldCrashDirectories(_crashesDirectory,
-                                                      /*max*/ 10);
+    _dumper->cleanupOldCrashDirectories(_crashesDirectory,
+                                        /*max*/ 10);
   }
 }
 

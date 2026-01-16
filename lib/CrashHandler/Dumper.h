@@ -24,7 +24,6 @@
 #pragma once
 
 #include <cstddef>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <memory>
@@ -40,23 +39,26 @@ class Dumper {
 
   void setCrashesDirectory(std::string const& crashesDirectory);
 
-  static void cleanupOldCrashDirectories(std::string const& crashesDirectory,
-                                         size_t maxCrashDirectories);
+  void cleanupOldCrashDirectories(std::string const& crashesDirectory,
+                                  size_t maxCrashDirectories) const;
 
-  // Create a new crash directory for the current crash
-  void createCrashDirectory();
-
-  void dumpDataSources();
-
-  void dumpSystemInfo();
-
-  void dumpBacktractInfo(std::string_view backtrace);
+  void dumpCrashData(std::string_view backtrace) const;
 
  private:
-  // Ensure that the crashes directory exists
-  void ensureCrashesDirectory();
+  // Create a new crash directory for the current crash
+  std::string createCrashDirectory() const;
 
-  std::optional<std::string> _crashesDirectory;
+  void dumpDataSources(std::string const& crashDirectory) const;
+
+  void dumpSystemInfo(std::string const& crashDirectory) const;
+
+  void dumpBacktraceInfo(std::string const& crashDirectory,
+                         std::string_view const backtrace) const;
+
+  // Ensure that the crashes directory exists
+  bool ensureCrashesDirectory() const;
+
+  std::string _crashesDirectory;
 
   std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };

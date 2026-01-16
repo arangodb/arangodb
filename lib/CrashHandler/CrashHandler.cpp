@@ -544,21 +544,13 @@ void actuallyDumpCrashInfo() {
     // Flush logs
     arangodb::Logger::flush();
 
-    auto* crashHandler =
+    auto const* crashHandler =
         arangodb::crash_handler::CrashHandler::getCrashHandler();
     if (crashHandler == nullptr) {
       return;
     }
-    auto dumper = crashHandler->getDumper();
-    dumper->createCrashDirectory();
-    dumper->dumpDataSources();
-    size_t dumpBytesUsed =
-        ::backtraceBufferUsed.load(std::memory_order_acquire);
-    if (::backtraceBuffer != nullptr && dumpBytesUsed > 0) {
-      dumper->dumpBacktractInfo(
-          std::string_view(::backtraceBuffer.get(), dumpBytesUsed));
-    }
-    dumper->dumpSystemInfo();
+    auto const dumper = crashHandler->getDumper();
+    dumper->dumpCrashData(std::string_view(::backtraceBuffer.get(), bytesUsed));
   } catch (...) {
     // Ignore exceptions in crash handling
   }
@@ -642,6 +634,7 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
     // Now acquire the backtrace from the crashed thread (only the crashed
     // thread can do this) and store it in the preallocated buffer
+
     if (::backtraceBuffer != nullptr) {
       size_t bytesWritten =
           acquireBacktrace(::backtraceBuffer.get(), ::backtraceBufferSize);
