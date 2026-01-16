@@ -51,16 +51,16 @@ class CrashHandler {
   static std::atomic<CrashHandler*> _theCrashHandler;
 
   /// @brief Dumper instance for dumping crash data
-  std::shared_ptr<Dumper> _dumper;
+  std::shared_ptr<Dumper const> _dumper;
 
  public:
-  CrashHandler(std::shared_ptr<Dumper> dumper);
+  CrashHandler(std::shared_ptr<Dumper const> dumper);
 
   ~CrashHandler();
 
   static CrashHandler* getCrashHandler() { return _theCrashHandler; }
 
-  std::shared_ptr<Dumper> getDumper() const noexcept { return _dumper; }
+  std::shared_ptr<Dumper const> getDumper() const noexcept { return _dumper; }
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();

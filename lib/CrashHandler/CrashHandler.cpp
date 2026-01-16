@@ -679,7 +679,7 @@ namespace arangodb::crash_handler {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
-CrashHandler::CrashHandler(std::shared_ptr<Dumper> dumper)
+CrashHandler::CrashHandler(std::shared_ptr<Dumper const> dumper)
     : _dumper(std::move(dumper)) {
   // starts global background thread if not already done
   bool threadRunning = _threadRunning.exchange(true);
