@@ -72,8 +72,6 @@ namespace arangodb {
 DaemonFeature::DaemonFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
-
-  _workingDirectory = "/var/tmp";
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -81,28 +79,28 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--daemon",
       "Start the server as a daemon (background process). Requires --pid-file "
       "to be set.",
-      new BooleanParameter(&_daemon),
+      new BooleanParameter(&_options.daemon),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--pid-file",
       "The name of the process ID file to use if the server runs as a daemon.",
-      new StringParameter(&_pidFile),
+      new StringParameter(&_options.pidFile),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--working-directory", "The working directory in daemon mode.",
-      new StringParameter(&_workingDirectory),
+      new StringParameter(&_options.workingDirectory),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 }
 
 void DaemonFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_daemon) {
+  if (!_options.daemon) {
     return;
   }
 
-  if (_pidFile.empty()) {
+  if (_options.pidFile.empty()) {
     LOG_TOPIC("9d6ba", FATAL, arangodb::Logger::FIXME)
         << "need --pid-file in --daemon mode";
     FATAL_ERROR_EXIT();
@@ -110,12 +108,12 @@ void DaemonFeature::validateOptions(
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
-  std::string absoluteFile = TRI_GetAbsolutePath(_pidFile, currentDir);
+  std::string absoluteFile = TRI_GetAbsolutePath(_options.pidFile, currentDir);
 
   if (!absoluteFile.empty()) {
-    _pidFile = absoluteFile;
+    _options.pidFile = absoluteFile;
     LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
-        << "using absolute pid file '" << _pidFile << "'";
+        << "using absolute pid file '" << _options.pidFile << "'";
   } else {
     LOG_TOPIC("24de9", FATAL, arangodb::Logger::FIXME)
         << "cannot determine absolute path";
@@ -126,7 +124,7 @@ void DaemonFeature::validateOptions(
 void DaemonFeature::daemonize() {
   LOG_TOPIC("71164", TRACE, Logger::STARTUP) << name() << "::daemonize";
 
-  if (!_daemon) {
+  if (!_options.daemon) {
     return;
   }
 
@@ -154,33 +152,33 @@ void DaemonFeature::daemonize() {
 }
 
 void DaemonFeature::unprepare() {
-  if (!_daemon) {
+  if (!_options.daemon) {
     return;
   }
 
   // remove pid file
-  if (FileUtils::remove(_pidFile) != TRI_ERROR_NO_ERROR) {
+  if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("1b46c", ERR, arangodb::Logger::FIXME)
-        << "cannot remove pid file '" << _pidFile << "'";
+        << "cannot remove pid file '" << _options.pidFile << "'";
   }
 }
 
 void DaemonFeature::checkPidFile() {
   // check if the pid-file exists
-  if (!_pidFile.empty()) {
-    if (FileUtils::isDirectory(_pidFile)) {
+  if (!_options.pidFile.empty()) {
+    if (FileUtils::isDirectory(_options.pidFile)) {
       LOG_TOPIC("6b3c0", FATAL, arangodb::Logger::FIXME)
-          << "pid-file '" << _pidFile << "' is a directory";
+          << "pid-file '" << _options.pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
-    } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
+    } else if (FileUtils::exists(_options.pidFile) && FileUtils::size(_options.pidFile) > 0) {
       LOG_TOPIC("cf10a", INFO, Logger::STARTUP)
-          << "pid-file '" << _pidFile << "' already exists, verifying pid";
+          << "pid-file '" << _options.pidFile << "' already exists, verifying pid";
       std::string oldPidS;
       try {
-        oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
+        oldPidS = arangodb::basics::FileUtils::slurp(_options.pidFile);
       } catch (arangodb::basics::Exception const& ex) {
         LOG_TOPIC("4aadd", FATAL, arangodb::Logger::FIXME)
-            << "Couldn't read PID file '" << _pidFile << "' - " << ex.what();
+            << "Couldn't read PID file '" << _options.pidFile << "' - " << ex.what();
         FATAL_ERROR_EXIT();
       }
 
@@ -193,12 +191,12 @@ void DaemonFeature::checkPidFile() {
           oldPid = std::stol(oldPidS);
         } catch (std::invalid_argument const&) {
           LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _pidFile << "' doesn't contain a number.";
+              << "pid-file '" << _options.pidFile << "' doesn't contain a number.";
           FATAL_ERROR_EXIT();
         }
         if (oldPid == 0) {
           LOG_TOPIC("aef5d", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _pidFile << "' is unreadable";
+              << "pid-file '" << _options.pidFile << "' is unreadable";
           FATAL_ERROR_EXIT();
         }
 
@@ -209,26 +207,26 @@ void DaemonFeature::checkPidFile() {
 
         if (r == 0 || errno == EPERM) {
           LOG_TOPIC("5fa62", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _pidFile << "' exists and process with pid "
+              << "pid-file '" << _options.pidFile << "' exists and process with pid "
               << oldPid << " is still running, refusing to start twice";
           FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
           LOG_TOPIC("a9576", ERR, Logger::STARTUP)
-              << "pid-file '" << _pidFile << " exists, but no process with pid "
+              << "pid-file '" << _options.pidFile << " exists, but no process with pid "
               << oldPid << " exists";
 
-          if (FileUtils::remove(_pidFile) != TRI_ERROR_NO_ERROR) {
+          if (FileUtils::remove(_options.pidFile) != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
-                << "pid-file '" << _pidFile << "' exists, no process with pid "
+                << "pid-file '" << _options.pidFile << "' exists, no process with pid "
                 << oldPid << " exists, but pid-file cannot be removed";
             FATAL_ERROR_EXIT();
           }
 
           LOG_TOPIC("1f3e6", INFO, Logger::STARTUP)
-              << "removed stale pid-file '" << _pidFile << "'";
+              << "removed stale pid-file '" << _options.pidFile << "'";
         } else {
           LOG_TOPIC("180c0", FATAL, arangodb::Logger::FIXME)
-              << "pid-file '" << _pidFile << "' exists and kill " << oldPid
+              << "pid-file '" << _options.pidFile << "' exists and kill " << oldPid
               << " failed";
           FATAL_ERROR_EXIT();
         }
@@ -237,13 +235,13 @@ void DaemonFeature::checkPidFile() {
       // failed to open file
       else {
         LOG_TOPIC("ab3fe", FATAL, arangodb::Logger::FIXME)
-            << "pid-file '" << _pidFile << "' exists, but cannot be opened";
+            << "pid-file '" << _options.pidFile << "' exists, but cannot be opened";
         FATAL_ERROR_EXIT();
       }
     }
 
     LOG_TOPIC("1589d", DEBUG, Logger::STARTUP)
-        << "using pid-file '" << _pidFile << "'";
+        << "using pid-file '" << _options.pidFile << "'";
   }
 }
 
@@ -295,18 +293,18 @@ int DaemonFeature::forkProcess() {
   _current = cwd.result();
 
   // change the current working directory
-  if (!_workingDirectory.empty()) {
-    FileResult res = FileUtils::changeDirectory(_workingDirectory);
+  if (!_options.workingDirectory.empty()) {
+    FileResult res = FileUtils::changeDirectory(_options.workingDirectory);
 
     if (!res.ok()) {
       LOG_TOPIC("d9f9d", FATAL, arangodb::Logger::STARTUP)
-          << "cannot change into working directory '" << _workingDirectory
+          << "cannot change into working directory '" << _options.workingDirectory
           << "': " << res.errorMessage();
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC("ae8be", INFO, arangodb::Logger::STARTUP)
           << "changed working directory for child process to '"
-          << _workingDirectory << "'";
+          << _options.workingDirectory << "'";
     }
   }
 
@@ -361,10 +359,10 @@ void DaemonFeature::remapStandardFileDescriptors() {
 
 void DaemonFeature::writePidFile(int pid) {
   try {
-    arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
+    arangodb::basics::FileUtils::spit(_options.pidFile, std::to_string(pid), true);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("c2741", FATAL, arangodb::Logger::FIXME)
-        << "cannot write pid-file '" << _pidFile << "' - " << ex.what();
+        << "cannot write pid-file '" << _options.pidFile << "' - " << ex.what();
   }
 }
 

@@ -23,40 +23,14 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/DaemonFeatureOptions.h"
-#include "RestServer/arangod.h"
-
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
-class DaemonFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Daemon"; }
-
-  explicit DaemonFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void daemonize() override final;
-  void unprepare() override final;
-
-  void setDaemon(bool value) { _options.daemon = value; }
-  static void remapStandardFileDescriptors();
-
- private:
-  void checkPidFile();
-  int forkProcess();
-  void writePidFile(int);
-  int waitForChildProcess(int);
-
-  DaemonFeatureOptions _options;
-  std::string _current;
+struct DaemonFeatureOptions {
+  bool daemon = false;
+  std::string pidFile = "";
+  std::string workingDirectory = "/var/tmp";
 };
 
 }  // namespace arangodb
