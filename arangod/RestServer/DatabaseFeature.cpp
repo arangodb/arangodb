@@ -310,7 +310,7 @@ void DatabaseFeature::collectOptions(
                   "The default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_defaultReplicationVersion, allowedReplicationVersions),
+                      &_options.defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(31200);
@@ -319,7 +319,7 @@ void DatabaseFeature::collectOptions(
       "--database.wait-for-sync",
       "The default waitForSync behavior. Can be overwritten when creating a "
       "collection.",
-      new options::BooleanParameter(&_defaultWaitForSync),
+      new options::BooleanParameter(&_options.defaultWaitForSync),
       options::makeDefaultFlags(options::Flags::Uncommon));
 
   // the following option was obsoleted in 3.9
@@ -332,7 +332,7 @@ void DatabaseFeature::collectOptions(
 
   options->addOption("--database.ignore-datafile-errors",
                      "Load collections even if datafiles may contain errors.",
-                     new options::BooleanParameter(&_ignoreDatafileErrors),
+                     new options::BooleanParameter(&_options.ignoreDatafileErrors),
                      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
@@ -340,7 +340,7 @@ void DatabaseFeature::collectOptions(
                   "Allow most UTF-8 characters in the names of databases, "
                   "collections, Views, and indexes. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNames),
+                  new options::BooleanParameter(&_options.extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
@@ -351,7 +351,7 @@ void DatabaseFeature::collectOptions(
   options
       ->addOption("--database.io-heartbeat",
                   "Perform I/O heartbeat to test the underlying volume.",
-                  new options::BooleanParameter(&_performIOHeartbeat),
+                  new options::BooleanParameter(&_options.performIOHeartbeat),
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
@@ -359,7 +359,7 @@ void DatabaseFeature::collectOptions(
   options
       ->addOption("--database.max-databases",
                   "The maximum number of databases that can exist in parallel.",
-                  new options::SizeTParameter(&_maxDatabases))
+                  new options::SizeTParameter(&_options.maxDatabases))
       .setLongDescription(R"(If the maximum number of databases is reached, no
 additional databases can be created in the deployment. In order to create additional
 databases, other databases need to be removed first.")")
@@ -466,7 +466,7 @@ void DatabaseFeature::start() {
   if ((ServerState::instance()->isDBServer() ||
        ServerState::instance()->isSingleServer() ||
        ServerState::instance()->isAgent()) &&
-      _performIOHeartbeat) {
+      _options.performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
         server(), server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());
