@@ -28,6 +28,11 @@
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 #include "Utils/ExecContext.h"
+#include "Cluster/ServerState.h"
+#include "Network/NetworkFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -209,6 +214,64 @@ void RestBaseHandler::writeResult(Payload&& payload,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
+}
+
+auto RestBaseHandler::tryForwarding() -> async<bool> {
+  bool foundServerIdParameter;
+  std::string const& serverId =
+      _request->value("serverId", foundServerIdParameter);
+
+  if (not ServerState::instance()->isCoordinator()) {
+    co_return false;
+  }
+  if (not foundServerIdParameter) {
+    co_return false;
+  }
+  if (serverId == ServerState::instance()->getId()) {
+    co_return false;
+  }
+
+  // not ourselves! - need to pass through the request
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  bool found = false;
+  for (auto const& srv : ci.getServers()) {
+    // validate if server id exists
+    if (srv.first == serverId) {
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "unknown serverId supplied.");
+    co_return true;
+  }
+
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  network::RequestOptions options;
+  options.timeout = network::Timeout(30.0);
+  options.database = _request->databaseName();
+  options.parameters = _request->parameters();
+
+  auto f = network::sendRequestRetry(
+      pool, "server:" + serverId, fuerte::RestVerb::Get,
+      _request->requestPath(), VPackBuffer<uint8_t>{}, options);
+  co_await std::move(f).thenValue(
+      [self = std::dynamic_pointer_cast<RestBaseHandler>(shared_from_this())](
+          network::Response const& r) {
+        if (r.fail()) {
+          self->generateError(r.combinedResult());
+        } else {
+          self->generateResult(rest::ResponseCode::OK, r.slice());
+        }
+      });
+  co_return true;
 }
 
 // TODO -- rather move code to header (slower linking) or remove templates

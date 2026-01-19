@@ -1,0 +1,9 @@
+add_library(arango_activity_registry STATIC
+  activity.cpp)
+target_include_directories(arango_activity_registry PUBLIC
+  include)
+target_link_libraries(arango_activity_registry PUBLIC fmt arango_thread_owning_list arango_shared arango_inspection)
+
+add_library(arango_activity_registry_global STATIC
+  activity_registry_variable.cpp)
+target_link_libraries(arango_activity_registry_global PUBLIC arango_activity_registry)
