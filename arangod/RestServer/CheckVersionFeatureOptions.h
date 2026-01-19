@@ -23,33 +23,10 @@
 
 #pragma once
 
-#include <span>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/CheckVersionFeatureOptions.h"
-#include "RestServer/arangod.h"
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
-class CheckVersionFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "CheckVersion"; }
-
-  explicit CheckVersionFeature(Server& server, int* result,
-                               std::span<const size_t> nonServerFeatures);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- private:
-  void checkVersion();
-
-  CheckVersionFeatureOptions _options;
-  int* _result;
-  std::span<const size_t> _nonServerFeatures;
+struct CheckVersionFeatureOptions {
+  bool checkVersion = false;
 };
 
 }  // namespace arangodb
