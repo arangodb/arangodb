@@ -23,34 +23,24 @@
 
 #pragma once
 
-#include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "RestServer/arangod.h"
-
-#include "Endpoint/EndpointList.h"
-#include "RestServer/EndpointFeatureOptions.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
-class EndpointFeature final : public HttpEndpointProvider {
- public:
-  static constexpr std::string_view name() noexcept { return "Endpoint"; }
+struct EndpointFeatureOptions {
+  std::vector<std::string> endpoints;
+  bool reuseAddress = true;
+  uint64_t backlogSize = 64;
 
-  explicit EndpointFeature(ArangodServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
-  std::vector<std::string> httpEndpoints() override;
-  EndpointList& endpointList() { return _endpointList; }
-  EndpointList const& endpointList() const { return _endpointList; }
-
- private:
-  void buildEndpointLists();
-
-  EndpointFeatureOptions _options;
-
-  EndpointList _endpointList;
+  EndpointFeatureOptions() {
+    // if our default value is too high, we'll use half of the max value
+    // provided by the system
+    if (backlogSize > SOMAXCONN) {
+      backlogSize = SOMAXCONN / 2;
+    }
+  }
 };
 
 }  // namespace arangodb
