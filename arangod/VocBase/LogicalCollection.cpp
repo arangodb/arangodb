@@ -1088,6 +1088,13 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
+  // Invalidate the _canWrite flag in FollowerInfo since writeConcern or
+  // replicationFactor may have changed. This ensures the write condition
+  // will be re-evaluated on the next write attempt.
+  if (_followers != nullptr) {
+    _followers->invalidateCanWrite();
+  }
+
   if (ServerState::instance()->isDBServer()) {
     // This code is only allowed to be executed by the maintenance
     // and should only be triggered during cluster upgrades.

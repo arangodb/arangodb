@@ -1120,6 +1120,7 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
     if (res.ok()) {
       if (isNoOp) {
         // shortcut. no need to do anything
+        // TODO This is where the failure happens in ticket
         TRI_ASSERT(_batchOptions.computedValues == nullptr);
         TRI_ASSERT(previousRevisionId == newRevisionId);
         this->trackWaitForSync();
