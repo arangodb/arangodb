@@ -83,7 +83,6 @@ class AqlItemBlock {
     /// @brief set the memory usage for the item, expects refCount to be
     /// exactly 1
     void setMemoryUsage(size_t value) noexcept {
-      TRI_ASSERT(value > 0);
       TRI_ASSERT(refCount == 1);
       TRI_ASSERT(memoryUsage == 0);
       // In theory, there can be items consuming more than 4 GB here.
@@ -165,9 +164,17 @@ class AqlItemBlock {
         // note: this may create a new entry in _valueCount, which is fine
         auto& valueInfo = _valueCount[value->data()];
         if (++valueInfo.refCount == 1) {
-          size_t memoryUsage = value->memoryUsage();
-          increaseMemoryUsage(memoryUsage);
-          valueInfo.setMemoryUsage(memoryUsage);
+          // IMPORTANT: Supervised slices already track their own memory in the
+          // ResourceMonitor during allocateSupervised(). We must NOT double-count.
+          // For supervised slices, we store 0 in memoryUsage so that later
+          // when we accumulate totalUsed, we don't try to decrease memory we never increased.
+          if (value->type() == AqlValue::VPACK_SUPERVISED_SLICE) {
+            valueInfo.setMemoryUsage(0);  // Don't track in block
+          } else {
+            size_t memoryUsage = value->memoryUsage();
+            increaseMemoryUsage(memoryUsage);
+            valueInfo.setMemoryUsage(memoryUsage);
+          }
         }
       } catch (...) {
         // invoke dtor

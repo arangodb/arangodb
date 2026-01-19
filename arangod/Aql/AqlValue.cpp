@@ -1698,6 +1698,7 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
     case T::RANGE:
       return a._data.rangeMeta.range == b._data.rangeMeta.range;
   }
+  TRI_ASSERT(false);
   return false;
 }
 
