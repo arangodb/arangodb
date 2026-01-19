@@ -87,8 +87,6 @@ function goDriver (options) {
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
-    checkSutCleannessBefore() {}
-    checkSutCleannessAfter() { return true; }
     runOneTest(file) {
       const goVersionArgs = [
         {
