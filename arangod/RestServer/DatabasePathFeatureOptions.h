@@ -23,34 +23,13 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/DatabasePathFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include <string>
 
 namespace arangodb {
 
-class DatabasePathFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() { return "DatabasePath"; }
-
-  explicit DatabasePathFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-
-  std::string const& directory() const { return _options.directory; }
-  std::string subdirectoryName(std::string const& subDirectory) const;
-  void setDirectory(std::string const& path) {
-    // This is only needed in the catch tests, where we initialize the
-    // feature but do not have options or run `validateOptions`. Please
-    // do not use it from other code.
-    _options.directory = path;
-  }
-
- private:
-  DatabasePathFeatureOptions _options;
+struct DatabasePathFeatureOptions {
+  std::string directory;
+  std::string requiredDirectoryState = "any";
 };
 
 }  // namespace arangodb
