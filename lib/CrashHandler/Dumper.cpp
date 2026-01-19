@@ -23,17 +23,17 @@
 
 #include "CrashHandler/Dumper.h"
 
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <queue>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/files.h"
 #include "CrashHandler/DataSource.h"
 #include "Rest/Version.h"
 
@@ -48,11 +48,10 @@ void Dumper::setCrashesDirectory(std::string const& crashesDirectory) {
 
 std::string Dumper::createCrashDirectory() const {
   auto const uuid = to_string(boost::uuids::random_generator()());
-  auto const crashDirectory =
-      arangodb::basics::FileUtils::buildFilename(_crashesDirectory, uuid);
-  arangodb::basics::FileUtils::createDirectory(crashDirectory);
+  auto const crashDirectory = std::filesystem::path(_crashesDirectory) / uuid;
+  std::filesystem::create_directory(crashDirectory);
 
-  return crashDirectory;
+  return crashDirectory.string();
 }
 
 void Dumper::dumpCrashData(std::string_view const backtrace) const {
@@ -70,17 +69,18 @@ void Dumper::dumpCrashData(std::string_view const backtrace) const {
 
 void Dumper::dumpDataSources(std::string const& crashDirectory) const {
   for (auto const* dataSource : _dataSourceRegistry->getDataSources()) {
-    std::string filename = arangodb::basics::FileUtils::buildFilename(
-        crashDirectory,
-        std::format("{}.json", dataSource->getDataSourceName()));
+    auto const filename =
+        std::filesystem::path(crashDirectory) /
+        std::format("{}.json", dataSource->getDataSourceName());
     auto data = dataSource->getCrashData();
-    arangodb::basics::FileUtils::spit(filename, data.toJson());
+    std::ofstream ofs(filename);
+    ofs << data.toJson();
   }
 }
 
 void Dumper::dumpSystemInfo(std::string const& crashDirectory) const {
-  auto const sysInfoFilename = arangodb::basics::FileUtils::buildFilename(
-      crashDirectory, "system_info.txt");
+  auto const sysInfoFilename =
+      std::filesystem::path(crashDirectory) / "system_info.txt";
 
   std::string sysInfo = std::format(
       "ArangoDB Version: {}\n"
@@ -96,15 +96,16 @@ void Dumper::dumpSystemInfo(std::string const& crashDirectory) const {
       arangodb::PhysicalMemory::getValue(),
       arangodb::PhysicalMemory::getEffectiveValue());
 
-  arangodb::basics::FileUtils::spit(sysInfoFilename, sysInfo);
+  std::ofstream ofs(sysInfoFilename);
+  ofs << sysInfo;
 }
 
 void Dumper::dumpBacktraceInfo(std::string const& crashDirectory,
                                std::string_view const backtrace) const {
-  auto const backtraceFilename = arangodb::basics::FileUtils::buildFilename(
-      crashDirectory, "backtrace.txt");
-  arangodb::basics::FileUtils::spit(backtraceFilename, backtrace.data(),
-                                    backtrace.size());
+  auto const backtraceFilename =
+      std::filesystem::path(crashDirectory) / "backtrace.txt";
+  std::ofstream ofs(backtraceFilename);
+  ofs.write(backtrace.data(), static_cast<std::streamsize>(backtrace.size()));
 }
 
 bool Dumper::ensureCrashesDirectory() const {
@@ -112,8 +113,8 @@ bool Dumper::ensureCrashesDirectory() const {
     return false;
   }
 
-  if (!arangodb::basics::FileUtils::exists(_crashesDirectory)) {
-    arangodb::basics::FileUtils::createDirectory(_crashesDirectory);
+  if (!std::filesystem::exists(_crashesDirectory)) {
+    std::filesystem::create_directories(_crashesDirectory);
   }
 
   return true;
@@ -122,33 +123,29 @@ bool Dumper::ensureCrashesDirectory() const {
 void Dumper::cleanupOldCrashDirectories(std::string const& crashesDirectory,
                                         size_t maxCrashDirectories) const {
   if (crashesDirectory.empty() ||
-      !arangodb::basics::FileUtils::isDirectory(crashesDirectory)) {
+      !std::filesystem::is_directory(crashesDirectory)) {
     return;
   }
 
-  auto const entries = arangodb::basics::FileUtils::listFiles(crashesDirectory);
-  std::priority_queue<std::pair<int64_t, std::string>,
-                      std::vector<std::pair<int64_t, std::string>>,
-                      std::greater<>>
+  std::priority_queue<
+      std::pair<std::filesystem::file_time_type, std::filesystem::path>,
+      std::vector<
+          std::pair<std::filesystem::file_time_type, std::filesystem::path>>,
+      std::greater<>>
       crashDirs;
 
-  for (auto const& entry : entries) {
-    auto const fullPath =
-        arangodb::basics::FileUtils::buildFilename(crashesDirectory, entry);
-    if (arangodb::basics::FileUtils::isDirectory(fullPath)) {
-      int64_t mtime{0};
-      if (TRI_MTimeFile(fullPath.c_str(), &mtime) == TRI_ERROR_NO_ERROR) {
-        crashDirs.emplace(mtime, entry);
-      }
+  for (auto const& entry :
+       std::filesystem::directory_iterator(crashesDirectory)) {
+    if (entry.is_directory()) {
+      auto mtime = entry.last_write_time();
+      crashDirs.emplace(mtime, entry.path());
     }
   }
 
   // Remove the oldest directories until we're at the limit
   while (crashDirs.size() > maxCrashDirectories) {
-    auto const& [mtime, dirName] = crashDirs.top();
-    auto const crashDir =
-        arangodb::basics::FileUtils::buildFilename(crashesDirectory, dirName);
-    TRI_RemoveDirectory(crashDir.c_str());
+    auto const& [mtime, crashDir] = crashDirs.top();
+    std::filesystem::remove_all(crashDir);
     crashDirs.pop();
   }
 }
