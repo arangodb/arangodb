@@ -73,8 +73,7 @@ JoinExecutor::~JoinExecutor() {
 }
 
 JoinExecutor::JoinExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher),
-      _infos(infos),
+    : _infos(infos),
       _trx{_infos.query->newTrxContext()},
       _resourceMonitor(_infos.query->resourceMonitor()) {
   constructStrategy();
@@ -158,9 +157,12 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         if (!idx.constantExpressions.empty()) {
           for (auto& expr : idx.constantExpressions) {
             bool mustDestroy = false;
-            ExecutorExpressionContext ctx{_trx, *_infos.query, _functionsCache,
+            ExecutorExpressionContext ctx{_trx,
+                                          *_infos.query,
+                                          _functionsCache,
                                           _currentRow,
-                                          idx.expressionVarsToRegs};
+                                          idx.expressionVarsToRegs,
+                                          _infos.query->resourceMonitor()};
 
             aql::AqlValue res = expr->execute(&ctx, mustDestroy);
             aql::AqlValueGuard guard{res, mustDestroy};

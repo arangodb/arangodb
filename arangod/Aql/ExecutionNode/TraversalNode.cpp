@@ -1333,13 +1333,6 @@ void TraversalNode::prepareOptions() {
     }
     opts->_baseVertexExpression = std::make_unique<Expression>(ast, cond);
   }
-  // If we use the path output the cache should activate document
-  // caching otherwise it is not worth it.
-  if (ServerState::instance()->isCoordinator()) {
-    _options->activateCache(false, engines());
-  } else {
-    _options->activateCache(false, nullptr);
-  }
   _optionsBuilt = true;
 }
 

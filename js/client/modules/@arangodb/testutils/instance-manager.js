@@ -101,8 +101,9 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
+
     // be more sluggish with memory when running instrumented binaries
-    if (this.options.isInstrumented) {
+    if (this.options.isInstrumented && this.options.memory !== undefined) {
       this.options.memory *= 1.1;
     }
     this.cleanup = options.cleanup && options.server === undefined;
@@ -474,13 +475,11 @@ class instanceManager {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
     }
-    let subenv = [`INSTANCEINFO=${JSON.stringify(this.getStructure())}`];
-
     const startTime = time();
     try {
       let count = 0;
       this.arangods.forEach(arangod => {
-        arangod.startArango(_.cloneDeep(subenv));
+        arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
@@ -548,6 +547,12 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
+    if (this.options.skipServerJS) {
+      return {
+        status: true,
+        message: "skipped for servers without javascript"
+      };
+    }
     let baseUrl = this.url;
     if (instanceInfo !== undefined) {
       baseUrl = instanceInfo.url;
@@ -709,7 +714,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      shutdownSuccess &= this._setMaintenance(true);
+      shutdownSuccess &&= this._setMaintenance(true);
     }
 
     this.stopClusterHealthMonitor();
@@ -862,6 +867,13 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      this.arangods.forEach(arangod => {
+        if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
+          delete arangod.args['server.jwt-secret-keyfile'];
+        } else if (arangod.args.hasOwnProperty('server.jwt-secret-folder')) {
+          delete arangod.args['server.jwt-secret-folder'];
+        }
+      });
     }
 
     this.arangods.forEach(arangod => {
@@ -872,7 +884,7 @@ class instanceManager {
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
       this.arangods.forEach(arangod => {
-        arangod.restartIfType(instanceRole, moreArgs);
+        arangod.restartIfType(instanceRole, moreArgs, JSON.stringify(this.getStructure()));
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
     });
@@ -899,9 +911,9 @@ class instanceManager {
             sleep(1);
           }
           print(`${Date()} upgrading ${arangod.name}`);
-          arangod.runUpgrade();
+          arangod.runUpgrade(JSON.stringify(this.getStructure()));
           print(`${Date()} relaunching ${arangod.name}`);
-          arangod.restartOneInstance();
+          arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {
             haveMaintainance = false;
             this._setMaintenance(false);
@@ -1055,7 +1067,7 @@ class instanceManager {
           print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.name);
         }
         let url = arangod.url;
-        if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
+        if (!this.options.skipServerJS && arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
           url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
@@ -1160,6 +1172,57 @@ class instanceManager {
         arangod.id = res['id'];
       }
     });
+  }
+
+  waitForAllShardsInSync() {
+    if (!this.isCluster) {
+      return true;
+    }
+    let count = 0;
+    let collections = [];
+    let dbs = db._databases();
+    while (count < 500) {
+      let dbsOk = 0;
+      dbs.forEach(oneDb => {
+        db._useDatabase(oneDb);
+        collections = [];
+        let found = 0;
+        let shardDist = arango.GET("/_admin/cluster/shardDistribution");
+        if (shardDist.code !== 200 || typeof shardDist.results !== "object") {
+          ++count;
+          return;
+        }
+        let cols = Object.keys(shardDist.results);
+        cols.forEach((c) => {
+          let col = shardDist.results[c];
+          let shards = Object.keys(col.Plan);
+          shards.forEach((s) => {
+            try {
+              if (col.Current.hasOwnProperty(s) && (col.Plan[s].leader !== col.Current[s].leader)) {
+                ++found;
+                collections.push([c, s]);
+              }
+            } catch (ex) {
+              print(`${Date()} 015: ${s}`);
+              print(`${Date()} 015: ${JSON.stringify(col)}`);
+              print(`${Date()} 015: ${ex}`);
+            }
+          });
+        });
+        if (found > 0) {
+          print(`${Date()} 015: ${found} found - Waiting - ${JSON.stringify(collections)}`);
+          internal.sleep(1);
+          count += 1;
+        } else {
+          dbsOk += 1;
+          return;
+        }
+      });
+      if (dbs.length === dbsOk) {
+        break;
+      }
+    }
+    return count < 500;
   }
 
   stopServerWaitFailed(urlIDOrShortName) {
@@ -1299,7 +1362,7 @@ class instanceManager {
     arangosh.checkRequestResult(res);
     return res.result;
   }
-  
+
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1535,18 +1598,24 @@ class instanceManager {
       }
     }
   }
-
 }
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  let memory;
+  if (fs.exists("/proc/meminfo")) {
+    let f = fs.read("/proc/meminfo");
+    const search = 'MemTotal:';
+    let pos = f.search(search);
+    memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+  }
   tu.CopyIntoObject(optionsDefaults, {
-    'memory': undefined,
+    'memory': memory,
     'singles': 1, // internal only
     'coordinators': 1,
     'dbServers': 2,
     'disableClusterMonitor': true,
-    'encryptionAtRest': false,
+    'encryptionAtRest': true,
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
@@ -1613,8 +1682,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
       process.env['MALLOC_CONF'] = 'prof:true';
     }
     options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
-    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
-      options.encryptionAtRest = false;
-    }
   });
 };

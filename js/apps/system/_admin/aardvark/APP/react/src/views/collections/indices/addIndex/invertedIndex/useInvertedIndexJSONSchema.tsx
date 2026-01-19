@@ -4,7 +4,7 @@ import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 const extendedNames = window.frontendConfig.extendedNames;
 
 const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
-  $id: "https://arangodb.com/schemas/views/invertedIndex.json",
+  $id: "https://arango.ai/schemas/views/invertedIndex.json",
   type: "object",
   properties: {
     type: {
@@ -57,7 +57,7 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       nullable: true
     },
     fields: {
-      $id: "https://arangodb.com/schemas/views/invertedIndexFields.json",
+      $id: "https://arango.ai/schemas/views/invertedIndexFields.json",
       type: "array",
       nullable: true,
       items: {

@@ -126,6 +126,7 @@ add_library(arango_basic_utils STATIC
         Basics/terminal-utils-posix.cpp
         Basics/threads-posix.cpp
         Basics/tri-strings.cpp
+        Basics/CGroupDetection.cpp
 
         Utilities/LinenoiseShell.cpp
         Utilities/LineEditor.cpp
@@ -224,6 +225,7 @@ add_library(arango_basic_logger STATIC
         Logger/LogTopic.cpp
         Logger/Logger.cpp
         Logger/LoggerFeature.cpp
+        Logger/LoggerOptions.cpp
         Logger/LoggerStream.cpp
         Logger/LogTimeFormat.cpp
 )
@@ -330,8 +332,8 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_activity_registry_global
          arango_async
-         arango_task_registry_global
   PRIVATE date_interface
           fmt
           arango_assertions
@@ -361,6 +363,7 @@ add_library(arango STATIC
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  ApplicationFeatures/ProcessEnvironmentFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp
@@ -444,12 +447,10 @@ add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
-if (USE_V8)
-  add_subdirectory(V8)
-endif()
+add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
-add_subdirectory(TaskMonitoring)
+add_subdirectory(ActivityRegistry)

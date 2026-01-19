@@ -974,6 +974,16 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
                                      TRI_voc_tick_t /*firstRegularTick*/,
                                      TRI_voc_tick_t /*markerTick*/,
                                      TRI_replication_operation_e type) {
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    if (_usersModified) {
+      // This function can drop/create Databases/Collections
+      // this needs an up-to-date UserManager as we could run in to conflicts
+      // with changes that are not yet loaded to the internal cache.
+      reloadUsers();
+      _usersModified = false;
+    }
+  });
+
   // handle marker type
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {

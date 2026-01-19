@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertIdentical, assertNotIdentical, assertNotNull */
+/* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertIdentical, assertNotIdentical, assertNotNull, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -563,35 +563,37 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 201);
       assertFalse(res.cached);
       assertEqual(res.result[0].value, 0);
-      try {
-        res = db._executeTransaction({
-          collections: {write: [cn], read: [cn2]},
-          action: function() {
-            const arangodb = require("@arangodb");
-            const db = arangodb.db;
-            db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
-            const err = new arangodb.ArangoError();
-            err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED;
-            err.errorMessage = "Aborting transaction that updated value to 1";
-            throw err;
-          }
-        });
-      } catch (err) {
-        assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err.errorNum);
-        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-        assertEqual(res.code, 201);
-        assertFalse(res.cached);
-        assertEqual(res.result[0].value, 0);
+      if (SYS_IS_V8_BUILD) {
+        try {
+          res = db._executeTransaction({
+            collections: {write: [cn], read: [cn2]},
+            action: function() {
+              const arangodb = require("@arangodb");
+              const db = arangodb.db;
+              db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
+              const err = new arangodb.ArangoError();
+              err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED;
+              err.errorMessage = "Aborting transaction that updated value to 1";
+              throw err;
+            }
+          });
+        } catch (err) {
+          assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err.errorNum);
+          res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+          assertEqual(res.code, 201);
+          assertFalse(res.cached);
+          assertEqual(res.result[0].value, 0);
 
-        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
-        assertEqual(res.code, 201);
-        assertFalse(res.cached);
-        assertEqual(res.result[0].value, 0);
+          res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+          assertEqual(res.code, 201);
+          assertFalse(res.cached);
+          assertEqual(res.result[0].value, 0);
 
-        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
-        assertEqual(res.code, 201);
-        assertTrue(res.cached);
-        assertEqual(res.result[0].value, 0);
+          res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+          assertEqual(res.code, 201);
+          assertTrue(res.cached);
+          assertEqual(res.result[0].value, 0);
+        }
       }
     },
 
@@ -608,16 +610,20 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 201);
       assertFalse(res.cached);
       assertEqual(res.result[0].value, 0);
-      res = db._executeTransaction({
-        collections: {write: [cn], read: [cn2]},
-        action: function() {
-          const arangodb = require("@arangodb");
-          const db = arangodb.db;
-          const res = db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
-          return "updated";
-        }
-      });
-      assertEqual(res, "updated");
+      if (SYS_IS_V8_BUILD) {
+        res = db._executeTransaction({
+          collections: {write: [cn], read: [cn2]},
+          action: function() {
+            const arangodb = require("@arangodb");
+            const db = arangodb.db;
+            const res = db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
+            return "updated";
+          }
+        });
+        assertEqual(res, "updated");
+      } else {
+        db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
+      }
       res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
       assertEqual(res.code, 201);
       assertFalse(res.cached);

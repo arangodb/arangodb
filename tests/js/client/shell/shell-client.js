@@ -162,25 +162,27 @@ function clientTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testICU_Compare_Skiplist_Sorting: function () {
-      db._drop('ICU_SORTED');
-      db._create('ICU_SORTED');
-      db.ICU_SORTED.ensureIndex({ type: "skiplist", fields: ["test"] });
-      db.ICU_SORTED.save({ test: 'äää' });
-      db.ICU_SORTED.save({ test: 'aaa' });
-      db.ICU_SORTED.save({ test: 'aab' });
-      db.ICU_SORTED.save({ test: 'äaa' });
-      db.ICU_SORTED.save({ test: 'äää' });
-      db.ICU_SORTED.save({ test: 'Aaa' });
+      try {
+        db._drop('ICU_SORTED');
+        db._create('ICU_SORTED');
+        db.ICU_SORTED.ensureIndex({ type: "skiplist", fields: ["test"] });
+        db.ICU_SORTED.save({ test: 'äää' });
+        db.ICU_SORTED.save({ test: 'aaa' });
+        db.ICU_SORTED.save({ test: 'aab' });
+        db.ICU_SORTED.save({ test: 'äaa' });
+        db.ICU_SORTED.save({ test: 'äää' });
+        db.ICU_SORTED.save({ test: 'Aaa' });
 
-      var y = db.ICU_SORTED.range('test', 'A', 'z');
-
-      assertEqual(y.next().test, 'Aaa');
-      assertEqual(y.next().test, 'aaa');
-      assertEqual(y.next().test, 'äaa');
-      assertEqual(y.next().test, 'äää');
-      assertEqual(y.next().test, 'äää');
-      assertEqual(y.next().test, 'aab');
-      db._drop('ICU_SORTED');
+        var y = db.ICU_SORTED.range('test', 'A', 'z');
+        assertEqual(y.next().test, 'Aaa');
+        assertEqual(y.next().test, 'aaa');
+        assertEqual(y.next().test, 'äaa');
+        assertEqual(y.next().test, 'äää');
+        assertEqual(y.next().test, 'äää');
+        assertEqual(y.next().test, 'aab');
+      } finally {
+        db._drop('ICU_SORTED');
+      }
     }
 
   };

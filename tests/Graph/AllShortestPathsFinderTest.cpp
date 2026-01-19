@@ -42,9 +42,6 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/FifoQueue.h"
 
-// Needed in case of enabled tracing
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -266,7 +263,8 @@ TEST_P(AllShortestPathsFinderTest, no_path_exists) {
   auto source = vId(99);
   auto target = vId(100);
   auto finder = pathFinder(0, 1000);
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -302,7 +300,8 @@ TEST_P(AllShortestPathsFinderTest, path_depth_0) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{1}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -335,7 +334,8 @@ TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{1, 3, 5}, {1, 4, 5}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -385,7 +385,8 @@ TEST_P(AllShortestPathsFinderTest, hexagon_path) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{6, 11}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -425,7 +426,8 @@ TEST_P(AllShortestPathsFinderTest, binary_tree) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{15, 13, 12, 14, 18}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -465,7 +467,8 @@ TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{12, 19, 20}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -507,7 +510,8 @@ TEST_P(AllShortestPathsFinderTest, grid_paths) {
       {27, 28, 29, 32, 35}, {27, 28, 31, 32, 35}, {27, 28, 31, 34, 35},
       {27, 30, 31, 32, 35}, {27, 30, 31, 34, 35}, {27, 30, 33, 34, 35}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -597,7 +601,8 @@ TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
 
   const std::vector<std::vector<size_t>> vertexIdsList{{36, 37}};
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {

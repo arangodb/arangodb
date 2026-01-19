@@ -46,7 +46,7 @@ function AuthSuite() {
 
   // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
-  const user = 'hackers@arangodb.com';
+  const user = 'hackers@arango.ai';
 
   return {
 
@@ -99,6 +99,8 @@ function AuthSuite() {
       assertEqual(user, result.user);
     },
 
+    // This test passes since now we use JWT token and
+    // token did not expire
     testApiUserWrongCredentials: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
@@ -108,7 +110,7 @@ function AuthSuite() {
       users.update(user, "foobar!!!!!");
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(401, result.code);
+      assertEqual(200, result.code);
     },
 
     testApiUserNone: function () {
@@ -140,7 +142,7 @@ function AuthSuite() {
       }
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(401, result.code);
+      assertEqual(404, result.code);
     },
 
     testApiNonExistingUserRW: function () {
@@ -1053,10 +1055,157 @@ function UnauthorizedAccesSuite() {
   };
 }
 
+function AuthMechanismSuite() {
+
+  const isCluster = require('internal').isCluster();
+  const runArangosh = require("@arangodb/testutils/client-tools").run.arangoshCmd;
+  const instance = isCluster ?  IM.arangods.filter(arangod => arangod.instanceRole === "coordinator")[0] : IM.arangods[0];
+  const testCollection = "testCollectionAuthMechanism";
+  const userManager = require("@arangodb/users");
+  const rootPassword = "root";
+  let oldRootPassword = "";
+  const tearDown = () => {
+    userManager.update("root", oldRootPassword);
+    arango.reconnect(arango.getEndpoint(), "_system", "root", oldRootPassword);
+    db._drop(testCollection);
+  };
+
+  return {
+
+    setUpAll: function () {
+      tearDown();
+      db._create(testCollection);
+      // NOTE: This change is necessary to avoid the test to fail when the root password is not set
+      // as the default arangosh connection will use root without password.
+      userManager.update("root", rootPassword);
+      arango.reconnect(arango.getEndpoint(), "_system", "root", rootPassword);
+    },
+
+    tearDownAll: tearDown,
+
+    testUserNamePassword: function () {
+      const docKey = "testUserNamePassword";
+      const res = runArangosh({ ...IM.options, username: "root", password: rootPassword }, instance, {
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      assertFalse(res.hasOwnProperty("exitCode"), `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        const doc = db[testCollection].document(docKey);
+        assertEqual(doc._key, docKey);
+      } catch (e) {
+        assertTrue(false, `Document not saved by started arangosh: ${e}`);
+      }
+    },
+
+    testWrongUserNamePassword: function () {
+      const docKey = "testWrongUserNamePassword";
+      const res = runArangosh({ ...IM.options, username: "rooter", password: rootPassword }, instance, {
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      assertEqual(res.exitCode, 1, `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        db[testCollection].document(docKey);
+        throw "Document saved by started arangosh without rights";
+      } catch (e) {
+        assertEqual(e.code, 404, `Wrong error catched: ${e}`);
+      }
+    },
+
+    testUserNameWrongPassword: function () {
+      const docKey = "testUserNameWrongPassword";
+      const res = runArangosh({ ...IM.options, username: "root", password: "abc" }, instance, {
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      assertEqual(res.exitCode, 1, `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        db[testCollection].document(docKey);
+        throw "Document saved by started arangosh without rights";
+      } catch (e) {
+        assertEqual(e.code, 404, `Wrong error catched: ${e}`);
+      }
+    },
+
+    testNoUserNameNoPassword: function () {
+      const docKey = "testNoUserNameNoPassword";
+      const {username, password, ...options} = IM.options;
+      const res = runArangosh(options, instance, {
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      assertEqual(res.exitCode, 1, `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        db[testCollection].document(docKey);
+        throw "Document saved by started arangosh without rights";
+      } catch (e) {
+        assertEqual(e.code, 404, `Wrong error catched: ${e}`);
+      }
+    },
+
+    testJwtToken: function () {
+      const docKey = "testJwtToken";
+      
+      // First, get a valid JWT token
+      const tokenResponse = arango.POST("/_open/auth", {
+        username: "root",
+        password: rootPassword
+      });
+      
+      assertTrue(tokenResponse.hasOwnProperty("jwt"), "JWT token not received");
+      const jwtToken = tokenResponse.jwt;
+      
+      // Test with valid JWT token
+      const {username, password, ...options} = IM.options;
+      const res = runArangosh(options, instance, {
+        "server.jwt-token": jwtToken,
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      
+      assertFalse(res.hasOwnProperty("exitCode"), `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        const doc = db[testCollection].document(docKey);
+        assertEqual(doc._key, docKey);
+      } catch (e) {
+        assertTrue(false, `Document not saved by started arangosh with JWT token: ${e}`);
+      }
+    },
+
+    testInvalidJwtToken: function () {
+      const docKey = "testInvalidJwtToken";
+      
+      // First, get a valid JWT token
+      const tokenResponse = arango.POST("/_open/auth", {
+        username: "root",
+        password: rootPassword
+      });
+      
+      assertTrue(tokenResponse.hasOwnProperty("jwt"), "JWT token not received");
+      const validJwtToken = tokenResponse.jwt;
+      
+      // Make the token invalid by changing some characters
+      const invalidJwtToken = validJwtToken.substring(0, validJwtToken.length - 5) + "INVALID";
+      
+      // Test with invalid JWT token
+      const {username, password, ...options} = IM.options;
+      const res = runArangosh(options, instance, {
+        "server.jwt-token": invalidJwtToken,
+        "javascript.execute-string": `db["${testCollection}"].save({_key: "${docKey}"});`
+      }, "");
+      
+      assertEqual(res.exitCode, 1, `Error on exit code: ${JSON.stringify(res)}`);
+      try {
+        db[testCollection].document(docKey);
+        throw "Document saved by started arangosh with invalid JWT token";
+      } catch (e) {
+        assertEqual(e.code, 404, `Wrong error caught: ${e}`);
+      }
+    }
+  };
+}
+
 
 // executes the test suite
 jsunity.run(AuthSuite);
 jsunity.run(UnauthorizedAccesSuite);
+jsunity.run(AuthMechanismSuite);
 
 return jsunity.done();
 

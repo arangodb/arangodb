@@ -32,13 +32,13 @@ using namespace arangodb::async_registry;
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
-    "Total number of created asynchronous promises since database creation");
+    "Total number of created asynchronous operations since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises");
+              "Number of currently existing asynchronous operations");
 
 DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises that wait "
+              "Number of currently existing asynchronous operations that wait "
               "for their garbage collection");
 
 DECLARE_COUNTER(arangodb_async_thread_registries_total,
@@ -46,11 +46,9 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing asynchronous "
-              "operations");
+              "Number of currently existing async thread registries");
 
-Feature::Feature(Server& server)
-    : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
+Feature::Feature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
@@ -64,11 +62,6 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(arangodb_async_thread_registries_total{}),
       metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
 }
-auto Feature::asyncLock()
-    -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
-  return _async_mutex.asyncLockExclusive();
-}
-
 struct Feature::PromiseCleanupThread {
   PromiseCleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
@@ -92,9 +85,9 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  metrics = create_metrics(
+  _metrics = create_metrics(
       server().template getFeature<arangodb::metrics::MetricsFeature>());
-  registry.set_metrics(metrics);
+  registry.set_metrics(_metrics);
 }
 
 void Feature::start() {
@@ -116,5 +109,3 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       .setLongDescription(
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
-
-Feature::~Feature() { registry.set_metrics(nullptr); }

@@ -84,10 +84,14 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
       co_await createQueryCursor();
       co_return;
     } else if (_request->suffixes().size() == 1) {
-      // POST /_api/cursor/cursor-id
-
-      co_await modifyQueryCursor();
-      co_return;
+      if (_request->suffixes()[0] == "json") {
+        co_await createQueryCursorJson();
+        co_return;
+      } else {
+        // POST /_api/cursor/cursor-id
+        co_await modifyQueryCursor();
+        co_return;
+      }
     }
     // POST /_api/cursor/cursor-id/batch-id
     co_await showLatestBatch();
@@ -234,6 +238,111 @@ async<void> RestCursorHandler::registerQueryOrCursor(
   co_return;
 }
 
+/// @brief register the query either as streaming cursor or in _query
+/// the query is not executed here.
+/// this method is also used by derived classes
+///
+/// return If true, we need to continue processing,
+///        If false we are done (error or stream)
+async<void> RestCursorHandler::registerQueryOrCursorJson(
+    velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
+  TRI_ASSERT(_query == nullptr);
+
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isAgent()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "not supported on db-servers or agents");
+    co_return;
+  }
+  if (!slice.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    co_return;
+  }
+  VPackSlice executionPlan = slice.get("executionPlan");
+  if (!executionPlan.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
+    co_return;
+  }
+  auto queryBuilder = VPackBuilder(executionPlan);
+
+  VPackSlice opts = slice.get("options");
+  if (!opts.isNone()) {
+    if (!opts.isObject() && !opts.isNull()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting object for <options>");
+      co_return;
+    }
+  }
+
+  TRI_ASSERT(_options == nullptr);
+  buildOptions(slice);
+  TRI_ASSERT(_options != nullptr);
+  opts = _options->slice();
+
+  bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  size_t batchSize =
+      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  double ttl = VelocyPackHelper::getNumericValue<double>(
+      opts, "ttl", _queryRegistry->defaultTTL());
+  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
+
+  // simon: access mode can always be write on the coordinator
+  AccessMode::Type mode = AccessMode::Type::WRITE;
+
+  auto query = aql::Query::create(
+      co_await createTransactionContext(mode, operationOrigin),
+      aql::QueryString{},
+      /*bindParameters*/ nullptr, aql::QueryOptions(opts));
+
+  VPackSlice collections = queryBuilder.slice().get("collections");
+  VPackSlice variables = queryBuilder.slice().get("variables");
+
+  auto const snippets = queryBuilder.slice().get("nodes");
+  auto const querySlice = velocypack::Slice::emptyObjectSlice();
+  auto const viewsSlice = velocypack::Slice::noneSlice();
+  query->prepareFromVelocyPackWithoutInstantiate(
+      querySlice, collections, viewsSlice, variables, snippets);
+  co_await query->instantiatePlan(snippets);
+
+  if (stream) {
+    if (count) {
+      generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                           "cannot use 'count' option for a streaming query"));
+      co_return;
+    }
+
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    _cursor = co_await cursors->createQueryStream(std::move(query), batchSize,
+                                                  ttl, retriable);
+    // Throws if soft shutdown is ongoing!
+    _cursor->setWakeupHandler(withLogContext(
+        [self = shared_from_this()]() { return self->wakeupHandler(); }));
+
+    co_await generateCursorResult(rest::ResponseCode::CREATED);
+    co_return;
+  }
+
+  // non-stream case. Execute query, then build a cursor
+  // with the entire result set.
+  auto ss = query->sharedState();
+  TRI_ASSERT(ss != nullptr);
+  if (ss == nullptr) {
+    generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+    co_return;
+  }
+
+  ss->setWakeupHandler(withLogContext(
+      [self = shared_from_this()] { return self->wakeupHandler(); }));
+
+  registerQuery(std::move(query));
+
+  co_await processQuery();
+
+  co_return;
+}
+
 /// @brief Process the query registered in _query.
 /// The function is repeatable, so whenever we need to WAIT
 /// in AQL we can post a handler calling this function again.
@@ -253,15 +362,7 @@ async<void> RestCursorHandler::processQuery() {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
-    co_await waitingFunToCoro([&] {
-      auto state = query->execute(_queryResult);
-
-      if (state == aql::ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      TRI_ASSERT(state == aql::ExecutionState::DONE);
-      return RestStatus::DONE;
-    });
+    co_await query->execute(_queryResult, &_suspensionCounter);
   }
 
   // We cannot get into HASMORE here, or we would lose results.
@@ -400,7 +501,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.empty()) {
+  if (suffixes.empty() || ((suffixes.size() == 1) && (suffixes[0] == "json"))) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -643,6 +744,28 @@ async<void> RestCursorHandler::createQueryCursor() {
       body, transaction::OperationOriginAQL{"running AQL query"});
   co_return;
 }
+
+async<void> RestCursorHandler::createQueryCursorJson() {
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+
+  if (!parseSuccess) {
+    // error message generated in parseVPackBody
+    co_return;
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    co_return;
+  }
+
+  TRI_ASSERT(_query == nullptr);
+  co_await registerQueryOrCursorJson(
+      body,
+      transaction::OperationOriginAQL{"running query from JSON posted Plan"});
+  co_return;
+}
+
 /// @brief shows the batch given by <batch-id> if it's the last cached batch
 /// response on a retry, and does't advance cursor
 async<void> RestCursorHandler::showLatestBatch() {

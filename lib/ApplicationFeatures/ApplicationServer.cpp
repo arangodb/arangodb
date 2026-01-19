@@ -700,6 +700,8 @@ void ApplicationServer::start() {
         }
       }
 
+      reportServerProgress(State::IN_STOP);
+      _state.store(State::IN_STOP, std::memory_order_release);
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
@@ -723,10 +725,15 @@ void ApplicationServer::start() {
         }
       }
 
+      reportServerProgress(State::IN_UNPREPARE);
+      _state.store(State::IN_UNPREPARE, std::memory_order_release);
       // try to unprepare all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
+          continue;
+        }
         ADB_PROD_ASSERT(feature.state() == ApplicationFeature::State::STOPPED ||
                         feature.state() == ApplicationFeature::State::PREPARED)
             << "feature " << feature.name() << " is in state "

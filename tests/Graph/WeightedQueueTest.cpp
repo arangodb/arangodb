@@ -37,13 +37,13 @@ namespace arangodb {
 namespace tests {
 namespace weighted_queue_graph_cache_test {
 
-class Step : public arangodb::graph::BaseStep<Step> {
+class Step : public arangodb::graph::BaseStep {
   size_t _id;
   bool _isLooseEnd;
 
  public:
   Step(size_t id, double weight, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{0, 1, weight} {
+      : arangodb::graph::BaseStep{0, 1, weight} {
     _id = id;
     _isLooseEnd = isLooseEnd;
   };
@@ -134,7 +134,8 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   EXPECT_EQ(queue.size(), 4U);
   EXPECT_TRUE(queue.hasProcessableElement());
   auto s = queue.pop();
-  EXPECT_EQ(s.id(), 3U);
+  ASSERT_TRUE(s.has_value());
+  EXPECT_EQ(s.value().id(), 3U);
   EXPECT_FALSE(queue.hasProcessableElement());
   EXPECT_EQ(queue.size(), 3U);
 }
@@ -187,9 +188,10 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
     // Consume everything from the queue.
     // It needs to be in increasing weight order.
     while (queue.hasProcessableElement()) {
-      Step myStep = queue.pop();
-      EXPECT_GE(myStep.getWeight(), weightBefore);
-      weightBefore = myStep.getWeight();
+      auto myStep = queue.pop();
+      ASSERT_TRUE(myStep.has_value());
+      EXPECT_GE(myStep.value().getWeight(), weightBefore);
+      weightBefore = myStep.value().getWeight();
     }
     // As all inputs are processable this queue shall be empty now.
     ASSERT_EQ(queue.size(), 0U);
@@ -232,7 +234,8 @@ TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
   // So do not revert it,but just run from first to last
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -259,7 +262,8 @@ TEST_F(WeightedQueueTest,
   {
     // Pop First entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{8, 8, false});
     queue.append(Step{4, 4, false});
@@ -267,7 +271,8 @@ TEST_F(WeightedQueueTest,
   {
     // Pop Second entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{5, 5, false});
     queue.append(Step{3, 3, false});
@@ -277,7 +282,8 @@ TEST_F(WeightedQueueTest,
   ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);

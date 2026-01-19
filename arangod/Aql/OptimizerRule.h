@@ -199,15 +199,20 @@ struct OptimizerRule {
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule,
 
+    // try to use vector index if possible
+    useVectorIndexForSort,
+
+    // push FilterNode into EnumerateNearVector node
+    // this rule must be called after useVectorIndexForSort since that rule
+    // enables this one and works only with EnumerateNearVector nodes
+    pushFilterIntoEnumerateNear,
+
     useIndexesRule,
 
     // try to remove filters covered by index ranges
     removeFiltersCoveredByIndexRule,
 
     removeUnnecessaryFiltersRule2,
-
-    // try to use vector index if possible
-    useVectorIndexForSort,
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule,
@@ -450,6 +455,15 @@ struct OptimizerRule {
       "views so it should have a try before late materialization. "
       "Also constrained sort rule now does not expects any late "
       "materialization variables replacement");
+
+  static_assert(useVectorIndexForSort < useIndexesRule,
+                "useVectorIndexForSort must happen before useIndexesRule rule, "
+                "otherwise the forcing of vector index hint does not work");
+
+  static_assert(
+      useVectorIndexForSort < pushFilterIntoEnumerateNear,
+      "useVectorIndexForSort sort enables pushFilterIntoEnumerateNear rule, "
+      "otherwise the pushFilterIntoEnumerateNear can never trigger");
 
   std::string_view name;
   RuleFunction func;

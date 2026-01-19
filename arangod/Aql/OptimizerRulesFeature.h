@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "Aql/OptimizerRule.h"
+#include "Aql/OptimizerRulesOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -44,7 +45,7 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void unprepare() override final;
 
   std::vector<std::string> const& optimizerRules() const {
-    return _optimizerRules;
+    return _options.optimizerRules;
   }
 
   /// @brief translate a list of rule ids into rule name
@@ -79,7 +80,7 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void addStorageEngineRules();
   void enableOrDisableRules();
 
-  std::vector<std::string> _optimizerRules;
+  OptimizerRulesOptions _options;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;

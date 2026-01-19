@@ -6,4 +6,4 @@ the multi-model NoSQL database
  Copyright: 2014-2018 by ArangoDB GmbH
  Copyright: 2012-2013 by triAGENS GmbH
  ArangoDB Software
- www.arangodb.com
+ https://arango.ai

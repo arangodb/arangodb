@@ -21,12 +21,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/CGroupDetection.h"
+#include "Basics/FileUtils.h"
 #include "Basics/operating-system.h"
 
 #include "Basics/PhysicalMemory.h"
 #include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "ProgramOptions/Parameters.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -47,9 +52,17 @@
 #include <sys/sysctl.h>
 #endif
 
-using namespace arangodb;
+namespace arangodb {
 
 namespace {
+
+// cgroup v1 file paths
+static constexpr char const* kCgroupV1MemoryLimitPath =
+    "/sys/fs/cgroup/memory/memory.limit_in_bytes";
+
+// cgroup v2 file paths
+static constexpr char const* kCgroupV2MemoryMaxPath =
+    "/sys/fs/cgroup/memory.max";
 
 /// @brief gets the physical memory size
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
@@ -82,16 +95,78 @@ uint64_t physicalMemoryImpl() {
 #endif
 #endif
 
+uint64_t effectivePhysicalMemoryImpl() {
+  auto const cgroup = cgroup::getVersion();
+
+  switch (cgroup) {
+    case cgroup::Version::NONE: {
+      break;
+    }
+    case cgroup::Version::V1: {
+      try {
+        if (basics::FileUtils::exists(kCgroupV1MemoryLimitPath)) {
+          if (auto const limit = basics::FileUtils::readCgroupFileValue(
+                  kCgroupV1MemoryLimitPath);
+              limit) {
+            // Check if it's not the "unlimited" value (very large number)
+            if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+              return *limit;
+            }
+          }
+        }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b4d32", INFO, Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v1 "
+               "memory.limit_in_bytes file: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("b4d33", INFO, Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v1 "
+               "memory.limit_in_bytes file: unknown error";
+      }
+      break;
+    }
+    case cgroup::Version::V2: {
+      try {
+        if (basics::FileUtils::exists(kCgroupV2MemoryMaxPath)) {
+          if (auto const limit = basics::FileUtils::readCgroupFileValue(
+                  kCgroupV2MemoryMaxPath);
+              limit) {
+            if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+              return *limit;
+            }
+          }
+        }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b4d34", INFO, Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v2 "
+               "memory.max file: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("b4d35", INFO, Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v2 "
+               "memory.max file: unknown error";
+      }
+      break;
+    }
+  }
+
+  return physicalMemoryImpl();
+}
+
 struct PhysicalMemoryCache {
-  PhysicalMemoryCache() : cachedValue(physicalMemoryImpl()), overridden(false) {
+  PhysicalMemoryCache()
+      : memory(physicalMemoryImpl()),
+        effectiveMemory(effectivePhysicalMemoryImpl()),
+        overridden(false) {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
         try {
-          uint64_t v = arangodb::options::fromString<uint64_t>(value);
+          uint64_t v = options::fromString<uint64_t>(value);
           if (v != 0) {
             // value in environment variable must always be > 0
-            cachedValue = v;
+            memory = v;
             overridden = true;
           }
         } catch (...) {
@@ -103,16 +178,25 @@ struct PhysicalMemoryCache {
       }
     }
   }
-  uint64_t cachedValue;
+  uint64_t memory;
+  uint64_t effectiveMemory;
   bool overridden;
 };
 
-PhysicalMemoryCache const cache;
+PhysicalMemoryCache const& getCache() {
+  static PhysicalMemoryCache const cache;
+  return cache;
+}
 
 }  // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.cachedValue; }
+uint64_t PhysicalMemory::getValue() { return getCache().memory; }
+
+std::size_t PhysicalMemory::getEffectiveValue() {
+  return getCache().effectiveMemory;
+}
 
 /// @brief return if physical memory size was overridden
-bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }
+bool PhysicalMemory::overridden() { return getCache().overridden; }
+}  // namespace arangodb

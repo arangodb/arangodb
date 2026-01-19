@@ -5,6 +5,7 @@ import { useCreateIndex } from "../useCreateIndex";
 export const INITIAL_VALUES = {
   type: "vector",
   fields: "",
+  storedValues: "",
   name: commonFieldsMap.name.initialValue,
   params: {
     metric: "",
@@ -27,6 +28,12 @@ export const FIELDS = [
     tooltip: "The name of the attribute that contains the vector embeddings. Only a single attribute is supported."
   },
   commonFieldsMap.name,
+  {
+    label: "Extra stored values",
+    name: "storedValues",
+    type: "string",
+    tooltip: "Store additional attributes in the index that you want to filter by (comma-separated list). Avoids materializing documents twice, once for the filtering and once for the matches."
+  },
   {
     label: "Metric",
     name: "params.metric",
@@ -77,11 +84,28 @@ export const FIELDS = [
     type: "number",
     tooltip: "Number of threads to use for indexing. The default is 2."
   },
+  {
+    label: "Sparse",
+    name: "sparse",
+    type: "boolean",
+    tooltip:
+      "If true, then create a sparse index. Sparse indexes do not include documents for which the index attributes do not exist or have a value of null."
+  },
   commonFieldsMap.inBackground,
 ];
 
 export const SCHEMA = Yup.object({
   fields: Yup.string().trim().required("Field is required"),
+  storedValues: Yup.string()
+    .test(
+      "max-stored-values",
+      "The maximum number of attributes that you can use in storedValues is 32.",
+      value => {
+        if (!value) return true;
+        return value.split(",").length <= 32;
+      }
+    )
+    .optional(),
   name: commonSchema.name,
   params: Yup.object({
     metric: Yup.string().required("Metric is required"),
@@ -95,16 +119,20 @@ export const SCHEMA = Yup.object({
   inBackground: commonSchema.inBackground
 });
 
-type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & {
+type VectorIndexPayload = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
   fields: string[];
+  storedValues?: string[];
 };
 
 export const useCreateVectorIndex = () => {
-  const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
+  const { onCreate: onCreateIndex } = useCreateIndex<VectorIndexPayload>();
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       type: values.type,
       fields: [values.fields.trim()],
+      storedValues: values.storedValues
+        ? values.storedValues.split(",").map(field => field.trim())
+        : undefined,
       name: values.name,
       params: values.params,
       parallelism: values.parallelism,

@@ -31,6 +31,7 @@ const db = require("@arangodb").db;
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
+let IM = global.instanceManager;
 
 let sgm;
 let satgm;
@@ -297,63 +298,65 @@ function createStrings() {
 }
 
 function createTransactional() {
-  db._useDatabase("UnitTestsDumpSrc");
-  let c = db._create("UnitTestsDumpTransactionCommit");
-  db._executeTransaction({
-    collections: {
-      write: "UnitTestsDumpTransactionCommit"
-    },
-    action: function (params) {
-      var c = require("internal").db.UnitTestsDumpTransactionCommit;
-      let docs = [];
-      for (var i = 0; i < 1000; ++i) {
-        docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-      }
-      c.save(docs);
-    }
-  });
-
-
-  c = db._create("UnitTestsDumpTransactionUpdate");
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-  }
-  c.save(docs);
-
-  db._executeTransaction({
-    collections: {
-      write: "UnitTestsDumpTransactionUpdate"
-    },
-    action: function (params) {
-      var c = require("internal").db.UnitTestsDumpTransactionUpdate;
-      for (var i = 0; i < 1000; i += 2) {
-        c.update("test" + i, {value3: i});
-      }
-    }
-  });
-
-
-  c = db._create("UnitTestsDumpTransactionAbort");
-  c.save({_key: "foo"});
-  try {
+  if (!IM.options.skipServerJS) {
+    db._useDatabase("UnitTestsDumpSrc");
+    let c = db._create("UnitTestsDumpTransactionCommit");
     db._executeTransaction({
       collections: {
-        write: "UnitTestsDumpTransactionAbort"
+        write: "UnitTestsDumpTransactionCommit"
       },
       action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionAbort;
-        c.remove("foo");
+        var c = require("internal").db.UnitTestsDumpTransactionCommit;
         let docs = [];
-        for (let i = 0; i < 1000; ++i) {
+        for (var i = 0; i < 1000; ++i) {
           docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
         }
         c.save(docs);
-        throw "rollback!";
       }
     });
-    throw "unexpected!";
-  } catch (err) {
+
+
+    c = db._create("UnitTestsDumpTransactionUpdate");
+    let docs = [];
+    for (let i = 0; i < 1000; ++i) {
+      docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+    }
+    c.save(docs);
+
+    db._executeTransaction({
+      collections: {
+        write: "UnitTestsDumpTransactionUpdate"
+      },
+      action: function (params) {
+        var c = require("internal").db.UnitTestsDumpTransactionUpdate;
+        for (var i = 0; i < 1000; i += 2) {
+          c.update("test" + i, {value3: i});
+        }
+      }
+    });
+
+
+    c = db._create("UnitTestsDumpTransactionAbort");
+    c.save({_key: "foo"});
+    try {
+      db._executeTransaction({
+        collections: {
+          write: "UnitTestsDumpTransactionAbort"
+        },
+        action: function (params) {
+          var c = require("internal").db.UnitTestsDumpTransactionAbort;
+          c.remove("foo");
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+          }
+          c.save(docs);
+          throw "rollback!";
+        }
+      });
+      throw "unexpected!";
+    } catch (err) {
+    }
   }
 }
 
@@ -554,14 +557,17 @@ function createJobs() {
 }
 
 function createFoxx() {
-  db._useDatabase("UnitTestsDumpSrc");
-  // Install Foxx
-  const fs = require('fs');
-  const SERVICE_PATH = fs.makeAbsolute(fs.join(
-    require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
-  ));
-  const FoxxManager = require('@arangodb/foxx/manager');
-  FoxxManager.install(SERVICE_PATH, '/test');
+  if (!IM.options.skipServerJS) {
+
+    db._useDatabase("UnitTestsDumpSrc");
+    // Install Foxx
+    const fs = require('fs');
+    const SERVICE_PATH = fs.makeAbsolute(fs.join(
+      require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
+    ));
+    const FoxxManager = require('@arangodb/foxx/manager');
+    FoxxManager.install(SERVICE_PATH, '/test');
+  }
 }
 
 function createAnalyzers() {

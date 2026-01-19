@@ -41,10 +41,6 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/WeightedQueue.h"
-
-// Needed in case of enabled tracing
-#include "Graph/PathManagement/PathStoreTracer.h"
-#include "Graph/Queues/QueueTracer.h"
 #include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -278,7 +274,8 @@ TEST_P(WeightedShortestPathTest, no_path_exists) {
   auto source = vId(91);
   auto target = vId(99);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -309,7 +306,8 @@ TEST_P(WeightedShortestPathTest, shortest_path_V1_V3) {
   auto source = vId(1);
   auto target = vId(3);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -357,7 +355,8 @@ TEST_P(WeightedShortestPathTest, shortest_path_V4_V9) {
   auto source = vId(4);
   auto target = vId(9);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -405,7 +404,8 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_outbound) {
   auto source = vId(Vertices::A);
   auto target = vId(Vertices::F);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -454,7 +454,8 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_inbound) {
   auto source = vId(Vertices::A);
   auto target = vId(Vertices::F);
 
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {

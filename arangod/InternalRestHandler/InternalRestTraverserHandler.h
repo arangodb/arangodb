@@ -29,6 +29,12 @@ namespace arangodb {
 namespace aql {
 class QueryRegistry;
 }
+namespace graph {
+class EdgeCursor;
+}
+namespace traverser {
+class BaseEngine;
+}
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
@@ -36,22 +42,22 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
                                         GeneralResponse*, aql::QueryRegistry*);
 
  public:
-  RestStatus execute() override final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const override final {
     return "InternalRestTraverserHandler";
   }
   RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
 
  private:
-  // @brief create a new Traverser Engine.
-  void createEngine();
-
   // @brief Query an existing Traverser Engine.
   void queryEngine();
 
   // @brief Destroy an existing Traverser Engine.
   void destroyEngine();
 
+  ResultT<traverser::BaseEngine*> get_engine(uint64_t engineId);
+
   aql::QueryRegistry* _registry;
 };
+
 }  // namespace arangodb

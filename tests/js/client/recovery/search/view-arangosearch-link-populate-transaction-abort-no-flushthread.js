@@ -29,6 +29,7 @@ var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
+var IM = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
@@ -47,25 +48,23 @@ if (runSetup === true) {
   global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
-  return transactionFailure(
-    {
-      collections: {
-        write: ['UnitTestsRecoveryDummy']
-      },
-      action: function() {
-        var db = require('@arangodb').db;
-        var c = db.UnitTestsRecoveryDummy;
-        for (let i = 0; i < 10000; i++) {
-          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
-        throw new Error('intentional abort');
-      },
-      waitForSync: true
+  var tx = db._createTransaction({
+    collections: {
+      write: ['UnitTestsRecoveryDummy']
     },
-    internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-    'Error: intentional abort',
-    true,
-    false);
+    waitForSync: true
+  });
+
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
+  for (let j = 0; j < 100; j ++) {
+    let docs = [];
+    for (let i = 0; i < 100; i++) {
+      docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    txcol.save(docs);
+  }
+  IM.debugTerminate();
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

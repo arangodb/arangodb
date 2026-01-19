@@ -80,7 +80,7 @@ AqlValue convertToObject(transaction::Methods& trx, VPackSlice input,
 
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
-  transaction::BuilderLeaser builder(&trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   buildKeyObject(*builder, input.stringView(), /*closeObject*/ true);
   return AqlValue{builder->slice()};
 }
@@ -121,6 +121,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
   bool allowSpecifiedKeys = opts["allowSpecifiedKeys"].getBool();
   bool ignoreErrors = opts["ignoreErrors"].getBool();
   std::string const collectionName = opts["collection"].copyString();
+  bool projectOnlyId = opts["projectOnlyId"].getBool();
 
   // if empty, check alternative input register
   if (value.isNull(true)) {
@@ -181,8 +182,26 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
     buildNewObject = false;
   }
 
+  // We can project only on the second call of
+  // MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION
+  // But we must project _from and _to as well
+  if (projectOnlyId && !buildNewObject) {
+    auto builder = ThreadLocalBuilderLeaser::lease();
+    {
+      VPackObjectBuilder objectGuard(builder.get());
+      objectGuard->add(StaticStrings::KeyString,
+                       input.get(StaticStrings::KeyString));
+      objectGuard->add(StaticStrings::FromString,
+                       input.get(StaticStrings::FromString));
+      objectGuard->add(StaticStrings::ToString,
+                       input.get(StaticStrings::ToString));
+    }
+
+    return AqlValue{builder->slice()};
+  }
+
   if (buildNewObject) {
-    transaction::BuilderLeaser builder(&trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     buildKeyObject(
         *builder,
         std::string_view(logicalCollection->keyGenerator().generate(input)),
@@ -201,7 +220,6 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
 AqlValue functions::MakeDistributeGraphInput(
     aql::ExpressionContext* expressionContext, AstNode const&,
     VPackFunctionParametersView parameters) {
-  transaction::Methods& trx = expressionContext->trx();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   VPackSlice input = value.slice();  // will throw when wrong type
@@ -209,7 +227,7 @@ AqlValue functions::MakeDistributeGraphInput(
     // Need to fix this document.
     // We need id and key as input.
 
-    transaction::BuilderLeaser builder(&trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     std::string_view s(input.stringView());
     size_t pos = s.find('/');
     if (pos == s.npos) {
@@ -248,7 +266,7 @@ AqlValue functions::MakeDistributeGraphInput(
     // could be extracted. We can work with _id value only however so let us do
     // this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
-    transaction::BuilderLeaser builder(&trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     buildKeyObject(*builder, std::string_view(keyPart), /*closeObject*/ false);
     for (auto cur : VPackObjectIterator(input)) {
       builder->add(cur.key.stringView(), cur.value);

@@ -52,7 +52,7 @@ TEST(ForestTest, index_forest) {
   forest.insert((void*)3, (void*)2, "third");
   forest.insert((void*)4, (void*)32, "third");
 
-  auto indexed = forest.index_by_awaitee();
+  auto indexed = forest.index_by_parent();
 
   ASSERT_EQ(indexed.children((void*)1), std::vector<void*>{});
   ASSERT_EQ(indexed.children((void*)2),
@@ -76,7 +76,7 @@ TEST(ForestTest, executes_post_ordered_depth_first) {
   forest.insert((void*)6, (void*)3, "leaf");
   forest.insert((void*)7, (void*)4, "leaf");
   forest.insert((void*)8, (void*)32, "leaf");
-  auto indexed = forest.index_by_awaitee();
+  auto indexed = forest.index_by_parent();
 
   auto dfs = DFS_PostOrder{indexed, (void*)1};
 

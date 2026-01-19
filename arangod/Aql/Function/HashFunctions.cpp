@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Ssl/SslInterface.h"
@@ -54,7 +55,7 @@ AqlValue functions::Soundex(ExpressionContext* expr, AstNode const&,
   auto& trx = expr->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);
@@ -73,7 +74,7 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -96,7 +97,7 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -119,7 +120,7 @@ AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -142,7 +143,7 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -165,7 +166,7 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
@@ -183,7 +184,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
   auto const& vopts = trx->vpackOptions();
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);

@@ -1,0 +1,54 @@
+jobProperties:
+    container_suffix: '-tinkerpop:'
+    second_repo: git@github.com:arangodb/arangodb-tinkerpop-provider.git
+    branch: main
+    init_command: ''
+tests:
+- tinkerpop_provider:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+    requires:
+      instrumentation: false
+    args:
+      extremeVerbosity: true
+      tinkerpopGraphType: simple
+- tinkerpop_provider:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      timeLimit: 19200
+    requires:
+      instrumentation: false
+    args:
+      extremeVerbosity: true
+      tinkerpopGraphType: simple
+
+- tinkerpop_provider:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+      size: medium
+      suffix: complex
+      timeLimit: 19200
+    requires:
+      instrumentation: false
+    args:
+      extremeVerbosity: true
+      tinkerpopGraphType: complex
+- tinkerpop_provider:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      size: large
+      suffix: complex
+      timeLimit: 19200
+    requires:
+      instrumentation: false
+    args:
+      extremeVerbosity: true
+      tinkerpopGraphType: complex

@@ -4,7 +4,11 @@
 #ifndef TAO_JSON_PEGTL_INTERNAL_DEMANGLE_HPP
 #define TAO_JSON_PEGTL_INTERNAL_DEMANGLE_HPP
 
+#if __cplusplus >= 202002L
+#include <version>
+#else
 #include <ciso646>
+#endif
 #include <string_view>
 
 #include "../config.hpp"

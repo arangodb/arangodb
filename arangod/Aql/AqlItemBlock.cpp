@@ -30,11 +30,11 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashMap.h"
-#include "Containers/HashSet.h"
-#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "Containers/SmallVector.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
@@ -710,8 +710,8 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
   // use an on-stack buffer for building the result. this avoids creating
   // a buffer object on the heap using a shared_ptr
-  VPackBufferUInt8 buffer;
-  VPackBuilder raw(buffer, &options);
+  arangodb::velocypack::SupervisedBuffer sb(_manager.resourceMonitor());
+  VPackBuilder raw(sb, &options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));

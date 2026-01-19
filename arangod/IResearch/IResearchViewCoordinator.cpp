@@ -79,7 +79,8 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                 VPackSlice definition, bool isUserRequest) const final {
     auto& server = vocbase.server();
-    if (!server.hasFeature<ClusterFeature>()) {
+    if (!server.hasFeature<ClusterFeature>() ||
+        !server.getFeature<ClusterFeature>().isEnabled()) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to find 'ClusterInfo' instance while "
                            "creating arangosearch View in database '",
@@ -341,7 +342,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
                                             bool isUserRequest,
                                             bool partialUpdate) {
   auto& server = vocbase().server();
-  if (!server.hasFeature<ClusterFeature>()) {
+  if (!server.hasFeature<ClusterFeature>() ||
+      !server.getFeature<ClusterFeature>().isEnabled()) {
     return {
         TRI_ERROR_INTERNAL,
         absl::StrCat(
@@ -447,7 +449,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
 
 Result IResearchViewCoordinator::dropImpl() {
   auto& server = vocbase().server();
-  if (!server.hasFeature<ClusterFeature>()) {
+  if (!server.hasFeature<ClusterFeature>() ||
+      !server.getFeature<ClusterFeature>().isEnabled()) {
     return {
         TRI_ERROR_INTERNAL,
         absl::StrCat(

@@ -61,6 +61,9 @@
             message = message + ': ' + latestModel.get('content');
           }
 
+          // Escape HTML
+          message = arangoHelper.escapeHtml(message);
+
           if (latestModel.get('type') === 'error') {
             time = false;
             closeWidth = ['button'];

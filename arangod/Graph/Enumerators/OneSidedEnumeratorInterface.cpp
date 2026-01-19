@@ -94,19 +94,6 @@ using namespace arangodb::graph;
       break;                                                    \
   }
 
-#define GENERATE_TRACED_ORDER_SWITCH(Provider)                        \
-  switch (order) {                                                    \
-    case traverser::TraverserOptions::Order::DFS:                     \
-      GENERATE_UNIQUENESS_SWITCH(TracedDFSEnumerator, Provider);      \
-      break;                                                          \
-    case traverser::TraverserOptions::Order::BFS:                     \
-      GENERATE_UNIQUENESS_SWITCH(TracedBFSEnumerator, Provider);      \
-      break;                                                          \
-    case traverser::TraverserOptions::Order::WEIGHTED:                \
-      GENERATE_UNIQUENESS_SWITCH(TracedWeightedEnumerator, Provider); \
-      break;                                                          \
-  }
-
 template<class ProviderName>
 auto TraversalEnumerator::createEnumerator(
     traverser::TraverserOptions::Order order,
@@ -115,13 +102,9 @@ auto TraversalEnumerator::createEnumerator(
     arangodb::aql::QueryContext& query,
     typename ProviderName::Options&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
-    bool useTracing) -> std::unique_ptr<TraversalEnumerator> {
-  if (useTracing) {
-    GENERATE_TRACED_ORDER_SWITCH(ProviderName)
-  } else {
-    GENERATE_ORDER_SWITCH(ProviderName)
-  }
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions)
+    -> std::unique_ptr<TraversalEnumerator> {
+  GENERATE_ORDER_SWITCH(ProviderName)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
@@ -133,8 +116,7 @@ auto TraversalEnumerator::createEnumerator(
       arangodb::aql::QueryContext & query,                             \
       ProviderName::Options && baseProviderOptions,                    \
       arangodb::graph::PathValidatorOptions && pathValidatorOptions,   \
-      arangodb::graph::OneSidedEnumeratorOptions && enumeratorOptions, \
-      bool useTracing)                                                 \
+      arangodb::graph::OneSidedEnumeratorOptions && enumeratorOptions) \
       ->std::unique_ptr<TraversalEnumerator>;
 
 INSTANTIATE_FACTORY(

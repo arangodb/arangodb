@@ -66,6 +66,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_replication: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
   var opts = {
@@ -198,13 +207,15 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
   testCases = tu.splitBuckets(options, testCases);
-
-  return new replicationRunner(
-    options,
+  let localOptions = Object.assign({extraArgs: {'vector-index': true}}, options, tu.testServerAuthInfo);
+  let ret = new replicationRunner(
+    localOptions,
     'leader_static',
     {
       'server.authentication': 'true'
     }, true).run(testCases);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

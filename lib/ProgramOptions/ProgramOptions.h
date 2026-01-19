@@ -41,6 +41,10 @@ namespace arangodb::options {
 struct Option;
 struct Parameter;
 
+#ifndef USE_V8
+enum class ParseJsOps { parseJS, skipJS };
+#endif
+
 // program options data structure
 // typically an application will have a single instance of this
 class ProgramOptions {
@@ -104,7 +108,12 @@ class ProgramOptions {
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
   ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more, char const* binaryPath);
+                 std::string const& more, char const* binaryPath
+#ifndef USE_V8
+                 ,
+                 ParseJsOps parseJsOptions = ParseJsOps::skipJS
+#endif
+  );
 
   std::string progname() const;
 
@@ -293,6 +302,10 @@ class ProgramOptions {
   std::function<std::string(std::string const&, char const*)> _translator;
   // directory of this binary
   char const* _binaryPath;
+#ifndef USE_V8
+  // arangosh will still have to parse javascript options
+  ParseJsOps _parseJsOptions;
+#endif
 };
 
 }  // namespace arangodb::options

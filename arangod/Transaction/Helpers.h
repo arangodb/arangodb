@@ -24,6 +24,9 @@
 #pragma once
 
 #include <string_view>
+#include "Basics/AttributeNameParser.h"
+#include "Basics/ResultT.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -141,60 +144,14 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 
 }  // namespace helpers
 
-/// @brief std::string leaser
-class StringLeaser {
- public:
-  explicit StringLeaser(Methods*);
-  explicit StringLeaser(Context*);
-  ~StringLeaser();
+ResultT<velocypack::Builder> extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed);
 
-  auto release() {
-    return std::unique_ptr<std::string>{std::exchange(_string, nullptr)};
-  }
-  void acquire(std::unique_ptr<std::string> r) {
-    TRI_ASSERT(_string == nullptr);
-    _string = r.release();
-  }
-
-  std::string* string() const { return _string; }
-  std::string* operator->() const { return _string; }
-  std::string& operator*() { return *_string; }
-  std::string const& operator*() const { return *_string; }
-  std::string* get() const { return _string; }
-
- private:
-  Context* _transactionContext;
-  std::string* _string;
-};
-
-class BuilderLeaser {
- public:
-  explicit BuilderLeaser(Context*);
-  explicit BuilderLeaser(Methods*);
-
-  BuilderLeaser(BuilderLeaser const&) = delete;
-  BuilderLeaser& operator=(BuilderLeaser const&) = delete;
-  BuilderLeaser& operator=(BuilderLeaser&&) = delete;
-
-  BuilderLeaser(BuilderLeaser&& source)
-      : _transactionContext(source._transactionContext),
-        _builder(source.steal()) {}
-
-  ~BuilderLeaser();
-
-  velocypack::Builder* builder() const noexcept { return _builder; }
-  velocypack::Builder* operator->() const noexcept { return _builder; }
-  velocypack::Builder& operator*() noexcept { return *_builder; }
-  velocypack::Builder& operator*() const noexcept { return *_builder; }
-  velocypack::Builder* get() const noexcept { return _builder; }
-  velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
-
-  void clear();
-
- private:
-  Context* _transactionContext;
-  velocypack::Builder* _builder;
-};
+ResultT<ThreadLocalBuilderLeaser::Lease> extractAttributeValues(
+    transaction::Methods& trx,
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed);
 
 }  // namespace transaction
 }  // namespace arangodb

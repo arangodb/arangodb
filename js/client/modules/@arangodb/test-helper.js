@@ -298,6 +298,36 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
   }
 };
 
+function queryAgencyJob(id) {
+  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
+}
+
+exports.moveShard = function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
+  let body = {database, collection, shard, fromServer, toServer};
+  let result;
+  result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+  assertEqual(result.code, 202, `Move shard job rejected with code: ${result.code}`);
+
+  if (dontwait) {
+    return result;
+  }
+  // Now wait until the job we triggered is finished:
+  let count = 600;   // seconds
+  while (true) {
+    let job = queryAgencyJob(result.parsedBody.id);
+    if (job.error === false && job.status === "Finished") {
+      return result;
+    }
+    if (count-- < 0) {
+      console.error(
+        "Timeout in waiting for moveShard to complete: "
+        + JSON.stringify(body));
+      return false;
+    }
+    require("internal").wait(1.0);
+  }
+};
+
 const debug = function (text) {
   console.warn(text);
 };
@@ -509,7 +539,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.GET_RAW("/_admin/wal/wait_for_estimator_sync").parsedBody; // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
@@ -647,10 +677,6 @@ exports.deactivateFailure = function (name) {
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
   });
-};
-
-exports.getDbPath = function () {
-  return arango.POST("/_admin/execute", `return require("internal").db._path();`);
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
@@ -804,7 +830,7 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
 };
 
 exports.insertManyDocumentsIntoCollection 
-  = function(db, coll, maker, limit, batchSize) {
+  = function(db, coll, maker, limit, batchSize, abortFunc = () => false) {
   // This function uses the asynchronous API of `arangod` to quickly
   // insert a lot of documents into a collection. You can control which
   // documents to insert with the `maker` function. The arguments are:
@@ -862,13 +888,19 @@ exports.insertManyDocumentsIntoCollection
       l = [];
     }
     let i = 0;
-    while (i < jobs.length) {
-      let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
-      if (r.code === 204) {
-        i += 1;
-      } else if (r.code === 202) {
-        jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+    if (jobs.length > 10 || done) {
+      while (i < jobs.length) {
+        let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
+        if (r.code === 204) {
+          i += 1;
+        } else if (r.code === 202) {
+          jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+        }
       }
+    }
+    if (abortFunc()) {
+      print('aborting insert loop by hook');
+      return;
     }
     if (done) {
       if (jobs.length === 0) {
@@ -877,6 +909,15 @@ exports.insertManyDocumentsIntoCollection
       require("internal").wait(0.5);
     }
   }
+};
+
+exports.logServer = function (message, level='info', ID="aaaaa", topic='general') {
+  return arango.POST_RAW('/_admin/log/', [{
+    level,
+    ID,
+    topic,
+    message
+  }]);
 };
 
 exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {

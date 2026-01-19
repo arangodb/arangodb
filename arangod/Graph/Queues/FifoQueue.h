@@ -26,8 +26,10 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "Graph/Queues/QueueEntry.h"
 
 #include <queue>
+#include <variant>
 
 namespace arangodb {
 namespace graph {
@@ -45,6 +47,8 @@ class FifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~FifoQueue() { this->clear(); }
 
+  bool isBatched() { return false; }
+
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
@@ -60,6 +64,11 @@ class FifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
+  template<NeighbourCursor<Step> Cursor>
+  void append(Cursor& expansion) {
+    TRI_ASSERT(false);
+  }
+
   void setStartContent(std::vector<Step> startSteps) {
     arangodb::ResourceUsageScope guard(_resourceMonitor,
                                        sizeof(Step) * startSteps.size());
@@ -70,14 +79,6 @@ class FifoQueue {
       _queue.push_back(std::move(s));
     }
     guard.steal();  // now we are responsible for tracking the memory
-  }
-
-  bool firstIsVertexFetched() const {
-    if (not isEmpty()) {
-      auto const& first = _queue.front();
-      return first.vertexFetched();
-    }
-    return false;
   }
 
   // todo: rename to firstElementIsProcessable
@@ -132,15 +133,17 @@ class FifoQueue {
     return first;
   }
 
-  Step pop() {
+  std::optional<Step> pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS)
         << "<FifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return first;
+    return {first};
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, FifoQueue<S>& x);
 
  private:
   /// @brief queue datastore
@@ -149,6 +152,9 @@ class FifoQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, FifoQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

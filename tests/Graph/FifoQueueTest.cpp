@@ -37,14 +37,14 @@ namespace arangodb {
 namespace tests {
 namespace fifo_queue_graph_cache_test {
 
-class Step : public arangodb::graph::BaseStep<Step> {
+class Step : public arangodb::graph::BaseStep {
   size_t _id;
   double _weight;
   bool _isLooseEnd;
 
  public:
   Step(size_t id, double weight, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{} {
+      : arangodb::graph::BaseStep{} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;
@@ -147,8 +147,9 @@ TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
   ASSERT_TRUE(queue.hasProcessableElement());
   size_t id = 1;
   while (queue.hasProcessableElement()) {
-    Step myStep = queue.pop();
-    ASSERT_EQ(id, myStep.id());
+    auto myStep = queue.pop();
+    ASSERT_TRUE(myStep.has_value());
+    ASSERT_EQ(id, myStep.value().id());
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -194,7 +195,8 @@ TEST_F(FifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
   size_t id = 1;
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -221,7 +223,8 @@ TEST_F(FifoQueueTest,
   {
     // Pop First entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{5, 1, false});
     queue.append(Step{6, 1, false});
@@ -229,7 +232,8 @@ TEST_F(FifoQueueTest,
   {
     // Pop Second entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
     queue.append(Step{7, 1, false});
     queue.append(Step{8, 1, false});
@@ -239,7 +243,8 @@ TEST_F(FifoQueueTest,
   ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(step.has_value());
+    ASSERT_EQ(step.value().id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);

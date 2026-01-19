@@ -784,7 +784,7 @@ CostEstimate GraphNode::estimateCost() const {
     size_t estDepth = _options->estimateDepth();
     double tmpNrItems = incoming * std::pow(baseNumItems, estDepth);
     // Protect against size_t overflow, just to be sure.
-    if (tmpNrItems > static_cast<double>(std::numeric_limits<size_t>::max())) {
+    if (tmpNrItems >= static_cast<double>(std::numeric_limits<size_t>::max())) {
       // This will be an expensive query...
       estimate.estimatedNrItems = std::numeric_limits<size_t>::max();
     } else {

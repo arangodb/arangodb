@@ -24,6 +24,7 @@
 #include "RocksDBTtlIndex.h"
 #include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -79,7 +80,7 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
     // index attribute not present or invalid. nothing to do
     return {};
   }
-  transaction::BuilderLeaser leased(&trx);
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();
@@ -98,7 +99,7 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
     // index attribute not present or invalid. nothing to do
     return Result();
   }
-  transaction::BuilderLeaser leased(&trx);
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();

@@ -7,13 +7,11 @@ type: gauge
 category: Replication
 complexity: simple
 exposedBy:
-  - coordinator
   - dbserver
-  - agent
 description: |
   Number of shards not replicated at all. This is counted for all shards
   for which this server is currently the leader. The number is increased
-  by one for every shards for which no follower is in sync.
+  by one for every shard for which no follower is in sync.
 troubleshoot: |
   Needless to say, such a situation is very bad for resilience, since it
   indicates a single point of failure. So, if this number is greater than 0,
@@ -23,4 +21,4 @@ troubleshoot: |
   and waiting is a good measure at first. However, if the situation
   persists, something is wrong, potentially some constant server crash
   (maybe out of memory crashes?) or another situation preventing
-  shards to get in sync. Contact ArangoDB customer support in this case.
+  shards to get in sync. Contact the Arango customer support in this case.

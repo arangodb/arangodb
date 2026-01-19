@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
@@ -51,7 +52,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           std::size_t limit, bool ascending, std::size_t offset,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
-                          transaction::Methods::IndexHandle indexHandle);
+                          transaction::Methods::IndexHandle indexHandle,
+                          std::unique_ptr<Expression> filterExpression,
+                          bool isCoveredByStoredValues);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -70,6 +73,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::vector<const Variable*> getVariablesSetHere() const override;
 
   Variable const* inVariable() const { return _inVariable; }
+  Variable const* oldDocumentVariable() const { return _oldDocumentVariable; }
   Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
@@ -77,12 +81,19 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
+  void setFilterExpression(Expression* filterExpression);
+
+  void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
+
  protected:
   CostEstimate estimateCost() const override;
 
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& builder,
                       unsigned flags) const final;
+
+  std::vector<std::pair<VariableId, RegisterId>> extractFilterVarsToRegs()
+      const;
 
  private:
   /// @brief input variable to read the query point from
@@ -108,6 +119,17 @@ class EnumerateNearVectorNode : public ExecutionNode,
   SearchParameters _searchParameters;
 
   /// @brief selected index for vector search
+  /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
+
+  /// @brief filter expression if filter was pushed down into this node
+  std::unique_ptr<Expression> _filterExpression;
+
+  /// @brief indicates if the filter expression is fully covered by stored
+  /// values
+  bool _isCoveredByStoredValues;
+
+  /// @brief filterVarToRegs is set in optimization rule
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarToRegs;
 };
 }  // namespace arangodb::aql

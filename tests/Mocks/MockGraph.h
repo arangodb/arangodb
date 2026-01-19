@@ -33,6 +33,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
+#include <cstdint>
 #include <numeric>
 #include <unordered_set>
 #include <vector>
@@ -41,7 +42,15 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+namespace aql {
+class QueryRegistry;
+}
+
 namespace tests {
+
+namespace mocks {
+class MockDBServer;
+}
 
 class PreparedRequestResponse;
 
@@ -131,26 +140,25 @@ class MockGraph {
 
   template<class ServerType>
   std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
-  simulateApi(
-      ServerType& server,
-      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
-          expectedVerticesEdgesBundleToFetch,
-      arangodb::graph::BaseOptions& opts) const;
+  simulateApi(ServerType& server,
+              std::vector<size_t> const& expectedVerticesToFetch,
+              arangodb::graph::BaseOptions& opts) const;
+
+  /**
+     Creates a traverser engine by calling the RestAqlHandler by hand
+
+     Returns the engine id
+   */
+  auto createEngine(mocks::MockDBServer& server,
+                    arangodb::graph::BaseOptions const& opts,
+                    arangodb::aql::QueryRegistry& queryRegistry) const
+      -> uint64_t;
 
   void storeData(TRI_vocbase_t& vocbase,
                  std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName,
                  std::string const& edgeCollectionSecondName = "",
                  std::vector<EdgeDef> const& secondEdges = {}) const;
-
- protected:
-  void storeVertexData(
-      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
-      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
-
-  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
-                     std::vector<EdgeDef> const& edgeData) const;
-
   std::vector<std::pair<std::string, std::string>> const&
   getVertexShardNameServerPairs() const {
     return _vertexShards;
@@ -159,6 +167,14 @@ class MockGraph {
   getEdgeShardNameServerPairs() const {
     return _edgeShards;
   }
+
+ protected:
+  void storeVertexData(
+      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
+
+  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
+                     std::vector<EdgeDef> const& edgeData) const;
 
  protected:
   std::vector<EdgeDef> _edges;

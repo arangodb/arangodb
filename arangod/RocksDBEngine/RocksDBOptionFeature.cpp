@@ -219,8 +219,11 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 }  // namespace
 
-RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
-    : ArangodFeature{server, *this},
+template<typename Server>
+RocksDBOptionFeature::RocksDBOptionFeature(Server& server,
+                                           AgencyFeature const* agencyFeature)
+    : ApplicationFeature{server, *this},
+      _agencyFeature(agencyFeature),
       // number of lock stripes for the transaction lock manager. we bump this
       // to at least 16 to reduce contention for small scale systems.
       _transactionLockStripes(
@@ -231,7 +234,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxWriteBufferNumber(RocksDBColumnFamilyManager::numberOfColumnFamilies +
                             2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
-      _maxTotalWalSize(256 << 20),
+      _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(
           _totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
@@ -243,7 +246,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // set max number of background jobs to the number of available cores
       _maxBackgroundJobs(static_cast<int32_t>(
           std::max(static_cast<size_t>(2), NumberOfCores::getValue()))),
-      _maxSubcompactions(4),
+      _maxSubcompactions(2),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
@@ -263,7 +266,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
                                                                         1024))),
-      _compactionReadaheadSize(8 * 1024 * 1024),
+      _compactionReadaheadSize(2 * 1024 * 1024),
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
@@ -321,7 +324,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _enableBlobGarbageCollection(true),
       _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
-      _partitionFilesForDocumentsCf(true),
+      _partitionFilesForDocumentsCf(false),
       _partitionFilesForPrimaryIndexCf(false),
       _partitionFilesForEdgeIndexCf(false),
       _partitionFilesForVPackIndexCf(false),
@@ -334,7 +337,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
   }
 
   setOptional(true);
-  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<BasicFeaturePhaseServer, Server>();
 }
 
 void RocksDBOptionFeature::collectOptions(
@@ -1644,8 +1647,8 @@ void RocksDBOptionFeature::validateOptions(
       "--rocksdb.min-write-buffer-number-to-merge");
 
   // limit memory usage of agent instances, if not otherwise configured
-  if (server().hasFeature<AgencyFeature>()) {
-    AgencyFeature& feature = server().getFeature<AgencyFeature>();
+  if (_agencyFeature) {
+    AgencyFeature const& feature = *_agencyFeature;
     if (feature.activated()) {
       // if we are an agency instance...
       if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
@@ -2208,3 +2211,16 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
 
   return result;
 }
+
+template<typename Server>
+auto RocksDBOptionFeature::construct(Server& server,
+                                     const AgencyFeature* agencyFeature)
+    -> std::unique_ptr<RocksDBOptionFeature> {
+  return std::make_unique<RocksDBOptionFeature>(server, agencyFeature);
+}
+
+// a named constructor is necessary, because a template constructor can't be
+// explicitly instantiated.
+template auto RocksDBOptionFeature::construct<ArangodServer>(
+    ArangodServer& server, const AgencyFeature* agencyFeature)
+    -> std::unique_ptr<RocksDBOptionFeature>;

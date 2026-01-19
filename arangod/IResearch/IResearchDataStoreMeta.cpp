@@ -94,22 +94,6 @@ createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
 
   {
     // optional size_t
-    constexpr std::string_view kFieldName = "segmentsBytesFloor";
-
-    auto field = slice.get(kFieldName);
-    if (!field.isNone()) {
-      if (!field.isNumber<size_t>()) {
-        errorField = kFieldName;
-
-        return {};
-      }
-
-      options.floor_segment_bytes = field.getNumber<size_t>();
-    }
-  }
-
-  {
-    // optional size_t
     constexpr std::string_view kFieldName = "segmentsBytesMax";
 
     auto field = slice.get(kFieldName);
@@ -125,60 +109,44 @@ createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
   }
 
   {
-    // optional size_t
-    constexpr std::string_view kFieldName = "segmentsMax";
+    // optional double
+    constexpr std::string_view kFieldName = "maxSkewThreshold";
 
     auto field = slice.get(kFieldName);
     if (!field.isNone()) {
-      if (!field.isNumber<size_t>()) {
+      if (!field.isNumber<double>() || field.getNumber<double>() < 0. ||
+          field.getNumber<double>() > 1.) {
         errorField = kFieldName;
 
         return {};
       }
 
-      options.max_segments = field.getNumber<size_t>();
-    }
-  }
-
-  {
-    // optional size_t
-    constexpr std::string_view kFieldName = "segmentsMin";
-
-    auto field = slice.get(kFieldName);
-    if (!field.isNone()) {
-      if (!field.isNumber<size_t>()) {
-        errorField = kFieldName;
-
-        return {};
-      }
-
-      options.min_segments = field.getNumber<size_t>();
+      options.max_skew_threshold = field.getNumber<double>();
     }
   }
 
   {
     // optional double
-    constexpr std::string_view kFieldName = "minScore";
+    constexpr std::string_view kFieldName = "minDeletionRatio";
 
     auto field = slice.get(kFieldName);
     if (!field.isNone()) {
-      if (!field.isNumber<double>()) {
+      if (!field.isNumber<double>() || field.getNumber<double>() < 0. ||
+          field.getNumber<double>() > 1.) {
         errorField = kFieldName;
 
         return {};
       }
 
-      options.min_score = field.getNumber<double>();
+      options.min_deletion_ratio = field.getNumber<double>();
     }
   }
 
   properties.openObject();
   properties.add("type", VPackValue(kPolicyTier));
-  properties.add("segmentsBytesFloor", VPackValue(options.floor_segment_bytes));
   properties.add("segmentsBytesMax", VPackValue(options.max_segments_bytes));
-  properties.add("segmentsMax", VPackValue(options.max_segments));
-  properties.add("segmentsMin", VPackValue(options.min_segments));
-  properties.add("minScore", VPackValue(options.min_score));
+  properties.add("maxSkewThreshold", VPackValue(options.max_skew_threshold));
+  properties.add("minDeletionRatio", VPackValue(options.min_deletion_ratio));
   properties.close();
 
   return {irs::index_utils::MakePolicy(options), std::move(properties)};
@@ -200,7 +168,7 @@ IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
 IResearchDataStoreMeta::IResearchDataStoreMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(1000),
+      _consolidationIntervalMsec(5000),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),

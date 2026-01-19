@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Assertions/ProdAssert.h"
 #include "Containers/HashSetFwd.h"
 
 #include "Basics/ResourceUsage.h"
@@ -32,6 +33,7 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <vector>
 
@@ -94,12 +96,9 @@ class GraphArena {
     // why we only act on coordinators here:
     if (!ServerState::instance()->isCoordinator()) {
       return item;  // A copy, but this is cheap!
+    } else {
+      ADB_PROD_CRASH();
     }
-    uint8_t const* p = item.vpack();
-    VPackSlice v{p};
-    velocypack::ValueLength s = v.byteSize();
-    auto q = (uint8_t const*)(makeLocalCopy((char const*)p, (size_t)s));
-    return EdgeDocumentToken(VPackSlice{q});
   }
 
  private:
@@ -138,8 +137,8 @@ class PathResult;
 // The subtlety lies in the template magic going on all around this.
 // The `ProviderType` is used to get actual graph data like neighbours
 // out of the system. Essentially, there can be a `SingleServerProvider`
-// or a `ClusterProvider`, and it can be wrapped with a tracer wrapper or
-// not. This provider is just handed on to the `EnumeratorType`, which is
+// or a `ClusterProvider`.
+// This provider is just handed on to the `EnumeratorType`, which is
 // essentially an instance of the `TwoSidedEnumerator` or the
 // `WeightedTwoSidedEnumerator`. However, we have to be able to forbid
 // some vertices and edges. This is handled by putting a wrapper type
@@ -161,7 +160,6 @@ template<class ProviderType, class EnumeratorType, bool IsWeighted>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = ProviderType::Step::VertexType;
   using Edge = ProviderType::Step::EdgeType;
 
   using VertexSet =

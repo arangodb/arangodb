@@ -94,7 +94,8 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         executorInfos(std::move(groupRegisters), collectRegister,
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults,
+                      fakedQuery->resourceMonitor()),
         block(itemBlockManager.requestBlock(1000, 2)) {}
 };
 
@@ -181,7 +182,8 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         executorInfos(std::move(groupRegisters), collectRegister,
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults,
+                      fakedQuery->resourceMonitor()),
         block(itemBlockManager.requestBlock(1000, nrOutputRegister)) {}
 };
 
@@ -424,7 +426,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   auto executorInfos = SortedCollectExecutorInfos(
       std::move(groupRegisters), collectRegister, expressionRegister,
       expressionVariable, std::move(aggregateTypes), std::move(variables),
-      std::move(aggregateRegisters), &VPackOptions::Defaults);
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {2}});
@@ -518,7 +521,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   auto executorInfos = SortedCollectExecutorInfos(
       std::move(groupRegisters), collectRegister, expressionRegister,
       expressionVariable, std::move(aggregateTypes), std::move(variables),
-      std::move(aggregateRegisters), &VPackOptions::Defaults);
+      std::move(aggregateRegisters), &VPackOptions::Defaults,
+      fakedQuery->resourceMonitor());
 
   SharedAqlItemBlockPtr block{
       itemBlockManager.requestBlock(1000, nrOutputRegister)};
@@ -634,7 +638,8 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         executorInfos(std::move(groupRegisters), collectRegister,
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults,
+                      fakedQuery->resourceMonitor()),
         block(itemBlockManager.requestBlock(1000, nrOutputRegister)) {}
 };
 
@@ -970,7 +975,8 @@ class SortedCollectExecutorTestSplit
         executorInfos(std::move(groupRegisters), collectRegister,
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults) {}
+                      std::move(aggregateRegisters), &VPackOptions::Defaults,
+                      fakedQuery->resourceMonitor()) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

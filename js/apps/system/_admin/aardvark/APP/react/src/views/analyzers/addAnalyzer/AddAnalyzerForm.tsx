@@ -48,7 +48,7 @@ export const AddAnalyzerForm = ({
             <ExternalLink
               marginLeft="2"
               marginBottom="2"
-              href={`https://docs.arangodb.com/${version}/index-and-search/analyzers/#${analyzerTypeValue}`}
+              href={`https://docs.arango.ai/arangodb/${version}/index-and-search/analyzers/#${analyzerTypeValue}`}
             >
               Docs
             </ExternalLink>

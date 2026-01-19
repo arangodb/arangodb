@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail, arango */
+/*global assertEqual, assertTrue, fail, arango, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -153,39 +153,41 @@ function SelectivityIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectivityAfterCancelation : function () {
-      let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({value: i % 100});
-      }
-      collection.insert(docs);
-      waitForEstimatorSync(); // make sure estimates are consistent
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
-
-      assertEqual(idx.selectivityEstimate, 100 / 1000);
-      try {
-        internal.db._executeTransaction({
-          collections: {write: cn},
-          action: function () {
-            const cn = "UnitTestsCollection";
-            let docs = [];
-            for (let i = 0; i < 1000; ++i) {
-              docs.push({value: 1});
-            }
-            // This should significantly modify the estimate
-            // if successful
-            require('@arangodb').db[cn].insert(docs);
-            throw "banana";
-          }
-        });
-        fail();
-      } catch (e) {
-        assertEqual(e.errorMessage, "banana");
-        // Insert failed.
-        // Validate that estimate is non modified
+      if (SYS_IS_V8_BUILD) {
+        let idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({value: i % 100});
+        }
+        collection.insert(docs);
         waitForEstimatorSync(); // make sure estimates are consistent
         idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+
         assertEqual(idx.selectivityEstimate, 100 / 1000);
+        try {
+          internal.db._executeTransaction({
+            collections: {write: cn},
+            action: function () {
+              const cn = "UnitTestsCollection";
+              let docs = [];
+              for (let i = 0; i < 1000; ++i) {
+                docs.push({value: 1});
+              }
+              // This should significantly modify the estimate
+              // if successful
+              require('@arangodb').db[cn].insert(docs);
+              throw "banana";
+            }
+          });
+          fail();
+        } catch (e) {
+          assertEqual(e.errorMessage, "banana");
+          // Insert failed.
+          // Validate that estimate is non modified
+          waitForEstimatorSync(); // make sure estimates are consistent
+          idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+          assertEqual(idx.selectivityEstimate, 100 / 1000);
+        }
       }
     },
 

@@ -1438,7 +1438,20 @@ function processQuery(query, explain, planIndex) {
           searchParameters = keyword(' WITH SEARCH PARAMETERS ') + JSON.stringify(node.searchParameters);
         }
 
-        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters;
+        let filter = '';
+        if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
+          filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
+          if (node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
+            filter += annotation(" /* covered by storedValues */");
+          }
+        }
+
+        // Register the index used for near vector search
+        if (node.hasOwnProperty('index')) {
+          iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + filter;
       }
       case 'EnumerateViewNode':
         var condition = '';

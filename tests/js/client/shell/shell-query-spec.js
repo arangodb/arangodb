@@ -3,31 +3,31 @@
 /* global describe, it, beforeEach, afterEach */
 'use strict';
 const internal = require('internal');
-const tasks = require('@arangodb/tasks');
 const expect = require('chai').expect;
 let IM = global.instanceManager;
 
 const isServer = typeof arango === 'undefined';
 const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-const taskInfo = {
-  offset: 0,
-  command: function () {
-    var query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-    require('internal').db._query(query, { value: 1 }, {profile: true});
-  }
-};
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
 
 function filterQueries (q) {
   return (q.query === query);
 }
-
+let clients = [];
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 function sendQuery (count, async) {
   count = count || 1;
   for (let i = 0; i < count; ++i) {
     if (async === false) {
       internal.db._query(query, { value: 1 });
     } else {
-      tasks.register(taskInfo);
+      clients.push({client: launchPlainSnippetInBG(
+        `try { require('internal').db._query("${query}", {value: 1}, {profile: true}).toArray();} catch {}`,
+        'query_' + i)});
     }
   }
   if (async === true) {
@@ -105,20 +105,6 @@ describe('AQL query analyzer', function () {
       if (isServer && IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
-      // kill all async tasks that will execute the query that we
-      // are looking for
-      tasks.get().forEach(function(task) {
-        if (task.command.match(/SLEEP\(@value\)/)) {
-          try {
-            tasks.unregister(task.id);
-          } catch (err) {
-            // not an error if this fails, as the task may have completed 
-            // between `tasks.get()` and `tasks.unregister()`
-          }
-        }
-      });
-      // wait a bit for tasks to be finished
-      internal.wait(0.2, false);
       // now kill all queries we are looking for that may still be
       // executed
       while (true) {
@@ -135,6 +121,11 @@ describe('AQL query analyzer', function () {
         }
         internal.wait(0.1, false);
       }
+      // wait a bit for tasks to be finished
+      internal.wait(0.2, false);
+      // kill all async tasks that will execute the query that we
+      // are looking for
+      joinBGShells(IM.options, clients, waitFor, "");
     });
 
     if (isServer && IM.debugCanUseFailAt()) {

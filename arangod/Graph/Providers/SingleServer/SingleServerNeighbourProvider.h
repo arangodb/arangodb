@@ -25,7 +25,7 @@
 #include <s2/base/integral_types.h>
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Graph/Cursors/SingleServerEdgeCursor.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Graph/Providers/SingleServer/NeighbourCache.h"
 
@@ -61,14 +61,16 @@ struct SingleServerNeighbourProvider {
   /**
      Gives the next _batchSize neighbours for _currentStep
    */
-  auto next(SingleServerProvider<Step>& provider, aql::TraversalStats& stats)
+  auto next(SingleServerProvider<Step>& provider,
+            std::shared_ptr<aql::TraversalStats> stats)
       -> std::shared_ptr<std::vector<ExpansionInfo>>;
 
   /**
      (Re)defines the step for which vertex the provider should
      provide neighbours
    */
-  auto rearm(Step const& step, aql::TraversalStats& stats) -> void;
+  auto rearm(Step const& step, std::shared_ptr<aql::TraversalStats> stats)
+      -> void;
 
   /**
      Clears cache and statistics variables
@@ -85,7 +87,7 @@ struct SingleServerNeighbourProvider {
   auto hasMore(uint64_t depth) -> bool;
 
  private:
-  std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
+  std::unique_ptr<SingleServerEdgeCursor<Step>> _cursor;
 
   std::optional<Step> _currentStep;
   // if we can use the cache for the current step, this iterator is set and we

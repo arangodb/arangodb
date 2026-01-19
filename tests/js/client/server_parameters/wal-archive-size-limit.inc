@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertMatch, assertEqual */
+/* global GLOBAL, getOptions, assertTrue, assertFalse, arango, assertMatch, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,6 +27,11 @@
 
 const fs = require('fs');
 const jsunity = require('jsunity');
+const {
+  logServer,
+  insertManyDocumentsIntoCollection
+} = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function WalArchiveSizeLimitSuite() {
   'use strict';
@@ -56,49 +61,37 @@ function WalArchiveSizeLimitSuite() {
     },
   };
 }
-
-exports.WalArchiveSizeLimitSuite = WalArchiveSizeLimitSuite;
-exports.sendLargeServerOperation = (maxWaitTime) => {
-  const body = `
-let fs = require('fs');
-let getLogLines = (logfile) => {
-  let content = fs.readFileSync(logfile, 'ascii');
-  let lines = content.split('\\n');
+let getLogLines = function() {
+  let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
+  let lines = content.split('\n');
 
   return lines.filter((line) => {
     // logId "d9793" from RocksDBEngine.cpp
     return line.match(/(testmann: |d9793)/);
   });
 };
-      
-let logfiles = require('internal').options()["log.output"];
-const logfile = logfiles[logfiles.length - 1].replace(/^file:\\/\\//, '');
 
-require('console').log("testmann: start"); 
-let docs = [];
-for (let i = 0; i < 2000; ++i) {
-  docs.push({ value1: "test" + i, payload: Array(512).join("x") });
-}
-let db = require("internal").db;
-let time = require("internal").time;
-let i = 0;
-let start = time();
-do {
-  db.UnitTestsCollection.insert(docs);
-  if (i++ % 10 === 0) {
-    let lines = getLogLines(logfile);
-    if (lines.length >= 2) {
-      break;
-    }
-  }
-} while (time() - start < ${maxWaitTime});
+exports.WalArchiveSizeLimitSuite = WalArchiveSizeLimitSuite;
+exports.sendLargeServerOperation = function(maxWaitTime) {
+  logServer("testmann: start");
+  let time = require("internal").time;
+  let tEnd = time() + maxWaitTime;
+  let checkCount = 0;
+  insertManyDocumentsIntoCollection(
+    '_system', 'UnitTestsCollection',
+    (i) => {
+      return {i, payload: Array(512).join("x")};},
+    1000000, 2000,
+    () => {
+      let now = time();
+      if (now > tEnd) { return true; }
+      checkCount += 1;
+      if (checkCount % 20 === 0) {
+        return (getLogLines().length > 2);
+      }
+      return false;
+    });
   
-require('console').log("testmann: done"); 
-return getLogLines(logfile);
-`;
-
-  // insert larger amounts of data on the server
-  let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", body);
-
-  return res;
+  logServer("testmann: done", "error"); 
+  return getLogLines();
 };

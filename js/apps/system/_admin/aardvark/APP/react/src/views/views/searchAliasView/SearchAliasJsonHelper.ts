@@ -4,7 +4,7 @@ import { useEditViewContext } from "../editView/EditViewContext";
 import { SearchAliasViewPropertiesType } from "../View.types";
 
 const searchAliasJsonSchema: JSONSchemaType<SearchAliasViewPropertiesType> = {
-  $id: "https://arangodb.com/schemas/views/searchAliasViews.json",
+  $id: "https://arango.ai/schemas/views/searchAliasViews.json",
   type: "object",
   properties: {
     id: {

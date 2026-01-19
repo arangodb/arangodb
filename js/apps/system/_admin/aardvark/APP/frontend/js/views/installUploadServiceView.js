@@ -105,7 +105,7 @@
       if (window.App.naviView) {
         var replaceString = 'New';
         if (this._upgrade) {
-          replaceString = 'Replace (' + window.App.replaceAppData.mount + ')';
+          replaceString = 'Replace (' + _.escape(window.App.replaceAppData.mount) + ')';
         }
         $('#subNavigationBar .breadcrumb').html(
           '<a href="#services">Services:</a> ' + replaceString

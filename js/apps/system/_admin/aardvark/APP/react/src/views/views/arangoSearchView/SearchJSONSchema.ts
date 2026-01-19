@@ -7,7 +7,7 @@ const extendedNames = window.frontendConfig.extendedNames;
 
 export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewPropertiesType> =
   {
-    $id: "https://arangodb.com/schemas/views/views.json",
+    $id: "https://arango.ai/schemas/views/views.json",
     type: "object",
     properties: {
       id: {
@@ -34,7 +34,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
           "^[a-zA-Z0-9-_]+$": {
             type: "object",
             nullable: true,
-            $id: "https://arangodb.com/schemas/views/linkProperties.json",
+            $id: "https://arango.ai/schemas/views/linkProperties.json",
             properties: {
               analyzers: {
                 type: "array",
@@ -172,7 +172,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
         type: "integer",
         nullable: true,
         minimum: 0,
-        default: 1000
+        default: 5000
       },
       writebufferIdle: {
         type: "integer",
@@ -219,41 +219,25 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
               type: {
                 const: "tier"
               },
-              segmentsMin: {
-                type: "integer",
-                nullable: false,
-                minimum: 0,
-                maximum: {
-                  $data: "1/segmentsMax"
-                },
-                default: 1
-              },
-              segmentsMax: {
-                type: "integer",
-                nullable: false,
-                minimum: {
-                  $data: "1/segmentsMin"
-                },
-                default: 10
-              },
               segmentsBytesMax: {
                 type: "integer",
                 nullable: false,
                 minimum: 0,
-                default: 5368709120
+                default: 8589934592
               },
-              segmentsBytesFloor: {
-                type: "integer",
-                nullable: false,
-                minimum: 0,
-                default: 2097152
-              },
-              minScore: {
+              maxSkewThreshold: {
                 type: "number",
                 nullable: false,
-                minimum: 0,
-                maximum: 1,
-                default: 0
+                minimum: 0.0,
+                maximum: 1.0,
+                default: 0.4
+              },
+              minDeletionRatio: {
+                type: "number",
+                nullable: false,
+                minimum: 0.0,
+                maximum: 1.0,
+                default: 0.5
               }
             },
             additionalProperties: false
@@ -261,10 +245,10 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
         ],
         default: {
           type: "tier",
-          segmentsMin: 1,
-          segmentsMax: 10,
-          segmentsBytesMax: 5368709120,
-          segmentsBytesFloor: 2097152
+          segmentsMin: 50,
+          segmentsMax: 200,
+          segmentsBytesMax: 8589934592,
+          segmentsBytesFloor: 25165824
         },
         required: ["type"]
       },

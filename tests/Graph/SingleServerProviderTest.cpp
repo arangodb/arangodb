@@ -40,10 +40,11 @@ using namespace arangodb::tests::graph;
 using namespace arangodb::graph;
 
 namespace {
-aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
-  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+
+AstNode* InitializeReference(Ast& ast, Variable& var) {
+  ast.scopes()->start(ScopeType::AQL_SCOPE_MAIN);
   ast.scopes()->addVariable(&var);
-  aql::AstNode* a = ast.createNodeReference(var.name);
+  AstNode* a = ast.createNodeReference(var.name);
   ast.scopes()->endCurrent();
   return a;
 }
@@ -68,10 +69,10 @@ class SingleServerProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
   // Expression Parts
-  aql::Variable* _tmpVar{nullptr};
-  aql::AstNode* _varNode{nullptr};
-  aql::Projections _vertexProjections{};
-  aql::Projections _edgeProjections{};
+  Variable* _tmpVar{nullptr};
+  AstNode* _varNode{nullptr};
+  Projections _vertexProjections{};
+  Projections _edgeProjections{};
   ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
       {_resourceMonitor};
   MonitoredCollectionToShardMap _emptyShardMap{alloc};
@@ -126,16 +127,15 @@ class SingleServerProviderTest : public ::testing::Test {
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::unique_ptr<aql::Expression> conditionKeyMatches(
-      std::string const& toMatch) {
+  std::unique_ptr<Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey =
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess = query->ast()->createNodeAttributeAccess(
         _varNode, StaticStrings::KeyString);
     // This condition cannot be fulfilled
     auto condition = query->ast()->createNodeBinaryOperator(
-        aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ, keyAccess, expectedKey);
-    return std::make_unique<aql::Expression>(query->ast(), condition);
+        AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ, keyAccess, expectedKey);
+    return std::make_unique<Expression>(query->ast(), condition);
   }
 };
 

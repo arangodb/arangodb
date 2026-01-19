@@ -53,7 +53,7 @@ function isBucketized(testBuckets) {
 }
 exports.sutFilters = {
   checkUsers: ["users"],
-  checkCollections: ["tasks", "collections", "views", "graphs"],
+  checkCollections: ["tasks-sjs", "collections", "views", "graphs"],
   checkDBs: ["databases"]
 };
 class testRunner {
@@ -81,11 +81,17 @@ class testRunner {
     this.shellTimeout = arango.timeout();
   }
   loadSutChecks(disableCheckFilter) {
+    const skipServerJS = this.options.skipServerJS;
     let sutCheckers = _.filter(fs.list(fs.join(__dirname, 'sutcheckers')),
                               function (p) {
                                 let extension = p.substr(-3);
                                 let basename = p.slice(0, -3);
+                                let filterByJs = true;
+                                if (skipServerJS) {
+                                  filterByJs = basename.indexOf('-sjs') === -1;
+                                }
                                 return (
+                                  filterByJs &&
                                   (extension === '.js') &&
                                   (disableCheckFilter.filter(f => f === basename).length === 0)
                                 );

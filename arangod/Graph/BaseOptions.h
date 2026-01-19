@@ -29,6 +29,7 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Aql/TraversalStats.h"
 #include "Aql/VarInfoMap.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
@@ -59,7 +60,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class TraverserCache;
 
 /**
  * @brief Base class for Graph Operation options in AQL
@@ -188,14 +188,7 @@ struct BaseOptions {
 
   arangodb::ResourceMonitor& resourceMonitor() const;
 
-  TraverserCache* cache();
-
-  TraverserCache* cache() const;
-  void ensureCache();
-
-  void activateCache(
-      bool enableDocumentCache,
-      std::unordered_map<ServerID, aql::EngineId> const* engines);
+  std::shared_ptr<aql::TraversalStats> stats() { return _stats; };
 
   MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
@@ -255,8 +248,7 @@ struct BaseOptions {
   bool evaluateExpression(aql::Expression*,
                           arangodb::velocypack::Slice varValue);
 
-  void injectLookupInfoInList(std::vector<LookupInfo>&,
-                              aql::ExecutionPlan* plan,
+  LookupInfo createLookupInfo(aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,
@@ -298,12 +290,6 @@ struct BaseOptions {
   /// to in order to test the condition.
   aql::Variable const* _tmpVar;
 
-  /// @brief the traverser cache
-  /// This basically caches strings, and items we want to reference multiple
-  /// times.
-  /// (monitored: non-dynamic and dynamic memory)
-  std::unique_ptr<TraverserCache> _cache;
-
   // @brief - translations for one-shard-databases (monitored)
   MonitoredCollectionToShardMap _collectionToShard;
 
@@ -340,6 +326,8 @@ struct BaseOptions {
 
   /// @brief user hint regarding which indexes to use
   aql::IndexHint _hint;
+
+  std::shared_ptr<aql::TraversalStats> _stats;
 };
 
 }  // namespace graph

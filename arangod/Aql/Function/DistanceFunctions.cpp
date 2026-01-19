@@ -25,9 +25,12 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/SupervisedBuffer.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -69,6 +72,10 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
     return distanceFunc(lhsIt, rhsIt);
   };
 
+  auto* execCtx = dynamic_cast<FixedVarExpressionContext*>(expressionContext);
+  ResourceMonitor* resourceMonitor =
+      execCtx ? &execCtx->resourceMonitor() : nullptr;
+
   // extract arguments
   AqlValue const& argLhs =
       aql::functions::extractFunctionParameterValue(parameters, 0);
@@ -100,6 +107,14 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
     }
 
     VPackBuilder builder;
+    if (resourceMonitor != nullptr) {
+      // sb needs to be a shared_ptr since it will be stolen, which returns
+      // shared_ptr<Buffer> otherwise the shared_ptr will be dangling.
+      auto sb =
+          std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+      builder = VPackBuilder(sb);
+    }
+
     {
       VPackArrayBuilder arrayBuilder(&builder);
       for (VPackSlice currRow : VPackArrayIterator(matrix)) {
@@ -138,7 +153,7 @@ AqlValue functions::LevenshteinDistance(
   AqlValue const& value2 = extractFunctionParameterValue(parameters, 1);
 
   // we use one buffer to stringify both arguments
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   // stringify argument 1

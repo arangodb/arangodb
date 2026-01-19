@@ -67,11 +67,6 @@ AqlValue callFn(AstNode const& node, char const* input1,
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
-  fakeit::When(Method(trxCtxMock, leaseBuilder)).AlwaysDo([]() {
-    return new arangodb::velocypack::Builder();
-  });
-  fakeit::When(Method(trxCtxMock, returnBuilder))
-      .AlwaysDo([](arangodb::velocypack::Builder* b) { delete b; });
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
   transaction::Context& trxCtx = trxCtxMock.get();
 

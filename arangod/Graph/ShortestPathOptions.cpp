@@ -25,10 +25,9 @@
 
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
-#include "Graph/ClusterTraverserCache.h"
-#include "Graph/SingleServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerIndexCursor.h"
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
@@ -171,7 +170,10 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
   // We use the "seven-degrees-of-seperation" rule.
   // This theory asumes that the shortest path is at most 7 steps of length
 
-  nrItems = static_cast<size_t>(std::pow(baseCreateItems, 7));
+  double tmp = std::pow(baseCreateItems, 7);
+  nrItems = tmp >= static_cast<double>(std::numeric_limits<size_t>::max())
+                ? std::numeric_limits<size_t>::max()
+                : static_cast<size_t>(tmp);
   return std::pow(baseCost, 7);
 }
 
@@ -179,9 +181,9 @@ void ShortestPathOptions::addReverseLookupInfo(
     aql::ExecutionPlan* plan, std::string const& collectionName,
     std::string const& attributeName, aql::AstNode* condition,
     bool onlyEdgeIndexes, TRI_edge_direction_e direction) {
-  injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
-                         attributeName, condition, onlyEdgeIndexes, direction,
-                         std::nullopt);
+  _reverseLookupInfos.emplace_back(
+      createLookupInfo(plan, collectionName, attributeName, condition,
+                       onlyEdgeIndexes, direction, std::nullopt));
 }
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {
@@ -197,15 +199,13 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
 }
 
 std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
-  ensureCache();
+  TRI_ASSERT(not _isCoordinator);
 
-  if (_isCoordinator) {
-    return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
-  }
-
-  return std::make_unique<SingleServerEdgeCursor>(
-      this, _tmpVar, nullptr,
-      backward ? _reverseLookupInfos : _baseLookupInfos);
+  return std::make_unique<
+      graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
+      graph::DBServerEdgeCursor(graph::createDBServerIndexCursors(
+          backward ? _reverseLookupInfos : _baseLookupInfos, _tmpVar, trx(),
+          stats(), query().resourceMonitor())));
 }
 
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {

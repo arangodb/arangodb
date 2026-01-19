@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
@@ -316,10 +317,14 @@ function makeArgsArangosh (options) {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
-    'server.username': options.username,
-    'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
+  if (options.hasOwnProperty('username')) {
+    args['server.username'] = options.username;
+  }
+  if (options.hasOwnProperty('password')) {
+    args['server.password'] = options.password;
+  }
 
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
@@ -370,6 +375,9 @@ function launchInShellBG  (file) {
   let env = sh.getSanOptions();
   env['INSTANCEINFO'] = JSON.stringify(IM.getStructure());
   const argv = toArgv(args);
+  if (IM.options.extremeVerbosity) {
+    print(argv);
+  }
   let result = executeExternal(pu.ARANGOSH_BIN, argv, false, env);
   result.sh = sh;
   result['logFile'] = logFile;
@@ -383,6 +391,48 @@ function launchInShellBG  (file) {
   result.args = args;
   return result;
 };
+
+function launchPlainSnippetInBG (snippet, key) {
+  let file = fs.getTempFile() + "-" + key;
+  fs.write(file, snippet);
+  return launchInShellBG(file);
+}
+
+
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+  let IM = global.instanceManager;
+  let globalFn = fs.getTempFile();
+  fs.write(globalFn, "x");
+  let testFns = [];
+  for (let i=0; i < volume; i++) {
+    let testFn = fs.getTempFile() + `_${i}`;
+    fs.write(testFn, "x");
+    let mySnippet = `const fs = require('fs');
+fs.remove('${testFn}');
+let volume = ${volume};
+let idx = ${i};
+let endpoint = '${IM.endpoint}';
+let passvoid = '${IM.options.password}';
+while (fs.exists('${globalFn}')) {
+   require('internal').sleep(0.1);
+}
+let testfunc = ${String(snippet)};
+testfunc();
+`;
+    arangoshList.push(
+      launchPlainSnippetInBG(mySnippet, key + `_${i}`)
+    );
+  }
+  // wait for the spawned clients to reach the entry gate:
+  testFns.forEach(testFn => {
+    while (fs.exists(testFn)) {
+      sleep(0.1);
+    }
+  });
+  // GO!
+  fs.remove(globalFn);
+  return true;
+}
 
 function launchSnippetInBG (options, snippet, key, cn, single=false) {
   let file = fs.getTempFile() + "-" + key;
@@ -450,10 +500,21 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   return { key, file, client, done: false };
 }
 
+function readClientLogfile(client) {
+  const logfile = client.file + '.log';
+  if (fs.exists(logfile)) {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()}`);
+  } else {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
+  }
+}
+
+
 function joinBGShells (options, clients, waitFor, cn) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = 0;
+  let clientErrors = '';
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
@@ -472,6 +533,9 @@ function joinBGShells (options, clients, waitFor, cn) {
             IM.options.cleanup = false;
             client.failed = true;
           }
+        }
+        if (client.failed) {
+          clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
         }
       }
     });
@@ -494,8 +558,88 @@ function joinBGShells (options, clients, waitFor, cn) {
 
   if (done !== clients.length) {
     options.cleanup = false;
-    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
+    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
   }
+}
+
+function joinFinishedBGShells(options, clients) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = clients.length;
+  clients.forEach(function (client) {
+    if (client.done) {
+      done -= 1;
+    } else {
+      client.status = internal.statusExternal(client.client.pid);
+      if (client.status.status !== 'RUNNING') { 
+        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+        IM.serverCrashedLocal |= failed;
+        client.failed = failed;
+        client.done = true;
+      }
+      if (client.status === 'TERMINATED') {
+        done -= 1;
+        if (client.exit === 0) {
+          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          client.failed = false;
+        } else {
+          IM.options.cleanup = false;
+          client.failed = true;
+        }
+      }
+    }
+  });
+  return done;
+}
+
+function joinForceBGShells(options, clients) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = clients.length;
+  clients.forEach(client => {
+    client.status = internal.statusExternal(client.pid, false, 0.1);
+    if (client.status.status === 'RUNNING') {
+      client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
+    } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+      client.done = true;
+      if (client.exit === 0) {
+        IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+        client.failed = false;
+      } else {
+        IM.options.cleanup = false;
+        client.failed = true;
+      }
+    }
+  });
+  internal.sleep(1);
+  while (done > 0) {
+    clients.forEach(client => {
+      if (client.done) {
+        done -= 1;
+      } else {
+        client.status = internal.statusExternal(client.pid);
+        if (client.status.status === "STOPPED") {
+          print('.');
+        } else if (client.status.status !== 'RUNNING') {
+          let failed = client.sh.fetchSanFileAfterExit(client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
+          client.done = true;
+        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+          done -= 1;
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
+        }
+      }
+    });
+    internal.sleep(0.5);
+  }
+  return done === 0;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -509,6 +653,7 @@ function cleanupBGShells (clients, cn) {
 
     const logfile = client.file + '.log';
     if (client.failed) {
+      print(`${RED}${readClientLogfile(client)}${RESET}`);
       if (fs.exists(logfile)) {
         print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
@@ -714,8 +859,12 @@ exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
   launchInShellBG: launchInShellBG,
+  launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
+  spawnStressArangoshInBG: spawnStressArangoshInBG,
   joinBGShells: joinBGShells,
+  joinForceBGShells: joinForceBGShells,
+  joinFinishedBGShells: joinFinishedBGShells,
   cleanupBGShells: cleanupBGShells,
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,

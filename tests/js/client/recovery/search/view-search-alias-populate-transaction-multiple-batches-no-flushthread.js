@@ -44,25 +44,22 @@ if (runSetup === true) {
   global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
-  var tx = {
+  var tx = db._createTransaction({
     collections: {
       write: ['UnitTestsRecoveryDummy']
     },
-    action: function() {
-      const db = require('internal').db;
-      var c = db.UnitTestsRecoveryDummy;
-      for (let j = 0; j < 100; j++) {
-        var values = [];
-        for (let i = 0; i < 100; i++) {
-          values.push({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
-        c.save(values);
-      }
-    },
     waitForSync: true
-  };
+  });
 
-  db._executeTransaction(tx);
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
+  for (let j = 0; j < 100; j ++) {
+    let docs = [];
+    for (let i = 0; i < 100; i++) {
+      docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    txcol.save(docs);
+  }
+  tx.commit();
 
   return 0;
 }

@@ -26,6 +26,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -77,12 +78,14 @@
 #include "VocBase/AccessMode.h"
 
 #include <absl/strings/str_cat.h>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 #include <velocypack/Iterator.h>
 
 #include <initializer_list>
+#include <ranges>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 using namespace arangodb::basics;
 
 namespace {
@@ -166,8 +169,9 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
     maxDepth = checkDepthValue(steps);
   } else if (steps->type == NODE_TYPE_RANGE) {
     // Range depth
-    minDepth = checkDepthValue(steps->getMember(0));
-    maxDepth = checkDepthValue(steps->getMember(1));
+    ast::RangeNode rangeNode(steps);
+    minDepth = checkDepthValue(rangeNode.getStart());
+    maxDepth = checkDepthValue(rangeNode.getEnd());
   } else {
     invalidDepth = true;
   }
@@ -229,10 +233,10 @@ void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
   if (src->isStringValue()) {
     addCollection(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
-    size_t const n = src->numMembers();
-    collections.reserve(n);
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* c = src->getMemberUnchecked(i);
+    ast::ArrayNode arrayNode(src);
+    auto elements = arrayNode.getElements();
+    collections.reserve(elements.size());
+    for (auto const* c : elements) {
       if (!c->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
@@ -270,11 +274,10 @@ ResultT<size_t> parseMaxProjections(AstNode const* value) {
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode) {
   TRI_ASSERT(direction != nullptr);
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
 
   // will throw on invalid depths
-  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+  ast::DirectionNode directionNode(direction);
+  auto [minDepth, maxDepth] = getMinMaxDepths(directionNode.getSteps());
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
@@ -291,8 +294,9 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
       auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringView();
-        auto value = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        auto const name = objElem.getAttributeName();
+        auto value = objElem.getValue();
         TRI_ASSERT(value->isConstant());
 
         if (name == "bfs") {
@@ -410,11 +414,10 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
     arangodb::graph::PathType::Type type) {
   TRI_ASSERT(direction != nullptr);
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
 
   // will throw on invalid depths
-  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+  ast::DirectionNode directionNode(direction);
+  auto [minDepth, maxDepth] = getMinMaxDepths(directionNode.getSteps());
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
@@ -428,8 +431,9 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
       auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringView();
-        auto value = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        auto const name = objElem.getAttributeName();
+        auto value = objElem.getValue();
 
         TRI_ASSERT(value->isConstant());
 
@@ -492,7 +496,8 @@ void setForOptions(QueryContext& query, AstNode const* node,
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
         if (name == arangodb::StaticStrings::MaxProjections) {
-          auto maxProjections = parseMaxProjections(child->getMember(0));
+          ast::ObjectElementNode objElem(child);
+          auto maxProjections = parseMaxProjections(objElem.getValue());
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
@@ -501,7 +506,8 @@ void setForOptions(QueryContext& query, AstNode const* node,
             dn->setMaxProjections(maxProjections.get());
           }
         } else if (name == arangodb::StaticStrings::UseCache) {
-          AstNode const* value = child->getMember(0);
+          ast::ObjectElementNode objElem(child);
+          AstNode const* value = objElem.getValue();
 
           if (value->isBoolValue()) {
             dn->setUseCache(value->getBoolValue());
@@ -550,7 +556,7 @@ ExecutionPlan::~ExecutionPlan() {
       !arangodb::ServerState::instance()->isCoordinator()) {
     try {
       // count the actual number of nodes in the plan
-      ::NodeCounter counter;
+      NodeCounter counter;
       _root->walk(counter);
 
       // and compare it to the number of nodes we have in our counters array
@@ -865,8 +871,8 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   bool const isDistinct = (expression->type == NODE_TYPE_DISTINCT);
 
   if (isDistinct) {
-    TRI_ASSERT(expression->numMembers() == 1);
-    expression = expression->getMember(0);
+    ast::DistinctNode distinctNode(expression);
+    expression = distinctNode.getExpression();
   }
 
   bool containsCollection = false;
@@ -879,7 +885,8 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
       auto func = static_cast<Function*>(node->getData());
 
       // check function arguments
-      auto args = node->getMember(0);
+      ast::FunctionCallNode funcCall(node);
+      auto args = funcCall.getArguments();
       size_t const n = args->numMembers();
 
       for (size_t i = 0; i < n; ++i) {
@@ -1027,7 +1034,8 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
     return nullptr;
   }
 
-  auto referencedVariable = static_cast<Variable const*>(expression->getData());
+  ast::ReferenceNode refNode(expression);
+  auto referencedVariable = refNode.getVariable();
 
   TRI_ASSERT(referencedVariable != nullptr);
 
@@ -1115,7 +1123,8 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
       auto const name = member->getStringView();
 
       if (name == "exclusive") {
-        auto value = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        auto value = objElem.getValue();
         TRI_ASSERT(value->isConstant());
         return value->isTrue();
       }
@@ -1144,7 +1153,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringView();
-        auto value = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        auto value = objElem.getValue();
 
         TRI_ASSERT(value->isConstant());
 
@@ -1173,6 +1183,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
+            // Set useOldSmartGraphVariable to true when overwriteMode is
+            // "ignore"
+            if (overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+              options.useOldSmartGraphVariable = true;
+            }
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
@@ -1226,7 +1241,8 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
         bool handled = false;
         auto const name = member->getStringView();
         if (name == "method") {
-          auto value = member->getMember(0);
+          ast::ObjectElementNode objElem(member);
+          auto value = objElem.getValue();
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getStringView());
@@ -1235,13 +1251,15 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
             }
           }
         } else if (name == "aggregateIntoExpressionOnDBServers") {
-          auto value = member->getMember(0);
+          ast::ObjectElementNode objElem(member);
+          auto value = objElem.getValue();
           if (value->isBoolValue()) {
             options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
             handled = true;
           }
         } else if (name == StaticStrings::IndexHintDisableIndex) {
-          auto value = member->getMember(0);
+          ast::ObjectElementNode objElem(member);
+          auto value = objElem.getValue();
           if (value->isBoolValue()) {
             options.disableIndex = value->getBoolValue();
             handled = true;
@@ -1325,17 +1343,11 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FOR node
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto variable = node->getMember(0);
-  auto expression = node->getMember(1);
-  auto options = node->getMember(2);
-
-  // fetch 1st operand (out variable name)
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
+  ast::ForNode forNode(node);
+  auto variable = forNode.getVariable();
+  TRI_ASSERT(variable != nullptr);
+  auto expression = forNode.getExpression();
+  auto options = forNode.getOptions();
 
   ExecutionNode* en = nullptr;
 
@@ -1352,8 +1364,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
     IndexHint hint(_ast->query(), options,
                    IndexHint::FromCollectionOperation{});
-    en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
-                                             false, std::move(hint));
+    en = createNode<EnumerateCollectionNode>(this, nextId(), collection,
+                                             variable, false, std::move(hint));
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1362,7 +1374,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 
     auto* dn = dynamic_cast<DocumentProducingNode*>(en);
     TRI_ASSERT(dn != nullptr);
-    ::setForOptions(_ast->query(), options, dn);
+    setForOptions(_ast->query(), options, dn);
 
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
@@ -1391,16 +1403,17 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
-        *this, nextId(), vocbase, view, *v, nullptr, options, {}));
+        *this, nextId(), vocbase, view, *variable, nullptr, options, {}));
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, variable);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v);
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc),
+                                       variable);
     previous = calc;
   }
 
@@ -1412,18 +1425,11 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FOR (view) node
 ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
                                               AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_VIEW);
-  TRI_ASSERT(node->numMembers() == 4);
-
-  auto const* variable = node->getMember(0);
+  ast::ForViewNode forViewNode(node);
+  auto const* variable = forViewNode.getVariable();
   TRI_ASSERT(variable);
-  auto const* expression = node->getMember(1);
+  auto const* expression = forViewNode.getExpression();
   TRI_ASSERT(expression);
-
-  // fetch 1st operand (out variable name)
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v);
 
   ExecutionNode* en = nullptr;
 
@@ -1465,12 +1471,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
                                    "no view for EnumerateView");
   }
 
-  auto* search = node->getMember(2);
-  TRI_ASSERT(search);
-  TRI_ASSERT(search->type == NODE_TYPE_FILTER);
-  TRI_ASSERT(search->numMembers() == 1);
+  ast::FilterNode filterNode(forViewNode.getSearch());
 
-  auto* options = node->getMemberUnchecked(3);
+  auto* options = forViewNode.getOptions();
   TRI_ASSERT(options);
 
   if (options->type == NODE_TYPE_NOP) {
@@ -1478,7 +1481,8 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   }
 
   en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, view, *v, search->getMember(0), options, {}));
+      *this, nextId(), vocbase, view, *variable, filterNode.getExpression(),
+      options, {}));
 
   TRI_ASSERT(en != nullptr);
 
@@ -1488,16 +1492,10 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FOR TRAVERSAL node
 ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
                                                 AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_TRAVERSAL);
-  TRI_ASSERT(node->numMembers() >= 6);
-  TRI_ASSERT(node->numMembers() <= 8);
-
-  // the first 5 members are used by traversal internally.
-  // The members 6-8, where 5 and 6 are optional, are used
-  // as out variables.
-  AstNode const* direction = node->getMember(0);
-  AstNode const* start = node->getMember(1);
-  AstNode const* graph = node->getMember(2);
+  ast::TraversalNode traversalNode(node);
+  AstNode const* direction = traversalNode.getDirection();
+  AstNode const* start = traversalNode.getStart();
+  AstNode const* graph = traversalNode.getGraph();
 
   if (start->type == NODE_TYPE_OBJECT && start->isConstant()) {
     size_t n = start->numMembers();
@@ -1505,7 +1503,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == StaticStrings::IdString) {
-        start = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        start = objElem.getValue();
         break;
       }
     }
@@ -1520,7 +1519,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
 
   // Prune Expression
   std::unique_ptr<Expression> pruneExpression =
-      createPruneExpression(this, _ast, node->getMember(3));
+      createPruneExpression(this, _ast, traversalNode.getPruneExpression());
 
   std::string errorReason;
   if (pruneExpression != nullptr &&
@@ -1535,11 +1534,10 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   }
 
   auto options =
-      createTraversalOptions(getAst(), direction, node->getMember(4));
+      createTraversalOptions(getAst(), direction, traversalNode.getOptions());
 
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
-  direction = direction->getMember(0);
+  ast::DirectionNode directionNode(direction);
+  direction = directionNode.getDirection();
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
@@ -1547,27 +1545,27 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
       this, nextId(), &(_ast->query().vocbase()), direction, start, graph,
       std::move(pruneExpression), std::move(options));
 
-  auto variable = node->getMember(5);
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
+  auto variables = traversalNode.getVariables();
+  auto varIt = variables.begin();
+  ast::VariableNode varNode(*varIt++);
+  auto v = varNode.getVariable();
   TRI_ASSERT(v != nullptr);
   travNode->setVertexOutput(v);
 
-  if (node->numMembers() > 6) {
+  if (varIt != variables.end()) {
     // return the edge as well
-    variable = node->getMember(6);
-    TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-    v = static_cast<Variable*>(variable->getData());
+    ast::VariableNode edgeVarNode(*varIt++);
+    v = edgeVarNode.getVariable();
     TRI_ASSERT(v != nullptr);
     travNode->setEdgeOutput(v);
-    if (node->numMembers() > 7) {
+    if (varIt != variables.end()) {
       // return the path as well
-      variable = node->getMember(7);
-      TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-      v = static_cast<Variable*>(variable->getData());
+      ast::VariableNode pathVarNode(*varIt++);
+      v = pathVarNode.getVariable();
       TRI_ASSERT(v != nullptr);
       travNode->setPathOutput(v);
     }
+    TRI_ASSERT(varIt == variables.end());
   }
 
   return addDependency(previous, travNode);
@@ -1581,7 +1579,8 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
       auto member = vertex->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == StaticStrings::IdString) {
-        vertex = member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        vertex = objElem.getValue();
         break;
       }
     }
@@ -1601,42 +1600,38 @@ AstNode const* ExecutionPlan::parseTraversalVertexNode(ExecutionNode*& previous,
 /// @brief create an execution plan element from an AST for SHORTEST_PATH node
 ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
                                                    AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SHORTEST_PATH);
-  TRI_ASSERT(node->numMembers() >= 6);
-  TRI_ASSERT(node->numMembers() <= 7);
-
-  // the first 4 members are used by shortest_path internally.
-  // The members 5-6, where 6 is optional, are used
-  // as out variables.
-  AstNode const* direction = node->getMember(0);
-  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(1));
+  ast::ShortestPathNode shortestPathNode(node);
+  AstNode const* direction = shortestPathNode.getDirection();
+  AstNode const* start =
+      parseTraversalVertexNode(previous, shortestPathNode.getStart());
   AstNode const* target =
-      parseTraversalVertexNode(previous, node->getMember(2));
-  AstNode const* graph = node->getMember(3);
+      parseTraversalVertexNode(previous, shortestPathNode.getTarget());
+  AstNode const* graph = shortestPathNode.getGraph();
 
-  auto options =
-      createPathsQueryOptions(getAst(), direction, node->getMember(4),
-                              arangodb::graph::PathType::Type::ShortestPath);
+  auto options = createPathsQueryOptions(
+      getAst(), direction, shortestPathNode.getOptions(),
+      arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode = createNode<ShortestPathNode>(
       this, nextId(), &(_ast->query().vocbase()), direction, start, target,
       graph, std::move(options));
 
-  auto variable = node->getMember(5);
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
+  auto variables = shortestPathNode.getVariables();
+  auto varIt = variables.begin();
+  ast::VariableNode varNode(*varIt++);
+  auto v = varNode.getVariable();
   TRI_ASSERT(v != nullptr);
   spNode->setVertexOutput(v);
 
-  if (node->numMembers() > 6) {
+  if (varIt != variables.end()) {
     // return the edge as well
-    variable = node->getMember(6);
-    TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-    v = static_cast<Variable*>(variable->getData());
+    ast::VariableNode edgeVarNode(*varIt++);
+    auto v = edgeVarNode.getVariable();
     TRI_ASSERT(v != nullptr);
     spNode->setEdgeOutput(v);
   }
+  TRI_ASSERT(varIt == variables.end());
 
   return addDependency(previous, spNode);
 }
@@ -1644,48 +1639,38 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST for ENUMERATE_PATHS node
 ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
                                                      AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_ENUMERATE_PATHS);
-  TRI_ASSERT(node->numMembers() == 7);
-
-  auto const type = static_cast<arangodb::graph::PathType::Type>(
-      node->getMember(0)->getIntValue());
+  ast::EnumeratePathsNode enumeratePathsNode(node);
+  auto const type = enumeratePathsNode.getPathType();
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
              type == arangodb::graph::PathType::Type::KPaths ||
              type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
-  AstNode const* direction = node->getMember(1);
-  AstNode const* start = parseTraversalVertexNode(previous, node->getMember(2));
+  AstNode const* direction = enumeratePathsNode.getDirection();
+  AstNode const* start =
+      parseTraversalVertexNode(previous, enumeratePathsNode.getStart());
   AstNode const* target =
-      parseTraversalVertexNode(previous, node->getMember(3));
-  AstNode const* graph = node->getMember(4);
+      parseTraversalVertexNode(previous, enumeratePathsNode.getTarget());
+  AstNode const* graph = enumeratePathsNode.getGraph();
 
-  auto options =
-      createPathsQueryOptions(getAst(), direction, node->getMember(5), type);
+  auto options = createPathsQueryOptions(getAst(), direction,
+                                         enumeratePathsNode.getOptions(), type);
 
   // First create the node
   auto spNode = createNode<EnumeratePathsNode>(
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
-  auto variable = node->getMember(6);
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
-  spNode->setPathOutput(v);
-
+  spNode->setPathOutput(enumeratePathsNode.getVariable());
   return addDependency(previous, spNode);
 }
 
 /// @brief create an execution plan element from an AST FILTER node
 ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  auto expression = node->getMember(0);
+  ast::FilterNode filterNode(node);
+  auto expression = filterNode.getExpression();
 
   ExecutionNode* en = nullptr;
 
@@ -1726,13 +1711,9 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
 /// inside LET nodes)
 ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
                                           AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() >= 2);
-
-  AstNode const* variable = node->getMember(0);
-  AstNode const* expression = node->getMember(1);
-
-  auto v = static_cast<Variable*>(variable->getData());
+  ast::LetNode letNode(node);
+  Variable* variable = letNode.getVariable();
+  AstNode const* expression = letNode.getExpression();
 
   ExecutionNode* en = nullptr;
 
@@ -1746,7 +1727,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = createNode<SubqueryNode>(this, nextId(), subquery, v);
+    en = createNode<SubqueryNode>(this, nextId(), subquery, variable);
     _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] =
         en;
   } else {
@@ -1760,7 +1741,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       // outvariable of
       // the LET. and don't create the LET
 
-      subquery->replaceOutVariable(v);
+      subquery->replaceOutVariable(variable);
       // We do not create a new node here, just return the last dependency.
       // Note that we *do not* want to return `subquery`, as we might leave a
       // dangling branch of ExecutionNodes from it.
@@ -1770,7 +1751,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 
     // operand is some misc expression, potentially including references to
     // other variables
-    return createCalculation(v, expression, previous);
+    return createCalculation(variable, expression, previous);
   }
 
   return addDependency(previous, en);
@@ -1779,10 +1760,8 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST SORT node
 ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
                                            AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  auto list = node->getMember(0);
+  ast::SortNode sortNode(node);
+  auto list = sortNode.getElements();
   TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
 
   SortElementVector elements;
@@ -1793,11 +1772,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   for (size_t i = 0; i < n; ++i) {
     auto element = list->getMember(i);
     TRI_ASSERT(element != nullptr);
-    TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
-    TRI_ASSERT(element->numMembers() == 2);
 
-    auto expression = element->getMember(0);
-    auto ascending = element->getMember(1);
+    ast::SortElementNode sortElement(element);
+    auto expression = sortElement.getExpression();
+    auto ascending = sortElement.getAscending();
 
     // get sort order
     bool isAscending;
@@ -1858,12 +1836,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST COLLECT node
 ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
                                               AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
-  TRI_ASSERT(node->numMembers() == 6);
+  ast::CollectNode collectNode(node);
+  auto options = createCollectOptions(collectNode.getOptions());
 
-  auto options = createCollectOptions(node->getMember(0));
-
-  auto groups = node->getMember(1);
+  auto groups = collectNode.getGroups();
   size_t const numVars = groups->numMembers();
 
   std::vector<GroupVarInfo> groupVariables;
@@ -1876,41 +1852,37 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
       continue;
     }
 
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
-    auto expression = assigner->getMember(1);
+    ast::AssignNode assignNode(assigner);
+    auto outVar = assignNode.getVariable();
+    auto expression = assignNode.getExpression();
 
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(GroupVarInfo{v, e});
+      groupVariables.emplace_back(GroupVarInfo{outVar, e});
     } else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
+      groupVariables.emplace_back(GroupVarInfo{outVar, getOutVariable(calc)});
     }
   }
 
   // aggregate variables
-  AstNode* aggregates = node->getMember(2);
+  AstNode const* aggregates = collectNode.getAggregates();
   std::vector<AggregateVarInfo> aggregateVars =
       prepareAggregateVars(&previous, aggregates);
 
   // handle out variable
   Variable const* outVariable = nullptr;
-  auto const into = node->getMember(3);
+  AstNode const* into = collectNode.getInto();
 
   if (into->type != NODE_TYPE_NOP) {
     outVariable = static_cast<Variable const*>(into->getData());
   }
 
   Variable const* expressionVariable = nullptr;
-  auto const expression = node->getMember(4);
+  AstNode const* expression = collectNode.getIntoExpression();
 
   if (expression->type != NODE_TYPE_NOP) {
     if (expression->type == NODE_TYPE_REFERENCE) {
@@ -1927,7 +1899,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
   }
 
   std::vector<std::pair<Variable const*, std::string>> keepVariables;
-  auto const keep = node->getMember(5);
+  AstNode const* keep = collectNode.getKeepVariables();
 
   if (keep->type != NODE_TYPE_NOP) {
     // variables to keep
@@ -1961,11 +1933,9 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST LIMIT node
 ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
                                             AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  auto offset = node->getMember(0);
-  auto count = node->getMember(1);
+  ast::LimitNode limitNode(node);
+  auto offset = limitNode.getOffset();
+  auto count = limitNode.getCount();
 
   if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
     if (_ast->query().queryOptions().usePlanCache) {
@@ -2020,10 +1990,8 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST RETURN node
 ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  auto expression = node->getMember(0);
+  ast::ReturnNode returnNode(node);
+  auto expression = returnNode.getExpression();
 
   ExecutionNode* en = nullptr;
 
@@ -2045,11 +2013,9 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST REMOVE node
 ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() == 4);
-
-  auto options = createModificationOptions("REMOVE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  ast::RemoveNode removeNode(node);
+  auto options = createModificationOptions("REMOVE", removeNode.getOptions());
+  std::string const collectionName = removeNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2061,9 +2027,9 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto expression = node->getMember(2);
+  auto expression = removeNode.getExpression();
   ExecutionNode* en = nullptr;
-  auto returnVarNode = node->getMember(3);
+  auto returnVarNode = removeNode.getOldVariable();
   Variable const* outVariableOld =
       static_cast<Variable*>(returnVarNode->getData());
 
@@ -2089,12 +2055,9 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST INSERT node
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() > 3);
-  TRI_ASSERT(node->numMembers() < 6);
-
-  auto options = createModificationOptions("INSERT", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  ast::InsertNode insertNode(node);
+  auto options = createModificationOptions("INSERT", insertNode.getOptions());
+  std::string const collectionName = insertNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2106,14 +2069,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto expression = node->getMember(2);
-  auto returnVarNode = node->getMember(3);
+  auto expression = insertNode.getExpression();
+  auto returnVarNode = insertNode.getNewVariable();
   Variable const* outVariableNew =
       static_cast<Variable*>(returnVarNode->getData());
 
   Variable const* outVariableOld = nullptr;
-  if (node->numMembers() == 5) {
-    returnVarNode = node->getMember(4);
+  if (insertNode.hasOldVariable()) {
+    returnVarNode = insertNode.getOldVariable();
     outVariableOld = static_cast<Variable*>(returnVarNode->getData());
   }
 
@@ -2142,11 +2105,9 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST UPDATE node
 ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() == 6);
-
-  auto options = createModificationOptions("UPDATE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  ast::UpdateNode updateNode(node);
+  auto options = createModificationOptions("UPDATE", updateNode.getOptions());
+  std::string const collectionName = updateNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2158,15 +2119,13 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto docExpression = node->getMember(2);
-  auto keyExpression = node->getMember(3);
+  auto docExpression = updateNode.getDocumentExpression();
+  auto keyExpression = updateNode.getKeyExpression();
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld =
-      static_cast<Variable*>(node->getMember(4)->getData());
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(5)->getData());
+  Variable const* outVariableOld = updateNode.getOldVariable();
+  Variable const* outVariableNew = updateNode.getNewVariable();
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -2209,11 +2168,9 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST REPLACE node
 ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
                                               AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() == 6);
-
-  auto options = createModificationOptions("REPLACE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  ast::ReplaceNode replaceNode(node);
+  auto options = createModificationOptions("REPLACE", replaceNode.getOptions());
+  std::string const collectionName = replaceNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2225,15 +2182,13 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto docExpression = node->getMember(2);
-  auto keyExpression = node->getMember(3);
+  auto docExpression = replaceNode.getDocumentExpression();
+  auto keyExpression = replaceNode.getKeyExpression();
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld =
-      static_cast<Variable*>(node->getMember(4)->getData());
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(5)->getData());
+  Variable const* outVariableOld = replaceNode.getOldVariable();
+  Variable const* outVariableNew = replaceNode.getNewVariable();
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -2276,11 +2231,9 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST UPSERT node
 ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
-  TRI_ASSERT(node->numMembers() == 7);
-
-  auto options = createModificationOptions("UPSERT", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  ast::UpsertNode upsertNode(node);
+  auto options = createModificationOptions("UPSERT", upsertNode.getOptions());
+  std::string const collectionName = upsertNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2292,7 +2245,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) &&
+  if (upsertNode.canReadOwnWrites() &&
       ServerState::instance()->isCoordinator()) {
     // we are in the cluster, and the UPSERT node has the
     // "readOwnWrites" option not set or set to true.
@@ -2329,11 +2282,10 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
     }
   }
 
-  auto docExpression = node->getMember(2);
-  auto insertExpression = node->getMember(3);
-  auto updateExpression = node->getMember(4);
-  Variable const* outVariableNew =
-      static_cast<Variable*>(node->getMember(6)->getData());
+  auto docExpression = upsertNode.getDocumentExpression();
+  auto insertExpression = upsertNode.getInsertExpression();
+  auto updateExpression = upsertNode.getUpdateExpression();
+  Variable const* outVariableNew = upsertNode.getNewVariable();
 
   TRI_ASSERT(docExpression->type == NODE_TYPE_REFERENCE);
   // doc operand is already a variable
@@ -2375,12 +2327,10 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST WINDOW node
 ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_WINDOW);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  auto spec = node->getMember(0);
-  auto rangeExpr = node->getMember(1);
-  auto aggregates = node->getMember(2);
+  ast::WindowNode windowNode(node);
+  auto spec = windowNode.getSpec();
+  auto rangeExpr = windowNode.getRangeVar();
+  auto aggregates = windowNode.getAggregates();
 
   AqlFunctionsInternalCache cache;
   FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(),
@@ -2390,7 +2340,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
   if (rangeExpr->type != NODE_TYPE_NOP) {
     if (rangeExpr->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
-      rangeVar = static_cast<Variable*>(rangeExpr->getData());
+      ast::ReferenceNode refNode(rangeExpr);
+      rangeVar = refNode.getVariable();
     } else {  // need to add a calculation
       auto calc = createTemporaryCalculation(rangeExpr, previous);
       previous = calc;
@@ -2415,8 +2366,9 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
     if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
       continue;
     }
-    auto const name = member->getStringView();
-    AstNode* value = member->getMember(0);
+    ast::ObjectElementNode objElem(member);
+    auto const name = objElem.getAttributeName();
+    AstNode* value = objElem.getValue();
     if (!value->isConstant()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
@@ -2656,7 +2608,7 @@ void ExecutionPlan::findVarUsage() {
   }
   _hasForcedIndexHints = false;
   _varSetBy.clear();
-  ::VarUsageFinder finder(&_varSetBy);
+  VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
 
   setVarUsageComputed();
@@ -2665,8 +2617,59 @@ void ExecutionPlan::findVarUsage() {
 /// @brief determine if the above are already set
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
+namespace {
+void logMissingVariablesExceptionDetails(
+    ExecutionPlan const& plan, QueryContext const& query,
+    MissingVariablesException const& exception) {
+  auto constexpr planHeader =
+      std::string_view("(id, type, varsUsedHere, varsSetHere)");
+  auto const formatVar = [errVar = exception.variable()](Variable const* v) {
+    return fmt::format("{}{}{}({})", v == errVar ? "!" : "",
+                       !v->name.empty() && std::isdigit(v->name[0]) ? "#" : "",
+                       v->name, v->id);
+  };
+  auto const formatVars = [&](std::vector<Variable const*> const& vars) {
+    return fmt::format(
+        "[{}]", fmt::join(vars | std::views::transform(formatVar), ", "));
+  };
+  auto const formatNode = [&, errNode = exception.node()](
+                              ExecutionNode const& node) -> std::string {
+    return fmt::format("{}({}, {}, {}, {})", &node == errNode ? "!" : "",
+                       node.id().id(), node.getTypeString(),
+                       formatVars(node.getVariablesUsedHere()),
+                       formatVars(node.getVariablesSetHere()));
+  };
+
+  auto nodeStrings = std::vector<std::string>{};
+  for (auto const* node = plan.root(); node != nullptr;
+       node = node->getFirstDependency()) {
+    nodeStrings.emplace_back(formatNode(*node));
+  }
+  auto const planString = fmt::format(
+      "{}: {}", planHeader, fmt::join(nodeStrings | std::views::reverse, ", "));
+
+  LOG_TOPIC("b57cb", ERR, arangodb::Logger::AQL)
+      << "Plan causing MissingVariablesException of query " << query.id()
+      << ": " << planString;
+}
+}  // namespace
+
 void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
-  _root->planRegisters(explainRegisterPlan);
+  try {
+    _root->planRegisters(explainRegisterPlan);
+  } catch (MissingVariablesException const& e) {
+    if (_ast == nullptr) {
+      LOG_TOPIC("7664c", ERR, arangodb::Logger::AQL)
+          << "MissingVariablesException during register planning: " << e.what();
+    } else {
+      auto const& query = _ast->query();
+      LOG_TOPIC("ef5ba", ERR, arangodb::Logger::AQL)
+          << "MissingVariablesException during register planning of query "
+          << query.id() << ": " << e.what();
+      logMissingVariablesExceptionDetails(*this, query, e);
+    }
+    throw;
+  }
 }
 
 /// @brief unlinkNodes, note that this does not delete the removed
@@ -2974,38 +2977,27 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     ExecutionNode** previous, AstNode const* node) {
   std::vector<AggregateVarInfo> aggregateVariables;
 
-  TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS);
-  AstNode* list = node->getMember(0);
-  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
-  size_t const numVars = list->numMembers();
+  ast::AggregationsNode aggNode(node);
+  auto list = aggNode.getAggregates().getElements();
+  size_t const numVars = list.size();
 
   aggregateVariables.reserve(numVars);
-  for (size_t i = 0; i < numVars; ++i) {
-    auto assigner = list->getMemberUnchecked(i);
-
+  for (auto const* assigner : list) {
     if (assigner == nullptr) {
       continue;
     }
 
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
-    TRI_ASSERT(out != nullptr);
-    auto outVar = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(outVar != nullptr);
-
-    auto expression = assigner->getMember(1);
+    ast::AssignNode assignNode(assigner);
+    auto outVar = assignNode.getVariable();
+    auto expression = assignNode.getExpression();
 
     // operand is always a function call
-    TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
-
-    // build aggregator
-    auto func = static_cast<Function*>(expression->getData());
+    ast::FunctionCallNode funcCall(expression);
+    auto func = funcCall.getFunction();
     TRI_ASSERT(func != nullptr);
 
     // function should have one argument (an array with the parameters)
-    TRI_ASSERT(expression->numMembers() == 1);
-
-    auto args = expression->getMember(0);
+    auto args = funcCall.getArguments();
     // the number of arguments should also be one (note: this has been
     // validated before)
     TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
@@ -3015,7 +3007,8 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
       auto arg = args->getMember(0);
       if (arg->type == NODE_TYPE_REFERENCE) {
         // operand is a variable
-        variable = static_cast<Variable*>(arg->getData());
+        ast::ReferenceNode refNode(arg);
+        variable = refNode.getVariable();
       } else {
         auto calc = createTemporaryCalculation(arg, *previous);
         *previous = calc;
@@ -3048,7 +3041,7 @@ IndexHint ExecutionPlan::firstUnsatisfiedForcedIndexHint() const {
     // plan contains forced index hints.
     // now check if they are all satisfied.
     containers::SmallVector<ExecutionNode*, 8> nodes;
-    findNodesOfType(nodes, ::indexHintCheckTypes, true);
+    findNodesOfType(nodes, indexHintCheckTypes, true);
     for (auto n : nodes) {
       TRI_ASSERT(n);
       TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
@@ -3229,3 +3222,4 @@ void ExecutionPlan::show() const {
 }
 
 #endif
+}  // namespace arangodb::aql

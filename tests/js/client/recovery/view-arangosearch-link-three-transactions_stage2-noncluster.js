@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print, idx */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -26,7 +26,10 @@
 const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
-const tasks = require("@arangodb/tasks");
+const ct = require('@arangodb/testutils/client-tools');
+let IM = global.instanceManager;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 
 if (runSetup === true) {
   'use strict';
@@ -46,41 +49,25 @@ if (runSetup === true) {
   }
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
-  tasks.register({
-    id: "doc-1",
-    command: function (params) {
+  let clientInstances = [];
+  ct.run.spawnStressArangoshInBG(
+    clientInstances,
+    function () {
+      const minMax = [
+        [1250, 1500],
+        [1000, 1100],
+        [1500, 2000]
+      ];
       const db = require('@arangodb').db;
       let col = db._collection('UnitTestsRecoveryDummy');
       let data = [];
-      for (let i = 1250; i < 1500; i++) {
+      for (let i = minMax[idx][0]; i < minMax[idx][1]; i++) {
         data.push({a: "foo_" + i, b: "bar_" + i, c: i});
       }
       db.UnitTestsRecoveryDummy.save(data);
-    }
-  });
-  tasks.register({
-    id: "doc-2",
-    command: function (params) {
-      const db = require('@arangodb').db;
-      let data = [];
-      for (let i = 1000; i < 1100; i++) {
-        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
-      }
-      db.UnitTestsRecoveryDummy.save(data);
-    }
-  });
-  tasks.register({
-    id: "doc-3",
-    command: function (params) {
-      const db = require('@arangodb').db;
-      let col = db._collection('UnitTestsRecoveryDummy');
-      let data = [];
-      for (let i = 1500; i < 2000; i++) {
-        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
-      }
-      db.UnitTestsRecoveryDummy.save(data);
-    }
-  });
+      console.log('done');
+      return 0;
+    }, 'doc', 3);
   let wait = 100;
   while (wait > 0) {
     wait--;
@@ -88,8 +75,19 @@ if (runSetup === true) {
     // checking if server is alive.
     db._query("FOR d IN UnitTestsRecoveryDummy LIMIT 1 RETURN d");
   }
-  // kill it for sure in case of it does not dies itself
-  return 0;
+
+  try {
+    if (ct.run.joinForceBGShells(IM.options, clientInstances)) {
+      print(`collected ${clientInstances.length} clients`);
+      return 0;
+    } else {
+      print(`${RED}not all clients could be joined successfully: ${JSON.stringify(clientInstances)}${RESET}`);
+      return 1;
+    }
+  } catch (ex) {
+    print(`${RED}Failed to stop stress arangoshs: ${ex.message}\n${ex.stack}${RESET}`);
+    return -1;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

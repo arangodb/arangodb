@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
+  Aql/AqlMergeTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueCompare.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
@@ -327,16 +328,17 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_activity_registry
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
-  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
   arango_tests_actor
   arango_tests_inspection
+  arango_tests_internal_rest_handler
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -418,10 +420,11 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(ActivityRegistry)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
-add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
+add_subdirectory(InternalRestHandler)

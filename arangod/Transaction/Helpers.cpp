@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
@@ -469,7 +470,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
                              BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -655,7 +656,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
                           RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
                           BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
 
   b->openObject();
 
@@ -769,7 +770,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            RevisionId& revisionId, VPackBuilder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions) {
-  BuilderLeaser b(&trx);
+  auto b = ThreadLocalBuilderLeaser::lease();
   b->openObject();
 
   // add system attributes first, in this order:
@@ -883,35 +884,70 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
 
 }  // namespace helpers
 
-StringLeaser::StringLeaser(Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _string(_transactionContext->leaseString()) {}
+Result extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed, velocypack::Builder& builder) {
+  builder.openArray(true);
+  for (auto const& it : storedValues) {
+    VPackSlice s;
+    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
+      // instead of storing the value of _id, we instead store the
+      // value of _key. we will retranslate the value to an _id later
+      // again upon retrieval
+      s = transaction::helpers::extractKeyFromDocument(doc);
+    } else {
+      s = doc;
+      for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice::noneSlice();
+          break;
+        }
+        s = s.get(part.name);
+        if (s.isNone()) {
+          break;
+        }
+      }
+    }
+    if (s.isNone()) {
+      s = VPackSlice::nullSlice();
+    }
 
-StringLeaser::StringLeaser(Methods* trx)
-    : StringLeaser{trx->transactionContextPtr()} {}
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
 
-StringLeaser::~StringLeaser() {
-  if (_string != nullptr) {
-    _transactionContext->returnString(_string);
+    builder.add(s);
   }
+  builder.close();
+
+  return {};
 }
 
-BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _transactionContext{transactionContext},
-      _builder{_transactionContext->leaseBuilder()} {
-  TRI_ASSERT(_builder != nullptr);
+ResultT<ThreadLocalBuilderLeaser::Lease> extractAttributeValues(
+    transaction::Methods& trx,
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed) {
+  auto leased = ThreadLocalBuilderLeaser::lease();
+
+  if (auto const res =
+          extractAttributeValues(storedValues, doc, nullAllowed, *leased.get());
+      res.fail()) {
+    return res;
+  }
+  return leased;
 }
 
-BuilderLeaser::BuilderLeaser(Methods* trx)
-    : BuilderLeaser{trx->transactionContextPtr()} {}
+ResultT<velocypack::Builder> extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed) {
+  velocypack::Builder builder;
 
-BuilderLeaser::~BuilderLeaser() { clear(); }
-
-void BuilderLeaser::clear() {
-  if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder);
-    _builder = nullptr;
+  if (auto const res =
+          extractAttributeValues(storedValues, doc, nullAllowed, builder);
+      res.fail()) {
+    return res;
   }
+  return builder;
 }
 
 }  // namespace arangodb::transaction

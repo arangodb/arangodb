@@ -1,5 +1,5 @@
 add_library(arango_tests_graph OBJECT
-        ClusterTraverserCacheTest.cpp
+        DBServerEdgeCursorTest.cpp
         TraverserCacheTest.cpp
         GenericGraphProviderTest.cpp
         GraphMockProviderInstances.cpp

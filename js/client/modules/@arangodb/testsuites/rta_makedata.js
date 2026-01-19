@@ -100,6 +100,11 @@ function makeDataWrapper (options) {
       return false;
     }
     runOneTest(file) {
+      this.options.rtaNegFilter = "";
+      if (this.options.skipServerJS) {
+        // TODO: QA-703
+        this.options.rtaNegFilter = "070,071,801,550,900,960";
+      }
       if (!this.continueTesting) {
         return {
           'forceTerminate': true,
@@ -207,12 +212,14 @@ function makeDataWrapper (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
+  localOptions.extraArgs['vector-index'] = true;
 
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);
   if (timeout) {
     return {
+      failed: 1,
       timeout: true,
       forceTerminate: true,
       status: false,

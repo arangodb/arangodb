@@ -30,6 +30,12 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "Aql/Expression.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/QueryContext.h"
+#include "Aql/RegisterId.h"
+#include "Aql/Variable.h"
+
 #include <faiss/MetricType.h>
 
 namespace faiss {
@@ -78,7 +84,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       std::vector<float>& inputs, SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
       std::shared_ptr<LogicalCollection> collection, std::size_t count,
-      std::size_t topK);
+      std::size_t topK, aql::Expression* filterExpression,
+      aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
+          filterVarsToRegs,
+      aql::Variable const* documentVariable, bool isCovered);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
@@ -86,6 +96,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
+
+  bool hasStoredValues() const noexcept;
+
+  StoredValues const& storedValues() const override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -100,6 +114,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
+  StoredValues const _storedValues;
 };
 
 }  // namespace arangodb

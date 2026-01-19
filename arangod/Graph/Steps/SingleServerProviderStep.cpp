@@ -39,31 +39,27 @@ auto operator<<(std::ostream& out, SingleServerProviderStep const& step)
 }  // namespace graph
 }  // namespace arangodb
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v)
+SingleServerProviderStep::SingleServerProviderStep(VertexRef v)
     : _vertex(v), _edge() {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v, size_t depth,
+SingleServerProviderStep::SingleServerProviderStep(VertexRef v, size_t depth,
                                                    double weight)
     : BaseStep(std::numeric_limits<size_t>::max(), depth, weight),
       _vertex(v),
       _edge() {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v,
+SingleServerProviderStep::SingleServerProviderStep(VertexRef v,
                                                    EdgeDocumentToken edge,
                                                    size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)) {}
 
-SingleServerProviderStep::SingleServerProviderStep(VertexType v,
+SingleServerProviderStep::SingleServerProviderStep(VertexRef v,
                                                    EdgeDocumentToken edge,
                                                    size_t prev, size_t depth,
                                                    double weight, size_t)
     : BaseStep(prev, depth, weight), _vertex(v), _edge(std::move(edge)) {}
 
 SingleServerProviderStep::~SingleServerProviderStep() = default;
-
-VertexType const& SingleServerProviderStep::Vertex::getID() const noexcept {
-  return _vertex;
-}
 
 SingleServerProviderStep::EdgeType const&
 SingleServerProviderStep::Edge::getID() const noexcept {

@@ -25,7 +25,6 @@
 #include "Graph/PathManagement/PathResult.h"
 
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
@@ -189,26 +188,6 @@ auto PathStore<Step>::visitReversePath(
   }
 }
 
-template<class Step>
-auto PathStore<Step>::modifyReversePath(
-    Step& step, std::function<bool(Step&)> const& visitor) -> bool {
-  Step* walker = &step;
-  // Guaranteed to make progress, as the schreier vector contains a loop-free
-  // tree.
-  while (true) {
-    bool cont = visitor(*walker);
-    if (!cont) {
-      // Aborted
-      return false;
-    }
-    if (walker->isFirst()) {
-      // Visited the full path
-      return true;
-    }
-    walker = &_schreier.at(walker->getPrevious());
-  }
-}
-
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
@@ -226,29 +205,6 @@ template void PathStore<SingleServerProviderStep>::reverseBuildPath<
     PathResult<SingleServerProvider<SingleServerProviderStep>,
                SingleServerProviderStep>& path) const;
 
-// Tracing
-
-template void PathStore<SingleServerProviderStep>::buildPath<PathResult<
-    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>(
-    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step const&
-        vertex,
-    PathResult<
-        ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-        ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>&
-        path) const;
-
-template void PathStore<
-    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>::
-    reverseBuildPath<
-        ProviderTracer<SingleServerProvider<SingleServerProviderStep>>>(
-        ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>::Step const& vertex,
-        PathResult<
-            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::
-                Step>& path) const;
-
 #ifdef USE_ENTERPRISE
 template class PathStore<enterprise::SmartGraphStep>;
 
@@ -265,28 +221,6 @@ template void PathStore<enterprise::SmartGraphStep>::reverseBuildPath<
     PathResult<SingleServerProvider<enterprise::SmartGraphStep>,
                enterprise::SmartGraphStep>& path) const;
 
-// Tracing
-
-template void PathStore<enterprise::SmartGraphStep>::buildPath<PathResult<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>>(
-    ProviderTracer<
-        SingleServerProvider<enterprise::SmartGraphStep>>::Step const& vertex,
-    PathResult<
-        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>&
-        path) const;
-
-template void PathStore<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::Step>::
-    reverseBuildPath<
-        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>>(
-        ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
-            Step const& vertex,
-        PathResult<
-            ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-            ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>::
-                Step>& path) const;
 #endif
 
 /* ClusterProvider Section */
@@ -304,22 +238,6 @@ template void PathStore<ClusterProviderStep>::reverseBuildPath<
     PathResult<ClusterProvider<ClusterProviderStep>, ClusterProviderStep>& path)
     const;
 
-// Tracing
-template void PathStore<ClusterProviderStep>::buildPath<
-    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>(
-    ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const& vertex,
-    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
-        path) const;
-
-template void PathStore<ClusterProviderStep>::reverseBuildPath<
-    ProviderTracer<ClusterProvider<ClusterProviderStep>>>(
-    ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const& vertex,
-    PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-               ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
-        path) const;
-
 #ifdef USE_ENTERPRISE
 
 template void PathStore<ClusterProviderStep>::buildPath<PathResult<
@@ -334,29 +252,6 @@ template void PathStore<ClusterProviderStep>::reverseBuildPath<
     PathResult<enterprise::SmartGraphProvider<ClusterProviderStep>,
                ClusterProviderStep>& path) const;
 
-// Tracing
-
-template void PathStore<ClusterProviderStep>::buildPath<PathResult<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>(
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
-        Step const& vertex,
-    PathResult<
-        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
-            Step>& path) const;
-
-template void PathStore<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>::
-    reverseBuildPath<
-        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>>(
-        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
-            Step const& vertex,
-        PathResult<
-            ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-            ProviderTracer<
-                enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>&
-            path) const;
 #endif
 
 }  // namespace graph

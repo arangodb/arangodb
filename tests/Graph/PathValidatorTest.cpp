@@ -159,7 +159,7 @@ class PathValidatorTest : public ::testing::Test {
     auto base = mockGraph.vertexToId(id);
     HashedStringRef ref{base.c_str(), static_cast<uint32_t>(base.length())};
     auto hStr = _heap.registerString(ref);
-    return _provider->startVertex(hStr);
+    return _provider->startVertex(arangodb::graph::VertexRef{hStr});
   }
 
   // Get and modify the options used in the Validator testee().

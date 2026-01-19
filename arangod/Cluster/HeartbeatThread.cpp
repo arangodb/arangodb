@@ -580,7 +580,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     LOG_TOPIC("77622", WARN, Logger::HEARTBEAT)
         << "ATTENTION: Getting news from agency took longer than 10 seconds, "
            "this might be causing trouble. Please "
-           "contact ArangoDB Support.";
+           "contact Arango Support.";
   }
 
   if (!result.isArray()) {
@@ -740,7 +740,7 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     } catch (...) {
     }
 
-    if (version > 0 && af.isActive() && af.userManager() != nullptr) {
+    if (version > 0 && af.userManager() != nullptr) {
       af.userManager()->setGlobalVersion(version);
     }
   }
@@ -1092,7 +1092,7 @@ bool HeartbeatThread::sendServerState() {
       LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
           << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
              "this might be causing trouble with health checks. Please "
-             "contact ArangoDB Support.";
+             "contact Arango Support.";
     }
   });
 
@@ -1182,7 +1182,7 @@ void HeartbeatThread::sendServerStateAsync() {
           LOG_TOPIC("776a5", WARN, Logger::HEARTBEAT)
               << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
                  "this might be causing trouble with health checks. Please "
-                 "contact ArangoDB Support.";
+                 "contact Arango Support.";
         }
 
         try {

@@ -21,6 +21,9 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Graph/Cursors/SingleServerEdgeCursor.h"
+#include "Graph/Providers/SingleServer/EdgeLookup.h"
+#include "Graph/Providers/SingleServer/VertexLookup.h"
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
@@ -36,6 +39,7 @@
 
 #include <Aql/TraversalStats.h>
 #include <velocypack/Slice.h>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,8 +53,10 @@ class TraverserCacheTest : public ::testing::Test {
  protected:
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
-  arangodb::aql::TraversalStats stats{};
+  std::shared_ptr<arangodb::aql::TraversalStats> stats{nullptr};
   std::shared_ptr<arangodb::aql::Query> query{nullptr};
+  std::unique_ptr<VertexLookup> vertexLookup{nullptr};
+  std::unique_ptr<EdgeLookup> edgeLookup{nullptr};
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
@@ -60,19 +66,23 @@ class TraverserCacheTest : public ::testing::Test {
       {resourceMonitor};
   MonitoredCollectionToShardMap collectionToShardMap{
       alloc};  // can be empty, only used in standalone mode
+
   arangodb::ResourceMonitor* _monitor;
   arangodb::aql::Projections _vertexProjections{};
   arangodb::aql::Projections _edgeProjections{};
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
+    stats = std::make_shared<arangodb::aql::TraversalStats>();
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
-    traverserCache = std::make_unique<RefactoredTraverserCache>(
-        trx.get(), query.get(), query->resourceMonitor(), collectionToShardMap,
-        _vertexProjections, _edgeProjections,
-        /*produceVertices*/ true);
+    vertexLookup = std::make_unique<VertexLookup>(
+        trx.get(), query.get(), _vertexProjections, collectionToShardMap, stats,
+        true, true);
+    edgeLookup = std::make_unique<EdgeLookup>(trx.get(), _edgeProjections);
+    traverserCache =
+        std::make_unique<RefactoredTraverserCache>(query->resourceMonitor());
   }
 
   ~TraverserCacheTest() = default;
@@ -94,8 +104,8 @@ TEST_F(TraverserCacheTest,
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
+  vertexLookup->insertVertexIntoResult(
+      arangodb::velocypack::HashedStringRef(id), builder, false);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1U);
@@ -103,9 +113,9 @@ TEST_F(TraverserCacheTest,
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -124,8 +134,8 @@ TEST_F(TraverserCacheTest,
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, true);
+  vertexLookup->insertVertexIntoResult(
+      arangodb::velocypack::HashedStringRef(id), builder, true);
   ASSERT_FALSE(builder.slice().isNull());
   ASSERT_TRUE(builder.slice().isString());
   ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
@@ -135,9 +145,9 @@ TEST_F(TraverserCacheTest,
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -155,7 +165,7 @@ TEST_F(TraverserCacheTest,
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any edge
-  traverserCache->insertEdgeIntoResult(edt, builder);
+  edgeLookup->insertEdgeIntoResult(edt, builder);
   ASSERT_TRUE(builder.slice().isNull());
 }
 
@@ -272,15 +282,15 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   HashedStringRef id{doc.get("_id")};
   VPackBuilder builder;
 
-  traverserCache->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
+  vertexLookup->insertVertexIntoResult(
+      arangodb::velocypack::HashedStringRef(id), builder, false);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 1U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 1U);
 }
 
 TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
@@ -295,8 +305,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
-  auto cb = [&](LocalDocumentId ldid, aql::DocumentData&&,
-                VPackSlice edgeDocument) {
+  auto cb = [&](LocalDocumentId ldid, DocumentData&&, VPackSlice edgeDocument) {
     fetchedDocumentId = ldid.id();
     called = true;
     EXPECT_TRUE(edgeDocument.isObject());
@@ -315,16 +324,16 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
   VPackBuilder builder;
 
-  traverserCache->insertEdgeIntoResult(edt, builder);
+  edgeLookup->insertEdgeIntoResult(edt, builder);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0-1");
   EXPECT_EQ(builder.slice().get("_from").toString(), "v/0");
   EXPECT_EQ(builder.slice().get("_to").toString(), "v/1");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);  // <- see note in method: appendEdge
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);  // <- see note in method: appendEdge
 }
 
 }  // namespace traverser_cache_test

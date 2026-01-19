@@ -250,7 +250,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
                                                        Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+    : _infos(infos), _trx{_infos.query->newTrxContext()} {
   _currentGroupKeySlices.resize(_infos.groups.size());
   _keySlices.resize(_infos.groups.size());
 
@@ -292,7 +292,8 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
     _aggregatorInstances.reserve(_infos.aggregations.size());
     for (auto const& agg : _infos.aggregations) {
       auto const& factory = Aggregator::factoryFromTypeString(agg.type);
-      auto instance = factory.operator()(&_infos.query->vpackOptions());
+      auto instance = factory.operator()(&_infos.query->vpackOptions(),
+                                         infos.query->resourceMonitor());
 
       _aggregatorInstances.emplace_back(std::move(instance))->reset();
     }

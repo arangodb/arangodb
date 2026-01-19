@@ -87,6 +87,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
@@ -744,7 +745,9 @@ std::optional<arangodb::ShardID> getSingleShardId(
     toFind.emplace(it);
   }
 
-  VPackBuilder builder;
+  auto sb = arangodb::velocypack::SupervisedBuffer(
+      plan->getAst()->query().resourceMonitor());
+  VPackBuilder builder(sb);
   builder.openObject();
 
   if (setter->getType() == EN::CALCULATION) {
@@ -6996,7 +6999,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
       std::vector<basics::AttributeName> fields1 = idx->fields()[0];
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
-      VPackBuilder builder;
+      velocypack::SupervisedBuffer sb(
+          plan->getAst()->query().resourceMonitor());
+      VPackBuilder builder(sb);
       idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(
           builder.slice(), "geoJson", false);
@@ -8849,6 +8854,9 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt,
     TRI_ASSERT(sq->getParents().empty());
   }
 
+  if (modified) {
+    plan->root()->invalidateCost();
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -8899,6 +8907,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     auto createKeys = bool{false};
     auto allowKeyConversionToObject = bool{false};
     auto allowSpecifiedKeys = bool{false};
+    bool canProjectOnlyId{false};
 
     DistributeType fixupGraphInput = DistributeType::DOCUMENT;
 
@@ -8921,6 +8930,12 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         setInVariable = [insertNode](Variable* var) {
           insertNode->setInVariable(var);
         };
+
+        alternativeVariable = insertNode->oldSmartGraphVariable();
+        if (alternativeVariable != nullptr) {
+          canProjectOnlyId = true;
+        }
+
       } break;
       case ExecutionNode::REMOVE: {
         auto* removeNode = ExecutionNode::castTo<RemoveNode*>(targetNode);
@@ -9086,6 +9101,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
               ast->createNodeValueBool(allowSpecifiedKeys)));
           flags->addMember(ast->createNodeObjectElement(
               "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+          flags->addMember(ast->createNodeObjectElement(
+              "projectOnlyId", ast->createNodeValueBool(canProjectOnlyId)));
           auto const& collectionName = collection->name();
           flags->addMember(ast->createNodeObjectElement(
               "collection",

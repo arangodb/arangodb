@@ -24,8 +24,10 @@
 #pragma once
 
 #include "ExpressionContext.h"
+#include "QueryContext.h"
 #include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
@@ -50,7 +52,8 @@ class QueryExpressionContext : public aql::ExpressionContext {
       : ExpressionContext(),
         _trx(trx),
         _query(query),
-        _aqlFunctionsInternalCache(cache) {}
+        _aqlFunctionsInternalCache(cache),
+        _resourceMonitor(query.resourceMonitor()) {}
 
   void registerWarning(ErrorCode errorCode,
                        std::string_view msg) override final;
@@ -83,6 +86,8 @@ class QueryExpressionContext : public aql::ExpressionContext {
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(Variable const* variable) noexcept override;
 
+  ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }
+
  protected:
   // return temporary variable if set, otherwise call lambda for
   // retrieving variable value
@@ -110,6 +115,7 @@ class QueryExpressionContext : public aql::ExpressionContext {
   // here are not owned by the QueryExpressionContext!
   containers::FlatHashMap<Variable const*, arangodb::velocypack::Slice>
       _variables;
+  ResourceMonitor& _resourceMonitor;
 };
 }  // namespace aql
 }  // namespace arangodb

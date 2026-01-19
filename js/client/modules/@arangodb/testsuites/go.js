@@ -82,9 +82,13 @@ function goDriver (options) {
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
+      opts.extraArgs['vector-index'] = true;
+      opts['arangodConfig'] = 'arangod-auth.conf';
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
+    checkSutCleannessBefore() {}
+    checkSutCleannessAfter() { return true; }
     runOneTest(file) {
       const goVersionArgs = [
         {
@@ -114,11 +118,15 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
+      process.env['ENABLE_VECTOR_INDEX'] = 'true';
       if (this.instanceManager.JWT) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
       let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
-
+      if (options.goDriverVersion === 2 && (options.cluster || options.isInstrumented)) {
+        args.push('-parallel');
+        args.push('1');
+      }
       if (this.options.testCase) {
         args.push('-run');
         args.push(this.options.testCase);
