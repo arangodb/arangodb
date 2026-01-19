@@ -23,21 +23,10 @@
 
 #pragma once
 
-#include "RestServer/FortuneFeatureOptions.h"
-#include "RestServer/arangod.h"
-
 namespace arangodb {
-class FortuneFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Fortune"; }
 
-  explicit FortuneFeature(Server& server);
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- private:
-  FortuneFeatureOptions _options;
+struct FortuneFeatureOptions {
+  bool fortune = false;
 };
+
 }  // namespace arangodb
