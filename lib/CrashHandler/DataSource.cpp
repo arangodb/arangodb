@@ -27,7 +27,9 @@ namespace arangodb::crash_handler {
 
 CrashHandlerDataSource::CrashHandlerDataSource(
     std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
-    : _dataSourceRegistry(dataSourceRegistry) {}
+    : _dataSourceRegistry(dataSourceRegistry) {
+  dataSourceRegistry->addDataSource(this);
+}
 
 CrashHandlerDataSource::~CrashHandlerDataSource() {
   _dataSourceRegistry->removeDataSource(this);
