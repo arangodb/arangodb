@@ -2,6 +2,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/SupervisedBuffer.h"
