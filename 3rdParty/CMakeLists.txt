@@ -8,16 +8,18 @@ include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Should define it in addition without PARENT_SCOPE
 set(LZ4_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/lz4)
 set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/lib)
+set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball)
+set(UNWIND_ROOT "invalid")
 
 # Export only what the parent needs
 set(LZ4_ROOT ${LZ4_ROOT} PARENT_SCOPE)
 set(LZ4_INCLUDE_DIR ${LZ4_INCLUDE_DIR} PARENT_SCOPE)
 set(USE_IPO ${IPO_ENABLED} PARENT_SCOPE)
-set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball" PARENT_SCOPE)
-set(UNWIND_ROOT "invalid" PARENT_SCOPE)
-set(BFD_ROOT "invalid" PARENT_SCOPE)
+set(SNOWBALL_ROOT ${SNOWBALL_ROOT} PARENT_SCOPE)
+set(UNWIND_ROOT ${UNWIND_ROOT} PARENT_SCOPE)
 
 ################################################################################
 ## gtest
@@ -155,7 +157,8 @@ set_target_properties(boost-static PROPERTIES
 )
 
 # explicitly set since suppressing Boost search
-set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}" PARENT_SCOPE)
+set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
+set(Boost_INCLUDE_DIRS "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
 
 ################################################################################
 ## Velocypack
