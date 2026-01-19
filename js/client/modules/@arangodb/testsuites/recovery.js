@@ -28,7 +28,6 @@
 const functionsDocumentation = {
   'recovery': 'run recovery tests',
   'recovery_cluster': 'run recovery cluster tests',
-  'recovery_cluster_crash_dump': 'run recovery cluster crash dump tests'
 };
 
 const fs = require('fs');
@@ -57,7 +56,6 @@ const termSignal = 15;
 const testPaths = {
   'recovery': [tu.pathForTesting('client/recovery')],
   'recovery_cluster': [tu.pathForTesting('client/recovery/search')],
-  'recovery_cluster_crash_dump': [tu.pathForTesting('client/recovery/cluster-crash-dump')]
 };
 
 // These tests should NOT be killed after the setup phase.
@@ -374,16 +372,9 @@ function recovery_cluster (options) {
   return _recovery(options, recoveryTests);
 }
 
-function recovery_cluster_crash_dump (options) {
-  options.cluster = true;
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster_crash_dump, options);
-  return _recovery(options, recoveryTests);
-}
-
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   testFns['recovery_cluster'] = recovery_cluster;
-  testFns['recovery_cluster_crash_dump'] = recovery_cluster_crash_dump;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

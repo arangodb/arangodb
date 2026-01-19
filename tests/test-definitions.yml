@@ -133,14 +133,6 @@
     args:
       extremeVerbosity: true
 
-# cluster with crashes
-- recovery_cluster_crash_dump:
-    options:
-      priority: 2000
-      type: cluster
-    args:
-      extremeVerbosity: true
-
 - recovery_server:
     options:
       priority: 2000
