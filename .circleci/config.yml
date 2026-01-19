@@ -99,6 +99,7 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
+                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -208,7 +209,7 @@ jobs:
               if [ "$?" == "0" ] ; then
                 ENTERPRISE_BRANCH=$CIRCLE_BRANCH
               else
-                ENTERPRISE_BRANCH=4.0
+                ENTERPRISE_BRANCH=<< parameters.default-enterprise-branch >>
               fi
               set -e
               echo "Actually using this for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
@@ -269,5 +270,6 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
+          default-enterprise-branch: "4.0"
           requires:
             - cancel-redundant-pipelines
