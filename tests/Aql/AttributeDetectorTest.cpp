@@ -119,6 +119,8 @@ class AttributeDetectorTest : public ::testing::Test {
                      category:"input", specs:{ brand:"ACME", color:"white" } } INTO products)aql");
     run(R"aql(INSERT {_key:"p3", name:"Monitor",  price:199.0,
                      category:"display", specs:{ brand:"ViewCo", color:"black" } } INTO products)aql");
+    run(R"aql(INSERT {_key:"p4", name:"USB-C Hub", price:39.0,
+                 category:"accessory", specs:{ brand:"ACME", color:"gray" } } INTO products)aql");
 
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
@@ -126,6 +128,10 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e3", _from:"users/u2", _to:"products/p3", qty:1, orderedAt:"2026-01-03"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e4", _from:"products/p1", _to:"products/p3", qty:1, orderedAt:"2026-01-04"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e5", _from:"users/u1", _to:"products/p3", qty:1, orderedAt:"2026-01-05"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e6", _from:"users/u1", _to:"products/p4", qty:1, orderedAt:"2026-01-06"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"e7", _from:"products/p4", _to:"products/p3", qty:1, orderedAt:"2026-01-07"} INTO ordered)aql");
 
     auto viewSimple = createArangoSearchView("usersViewSimple");
     auto viewComplicated = createArangoSearchView("usersViewComplicated");
@@ -219,6 +225,21 @@ class AttributeDetectorTest : public ::testing::Test {
         std::string("{\"type\":\"hash\",\"fields\":[\"") + attr + "\"]}");
     bool created = false;
     auto idx = coll->createIndex(json->slice(), created).waitAndGet();
+    ASSERT_TRUE(idx) << "createIndex returned nullptr";
+    ASSERT_TRUE(created) << "index was not created";
+  }
+
+  void ensurePersistentIndex(std::string const& collName,
+                           std::string const& attr) {
+    auto coll = vocbase->lookupCollection(collName);
+    ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
+
+    auto json = VPackParser::fromJson(
+        std::string("{\"type\":\"persistent\",\"fields\":[\"") + attr + "\"]}");
+
+    bool created = false;
+    auto idx = coll->createIndex(json->slice(), created).waitAndGet();
+
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
@@ -737,6 +758,51 @@ TEST_F(AttributeDetectorTest, ComplicatedArangoSearchReturnDoc) {
     EXPECT_FALSE(access.requiresAllAttributesWrite);
   }
   EXPECT_EQ(actual, expected);
+}
+
+TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs) {
+  auto query = executeQuery(R"aql(
+    FOR v, e IN OUTBOUND SHORTEST_PATH "users/u1" TO "products/p3" ordered
+      RETURN v
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 3);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("ordered"));
+}
+
+TEST_F(AttributeDetectorTest, JoinUsersPostsReturnFullDocs) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      FOR p IN posts
+        FILTER p.userId == u._key
+        RETURN { u, p }
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 2);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("posts"));
 }
 
 }  // namespace arangodb::tests::aql
