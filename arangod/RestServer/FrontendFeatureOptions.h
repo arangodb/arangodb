@@ -23,22 +23,10 @@
 
 #pragma once
 
-#include "RestServer/FrontendFeatureOptions.h"
-#include "RestServer/arangod.h"
-
 namespace arangodb {
 
-class FrontendFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Frontend"; }
-
-  explicit FrontendFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
- private:
-  FrontendFeatureOptions _options;
+struct FrontendFeatureOptions {
+  bool versionCheck = true;
 };
 
 }  // namespace arangodb
