@@ -200,7 +200,7 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
-      auto activityScope = activity.activate();
+      activity.activate();
       this->operator()();
     }
 

@@ -116,7 +116,7 @@ auto serialize(IndexedForestWithRoots<ActivityInRegistrySnapshot> const& forest)
 }  // namespace
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
-  auto scope = _activity.activate();
+  _activity.activate();
   if (!ExecContext::current().isAdminUser()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,

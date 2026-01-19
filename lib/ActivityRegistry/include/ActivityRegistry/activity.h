@@ -186,23 +186,10 @@ struct Activity {
            std::source_location loc = std::source_location::current());
   ~Activity();
 
-  struct ActiveScope {
-    ActiveScope(Activity* activity);
-    ~ActiveScope();
-    ActiveScope(ActiveScope const&) = delete;
-    ActiveScope(ActiveScope&&) = delete;
-    auto operator=(ActiveScope const&) = delete;
-    auto operator=(ActiveScope&&) = delete;
-
-    Activity* _currentActivity;
-    Activity* _activityBefore;
-  };
-
-  auto activate() -> ActiveScope;
+  auto activate() -> void;
   auto id() -> ActivityId;
 
  private:
-  Activity* parent;
   NodeReference _node_in_registry;
 };
 
