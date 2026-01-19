@@ -28,18 +28,18 @@
 namespace arangodb::crash_handler {
 
 void DataSourceRegistry::addDataSource(
-    ICrashHandlerDataSource const* dataSource) {
+    CrashHandlerDataSource const* dataSource) {
   std::lock_guard guard(_dataSourceMtx);
   _dataSources.push_back(dataSource);
 }
 
-std::vector<ICrashHandlerDataSource const*> const&
+std::vector<CrashHandlerDataSource const*> const&
 DataSourceRegistry::getDataSources() const {
   return _dataSources;
 }
 
 void DataSourceRegistry::removeDataSource(
-    ICrashHandlerDataSource const* dataSource) {
+    CrashHandlerDataSource const* dataSource) {
   std::lock_guard guard(_dataSourceMtx);
   std::ranges::remove(_dataSources, dataSource);
 }

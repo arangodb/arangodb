@@ -106,7 +106,7 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
 }
 
 class ApiRecordingFeature : public ArangodFeature,
-                            public crash_handler::ICrashHandlerDataSource {
+                            public crash_handler::CrashHandlerDataSource {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;

@@ -38,7 +38,7 @@ VPackBuilder serialize(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
 
 class Feature final : public ArangodFeature,
-                      public crash_handler::ICrashHandlerDataSource {
+                      public crash_handler::CrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;

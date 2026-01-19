@@ -130,7 +130,7 @@ Feature::Feature(
     Server& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
     : ArangodFeature{server, *this},
-      crash_handler::ICrashHandlerDataSource(std::move(dataSourceRegistry)) {
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }

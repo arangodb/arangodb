@@ -28,19 +28,19 @@
 
 namespace arangodb::crash_handler {
 
-class ICrashHandlerDataSource;
+class CrashHandlerDataSource;
 
 class DataSourceRegistry {
  public:
-  void addDataSource(ICrashHandlerDataSource const* dataSource);
+  void addDataSource(CrashHandlerDataSource const* dataSource);
 
-  std::vector<ICrashHandlerDataSource const*> const& getDataSources() const;
+  std::vector<CrashHandlerDataSource const*> const& getDataSources() const;
 
-  void removeDataSource(ICrashHandlerDataSource const* dataSource);
+  void removeDataSource(CrashHandlerDataSource const* dataSource);
 
  private:
   std::mutex _dataSourceMtx;
-  std::vector<ICrashHandlerDataSource const*> _dataSources;
+  std::vector<CrashHandlerDataSource const*> _dataSources;
 };
 
 }  // namespace arangodb::crash_handler

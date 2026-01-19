@@ -51,7 +51,7 @@ ApiRecordingFeature::ApiRecordingFeature(
     Server& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
     : ArangodFeature{server, *this},
-      crash_handler::ICrashHandlerDataSource(std::move(dataSourceRegistry)),
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_api_recording_call_time{})),
       _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(

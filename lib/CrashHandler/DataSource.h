@@ -30,14 +30,12 @@
 
 namespace arangodb::crash_handler {
 
-class DataSourceRegistry;
-
-class ICrashHandlerDataSource {
+class CrashHandlerDataSource {
  public:
-  ICrashHandlerDataSource(
+  CrashHandlerDataSource(
       std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
 
-  virtual ~ICrashHandlerDataSource();
+  virtual ~CrashHandlerDataSource();
 
   virtual velocypack::SharedSlice getCrashData() const = 0;
 

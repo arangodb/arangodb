@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "CrashHandler/CrashRegistry.h"
+#include "CrashHandler/ICrashRegistry.h"
 #include "CrashHandler/Dumper.h"
 #include "RestServer/arangod.h"
 

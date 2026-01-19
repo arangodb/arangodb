@@ -23,15 +23,13 @@
 
 #include "CrashHandler/DataSource.h"
 
-#include <velocypack/SharedSlice.h>
-
 namespace arangodb::crash_handler {
 
-ICrashHandlerDataSource::ICrashHandlerDataSource(
+CrashHandlerDataSource::CrashHandlerDataSource(
     std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(dataSourceRegistry) {}
 
-ICrashHandlerDataSource::~ICrashHandlerDataSource() {
+CrashHandlerDataSource::~CrashHandlerDataSource() {
   _dataSourceRegistry->removeDataSource(this);
 }
 
