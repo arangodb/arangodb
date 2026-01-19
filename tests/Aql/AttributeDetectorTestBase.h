@@ -25,6 +25,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/Executor/AqlExecutorTestCase.h"
 #include "Aql/Query.h"
 #include "Async/async.h"
 #include "Basics/Result.h"
