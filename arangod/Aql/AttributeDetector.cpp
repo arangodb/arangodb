@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"

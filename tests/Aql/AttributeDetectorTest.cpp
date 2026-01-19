@@ -124,6 +124,8 @@ class AttributeDetectorTest : public ::testing::Test {
 
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
+    // std::vector<std::string> fields{"name", "price"};
+    // ensurePersistentIndex("products", fields);
 
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
