@@ -23,30 +23,12 @@
 
 #pragma once
 
-#include "GeneralServer/ServerSecurityFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include <string>
 
 namespace arangodb {
 
-class ServerSecurityFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
-
-  explicit ServerSecurityFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  // disable Foxx API. must only be called during server startup
-  void disableFoxxApi() noexcept;
-
-  bool isRestApiHardened() const noexcept;
-  bool isFoxxApiDisabled() const noexcept;
-  bool isFoxxStoreDisabled() const noexcept;
-  bool canAccessHardenedApi() const noexcept;
-  bool foxxAllowInstallFromRemote() const noexcept;
-
- private:
-  ServerSecurityFeatureOptions _options;
+struct ClusterUpgradeFeatureOptions {
+  std::string upgradeMode = "auto";
 };
 
 }  // namespace arangodb
