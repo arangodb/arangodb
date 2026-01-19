@@ -61,7 +61,7 @@ class BatchedFifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~BatchedFifoQueue() { this->clear(); }
 
-  bool isBatched() { return true; }
+  bool usesCursor() { return true; }
 
   void clear() {
     if (!_queue.empty()) {

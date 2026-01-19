@@ -47,7 +47,7 @@ class WeightedQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~WeightedQueue() { this->clear(); }
 
-  bool isBatched() { return true; }
+  bool usesCursor() { return true; }
 
   void clear() {
     if (!_queue.empty()) {
