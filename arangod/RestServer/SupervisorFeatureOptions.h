@@ -23,33 +23,10 @@
 
 #pragma once
 
-#include <memory>
-
-#include "Basics/threads.h"
-#include "RestServer/SupervisorFeatureOptions.h"
-#include "RestServer/arangod.h"
-
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-namespace options {
-class ProgramOptions;
-}
 
-class SupervisorFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Supervisor"; }
-
-  explicit SupervisorFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void daemonize() override final;
-
- private:
-  SupervisorFeatureOptions _options;
-  TRI_pid_t _clientPid;
+struct SupervisorFeatureOptions {
+  bool supervisor = false;
 };
 
 }  // namespace arangodb
