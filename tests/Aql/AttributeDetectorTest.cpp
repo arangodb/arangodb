@@ -230,16 +230,22 @@ class AttributeDetectorTest : public ::testing::Test {
   }
 
   void ensurePersistentIndex(std::string const& collName,
-                           std::string const& attr) {
+                             std::vector<std::string> const& fields) {
     auto coll = vocbase->lookupCollection(collName);
     ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
 
-    auto json = VPackParser::fromJson(
-        std::string("{\"type\":\"persistent\",\"fields\":[\"") + attr + "\"]}");
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("type", VPackValue("persistent"));
+    builder.add("fields", VPackValue(VPackValueType::Array));
+    for (auto const& field : fields) {
+      builder.add(VPackValue(field));
+    }
+    builder.close();
+    builder.close();
 
     bool created = false;
-    auto idx = coll->createIndex(json->slice(), created).waitAndGet();
-
+    auto idx = coll->createIndex(builder.slice(), created).waitAndGet();
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
