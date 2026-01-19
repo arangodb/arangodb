@@ -50,6 +50,22 @@ TEST_F(AttributeDetectorTest, MultipleAttributes) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
+// Using _id/_key explicitly is still attribute access.
+TEST_F(AttributeDetectorTest, ReturnIdAndKey) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN {id: u._id, key: u._key}
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("_id"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("_key"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
 TEST_F(AttributeDetectorTest, FullDocumentAccess) {
   auto query = executeQuery("FOR doc IN users RETURN doc");
   auto const& accesses = query->abacAccesses();
@@ -70,7 +86,25 @@ TEST_F(AttributeDetectorTest, FilterOnAttributeReturnFullDocument) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, MultipleCollections) {
+TEST_F(AttributeDetectorTest, FilterWithComputation) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      FILTER u.name == "Alice" OR u.age > 30
+      RETURN u.address
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 3);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("address"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MultipleCollections1) {
   auto query = executeQuery(
       "FOR u IN users FOR p IN posts FILTER u._key == p.userId RETURN {user: "
       "u.name, post: p.title}");
@@ -99,6 +133,29 @@ TEST_F(AttributeDetectorTest, MultipleCollections) {
 
   EXPECT_TRUE(foundUsers);
   EXPECT_TRUE(foundPosts);
+}
+
+TEST_F(AttributeDetectorTest, MultipleCollections2) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      FOR p IN posts
+        FILTER p.userId == u._key
+        RETURN { u, p }
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 2);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("posts"));
 }
 
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes1) {
@@ -141,7 +198,7 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes3) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
+TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess1) {
   auto query = executeQuery(
       "FOR u IN users LET ageDouble = u.age * 2 RETURN {name: u.name, "
       "ageDouble}");
@@ -153,15 +210,20 @@ TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess) {
   EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
 }
 
-TEST_F(AttributeDetectorTest, NestedAttributeAccess) {
-  auto query = executeQuery("FOR u IN users RETURN u.name");
+TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess2) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+    LET score = u.age * 2
+    RETURN {name: u.name, score: score}
+  )aql");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
 }
 
 TEST_F(AttributeDetectorTest, SortWithAttributes) {
@@ -180,43 +242,213 @@ TEST_F(AttributeDetectorTest, SortWithAttributes) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, ComplexCalculation) {
+TEST_F(AttributeDetectorTest, LimitDoesNotChangeProjection) {
   auto query = executeQuery(R"aql(
     FOR u IN users
-    LET score = u.age * 2
-    RETURN {name: u.name, score: score}
+      LIMIT 2
+      RETURN u.name
   )aql");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, NestedForLoopsReturnFullDocs) {
+TEST_F(AttributeDetectorTest, CollectByAttribute) {
   auto query = executeQuery(R"aql(
     FOR u IN users
-      FOR p IN posts
-        FILTER p.userId == u._key
-        RETURN { u, p }
+      COLLECT city = u.address
+      RETURN city
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("address"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, CollectAggregateUsesAttribute) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      COLLECT AGGREGATE maxAge = MAX(u.age)
+      RETURN maxAge
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, ReturnDistinctAttribute) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN DISTINCT u.address
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("address"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameterRequiresAll) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN u[@attr]
   )aql");
 
   auto const& accesses = query->abacAccesses();
 
-  ASSERT_EQ(accesses.size(), 2);
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
 
-  std::set<std::string> seen;
-  for (auto const& a : accesses) {
-    seen.insert(a.collectionName);
-    EXPECT_TRUE(a.requiresAllAttributesRead);
-    EXPECT_FALSE(a.requiresAllAttributesWrite);
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessRequiresAll) {
+  auto query = executeQuery(R"aql(
+    LET a = "name"
+    FOR u IN users
+      RETURN u[a]
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, HasAttribute) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      FILTER HAS(u, "profile")
+      RETURN u.name
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+
+  EXPECT_TRUE(accesses[0].readAttributes.contains("profile"));
+
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// KEEP() is supposed to read only the specified attribute, or requiresAll?
+TEST_F(AttributeDetectorTest, KeepRequiresAll) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN KEEP(u, "name")
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// UNSET() is supposed to read only the specified attribute, or requiresAll?
+TEST_F(AttributeDetectorTest, UnsetRequiresAll) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN UNSET(u, "address")
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// ATTRIBUTES() inspects the whole document.
+TEST_F(AttributeDetectorTest, AttributesFunctionRequiresAll) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN ATTRIBUTES(u)
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// VALUES() inspects the whole document.
+TEST_F(AttributeDetectorTest, ValuesFunctionRequiresAll) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN VALUES(u)
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MissingCollectionThrowsWithCorrectErrorCode) {
+  try {
+    auto q = executeQuery("FOR u IN missingCollection RETURN u.name");
+    (void)q;
+    FAIL() << "Expected exception";
+  } catch (basics::Exception const& ex) {
+    EXPECT_EQ(ex.code(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+}
 
-  EXPECT_TRUE(seen.contains("users"));
-  EXPECT_TRUE(seen.contains("posts"));
+TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded1) {
+  auto query = executeQuery("FOR u IN users RETURN u.attrNotExist");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("attrNotExist"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded2) {
+  auto query =
+      executeQuery("FOR u IN users FILTER u.attrNotExist == 1 RETURN u.name");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("attrNotExist"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded3) {
+  auto query =
+      executeQuery("FOR u IN users FILTER u.attrNotExist == 1 RETURN u");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 }  // namespace arangodb::tests::aql

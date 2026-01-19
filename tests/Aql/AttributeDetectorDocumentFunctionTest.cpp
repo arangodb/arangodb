@@ -86,4 +86,18 @@ TEST_F(AttributeDetectorTest, NOOPTMergeMultipleDocumentCalls) {
   }
 }
 
+TEST_F(AttributeDetectorTest, DocumentLookupRequiresAllOnTarget) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      LET d = DOCUMENT("users", u._key)
+      RETURN d
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
 }  // namespace arangodb::tests::aql
