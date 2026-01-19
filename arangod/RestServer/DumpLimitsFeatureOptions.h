@@ -23,28 +23,25 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/DumpLimitsFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include <cstdint>
 
 namespace arangodb {
 
-// Deprecated: Use DumpLimitsFeatureOptions instead
-using DumpLimits = DumpLimitsFeatureOptions;
-
-class DumpLimitsFeature : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "DumpLimits"; }
-
-  explicit DumpLimitsFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  DumpLimitsFeatureOptions const& limits() const noexcept { return _options; }
-
- private:
-  DumpLimitsFeatureOptions _options;
+struct DumpLimitsFeatureOptions {
+  // per-dump value
+  std::uint64_t docsPerBatchLowerBound = 10;
+  // per-dump value
+  std::uint64_t docsPerBatchUpperBound = 1 * 1000 * 1000;
+  // per-dump value
+  std::uint64_t batchSizeLowerBound = 4 * 1024;
+  // per-dump value
+  std::uint64_t batchSizeUpperBound = 1024 * 1024 * 1024;
+  // per-dump value
+  std::uint64_t parallelismLowerBound = 1;
+  // per-dump value
+  std::uint64_t parallelismUpperBound = 8;
+  // server-global. value will be overridden in the .cpp file.
+  std::uint64_t memoryUsage = 512 * 1024 * 1024;
 };
 
 }  // namespace arangodb
