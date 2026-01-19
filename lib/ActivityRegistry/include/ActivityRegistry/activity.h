@@ -189,6 +189,11 @@ struct Activity {
   struct ActiveScope {
     ActiveScope(Activity* activity);
     ~ActiveScope();
+    ActiveScope(ActiveScope const&) = delete;
+    ActiveScope(ActiveScope&&) = delete;
+    auto operator=(ActiveScope const&) = delete;
+    auto operator=(ActiveScope&&) = delete;
+
     Activity* _currentActivity;
     Activity* _activityBefore;
   };
