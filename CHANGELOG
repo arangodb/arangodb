@@ -1,6 +1,8 @@
 4.0
 ---
 
+* Make `vector-index` flag obsolete.
+
 * Remove endpoints to load/unload collections.
 
 * Remove V8 server code.
