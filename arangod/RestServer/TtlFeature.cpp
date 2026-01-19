@@ -653,6 +653,11 @@ TtlFeature::TtlFeature(Server& server)
     : ArangodFeature{server, *this}, _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
+
+  // Initialize runtime properties from options
+  _properties.frequency = _options.frequency;
+  _properties.maxTotalRemoves = _options.maxTotalRemoves;
+  _properties.maxCollectionRemoves = _options.maxCollectionRemoves;
 }
 
 TtlFeature::~TtlFeature() { shutdownThread(); }
@@ -665,7 +670,7 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--ttl.frequency",
           "The frequency (in milliseconds) for the TTL background thread "
           "invocation (0 = turn the TTL background thread off entirely).",
-          new UInt64Parameter(&_properties.frequency))
+          new UInt64Parameter(&_options.frequency))
       .setLongDescription(R"(The lower this value, the more frequently the TTL
 background thread kicks in and scans all available TTL indexes for expired
 documents, and the earlier the expired documents are actually removed.)");
@@ -674,7 +679,7 @@ documents, and the earlier the expired documents are actually removed.)");
       ->addOption("--ttl.max-total-removes",
                   "The maximum number of documents to remove per invocation of "
                   "the TTL thread.",
-                  new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
+                  new UInt64Parameter(&_options.maxTotalRemoves, /*base*/ 1,
                                       /*minValue*/ 1))
       .setLongDescription(R"(In order to avoid "random" load spikes by the
 background thread suddenly kicking in and removing a lot of documents at once,
@@ -689,7 +694,7 @@ removal, they are removed in subsequent runs of the background thread.)");
           "--ttl.max-collection-removes",
           "The maximum number of documents to remove per collection in each "
           "invocation of the TTL thread.",
-          new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
+          new UInt64Parameter(&_options.maxCollectionRemoves, /*base*/ 1,
                               /*minValue*/ 1))
       .setLongDescription(R"(You can configure this value separately from the
 total removal amount so that the per-collection time window for locking and
@@ -702,20 +707,24 @@ potential write-write conflicts can be reduced.)");
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_properties.maxCollectionRemoves == 0) {
+  if (_options.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
     FATAL_ERROR_EXIT();
   }
 
-  std::lock_guard locker{_propertiesMutex};
-
-  if (_properties.frequency > 0 &&
-      _properties.frequency < TtlProperties::minFrequency) {
+  if (_options.frequency > 0 &&
+      _options.frequency < TtlFeatureOptions::minFrequency) {
     LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
         << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();
   }
+
+  // Update runtime properties from validated options
+  std::lock_guard locker{_propertiesMutex};
+  _properties.frequency = _options.frequency;
+  _properties.maxTotalRemoves = _options.maxTotalRemoves;
+  _properties.maxCollectionRemoves = _options.maxCollectionRemoves;
 }
 
 void TtlFeature::start() {

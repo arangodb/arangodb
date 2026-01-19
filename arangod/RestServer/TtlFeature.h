@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "RestServer/TtlFeatureOptions.h"
 #include "RestServer/arangod.h"
 #include <mutex>
 
@@ -56,10 +57,9 @@ struct TtlStatistics {
 };
 
 struct TtlProperties {
-  static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
-  uint64_t frequency = 30 * 1000;                     // milliseconds
-  uint64_t maxTotalRemoves = 1000000;
-  uint64_t maxCollectionRemoves = 100000;
+  uint64_t frequency;
+  uint64_t maxTotalRemoves;
+  uint64_t maxCollectionRemoves;
 
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
@@ -105,6 +105,8 @@ class TtlFeature final : public ArangodFeature {
   void shutdownThread() noexcept;
 
  private:
+  TtlFeatureOptions _options;
+
   /// @brief protects _properties and _active
   mutable std::mutex _propertiesMutex;
   TtlProperties _properties;
