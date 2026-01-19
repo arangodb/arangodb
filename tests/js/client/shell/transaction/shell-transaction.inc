@@ -5640,11 +5640,11 @@ function transactionDatabaseSuite() {
         const trx2 = new ArangoTransaction(db, trx1);
         trx1._database = db;
         const status2 = trx2.status();
-        assertFalse(true);
+        assertFalse(true, status2);
       } catch (err) {
-        assertTrue(err.error);
-        assertEqual(err.code, 404);
-        assertEqual(err.errorNum, 1655);
+        assertTrue(err.error, err);
+        assertEqual(err.code, 404, err);
+        assertEqual(err.errorNum, 1655, err);
       } finally {
         db._useDatabase(dbn1);
         trx1.abort();

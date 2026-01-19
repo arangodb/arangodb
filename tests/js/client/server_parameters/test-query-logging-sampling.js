@@ -84,7 +84,6 @@ function QueryLoggerSuite() {
   };
   
   const getQueries = () => {
-    print({query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}})
     let result = arango.POST(
       "/_api/cursor",
       {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
