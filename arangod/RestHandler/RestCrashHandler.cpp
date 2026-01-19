@@ -56,15 +56,15 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
 
   if (suffixes.empty()) {
     // /_admin/crashes - list all crashes
-    handleListCrashes();
+    handleListCrashes(crashHandlerFeature);
   } else if (suffixes.size() == 1) {
     // /_admin/crashes/{id}
     auto const& crashId = suffixes[0];
 
     if (_request->requestType() == rest::RequestType::GET) {
-      handleGetCrash(crashId);
+      handleGetCrash(crashHandlerFeature, crashId);
     } else if (_request->requestType() == rest::RequestType::DELETE_REQ) {
-      handleDeleteCrash(crashId);
+      handleDeleteCrash(crashHandlerFeature, crashId);
     } else {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -76,14 +76,14 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   co_return;
 }
 
-void RestCrashHandler::handleListCrashes() {
+void RestCrashHandler::handleListCrashes(
+    CrashHandlerFeature const& crashHandlerFeature) {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
 
-  auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
   auto crashes = crashHandlerFeature.listCrashes();
 
   VPackBuilder builder;
@@ -92,8 +92,9 @@ void RestCrashHandler::handleListCrashes() {
   generateOk(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestCrashHandler::handleGetCrash(std::string const& crashId) {
-  auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
+void RestCrashHandler::handleGetCrash(
+    CrashHandlerFeature const& crashHandlerFeature,
+    std::string const& crashId) {
   auto contents = crashHandlerFeature.getCrashContents(crashId);
 
   if (contents.empty()) {
@@ -115,8 +116,8 @@ void RestCrashHandler::handleGetCrash(std::string const& crashId) {
   generateOk(rest::ResponseCode::OK, responseBuilder.slice());
 }
 
-void RestCrashHandler::handleDeleteCrash(std::string const& crashId) {
-  auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
+void RestCrashHandler::handleDeleteCrash(
+    CrashHandlerFeature& crashHandlerFeature, std::string const& crashId) {
   bool deleted = crashHandlerFeature.deleteCrash(crashId);
 
   if (!deleted) {

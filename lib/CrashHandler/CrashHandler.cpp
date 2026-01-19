@@ -485,7 +485,7 @@ void logAcquiredBacktrace(std::string_view buffer) try {
 } catch (...) {
 }
 
-void logBacktrace() try {
+void doLogBacktrace() try {
   // Allocate a temporary buffer for this backtrace
   constexpr size_t tempBufferSize =
       1024 * 1024;  // 1MB should be enough for most backtraces
@@ -710,8 +710,8 @@ void CrashHandler::waitForCrashHandlerCompletion() {
   }
 }
 
-void CrashHandlerlogBacktrace() {
-  logBacktrace();
+void CrashHandler::logBacktrace() {
+  doLogBacktrace();
   Logger::flush();
 }
 

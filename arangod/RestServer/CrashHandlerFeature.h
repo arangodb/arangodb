@@ -53,11 +53,11 @@ class CrashHandlerFeature final : public ArangodFeature,
   void start() override final;
 
   /// @brief lists all crash directories (returns UUIDs)
-  std::vector<std::string> listCrashes() override;
+  std::vector<std::string> listCrashes() const override;
 
   /// @brief gets the contents of a specific crash directory
   std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) override;
+      std::string_view crashId) const override;
 
   /// @brief deletes a specific crash directory
   bool deleteCrash(std::string_view crashId) override;

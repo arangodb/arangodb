@@ -41,9 +41,11 @@ class RestCrashHandler : public RestBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
  private:
-  void handleListCrashes();
-  void handleGetCrash(std::string const& crashId);
-  void handleDeleteCrash(std::string const& crashId);
+  void handleListCrashes(CrashHandlerFeature const& crashHandlerFeature);
+  void handleGetCrash(CrashHandlerFeature const& crashHandlerFeature,
+                      std::string const& crashId);
+  void handleDeleteCrash(CrashHandlerFeature& crashHandlerFeature,
+                         std::string const& crashId);
 };
 
 }  // namespace arangodb::crash_handler

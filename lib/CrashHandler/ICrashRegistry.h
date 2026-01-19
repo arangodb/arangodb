@@ -35,12 +35,12 @@ class ICrashRegistry {
   virtual ~ICrashRegistry() = default;
 
   /// @brief lists all crash directories (returns UUIDs)
-  virtual std::vector<std::string> listCrashes() = 0;
+  virtual std::vector<std::string> listCrashes() const = 0;
 
   /// @brief gets the contents of a specific crash directory
   /// Returns a map of filename -> file contents
   virtual std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) = 0;
+      std::string_view crashId) const = 0;
 
   /// @brief deletes a specific crash directory
   /// Returns true if successful, false if not found
