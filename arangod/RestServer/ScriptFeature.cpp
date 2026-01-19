@@ -57,7 +57,7 @@ ScriptFeature::ScriptFeature(Server& server, int* result)
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.script-parameter", "Script parameter.",
-                     new VectorParameter<StringParameter>(&_scriptParameters));
+                     new VectorParameter<StringParameter>(&_options.scriptParameters));
 }
 
 void ScriptFeature::start() {
@@ -110,10 +110,10 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
               TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1]))
         .FromMaybe(false);
 
-    for (size_t i = 0; i < _scriptParameters.size(); ++i) {
+    for (size_t i = 0; i < _options.scriptParameters.size(); ++i) {
       params
           ->Set(context, (uint32_t)(i + 1),
-                TRI_V8_STD_STRING(isolate, _scriptParameters[i]))
+                TRI_V8_STD_STRING(isolate, _options.scriptParameters[i]))
           .FromMaybe(false);
     }
 

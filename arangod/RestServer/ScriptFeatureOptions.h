@@ -23,31 +23,13 @@
 
 #pragma once
 
-#ifndef USE_V8
-#error this file is not supposed to be used in builds with -DUSE_V8=Off
-#endif
-
-#include "RestServer/arangod.h"
-#include "RestServer/ScriptFeatureOptions.h"
-#include "GeneralServer/OperationMode.h"
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
-class ScriptFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Script"; }
-
-  explicit ScriptFeature(ArangodServer& server, int* result);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-
- private:
-  ScriptFeatureOptions _options;
-
-  int runScript(std::vector<std::string> const& scripts);
-
-  int* _result;
+struct ScriptFeatureOptions {
+  std::vector<std::string> scriptParameters;
 };
 
 }  // namespace arangodb
