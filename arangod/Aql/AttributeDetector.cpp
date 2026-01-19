@@ -35,7 +35,9 @@
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
+#include "Aql/ExecutionNode/MultipleRemoteModificationNode.h"
 #include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SingleRemoteOperationNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Projections.h"
@@ -148,7 +150,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
       access->outVariable = idxNode->outVariable();
 
       Projections const& projs = idxNode->projections();
-      if (!projs.empty()) {
+      bool projsCoveredByIndex = projs.usesCoveringIndex();
+      if (!projs.empty() && !projsCoveredByIndex) {
         for (auto const& proj : projs.projections()) {
           for (auto const& attrName : proj.path.get()) {
             access->readAttributes.insert(std::string(attrName));
@@ -157,7 +160,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
       }
 
       Projections const& filterProjections = idxNode->filterProjections();
-      if (!filterProjections.empty()) {
+      bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
+      if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
         for (auto const& proj : filterProjections.projections()) {
           for (auto const& attrName : proj.path.get()) {
             access->readAttributes.insert(std::string(attrName));
@@ -205,26 +209,21 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto* travNode = ExecutionNode::castTo<TraversalNode*>(node);
 
       Projections const& edgeProjs = travNode->options()->getEdgeProjections();
-      if (!edgeProjs.empty()) {
-        for (auto* edgeColl : travNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+      for (auto* edgeColl : travNode->edgeColls()) {
+        auto& access = _collectionAccessMap[edgeColl->name()];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
+        }
+        access->readAttributes.insert("_from");
+        access->readAttributes.insert("_to");
+        if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             for (auto const& attrName : proj.path.get()) {
               access->readAttributes.insert(std::string(attrName));
             }
           }
-        }
-      } else {
-        for (auto* edgeColl : travNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+        } else {
           access->requiresAllAttributesRead = true;
         }
       }
@@ -263,26 +262,21 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto* pathNode = ExecutionNode::castTo<ShortestPathNode*>(node);
 
       Projections const& edgeProjs = pathNode->options()->getEdgeProjections();
-      if (!edgeProjs.empty()) {
-        for (auto* edgeColl : pathNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+      for (auto* edgeColl : pathNode->edgeColls()) {
+        auto& access = _collectionAccessMap[edgeColl->name()];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
+        }
+        access->readAttributes.insert("_from");
+        access->readAttributes.insert("_to");
+        if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             for (auto const& attrName : proj.path.get()) {
               access->readAttributes.insert(std::string(attrName));
             }
           }
-        }
-      } else {
-        for (auto* edgeColl : pathNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+        } else {
           access->requiresAllAttributesRead = true;
         }
       }
@@ -321,26 +315,21 @@ bool AttributeDetector::before(ExecutionNode* node) {
       auto* pathNode = ExecutionNode::castTo<EnumeratePathsNode*>(node);
 
       Projections const& edgeProjs = pathNode->options()->getEdgeProjections();
-      if (!edgeProjs.empty()) {
-        for (auto* edgeColl : pathNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+      for (auto* edgeColl : pathNode->edgeColls()) {
+        auto& access = _collectionAccessMap[edgeColl->name()];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = edgeColl->name();
+        }
+        access->readAttributes.insert("_from");
+        access->readAttributes.insert("_to");
+        if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             for (auto const& attrName : proj.path.get()) {
               access->readAttributes.insert(std::string(attrName));
             }
           }
-        }
-      } else {
-        for (auto* edgeColl : pathNode->edgeColls()) {
-          auto& access = _collectionAccessMap[edgeColl->name()];
-          if (!access) {
-            access = std::make_unique<CollectionAccess>();
-            access->collectionName = edgeColl->name();
-          }
+        } else {
           access->requiresAllAttributesRead = true;
         }
       }
@@ -474,12 +463,107 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::JOIN:
-      break;
+    case ExecutionNode::JOIN: {
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(node);
+      for (auto const& idxInfo : joinNode->getIndexInfos()) {
+        std::string collName = idxInfo.collection->name();
 
-    case ExecutionNode::REMOTE_SINGLE:
-    case ExecutionNode::REMOTE_MULTIPLE:
+        auto& access = _collectionAccessMap[collName];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = collName;
+        }
+
+        access->outVariable = idxInfo.outVariable;
+
+        Projections const& projs = idxInfo.projections;
+        bool projsCoveredByIndex = projs.usesCoveringIndex();
+        if (!projs.empty() && !projsCoveredByIndex) {
+          for (auto const& proj : projs.projections()) {
+            for (auto const& attrName : proj.path.get()) {
+              access->readAttributes.insert(std::string(attrName));
+            }
+          }
+        }
+
+        Projections const& filterProjections = idxInfo.filterProjections;
+        bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
+        if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
+          for (auto const& proj : filterProjections.projections()) {
+            for (auto const& attrName : proj.path.get()) {
+              access->readAttributes.insert(std::string(attrName));
+            }
+          }
+        }
+
+        if (projs.empty() && joinNode->isVarUsedLater(idxInfo.outVariable)) {
+          access->requiresAllAttributesRead = true;
+        }
+
+        Condition* cond = idxInfo.condition.get();
+        if (cond && !cond->isEmpty()) {
+          containers::FlatHashSet<aql::AttributeNamePath> attributes;
+          if (Ast::getReferencedAttributesRecursive(
+                  cond->root(), access->outVariable, "", attributes,
+                  _plan->getAst()->query().resourceMonitor())) {
+            for (auto const& attr : attributes) {
+              for (auto const& attrName : attr.get()) {
+                access->readAttributes.insert(std::string(attrName));
+              }
+            }
+          } else {
+            access->requiresAllAttributesRead = true;
+          }
+        }
+      }
       break;
+    }
+
+    case ExecutionNode::REMOTE_SINGLE: {
+      auto* remoteNode = ExecutionNode::castTo<SingleRemoteOperationNode*>(node);
+      std::string collName = remoteNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+
+      auto varsSet = remoteNode->getVariablesSetHere();
+      bool isWriteOperation = varsSet.size() > 1;
+      if (!isWriteOperation) {
+        for (auto const* var : varsSet) {
+          if (var != nullptr) {
+            std::string varName = var->name;
+            if (varName == "$OLD" || varName == "$NEW") {
+              isWriteOperation = true;
+              break;
+            }
+          }
+        }
+      }
+
+      access->requiresAllAttributesRead = true;
+      if (isWriteOperation) {
+        access->requiresAllAttributesWrite = true;
+      }
+      break;
+    }
+
+    case ExecutionNode::REMOTE_MULTIPLE: {
+      auto* remoteNode =
+          ExecutionNode::castTo<MultipleRemoteModificationNode*>(node);
+      std::string collName = remoteNode->collection()->name();
+
+      auto& access = _collectionAccessMap[collName];
+      if (!access) {
+        access = std::make_unique<CollectionAccess>();
+        access->collectionName = collName;
+      }
+      access->requiresAllAttributesRead = true;
+      access->requiresAllAttributesWrite = true;
+      break;
+    }
 
     default:
       break;

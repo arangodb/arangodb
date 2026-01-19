@@ -135,6 +135,20 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e6", _from:"users/u1", _to:"products/p4", qty:1, orderedAt:"2026-01-06"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e7", _from:"products/p4", _to:"products/p3", qty:1, orderedAt:"2026-01-07"} INTO ordered)aql");
 
+    run(R"aql(
+      INSERT {
+        _key: "testGraph",
+        name: "testGraph",
+        edgeDefinitions: [
+          {
+            collection: "ordered",
+            from: ["users", "products"],
+            to: ["users", "products"]
+          }
+        ]
+      } INTO _graphs
+    )aql");
+
     auto viewSimple = createArangoSearchView("usersViewSimple");
     auto viewComplicated = createArangoSearchView("usersViewComplicated");
     linkUsersViewSimple(*viewSimple);
@@ -711,25 +725,30 @@ TEST_F(AttributeDetectorTest, MultipleModifications) {
 
 TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
   auto query = executeQuery(R"aql(
-    FOR v IN 1..1 OUTBOUND "users/u1" ordered
+    FOR v IN 1..1 OUTBOUND "users/u1" GRAPH testGraph
       RETURN v
   )aql");
-  // Problem: edge coll doesn't know _from and _to
-  // Use graphName option for now (Markus's working on this)
-  // With users, products
-  // ordered (edge coll) -> _from and _to
 
   auto const& accesses = query->abacAccesses();
 
-  // ASSERT_EQ(accesses.size(), 3);
+  ASSERT_EQ(accesses.size(), 3);
+
+  std::set<std::string> seen;
   for (auto& access : accesses) {
-    LOG_DEVEL << "collName: " << access.collectionName;
-    for (auto& attr : access.readAttributes) {
-      LOG_DEVEL << "attrName: " << attr;
+    seen.insert(access.collectionName);
+    if (access.collectionName == "ordered") {
+      EXPECT_TRUE(access.readAttributes.contains("_from"));
+      EXPECT_TRUE(access.readAttributes.contains("_to"));
+      EXPECT_TRUE(access.requiresAllAttributesRead);
+    } else {
+      EXPECT_TRUE(access.requiresAllAttributesRead);
     }
-    EXPECT_TRUE(access.requiresAllAttributesRead);
     EXPECT_FALSE(access.requiresAllAttributesWrite);
   }
+
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("ordered"));
 }
 
 TEST_F(AttributeDetectorTest, SimpleArangoSearchReturnDoc) {
@@ -790,7 +809,7 @@ TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs) {
   EXPECT_TRUE(seen.contains("ordered"));
 }
 
-TEST_F(AttributeDetectorTest, JoinUsersPostsReturnFullDocs) {
+TEST_F(AttributeDetectorTest, NestedForLoopsReturnFullDocs) {
   auto query = executeQuery(R"aql(
     FOR u IN users
       FOR p IN posts
