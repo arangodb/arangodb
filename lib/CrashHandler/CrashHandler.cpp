@@ -69,6 +69,7 @@
 #include <sys/auxv.h>
 #include <elf.h>
 
+namespace arangodb::crash_handler {
 namespace {
 
 // The CrashHandler is a singleton in the process. We collect all its state
@@ -112,8 +113,7 @@ std::atomic<char const*> stateString = nullptr;
 
 /// @brief atomic variable for coordinating between signal handler and crash
 /// handler thread
-std::atomic<arangodb::crash_handler::CrashHandlerState> crashHandlerState(
-    arangodb::crash_handler::CrashHandlerState::IDLE);
+std::atomic<CrashHandlerState> crashHandlerState(CrashHandlerState::IDLE);
 
 /// @brief dedicated crash handler thread
 std::unique_ptr<std::jthread> crashHandlerThread = nullptr;
@@ -145,7 +145,7 @@ void storeCrashData(std::string_view context, int signal, uint64_t threadId,
                     uint64_t threadNumber, siginfo_t* info, void* ucontext) {
   // We intentionally do not protect this by a mutex. After all, acquiring
   // a mutex in a signal handler is not allowed. Rather, this is protected
-  // by the exchange method used on ::crashHandlerInvoked, which can only
+  // by the exchange method used on crashHandlerInvoked, which can only
   // be successful for one crashing thread. And then, there is actual
   // synchronization between the signal handler and the dedicated
   // CrashHandler thread through atomics, so this is in fact safe.
@@ -159,7 +159,7 @@ void storeCrashData(std::string_view context, int signal, uint64_t threadId,
 
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
-  if (::killHard.load(std::memory_order_relaxed)) {
+  if (killHard.load(std::memory_order_relaxed)) {
     kill(getpid(), SIGKILL);  // to kill the complete process tree.
     std::this_thread::sleep_for(std::chrono::seconds(5));
   } else {
@@ -234,7 +234,7 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     buffer.append(")");
   }
 
-  if (char const* ss = ::stateString.load(); ss != nullptr) {
+  if (char const* ss = stateString.load(); ss != nullptr) {
     // append application server state
     buffer.append(" in state \"").append(ss).append("\"");
   }
@@ -535,22 +535,20 @@ void actuallyDumpCrashInfo() {
     logProcessInfo();
 
     // Log the backtrace that was acquired by the signal handler
-    size_t bytesUsed = ::backtraceBufferUsed.load(std::memory_order_acquire);
-    if (::backtraceBuffer != nullptr && bytesUsed > 0) {
-      logAcquiredBacktrace(
-          std::string_view(::backtraceBuffer.get(), bytesUsed));
+    size_t bytesUsed = backtraceBufferUsed.load(std::memory_order_acquire);
+    if (backtraceBuffer != nullptr && bytesUsed > 0) {
+      logAcquiredBacktrace(std::string_view(backtraceBuffer.get(), bytesUsed));
     }
 
     // Flush logs
     arangodb::Logger::flush();
 
-    auto const* crashHandler =
-        arangodb::crash_handler::CrashHandler::getCrashHandler();
+    auto const* crashHandler = CrashHandler::getCrashHandler();
     if (crashHandler == nullptr) {
       return;
     }
     auto const dumper = crashHandler->getDumper();
-    dumper->dumpCrashData(std::string_view(::backtraceBuffer.get(), bytesUsed));
+    dumper->dumpCrashData(std::string_view(backtraceBuffer.get(), bytesUsed));
   } catch (...) {
     // Ignore exceptions in crash handling
   }
@@ -561,31 +559,28 @@ void actuallyDumpCrashInfo() {
 void crashHandlerThreadFunction() {
   while (true) {
     // Wait for the state to change from IDLE using C++20 atomic wait
-    arangodb::crash_handler::CrashHandlerState expectedState =
-        arangodb::crash_handler::CrashHandlerState::IDLE;
+    CrashHandlerState expectedState = CrashHandlerState::IDLE;
     crashHandlerState.wait(expectedState, std::memory_order_acquire);
 
-    arangodb::crash_handler::CrashHandlerState state =
-        crashHandlerState.load(std::memory_order_acquire);
+    CrashHandlerState state = crashHandlerState.load(std::memory_order_acquire);
 
     switch (state) {
-      case arangodb::crash_handler::CrashHandlerState::IDLE:
+      case CrashHandlerState::IDLE:
         // Spurious wakeup or race condition, continue waiting
         break;
 
-      case arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED: {
+      case CrashHandlerState::CRASH_DETECTED: {
         actuallyDumpCrashInfo();
 
         // Signal that we're done with crash handling and notify waiters
-        crashHandlerState.store(
-            arangodb::crash_handler::CrashHandlerState::HANDLING_COMPLETE,
-            std::memory_order_release);
+        crashHandlerState.store(CrashHandlerState::HANDLING_COMPLETE,
+                                std::memory_order_release);
         crashHandlerState
             .notify_all();  // tell the crashed thread to continue crashing
         return;
       }
 
-      case arangodb::crash_handler::CrashHandlerState::SHUTDOWN:
+      case CrashHandlerState::SHUTDOWN:
         // shutdown requested
         return;
 
@@ -617,7 +612,7 @@ void crashHandlerThreadFunction() {
 /// - Windows and macOS are not supported.
 
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
-  if (!::crashHandlerInvoked.exchange(true)) {
+  if (!crashHandlerInvoked.exchange(true)) {
     // Now let's check we are not the Logging thread:
     arangodb::ThreadNameFetcher fetcher;
     auto threadName = fetcher.get();
@@ -635,25 +630,25 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
     // Now acquire the backtrace from the crashed thread (only the crashed
     // thread can do this) and store it in the preallocated buffer
 
-    if (::backtraceBuffer != nullptr) {
+    if (backtraceBuffer != nullptr) {
       size_t bytesWritten =
-          acquireBacktrace(::backtraceBuffer.get(), ::backtraceBufferSize);
-      ::backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
+          acquireBacktrace(backtraceBuffer.get(), backtraceBufferSize);
+      backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
     }
 
-    if (std::this_thread::get_id() == ::crashHandlerThread->get_id()) {
+    if (std::this_thread::get_id() == crashHandlerThread->get_id()) {
       // In this case we cannot delegate to ourselves to do the actual
       // dumping. So let's just do it ourselves:
       actuallyDumpCrashInfo();
     } else {
-      static_assert(decltype(::crashHandlerState)::is_always_lock_free);
+      static_assert(decltype(crashHandlerState)::is_always_lock_free);
       // Signal the dedicated crash handler thread (force trigger even if not
       // idle), due to this static assertion we know that it is allowed to
       // use `notify_all` here in the signal handler.
-      arangodb::crash_handler::CrashHandler::triggerCrashHandler();
+      CrashHandler::triggerCrashHandler();
 
       // Busy wait for the dedicated thread to complete its work
-      arangodb::crash_handler::CrashHandler::waitForCrashHandlerCompletion();
+      CrashHandler::waitForCrashHandlerCompletion();
     }
 
     // Final cleanup
@@ -674,8 +669,6 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 }
 
 }  // namespace
-
-namespace arangodb::crash_handler {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
@@ -699,44 +692,42 @@ CrashHandler::~CrashHandler() {
 }
 
 void CrashHandler::triggerCrashHandler() {
-  ::crashHandlerState.store(
-      arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED,
-      std::memory_order_release);
-  ::crashHandlerState.notify_all();
+  crashHandlerState.store(CrashHandlerState::CRASH_DETECTED,
+                          std::memory_order_release);
+  crashHandlerState.notify_all();
 }
 
 void CrashHandler::waitForCrashHandlerCompletion() {
   while (true) {
-    arangodb::crash_handler::CrashHandlerState currentState =
-        ::crashHandlerState.load(std::memory_order_acquire);
-    if (currentState ==
-        arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED) {
+    CrashHandlerState currentState =
+        crashHandlerState.load(std::memory_order_acquire);
+    if (currentState == CrashHandlerState::CRASH_DETECTED) {
       // Wait for the state to change from the current state
-      ::crashHandlerState.wait(currentState, std::memory_order_acquire);
+      crashHandlerState.wait(currentState, std::memory_order_acquire);
     } else {
       return;
     }
   }
 }
 
-void CrashHandler::logBacktrace() {
-  ::logBacktrace();
+void CrashHandlerlogBacktrace() {
+  logBacktrace();
   Logger::flush();
 }
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
   // Store crash data for the dedicated crash handler thread
-  ::storeCrashData(context.data(), SIGABRT, arangodb::Thread::currentThreadId(),
-                   arangodb::Thread::currentThreadNumber(), /*no info*/ nullptr,
-                   /*no context*/ nullptr);
+  storeCrashData(context.data(), SIGABRT, arangodb::Thread::currentThreadId(),
+                 arangodb::Thread::currentThreadNumber(), /*no info*/ nullptr,
+                 /*no context*/ nullptr);
 
   // Now acquire the backtrace from the crashed thread (only the crashed
   // thread can do this) and store it in the preallocated buffer
-  if (::backtraceBuffer != nullptr) {
+  if (backtraceBuffer != nullptr) {
     size_t bytesWritten =
-        acquireBacktrace(::backtraceBuffer.get(), ::backtraceBufferSize);
-    ::backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
+        acquireBacktrace(backtraceBuffer.get(), backtraceBufferSize);
+    backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
   }
 
   // Signal the dedicated crash handler thread if it exists
@@ -749,11 +740,11 @@ void CrashHandler::crash(std::string_view context) {
   Logger::shutdown();
 
   // crash from here
-  ::killProcess(SIGABRT);
+  killProcess(SIGABRT);
 }
 
 void CrashHandler::setState(std::string_view state) {
-  ::stateString.store(state.data());
+  stateString.store(state.data());
 }
 
 /// @brief logs an assertion failure and crashes the program
@@ -783,12 +774,12 @@ void CrashHandler::setState(std::string_view state) {
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent
 /// core file generation etc.
 void CrashHandler::setHardKill() {
-  ::killHard.store(true, std::memory_order_relaxed);
+  killHard.store(true, std::memory_order_relaxed);
 }
 
 /// @brief disable printing of backtraces
 void CrashHandler::disableBacktraces() {
-  ::enableStacktraces.store(false, std::memory_order_relaxed);
+  enableStacktraces.store(false, std::memory_order_relaxed);
 }
 
 /// @brief installs the crash handler globally
@@ -809,15 +800,14 @@ void CrashHandler::installCrashHandler() {
 
   // Start the dedicated crash handler thread
   {
-    std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
-    if (::crashHandlerThread == nullptr) {
-      ::crashHandlerState.store(
-          arangodb::crash_handler::CrashHandlerState::IDLE,
-          std::memory_order_relaxed);
-      ::crashHandlerThread =
-          std::make_unique<std::jthread>(::crashHandlerThreadFunction);
+    std::lock_guard<std::mutex> lock(crashHandlerThreadMutex);
+    if (crashHandlerThread == nullptr) {
+      crashHandlerState.store(CrashHandlerState::IDLE,
+                              std::memory_order_relaxed);
+      crashHandlerThread =
+          std::make_unique<std::jthread>(crashHandlerThreadFunction);
 #ifdef TRI_HAVE_SYS_PRCTL_H
-      pthread_setname_np(::crashHandlerThread->native_handle(), "CrashHandler");
+      pthread_setname_np(crashHandlerThread->native_handle(), "CrashHandler");
 #endif
     }
   }
@@ -826,29 +816,29 @@ void CrashHandler::installCrashHandler() {
     size_t const stackSize =
         std::max<size_t>(128 * 1024, std::max<size_t>(MINSIGSTKSZ, SIGSTKSZ));
 
-    ::alternativeStackMemory = std::make_unique<char[]>(stackSize);
+    alternativeStackMemory = std::make_unique<char[]>(stackSize);
 
     stack_t altstack;
-    altstack.ss_sp = static_cast<void*>(::alternativeStackMemory.get());
+    altstack.ss_sp = static_cast<void*>(alternativeStackMemory.get());
     altstack.ss_size = stackSize;
     altstack.ss_flags = 0;
     if (sigaltstack(&altstack, nullptr) != 0) {
-      ::alternativeStackMemory.release();
+      alternativeStackMemory.release();
     }
   } catch (...) {
     // could not allocate memory for alternative stack.
     // in this case we must not modify the stack for the signal handler
     // as we have no way of signaling failure here.
-    ::alternativeStackMemory.release();
+    alternativeStackMemory.release();
   }
 
   try {
     // Allocate the preallocated backtrace buffer
-    ::backtraceBuffer = std::make_unique<char[]>(::backtraceBufferSize);
+    backtraceBuffer = std::make_unique<char[]>(backtraceBufferSize);
   } catch (...) {
     // could not allocate memory for backtrace buffer.
     // this is not critical - we can still work without it
-    ::backtraceBuffer.release();
+    backtraceBuffer.release();
     LOG_TOPIC("25162", WARN, Logger::CRASH)
         << "Could not allocate static memory for crash stack traces!";
   }
@@ -857,7 +847,7 @@ void CrashHandler::installCrashHandler() {
   struct sigaction act;
   sigemptyset(&act.sa_mask);
   act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO |
-                 (::alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
+                 (alternativeStackMemory != nullptr ? SA_ONSTACK : 0);
   act.sa_sigaction = crashHandlerSignalHandler;
   sigaction(SIGSEGV, &act, nullptr);
   sigaction(SIGBUS, &act, nullptr);
@@ -910,9 +900,9 @@ void CrashHandler::installCrashHandler() {
 
 /// @brief shuts down the crash handler thread
 void CrashHandler::shutdownCrashHandler() {
-  std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
+  std::lock_guard<std::mutex> lock(crashHandlerThreadMutex);
 
-  if (::crashHandlerThread != nullptr) {
+  if (crashHandlerThread != nullptr) {
     // Signal the thread to shutdown and notify it if it's idle. If it is
     // already handling a crash (or has finished handling a crash) it will stop
     // afterwards (and of course the crash will terminate the process after the
@@ -921,31 +911,27 @@ void CrashHandler::shutdownCrashHandler() {
     // with the signal handler waiting upon completion of the crash handler
     // thread. Note that the signal handler must not finish before the crash
     // handler, due to object lifetimes.
-    auto expected = arangodb::crash_handler::CrashHandlerState::IDLE;
-    if (::crashHandlerState.compare_exchange_strong(
-            expected, arangodb::crash_handler::CrashHandlerState::SHUTDOWN,
-            std::memory_order_relaxed, std::memory_order_relaxed)) {
-      ::crashHandlerState.notify_all();
+    auto expected = CrashHandlerState::IDLE;
+    if (crashHandlerState.compare_exchange_strong(
+            expected, CrashHandlerState::SHUTDOWN, std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
+      crashHandlerState.notify_all();
     } else {
-      TRI_ASSERT(
-          expected ==
-              arangodb::crash_handler::CrashHandlerState::CRASH_DETECTED ||
-          expected ==
-              arangodb::crash_handler::CrashHandlerState::HANDLING_COMPLETE);
+      TRI_ASSERT(expected == CrashHandlerState::CRASH_DETECTED ||
+                 expected == CrashHandlerState::HANDLING_COMPLETE);
     }
 
     // Wait for the thread to finish
-    if (::crashHandlerThread->joinable()) {
-      ::crashHandlerThread->join();
+    if (crashHandlerThread->joinable()) {
+      crashHandlerThread->join();
     }
 
     // Clean up
-    ::crashHandlerThread.reset();
-    ::crashHandlerState.store(arangodb::crash_handler::CrashHandlerState::IDLE,
-                              std::memory_order_relaxed);
+    crashHandlerThread.reset();
+    crashHandlerState.store(CrashHandlerState::IDLE, std::memory_order_relaxed);
   }
 
-  ::backtraceBuffer.reset();  // release memory
+  backtraceBuffer.reset();  // release memory
 }
 
 }  // namespace arangodb::crash_handler
