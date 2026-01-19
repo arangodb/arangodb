@@ -23,38 +23,14 @@
 
 #pragma once
 
-#include <span>
-
-#include "RestServer/InitDatabaseFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include <string>
 
 namespace arangodb {
 
-class InitDatabaseFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "InitDatabase"; }
-
-  InitDatabaseFeature(Server& server,
-                      std::span<const size_t> nonServerFeatures);
-
-  std::string const& defaultPassword() const { return _options.password; }
-  bool isInitDatabase() const { return _options.initDatabase; }
-  bool restoreAdmin() const { return _options.restoreAdmin; }
-
- private:
-  InitDatabaseFeatureOptions _options;
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
- private:
-  void checkEmptyDatabase();
-  std::string readPassword(std::string const&);
-
-  bool _seenPassword = false;
-  std::span<const size_t> _nonServerFeatures;
+struct InitDatabaseFeatureOptions {
+  bool initDatabase = false;
+  bool restoreAdmin = false;
+  std::string password;
 };
 
 }  // namespace arangodb
