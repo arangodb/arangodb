@@ -228,8 +228,8 @@ information leakage via these means.)");
       ->addOption(
           "--log.in-memory-level",
           "Use an in-memory log appender only for this log level and higher.",
-          new DiscreteValuesParameter<StringParameter>(&_options.minInMemoryLogLevel,
-                                                       logLevels),
+          new DiscreteValuesParameter<StringParameter>(
+              &_options.minInMemoryLogLevel, logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(You can use this option to control which log
@@ -255,7 +255,8 @@ void LogBufferFeature::prepare() {
     // in-memory appender. this is the case for simple command such as `--help`
     // etc.
     LogLevel level;
-    bool isValid = Logger::translateLogLevel(_options.minInMemoryLogLevel, true, level);
+    bool isValid =
+        Logger::translateLogLevel(_options.minInMemoryLogLevel, true, level);
     if (!isValid) {
       level = LogLevel::INFO;
     }

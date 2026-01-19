@@ -176,7 +176,9 @@ class DatabaseFeature final : public ArangodFeature {
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const noexcept { return _options.ignoreDatafileErrors; }
+  bool ignoreDatafileErrors() const noexcept {
+    return _options.ignoreDatafileErrors;
+  }
   bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }

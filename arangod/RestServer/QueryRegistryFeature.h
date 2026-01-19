@@ -65,11 +65,15 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool trackQueryString() const noexcept { return _options.trackQueryString; }
   bool trackBindVars() const noexcept { return _options.trackBindVars; }
   bool trackDataSources() const noexcept { return _options.trackDataSources; }
-  double slowQueryThreshold() const noexcept { return _options.slowQueryThreshold; }
+  double slowQueryThreshold() const noexcept {
+    return _options.slowQueryThreshold;
+  }
   double slowStreamingQueryThreshold() const noexcept {
     return _options.slowStreamingQueryThreshold;
   }
-  size_t maxQueryStringLength() const noexcept { return _options.maxQueryStringLength; }
+  size_t maxQueryStringLength() const noexcept {
+    return _options.maxQueryStringLength;
+  }
   uint64_t peakMemoryUsageThreshold() const noexcept {
     return _options.peakMemoryUsageThreshold;
   }
@@ -77,7 +81,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool requireWith() const noexcept { return _options.requireWith; }
 #ifdef USE_ENTERPRISE
   bool smartJoins() const noexcept { return _options.smartJoins; }
-  bool parallelizeTraversals() const noexcept { return _options.parallelizeTraversals; }
+  bool parallelizeTraversals() const noexcept {
+    return _options.parallelizeTraversals;
+  }
 #endif
   size_t maxCollectionsPerQuery() const noexcept {
     return _options.maxCollectionsPerQuery;
@@ -91,7 +97,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t queryGlobalMemoryLimit() const noexcept {
     return _options.queryGlobalMemoryLimit;
   }
-  uint64_t queryMemoryLimit() const noexcept { return _options.queryMemoryLimit; }
+  uint64_t queryMemoryLimit() const noexcept {
+    return _options.queryMemoryLimit;
+  }
   double queryMaxRuntime() const noexcept { return _options.queryMaxRuntime; }
   uint64_t maxQueryPlans() const noexcept { return _options.maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const noexcept {

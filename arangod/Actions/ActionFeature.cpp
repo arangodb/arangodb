@@ -33,8 +33,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ActionFeature::ActionFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ActionFeature::ActionFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
 }
@@ -50,6 +49,8 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
-bool ActionFeature::allowUseDatabase() const { return _options.allowUseDatabase; }
+bool ActionFeature::allowUseDatabase() const {
+  return _options.allowUseDatabase;
+}
 
 }  // namespace arangodb

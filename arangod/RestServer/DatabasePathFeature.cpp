@@ -104,7 +104,8 @@ void DatabasePathFeature::validateOptions(
   }
 
   // strip trailing separators
-  _options.directory = basics::StringUtils::rTrim(_options.directory, TRI_DIR_SEPARATOR_STR);
+  _options.directory =
+      basics::StringUtils::rTrim(_options.directory, TRI_DIR_SEPARATOR_STR);
 
   auto ctx = ArangoGlobalContext::CONTEXT;
 
@@ -213,8 +214,8 @@ void DatabasePathFeature::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    auto const res = TRI_CreateRecursiveDirectory(_options.directory.c_str(), errorNo,
-                                                  systemErrorStr);
+    auto const res = TRI_CreateRecursiveDirectory(_options.directory.c_str(),
+                                                  errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)

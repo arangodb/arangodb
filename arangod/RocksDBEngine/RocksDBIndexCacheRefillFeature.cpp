@@ -182,8 +182,8 @@ void RocksDBIndexCacheRefillFeature::start() {
     return;
   }
 
-  _refillThread =
-      std::make_unique<RocksDBIndexCacheRefillThread>(server(), _options.maxCapacity);
+  _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
+      server(), _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -282,8 +282,8 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   // while we still have something to push out, do it.
   // note: we will only be scheduling at most _maxConcurrentIndexFillTask
   // index refills concurrently, in order to not overwhelm the instance.
-  while (!_indexFillTasks.empty() &&
-         _currentlyRunningIndexFillTasks < _options.maxConcurrentIndexFillTasks) {
+  while (!_indexFillTasks.empty() && _currentlyRunningIndexFillTasks <
+                                         _options.maxConcurrentIndexFillTasks) {
     if (server().isStopping()) {
       return;
     }

@@ -190,7 +190,7 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 void EndpointFeature::buildEndpointLists() {
   for (auto const& it : _options.endpoints) {
     bool ok = _endpointList.add(it, static_cast<int>(_options.backlogSize),
-                                 _options.reuseAddress);
+                                _options.reuseAddress);
 
     if (!ok) {
       LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)

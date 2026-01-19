@@ -278,7 +278,8 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
-  _usageTracker = std::make_unique<StorageUsageTracker>(_options.maxDiskCapacity);
+  _usageTracker =
+      std::make_unique<StorageUsageTracker>(_options.maxDiskCapacity);
 
   auto backend = std::make_unique<RocksDBTempStorage>(
       _options.basePath, *_usageTracker, _options.useEncryption,

@@ -191,7 +191,8 @@ void PrivilegeFeature::extractPrivileges() {
         uidNumber = uid.value();
       } else {
         LOG_TOPIC("d54b7", FATAL, arangodb::Logger::FIXME)
-            << "cannot convert username '" << _options.uid << "' to numeric uid";
+            << "cannot convert username '" << _options.uid
+            << "' to numeric uid";
         FATAL_ERROR_EXIT();
       }
 #else

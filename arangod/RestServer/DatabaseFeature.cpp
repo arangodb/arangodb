@@ -306,13 +306,14 @@ void DatabaseFeature::collectOptions(
   }();
 
   options
-      ->addOption("--database.default-replication-version",
-                  "The default replication version, can be overwritten "
-                  "when creating a new database, possible values: 1, 2",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.defaultReplicationVersion, allowedReplicationVersions),
-                  options::makeDefaultFlags(options::Flags::Uncommon,
-                                            options::Flags::Experimental))
+      ->addOption(
+          "--database.default-replication-version",
+          "The default replication version, can be overwritten "
+          "when creating a new database, possible values: 1, 2",
+          new DiscreteValuesParameter<StringParameter>(
+              &_options.defaultReplicationVersion, allowedReplicationVersions),
+          options::makeDefaultFlags(options::Flags::Uncommon,
+                                    options::Flags::Experimental))
       .setIntroducedIn(31200);
 
   options->addOption(
@@ -330,10 +331,11 @@ void DatabaseFeature::collectOptions(
       "property of each collection determine it.",
       false);
 
-  options->addOption("--database.ignore-datafile-errors",
-                     "Load collections even if datafiles may contain errors.",
-                     new options::BooleanParameter(&_options.ignoreDatafileErrors),
-                     options::makeDefaultFlags(options::Flags::Uncommon));
+  options->addOption(
+      "--database.ignore-datafile-errors",
+      "Load collections even if datafiles may contain errors.",
+      new options::BooleanParameter(&_options.ignoreDatafileErrors),
+      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
       ->addOption("--database.extended-names",

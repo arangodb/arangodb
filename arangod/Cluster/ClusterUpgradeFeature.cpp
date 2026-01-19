@@ -63,8 +63,9 @@ void ClusterUpgradeFeature::collectOptions(
       "perform an upgrade and shut down, online = always perform an "
       "upgrade but don't shut down).",
       new DiscreteValuesParameter<StringParameter>(
-          &_options.upgradeMode, std::unordered_set<std::string>{"auto", "disable",
-                                                         "force", "online"}),
+          &_options.upgradeMode,
+          std::unordered_set<std::string>{"auto", "disable", "force",
+                                          "online"}),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator));

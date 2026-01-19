@@ -66,8 +66,7 @@ static char const* cookies[] = {
 
 }  // namespace
 
-FortuneFeature::FortuneFeature(Server& server)
-    : ArangodFeature{server, *this} {
+FortuneFeature::FortuneFeature(Server& server) : ArangodFeature{server, *this} {
   startsAfter<BootstrapFeature>();
 }
 

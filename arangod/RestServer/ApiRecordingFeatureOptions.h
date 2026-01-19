@@ -38,7 +38,8 @@ struct ApiRecordingFeatureOptions {
   size_t totalMemoryLimitCalls = 25 * (std::size_t{1} << 20);  // Default: 25MiB
 
   // Total memory limit for all AqlCallRecord lists combined
-  size_t totalMemoryLimitQueries = 25 * (std::size_t{1} << 20);  // Default: 25MiB
+  size_t totalMemoryLimitQueries =
+      25 * (std::size_t{1} << 20);  // Default: 25MiB
 
   // API permission control
   std::string apiSwitch = "true";

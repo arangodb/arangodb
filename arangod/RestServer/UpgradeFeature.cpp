@@ -333,8 +333,8 @@ void UpgradeFeature::upgradeLocalDatabase() {
       continue;
     }
 
-    auto res =
-        methods::Upgrade::startup(*vocbase, _options.upgrade, ignoreDatafileErrors);
+    auto res = methods::Upgrade::startup(*vocbase, _options.upgrade,
+                                         ignoreDatafileErrors);
 
     if (res.fail()) {
       std::string_view typeName = "initialization";

@@ -89,7 +89,8 @@ void FileDescriptorsFeature::collectOptions(
 void FileDescriptorsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
   constexpr uint64_t lowerBound = 10000;
-  if (_options.countDescriptorsInterval > 0 && _options.countDescriptorsInterval < lowerBound) {
+  if (_options.countDescriptorsInterval > 0 &&
+      _options.countDescriptorsInterval < lowerBound) {
     LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
         << "too low value for `--server.count-descriptors-interval`. Should be "
            "at least "

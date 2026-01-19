@@ -121,7 +121,8 @@ It is controlled by the `--server.api-call-recording` and
 
 void ApiRecordingFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_options.apiSwitch == "true" || _options.apiSwitch == "on" || _options.apiSwitch == "On") {
+  if (_options.apiSwitch == "true" || _options.apiSwitch == "on" ||
+      _options.apiSwitch == "On") {
     _options.apiEnabled = true;
     _options.apiSwitch = "true";
   } else if (_options.apiSwitch == "jwt" || _options.apiSwitch == "JWT") {
@@ -135,7 +136,8 @@ void ApiRecordingFeature::validateOptions(
 
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
-  _memoryPerApiRecordList = _options.totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerApiRecordList =
+      _options.totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
   _memoryPerAqlRecordList =
       _options.totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
 
