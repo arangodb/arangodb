@@ -23,42 +23,13 @@
 
 #pragma once
 
-#include <sys/types.h>
-#include <memory>
 #include <string>
 
-#include "Basics/operating-system.h"
-
-#include "RestServer/PrivilegeFeatureOptions.h"
-#include "RestServer/arangod.h"
-
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
-class PrivilegeFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Privilege"; }
-
-  explicit PrivilegeFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
-  void dropPrivilegesPermanently();
-
- private:
-  void extractPrivileges();
-
-  PrivilegeFeatureOptions _options;
-
-#ifdef ARANGODB_HAVE_SETUID
-  TRI_uid_t _numericUid{};
-#endif
-#ifdef ARANGODB_HAVE_SETGID
-  TRI_gid_t _numericGid{};
-#endif
+struct PrivilegeFeatureOptions {
+  std::string uid;
+  std::string gid;
 };
 
 }  // namespace arangodb
