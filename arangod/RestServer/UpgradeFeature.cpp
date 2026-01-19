@@ -55,9 +55,6 @@ namespace arangodb {
 UpgradeFeature::UpgradeFeature(Server& server, int* result,
                                std::span<const size_t> nonServerFeatures)
     : ArangodFeature{server, *this},
-      _upgrade(false),
-      _upgradeCheck(true),
-      _upgradeFullCompaction(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -74,7 +71,7 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--database.auto-upgrade",
                   "Perform a database upgrade if necessary.",
-                  new BooleanParameter(&_upgrade))
+                  new BooleanParameter(&_options.upgrade))
       .setLongDescription(R"(If you specify this option, then the server
 performs a database upgrade instead of starting normally.
 
@@ -98,19 +95,19 @@ in the `VERSION` file, the server refuses to start.)");
 
   options->addOption(
       "--database.upgrade-check", "Skip the database upgrade if set to false.",
-      new BooleanParameter(&_upgradeCheck),
+      new BooleanParameter(&_options.upgradeCheck),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--database.auto-upgrade-full-compaction",
                   "Perform a full RocksDB compaction after database upgrade.",
-                  new BooleanParameter(&_upgradeFullCompaction))
-      .setLongDescription(R"(If this option is specified together with 
---database.auto-upgrade, the server will perform a full RocksDB compaction 
+                  new BooleanParameter(&_options.upgradeFullCompaction))
+      .setLongDescription(R"(If this option is specified together with
+--database.auto-upgrade, the server will perform a full RocksDB compaction
 after the database upgrade has completed successfully but before shutting down.
 
-This performs a complete compaction of all column families with both 
-changeLevel and compactBottomMostLevel options enabled, which can help 
+This performs a complete compaction of all column families with both
+changeLevel and compactBottomMostLevel options enabled, which can help
 optimize the database files after an upgrade.
 
 The server will exit with an error code if the compaction fails.)");
@@ -132,7 +129,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // happening afterwards with the environment variable being cleared.
   char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
   if (upgrade != nullptr) {
-    _upgrade = true;
+    _options.upgrade = true;
     restartAction = new std::function<int()>();
     *restartAction = upgradeRestart;
     LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
@@ -140,21 +137,21 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " with value " << upgrade
         << " will perform database auto-upgrade and immediately restart.";
   }
-  if (_upgrade && !_upgradeCheck) {
+  if (_options.upgrade && !_options.upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
-  if (_upgradeFullCompaction && !_upgrade) {
+  if (_options.upgradeFullCompaction && !_options.upgrade) {
     LOG_TOPIC("47699", FATAL, arangodb::Logger::ENGINES)
         << "cannot specify '--database.auto-upgrade-full-compaction true' "
            "without '--database.auto-upgrade true'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
-  if (!_upgrade) {
+  if (!_options.upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
@@ -206,7 +203,7 @@ void UpgradeFeature::start() {
   auto& init = server().getFeature<InitDatabaseFeature>();
 
   // upgrade the database
-  if (_upgradeCheck) {
+  if (_options.upgradeCheck) {
     if (!ServerState::instance()->isCoordinator()) {
       // no need to run local upgrades in the coordinator
       upgradeLocalDatabase();
@@ -283,7 +280,7 @@ void UpgradeFeature::start() {
   }
 
   // perform full compaction if requested
-  if (_upgrade && _upgradeFullCompaction &&
+  if (_options.upgrade && _options.upgradeFullCompaction &&
       !ServerState::instance()->isCoordinator()) {
     Result res = catchToResult([&]() { return performFullCompaction(); });
     if (res.fail()) {
@@ -298,12 +295,12 @@ void UpgradeFeature::start() {
   }
 
   // and force shutdown
-  if (_upgrade || init.isInitDatabase() || init.restoreAdmin()) {
+  if (_options.upgrade || init.isInitDatabase() || init.restoreAdmin()) {
     if (init.isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
 
-    if (!ServerState::instance()->isCoordinator() || !_upgrade) {
+    if (!ServerState::instance()->isCoordinator() || !_options.upgrade) {
       LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
           << "server will now shut down due to upgrade, database "
              "initialization "
@@ -337,7 +334,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
     }
 
     auto res =
-        methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+        methods::Upgrade::startup(*vocbase, _options.upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
       std::string_view typeName = "initialization";
@@ -346,7 +343,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade";  // an upgrade failed or is required
 
-        if (!_upgrade) {
+        if (!_options.upgrade) {
           exitCode = TRI_EXIT_UPGRADE_REQUIRED;
           LOG_TOPIC("1c156", ERR, arangodb::Logger::FIXME)
               << "Database '" << vocbase->name() << "' needs upgrade. "
@@ -372,7 +369,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
     }
   }
 
-  if (_upgrade) {
+  if (_options.upgrade) {
     *_result = EXIT_SUCCESS;
     LOG_TOPIC("0de5e", INFO, arangodb::Logger::FIXME)
         << "database upgrade passed";
