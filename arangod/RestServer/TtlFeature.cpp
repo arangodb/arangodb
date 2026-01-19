@@ -141,7 +141,7 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
         // for faster js tests we want to allow lower frequency values
       }
       else {
-        if (frequency < TtlProperties::minFrequency) {
+        if (frequency < TtlFeatureOptions::minFrequency) {
           return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
         }
       }
