@@ -21,27 +21,10 @@
 
 #pragma once
 
-#include <memory>
-#include <string_view>
-
-#include "RestServer/arangod.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
-#include "ProgramOptions/ProgramOptions.h"
-
 namespace arangodb {
 
-class VectorIndexFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "VectorIndex"; }
-
-  explicit VectorIndexFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  bool isVectorIndexEnabled() const;
-
- private:
-  VectorIndexFeatureOptions _options;
+struct VectorIndexFeatureOptions {
+  bool useVectorIndex = false;
 };
 
 }  // namespace arangodb
