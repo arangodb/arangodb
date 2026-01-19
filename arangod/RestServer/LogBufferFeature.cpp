@@ -188,9 +188,7 @@ class LogAppenderMetricsCounter final : public LogAppender {
 };
 
 LogBufferFeature::LogBufferFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _minInMemoryLogLevel("info"),
-      _useInMemoryAppender(true) {
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
@@ -211,7 +209,7 @@ void LogBufferFeature::collectOptions(
       ->addOption("--log.in-memory",
                   "Use an in-memory log appender which can be queried via the "
                   "API and web interface.",
-                  new BooleanParameter(&_useInMemoryAppender),
+                  new BooleanParameter(&_options.useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
@@ -230,7 +228,7 @@ information leakage via these means.)");
       ->addOption(
           "--log.in-memory-level",
           "Use an in-memory log appender only for this log level and higher.",
-          new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
+          new DiscreteValuesParameter<StringParameter>(&_options.minInMemoryLogLevel,
                                                        logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
@@ -239,11 +237,11 @@ messages are preserved in memory (in case `--log.in-memory` is enabled).
 
 The default value is `info`, meaning all log messages of types `info`,
 `warning`, `error`, and `fatal` are stored in-memory by an instance. By setting
-this option to `warning`, only `warning`, `error` and `fatal` log messages are 
+this option to `warning`, only `warning`, `error` and `fatal` log messages are
 preserved in memory, and by setting the option to `error`, only `error` and
 `fatal` messages are kept.
 
-This option is useful because the number of in-memory log messages is limited 
+This option is useful because the number of in-memory log messages is limited
 to the latest 2048 messages, and these slots are shared between informational,
 warning, and error messages by default.)");
 }
@@ -251,13 +249,13 @@ warning, and error messages by default.)");
 void LogBufferFeature::prepare() {
   TRI_ASSERT(_inMemoryAppender == nullptr);
 
-  if (_useInMemoryAppender) {
+  if (_options.useInMemoryAppender) {
     // only create the in-memory appender when we really need it. if we created
     // it in the ctor, we would waste a lot of memory in case we don't need the
     // in-memory appender. this is the case for simple command such as `--help`
     // etc.
     LogLevel level;
-    bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
+    bool isValid = Logger::translateLogLevel(_options.minInMemoryLogLevel, true, level);
     if (!isValid) {
       level = LogLevel::INFO;
     }
@@ -279,7 +277,7 @@ std::vector<LogBuffer> LogBufferFeature::entries(
   if (_inMemoryAppender == nullptr) {
     return std::vector<LogBuffer>();
   }
-  TRI_ASSERT(_useInMemoryAppender);
+  TRI_ASSERT(_options.useInMemoryAppender);
   return static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())
       ->entries(level, start, upToLevel, searchString);
 }
