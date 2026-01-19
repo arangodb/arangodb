@@ -17,11 +17,18 @@ parameters:
     # we use it, otherwise we fall back to "devel".
     default: ""
     description: "The branch to use for the enterprise repository."
-  sanitizer:
-    type: enum
-    enum: ["none", "tsan", "alubsan"]
-    default: "none"
-    description: "Sanitizer to use"
+  without-instrumentation:
+    type: boolean
+    default: true
+    description: "Whether to create workflows for non-instrumented builds"
+  with-tsan:
+    type: boolean
+    default: false
+    description: "Whether to create workflows for TSan builds"
+  with-alubsan:
+    type: boolean
+    default: false
+    description: "Whether to create workflows for ALUBSan builds"
   full:
     type: boolean
     default: false
@@ -160,7 +167,9 @@ jobs:
           name: Print pipeline parameters
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
-            echo "sanitizer: << pipeline.parameters.sanitizer >>"
+            echo "without-instrumentation: << pipeline.parameters.without-instrumentation >>"
+            echo "with-tsan: << pipeline.parameters.with-tsan >>"
+            echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
             echo "full: << pipeline.parameters.full >>"
             echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
@@ -226,7 +235,9 @@ jobs:
             else
               set -x
               python3 ".circleci/generate_config.py" \
-                --sanitizer "<< pipeline.parameters.sanitizer >>" \
+                <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
+                <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
+                <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --test-image "<< pipeline.parameters.test-docker-image >>" \

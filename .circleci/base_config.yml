@@ -45,9 +45,15 @@ parameters:
   replication-two:
     type: boolean
     default: false
-  sanitizer:
-    type: string
-    default: ""
+  without-instrumentation:
+    type: boolean
+    default: true
+  with-tsan:
+    type: boolean
+    default: false
+  with-alubsan:
+    type: boolean
+    default: false
   c-compiler:
     type: string
     default: "clang"
@@ -100,6 +106,9 @@ parameters:
   timeLimit:
     type: integer
     default: 1800
+  sanitizer:
+    type: string
+    default: ""
   docker_image:
     type: string
     default: "<< pipeline.parameters.test-docker-image >>"
@@ -207,6 +216,8 @@ commands:
         type: integer
       extraArgs:
         type: string
+      sanitizer:
+        type: string
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -231,7 +242,7 @@ commands:
       - when:
           condition:
             not:
-              equal: [ << pipeline.parameters.sanitizer >>, ""]
+              equal: [ << parameters.sanitizer >>, ""]
           steps:
             - run:
                 name: Symbolizer server
@@ -244,12 +255,12 @@ commands:
           command: |
             set -x
             mkdir work
-            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+            if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
               export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=alubsan
-            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+            elif [ "<< parameters.sanitizer >>" = "tsan" ]; then
               # Needed to ignore TSAN errors from OpenMP
               export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
               export ARCHER_OPTIONS="verbose=1"
@@ -633,6 +644,7 @@ jobs:
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
           timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
   run-driver-tests:
@@ -664,6 +676,7 @@ jobs:
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
           timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
   kafka-driver-tests:
@@ -750,6 +763,7 @@ jobs:
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
           timeLimit: << parameters.timeLimit >>
+          sanitizer: << parameters.sanitizer >>
           extraArgs: << parameters.extraArgs >>
 
   run-rta-tests:
@@ -779,6 +793,9 @@ jobs:
       buckets:
         type: integer
         default: 1
+      sanitizer:
+        type: string
+        default: ""
     parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
@@ -805,7 +822,7 @@ jobs:
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
-            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+            if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
               export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
               export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
@@ -813,7 +830,7 @@ jobs:
               cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
               cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
-            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+            elif [ "<< parameters.sanitizer >>" = "tsan" ]; then
               sudo sysctl vm.mmap_rnd_bits=28
               export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
               export SAN_MODE=tsan
