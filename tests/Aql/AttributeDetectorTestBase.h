@@ -31,6 +31,7 @@
 #include "Basics/Result.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchView.h"
+#include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 #include "RestServer/FlushFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -42,16 +43,16 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb::tests::aql {
 
 class AttributeDetectorTest : public ::testing::Test {
  protected:
-  mocks::MockAqlServer server{false};
+  MockAqlServer server{false};
   TRI_vocbase_t* vocbase{nullptr};
 
   AttributeDetectorTest() {
-    init();
     server.addFeature<FlushFeature>(false);
     server.startFeatures();
     vocbase = &server.getSystemDatabase();
