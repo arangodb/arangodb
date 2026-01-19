@@ -437,8 +437,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
     }
 
     case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
-      auto* vectorNode =
-          ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
+      auto* vectorNode = ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
       std::string collName = vectorNode->collection()->name();
 
       auto& access = _collectionAccessMap[collName];
@@ -520,7 +519,12 @@ bool AttributeDetector::before(ExecutionNode* node) {
     }
 
     case ExecutionNode::REMOTE_SINGLE: {
-      auto* remoteNode = ExecutionNode::castTo<SingleRemoteOperationNode*>(node);
+      TRI_IF_FAILURE("AttributeDetector::REMOTE_SINGLE") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      auto* remoteNode =
+          ExecutionNode::castTo<SingleRemoteOperationNode*>(node);
       std::string collName = remoteNode->collection()->name();
 
       auto& access = _collectionAccessMap[collName];
@@ -529,28 +533,22 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->collectionName = collName;
       }
 
-      auto varsSet = remoteNode->getVariablesSetHere();
-      bool isWriteOperation = varsSet.size() > 1;
-      if (!isWriteOperation) {
-        for (auto const* var : varsSet) {
-          if (var != nullptr) {
-            std::string varName = var->name;
-            if (varName == "$OLD" || varName == "$NEW") {
-              isWriteOperation = true;
-              break;
-            }
-          }
-        }
-      }
-
-      access->requiresAllAttributesRead = true;
-      if (isWriteOperation) {
+      ExecutionNode::NodeType mode = remoteNode->mode();
+      if (mode == ExecutionNode::INDEX) {
+        access->requiresAllAttributesRead = true;
+        access->requiresAllAttributesWrite = false;
+      } else {
+        access->requiresAllAttributesRead = true;
         access->requiresAllAttributesWrite = true;
       }
       break;
     }
 
     case ExecutionNode::REMOTE_MULTIPLE: {
+      TRI_IF_FAILURE("AttributeDetector::REMOTE_MULTIPLE") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       auto* remoteNode =
           ExecutionNode::castTo<MultipleRemoteModificationNode*>(node);
       std::string collName = remoteNode->collection()->name();

@@ -106,7 +106,13 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
-  Aql/AttributeDetectorTest.cpp
+  Aql/AttributeDetectorArangoSearchTest.cpp
+  Aql/AttributeDetectorCollectionTest.cpp
+  Aql/AttributeDetectorDocumentFunctionTest.cpp
+  Aql/AttributeDetectorGraphTest.cpp
+  Aql/AttributeDetectorIndexTest.cpp
+  Aql/AttributeDetectorInspectorTest.cpp
+  Aql/AttributeDetectorModificationTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BlockCollector.cpp
   Aql/DependencyProxyMock.cpp

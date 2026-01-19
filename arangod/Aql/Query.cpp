@@ -707,7 +707,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan->findVarUsage();
 
   enterState(QueryExecutionState::ValueType::ABAC_CHECK);
-  
+
   AttributeDetector detector(plan.get());
   detector.detect();
   _abacAccesses = detector.getCollectionAccesses();
@@ -1600,6 +1600,15 @@ QueryResult Query::explain() {
         // Even though there is a execution time this remains to be called
         // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
+      }
+      // ABAC collection accesses
+      if (!_abacAccesses.empty()) {
+        b.add(VPackValue("abacAccesses"));
+        b.openArray();
+        for (auto const& access : _abacAccesses) {
+          velocypack::serialize(b, access);
+        }
+        b.close();
       }
     }
   } catch (Exception const& ex) {
