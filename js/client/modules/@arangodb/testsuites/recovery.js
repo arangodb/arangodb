@@ -55,7 +55,7 @@ const termSignal = 15;
 // At the moment only view-tests supported by cluster recovery tests:
 const testPaths = {
   'recovery': [tu.pathForTesting('client/recovery')],
-  'recovery_cluster': [tu.pathForTesting('client/recovery/cluster')],
+  'recovery_cluster': [tu.pathForTesting('client/recovery/cluster/crash'), tu.pathForTesting('client/recovery/cluster/search')],
 };
 
 // These tests should NOT be killed after the setup phase.
