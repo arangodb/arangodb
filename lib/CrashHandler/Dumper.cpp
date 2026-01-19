@@ -120,10 +120,9 @@ bool Dumper::ensureCrashesDirectory() const {
   return true;
 }
 
-void Dumper::cleanupOldCrashDirectories(std::string const& crashesDirectory,
-                                        size_t maxCrashDirectories) const {
-  if (crashesDirectory.empty() ||
-      !std::filesystem::is_directory(crashesDirectory)) {
+void Dumper::cleanupOldCrashDirectories(size_t maxCrashDirectories) const {
+  if (_crashesDirectory.empty() ||
+      !std::filesystem::is_directory(_crashesDirectory)) {
     return;
   }
 
@@ -135,7 +134,7 @@ void Dumper::cleanupOldCrashDirectories(std::string const& crashesDirectory,
       crashDirs;
 
   for (auto const& entry :
-       std::filesystem::directory_iterator(crashesDirectory)) {
+       std::filesystem::directory_iterator(_crashesDirectory)) {
     if (entry.is_directory()) {
       auto mtime = entry.last_write_time();
       crashDirs.emplace(mtime, entry.path());

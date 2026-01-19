@@ -39,8 +39,7 @@ class Dumper {
 
   void setCrashesDirectory(std::string const& crashesDirectory);
 
-  void cleanupOldCrashDirectories(std::string const& crashesDirectory,
-                                  size_t maxCrashDirectories) const;
+  void cleanupOldCrashDirectories(size_t maxCrashDirectories) const;
 
   void dumpCrashData(std::string_view backtrace) const;
 
