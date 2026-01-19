@@ -106,13 +106,7 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 }
 
 TemporaryStorageFeature::TemporaryStorageFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _useEncryption(false),
-      _allowHWAcceleration(true),
-      _maxDiskCapacity(0),
-      _spillOverThresholdNumRows(5000000),
-      _spillOverThresholdMemoryUsage(128 * 1024 * 1024),
-      _cleanedUpDirectory(false) {
+    : ArangodFeature{server, *this}, _cleanedUpDirectory(false) {
   startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<RocksDBEngine>();
@@ -135,14 +129,14 @@ void TemporaryStorageFeature::collectOptions(
           "--temp.intermediate-results-path",
           "The path for storing ephemeral, intermediate results on disk "
           "(empty = not used).",
-          new StringParameter(&_basePath),
+          new StringParameter(&_options.basePath),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000)
       .setLongDescription(R"(Queries can store intermediate and final results
 temporarily on disk if a specified threshold is exceeded, to decrease the memory
 usage. Specify a path to a directory for the temporary data to activate the
-spillover feature. The directory must not be located underneath the instance's 
+spillover feature. The directory must not be located underneath the instance's
 database directory.
 
 The threshold value to start spilling data onto disk is either a number of rows
@@ -158,7 +152,7 @@ query result in RAM, use a streaming query.)");
       ->addOption("--temp.intermediate-results-capacity",
                   "The maximum capacity (in bytes) to use for ephemeral, "
                   "intermediate results on disk (0 = unlimited).",
-                  new UInt64Parameter(&_maxDiskCapacity),
+                  new UInt64Parameter(&_options.maxDiskCapacity),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
@@ -168,7 +162,7 @@ query result in RAM, use a streaming query.)");
           "--temp.intermediate-results-spillover-threshold-num-rows",
           "The number of result rows after which a spillover from RAM to disk "
           "happens for intermediate results (threshold per query executor).",
-          new SizeTParameter(&_spillOverThresholdNumRows),
+          new SizeTParameter(&_options.spillOverThresholdNumRows),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
@@ -179,7 +173,7 @@ query result in RAM, use a streaming query.)");
           "The memory usage threshold (in bytes) after which a spillover from "
           "RAM to disk happens for intermediate results "
           "(threshold per query executor).",
-          new SizeTParameter(&_spillOverThresholdMemoryUsage),
+          new SizeTParameter(&_options.spillOverThresholdMemoryUsage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
@@ -188,7 +182,7 @@ query result in RAM, use a streaming query.)");
   options
       ->addOption("--temp.intermediate-results-encryption",
                   "Encrypt ephemeral, intermediate results on disk.",
-                  new BooleanParameter(&_useEncryption),
+                  new BooleanParameter(&_options.useEncryption),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Enterprise,
                       arangodb::options::Flags::Experimental))
@@ -201,7 +195,7 @@ query result in RAM, use a streaming query.)");
           "the AES-NI instruction set. "
           "If turned off, then OpenSSL is used, which may use "
           "hardware-accelerated encryption, too.",
-          new BooleanParameter(&_allowHWAcceleration),
+          new BooleanParameter(&_options.allowHWAcceleration),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Enterprise,
               arangodb::options::Flags::Experimental))
@@ -217,15 +211,15 @@ void TemporaryStorageFeature::validateOptions(
   }
 
   // replace $PID in basepath with current process id
-  _basePath = basics::StringUtils::replace(
-      _basePath, "$PID", std::to_string(Thread::currentProcessId()));
+  _options.basePath = basics::StringUtils::replace(
+      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
 
   std::string currentDir = FileUtils::currentDirectory().result();
 
   // get regular database path
   std::string dbPath = normalizePath(
       currentDir, server().getFeature<DatabasePathFeature>().directory());
-  std::string ourPath = normalizePath(currentDir, _basePath);
+  std::string ourPath = normalizePath(currentDir, _options.basePath);
 
   if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
     // if our path is the same as the database directory or inside it,
@@ -237,12 +231,12 @@ void TemporaryStorageFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  _basePath = ourPath;
+  _options.basePath = ourPath;
   // configure defaults for query options
   aql::QueryOptions::defaultSpillOverThresholdNumRows =
-      _spillOverThresholdNumRows;
+      _options.spillOverThresholdNumRows;
   aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
-      _spillOverThresholdMemoryUsage;
+      _options.spillOverThresholdMemoryUsage;
 }
 
 void TemporaryStorageFeature::prepare() {
@@ -252,7 +246,7 @@ void TemporaryStorageFeature::prepare() {
     LOG_TOPIC("97ac6", WARN, Logger::STARTUP)
         << "disabling storage for intermediate results on agent instance, "
            "because it is not useful here";
-    _basePath.clear();
+    _options.basePath.clear();
     TRI_ASSERT(!canBeUsed());
   }
 
@@ -260,20 +254,20 @@ void TemporaryStorageFeature::prepare() {
     return;
   }
 
-  if (basics::FileUtils::isDirectory(_basePath)) {
+  if (basics::FileUtils::isDirectory(_options.basePath)) {
     // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();
   } else {
     std::string systemErrorStr;
     long errorNo;
 
-    auto res = TRI_CreateRecursiveDirectory(_basePath.c_str(), errorNo,
+    auto res = TRI_CreateRecursiveDirectory(_options.basePath.c_str(), errorNo,
                                             systemErrorStr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("ed3ef", FATAL, Logger::FIXME)
-          << "cannot create directory for intermediate results ('" << _basePath
-          << "'): " << systemErrorStr;
+          << "cannot create directory for intermediate results ('"
+          << _options.basePath << "'): " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
   }
@@ -284,16 +278,17 @@ void TemporaryStorageFeature::start() {
     return;
   }
 
-  _usageTracker = std::make_unique<StorageUsageTracker>(_maxDiskCapacity);
+  _usageTracker = std::make_unique<StorageUsageTracker>(_options.maxDiskCapacity);
 
   auto backend = std::make_unique<RocksDBTempStorage>(
-      _basePath, *_usageTracker, _useEncryption, _allowHWAcceleration);
+      _options.basePath, *_usageTracker, _options.useEncryption,
+      _options.allowHWAcceleration);
 
   Result res = backend->init();
   if (res.fail()) {
     LOG_TOPIC("1c6f4", FATAL, Logger::FIXME)
         << "cannot initialize storage backend for intermediate results ('"
-        << _basePath << "'): " << res.errorMessage();
+        << _options.basePath << "'): " << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
@@ -320,7 +315,7 @@ void TemporaryStorageFeature::unprepare() {
 }
 
 bool TemporaryStorageFeature::canBeUsed() const noexcept {
-  return !_basePath.empty();
+  return !_options.basePath.empty();
 }
 
 void TemporaryStorageFeature::cleanupDirectory() {
@@ -330,12 +325,13 @@ void TemporaryStorageFeature::cleanupDirectory() {
 
   // clean up our mess
   LOG_TOPIC("62215", DEBUG, Logger::FIXME)
-      << "cleaning up directory for intermediate results '" << _basePath << "'";
+      << "cleaning up directory for intermediate results '" << _options.basePath
+      << "'";
 
-  auto res = TRI_RemoveDirectory(_basePath.c_str());
+  auto res = TRI_RemoveDirectory(_options.basePath.c_str());
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("97e4c", WARN, Logger::FIXME)
         << "error during removal of directory for intermediate results ('"
-        << _basePath << "'): " << TRI_errno_string(res);
+        << _options.basePath << "'): " << TRI_errno_string(res);
   }
 }
