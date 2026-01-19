@@ -275,7 +275,7 @@ class MockGraphProvider {
     bool _hasMore = true;
   };
 
-  using NeighbourProvider = MockGraphNeighbourCursor<Step>;
+  using NeighbourCursor = MockGraphNeighbourCursor<Step>;
 
   MockGraphProvider() = delete;
   MockGraphProvider(arangodb::aql::QueryContext& queryContext, Options opts,

@@ -117,7 +117,7 @@ struct BFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       FifoQueue<Step>,
-      BatchedFifoQueue<Step, typename ProviderType::NeighbourProvider>>::type;
+      BatchedFifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -135,7 +135,7 @@ struct DFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       LifoQueue<Step>,
-      BatchedLifoQueue<Step, typename ProviderType::NeighbourProvider>>::type;
+      BatchedLifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -146,7 +146,7 @@ template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
 struct WeightedConfiguration {
   using Provider = ProviderType;
   using Step = typename Provider::Step;
-  using Queue = WeightedQueue<Step, typename ProviderType::NeighbourProvider>;
+  using Queue = WeightedQueue<Step, typename ProviderType::NeighbourCursor>;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;

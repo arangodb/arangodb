@@ -102,8 +102,7 @@ template<class ProviderType>
 class WeightedShortestPathEnumerator {
  private:
   using Step = typename ProviderType::Step;
-  using QueueType =
-      WeightedQueue<Step, typename ProviderType::NeighbourProvider>;
+  using QueueType = WeightedQueue<Step, typename ProviderType::NeighbourCursor>;
   using PathStoreType = PathStore<Step>;
   using PathValidatorType =
       PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::NONE,
