@@ -124,8 +124,6 @@ class AttributeDetectorTest : public ::testing::Test {
 
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
-    // std::vector<std::string> fields{"name", "price"};
-    // ensurePersistentIndex("products", fields);
 
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
@@ -241,27 +239,6 @@ class AttributeDetectorTest : public ::testing::Test {
         std::string("{\"type\":\"hash\",\"fields\":[\"") + attr + "\"]}");
     bool created = false;
     auto idx = coll->createIndex(json->slice(), created).waitAndGet();
-    ASSERT_TRUE(idx) << "createIndex returned nullptr";
-    ASSERT_TRUE(created) << "index was not created";
-  }
-
-  void ensurePersistentIndex(std::string const& collName,
-                             std::vector<std::string> const& fields) {
-    auto coll = vocbase->lookupCollection(collName);
-    ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
-
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("type", VPackValue("persistent"));
-    builder.add("fields", VPackValue(VPackValueType::Array));
-    for (auto const& field : fields) {
-      builder.add(VPackValue(field));
-    }
-    builder.close();
-    builder.close();
-
-    bool created = false;
-    auto idx = coll->createIndex(builder.slice(), created).waitAndGet();
     ASSERT_TRUE(idx) << "createIndex returned nullptr";
     ASSERT_TRUE(created) << "index was not created";
   }
