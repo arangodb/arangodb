@@ -27,7 +27,7 @@
 #include <string_view>
 #include <memory>
 
-#include "CrashHandler/Dumper.h"
+#include "CrashHandler/DumpManager.h"
 
 namespace arangodb::crash_handler {
 
@@ -51,16 +51,17 @@ class CrashHandler {
   static std::atomic<CrashHandler*> _theCrashHandler;
 
   /// @brief Dumper instance for dumping crash data
-  std::shared_ptr<Dumper const> _dumper;
+  std::shared_ptr<DumpManager const> _dumpManager;
 
  public:
-  CrashHandler(std::shared_ptr<Dumper const> dumper);
+  CrashHandler(std::shared_ptr<DumpManager const> dumper);
 
   ~CrashHandler();
 
   static CrashHandler* getCrashHandler() { return _theCrashHandler; }
 
-  std::shared_ptr<Dumper const> getDumper() const noexcept { return _dumper; }
+  /// @brief dump crash data using the configured DumpManager
+  void dumpCrashData(std::string_view backtrace) const;
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();

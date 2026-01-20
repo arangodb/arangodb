@@ -41,10 +41,10 @@ class RestCrashHandler : public RestBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
  private:
-  void handleListCrashes(CrashHandlerFeature const& crashHandlerFeature);
-  void handleGetCrash(CrashHandlerFeature const& crashHandlerFeature,
+  void handleListCrashes(std::shared_ptr<DumpManager> const& dumpManager);
+  void handleGetCrash(std::shared_ptr<DumpManager> const& dumpManager,
                       std::string const& crashId);
-  void handleDeleteCrash(CrashHandlerFeature& crashHandlerFeature,
+  void handleDeleteCrash(std::shared_ptr<DumpManager> const& dumpManager,
                          std::string const& crashId);
 };
 

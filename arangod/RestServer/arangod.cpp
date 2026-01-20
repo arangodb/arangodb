@@ -59,9 +59,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
     auto dataSourceRegistry =
         std::make_shared<crash_handler::DataSourceRegistry>();
-    auto crashDumper =
-        std::make_shared<crash_handler::Dumper>(dataSourceRegistry);
-    crash_handler::CrashHandler crashHandler(crashDumper);
+    auto crashDumpManager =
+        std::make_shared<crash_handler::DumpManager>(dataSourceRegistry);
+    crash_handler::CrashHandler crashHandler(crashDumpManager);
     // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
@@ -120,8 +120,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
-        [&crashDumper](auto& server, TypeTag<CrashHandlerFeature>) {
-          return std::make_unique<CrashHandlerFeature>(server, crashDumper);
+        [&crashDumpManager](auto& server, TypeTag<CrashHandlerFeature>) {
+          return std::make_unique<CrashHandlerFeature>(server,
+                                                       crashDumpManager);
         },
         [](auto& server, TypeTag<ClusterUpgradeFeature>) {
           return std::make_unique<ClusterUpgradeFeature>(

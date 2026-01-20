@@ -24,9 +24,6 @@
 #include "RestServer/CrashHandlerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "CrashHandler/Dumper.h"
-#include "Basics/FileUtils.h"
-#include "Basics/files.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -36,8 +33,8 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CrashHandlerFeature::CrashHandlerFeature(
-    Server& server, std::shared_ptr<crash_handler::Dumper> dumper)
-    : ArangodFeature{server, *this}, _dumper(std::move(dumper)) {
+    Server& server, std::shared_ptr<crash_handler::DumpManager> dumpManager)
+    : ArangodFeature{server, *this}, _dumpManager(std::move(dumpManager)) {
   setOptional(false);
   // Feature must start after DatabasePathFeature
   // otherwise it won't be able to set the crashes directory
@@ -48,11 +45,8 @@ void CrashHandlerFeature::start() {
   if (_enabled) {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
 
-    _crashesDirectory = basics::FileUtils::buildFilename(path, "crashes");
-    _dumper->setCrashesDirectory(_crashesDirectory);
-    // Clean up old crash directories on startup
-    _dumper->cleanupOldCrashDirectories(_crashesDirectory,
-                                        /*max*/ 10);
+    _dumpManager->setCrashesDirectory(path);
+    _dumpManager->cleanupOldCrashDirectories(10);
   }
 }
 
@@ -68,63 +62,9 @@ void CrashHandlerFeature::collectOptions(
           options::Flags::OnSingle));
 }
 
-std::vector<std::string> CrashHandlerFeature::listCrashes() const {
-  std::vector<std::string> crashes;
-  if (!canAccessCrashesDirectory()) {
-    return {};
-  }
-
-  auto entries = basics::FileUtils::listFiles(_crashesDirectory);
-  for (auto const& entry : entries) {
-    auto fullPath = basics::FileUtils::buildFilename(_crashesDirectory, entry);
-    if (basics::FileUtils::isDirectory(fullPath)) {
-      crashes.push_back(entry);
-    }
-  }
-  return crashes;
+std::shared_ptr<crash_handler::DumpManager>
+CrashHandlerFeature::getDumpManager() const {
+  return _dumpManager;
 }
 
-std::unordered_map<std::string, std::string>
-CrashHandlerFeature::getCrashContents(std::string_view crashId) const {
-  if (!canAccessCrashesDirectory()) {
-    return {};
-  }
-
-  std::unordered_map<std::string, std::string> contents;
-  auto crashDir =
-      basics::FileUtils::buildFilename(_crashesDirectory, std::string(crashId));
-  if (!basics::FileUtils::isDirectory(crashDir)) {
-    return contents;
-  }
-  auto const files = basics::FileUtils::listFiles(crashDir);
-  for (auto const& file : files) {
-    auto const filePath = basics::FileUtils::buildFilename(crashDir, file);
-    if (basics::FileUtils::isRegularFile(filePath)) {
-      try {
-        contents[file] = basics::FileUtils::slurp(filePath);
-      } catch (...) {
-        // Skip files that can't be read
-      }
-    }
-  }
-  return contents;
-}
-
-bool CrashHandlerFeature::deleteCrash(std::string_view crashId) {
-  if (!canAccessCrashesDirectory()) {
-    return false;
-  }
-  auto crashDir = arangodb::basics::FileUtils::buildFilename(
-      _crashesDirectory, std::string(crashId));
-  if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
-    return false;
-  }
-  auto res = TRI_RemoveDirectory(crashDir.c_str());
-  return res == TRI_ERROR_NO_ERROR;
-}
-
-bool CrashHandlerFeature::canAccessCrashesDirectory() const noexcept {
-  return _enabled && !_crashesDirectory.empty() && _dumper != nullptr &&
-         basics::FileUtils::isDirectory(_crashesDirectory);
-}
 }  // namespace arangodb

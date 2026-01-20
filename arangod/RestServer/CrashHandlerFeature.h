@@ -23,13 +23,9 @@
 
 #pragma once
 
-#include <string>
 #include <string_view>
-#include <unordered_map>
-#include <vector>
 
-#include "CrashHandler/ICrashRegistry.h"
-#include "CrashHandler/Dumper.h"
+#include "CrashHandler/DumpManager.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -37,13 +33,12 @@ namespace arangodb {
 /// @brief Feature to control crash dump logging to the database directory.
 /// The CrashHandler itself always runs for crash handling, but this feature
 /// controls whether additional crash information is written to disk.
-class CrashHandlerFeature final : public ArangodFeature,
-                                  public crash_handler::ICrashRegistry {
+class CrashHandlerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
-  explicit CrashHandlerFeature(Server& server,
-                               std::shared_ptr<crash_handler::Dumper> dumper);
+  explicit CrashHandlerFeature(
+      Server& server, std::shared_ptr<crash_handler::DumpManager> dumpManager);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -52,24 +47,13 @@ class CrashHandlerFeature final : public ArangodFeature,
 
   void start() override final;
 
-  /// @brief lists all crash directories (returns UUIDs)
-  std::vector<std::string> listCrashes() const override;
-
-  /// @brief gets the contents of a specific crash directory
-  std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) const override;
-
-  /// @brief deletes a specific crash directory
-  bool deleteCrash(std::string_view crashId) override;
+  std::shared_ptr<crash_handler::DumpManager> getDumpManager() const;
 
  private:
   bool canAccessCrashesDirectory() const noexcept;
 
   /// @brief pointer to the Crash Handler Dumper
-  std::shared_ptr<crash_handler::Dumper> _dumper;
-
-  /// @brief crashes directory path used by this feature
-  std::string _crashesDirectory;
+  std::shared_ptr<crash_handler::DumpManager> _dumpManager;
 
   /// @brief whether crash dump logging is enabled
   bool _enabled{true};

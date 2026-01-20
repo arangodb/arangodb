@@ -25,40 +25,37 @@
 
 #include <cstddef>
 #include <string>
-#include <string_view>
 #include <memory>
+#include <unordered_map>
 
 #include "CrashHandler/DataSourceRegistry.h"
+#include "CrashHandler/DumpWriter.h"
 
 namespace arangodb::crash_handler {
 
-/// Dumps the data of crash handler to the disk
-class Dumper {
+/// Manages the dump creation and other dumps on disk
+class DumpManager {
  public:
-  Dumper(std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
+  DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
+
+  /// @brief lists all crash directories (returns UUIDs)
+  std::vector<std::string> listCrashes() const;
+
+  /// @brief gets the contents of a specific crash directory
+  std::unordered_map<std::string, std::string> getCrashContents(
+      std::string_view crashId) const;
+
+  /// @brief deletes a specific crash directory
+  bool deleteCrash(std::string_view crashId);
 
   void setCrashesDirectory(std::string const& crashesDirectory);
 
   void cleanupOldCrashDirectories(size_t maxCrashDirectories) const;
 
-  void dumpCrashData(std::string_view backtrace) const;
+  DumpWriter getDumpWriter() const;
 
  private:
-  // Create a new crash directory for the current crash
-  std::string createCrashDirectory() const;
-
-  void dumpDataSources(std::string const& crashDirectory) const;
-
-  void dumpSystemInfo(std::string const& crashDirectory) const;
-
-  void dumpBacktraceInfo(std::string const& crashDirectory,
-                         std::string_view const backtrace) const;
-
-  // Ensure that the crashes directory exists
-  bool ensureCrashesDirectory() const;
-
   std::string _crashesDirectory;
-
   std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
 

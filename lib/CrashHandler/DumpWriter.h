@@ -25,26 +25,28 @@
 
 #include <string>
 #include <string_view>
-#include <unordered_map>
-#include <vector>
+#include <memory>
+
+#include "CrashHandler/DataSourceRegistry.h"
 
 namespace arangodb::crash_handler {
 
-class ICrashRegistry {
+/// Dumps the data of crash handler to the disk
+class DumpWriter {
  public:
-  virtual ~ICrashRegistry() = default;
+  DumpWriter(std::string const& crashDirectory,
+             std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
 
-  /// @brief lists all crash directories (returns UUIDs)
-  virtual std::vector<std::string> listCrashes() const = 0;
+  void dumpDataSources() const;
 
-  /// @brief gets the contents of a specific crash directory
-  /// Returns a map of filename -> file contents
-  virtual std::unordered_map<std::string, std::string> getCrashContents(
-      std::string_view crashId) const = 0;
+  void dumpSystemInfo() const;
 
-  /// @brief deletes a specific crash directory
-  /// Returns true if successful, false if not found
-  virtual bool deleteCrash(std::string_view crashId) = 0;
+  void dumpBacktraceInfo(std::string_view const backtrace) const;
+
+ private:
+  std::string _crashDirectory;
+
+  std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
 
 }  // namespace arangodb::crash_handler

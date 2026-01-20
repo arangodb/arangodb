@@ -46,6 +46,7 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   }
 
   auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
+  auto dumpManager = crashHandlerFeature.getDumpManager();
   if (!crashHandlerFeature.isEnabled()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_DISABLED,
                   "crash handler feature is disabled");
@@ -56,15 +57,15 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
 
   if (suffixes.empty()) {
     // /_admin/crashes - list all crashes
-    handleListCrashes(crashHandlerFeature);
+    handleListCrashes(dumpManager);
   } else if (suffixes.size() == 1) {
     // /_admin/crashes/{id}
     auto const& crashId = suffixes[0];
 
     if (_request->requestType() == rest::RequestType::GET) {
-      handleGetCrash(crashHandlerFeature, crashId);
+      handleGetCrash(dumpManager, crashId);
     } else if (_request->requestType() == rest::RequestType::DELETE_REQ) {
-      handleDeleteCrash(crashHandlerFeature, crashId);
+      handleDeleteCrash(dumpManager, crashId);
     } else {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -77,14 +78,14 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
 }
 
 void RestCrashHandler::handleListCrashes(
-    CrashHandlerFeature const& crashHandlerFeature) {
+    std::shared_ptr<DumpManager> const& dumpManager) {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
 
-  auto crashes = crashHandlerFeature.listCrashes();
+  auto crashes = dumpManager->listCrashes();
 
   VPackBuilder builder;
   velocypack::serialize(builder, crashes);
@@ -93,9 +94,9 @@ void RestCrashHandler::handleListCrashes(
 }
 
 void RestCrashHandler::handleGetCrash(
-    CrashHandlerFeature const& crashHandlerFeature,
+    std::shared_ptr<DumpManager> const& dumpManager,
     std::string const& crashId) {
-  auto contents = crashHandlerFeature.getCrashContents(crashId);
+  auto contents = dumpManager->getCrashContents(crashId);
 
   if (contents.empty()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
@@ -117,8 +118,9 @@ void RestCrashHandler::handleGetCrash(
 }
 
 void RestCrashHandler::handleDeleteCrash(
-    CrashHandlerFeature& crashHandlerFeature, std::string const& crashId) {
-  bool deleted = crashHandlerFeature.deleteCrash(crashId);
+    std::shared_ptr<DumpManager> const& dumpManager,
+    std::string const& crashId) {
+  bool deleted = dumpManager->deleteCrash(crashId);
 
   if (!deleted) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,

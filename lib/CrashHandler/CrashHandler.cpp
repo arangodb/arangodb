@@ -47,7 +47,6 @@
 #include <boost/core/demangle.hpp>
 
 #include "BuildId/BuildId.h"
-#include "CrashHandler/Dumper.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
@@ -544,11 +543,10 @@ void actuallyDumpCrashInfo() {
     arangodb::Logger::flush();
 
     auto const* crashHandler = CrashHandler::getCrashHandler();
-    if (crashHandler == nullptr) {
-      return;
+    if (crashHandler != nullptr) {
+      crashHandler->dumpCrashData(
+          std::string_view(backtraceBuffer.get(), bytesUsed));
     }
-    auto const dumper = crashHandler->getDumper();
-    dumper->dumpCrashData(std::string_view(backtraceBuffer.get(), bytesUsed));
   } catch (...) {
     // Ignore exceptions in crash handling
   }
@@ -672,8 +670,8 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
 
-CrashHandler::CrashHandler(std::shared_ptr<Dumper const> dumper)
-    : _dumper(std::move(dumper)) {
+CrashHandler::CrashHandler(std::shared_ptr<DumpManager const> dumpManager)
+    : _dumpManager(std::move(dumpManager)) {
   // starts global background thread if not already done
   bool threadRunning = _threadRunning.exchange(true);
   if (!threadRunning) {
@@ -689,6 +687,17 @@ CrashHandler::~CrashHandler() {
     shutdownCrashHandler();
   }
   _theCrashHandler.store(nullptr);
+}
+
+void CrashHandler::dumpCrashData(std::string_view backtrace) const {
+  if (_dumpManager != nullptr) {
+    auto const dumpWriter = _dumpManager->getDumpWriter();
+    dumpWriter.dumpDataSources();
+    dumpWriter.dumpSystemInfo();
+    if (!backtrace.empty()) {
+      dumpWriter.dumpBacktraceInfo(backtrace);
+    }
+  }
 }
 
 void CrashHandler::triggerCrashHandler() {
