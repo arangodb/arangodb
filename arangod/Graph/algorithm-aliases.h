@@ -29,8 +29,8 @@
 #include "Graph/Enumerators/WeightedShortestPathEnumerator.h"
 #include "Graph/Enumerators/YenEnumerator.h"
 
-#include "Graph/Queues/BatchedLifoQueue.h"
-#include "Graph/Queues/BatchedFifoQueue.h"
+#include "Graph/Queues/CursorLifoQueue.h"
+#include "Graph/Queues/CursorFifoQueue.h"
 #include "Graph/Queues/CursorWeightedQueue.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
@@ -118,7 +118,7 @@ struct BFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       FifoQueue<Step>,
-      BatchedFifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
+      CursorFifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -136,7 +136,7 @@ struct DFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       LifoQueue<Step>,
-      BatchedLifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
+      CursorLifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;

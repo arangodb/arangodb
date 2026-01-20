@@ -49,7 +49,7 @@ namespace arangodb::graph {
    _queue.
 */
 template<class StepType, NeighbourCursor<StepType> Cursor>
-class BatchedFifoQueue {
+class CursorFifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
   using Step = StepType;
@@ -57,9 +57,9 @@ class BatchedFifoQueue {
   // cluster relevant)
   // -> loose ends to the end
 
-  explicit BatchedFifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit CursorFifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
-  ~BatchedFifoQueue() { this->clear(); }
+  ~CursorFifoQueue() { this->clear(); }
 
   bool usesCursor() { return true; }
 
@@ -184,7 +184,7 @@ class BatchedFifoQueue {
     }
   }
   template<class S, NeighbourCursor<S> C, typename Inspector>
-  friend auto inspect(Inspector& f, BatchedFifoQueue<S, C>& x);
+  friend auto inspect(Inspector& f, CursorFifoQueue<S, C>& x);
 
  private:
   /// @brief queue datastore
@@ -196,7 +196,7 @@ class BatchedFifoQueue {
   arangodb::ResourceMonitor& _resourceMonitor;
 };
 template<class StepType, NeighbourCursor<StepType> C, typename Inspector>
-auto inspect(Inspector& f, BatchedFifoQueue<StepType, C>& x) {
+auto inspect(Inspector& f, CursorFifoQueue<StepType, C>& x) {
   return f.object(x).fields(f.field("queue", x._queue),
                             f.field("continuations", x._continuationQueue));
 }
