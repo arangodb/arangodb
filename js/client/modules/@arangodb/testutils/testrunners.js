@@ -374,7 +374,7 @@ class runWithAllureReport extends testRunnerBase {
     });
     if (resultFiles.length === 0) {
       let msg = `did not find any files in ${testResultsDir}`;
-      print(msg);
+      //print(msg);
       results['status'] = false;
       results['message'] = msg;
     }
@@ -427,10 +427,12 @@ class runWithAllureReport extends testRunnerBase {
         }
         // print(allContainerJsons[parent])
       }
+      //print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
       //print(allResultJsons[oneResultKey])
       //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
     }
     //print(topLevelContainers)
+    let totalFailed = 0;
     topLevelContainers.forEach(id => {
       //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
       let tlContainer = allContainerJsons[id];
@@ -458,6 +460,8 @@ class runWithAllureReport extends testRunnerBase {
             print(RED+grandChildContainer.children+RESET);
           }
           let gcTestResult = allResultJsons[grandChildContainer.children[0]];
+          //print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          //print(gcTestResult)
           let message = "";
           if (gcTestResult.hasOwnProperty('statusDetails')) {
             message = gcTestResult.statusDetails.message + "\n\n" + gcTestResult.statusDetails.trace;
@@ -470,6 +474,7 @@ class runWithAllureReport extends testRunnerBase {
 
           suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
           if (!myResult.status) {
+            totalFailed += 1;
             status = false;
             suiteResult.status = false;
             // suiteResult.message = myResult.message;
@@ -479,6 +484,7 @@ class runWithAllureReport extends testRunnerBase {
       });
       //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
     });
+    results['failed'] = totalFailed;
     results['timeout'] = false;
     results['status'] = status;
   }
