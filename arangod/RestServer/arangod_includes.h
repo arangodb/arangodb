@@ -131,7 +131,6 @@
 #include "Sharding/ShardingFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"

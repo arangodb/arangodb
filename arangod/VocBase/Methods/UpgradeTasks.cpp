@@ -164,9 +164,6 @@ Result createSystemCollections(
     // NOTE: We could hard-code this on compile-time
     // List of _system database only collections
     systemCollections.push_back(StaticStrings::UsersCollection);
-    systemCollections.push_back(StaticStrings::StatisticsCollection);
-    systemCollections.push_back(StaticStrings::Statistics15Collection);
-    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
     // All others are available in all other Databases as well.
   }
 
@@ -303,41 +300,6 @@ Result createSystemCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
-Result createSystemStatisticsCollections(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  if (vocbase.isSystem()) {
-    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-    // the order of systemCollections is important. If we're in _system db, the
-    // UsersCollection needs to be first, otherwise, the GraphsCollection must
-    // be first.
-    std::array<std::string, 3> systemCollections{
-        StaticStrings::StatisticsCollection,
-        StaticStrings::Statistics15Collection,
-        StaticStrings::StatisticsRawCollection,
-    };
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-    Result res;
-    OperationOptions options{};
-    for (auto const& collection : systemCollections) {
-      // No need to batch this.
-      // Fresh databases will have a batch run for those collections already.
-      // We only hit this on databases that do not have statistics collections
-      // yet. Which have to be somewhere from the 2.X series, and never had an
-      // upgrade task.
-      std::shared_ptr<LogicalCollection> col;
-      res = methods::Collections::createSystem(vocbase, options, collection,
-                                               false, col);
-      if (res.fail()) {
-        return res;
-      }
-      TRI_ASSERT(col) << "Create system collection did not fail but also did "
-                         "not create a collection.";
-      createdCollections.emplace_back(std::move(col));
-    }
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
 
 Result createIndex(
     std::string const& name, Index::IndexType type,
@@ -361,32 +323,6 @@ Result createIndex(
       .waitAndGet();
 }
 
-Result createSystemStatisticsIndices(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
-  Result res;
-  if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-  }
-  return res;
-}
 
 Result createSystemCollectionsIndices(
     TRI_vocbase_t& vocbase,
@@ -396,11 +332,6 @@ Result createSystemCollectionsIndices(
     res = ::createIndex(StaticStrings::UsersCollection,
                         arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
                         true, true, collections);
-    if (!res.ok()) {
-      return res;
-    }
-
-    res = ::createSystemStatisticsIndices(vocbase, collections);
     if (!res.ok()) {
       return res;
     }
@@ -476,31 +407,6 @@ Result UpgradeTasks::createSystemCollectionsAndIndices(
   return {};
 }
 
-Result UpgradeTasks::createStatisticsCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  // This vector should after the call to ::createSystemCollections contain
-  // a LogicalCollection for *every* (required) system collection.
-  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
-  Result res =
-      ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
-
-  if (res.fail()) {
-    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
-        << "could not create system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
-  if (res.fail()) {
-    LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
-        << "could not create indices for system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  return {};
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_iresearch_analyzers' collection
