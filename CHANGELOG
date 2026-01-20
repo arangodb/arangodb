@@ -1,6 +1,9 @@
 4.0
 ---
 
+* Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
+  `order: "dfs"` instead.
+
 * Remove endpoints to load/unload collections.
 
 * Remove V8 server code.
