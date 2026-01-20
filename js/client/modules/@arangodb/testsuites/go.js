@@ -30,7 +30,7 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
-  '   - `goDriverVersion`: version [1,2] driver tests',
+  '   - `goDriverVersion`: version 2 driver tests',
   '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
@@ -90,9 +90,6 @@ function goDriver (options) {
     runOneTest(file) {
       const goVersionArgs = [
         {
-          "path": "./test/",
-          "wd": ""
-        }, {
           "path": "./tests",
           "wd": "/v2/",
         }][options.goDriverVersion -1];
