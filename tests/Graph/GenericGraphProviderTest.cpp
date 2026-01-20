@@ -459,14 +459,13 @@ TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
   g.addEdge(3, 2);
   g.addEdge(0, 3);
 
-  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
-      expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  std::vector<size_t> const& expectedVerticesToFetch = {0};
 
-  auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
+  auto testee = this->makeProvider(g, expectedVerticesToFetch);
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
-  auto start = testee.startVertex(startH);
+  auto start = testee.startVertex(arangodb::graph::VertexRef{startH});
 
   if (start.isLooseEnd()) {
     std::vector<decltype(start)*> looseEnds{};
