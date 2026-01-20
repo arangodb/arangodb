@@ -88,11 +88,10 @@ function goDriver (options) {
       this.info = "runInGoTest";
     }
     runOneTest(file) {
-      const goVersionArgs = [
-        {
-          "path": "./tests",
-          "wd": "/v2/",
-        }][options.goDriverVersion -1];
+      const goVersionArgs = {
+        "path": "./tests",
+        "wd": "/v2/",
+      };
 
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
@@ -117,7 +116,7 @@ function goDriver (options) {
       if (this.instanceManager.JWT) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
-      let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
+      let args = ['test', '-json', '-tags', 'auth', goVersionArgs.path];
       if (options.goDriverVersion === 2 && (options.cluster || options.isInstrumented)) {
         args.push('-parallel');
         args.push('1');
@@ -139,7 +138,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs['wd']}`);
+      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs.wd}`);
       // let alljsonLines = []
       let b = '';
       let results = {};
