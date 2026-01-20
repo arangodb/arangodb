@@ -38,7 +38,8 @@ DumpManager::DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(std::move(dataSourceRegistry)) {}
 
 void DumpManager::setCrashesDirectory(std::string const& crashesDirectory) {
-  _crashesDirectory = crashesDirectory;
+  _crashesDirectory =
+      (std::filesystem::path(crashesDirectory) / "crashes").string();
   if (!std::filesystem::exists(_crashesDirectory)) {
     std::filesystem::create_directories(_crashesDirectory);
   }
