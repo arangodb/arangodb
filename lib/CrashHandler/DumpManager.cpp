@@ -60,8 +60,8 @@ std::vector<std::string> DumpManager::listCrashes() const {
   return crashes;
 }
 
-std::unordered_map<std::string, std::string>
-DumpManager::getCrashContents(std::string_view crashId) const {
+std::unordered_map<std::string, std::string> DumpManager::getCrashContents(
+    std::string_view crashId) const {
   if (_crashesDirectory.empty()) {
     return {};
   }
