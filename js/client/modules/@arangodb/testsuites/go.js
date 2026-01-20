@@ -112,6 +112,10 @@ function goDriver (options) {
         "wd": "/v2/",
       };
       let args = ['test', '-json', '-tags', 'auth', goVersionArgs.path];
+      if (options.cluster || options.isInstrumented) {
+        args.push('-parallel');
+        args.push('1');
+      }
       if (this.options.testCase) {
         args.push('-run');
         args.push(this.options.testCase);
