@@ -46,15 +46,20 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   }
 
   auto& crashHandlerFeature = server().getFeature<CrashHandlerFeature>();
-  auto dumpManager = crashHandlerFeature.getDumpManager();
   if (!crashHandlerFeature.isEnabled()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_DISABLED,
                   "crash handler feature is disabled");
     co_return;
   }
 
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  auto const dumpManager = crashHandlerFeature.getDumpManager();
+  if (dumpManager == nullptr) {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_DISABLED,
+                  "crash management is not ready yet");
+    co_return;
+  }
 
+  std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
     // /_admin/crashes - list all crashes
     handleListCrashes(dumpManager);

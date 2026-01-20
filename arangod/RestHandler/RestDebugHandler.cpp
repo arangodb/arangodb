@@ -117,14 +117,17 @@ RestStatus RestDebugHandler::execute() {
   } else if (suffixes[0] == "crash") {
     if (type == rest::RequestType::PUT) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto const payload = _request->payload();
-      std::string message = "crashing server by REST call";
-      if (payload.isObject()) {
-        auto const messageSlice = payload.get("message");
-        if (messageSlice.isString()) {
-          message = messageSlice.copyString();
-        }
-      }
+      auto const message =
+          std::invoke([payload = _request->payload()]() -> std::string {
+            if (payload.isObject()) {
+              auto const messageSlice = payload.get("message");
+              if (messageSlice.isString()) {
+                return messageSlice.copyString();
+              }
+            }
+
+            return "crashing server by REST call";
+          });
 
       TRI_TerminateDebugging(message);
       return RestStatus::DONE;

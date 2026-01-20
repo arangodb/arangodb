@@ -27,7 +27,7 @@
 
 const functionsDocumentation = {
   'recovery': 'run recovery tests',
-  'recovery_cluster': 'run recovery cluster tests',
+  'recovery_cluster': 'run recovery cluster tests'
 };
 
 const fs = require('fs');
