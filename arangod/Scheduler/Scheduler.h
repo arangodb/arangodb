@@ -33,7 +33,6 @@
 #include <string_view>
 #include <utility>
 
-#include "ActivityRegistry/activity.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
@@ -189,9 +188,7 @@ class Scheduler {
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)),
-          logContext(LogContext::current()),
-          activity("work item") {
+        : F(std::move(f)), logContext(LogContext::current()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() {
@@ -200,13 +197,11 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
-      activity.activate();
       this->operator()();
     }
 
    private:
     LogContext logContext;
-    activity_registry::Activity activity;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler
