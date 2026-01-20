@@ -32,7 +32,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathValidator.h"
-#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Queues/CursorWeightedQueue.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/Types/VertexRef.h"
 #include "Graph/Types/VertexSet.h"
@@ -102,7 +102,8 @@ template<class ProviderType>
 class WeightedShortestPathEnumerator {
  private:
   using Step = typename ProviderType::Step;
-  using QueueType = WeightedQueue<Step, typename ProviderType::NeighbourCursor>;
+  using QueueType =
+      CursorWeightedQueue<Step, typename ProviderType::NeighbourCursor>;
   using PathStoreType = PathStore<Step>;
   using PathValidatorType =
       PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::NONE,

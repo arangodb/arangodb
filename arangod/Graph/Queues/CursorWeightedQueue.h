@@ -25,6 +25,7 @@
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
+#include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Graph/Queues/QueueEntry.h"
 
@@ -34,8 +35,8 @@
 namespace arangodb {
 namespace graph {
 
-template<class StepType>
-class WeightedQueue {
+template<class StepType, NeighbourCursor<StepType> Cursor>
+class CursorWeightedQueue {
  public:
   static constexpr bool RequiresWeight = true;
   using Step = StepType;
@@ -43,11 +44,11 @@ class WeightedQueue {
   // cluster relevant)
   // -> loose ends to the end
 
-  explicit WeightedQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit CursorWeightedQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
-  ~WeightedQueue() { this->clear(); }
+  ~CursorWeightedQueue() { this->clear(); }
 
-  bool usesCursor() { return false; }
+  bool usesCursor() { return true; }
 
   void clear() {
     if (!_queue.empty()) {
@@ -71,9 +72,16 @@ class WeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
-  template<NeighbourCursor<Step> Cursor>
   void append(Cursor& cursor) {
-    TRI_ASSERT(false);
+    LOG_DEVEL << "weighted cursor append";
+    // exhaust the full cursor
+    while (cursor.hasMore()) {
+      LOG_DEVEL << "cursor has more";
+      for (auto const& step : cursor.next()) {
+        LOG_DEVEL << "append " << inspection::json(step);
+        append(step);
+      }
+    }
   }
 
   void setStartContent(std::vector<Step> startSteps) {
@@ -134,7 +142,7 @@ class WeightedQueue {
     // we steal the last element.
     std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
     Step first = std::move(_queue.back());
-    LOG_TOPIC("9cd66", TRACE, Logger::GRAPHS)
+    LOG_TOPIC("90166", TRACE, Logger::GRAPHS)
         << "<WeightedQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_back();
@@ -158,8 +166,8 @@ class WeightedQueue {
       }
     }
   }
-  template<class S, typename Inspector>
-  friend auto inspect(Inspector& f, WeightedQueue<S>& x);
+  template<class S, NeighbourCursor<S> C, typename Inspector>
+  friend auto inspect(Inspector& f, CursorWeightedQueue<S, C>& x);
 
  private:
   struct WeightedComparator {
@@ -185,8 +193,8 @@ class WeightedQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-template<class StepType, typename Inspector>
-auto inspect(Inspector& f, WeightedQueue<StepType>& x) {
+template<class StepType, NeighbourCursor<StepType> C, typename Inspector>
+auto inspect(Inspector& f, CursorWeightedQueue<StepType, C>& x) {
   return f.object(x).fields(f.field("queue", x._queue));
 }
 }  // namespace graph
