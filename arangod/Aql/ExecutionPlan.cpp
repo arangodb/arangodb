@@ -288,7 +288,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
   // how do you even maintain that?
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
-    bool hasBFS = false;
 
     for (size_t i = 0; i < n; ++i) {
       auto member = optionsNode->getMemberUnchecked(i);
@@ -299,13 +298,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         auto value = objElem.getValue();
         TRI_ASSERT(value->isConstant());
 
-        if (name == "bfs") {
-          options->mode =
-              value->isTrue()
-                  ? arangodb::traverser::TraverserOptions::Order::BFS
-                  : arangodb::traverser::TraverserOptions::Order::DFS;
-          hasBFS = true;
-        } else if (name == "uniqueVertices" && value->isStringValue()) {
+        if (name == "uniqueVertices" && value->isStringValue()) {
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
@@ -335,7 +328,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(ast, name, options->vertexCollections,
                                           value);
-        } else if (name == StaticStrings::GraphQueryOrder && !hasBFS) {
+        } else if (name == StaticStrings::GraphQueryOrder) {
           // dfs is the default
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryOrderBFS)) {

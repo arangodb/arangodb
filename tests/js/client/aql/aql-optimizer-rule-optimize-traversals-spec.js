@@ -506,7 +506,7 @@ describe('Rule optimize-traversals', () => {
     it('should optimize when filtered on v - BFS', () => {
       let query = `
         FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         FILTER v.label == '4'
         RETURN p
       `;
@@ -548,7 +548,7 @@ describe('Rule optimize-traversals', () => {
     it('should optimize when filtered on e - BFS', () => {
       let query = `
         FOR v,e,p IN 2 OUTBOUND @start GRAPH @graph
-        OPTIONS {bfs: true}
+        OPTIONS {order: "bfs"}
         FILTER e.label == 'schubi'
         RETURN p
       `;
