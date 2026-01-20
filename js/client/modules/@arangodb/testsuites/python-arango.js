@@ -90,9 +90,6 @@ class runInPythonTest extends runWithAllureReport {
     print(this.instanceManager.setPassvoid('pythonarango'));
     let topology;
     let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
-    let results = {
-      'message': ''
-    };
 
     let args = [
       '--root', 'root',
@@ -143,11 +140,10 @@ class runInPythonTest extends runWithAllureReport {
     if (rc.exit !== 0) {
       status = false;
     }
-    results = {
+    let results = {
       status: status,
       failed: (status)?0:1,
     };
-    print(results);
     this.getAllureResults(testResultsDir, results, status);
     return results;
   }
