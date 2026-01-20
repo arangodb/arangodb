@@ -36,7 +36,8 @@ using namespace arangodb::containers;
 RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
                          GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _feature(server.getFeature<Feature>()) {}
+      _feature(server.getFeature<Feature>()),
+      _activity("activity rest handler", {{"url", request->fullUrl()}}) {}
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {

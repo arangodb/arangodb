@@ -198,8 +198,8 @@ void RestDumpHandler::handleCommandDumpNext() {
     auto context = _dumpManager->find(id, database, user);
     // immediately prolong lifetime of context, so it doesn't get invalidated
     // while we are using it.
-    activity_registry::Activity fetch{"dump context fetching",
-                                      context->_activity.id()};
+    activity_registry::Activity fetch{
+        "dump context fetching", {}, context->_activity.id()};
 
     context->extendLifetime();
 

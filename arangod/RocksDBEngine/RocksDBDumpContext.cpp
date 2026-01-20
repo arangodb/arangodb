@@ -212,7 +212,9 @@ RocksDBDumpContext::RocksDBDumpContext(
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
-      _activity{"dump context", parentId} {
+      _activity{"dump context",
+                {{"id", _id}, {"user", _user}, {"database", _database}},
+                parentId} {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
