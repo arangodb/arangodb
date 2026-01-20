@@ -222,11 +222,16 @@ class AttributeDetectorTest : public ::testing::Test {
     ASSERT_TRUE(res.ok()) << res.errorMessage();
   }
 
-  std::shared_ptr<Query> executeQuery(std::string const& queryString) {
+  std::shared_ptr<Query> executeQuery(
+      std::string const& queryString,
+      std::shared_ptr<velocypack::Builder> bindParams = nullptr) {
     auto ctx = std::make_shared<transaction::StandaloneContext>(
         *vocbase, transaction::OperationOriginTestCase{});
-    auto query = Query::create(std::move(ctx), QueryString(queryString),
-                               VPackParser::fromJson("{}"));
+    if (!bindParams) {
+      bindParams = VPackParser::fromJson("{}");
+    }
+    auto query =
+        Query::create(std::move(ctx), QueryString(queryString), bindParams);
     waitForAsync(query->prepareQuery());
     return query;
   }

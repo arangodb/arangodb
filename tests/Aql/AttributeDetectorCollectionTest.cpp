@@ -304,21 +304,41 @@ TEST_F(AttributeDetectorTest, ReturnDistinctAttribute) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameterRequiresAll) {
+TEST_F(AttributeDetectorTest, DynamicCollectionAccessWithBindParameters1) {
+  auto bind = VPackParser::fromJson(R"({ "@coll": "users" })");
   auto query = executeQuery(R"aql(
-    FOR u IN users
-      RETURN u[@attr]
-  )aql");
+    FOR u IN @@coll
+      RETURN u.name
+  )aql", bind);
 
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, DynamicAttributeAccessRequiresAll) {
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters1) {
+  auto bind = VPackParser::fromJson(R"({ "attr": "age" })");
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN u[@attr]
+  )aql", bind);
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters2) {
   auto query = executeQuery(R"aql(
     LET a = "name"
     FOR u IN users
@@ -328,7 +348,46 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessRequiresAll) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters3) {
+  auto bind = VPackParser::fromJson(R"({ "attr": "price" })");
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      FILTER p[@attr] >= 20
+      RETURN { name: p.name, category: p.category }
+  )aql", bind);
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 3);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("category"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithConcat) {
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      FILTER p[CONCAT("p", "rice")] >= 20
+      RETURN { name: p.name, category: p.category }
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 3);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("category"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
