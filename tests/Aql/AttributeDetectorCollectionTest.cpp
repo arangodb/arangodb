@@ -355,38 +355,72 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters2) {
 }
 
 TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters3) {
-  auto bind = VPackParser::fromJson(R"({ "attr": "price" })");
+  auto bind = VPackParser::fromJson(R"({ "attr": "age" })");
   auto query = executeQuery(R"aql(
-    FOR p IN products
-      FILTER p[@attr] >= 20
-      RETURN { name: p.name, category: p.category }
+    FOR u IN users
+      FILTER u[@attr] >= 30
+      RETURN { name: u.name, address: u.address }
   )aql", bind);
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
   EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("category"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("address"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("age"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithConcat) {
   auto query = executeQuery(R"aql(
-    FOR p IN products
-      FILTER p[CONCAT("p", "rice")] >= 20
-      RETURN { name: p.name, category: p.category }
+    FOR p IN posts
+      FILTER p[CONCAT("ti", "tle")] == "festival"
+      RETURN { user: p.userId, title: p.title }
   )aql");
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
-  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_EQ(accesses[0].collectionName, "posts");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("userId"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("title"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, NestedAttributeAccess1) {
+  auto query = executeQuery(R"aql(
+    FOR p IN posts
+      FILTER p.title == "festival"
+      RETURN p.meta
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "posts");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("meta"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("title"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, NestedAttributeAccess2) {
+  auto query = executeQuery(R"aql(
+    FOR p IN posts
+      FILTER p.title == "festival"
+      RETURN { lang: p.meta.lang, likes: p.meta.likes}
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "posts");
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("category"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("title"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("lang"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("likes"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
