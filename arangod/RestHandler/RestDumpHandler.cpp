@@ -166,8 +166,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard =
-      _dumpManager->createContext(std::move(opts), user, database, useVPack);
+  auto guard = _dumpManager->createContext(std::move(opts), user, database,
+                                           useVPack, _activity.id());
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -192,35 +192,44 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
 
-  // find() will throw in case the context cannot be found or the user does
-  // not match.
-  auto context = _dumpManager->find(id, database, user);
-  // immediately prolong lifetime of context, so it doesn't get invalidated
-  // while we are using it.
-  context->extendLifetime();
+  {
+    // find() will throw in case the context cannot be found or the user does
+    // not match.
+    auto context = _dumpManager->find(id, database, user);
+    // immediately prolong lifetime of context, so it doesn't get invalidated
+    // while we are using it.
+    activity_registry::Activity fetch{"dump context fetching",
+                                      context->_activity.id()};
 
-  auto batch = context->next(*batchId, lastBatch);
-  auto counts = context->getBlockCounts();
+    context->extendLifetime();
 
-  if (batch == nullptr) {
-    // all batches have been received
-    return resetResponse(rest::ResponseCode::NO_CONTENT);
+    auto batch = context->next(*batchId, lastBatch);
+    auto counts = context->getBlockCounts();
+
+    // be able to have a look at the activity-registry in the meantime
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    if (batch == nullptr) {
+      // all batches have been received
+      return resetResponse(rest::ResponseCode::NO_CONTENT);
+    }
+
+    // output the batch value
+    _response->setAllowCompression(
+        rest::ResponseCompressionType::kAllowCompression);
+    _response->setHeaderNC(StaticStrings::DumpShardId,
+                           std::string{batch->shard});
+    _response->setHeaderNC(StaticStrings::DumpBlockCounts,
+                           std::to_string(counts));
+    _response->setContentType(rest::ContentType::DUMP);
+    _response->addRawPayload(batch->content());
+    _response->setGenerateBody(true);
+    _response->setResponseCode(rest::ResponseCode::OK);
+
+    // prolong lifetime of context, so that it is still there for follow-up
+    // requests.
+    context->extendLifetime();
   }
-
-  // output the batch value
-  _response->setAllowCompression(
-      rest::ResponseCompressionType::kAllowCompression);
-  _response->setHeaderNC(StaticStrings::DumpShardId, std::string{batch->shard});
-  _response->setHeaderNC(StaticStrings::DumpBlockCounts,
-                         std::to_string(counts));
-  _response->setContentType(rest::ContentType::DUMP);
-  _response->addRawPayload(batch->content());
-  _response->setGenerateBody(true);
-  _response->setResponseCode(rest::ResponseCode::OK);
-
-  // prolong lifetime of context, so that it is still there for follow-up
-  // requests.
-  context->extendLifetime();
 }
 
 void RestDumpHandler::handleCommandDumpFinished() {

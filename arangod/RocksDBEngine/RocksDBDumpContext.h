@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ActivityRegistry/activity.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Inspection/Types.h"
@@ -123,7 +124,8 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
                      DatabaseFeature& databaseFeature, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
-                     std::string database, bool useVPack);
+                     std::string database, bool useVPack,
+                     activity_registry::ActivityId parentActivity);
 
   ~RocksDBDumpContext();
 
@@ -348,6 +350,9 @@ class RocksDBDumpContext {
   std::atomic<int64_t> _blockCounter{0};
 
   std::atomic_bool _stopped{false};
+
+ public:
+  activity_registry::Activity _activity{"dump context"};
 };
 
 }  // namespace arangodb

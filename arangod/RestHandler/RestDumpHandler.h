@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ActivityRegistry/activity.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -60,5 +61,6 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
 
   RocksDBDumpManager* _dumpManager = nullptr;
   ClusterInfo& _clusterInfo;
+  activity_registry::Activity _activity{name()};
 };
 }  // namespace arangodb
