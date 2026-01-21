@@ -151,6 +151,7 @@ add_library(arangoserver STATIC
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
+  RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VectorIndexFeature.cpp
   RestServer/ViewTypesFeature.cpp
