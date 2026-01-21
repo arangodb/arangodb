@@ -109,11 +109,7 @@ function goDriver (options) {
       if (this.instanceManager.JWT) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
-      const goVersionArgs = {
-        "path": "./tests",
-        "wd": "/v2/",
-      };
-      let args = ['test', '-json', '-tags', 'auth', goVersionArgs.path];
+      let args = ['test', '-json', '-tags', 'auth', './tests'];
       if (options.cluster || options.isInstrumented) {
         args.push('-parallel');
         args.push('1');
@@ -135,7 +131,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, goVersionArgs.wd));
+      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
       // let alljsonLines = []
       let b = '';
       let results = {};
