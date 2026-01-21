@@ -1380,11 +1380,15 @@ function restoreIntegrationVectorSuite() {
       let c = db._collection(cn);
       let indexes = c.indexes();
       // Assert that the vector index was ignored
-      assertEqual(2, indexes.length);
+      assertEqual(3, indexes.length);
       assertEqual("primary", indexes[0].type);
       assertEqual(["_key"], indexes[0].fields);
-      assertEqual("persistent", indexes[1].type);
-      assertEqual(["value"], indexes[1].fields);
+
+      assertEqual("vector", indexes[1].type);
+      assertEqual(["vector"], indexes[1].fields);
+
+      assertEqual("persistent", indexes[2].type);
+      assertEqual(["value"], indexes[2].fields);
 
       fs.removeDirectoryRecursive(path, true);
     }

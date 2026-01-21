@@ -4,6 +4,8 @@
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
 
+* Make `vector-index` flag obsolete.
+
 * Remove endpoints to load/unload collections.
 
 * Remove V8 server code.
