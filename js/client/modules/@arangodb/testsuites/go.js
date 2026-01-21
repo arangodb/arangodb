@@ -47,6 +47,7 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
+const path = require('path');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -134,7 +135,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs.wd}`);
+      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, goVersionArgs.wd));
       // let alljsonLines = []
       let b = '';
       let results = {};
