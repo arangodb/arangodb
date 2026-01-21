@@ -885,7 +885,7 @@ class instanceManager {
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
+    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {

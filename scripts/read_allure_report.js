@@ -34,8 +34,8 @@ function main (argv) {
       "dummytest": results,
       "failed": results.failed,
       "status": results.status,
-      
-    }
+    };
+
     print('================================================================================');
     print(yaml.safeDump(results));
     print('================================================================================');
