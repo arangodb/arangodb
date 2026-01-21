@@ -36,6 +36,8 @@
 
 namespace arangodb::activity_registry {
 
+using Metadata = std::unordered_map<std::string, std::string>;
+
 struct RootActivity {
   bool operator==(RootActivity const&) const = default;
 };
@@ -80,6 +82,7 @@ struct ActivityInRegistrySnapshot {
   State state;
   ActivityId id;
   Parent parent;
+  Metadata metadata;
   bool operator==(ActivityInRegistrySnapshot const&) const = default;
   auto update_state(State new_state) -> ActivityInRegistrySnapshot& {
     state = new_state;
@@ -88,9 +91,9 @@ struct ActivityInRegistrySnapshot {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActivityInRegistrySnapshot& x) {
-  return f.object(x).fields(f.embedFields(x.id), f.field("name", x.name),
-                            f.field("state", x.state),
-                            f.field("parent", x.parent));
+  return f.object(x).fields(
+      f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
+      f.field("parent", x.parent), f.field("metadata", x.metadata));
 }
 
 /**
@@ -109,8 +112,7 @@ struct ActivityInRegistry {
   std::string const name;
   std::atomic<State> state;
   Parent parent;
-  // possibly interesting other properties:
-  // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
+  Metadata metadata;
 };
 
 /**
@@ -126,8 +128,8 @@ struct Activity {
   Activity(Activity const&) = delete;
   Activity& operator=(Activity const&) = delete;
 
-  Activity(std::string name);
-  Activity(std::string name, ActivityId parent);
+  Activity(std::string name, Metadata metadata);
+  Activity(std::string name, Metadata metadata, ActivityId parent);
   ~Activity();
 
   auto id() -> ActivityId;

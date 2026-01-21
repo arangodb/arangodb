@@ -166,8 +166,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard = _dumpManager->createContext(std::move(opts), user, database,
-                                           useVPack, _activity.id());
+  auto guard =
+      _dumpManager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -198,8 +198,8 @@ void RestDumpHandler::handleCommandDumpNext() {
     auto context = _dumpManager->find(id, database, user);
     // immediately prolong lifetime of context, so it doesn't get invalidated
     // while we are using it.
-    activity_registry::Activity fetch{"dump context fetching",
-                                      context->_activity.id()};
+
+    activity_registry::Activity fetch{"dump context fetching", {{"id", id}}};
 
     context->extendLifetime();
 

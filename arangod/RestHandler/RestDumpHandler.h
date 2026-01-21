@@ -61,6 +61,5 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
 
   RocksDBDumpManager* _dumpManager = nullptr;
   ClusterInfo& _clusterInfo;
-  activity_registry::Activity _activity{name()};
 };
 }  // namespace arangodb

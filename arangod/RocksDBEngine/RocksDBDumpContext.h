@@ -124,8 +124,7 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
                      DatabaseFeature& databaseFeature, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
-                     std::string database, bool useVPack,
-                     activity_registry::ActivityId parentActivity);
+                     std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
 
@@ -352,7 +351,7 @@ class RocksDBDumpContext {
   std::atomic_bool _stopped{false};
 
  public:
-  activity_registry::Activity _activity{"dump context"};
+  activity_registry::Activity _activity;
 };
 
 }  // namespace arangodb
