@@ -25,6 +25,16 @@
 
 namespace arangodb::tests::aql {
 
+TEST_F(AttributeDetectorTest, SimpleQuery) {
+  auto query = executeQuery("FOR doc IN users RETURN doc");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
 TEST_F(AttributeDetectorTest, SimpleProjection) {
   auto query = executeQuery("FOR doc IN users RETURN doc.name");
   auto const& accesses = query->abacAccesses();

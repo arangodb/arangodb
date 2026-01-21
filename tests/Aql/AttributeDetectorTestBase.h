@@ -124,6 +124,8 @@ class AttributeDetectorTest : public ::testing::Test {
 
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
+    ensureHashIndex("products", "brand");
+    ensureHashIndex("products", "color");
 
     run(R"aql(INSERT {_key:"e1", _from:"users/u1", _to:"products/p1", qty:1, orderedAt:"2026-01-01"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e2", _from:"users/u1", _to:"products/p2", qty:2, orderedAt:"2026-01-02"} INTO ordered)aql");
@@ -248,26 +250,19 @@ class AttributeDetectorTest : public ::testing::Test {
     ASSERT_TRUE(created) << "index was not created";
   }
 
-  void ensurePersistentIndex(std::string const& collName,
-                             std::vector<std::string> const& fields) {
-    auto coll = vocbase->lookupCollection(collName);
-    ASSERT_NE(coll, nullptr) << "Missing collection " << collName;
-
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("type", VPackValue("persistent"));
-    builder.add(VPackValue("fields"));
-    builder.openArray();
-    for (auto const& field : fields) {
-      builder.add(VPackValue(field));
+  void explainQuery(std::string const& queryString,
+                    std::shared_ptr<velocypack::Builder> bindParams = nullptr) {
+    if (!bindParams) {
+      bindParams = VPackParser::fromJson("{}");
     }
-    builder.close();
-    builder.close();
 
-    bool created = false;
-    auto idx = coll->createIndex(builder.slice(), created).waitAndGet();
-    ASSERT_TRUE(idx) << "createIndex returned nullptr";
-    ASSERT_TRUE(created) << "index was not created";
+    auto er = tests::explainQuery(*vocbase, queryString, bindParams);
+
+    ASSERT_TRUE(er.result.ok()) << er.result.errorMessage();
+
+    std::cout << "\n--- AQL EXPLAIN ---\n"
+              << er.data->slice().toJson()
+              << "\n-------------------\n";
   }
 };
 
