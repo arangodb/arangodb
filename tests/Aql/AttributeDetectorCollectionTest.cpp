@@ -309,7 +309,8 @@ TEST_F(AttributeDetectorTest, DynamicCollectionAccessWithBindParameters1) {
   auto query = executeQuery(R"aql(
     FOR u IN @@coll
       RETURN u.name
-  )aql", bind);
+  )aql",
+                            bind);
 
   auto const& accesses = query->abacAccesses();
 
@@ -326,7 +327,8 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters1) {
   auto query = executeQuery(R"aql(
     FOR u IN users
       RETURN u[@attr]
-  )aql", bind);
+  )aql",
+                            bind);
 
   auto const& accesses = query->abacAccesses();
 
@@ -360,7 +362,8 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters3) {
     FOR u IN users
       FILTER u[@attr] >= 30
       RETURN { name: u.name, address: u.address }
-  )aql", bind);
+  )aql",
+                            bind);
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
@@ -417,10 +420,9 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "posts");
-  EXPECT_EQ(accesses[0].readAttributes.size(), 3);
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
   EXPECT_TRUE(accesses[0].readAttributes.contains("title"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("lang"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("likes"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("meta"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -540,6 +542,159 @@ TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded3) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// Edge case tests for special attribute/collection names
+
+TEST_F(AttributeDetectorTest, UTF16CollectionName) {
+  // Test with emoji collection name
+  auto mkColl = [&](std::string const& name)
+      -> std::shared_ptr<arangodb::LogicalCollection> {
+    auto json =
+        VPackParser::fromJson(std::string("{\"name\":\"") + name + "\"}");
+    auto c = vocbase->createCollection(json->slice());
+    EXPECT_NE(c.get(), nullptr) << "Failed to create " << name;
+    return c;
+  };
+
+  auto emojiColl = mkColl("💩");
+  auto run = [&](std::string const& q) {
+    SCOPED_TRACE(q);
+    auto qr = tests::executeQuery(*vocbase, q, VPackParser::fromJson("{ }"));
+    ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
+  };
+
+  // Insert document with emoji attribute name
+  run(R"aql(INSERT {_key:"e1", `🍌`:42, nested:{val:99}} INTO `💩`)aql");
+
+  auto query = executeQuery(R"aql(FOR x IN `💩` RETURN x.`🍌`)aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "💩");
+  EXPECT_TRUE(accesses[0].readAttributes.contains("🍌"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, AttributeNameWithDot) {
+  // Test distinguishing between:
+  // 1. Nested access: meta.en (path ["meta", "en"])
+  // 2. Literal attribute name: `meta.en` (path ["meta.en"])
+
+  auto mkColl = [&](std::string const& name)
+      -> std::shared_ptr<arangodb::LogicalCollection> {
+    auto json =
+        VPackParser::fromJson(std::string("{\"name\":\"") + name + "\"}");
+    auto c = vocbase->createCollection(json->slice());
+    EXPECT_NE(c.get(), nullptr) << "Failed to create " << name;
+    return c;
+  };
+
+  auto dotAttrColl = mkColl("dotattrs");
+  auto run = [&](std::string const& q) {
+    SCOPED_TRACE(q);
+    auto qr = tests::executeQuery(*vocbase, q, VPackParser::fromJson("{ }"));
+    ASSERT_TRUE(qr.result.ok()) << qr.result.errorMessage();
+  };
+
+  // Insert document with both nested structure and literal dot-named attribute
+  run(R"aql(INSERT {_key:"d1", `meta.en`:"literal", meta:{en:"nested"}} INTO dotattrs)aql");
+
+  // Test 1: Access literal attribute name `meta.en`
+  auto query1 = executeQuery(R"aql(FOR x IN dotattrs RETURN x.`meta.en`)aql");
+  auto const& accesses1 = query1->abacAccesses();
+
+  ASSERT_EQ(accesses1.size(), 1);
+  EXPECT_EQ(accesses1[0].collectionName, "dotattrs");
+  // Should contain the literal attribute "meta.en", not "meta"
+  EXPECT_TRUE(accesses1[0].readAttributes.contains("meta.en"));
+  EXPECT_FALSE(accesses1[0].readAttributes.contains("meta"));
+  EXPECT_FALSE(accesses1[0].requiresAllAttributesRead);
+
+  // Test 2: Access nested attribute meta.en (without backticks)
+  auto query2 = executeQuery(R"aql(FOR x IN dotattrs RETURN x.meta.en)aql");
+  auto const& accesses2 = query2->abacAccesses();
+
+  ASSERT_EQ(accesses2.size(), 1);
+  EXPECT_EQ(accesses2[0].collectionName, "dotattrs");
+  // Should contain only top-level "meta", not "en"
+  EXPECT_TRUE(accesses2[0].readAttributes.contains("meta"));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains("en"));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains("meta.en"));
+  EXPECT_FALSE(accesses2[0].requiresAllAttributesRead);
+}
+
+TEST_F(AttributeDetectorTest, DeeplyNestedAttributeAccess) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN u.profile.tags[0]
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  // Only top-level "profile" should be tracked, not "tags"
+  EXPECT_EQ(accesses[0].readAttributes.size(), 1);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("profile"));
+  EXPECT_FALSE(accesses[0].readAttributes.contains("tags"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, MultipleNestedPathsSameTopLevel) {
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN {
+        bio: u.profile.bio,
+        tags: u.profile.tags,
+        name: u.name
+      }
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  // Should only have "profile" once (not duplicated) and "name"
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("profile"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].readAttributes.contains("bio"));
+  EXPECT_FALSE(accesses[0].readAttributes.contains("tags"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccess) {
+  // Test dynamic attribute access with bracket notation
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      RETURN u["name"]
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  // Dynamic access with literal string should still track the attribute
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+TEST_F(AttributeDetectorTest, DynamicAttributeAccessVariable) {
+  // Test dynamic attribute access with variable - should require all attributes
+  auto query = executeQuery(R"aql(
+    LET attr = "name"
+    FOR u IN users
+      RETURN u[attr]
+  )aql");
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "users");
+  // Dynamic access with variable cannot be determined statically
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }

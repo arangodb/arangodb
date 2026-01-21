@@ -20,6 +20,37 @@
 ///
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
+//
+// DESIGN NOTE: Top-Level Attribute Tracking
+// ==========================================
+//
+// This implementation tracks only TOP-LEVEL attributes accessed from
+// collections, not nested attributes. This design decision is based on the
+// following rationale:
+//
+// 1. To access any nested attribute, you must first access the top-level
+//    attribute. For example, to read `doc.meta.lang`, you must first read
+//    `doc.meta`. Therefore, tracking only `meta` is sufficient.
+//
+// 2. Fine-grained tracking of nested attributes can be added in future
+//    releases if needed, but for initial ABAC implementation, top-level
+//    tracking provides the necessary access control granularity.
+//
+// Examples:
+// - `doc.meta.lang` -> tracks only "meta"
+// - `doc.profile.tags[0]` -> tracks only "profile"
+// - `doc.`meta.en`` (backtick-quoted) -> tracks "meta.en" as a single
+//   top-level attribute name (not nested access)
+//
+// Special cases handled:
+// - UTF-16 attribute/collection names (emojis, etc.) are fully supported
+// - Attribute names containing dots (e.g., `meta.en`) are distinguished
+//   from nested access (meta.en) by the AQL parser
+// - Dynamic attribute access with variables (e.g., doc[variable]) results
+//   in requiresAllAttributesRead=true since it cannot be determined
+//   statically
+//
+////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeDetector.h"
 
@@ -115,8 +146,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
       Projections const& projs = enumNode->projections();
       if (!projs.empty()) {
         for (auto const& proj : projs.projections()) {
-          for (auto const& attrName : proj.path.get()) {
-            access->readAttributes.insert(std::string(attrName));
+          // Only extract the top-level attribute (first element of the path)
+          // For nested attributes like p.meta.lang, we only track "meta"
+          if (!proj.path.empty()) {
+            access->readAttributes.insert(std::string(proj.path[0]));
           }
         }
       }
@@ -124,8 +157,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
       Projections const& filterProjections = enumNode->filterProjections();
       if (!filterProjections.empty()) {
         for (auto const& proj : filterProjections.projections()) {
-          for (auto const& attrName : proj.path.get()) {
-            access->readAttributes.insert(std::string(attrName));
+          // Only extract the top-level attribute (first element of the path)
+          if (!proj.path.empty()) {
+            access->readAttributes.insert(std::string(proj.path[0]));
           }
         }
       }
@@ -152,8 +186,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
       bool projsCoveredByIndex = projs.usesCoveringIndex();
       if (!projs.empty() && !projsCoveredByIndex) {
         for (auto const& proj : projs.projections()) {
-          for (auto const& attrName : proj.path.get()) {
-            access->readAttributes.insert(std::string(attrName));
+          // Only extract the top-level attribute (first element of the path)
+          if (!proj.path.empty()) {
+            access->readAttributes.insert(std::string(proj.path[0]));
           }
         }
       }
@@ -162,8 +197,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
       bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
       if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
         for (auto const& proj : filterProjections.projections()) {
-          for (auto const& attrName : proj.path.get()) {
-            access->readAttributes.insert(std::string(attrName));
+          // Only extract the top-level attribute (first element of the path)
+          if (!proj.path.empty()) {
+            access->readAttributes.insert(std::string(proj.path[0]));
           }
         }
       }
@@ -179,8 +215,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
                 cond->root(), access->outVariable, "", attributes,
                 _plan->getAst()->query().resourceMonitor())) {
           for (auto const& attr : attributes) {
-            for (auto const& attrName : attr.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!attr.empty()) {
+              access->readAttributes.insert(std::string(attr[0]));
             }
           }
         } else {
@@ -218,8 +255,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->readAttributes.insert("_to");
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(std::string(proj.path[0]));
             }
           }
         } else {
@@ -238,8 +276,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
               access->collectionName = vertexColl->name();
             }
             for (auto const& proj : vertexProjs.projections()) {
-              for (auto const& attrName : proj.path.get()) {
-                access->readAttributes.insert(std::string(attrName));
+              // Only extract the top-level attribute (first element of the
+              // path)
+              if (!proj.path.empty()) {
+                access->readAttributes.insert(std::string(proj.path[0]));
               }
             }
           }
@@ -271,8 +311,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->readAttributes.insert("_to");
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(std::string(proj.path[0]));
             }
           }
         } else {
@@ -291,8 +332,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
               access->collectionName = vertexColl->name();
             }
             for (auto const& proj : vertexProjs.projections()) {
-              for (auto const& attrName : proj.path.get()) {
-                access->readAttributes.insert(std::string(attrName));
+              // Only extract the top-level attribute (first element of the
+              // path)
+              if (!proj.path.empty()) {
+                access->readAttributes.insert(std::string(proj.path[0]));
               }
             }
           }
@@ -324,8 +367,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->readAttributes.insert("_to");
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(std::string(proj.path[0]));
             }
           }
         } else {
@@ -344,8 +388,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
               access->collectionName = vertexColl->name();
             }
             for (auto const& proj : vertexProjs.projections()) {
-              for (auto const& attrName : proj.path.get()) {
-                access->readAttributes.insert(std::string(attrName));
+              // Only extract the top-level attribute (first element of the
+              // path)
+              if (!proj.path.empty()) {
+                access->readAttributes.insert(std::string(proj.path[0]));
               }
             }
           }
@@ -478,8 +524,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
         bool projsCoveredByIndex = projs.usesCoveringIndex();
         if (!projs.empty() && !projsCoveredByIndex) {
           for (auto const& proj : projs.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(std::string(proj.path[0]));
             }
           }
         }
@@ -488,8 +535,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
         bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
         if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
           for (auto const& proj : filterProjections.projections()) {
-            for (auto const& attrName : proj.path.get()) {
-              access->readAttributes.insert(std::string(attrName));
+            // Only extract the top-level attribute (first element of the path)
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(std::string(proj.path[0]));
             }
           }
         }
@@ -505,8 +553,10 @@ bool AttributeDetector::before(ExecutionNode* node) {
                   cond->root(), access->outVariable, "", attributes,
                   _plan->getAst()->query().resourceMonitor())) {
             for (auto const& attr : attributes) {
-              for (auto const& attrName : attr.get()) {
-                access->readAttributes.insert(std::string(attrName));
+              // Only extract the top-level attribute (first element of the
+              // path)
+              if (!attr.empty()) {
+                access->readAttributes.insert(std::string(attr[0]));
               }
             }
           } else {
