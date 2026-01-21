@@ -33,8 +33,8 @@ struct RocksDBIndexCacheRefillFeatureOptions {
   size_t maxCapacity = 128 * 1024;
 
   // maximum concurrent index fill tasks that we are allowed to run to fill
-  // indexes during startup
-  size_t maxConcurrentIndexFillTasks;
+  // indexes during startup (default computed based on number of cores)
+  size_t maxConcurrentIndexFillTasks = 1;
 
   // whether or not in-memory cache values for indexes are automatically
   // refilled upon insert/update/replace

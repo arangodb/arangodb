@@ -29,44 +29,44 @@
 namespace arangodb {
 
 struct QueryRegistryFeatureOptions {
-  bool trackingEnabled;
-  bool trackSlowQueries;
-  bool trackQueryString;
-  bool trackBindVars;
-  bool trackDataSources;
-  bool failOnWarning;
-  bool requireWith;
-  bool queryCacheIncludeSystem;
-  bool queryMemoryLimitOverride;
+  bool trackingEnabled = true;
+  bool trackSlowQueries = true;
+  bool trackQueryString = true;
+  bool trackBindVars = true;
+  bool trackDataSources = false;
+  bool failOnWarning = false;
+  bool requireWith = false;
+  bool queryCacheIncludeSystem = false;
+  bool queryMemoryLimitOverride = true;
 #ifdef USE_ENTERPRISE
-  bool smartJoins;
-  bool parallelizeTraversals;
+  bool smartJoins = true;
+  bool parallelizeTraversals = true;
 #endif
-  bool allowCollectionsInExpressions;
-  bool logFailedQueries;
-  size_t maxAsyncPrefetchSlotsTotal;
-  size_t maxAsyncPrefetchSlotsPerQuery;
-  size_t maxQueryStringLength;
-  size_t maxCollectionsPerQuery;
-  uint64_t peakMemoryUsageThreshold;
-  uint64_t queryGlobalMemoryLimit;
-  uint64_t queryMemoryLimit;
-  size_t maxDNFConditionMembers;
-  double queryMaxRuntime;
-  uint64_t maxQueryPlans;
-  uint64_t maxNodesPerCallstack;
-  uint64_t queryPlanCacheMaxEntries;
-  uint64_t queryPlanCacheMaxMemoryUsage;
-  uint64_t queryPlanCacheMaxIndividualEntrySize;
-  double queryPlanCacheInvalidationTime;
-  uint64_t queryCacheMaxResultsCount;
-  uint64_t queryCacheMaxResultsSize;
-  uint64_t queryCacheMaxEntrySize;
-  uint64_t maxParallelism;
-  double slowQueryThreshold;
-  double slowStreamingQueryThreshold;
-  double queryRegistryTTL;
-  std::string queryCacheMode;
+  bool allowCollectionsInExpressions = false;
+  bool logFailedQueries = false;
+  size_t maxAsyncPrefetchSlotsTotal = 256;
+  size_t maxAsyncPrefetchSlotsPerQuery = 32;
+  size_t maxQueryStringLength = 4096;
+  size_t maxCollectionsPerQuery = 2048;
+  uint64_t peakMemoryUsageThreshold = 1073741824;  // 1GB
+  uint64_t queryGlobalMemoryLimit = 0;
+  uint64_t queryMemoryLimit = 0;
+  size_t maxDNFConditionMembers = 786432;
+  double queryMaxRuntime = 0.0;
+  uint64_t maxQueryPlans = 128;
+  uint64_t maxNodesPerCallstack = 250;
+  uint64_t queryPlanCacheMaxEntries = 128;
+  uint64_t queryPlanCacheMaxMemoryUsage = 8 * 1024 * 1024;
+  uint64_t queryPlanCacheMaxIndividualEntrySize = 2 * 1024 * 1024;
+  double queryPlanCacheInvalidationTime = 900.0;
+  uint64_t queryCacheMaxResultsCount = 0;
+  uint64_t queryCacheMaxResultsSize = 0;
+  uint64_t queryCacheMaxEntrySize = 0;
+  uint64_t maxParallelism = 4;
+  double slowQueryThreshold = 10.0;
+  double slowStreamingQueryThreshold = 10.0;
+  double queryRegistryTTL = 0.0;
+  std::string queryCacheMode = "off";
 };
 
 }  // namespace arangodb

@@ -29,13 +29,13 @@ struct ReplicationTimeoutFeatureOptions {
   // seconds)
   double timeoutFactor = 1.0;
   double timeoutPer4k = 0.1;
-  // mininum wait time for sync replication (default: 900 seconds)
+  // minimum wait time for sync replication (default: 900 seconds)
   double lowerLimit = 900.0;
-  // maxinum wait time for sync replication (default: 3600 seconds)
+  // maximum wait time for sync replication (default: 3600 seconds)
   double upperLimit = 3600.0;
 
   // timeout (in seconds) for shard synchronization attempts.
-  // if the timeout is reached, this does will not count as a synchronization
+  // if the timeout is reached, this will not count as a synchronization
   // failure. instead, the synchronization will be retried shortly after. the
   // rationale for setting a timeout here is that splitting the synchronization
   // of a large collection in one go would require the leader to keep its WAL
