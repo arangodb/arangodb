@@ -40,7 +40,7 @@ exports.checker = class {
     return taskList.filter(
       task => !task.hasOwnProperty('id') ||
         task.id !== 'foxx-queue-manager' ||
-        task.id !== 'self-heal' ||
+        task.id !== 'self-heal'
     );
   }
   setUp (te) {
