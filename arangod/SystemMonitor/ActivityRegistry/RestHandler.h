@@ -18,41 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <mutex>
-
+#include "SystemMonitor/ActivityRegistry/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include "Actions/actions.h"
-#include "Scheduler/Scheduler.h"
+namespace arangodb::activity_registry {
 
-namespace arangodb {
-class RestActionHandler : public RestVocbaseBaseHandler {
+/**
+   Activity-registry REST handler
+
+   GET: Returns all currently existing (non-deleted) activities in the
+   activity-registry as a dependency forest. The forest is given as a list of
+   trees. Each tree is given as a list of activities, where its hierachy number
+   and position inside the list defines its location in the tree. Inside one
+   tree, an activity that is created by another activity sits one
+   hierarchy-level below its parent activity.
+ */
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestActionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "RestActionHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
-  RestStatus execute() override;
-  void cancel() override;
+  char const* name() const override final {
+    return "ActivityRegistryRestHandler";
+  }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  futures::Future<futures::Unit> executeAsync() override;
 
- private:
-  // executes an action
-  void executeAction();
-
- protected:
-  // action
-  std::shared_ptr<TRI_action_t> _action;
-
-  // data lock
-  std::mutex _dataLock;
-
-  // data for cancelation
-  void* _data;
+  Feature& _feature;
 };
-}  // namespace arangodb
+
+}  // namespace arangodb::activity_registry

@@ -40,7 +40,7 @@ class VectorIndexFeature final : public ArangodFeature {
   bool isVectorIndexEnabled() const;
 
  private:
-  bool _useVectorIndex{false};
+  bool _useVectorIndex{true};
 };
 
 }  // namespace arangodb

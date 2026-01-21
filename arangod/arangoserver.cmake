@@ -1,7 +1,4 @@
 add_library(arangoserver STATIC
-  Actions/ActionFeature.cpp
-  Actions/RestActionHandler.cpp
-  Actions/actions.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -183,7 +180,8 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_MAINTAINER_MODE)
+
+if(USE_MAINTAINER_MODE)
   target_sources(arangoserver PRIVATE
     RestHandler/RestTestHandler.cpp)
 endif()
@@ -209,11 +207,12 @@ target_link_libraries(arangoserver
   arango_scheduler
   boost_boost
   ${MSVC_LIBS})
-if (MSVC)
+
+if(MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
 endif()
 
-if (USE_V8)
+if(USE_V8)
   target_link_libraries(arangoserver arango_v8server)
 endif()
 

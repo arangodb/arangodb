@@ -35,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 constexpr auto kNonServerFeatures =
-    std::array{ArangodServer::id<ActionFeature>(),
-               ArangodServer::id<AgencyFeature>(),
+    std::array{ArangodServer::id<AgencyFeature>(),
                ArangodServer::id<ClusterFeature>(),
 #ifdef ARANGODB_HAVE_FORK
                ArangodServer::id<SupervisorFeature>(),
@@ -85,6 +84,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<async_registry::Feature>) {
           return std::make_unique<async_registry::Feature>(server);
+        },
+        [](auto& server, TypeTag<activity_registry::Feature>) {
+          return std::make_unique<activity_registry::Feature>(server);
         },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {

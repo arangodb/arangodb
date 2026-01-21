@@ -70,13 +70,11 @@ function CollectionEdgeSuiteErrorHandling () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-      edge.unload();
+    tearDown: function () {
       edge.drop();
       edge = null;
       wait(0.0);
 
-      vertex.unload();
       vertex.drop();
       vertex = null;
       wait(0.0);
@@ -436,59 +434,6 @@ function CollectionEdgeSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an edge referring to an unloaded vertex collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testSaveEdgeUnloaded : function () {
-      var k1 = vertex.save({ _key: "vx1", vx: 1 });
-      var k2 = vertex.save({ _key: "vx2", vx: 2 });
-
-      assertEqual("vx1", k1._key);
-      assertEqual(vn + "/vx1", k1._id);
-      assertEqual("vx2", k2._key);
-      assertEqual(vn + "/vx2", k2._id);
-
-      testHelper.waitUnload(vertex);
-      testHelper.waitUnload(edge);
-
-      var e1 = edge.save(vn + "/vx1", vn + "/vx2", { _key: "ex1", connect: "vx1->vx2" });
-      var e2 = edge.save(vn + "/vx2", vn + "/vx1", { _key: "ex2", connect: "vx2->vx1" });
-      
-      testHelper.waitUnload(vertex);
-      testHelper.waitUnload(edge);
-      vertex.unload();
-      edge.unload();
-
-      var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
-      var d1 = edge.document("ex1");
-      assertEqual("ex1", d1._key);
-      assertEqual(en + "/ex1", d1._id);
-      assertEqual(vn + "/vx1", d1._from);
-      assertEqual(vn + "/vx2", d1._to);
-      assertEqual("vx1->vx2", d1.connect);
-      assertEqual("ex1", e1._key);
-      assertEqual(en + "/ex1", e1._id);
-
-      var d2 = edge.document("ex2");
-      assertEqual("ex2", d2._key);
-      assertEqual(en + "/ex2", d2._id);
-      assertEqual(vn + "/vx2", d2._from);
-      assertEqual(vn + "/vx1", d2._to);
-      assertEqual("vx2->vx1", d2.connect);
-      assertEqual("ex2", e2._key);
-      assertEqual(en + "/ex2", e2._id);
-      
-      var d3 = edge.document("ex3");
-      assertEqual("ex3", d3._key);
-      assertEqual(en + "/ex3", d3._id);
-      assertEqual(vn + "/vx1", d3._from);
-      assertEqual(vn + "/vx2", d3._to);
-      assertEqual("vx1->vx2", d3.connect);
-      assertEqual("ex3", e3._key);
-      assertEqual(en + "/ex3", e3._id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an edge
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -515,24 +460,6 @@ function CollectionEdgeSuite () {
         assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._from);
         assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._to);
       });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an edge that reference an unloaded collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testSaveEdgeUnloadedVertexCollection : function () {
-      vertex.unload();
-      wait(4);
-
-      var e = edge.save(v1._id, v2._id, { });
-      
-      assertMatch(/^UnitTestsCollectionEdge\//, e._id);
-      var doc = edge.document(e._id);
-
-      assertMatch(/^UnitTestsCollectionEdge\//, doc._id);
-      assertMatch(/^UnitTestsCollectionVertex\//, doc._from);
-      assertMatch(/^UnitTestsCollectionVertex\//, doc._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,54 +550,6 @@ function CollectionEdgeSuite () {
       var f = edge.outEdges(v2);
 
       assertEqual(0, f.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edges query
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadEdgesUnloaded : function () {
-      var d1 = edge.save(v1, v2, { "Hello" : "World" })._id;
-      var d2 = edge.save(v2, v1, { "World" : "Hello" })._id;
-
-      var e1 = edge.document(d1);
-      var e2 = edge.document(d2);
-
-      assertMatch(/^UnitTestsCollectionEdge\//, e1._id);
-      assertMatch(/^UnitTestsCollectionVertex\//, e1._from);
-      assertMatch(/^UnitTestsCollectionVertex\//, e1._to);
-
-      assertMatch(/^UnitTestsCollectionEdge\//, e2._id);
-      assertMatch(/^UnitTestsCollectionVertex\//, e2._from);
-      assertMatch(/^UnitTestsCollectionVertex\//, e2._to);
-
-      e1 = null;
-      e2 = null;
-
-      vertex.unload();
-      edge.unload();
-      wait(4);
-
-      var e = edge.edges(v1);
-
-      assertEqual(2, e.length);
-
-      if (e[0]._id === d1) {
-        assertEqual(v2._id, e[0]._to);
-        assertEqual(v1._id, e[0]._from);
-
-        assertEqual(d2, e[1]._id);
-        assertEqual(v1._id, e[1]._to);
-        assertEqual(v2._id, e[1]._from);
-      }
-      else {
-        assertEqual(v1._id, e[0]._to);
-        assertEqual(v2._id, e[0]._from);
-
-        assertEqual(d1, e[1]._id);
-        assertEqual(v2._id, e[1]._to);
-        assertEqual(v1._id, e[1]._from);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

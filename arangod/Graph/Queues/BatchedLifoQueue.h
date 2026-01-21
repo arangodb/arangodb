@@ -27,7 +27,7 @@
 #include "Basics/debugging.h"
 #include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
-#include "Graph/Queues/ExpansionMarker.h"
+#include "Graph/Queues/QueueEntry.h"
 
 #include <queue>
 #include <variant>
@@ -35,14 +35,17 @@
 namespace arangodb {
 namespace graph {
 
-template<class StepType>
+/**
+ Stack-like structure (last-in-first-out) that can contain either steps
+ (which correspond to vertex-edges) or neighbour cursors to get more steps.
+*/
+template<class StepType, NeighbourCursor<StepType> Cursor>
 class BatchedLifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future -
-  // cluster relevant)
-  // -> loose ends to the end
+  // cluster relevant) -> loose ends to the end
 
   explicit BatchedLifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
@@ -52,33 +55,30 @@ class BatchedLifoQueue {
 
   void clear() {
     if (!_queue.empty()) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>) *
-                                           _queue.size());
+      _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Entry));
       _queue.clear();
     }
   }
 
   void append(Step step) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor,
-                                       sizeof(QueueEntry<Step>));
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Entry));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_front({std::move(step)});
     guard.steal();  // now we are responsible for tracking the memory
   }
 
-  void append(Expansion expansion) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor,
-                                       sizeof(QueueEntry<Step>));
+  void append(Cursor& cursor) {
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Entry));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.push_front({std::move(expansion)});
+    _queue.push_front({std::reference_wrapper<Cursor>(cursor)});
     guard.steal();  // now we are responsible for tracking the memory
   }
 
   void setStartContent(std::vector<Step> startSteps) {
-    arangodb::ResourceUsageScope guard(
-        _resourceMonitor, sizeof(QueueEntry<Step>) * startSteps.size());
+    arangodb::ResourceUsageScope guard(_resourceMonitor,
+                                       sizeof(Entry) * startSteps.size());
     TRI_ASSERT(_queue.empty());
     for (auto& s : startSteps) {
       // For LIFO just append to the back,
@@ -87,18 +87,6 @@ class BatchedLifoQueue {
       _queue.push_back({std::move(s)});
     }
     guard.steal();  // now we are responsible for tracking the memory
-  }
-
-  bool firstIsVertexFetched() const {
-    if (!isEmpty()) {
-      auto const& first = _queue.front();
-      if (std::holds_alternative<Step>(first)) {
-        return std::get<Step>(first).vertexFetched();
-      } else {
-        return true;
-      }
-    }
-    return false;
   }
 
   bool hasProcessableElement() const {
@@ -139,17 +127,32 @@ class BatchedLifoQueue {
     return std::get<Step>(first);
   }
 
-  QueueEntry<Step> pop() {
-    TRI_ASSERT(!isEmpty());
-    auto first = std::move(_queue.front());
+  std::optional<Step> pop() {
+    if (isEmpty()) {
+      return std::nullopt;
+    }
+    auto first = _queue.front();
     LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
         << "<BatchedLifoQueue> Pop: "
         << (std::holds_alternative<Step>(first)
                 ? std::get<Step>(first).toString()
                 : "next batch");
-    _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>));
-    _queue.pop_front();
-    return first;
+    if (std::holds_alternative<Step>(first)) {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+      _queue.pop_front();
+      return {std::get<Step>(first)};
+    }
+    auto& cursor = std::get<std::reference_wrapper<Cursor>>(first).get();
+    if (not cursor.hasMore()) {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+      _queue.pop_front();
+      cursor.markForDeletion();
+      return pop();
+    }
+    for (auto&& step : cursor.next()) {
+      append(step);
+    }
+    return pop();
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
@@ -175,18 +178,19 @@ class BatchedLifoQueue {
       }
     }
   }
-  template<class S, typename Inspector>
-  friend auto inspect(Inspector& f, BatchedLifoQueue<S>& x);
+  template<class S, NeighbourCursor<S> C, typename Inspector>
+  friend auto inspect(Inspector& f, BatchedLifoQueue<S, C>& x);
 
  private:
+  using Entry = QueueEntry<Step, Cursor>;
   /// @brief queue datastore
-  std::deque<QueueEntry<Step>> _queue;
+  std::deque<Entry> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-template<class StepType, typename Inspector>
-auto inspect(Inspector& f, BatchedLifoQueue<StepType>& x) {
+template<class StepType, NeighbourCursor<StepType> C, typename Inspector>
+auto inspect(Inspector& f, BatchedLifoQueue<StepType, C>& x) {
   return f.object(x).fields(f.field("queue", x._queue));
 }
 

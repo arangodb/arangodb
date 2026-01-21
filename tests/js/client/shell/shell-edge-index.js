@@ -49,14 +49,6 @@ function EdgeIndexSuite() {
       db._drop(cn);
     },
 
-    setUp : function () {
-      db[cn].unload(); // drop caches
-    },
-
-    tearDown : function () {
-      db[cn].unload(); // drop caches
-    },
-    
     testLookupFrom : function () {
       for (let i = 0; i < 1000; ++i) {
         let result = db._query("FOR doc IN " + cn + " FILTER doc._from == @from RETURN doc", { from: "test/v" + i }).toArray();

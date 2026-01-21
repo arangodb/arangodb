@@ -501,35 +501,6 @@ ArangoCollection.prototype.compact = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief loads a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.load = function (count) {
-  let data = { count: true };
-
-  // return the number of documents? this might slow down loading
-  if (count !== undefined) {
-    data.count = count;
-  }
-
-  let requestResult = this._database._connection.PUT(this._baseurl('load'), data);
-  arangosh.checkRequestResult(requestResult);
-
-  // invalidate cache
-  this._status = null;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief unloads a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.unload = function () {
-  this._status = null;
-  let requestResult = this._database._connection.PUT(this._baseurl('unload'), null);
-  arangosh.checkRequestResult(requestResult);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief renames a collection
 // //////////////////////////////////////////////////////////////////////////////
 
