@@ -93,7 +93,7 @@ class instanceManager {
     this.endpoints = [];
     this.endpoint = undefined;
     this.endpointPorts = [];
-    this.endpointPort = [];
+    this.endpointPort = -1;
     this.connectedEndpoint = undefined;
     this.connectionHandle = undefined;
     this.arangods = [];
@@ -124,9 +124,9 @@ class instanceManager {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      if (!addArgs.hasOwnProperty('server.jwt-secret')) {
-        this.JWT = fs.read(this.restKeyFile);
-      }
+      //if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+      //  this.JWT = fs.read(this.restKeyFile);
+      //}
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
