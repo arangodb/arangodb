@@ -44,9 +44,8 @@ TEST_F(AttributeDetectorTest, ComplicatedArangoSearchReturnDoc) {
   auto query = executeQuery(R"aql(
     FOR d IN usersViewComplicated
       SEARCH d.name == "Alice"
-      RETURN d
+      RETURN d.name
   )aql");
-
   auto const& accesses = query->abacAccesses();
 
   const std::set<std::string> expected{"users", "products", "posts", "ordered"};

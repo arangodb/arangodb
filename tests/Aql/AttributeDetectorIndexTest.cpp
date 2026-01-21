@@ -106,25 +106,20 @@ TEST_F(AttributeDetectorTest, IndexFilterOnAttributeReturnFullDocument) {
 }
 
 TEST_F(AttributeDetectorTest, IndexFilterWithComputation) {
-  explainQuery(R"aql(
+  auto query = executeQuery(R"aql(
     FOR p IN products
       FILTER p.name == "Keyboard" OR p.price > 100
       RETURN p.price
   )aql");
-  // auto query = executeQuery(R"aql(
-  //   FOR p IN products
-  //     FILTER p.name == "Keyboard" OR p.price > 100
-  //     RETURN p.price
-  // )aql");
-  // auto const& accesses = query->abacAccesses();
-  //
-  // ASSERT_EQ(accesses.size(), 1);
-  // EXPECT_EQ(accesses[0].collectionName, "products");
-  // EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  // EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
-  // EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
-  // EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
-  // EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
+  EXPECT_TRUE(accesses[0].readAttributes.contains("name"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("price"));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
 TEST_F(AttributeDetectorTest, IndexMultipleCollections1) {
