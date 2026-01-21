@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ActivityRegistry/activity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
@@ -88,6 +89,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   /// @brief called when the handler execution is finalized
   void trackTaskEnd() noexcept;
+
+  void startActivity();
 
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
@@ -273,6 +276,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
 
   std::atomic<bool> _canceled;
+  std::unique_ptr<activity_registry::Activity> _activity;
 };
 
 }  // namespace rest
