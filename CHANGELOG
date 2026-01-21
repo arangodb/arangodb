@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
 * FE-954: make view validation on UI less strict.
 
 * COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
