@@ -288,7 +288,7 @@ class instance {
     this.connectionHandle = undefined;
   }
 
-  resetAuthHeaders(authHeaders , JWT) {
+  resetAuthHeaders(authHeaders, JWT) {
     this.authHeaders = authHeaders;
     this.JWT = JWT;
   }
