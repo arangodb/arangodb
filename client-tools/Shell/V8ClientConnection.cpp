@@ -95,7 +95,7 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-    << "Connection identifier " << hex << " calculated from: " << raw;
+      << "Connection identifier " << hex << " calculated from: " << raw;
 #endif
   // and return
   return std::string(hex, 32);
@@ -718,8 +718,8 @@ void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-    << "Connecting to handle: " << handle;
+  LOG_TOPIC("8aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+      << "Connecting to handle: " << handle;
 #endif
   if (_currentConnectionId == handle) {
     _builder = _connectedBuilder;
