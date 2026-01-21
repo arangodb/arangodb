@@ -124,7 +124,8 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
                      DatabaseFeature& databaseFeature, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
-                     std::string database, bool useVPack);
+                     std::string database, bool useVPack,
+                     activity_registry::ActivityId parentActivity);
 
   ~RocksDBDumpContext();
 

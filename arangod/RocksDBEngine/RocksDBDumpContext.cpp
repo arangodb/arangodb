@@ -197,13 +197,11 @@ void RocksDBDumpContext::WorkItems::stop() {
   _cv.notify_all();
 }
 
-RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
-                                       RocksDBDumpManager& manager,
-                                       DatabaseFeature& databaseFeature,
-                                       std::string id,
-                                       RocksDBDumpContextOptions options,
-                                       std::string user, std::string database,
-                                       bool useVPack)
+RocksDBDumpContext::RocksDBDumpContext(
+    RocksDBEngine& engine, RocksDBDumpManager& manager,
+    DatabaseFeature& databaseFeature, std::string id,
+    RocksDBDumpContextOptions options, std::string user, std::string database,
+    bool useVPack, activity_registry::ActivityId parentActivity)
     : _engine(engine),
       _manager(manager),
       _id(std::move(id)),
@@ -215,7 +213,8 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
       _activity{"dump context",
-                {{"id", _id}, {"user", _user}, {"database", _database}}} {
+                {{"id", _id}, {"user", _user}, {"database", _database}},
+                parentActivity} {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be

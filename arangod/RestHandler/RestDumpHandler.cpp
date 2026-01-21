@@ -166,8 +166,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard =
-      _dumpManager->createContext(std::move(opts), user, database, useVPack);
+  auto guard = _dumpManager->createContext(std::move(opts), user, database,
+                                           useVPack, _activity->id());
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -199,15 +199,18 @@ void RestDumpHandler::handleCommandDumpNext() {
     // immediately prolong lifetime of context, so it doesn't get invalidated
     // while we are using it.
 
-    activity_registry::Activity fetch{"dump context fetching", {{"id", id}}};
+    activity_registry::Activity fetch{
+        "dump context fetching", {{"id", id}}, _activity->id()};
 
     context->extendLifetime();
 
     auto batch = context->next(*batchId, lastBatch);
     auto counts = context->getBlockCounts();
 
-    // be able to have a look at the activity-registry in the meantime
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
+      // be able to have a look at the activity-registry in the meantime
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
 
     if (batch == nullptr) {
       // all batches have been received

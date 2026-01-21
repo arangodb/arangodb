@@ -210,7 +210,10 @@ void RestHandler::trackTaskEnd() noexcept {
 
 void RestHandler::startActivity() {
   _activity = std::make_unique<activity_registry::Activity>(
-      name(), activity_registry::Metadata{{"url", _request->fullUrl()}});
+      name(), activity_registry::Metadata{
+                  {"url", _request->fullUrl()},
+                  {"method", std::string{GeneralRequest::translateMethod(
+                                 _request->requestType())}}});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
