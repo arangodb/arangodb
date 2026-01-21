@@ -129,7 +129,6 @@ class instanceManager {
       }
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
   }
 
@@ -160,7 +159,6 @@ class instanceManager {
       leader: ln,
       agencyConfig: this.agencyMgr.getStructure(),
       httpAuthOptions: this.httpAuthOptions,
-      httpJWTAuthOptions: this.httpJWTAuthOptions,
       urls: this.urls,
       url: this.url,
       endpoints: this.endpoints,
@@ -182,7 +180,6 @@ class instanceManager {
     this.addArgs = struct['addArgs'];
     this.rootDir = struct['rootDir'];
     this.httpAuthOptions = struct['httpAuthOptions'];
-    this.httpJWTAuthOptions = struct['httpJWTAuthOptions'];
     this.urls = struct['urls'];
     this.url = struct['url'];
     this.endpoints = struct['endpoints'];
@@ -406,7 +403,6 @@ class instanceManager {
                                                instanceRole.agent,
                                                this.addArgs,
                                                this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                                this.restKeyFile,
@@ -425,7 +421,6 @@ class instanceManager {
                                                instanceRole.dbServer,
                                                this.addArgs,
                                                this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                                this.restKeyFile,
@@ -442,7 +437,6 @@ class instanceManager {
                                                instanceRole.coordinator,
                                                this.addArgs,
                                                this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                                this.restKeyFile,
@@ -461,7 +455,6 @@ class instanceManager {
                                                instanceRole.single,
                                                this.addArgs,
                                                this.httpAuthOptions,
-                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.single + "_" + count),
                                                this.restKeyFile,
@@ -501,7 +494,7 @@ class instanceManager {
       this.arangods.forEach(arangod => {
         arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
@@ -853,7 +846,7 @@ class instanceManager {
       let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
-          arangod.pingUntilReady(this.httpJWTAuthOptions, deadline);
+          arangod.pingUntilReady(this.httpAuthOptions, deadline);
         } catch (e) {
           this.arangods.forEach( arangod => {
             let status = arangod.status(false);
@@ -884,8 +877,7 @@ class instanceManager {
     }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
+    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
@@ -899,7 +891,7 @@ class instanceManager {
 
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpAuthOptions, this.httpJWTAuthOptions, this.JWT);
+      arangod.resetAuthHeaders(this.httpAuthOptions, this.JWT);
     });
 
     let success = true;
@@ -943,7 +935,7 @@ class instanceManager {
       });
       if (role === instanceRole.agent) {
         print("running agency health check");
-        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       }
     });
   }
@@ -1059,7 +1051,7 @@ class instanceManager {
   }
 
   checkClusterAlive() {
-    let httpOptions = _.clone(this.httpJWTAuthOptions);
+    let httpOptions = _.clone(this.httpAuthOptions);
     httpOptions.returnBodyOnError = true;
 
     // scrape the jwt token

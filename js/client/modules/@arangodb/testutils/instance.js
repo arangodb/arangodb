@@ -106,7 +106,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -133,7 +133,6 @@ class instance {
       }
     }
     this.authHeaders = authHeaders;
-    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -201,7 +200,6 @@ class instance {
       rootDir: this.rootDir,
       protocol: this.protocol,
       authHeaders: this.authHeaders,
-      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
@@ -231,7 +229,6 @@ class instance {
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
     this.authHeaders = struct['authHeaders'];
-    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -291,9 +288,8 @@ class instance {
     this.connectionHandle = undefined;
   }
 
-  resetAuthHeaders(authHeaders, authHeadersJWT, JWT) {
+  resetAuthHeaders(authHeaders , JWT) {
     this.authHeaders = authHeaders;
-    this.authHeadersJWT = authHeadersJWT;
     this.JWT = JWT;
   }
 
@@ -626,7 +622,7 @@ class instance {
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
+    this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
