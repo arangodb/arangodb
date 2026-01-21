@@ -60,7 +60,7 @@ function RegistrySuite() {
     assertEqual("undefined", tx.finalStatus);
     assertEqual(60, tx.timeToLive);
     assertTrue(tx.expiryTime > start, {tx, start});
-    assertEqual("", tx.user);
+    assertEqual("root", tx.user);
     assertEqual(db._name(), tx.database);
     assertMatch(/^CRDN-/, tx.server);
     assertMatch(/trx type: managed/, tx.context);

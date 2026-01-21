@@ -136,7 +136,7 @@ function QueryLoggerSuite() {
       let results = checkForQuery({
         query, 
         database: "_system", 
-        user: "",
+        user: "root",
         state: "finished",
         modificationQuery: false, 
         stream: false,

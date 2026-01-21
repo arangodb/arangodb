@@ -124,9 +124,9 @@ class instanceManager {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      //if (!addArgs.hasOwnProperty('server.jwt-secret')) {
-      //  this.JWT = fs.read(this.restKeyFile);
-      //}
+      if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+        this.JWT = fs.read(this.restKeyFile);
+      }
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
@@ -873,9 +873,9 @@ class instanceManager {
     }
     this.spawnClusterHealthMonitor();
     if (this.options.cluster) {
-      this.reconnect();
       this._checkServersGOOD();
     }
+    this.reconnect(false);
   }
 
   reStartInstance(moreArgs) {
@@ -1028,7 +1028,7 @@ class instanceManager {
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
       ) {
-        this.reconnect();
+        this.reconnect(true);
         rc = this._checkServersGOOD();
         if (first) {
           if (!this.options.noStartStopLogs) {
@@ -1291,9 +1291,9 @@ class instanceManager {
     return failurePoints;
   }
 
-  reconnect()
+  reconnect(privileged)
   {
-    if (this.JWT !== null) {
+    if (this.JWT !== null && privileged) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
