@@ -1,7 +1,0 @@
-{
-  "name": "broken-setup-file",
-  "version": "0.0.0",
-  "scripts": {
-    "setup": "broken-setup.js"
-  }
-}

@@ -37,10 +37,6 @@
 
   if (internal.threadNumber === 0) {
     try {
-      
-      require('@arangodb/foxx/manager')._startup();
-      // start the queue manager once
-      require('@arangodb/foxx/queues/manager').run();
       const systemCollectionsCreated = global.ArangoServerState.systemCollectionsCreated();
       if (!systemCollectionsCreated) {
         // Wait for synchronous replication of system colls to settle:

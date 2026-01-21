@@ -53,18 +53,6 @@
         // startup the foxx manager once
         require('@arangodb/foxx/manager')._startup();
       }
-
-      // start the queue manager once
-      try {
-        require('@arangodb/foxx/queues/manager').run();
-      } catch (err) {
-        // ignore any shutdown errors
-        if (!(err instanceof ArangoError) ||
-            err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code) {
-          require("console").warn("unable to start Foxx queues manager: " + String(err));
-        }
-        // continue with the startup anyway!
-      }
     }
 
     // check available versions
