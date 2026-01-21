@@ -7,6 +7,7 @@ const yaml = require('js-yaml');
 const fs = require('fs');
 const internal = require('internal');
 const trs = require('@arangodb/testutils/testrunners');
+const rp = require('@arangodb/testutils/result-processing');
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;
 const CYAN = internal.COLORS.COLOR_CYAN;
@@ -17,13 +18,32 @@ const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 function main (argv) {
   start_pretty_print();
-  let options = {};
-  let status = true; // e.g all, http_server, recovery, ...
+  let options = {
+    testOutputDirectory: "/tmp/",
+    testFailureText: "debug_testfailures.txt",
+    crashAnalysisText: "crash.txt",
+  };
+  let rc;
+  let status = true;
   let results = {};
   let testResultsDir = argv[0];
-  let tr = new trs.runWithAllureReport(options);
-  let rc = tr.getAllureResults(testResultsDir, results, status);
-  print(yaml.safeDump(results));
+  try {
+    let tr = new trs.runWithAllureReport(options);
+    rc = tr.getAllureResults(testResultsDir, results, status, 'dummyTest');
+    results = {
+      "dummytest": results,
+      "failed": results.failed,
+      "status": results.status,
+      
+    }
+    print('================================================================================');
+    print(yaml.safeDump(results));
+    print('================================================================================');
+    rp.analyze.unitTestPrettyPrintResults(options, results);
+  } catch (ex) {
+    print(ex);
+    print(ex.stack);
+  }
   return rc;
 }
 

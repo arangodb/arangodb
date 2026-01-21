@@ -363,7 +363,7 @@ class shellv8Runner extends runLocalInArangoshRunner {
 
 
 class runWithAllureReport extends testRunnerBase {
-  getAllureResults(testResultsDir, results, status) {
+  getAllureResults(testResultsDir, results, status, defaultName) {
     let allResultJsons = {};
     let topLevelContainers = [];
     let allContainerJsons = {};
@@ -433,9 +433,11 @@ class runWithAllureReport extends testRunnerBase {
     }
     //print(topLevelContainers)
     let totalFailed = 0;
+    let count = 0;
     topLevelContainers.forEach(id => {
       //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
       let tlContainer = allContainerJsons[id];
+      //print(tlContainer)
       //print(tlContainer['childContainers'])
 
       let resultSet = {
@@ -444,13 +446,30 @@ class runWithAllureReport extends testRunnerBase {
         failed: 0,
         status: true
       };
-      results[tlContainer.name] = resultSet;
+      let name = `${defaultName}_${count++}`;
+      if (tlContainer.hasOwnProperty('name')) {
+        name = tlContainer.name;
+      }
+      results[name] = resultSet;
+      //print('aaaaaaaaaaaaaaaaaa')
+      //print(results)
 
+      let tlCount = 0;
       tlContainer['childContainers'].forEach(childContainerId => {
         let childContainer = allContainerJsons[childContainerId];
-        let suiteResult = {};
-        resultSet[childContainer.name] = suiteResult;
+        let suiteResult = {
+          status: true,
+          failed: 0,
+          message: ""
+        };
+        let childName = `child_${defaultName}_${tlCount++}`;
+        if (childContainer.hasOwnProperty('name')) {
+          childName = childContainer.name;
+        }
+        resultSet[childName] = suiteResult;
         //print(childContainer);
+        //print('-------------------------')
+        //print(childName);
         childContainer['childContainers'].forEach(grandChildContainerId => {
           let grandChildContainer = allContainerJsons[grandChildContainerId];
           //print(grandChildContainer);
@@ -474,10 +493,12 @@ class runWithAllureReport extends testRunnerBase {
 
           suiteResult[grandChildContainer.name + '.' + gcTestResult.name] = myResult;
           if (!myResult.status) {
+            resultSet.status = false;
+            resultSet.failed += 1;
             totalFailed += 1;
             status = false;
             suiteResult.status = false;
-            // suiteResult.message = myResult.message;
+            suiteResult.message += myResult.message;
             results.message += myResult.message;
           }
         });
