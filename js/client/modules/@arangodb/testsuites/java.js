@@ -146,7 +146,7 @@ arangodb.acquireHostList=true
     if (rc.exit !== 0) {
       status = false;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, 'javadriver');
     return results;
   }
 }
@@ -221,7 +221,7 @@ class runInKafkaTest extends runWithAllureReport {
     if (rc.exit !== 0) {
       status = false;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, 'kafkadriver');
     return results;
   }
 }
@@ -289,7 +289,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     if (rc.exit !== 0) {
       status = false;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, 'sparkdriver');
     return results;
   }
 }
@@ -354,7 +354,7 @@ class runInSpringDataTest extends runWithAllureReport {
     if (rc.exit !== 0) {
       status = false;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, 'springdatatest');
     return results;
   }
 }
@@ -422,7 +422,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     if (rc.exit !== 0) {
       status = false;
     }
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, 'tinkerpopdriver');
     return results;
   }
 }
