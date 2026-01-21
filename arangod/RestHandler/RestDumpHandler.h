@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "ActivityRegistry/activity.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"

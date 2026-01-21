@@ -23,7 +23,6 @@
 
 #include "RocksDBDumpManager.h"
 
-#include "ActivityRegistry/activity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"

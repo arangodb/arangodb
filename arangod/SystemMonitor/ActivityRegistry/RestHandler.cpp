@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/VPack.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::activity_registry;
@@ -56,8 +55,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (isForwarded) {
     co_return;
   }
-
-  SchedulerFeature::SCHEDULER->queue(RequestLane::CLIENT_UI, []() {});
 
   auto lock_guard = co_await _feature.asyncLock();
 
