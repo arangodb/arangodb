@@ -122,6 +122,7 @@ ArangoStatement.prototype.explain = function (options) {
   let result = {
     warnings: requestResult.warnings,
     stats: requestResult.stats,
+    abacAccesses: requestResult.abacAccesses
   };
   if (opts && opts.allPlans) {
     result.plans = requestResult.plans;

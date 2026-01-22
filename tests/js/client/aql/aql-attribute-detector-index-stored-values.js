@@ -84,7 +84,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
 
       print(JSON.stringify(explainRes, null, 2));
 
-      print(explainRes.extras.abacAccesses);
+      print("js test: ", explainRes.abacAccesses);
 
       const indexNode = findIndexNode(plan);
       assertTrue(indexNode !== null, "IndexNode should exist");

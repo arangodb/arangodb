@@ -1579,6 +1579,8 @@ QueryResult Query::explain() {
         }
       }
       // ABAC collection accesses
+      // explain() doesn't call preparePlan() that invokes AttributeDetector, so
+      // it needs to invoke AttributeDetector independently using bestPlan
       AttributeDetector detector(bestPlan.get());
       detector.detect();
       abacAccessesForExplain = detector.getCollectionAccesses();
@@ -1610,16 +1612,11 @@ QueryResult Query::explain() {
         b.add("executionTime", VPackValue(queryTime()));
       }
 
-      LOG_DEVEL << "abacAccesses size: " << abacAccessesForExplain.size();
-      VPackBuilder tmp;
-      tmp.add(velocypack::Value(velocypack::ValueType::Array));
+      b.add("abacAccesses", velocypack::ValueType::Array);
       for (auto const& access : abacAccessesForExplain) {
-        velocypack::serialize(tmp, access);
+        velocypack::serialize(b, access);
       }
-      tmp.close();
-      LOG_DEVEL << "after serialize access: " << tmp.toJson();
-      //b.add("abacAccesses", tmp.slice());
-      b.add("abacAccesses", velocypack::Value("test"));
+      b.close();
     }
   } catch (Exception const& ex) {
     result.reset(Result(
