@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -79,7 +79,12 @@ function attributeDetectorIndexStoredValuesTestSuite() {
 
     testPersistentIndexWithStoredValuesCovering: function () {
       const query = `FOR doc IN ${cn} FILTER doc.value == 5 RETURN {name: doc.name, category: doc.category}`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainRes = db._createStatement({query: query, options: {includeAbacAccesses: true}}).explain()
+      const plan = explainRes.plan;
+
+      print(JSON.stringify(explainRes, null, 2));
+
+      print(explainRes.extras.abacAccesses);
 
       const indexNode = findIndexNode(plan);
       assertTrue(indexNode !== null, "IndexNode should exist");
