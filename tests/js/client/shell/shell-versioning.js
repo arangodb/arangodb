@@ -429,5 +429,84 @@ function VersioningSuite () {
   };
 }
 
+// Test that versionAttribute works correctly with computed values.
+// This is a regression test for a bug (BTS-2279) where combining these two
+// features caused an assertion failure because isNoOp was set to true without
+// checking if computedValues were present.
+function VersioningWithComputedValuesSuite () {
+  'use strict';
+
+  return {
+    setUp: function () {
+      db._create(cn, {
+        replicationFactor: 2,
+        computedValues: [
+          {
+            name: "computed",
+            expression: "RETURN 1",
+            overwrite: true,
+          }
+        ]
+      });
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    // BTS-2279
+    testUpdateWithVersionAttributeAndComputedValues : function () {
+      // Insert document with version 3
+      db[cn].insert({ _key: "test1", version: 3 });
+
+      let doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+      assertEqual(1, doc.computed);
+
+      // Update with older version (2) - should be a no-op for the data,
+      // but must not crash even with computed values present
+      db[cn].update("test1", { version: 2 }, { versionAttribute: "version" });
+
+      doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+
+      waitUntilInSync();
+    },
+
+    // BTS-2279
+    testReplaceWithVersionAttributeAndComputedValues : function () {
+      // Insert document with version 5
+      db[cn].insert({ _key: "test1", version: 5, value: "hello" });
+
+      let doc = db[cn].document("test1");
+      assertEqual(5, doc.version);
+      assertEqual("hello", doc.value);
+      assertEqual(1, doc.computed);
+
+      // Replace with newer version (10) - should succeed
+      db[cn].replace("test1", { version: 10, value: "world" }, { versionAttribute: "version" });
+
+      doc = db[cn].document("test1");
+      assertEqual(10, doc.version);
+      assertEqual("world", doc.value);
+      assertEqual(1, doc.computed);
+
+      // Replace with older version (3) - should be a no-op for the data,
+      // but must not crash even with computed values present
+      db[cn].replace("test1", { version: 3, value: "old" }, { versionAttribute: "version" });
+
+      doc = db[cn].document("test1");
+      // Document should remain unchanged (version 10)
+      assertEqual(10, doc.version);
+      assertEqual("world", doc.value);
+      assertEqual(1, doc.computed);
+
+      waitUntilInSync();
+    },
+
+  };
+}
+
 jsunity.run(VersioningSuite);
+jsunity.run(VersioningWithComputedValuesSuite);
 return jsunity.done();
