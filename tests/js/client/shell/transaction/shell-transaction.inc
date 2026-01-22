@@ -5733,6 +5733,7 @@ function transactionDatabaseSuite() {
         assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
       } finally {
         db._useDatabase(dbn1);
+        trx.abort();
       }
     },
   };
