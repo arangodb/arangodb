@@ -34,6 +34,7 @@ const db = require('internal').db;
 const activitiesModule = require('@arangodb/activity-registry');
 const IM = global.instanceManager;
 
+const c = "my_collection";
 
 function activityRegistrySuite() {
   function activityRestHandlerFilter() {
@@ -69,6 +70,14 @@ function activityRegistrySuite() {
   }
 
   return {
+    setUpAll: function () {
+      db._create(c);
+    },
+
+    tearDownAll: function() {
+      db._drop(c);
+    },
+
     testRegistryIncludesAtLeastRestRequestActivity: function () {
       const activities = activitiesModule.get_snapshot(); // is one REST request
       assertTrue(activities.length > 0);
@@ -76,8 +85,6 @@ function activityRegistrySuite() {
     },
 
     testDumpContextIsAnActivity: function () {
-      const c = "my_collection";
-      db._create(c);
       let createDump;
       let server;
       if (internal.isCluster()) {
@@ -107,7 +114,6 @@ function activityRegistrySuite() {
       } else {
         internal.arango.DELETE_RAW(`_api/dump/${dumpId}`);
       }
-      db._drop(c);
     }
   };
 }
