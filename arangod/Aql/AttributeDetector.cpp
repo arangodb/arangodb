@@ -153,6 +153,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!projs.empty() && !projsCoveredByIndex) {
         for (auto const& proj : projs.projections()) {
           for (auto const& attrName : proj.path.get()) {
+            LOG_DEVEL << "Index: Projections: adding: " << attrName;
             access->readAttributes.insert(std::string(attrName));
           }
         }
@@ -163,6 +164,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
         for (auto const& proj : filterProjections.projections()) {
           for (auto const& attrName : proj.path.get()) {
+            LOG_DEVEL << "Index: FilterProjections: adding: " << attrName;
             access->readAttributes.insert(std::string(attrName));
           }
         }
@@ -180,6 +182,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
                 _plan->getAst()->query().resourceMonitor())) {
           for (auto const& attr : attributes) {
             for (auto const& attrName : attr.get()) {
+              LOG_DEVEL << "Index: Condition: adding: " << attrName;
               access->readAttributes.insert(std::string(attrName));
             }
           }

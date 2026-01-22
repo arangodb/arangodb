@@ -429,8 +429,8 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess2) {
   EXPECT_EQ(accesses[0].collectionName, "posts");
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
   EXPECT_TRUE(accesses[0].readAttributes.contains("title"));
-  EXPECT_TRUE(accesses[0].readAttributes.contains("lang")); // This needs to change to meta.lang
-  EXPECT_TRUE(accesses[0].readAttributes.contains("likes")); // This needs to change to meta.likes
+  EXPECT_TRUE(accesses[0].readAttributes.contains("meta.lang"));
+  EXPECT_TRUE(accesses[0].readAttributes.contains("meta.likes"));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }

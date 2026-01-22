@@ -27,6 +27,8 @@
 #include "Aql/QueryString.h"
 #include "Transaction/StandaloneContext.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -134,6 +136,7 @@ void RestExplainHandler::explainQuery() {
     result.add("stats", extras.get("stats"));
   }
   if (extras.hasKey("abacAccesses")) {
+    LOG_DEVEL << "explainQuery(): abacAccesses: " << extras.get("abacAccesses").toString();
     result.add("abacAccesses", extras.get("abacAccesses"));
   }
   if (queryResult.planCacheKey.has_value()) {
