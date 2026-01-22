@@ -49,11 +49,11 @@ function promtoolSuite () {
     testApiV2: function() {
       let toRemove = [];
 
-      let res = arango.GET_RAW('/_admin/metrics/v2');
+      let res = arango.GET_RAW('/_admin/metrics');
       assertEqual(200, res.code);
       let body = String(res.body);
 
-      // store output of /_admin/metrics/v2 into a temp file
+      // store output of /_admin/metrics into a temp file
       let input = fs.getTempFile();
       try {
         fs.writeFileSync(input, body);

@@ -1339,7 +1339,7 @@ class instance {
     }
 
     let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
-    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
+    let metricsReply = download(this.url + '/_admin/metrics', opts);
     if (metricsReply.code === 200) {
       fs.write(fnMetrics, metricsReply.body);
       print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
