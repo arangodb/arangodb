@@ -57,14 +57,16 @@ TEST_F(ActivityRegistryTest,
   auto activity =
       Activity{"test activity", {{"id", "1234"}, {"some_other_key", "value"}}};
 
-  EXPECT_EQ(
-      get_all_activities(),
-      (std::vector<ActivityInRegistrySnapshot>{(ActivityInRegistrySnapshot{
-          .name = "test activity",
-          .state = State::Active,
-          .id = activity.id(),
-          .parent = {RootActivity{}},
-          .metadata = {{"id", "1234"}, {"some_other_key", "value"}}})}));
+  auto all_activities = get_all_activities();
+  auto specific =
+      std::find(std::begin(all_activities), std::end(all_activities),
+                ActivityInRegistrySnapshot{
+                    .name = "test activity",
+                    .state = State::Active,
+                    .id = activity.id(),
+                    .parent = {RootActivity{}},
+                    .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
+  EXPECT_NE(specific, std::end(all_activities));
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity) {

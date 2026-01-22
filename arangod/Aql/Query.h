@@ -39,6 +39,7 @@
 #include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "ActivityRegistry/activity.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -547,6 +548,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   bool _isCached{false};
 
   std::atomic<bool> _isExecuting{false};
+
+  activity_registry::Activity _activity;
 };
 
 }  // namespace aql
