@@ -10,6 +10,9 @@ devel
   - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
   - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
 
+* Fixed changing writeConcern on a collection
+  could cause subsequent writes to fail due to a stale internal write flag.
+
 * Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
   least three levels of subqueries it could happen that the executor ended up in a
   state it could not handle and the query would throw an error.
