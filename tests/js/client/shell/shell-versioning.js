@@ -443,7 +443,7 @@ function VersioningWithComputedValuesSuite () {
         computedValues: [
           {
             name: "computed",
-            expression: "RETURN 1",
+            expression: "RETURN @doc.value + 1",
             overwrite: true,
           }
         ]
@@ -457,18 +457,19 @@ function VersioningWithComputedValuesSuite () {
     // BTS-2279
     testUpdateWithVersionAttributeAndComputedValues : function () {
       // Insert document with version 3
-      db[cn].insert({ _key: "test1", version: 3 });
+      db[cn].insert({ _key: "test1", version: 3, value: 3 });
 
       let doc = db[cn].document("test1");
       assertEqual(3, doc.version);
-      assertEqual(1, doc.computed);
+      assertEqual(4, doc.computed);
 
       // Update with older version (2) - should be a no-op for the data,
       // but must not crash even with computed values present
-      db[cn].update("test1", { version: 2 }, { versionAttribute: "version" });
+      db[cn].update("test1", { version: 2, value: 3 }, { versionAttribute: "version" });
 
       doc = db[cn].document("test1");
       assertEqual(3, doc.version);
+      assertEqual(4, doc.computed);
 
       waitUntilInSync();
     },
