@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ActivityRegistry/activity.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
@@ -60,7 +61,8 @@ class RocksDBDumpManager {
   // that were used when creating the context.
   std::shared_ptr<RocksDBDumpContext> createContext(
       RocksDBDumpContextOptions opts, std::string const& user,
-      std::string const& database, bool useVPack);
+      std::string const& database, bool useVPack,
+      activity_registry::ActivityId parent);
 
   // look up context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"
