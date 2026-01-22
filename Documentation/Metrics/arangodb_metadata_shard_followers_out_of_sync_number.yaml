@@ -1,4 +1,4 @@
-name: arangodb_shard_followers_out_of_sync_number
+name: arangodb_metadata_shard_followers_out_of_sync_number
 introducedIn: "3.12.8"
 help: |
   Number of follower shards on this machine that are out of sync with their leader.
@@ -7,7 +7,7 @@ type: gauge
 category: Replication
 complexity: simple
 exposedBy:
-  - dbserver
+  - coordinator
 description: |
   Number of follower shards on this machine that are not in sync with their leader.
   This is the follower-perspective counterpart to arangodb_shards_out_of_sync, which
