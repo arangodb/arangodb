@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
+  option on collections with computed values.
+
 * Fixed changing writeConcern on a collection
   could cause subsequent writes to fail due to a stale internal write flag.
 
