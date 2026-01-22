@@ -19,5 +19,5 @@ description: |
   incremental resync process starts from scratch.
 troubleshoot: |
   Normally, this number is always `0`. If it is not, then usually
-  something is wrong, please contact ArangoDB customer support in this
+  something is wrong, please contact the Arango customer support in this
   case.

@@ -31,6 +31,7 @@
 #include "Aql/NonConstExpression.h"
 #include "Aql/Projections.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 // TODO: Needed for the IndexAccessor, should be modified
@@ -300,7 +301,7 @@ void SingleServerEdgeCursor<Step>::readNext(
     uint64_t batchSize, SingleServerProvider<Step>& provider,
     aql::TraversalStats& stats, size_t depth, Callback const& callback) {
   TRI_ASSERT(!getLookupInfos(depth).empty());
-  transaction::BuilderLeaser tmpBuilder(_trx);
+  auto tmpBuilder = ThreadLocalBuilderLeaser::lease();
 
   auto evaluateEdgeExpressionHelper = [&](aql::Expression* expression,
                                           EdgeDocumentToken edgeToken,

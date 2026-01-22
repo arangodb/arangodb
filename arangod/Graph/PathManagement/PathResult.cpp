@@ -26,7 +26,6 @@
 #include "Basics/StaticStrings.h"
 
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -61,14 +60,12 @@ auto PathResult<ProviderType, Step>::clear() -> void {
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::appendVertex(typename Step::Vertex v)
-    -> void {
+auto PathResult<ProviderType, Step>::appendVertex(VertexRef v) -> void {
   _vertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
-    -> void {
+auto PathResult<ProviderType, Step>::prependVertex(VertexRef v) -> void {
   _numVerticesFromSourceProvider++;
   _vertices.insert(_vertices.begin(), std::move(v));
 }
@@ -173,7 +170,7 @@ template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::getMemoryUsage() const -> size_t {
   size_t mem = 0;
   mem += sizeof(PathResult<ProviderType, Step>);
-  mem += sizeof(typename Step::Vertex) * _vertices.size();
+  mem += sizeof(VertexRef) * _vertices.size();
   mem += sizeof(typename Step::Edge) * _edges.size();
   mem += sizeof(double) * _weights.size();
   return mem;
@@ -212,18 +209,10 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 template class ::arangodb::graph::PathResult<
     ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
     SingleServerProviderStep>;
-template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::PathResult<
     ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
-    enterprise::SmartGraphStep>;
-template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<enterprise::SmartGraphStep>>,
     enterprise::SmartGraphStep>;
 #endif
 
@@ -233,17 +222,8 @@ template class ::arangodb::graph::PathResult<
     ::arangodb::graph::ClusterProvider<ClusterProviderStep>,
     ::arangodb::graph::ClusterProviderStep>;
 
-template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<
-        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::ClusterProviderStep>;
-
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::PathResult<
     ::arangodb::graph::enterprise::SmartGraphProvider<ClusterProviderStep>,
-    ClusterProviderStep>;
-template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<
-        enterprise::SmartGraphProvider<ClusterProviderStep>>,
     ClusterProviderStep>;
 #endif

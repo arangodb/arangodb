@@ -1,5 +1,5 @@
 name: arangodb_server_statistics_cpu_cgroup_version
-introducedIn: "3.13.0"
+introducedIn: "3.12.7"
 help: |
   CGroup version detected on the system (0=none, 1=v1, 2=v2).
 unit: number

@@ -91,8 +91,7 @@ AqlValue functions::ParseIdentifier(ExpressionContext* expressionContext,
   struct ParseIdentifierImpl {
     AqlValue handle(std::string_view identifier, size_t pos,
                     ExpressionContext* expressionContext) {
-      transaction::Methods* trx = &expressionContext->trx();
-      transaction::BuilderLeaser builder(trx);
+      auto builder = ThreadLocalBuilderLeaser::lease();
       builder->openObject();
       builder->add("collection", VPackValuePair(identifier.data(), pos,
                                                 VPackValueType::String));

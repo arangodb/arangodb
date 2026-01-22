@@ -25,13 +25,17 @@
 #include "ClusterProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Graph/Cursors/ClusterNeighbourCursor.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -131,7 +135,8 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
       << "<ClusterProvider> Start Vertex:" << vertex;
   // Create the default initial step.
   TRI_ASSERT(weight == 0.0);  // Not implemented yet
-  return Step{_opts.getCache()->persistString(vertex), depth, weight};
+  return Step{VertexRef{_opts.getCache()->persistString(vertex)}, depth,
+              weight};
 }
 
 template<class StepImpl>
@@ -140,7 +145,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   // slow path, sharding not deducable from _id
   bool mustSend = false;
 
-  transaction::BuilderLeaser leased(trx());
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject();
 
   if (_opts.produceVertices()) {
@@ -316,8 +321,12 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
   LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Expanding " << step->getVertex().getID();
+
+  // 1. prepare the first request to all dbservers to start a batched iteration
+  //    over all edges of the the given vertices
+
   auto const* engines = _opts.engines();
-  transaction::BuilderLeaser leased(trx());
+  auto leased = ThreadLocalBuilderLeaser::lease();
   leased->openObject(true);
   leased->add("backward",
               VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
@@ -337,7 +346,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   /* Needed for TRAVERSALS only - End */
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
-  leased->add("batchSize", VPackValue(1000));
+  leased->add("batchSize", VPackValue(aql::ExecutionBlock::DefaultBatchSize));
   leased->close();
 
   auto* pool =
@@ -347,8 +356,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  using EngineResponse = std::pair<aql::EngineId, Future<network::Response>>;
-  std::vector<EngineResponse> futures;
+  using EngineRequest =
+      std::pair<aql::EngineId, futures::Future<network::Response>>;
+  std::vector<EngineRequest> futures;
   futures.reserve(engines->size());
 
   ScopeGuard sg([&]() noexcept {
@@ -362,9 +372,11 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     }
   });
 
+  // 2. send the start request to all dbservers
+
   std::unordered_map<aql::EngineId, ServerID> engineMap;
   for (auto const& [server, engineId] : *engines) {
-    futures.emplace_back(EngineResponse{
+    futures.emplace_back(EngineRequest{
         engineId, network::sendRequestRetry(
                       pool, "server:" + server, fuerte::RestVerb::Put,
                       RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
@@ -373,8 +385,14 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     engineMap.emplace(engineId, server);
   }
 
+  // 3. collect the responses from the dbservers
+  //    and if the iteration on a dbserver is not yet done, send a
+  //    continuation request whose response is again collected in this loop
+
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   while (not futures.empty()) {
+    // 3a. wait on the next response
+
     auto& [engineId, f_ref] = futures.back();
     auto f = std::move(f_ref);
     futures.pop_back();
@@ -383,6 +401,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     // operation, remember to remove the `skipScheduler = true` option of the
     // corresponding requests.
     network::Response const& r = f.waitAndGet();
+
+    // 3b. process response
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -444,6 +464,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
       _opts.getCache()->datalake().add(std::move(payload));
     }
 
+    // 3c. if iteration is not yet finished, send a continuation request
+
     auto maybeDone = resSlice.get("done");
     if (not maybeDone.isNone() && maybeDone.isBool()) {
       auto done = maybeDone.getBool();
@@ -452,7 +474,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
         if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
           auto maybeBatchId = resSlice.get("batchId");
           if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
-            transaction::BuilderLeaser leasedContinue(trx());
+            auto leasedContinue = ThreadLocalBuilderLeaser::lease();
             leasedContinue->openObject(true);
             leasedContinue->add("cursorId", maybeCursorId);
             leasedContinue->add(
@@ -460,7 +482,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
                 VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
             leasedContinue->close();
 
-            futures.emplace_back(EngineResponse{
+            futures.emplace_back(EngineRequest{
                 engineId, network::sendRequestRetry(
                               pool, "server:" + engineMap[engineId],
                               fuerte::RestVerb::Put,
@@ -474,6 +496,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   }
   // Note: This disables the ScopeGuard
   futures.clear();
+
+  // 4. process all results
 
   std::uint64_t memoryPerItem =
       costPerVertexOrEdgeType +
@@ -564,7 +588,8 @@ auto ClusterProvider<StepImpl>::expand(
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
-      callback(Step{to, edge, previous, fetchedType, step.getDepth() + 1,
+      callback(Step{VertexRef{to}, VertexRef{edge}, previous, fetchedType,
+                    step.getDepth() + 1,
                     _opts.weightEdge(step.getWeight(), readEdge(edge))});
     }
   } else {
@@ -573,9 +598,21 @@ auto ClusterProvider<StepImpl>::expand(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::createNeighbourCursor(Step const& step,
+                                                      size_t position)
+    -> ClusterNeighbourCursor<Step>& {
+  _neighbourCursors.remove_if([](ClusterNeighbourCursor<Step> const& cursor) {
+    return cursor._deletable;
+  });
+
+  _neighbourCursors.emplace_back(
+      ClusterNeighbourCursor<Step>{step, position, _trx.get(), _opts, _stats});
+  return _neighbourCursors.back();
+}
+
+template<class StepImpl>
 void ClusterProvider<StepImpl>::addVertexToBuilder(
-    typename Step::Vertex const& vertex,
-    arangodb::velocypack::Builder& builder) {
+    VertexRef const& vertex, arangodb::velocypack::Builder& builder) {
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   builder.add(_opts.getCache()->getCachedVertex(vertex.getID()));
 };

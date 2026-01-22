@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/system-compiler.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -291,14 +292,12 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
   // However, the current implementation does not hand in isSmart==true
   // in the valid combination.
   TRI_ASSERT(!isSmart);
-  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       SingleServerProvider<SingleServerProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
-      std::move(pathValidatorOptions), std::move(enumeratorOptions),
-      useTracing);
+      std::move(pathValidatorOptions), std::move(enumeratorOptions));
 
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }
@@ -336,7 +335,6 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     }
   }
   TRI_ASSERT(baseProviderOptions.getCache() != nullptr);
-  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
 #ifdef USE_ENTERPRISE
@@ -348,20 +346,19 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
         aql::enterprise::SmartGraphProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
+        std::move(enumeratorOptions));
   } else {
     _traversalEnumerator = TraversalEnumerator::createEnumerator<
         ClusterProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
+        std::move(enumeratorOptions));
   }
 #else
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       ClusterProvider<ClusterProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
-      std::move(pathValidatorOptions), std::move(enumeratorOptions),
-      useTracing);
+      std::move(pathValidatorOptions), std::move(enumeratorOptions));
 #endif
 
   TRI_ASSERT(_traversalEnumerator != nullptr);
@@ -391,12 +388,12 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     TRI_ASSERT(_inputRow.isInitialized());
 
     // traverser now has next v, e, p values
-    transaction::BuilderLeaser tmp{_infos.getTrx()};
+    auto tmp = ThreadLocalBuilderLeaser::lease();
 
     // Vertex variable (v)
     if (_infos.useVertexOutput()) {
       tmp->clear();
-      currentPath->lastVertexToVelocyPack(*tmp.builder());
+      currentPath->lastVertexToVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.vertexRegister(), _inputRow, &guard);
@@ -405,7 +402,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     // Edge variable (e)
     if (_infos.useEdgeOutput()) {
       tmp->clear();
-      currentPath->lastEdgeToVelocyPack(*tmp.builder());
+      currentPath->lastEdgeToVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.edgeRegister(), _inputRow, &guard);
@@ -414,7 +411,7 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
     // Path variable (p)
     if (_infos.usePathOutput()) {
       tmp->clear();
-      currentPath->toVelocyPack(*tmp.builder());
+      currentPath->toVelocyPack(*tmp.get());
       AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.pathRegister(), _inputRow, &guard);
@@ -526,8 +523,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       traversalEnumerator()->prepareIndexExpressions(&_ast);
 
       // start actual search
-      traversalEnumerator()->reset(toHashedStringRef(
-          sourceString));  // TODO [GraphRefactor]: check sourceString memory
+      traversalEnumerator()->reset(VertexRef{toHashedStringRef(
+          sourceString)});  // TODO [GraphRefactor]: check sourceString memory
       TRI_ASSERT(_inputRow.isInitialized());
       return true;
     }

@@ -222,7 +222,8 @@ TEST_F(KShortestPathsFinderTest, path_from_vertex_to_itself) {
   auto source = vId(0);
   auto target = vId(0);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -248,7 +249,8 @@ TEST_F(KShortestPathsFinderTest, no_path_exists) {
   auto source = vId(0);
   auto target = vId(1);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
 
   EXPECT_FALSE(finder.isDone());
   {
@@ -278,7 +280,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   auto source = vId(1);
   auto target = vId(2);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {
@@ -300,7 +303,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   auto source = vId(1);
   auto target = vId(4);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {
@@ -323,7 +327,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_5_with_loops_to_start_end) {
   auto source = vId(30);
   auto target = vId(35);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {
@@ -346,7 +351,8 @@ TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
   auto source = vId(21);
   auto target = vId(25);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {
@@ -375,7 +381,8 @@ TEST_F(KShortestPathsFinderTest, many_edges_between_two_nodes) {
   auto source = vId(70);
   auto target = vId(71);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   bool foundPath = false;
@@ -500,7 +507,8 @@ TEST_F(WeightedKShortestPathsFinderTest, diamond_path) {
   auto source = vId(1);
   auto target = vId(4);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {
@@ -519,7 +527,8 @@ TEST_F(WeightedKShortestPathsFinderTest,
   auto source = vId(100);
   auto target = vId(100);
   auto finder = pathFinder();
-  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+  finder.reset(VertexRef{toHashedStringRef(source)},
+               VertexRef{toHashedStringRef(target)});
   EXPECT_FALSE(finder.isDone());
 
   {

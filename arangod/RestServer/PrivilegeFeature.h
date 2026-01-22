@@ -29,6 +29,7 @@
 
 #include "Basics/operating-system.h"
 
+#include "RestServer/PrivilegeFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -45,13 +46,12 @@ class PrivilegeFeature final : public ArangodFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
-  std::string _uid;
-  std::string _gid;
-
   void dropPrivilegesPermanently();
 
  private:
   void extractPrivileges();
+
+  PrivilegeFeatureOptions _options;
 
 #ifdef ARANGODB_HAVE_SETUID
   TRI_uid_t _numericUid{};

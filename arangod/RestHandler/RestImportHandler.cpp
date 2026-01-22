@@ -25,6 +25,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -198,7 +199,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
   }
 
   // document ok, now import it
-  transaction::BuilderLeaser newBuilder(&trx);
+  auto newBuilder = ThreadLocalBuilderLeaser::lease();
   tempBuilder.clear();
 
   // add prefixes to _from and _to
@@ -242,8 +243,8 @@ ErrorCode RestImportHandler::handleSingleDocument(
     tempBuilder.close();
 
     if (tempBuilder.slice().length() > 0) {
-      VPackCollection::merge(*(newBuilder.builder()), slice,
-                             tempBuilder.slice(), false, false);
+      VPackCollection::merge(*(newBuilder.get()), slice, tempBuilder.slice(),
+                             false, false);
       slice = newBuilder->slice();
     }
   }

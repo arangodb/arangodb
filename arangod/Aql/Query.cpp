@@ -143,7 +143,9 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryHashCalculated(false),
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
-      _queryKilled(false) {
+      _queryKilled(false),
+      _activity("AQL Query", {{"query", queryString.string()},
+                              {"id", std::format("{}", id)}}) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
@@ -691,7 +693,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
   Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
-  opt.createPlans(std::move(plan), _queryOptions, false);
+  opt.createPlans(std::move(plan), _queryOptions);
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
 
@@ -1473,7 +1475,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(std::move(plan), _queryOptions, true);
+    opt.createPlans(std::move(plan), _queryOptions);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 

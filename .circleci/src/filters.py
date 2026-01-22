@@ -2,18 +2,19 @@
 Filtering logic for test jobs based on environment and CLI arguments.
 
 This module provides functions to filter test jobs based on various criteria
-such as deployment type, full/nightly runs, platform exclusions, etc.
+such as full runs, test types, platform exclusions, etc.
 """
 
 from typing import List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from .config_lib import (
     TestJob,
     TestDefinitionFile,
     DeploymentType,
     SuiteConfig,
-    Sanitizer,
     Architecture,
+    TestRequirements,
+    BuildVariant,
 )
 
 
@@ -22,42 +23,38 @@ GTEST_PREFIX = "gtest"
 
 
 @dataclass
-class PlatformFlags:
-    """Platform-specific flags for filtering tests."""
-
-    is_windows: bool = False
-    is_arm: bool = False
-    is_coverage: bool = False
-
-
-@dataclass
 class FilterCriteria:
     """Criteria for filtering test jobs."""
 
-    # Deployment type filters
-    cluster: bool = False
-    single: bool = False
-    all_tests: bool = False
-
     # Test type filters
     full: bool = False  # Include full test set (not just PR subset)
-    nightly: bool = False
     gtest: bool = False
 
     # Build configuration
-    sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
     architecture: Optional[Architecture] = None  # Current build architecture
+    v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
+    build_variant: Optional[BuildVariant] = None  # Build variant (for instrumentation)
+
+    # Deployment type filter (None = accept all deployment types)
+    deployment_type: Optional[DeploymentType] = None
 
     # Feature flags
     enterprise: bool = True
 
-    # Platform exclusions
-    platform: PlatformFlags = field(default_factory=PlatformFlags)
-
     @property
     def is_full_run(self) -> bool:
-        """Check if this is a full or nightly run."""
-        return self.full or self.nightly
+        """Check if this is a full run."""
+        return self.full
+
+    @property
+    def is_instrumented_build(self) -> bool:
+        """Check if this is an instrumented build (TSAN/ALUBSAN/COVERAGE)."""
+        return self.build_variant is not None and self.build_variant.is_instrumented
+
+    @property
+    def is_v8_build(self) -> bool:
+        """Check if this is a V8-enabled build."""
+        return self.v8
 
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:
@@ -73,30 +70,71 @@ def is_gtest_suite(suite: SuiteConfig) -> bool:
     return suite.name.startswith(GTEST_PREFIX)
 
 
-def matches_deployment_filter(
-    deployment_type: DeploymentType | None, criteria: FilterCriteria
+def _check_requirements_match(
+    requires: TestRequirements, criteria: FilterCriteria
 ) -> bool:
     """
-    Check if a deployment type matches the filter criteria.
+    Check if test requirements match filter criteria.
+
+    This implements the common filtering logic for both jobs and suites:
+    - Architecture compatibility
+    - Full flag compatibility
+    - Instrumentation flag compatibility (TSAN/ALUBSAN/COVERAGE)
+    - Coverage flag compatibility (COVERAGE only)
+    - V8 flag compatibility
 
     Args:
-        deployment_type: Deployment type from job options (or None)
-        criteria: Filter criteria to check against
+        requires: TestRequirements to check
+        criteria: FilterCriteria to apply
 
     Returns:
-        True if deployment type matches the filter
+        True if requirements match criteria, False otherwise
     """
-    # If both cluster and single are requested (or neither), accept all
-    if criteria.cluster == criteria.single:
-        return True
+    # Check architecture compatibility FIRST
+    # If test specifies architecture, current architecture must match
+    if requires.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != requires.architecture:
+            return False
 
-    # Cluster-only filter
-    if criteria.cluster:
-        return deployment_type in (DeploymentType.CLUSTER, DeploymentType.MIXED, None)
+    # Check full flag compatibility with build type
+    # - full=True: Only for full runs
+    # - full=False: Only for PR builds
+    # - full=None (unspecified): Include in both
+    if requires.full is True and not criteria.is_full_run:
+        return False  # Requires full run, but we're in PR mode
+    if requires.full is False and criteria.is_full_run:
+        return False  # PR-only, but we're in full mode
 
-    # Single-only filter
-    if criteria.single:
-        return deployment_type in (DeploymentType.SINGLE, None)
+    # Check coverage flag compatibility (specific to COVERAGE builds)
+    # - coverage=True: Only for coverage builds
+    # - coverage=False: Only for non-coverage builds
+    # - coverage=None (unspecified): Include in both
+    if requires.coverage is True and (
+        criteria.build_variant is None or not criteria.build_variant.is_coverage
+    ):
+        return False  # Requires coverage build, but we're not in coverage mode
+    if requires.coverage is False and (
+        criteria.build_variant is not None and criteria.build_variant.is_coverage
+    ):
+        return False  # Non-coverage-only, but we're in coverage mode
+
+    # Check instrumentation flag compatibility
+    # - instrumentation=True: Only for instrumented builds (TSAN/ALUBSAN/COVERAGE)
+    # - instrumentation=False: Only for non-instrumented builds
+    # - instrumentation=None (unspecified): Include in both
+    if requires.instrumentation is True and not criteria.is_instrumented_build:
+        return False  # Requires instrumented build, but we're in regular mode
+    if requires.instrumentation is False and criteria.is_instrumented_build:
+        return False  # Regular-build-only, but we're in instrumented mode
+
+    # Check v8 flag compatibility
+    # - v8=True: Only for V8-enabled builds
+    # - v8=False: Only for non-V8 builds (JavaScript disabled)
+    # - v8=None (unspecified): Include in both
+    if requires.v8 is True and not criteria.is_v8_build:
+        return False  # Requires V8 build, but we're in non-V8 mode
+    if requires.v8 is False and criteria.is_v8_build:
+        return False  # Non-V8-only, but we're in V8 mode
 
     return True
 
@@ -112,29 +150,23 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     Returns:
         True if job should be included, False otherwise
     """
-    # Check architecture compatibility FIRST (even in all_tests mode)
-    # If job specifies architecture, current architecture must match
-    if job.options.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != job.options.architecture:
-            return False
-
-    if criteria.all_tests:
-        return True
-
-    # Check full flag compatibility with build type
-    # - full=True: Only for nightly/full builds
-    # - full=False: Only for PR builds
-    # - full=None (unspecified): Include in both
-    if job.options.full is True and not criteria.is_full_run:
-        # Job requires full run, but we're in PR mode - exclude
-        return False
-    if job.options.full is False and criteria.is_full_run:
-        # Job is PR-only, but we're in full/nightly mode - exclude
+    # Check common requirements (architecture, full, instrumentation)
+    if not _check_requirements_match(job.requires, criteria):
         return False
 
     # Check deployment type filter
-    if not matches_deployment_filter(job.options.deployment_type, criteria):
-        return False
+    if criteria.deployment_type is not None:
+        job_deployment = job.options.deployment_type
+
+        # If job has no deployment type specified, it runs in all modes
+        if job_deployment is None:
+            pass  # Include job
+        # If job specifies MIXED, it should be included in both single and cluster filters
+        elif job_deployment == DeploymentType.MIXED:
+            pass  # Include job
+        # Otherwise, deployment types must match
+        elif job_deployment != criteria.deployment_type:
+            return False
 
     # Check gtest filter
     if criteria.gtest and not any(is_gtest_suite(suite) for suite in job.suites):
@@ -160,39 +192,30 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     Returns:
         True if suite should be included, False otherwise
     """
-    # Check architecture compatibility FIRST (even in all_tests mode)
-    # If suite specifies architecture, current architecture must match
-    if suite.options.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != suite.options.architecture:
-            return False
-
-    if criteria.all_tests:
-        return True
-
-    # Check full flag compatibility (suite-level override)
-    # - full=True: Only for nightly/full builds
-    # - full=False: Only for PR builds
-    # - full=None (unspecified): Include in both
-    if suite.options.full is True and not criteria.is_full_run:
-        return False  # Suite requires full run, but we're in PR mode
-    if suite.options.full is False and criteria.is_full_run:
-        return False  # Suite is PR-only, but we're in full/nightly mode
-
-    return True
+    # Check common requirements (architecture, full, instrumentation)
+    return _check_requirements_match(suite.requires, criteria)
 
 
 def filter_suites(job: TestJob, criteria: FilterCriteria) -> List[SuiteConfig]:
     """
     Filter suites from a job based on criteria.
 
+    This uses job.get_resolved_suites() to ensure job-level requirements
+    (like full, instrumentation, etc.) are properly inherited by suites
+    that don't have their own requirements specified.
+
     Args:
         job: TestJob containing suites to filter
         criteria: FilterCriteria to apply
 
     Returns:
-        Filtered list of SuiteConfig objects
+        Filtered list of SuiteConfig objects with job-level options merged
     """
-    return [suite for suite in job.suites if should_include_suite(suite, criteria)]
+    return [
+        suite
+        for suite in job.get_resolved_suites()
+        if should_include_suite(suite, criteria)
+    ]
 
 
 def filter_jobs(

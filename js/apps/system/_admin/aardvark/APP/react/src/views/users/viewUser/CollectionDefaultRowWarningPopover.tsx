@@ -50,7 +50,7 @@ export const CollectionDefaultRowWarningPopover = ({
                 _hover={{
                   color: "blue.400"
                 }}
-                href={`https://docs.arangodb.com/${version}/operations/administration/user-management/#wildcard-collection-access-level`}
+                href={`https://docs.arango.ai/arangodb/${version}/operations/administration/user-management/#wildcard-collection-access-level`}
               >
                 Learn more
               </ExternalLink>

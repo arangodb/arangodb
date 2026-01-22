@@ -144,6 +144,11 @@ class MockGraph {
               std::vector<size_t> const& expectedVerticesToFetch,
               arangodb::graph::BaseOptions& opts) const;
 
+  /**
+     Creates a traverser engine by calling the RestAqlHandler by hand
+
+     Returns the engine id
+   */
   auto createEngine(mocks::MockDBServer& server,
                     arangodb::graph::BaseOptions const& opts,
                     arangodb::aql::QueryRegistry& queryRegistry) const

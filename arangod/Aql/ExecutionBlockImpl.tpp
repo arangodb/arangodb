@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Exceptions.h"
 #include "ExecutionBlockImpl.h"
 
@@ -137,66 +138,33 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 using KPath = arangodb::graph::KPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using KPathTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
-using AllShortestPathsTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
-using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-
 using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedYenPathsTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
-
 using WeightedYenPathsCluster =
     arangodb::graph::WeightedYenEnumeratorWithProvider<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using WeightedYenPathsClusterTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using WeightedKShortestPathsTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
@@ -204,49 +172,26 @@ using WeightedShortestPath =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
-using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
 using KPathCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathClusterTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using AllShortestPathsClusterTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using KShortestPathsClusterTracer =
-    arangodb::graph::TracedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPathsCluster =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using WeightedKShortestPathsClusterTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -856,37 +801,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
               (is_one_of_v<
                   Executor, FilterExecutor, ShortestPathExecutor<ShortestPath>,
-                  ShortestPathExecutor<ShortestPathTracer>,
                   ShortestPathExecutor<ShortestPathCluster>,
-                  ShortestPathExecutor<ShortestPathClusterTracer>,
                   ShortestPathExecutor<WeightedShortestPath>,
-                  ShortestPathExecutor<WeightedShortestPathTracer>,
                   ShortestPathExecutor<WeightedShortestPathCluster>,
-                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor, EnumeratePathsExecutor<KPath>,
-                  EnumeratePathsExecutor<KPathTracer>,
                   EnumeratePathsExecutor<KPathCluster>,
-                  EnumeratePathsExecutor<KPathClusterTracer>,
                   EnumeratePathsExecutor<AllShortestPaths>,
-                  EnumeratePathsExecutor<AllShortestPathsTracer>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
-                  EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<KShortestPaths>,
-                  EnumeratePathsExecutor<KShortestPathsTracer>,
                   EnumeratePathsExecutor<KShortestPathsCluster>,
-                  EnumeratePathsExecutor<KShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPaths>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<YenPaths>,
-                  EnumeratePathsExecutor<YenPathsTracer>,
                   EnumeratePathsExecutor<YenPathsCluster>,
-                  EnumeratePathsExecutor<YenPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedYenPaths>,
-                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
                   EnumeratePathsExecutor<WeightedYenPathsCluster>,
-                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -1250,97 +1179,6 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-template<class Executor>
-template<class E>
-auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
-    AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  static_assert(std::is_same_v<Executor, E> &&
-                executorHasSideEffects<Executor>);
-  if (!stack.needToCountSubquery()) {
-    // We need to really produce things here
-    // fall back to original version as any other executor.
-    auto res = shadowRowForwarding(stack);
-    return res;
-  }
-  TRI_ASSERT(_outputItemRow);
-  TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(!_outputItemRow->allRowsUsed());
-  if (!_lastRange.hasShadowRow()) {
-    // We got back without a ShadowRow in the LastRange
-    // Let client call again
-    return ExecState::DONE;
-  }
-
-  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-  TRI_ASSERT(shadowRow.isInitialized());
-  uint64_t depthSkippingNow =
-      static_cast<uint64_t>(stack.shadowRowDepthToSkip());
-  uint64_t shadowDepth = shadowRow.getDepth();
-  bool didWriteRow = false;
-  if (shadowRow.isRelevant()) {
-    LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
-    // We found a relevant shadow Row.
-    // We need to reset the Executor
-    resetExecutor();
-  }
-
-  if (depthSkippingNow > shadowDepth) {
-    // We are skipping the outermost Subquery.
-    // Simply drop this ShadowRow
-  } else if (depthSkippingNow == shadowDepth) {
-    // We are skipping on this subquery level.
-    // Skip the row, but report skipped 1.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    if (shadowCall.needSkipMore()) {
-      shadowCall.didSkip(1);
-      shadowCall.resetSkipCount();
-      skipResult.didSkipSubquery(1, shadowDepth);
-    } else if (shadowCall.getLimit() > 0) {
-      TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-      _outputItemRow->moveRow(shadowRow);
-      shadowCall.didProduce(1);
-      TRI_ASSERT(_outputItemRow->produced());
-      _outputItemRow->advanceRow();
-      didWriteRow = true;
-    } else {
-      TRI_ASSERT(shadowCall.hardLimit == 0);
-      // Simply drop this shadowRow!
-    }
-  } else {
-    // We got a shadowRow of a subquery we are not skipping here.
-    // Do proper reporting on it's call.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-    _outputItemRow->moveRow(shadowRow);
-    shadowCall.didProduce(1);
-
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    didWriteRow = true;
-  }
-  if (state == ExecutorState::DONE) {
-    // We have consumed everything, we are
-    // Done with this query
-    return ExecState::DONE;
-  } else if (_lastRange.hasDataRow()) {
-    // Multiple concatenated Subqueries
-    return ExecState::NEXTSUBQUERY;
-  } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows, we
-    // need to forward them
-    return ExecState::SHADOWROWS;
-  } else if (didWriteRow) {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::DONE;
-  } else {
-    // Done with this subquery.
-    // We did not write any output yet.
-    // So we can continue with upstream.
-    return ExecState::UPSTREAM;
-  }
-}
-
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
     AqlCallStack& stack)
@@ -1482,86 +1320,184 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 }
 
 template<class Executor>
+auto ExecutionBlockImpl<Executor>::forwardShadowRow(
+    AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+    ShadowAqlItemRow& shadowRow) -> void {
+  auto shadowDepth = shadowRow.getDepth();
+  auto& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+  _outputItemRow->moveRow(shadowRow);
+  shadowCall.didProduce(1);
+  TRI_ASSERT(_outputItemRow->produced());
+  _outputItemRow->advanceRow();
+
+  // The call at the next level produced the stuff for this shadow row
+  // and hence should be popped.
+  // TODO: Technically all calls of lower depth should be popped (and are
+  // at the end of this function. This means that the call at shadowDepth-1
+  // is pooped twice. Thid has no effect since popping a call is idempotent.
+  if (!shadowRow.isRelevant()) {
+    std::ignore = stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
+  }
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::sideEffectSkipHandling(
+    AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+    ShadowAqlItemRow& shadowRow, SkipResult& skipped) -> SideEffectSkipResult {
+  auto shadowDepth = shadowRow.getDepth();
+
+  auto maybeDepthSkippingNow = stack.shadowRowDepthToSkip();
+  if (maybeDepthSkippingNow.has_value()) {
+    auto depthSkippingNow = maybeDepthSkippingNow.value();
+    if (depthSkippingNow > shadowDepth) {
+      if (!stack.modifyCallListAtDepth(depthSkippingNow).hasMoreCalls()) {
+        // We don't have a call for an outer subquery;
+        // we have to wait for the next one before we can make a decision what
+        // to do with the current shadow row.
+        return SideEffectSkipResult::RETURN_DONE;
+      }
+      // We are skipping an outer Subquery.
+      // Simply drop this ShadowRow
+      return SideEffectSkipResult::DROP_SHADOW_ROW;
+    } else if (depthSkippingNow == shadowDepth) {
+      AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+      // We are skipping on this subquery level.
+      // Skip the row, but report skipped 1.
+      if (shadowCall.needSkipMore()) {
+        shadowCall.didSkip(1);
+        shadowCall.resetSkipCount();
+        skipped.didSkipSubquery(1, shadowDepth);
+        // also does not write the shadow row.
+        return SideEffectSkipResult::DROP_SHADOW_ROW;
+      } else if (shadowCall.getLimit() > 0) {
+        TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
+        return SideEffectSkipResult::FORWARD_SHADOW_ROW;
+      } else {
+        TRI_ASSERT(shadowCall.hardLimit == 0);
+        // Simply drop this shadowRow!
+        return SideEffectSkipResult::DROP_SHADOW_ROW;
+      }
+    } else /* depthSkippingNow < shadowDepth */ {
+      // We got a shadowRow of a subquery we are not skipping here.
+      // Do proper reporting on its call.
+    }
+  }
+  return SideEffectSkipResult::FORWARD_SHADOW_ROW;
+}
+
+template<class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     -> ExecState {
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     return shadowRowForwardingSubqueryStart(stack);
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     return shadowRowForwardingSubqueryEnd(stack);
-  } else {
-    TRI_ASSERT(_outputItemRow);
-    TRI_ASSERT(_outputItemRow->isInitialized());
-    TRI_ASSERT(!_outputItemRow->allRowsUsed());
-    if (!_lastRange.hasShadowRow()) {
-      // We got back without a ShadowRow in the LastRange
-      // Let us continue with the next Subquery
-      return ExecState::NEXTSUBQUERY;
-    }
+  }
 
-    bool const hasDoneNothing =
-        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
-    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-    TRI_ASSERT(shadowRow.isInitialized());
-
-    // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
-    // SENSIBLE WAY!
-    //
-    // the row fetcher doesn't know its ranges, the ranges don't know the
-    // fetcher
-    //
-    // ranges synchronize shadow rows, and fetcher synchronizes skipping
-    //
-    // but there are interactions between the two.
-    if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-      fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
-    }
-
-    countShadowRowProduced(stack, shadowRow.getDepth());
-    if (shadowRow.isRelevant()) {
-      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-      // We found a relevant shadow Row.
-      // We need to reset the Executor
-      resetExecutor();
-    }
-
-    _outputItemRow->moveRow(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    if (state == ExecutorState::DONE) {
-      // We have consumed everything, we are
-      // Done with this query
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // TODO: the original sideEffectShadowRowForwarding returns
+    // ExecState::DONE in this case. It is likely correct
+    // to just return ExecState::NEXTSUBQUERY and remove this
+    // case distinction.
+    // Let's do that in a separate PR. In particular keep UPSERT in mind.
+    if constexpr (executorHasSideEffects<Executor>) {
       return ExecState::DONE;
-    } else if (_lastRange.hasDataRow()) {
-      /// NOTE: We do not need popDepthsLowerThan here, as we already
-      /// have a new DataRow from upstream, so the upstream
-      /// block has decided it is correct to continue.
-      // Multiple concatenated Subqueries
-      return ExecState::NEXTSUBQUERY;
-    } else if (_lastRange.hasShadowRow()) {
-      // We still have shadowRows.
-      auto const& lookAheadRow = _lastRange.peekShadowRow();
-      if (lookAheadRow.isRelevant()) {
-        // We are starting the NextSubquery here.
-        if constexpr (Executor::Properties::allowsBlockPassthrough ==
-                      BlockPassthrough::Enable) {
-          // TODO: Check if this works with skip forwarding
-          return ExecState::SHADOWROWS;
-        }
-        return ExecState::NEXTSUBQUERY;
-      }
-      // we need to forward them
-      return ExecState::SHADOWROWS;
     } else {
-      if (hasDoneNothing && !shadowRow.isRelevant()) {
-        stack.popDepthsLowerThan(shadowRow.getDepth());
-      }
-
-      // End of input, need to fetch new!
-      // Just start with the next subquery.
-      // If in doubt the next row will be a shadowRow again,
-      // this will be forwarded than.
       return ExecState::NEXTSUBQUERY;
     }
+  }
+
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+
+  TRI_ASSERT(shadowRow.isInitialized());
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    resetExecutor();
+  }
+
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
+  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+  // SENSIBLE WAY!
+  //
+  // the row fetcher doesn't know its ranges, the ranges don't know the
+  // fetcher
+  //
+  // ranges synchronize shadow rows, and fetcher synchronizes skipping
+  //
+  // but there are interactions between the two.
+  //
+  // Also note that executors with this DataRange type have no side effects,
+  // so merging the two functions can leave this in place
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    static_assert(!executorHasSideEffects<Executor>);
+    auto shadowDepth = shadowRow.getDepth();
+    fetcher().resetDidReturnSubquerySkips(shadowDepth);
+  }
+
+  bool didWriteShadowRow = false;
+  if constexpr (executorHasSideEffects<Executor>) {
+    auto r = sideEffectSkipHandling(stack, _outputItemRow, shadowRow, _skipped);
+    switch (r) {
+      case SideEffectSkipResult::RETURN_DONE: {
+        return ExecState::DONE;
+      } break;
+      case SideEffectSkipResult::FORWARD_SHADOW_ROW: {
+        forwardShadowRow(stack, _outputItemRow, shadowRow);
+        didWriteShadowRow = true;
+      } break;
+      case SideEffectSkipResult::DROP_SHADOW_ROW: {
+      } break;
+    }
+  } else {
+    forwardShadowRow(stack, _outputItemRow, shadowRow);
+    didWriteShadowRow = true;
+  }
+
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    return ExecState::NEXTSUBQUERY;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows.
+    auto const& lookAheadRow = _lastRange.peekShadowRow();
+    if (lookAheadRow.isRelevant()) {
+      // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                    BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
+      return ExecState::NEXTSUBQUERY;
+    }
+    // we need to forward them
+    return ExecState::SHADOWROWS;
+  } else if (didWriteShadowRow) {
+    // call has not produced output or skips, and the shadow row is not
+    // relevant.
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
+    // End of input, need to fetch new!
+    // Just start with the next subquery.
+    // If in doubt the next row will be a shadowRow again,
+    // this will be forwarded than.
+
+    return ExecState::NEXTSUBQUERY;
+  } else {
+    // Did not write any output, the only choice is to ask upstream for more
+    // this can only happen when sideeffects are handled
+    return ExecState::UPSTREAM;
   }
 }
 
@@ -1727,7 +1663,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
       // We need to check inside a subquery if the outer query has been skipped.
       // But we only need to do this if we were not in WAITING state.
       if (ctx.stack.needToSkipSubquery() && _lastRange.hasValidRow()) {
-        auto depthToSkip = ctx.stack.shadowRowDepthToSkip();
+        auto depthToSkip = ctx.stack.shadowRowDepthToSkip().value();
         auto& shadowCall = ctx.stack.modifyCallAtDepth(depthToSkip);
         // We can never hit an offset on the shadowRow level again,
         // we can only hit this with HARDLIMIT / FULLCOUNT
@@ -2304,12 +2240,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         }
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
-        if constexpr (executorHasSideEffects<Executor>) {
-          _execState = sideEffectShadowRowForwarding(ctx.stack, _skipped);
-        } else {
-          // This may write one or more rows.
-          _execState = shadowRowForwarding(ctx.stack);
-        }
+        // This may write one or more rows.
+        _execState = shadowRowForwarding(ctx.stack);
         if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
           // Produce might have modified the clientCall
           // But only do this if we are not subquery.
@@ -2535,8 +2467,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack,
                                                           size_t depth)
     -> void {
-  auto& subList = stack.modifyCallListAtDepth(depth);
-  auto& subCall = subList.modifyNextCall();
+  auto& subCall = stack.modifyCallAtDepth(depth);
   subCall.didProduce(1);
   if (depth > 0) {
     // We have written a ShadowRow.

@@ -30,7 +30,10 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Queues/FifoQueue.h"
 #include "Graph/Types/ForbiddenVertices.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <set>
 
@@ -61,24 +64,15 @@ class PathResult;
 // It works by doing a breadth-first graph traversal from both sides and
 // then matching findings.
 // This class is used in very different situations (single server, cluster,
-// various different types of smart and not so smart graphs, with tracing
-// and without, etc.). Therefore we need many template parameters. Let me
-// here give an overview over what they do:
-//  - QueueType: This is the queue being used to track which steps to visit
-//    next. It is always `FifoQueue`, but it needs to be a template
-//    argument since there is a wrapper template for tracing `QueueTracer`,
-//    so it is sometimes QueueTracer<FifoQueue>.
-//  - PathStoreType: This is a class to store paths. Its type depends on
-//    the type ProviderType::Step (see below) and on the presence of a
-//    tracing wrapper type.
+// various different types of smart and not so smart graphs, etc.). Therefore we
+// need template parameters. Let me here give an overview over what they do:
 //  - ProviderType: This is a class which delivers the actual graph data,
 //    essentially to answer the question as to what the neighbours of a
 //    vertex are. This can be `SingleServerProvider` or `ClusterProvider`.
-//    Again, there is a tracing wrapper.
 //  - PathValidatorType: Finally, this is a class which is used to validate
 //    if paths are valid. Various filtering conditions can be handed in,
 //    but the most important one is to specify the uniqueness conditions
-//    on edges and vertices. Again, there is a tracing wrapper.
+//    on edges and vertices.
 // A few words on uniqueness conditions are in order, since they are
 // specified in the PathValidator, but have very strong interferences with
 // the actual algorithm. For edges, there is either "no uniqueness"
@@ -101,16 +95,15 @@ class PathResult;
 // is also what Yen's algorithm does, just computing various shortest paths
 // one after another.
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
+template<class ProviderType, class PathValidatorType>
 class TwoSidedEnumerator {
- public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
-
  private:
+  using Step = typename ProviderType::Step;
+  using QueueType = FifoQueue<Step>;
+  using PathStoreType = PathStore<Step>;
+
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = arangodb::velocypack::HashedStringRef;
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                     std::equal_to<VertexRef>>;

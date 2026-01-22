@@ -13,7 +13,11 @@ from dataclasses import replace
 from typing import List
 import click
 
-from src.config_lib import TestDefinitionFile, Sanitizer, TestArguments
+from src.config_lib import (
+    TestDefinitionFile,
+    BuildVariant,
+    TestArguments,
+)
 from src.filters import FilterCriteria
 from src.output_generators.base import (
     GeneratorConfig,
@@ -138,18 +142,17 @@ def load_test_definitions(
 
 
 def create_generator_config(
-    sanitizer: str,
+    tsan: bool,
+    alubsan: bool,
+    no_sanitizer: bool,
+    coverage: bool,
     test_image: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: str,
-    single: bool,
-    cluster: bool,
+    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
-    all_tests: bool,
     replication_two: bool,
-    nightly: bool,
     create_docker_images: bool,
     validate_only: bool,
 ) -> GeneratorConfig:
@@ -162,33 +165,38 @@ def create_generator_config(
     Returns:
         GeneratorConfig object
     """
-    # Parse and validate sanitizer
-    sanitizer_enum = None
-    if sanitizer:
-        sanitizer_enum = Sanitizer.from_string(sanitizer)
+    # Build list of requested build variants
+    build_variants = []
+
+    if no_sanitizer or (not tsan and not alubsan and not coverage):
+        # Include non-instrumented build if explicitly requested or no variants specified
+        build_variants.append(BuildVariant.NORMAL)
+    if tsan:
+        build_variants.append(BuildVariant.TSAN)
+    if alubsan:
+        build_variants.append(BuildVariant.ALUBSAN)
+    if coverage:
+        build_variants.append(BuildVariant.COVERAGE)
+
+    assert build_variants, "build_variants must not be empty (logic error)"
 
     # Create filter criteria
     filter_criteria = FilterCriteria(
-        single=single,
-        cluster=cluster,
         gtest=gtest,
         full=full,
-        all_tests=all_tests,
-        nightly=nightly,
-        sanitizer=sanitizer_enum,
+        v8=not arangod_without_v8,
     )
 
     # Create test execution config
     arangosh_args_list = TestArguments.parse_args_string(arangosh_args or "")
     extra_args_list = TestArguments.parse_args_string(
         extra_args or "",
-        add_skip_server_js=(arangod_without_v8 == "true"),
+        add_skip_server_js=arangod_without_v8,
     )
 
     test_execution = TestExecutionConfig(
         arangosh_args=arangosh_args_list,
         extra_args=extra_args_list,
-        arangod_without_v8=(arangod_without_v8 == "true"),
         replication_two=replication_two,
     )
 
@@ -203,6 +211,7 @@ def create_generator_config(
         test_execution=test_execution,
         circleci=circleci_config,
         validate_only=validate_only,
+        build_variants=build_variants,
     )
 
 
@@ -217,9 +226,24 @@ def create_generator_config(
     help="Output filename for generated config",
 )
 @click.option(
-    "-s",
-    "--sanitizer",
-    help="Sanitizer to use (tsan, asan, ubsan, alubsan)",
+    "--tsan",
+    is_flag=True,
+    help="Enable Thread Sanitizer (TSAN)",
+)
+@click.option(
+    "--alubsan",
+    is_flag=True,
+    help="Enable Address+Leak+UndefinedBehavior Sanitizer (ALUBSAN)",
+)
+@click.option(
+    "--no-sanitizer",
+    is_flag=True,
+    help="Enable non-sanitizer build (can be combined with --tsan/--alubsan/--coverage)",
+)
+@click.option(
+    "--coverage",
+    is_flag=True,
+    help="Enable coverage build",
 )
 @click.option(
     "-t",
@@ -242,17 +266,8 @@ def create_generator_config(
 )
 @click.option(
     "--arangod-without-v8",
-    help="Whether to run without JavaScript (true, false)",
-)
-@click.option(
-    "--single",
     is_flag=True,
-    help="Include single server tests",
-)
-@click.option(
-    "--cluster",
-    is_flag=True,
-    help="Include cluster tests",
+    help="Run without JavaScript (V8 disabled)",
 )
 @click.option(
     "--gtest",
@@ -265,21 +280,10 @@ def create_generator_config(
     help="Include full test set",
 )
 @click.option(
-    "--all",
-    "all_tests",
-    is_flag=True,
-    help="Include all tests, ignore other filters",
-)
-@click.option(
     "-rt",
     "--replication-two",
     is_flag=True,
     help="Enable replication version 2 tests",
-)
-@click.option(
-    "--nightly",
-    is_flag=True,
-    help="This is a nightly build",
 )
 @click.option(
     "--create-docker-images",
@@ -295,19 +299,18 @@ def main(
     base_config: str,
     definitions: tuple,
     output: str,
-    sanitizer: str,
+    tsan: bool,
+    alubsan: bool,
+    no_sanitizer: bool,
+    coverage: bool,
     test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
-    arangod_without_v8: str,
-    single: bool,
-    cluster: bool,
+    arangod_without_v8: bool,
     gtest: bool,
     full: bool,
-    all_tests: bool,
     replication_two: bool,
-    nightly: bool,
     create_docker_images: bool,
     validate_only: bool,
 ):
@@ -330,18 +333,17 @@ def main(
 
         # Create generator config
         config = create_generator_config(
-            sanitizer=sanitizer,
+            tsan=tsan,
+            alubsan=alubsan,
+            no_sanitizer=no_sanitizer,
+            coverage=coverage,
             test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
             arangod_without_v8=arangod_without_v8,
-            single=single,
-            cluster=cluster,
             gtest=gtest,
             full=full,
-            all_tests=all_tests,
             replication_two=replication_two,
-            nightly=nightly,
             create_docker_images=create_docker_images,
             validate_only=validate_only,
         )

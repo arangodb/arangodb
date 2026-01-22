@@ -2419,7 +2419,7 @@ function ReplicationSyncSuite () {
     testSyncInvalidResponse : function () {
       try {
         replication.sync({
-          endpoint: "tcp://www.arangodb.com:80",
+          endpoint: "tcp://arango.ai:80",
           connectTimeout: 2,
           maxConnectRetries: 0,
           connectionRetryWaitTime: 1

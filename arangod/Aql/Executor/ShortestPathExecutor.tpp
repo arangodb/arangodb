@@ -21,6 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/ThreadLocalLeaser.h"
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -151,7 +152,7 @@ ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
       _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
-      _pathBuilder{&_trx},
+      _pathBuilder{arangodb::ThreadLocalBuilderLeaser::lease()},
       _posInPath(0),
       _pathLength(0),
       _sourceBuilder{},
@@ -278,9 +279,9 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      _finder.reset(arangodb::velocypack::HashedStringRef(source),
-                    arangodb::velocypack::HashedStringRef(target));
-      if (_finder.getNextPath(*_pathBuilder.builder())) {
+      _finder.reset(VertexRef{arangodb::velocypack::HashedStringRef(source)},
+                    VertexRef{arangodb::velocypack::HashedStringRef(target)});
+      if (_finder.getNextPath(*_pathBuilder.get())) {
         _pathLength = getPathLength();
         _posInPath = 0;
         return true;

@@ -37,25 +37,6 @@
 
 using namespace arangodb;
 
-StorageEngine::StorageEngine(Server& server, std::string_view engineName,
-                             std::string_view featureName, size_t registration,
-                             std::unique_ptr<IndexFactory>&& indexFactory)
-    : ArangodFeature{server, registration, featureName},
-      _indexFactory(std::move(indexFactory)),
-      _typeName(engineName) {
-  // each specific storage engine feature is optional. the storage engine
-  // selection feature will make sure that exactly one engine is selected at
-  // startup
-  setOptional(true);
-  // storage engines must not use elevated privileges for files etc
-  startsAfter<application_features::BasicFeaturePhaseServer>();
-
-  startsAfter<CacheManagerFeature>();
-  startsBefore<StorageEngineFeature>();
-  startsAfter<transaction::ManagerFeature>();
-  startsAfter<ViewTypesFeature>();
-}
-
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 

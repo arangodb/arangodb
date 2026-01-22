@@ -30,7 +30,6 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
-  '   - `goDriverVersion`: version [1,2] driver tests',
   '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
@@ -48,6 +47,7 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
+const path = require('path');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -76,28 +76,16 @@ function goDriver (options) {
       if (options.cluster) {
         // go tests lean on 1 being the default replication factor
         opts.extraArgs['cluster.default-replication-factor'] = 1;
-        if (opts.goDriverVersion >= 2) {
-          opts.coordinators = 2;
-        }
+        opts.coordinators = 2;
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
+      opts.extraArgs['vector-index'] = true;
       opts['arangodConfig'] = 'arangod-auth.conf';
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
-    checkSutCleannessBefore() {}
-    checkSutCleannessAfter() { return true; }
-    runOneTest(file) {
-      const goVersionArgs = [
-        {
-          "path": "./test/",
-          "wd": ""
-        }, {
-          "path": "./tests",
-          "wd": "/v2/",
-        }][options.goDriverVersion -1];
-
+    runOneTest(file) {    
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = this.instanceManager.JWT; 
@@ -117,11 +105,12 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
+      process.env['ENABLE_VECTOR_INDEX'] = 'true';
       if (this.instanceManager.JWT) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
-      let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
-      if (options.goDriverVersion === 2 && (options.cluster || options.isInstrumented)) {
+      let args = ['test', '-json', '-tags', 'auth', './tests'];
+      if (options.cluster || options.isInstrumented) {
         args.push('-parallel');
         args.push('1');
       }
@@ -142,7 +131,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs['wd']}`);
+      const res = executeExternal('go', args, true, [], path.join(this.options.gosource, 'v2'));
       // let alljsonLines = []
       let b = '';
       let results = {};
@@ -276,7 +265,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['go_driver'] = goDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoObject(opts, {
-    'goDriverVersion': 2,
     'goOptions': '',
     'gosource': '../go-driver',
   });

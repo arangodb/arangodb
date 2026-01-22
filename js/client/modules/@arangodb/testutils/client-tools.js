@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
@@ -397,6 +398,42 @@ function launchPlainSnippetInBG (snippet, key) {
   return launchInShellBG(file);
 }
 
+
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+  let IM = global.instanceManager;
+  let globalFn = fs.getTempFile();
+  fs.write(globalFn, "x");
+  let testFns = [];
+  for (let i=0; i < volume; i++) {
+    let testFn = fs.getTempFile() + `_${i}`;
+    fs.write(testFn, "x");
+    let mySnippet = `const fs = require('fs');
+fs.remove('${testFn}');
+let volume = ${volume};
+let idx = ${i};
+let endpoint = '${IM.endpoint}';
+let passvoid = '${IM.options.password}';
+while (fs.exists('${globalFn}')) {
+   require('internal').sleep(0.1);
+}
+let testfunc = ${String(snippet)};
+testfunc();
+`;
+    arangoshList.push(
+      launchPlainSnippetInBG(mySnippet, key + `_${i}`)
+    );
+  }
+  // wait for the spawned clients to reach the entry gate:
+  testFns.forEach(testFn => {
+    while (fs.exists(testFn)) {
+      sleep(0.1);
+    }
+  });
+  // GO!
+  fs.remove(globalFn);
+  return true;
+}
+
 function launchSnippetInBG (options, snippet, key, cn, single=false) {
   let file = fs.getTempFile() + "-" + key;
   if (single) {
@@ -463,10 +500,21 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   return { key, file, client, done: false };
 }
 
+function readClientLogfile(client) {
+  const logfile = client.file + '.log';
+  if (fs.exists(logfile)) {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()}`);
+  } else {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
+  }
+}
+
+
 function joinBGShells (options, clients, waitFor, cn) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = 0;
+  let clientErrors = '';
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
@@ -485,6 +533,9 @@ function joinBGShells (options, clients, waitFor, cn) {
             IM.options.cleanup = false;
             client.failed = true;
           }
+        }
+        if (client.failed) {
+          clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
         }
       }
     });
@@ -507,7 +558,7 @@ function joinBGShells (options, clients, waitFor, cn) {
 
   if (done !== clients.length) {
     options.cleanup = false;
-    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
+    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
   }
 }
 
@@ -602,6 +653,7 @@ function cleanupBGShells (clients, cn) {
 
     const logfile = client.file + '.log';
     if (client.failed) {
+      print(`${RED}${readClientLogfile(client)}${RESET}`);
       if (fs.exists(logfile)) {
         print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
@@ -809,6 +861,7 @@ exports.run = {
   launchInShellBG: launchInShellBG,
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
+  spawnStressArangoshInBG: spawnStressArangoshInBG,
   joinBGShells: joinBGShells,
   joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,

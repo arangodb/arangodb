@@ -31,6 +31,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
@@ -418,7 +419,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(limit > 0);
 
-    transaction::BuilderLeaser builder(transaction());
+    auto builder = ThreadLocalBuilderLeaser::lease();
 
     do {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));

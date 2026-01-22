@@ -31,6 +31,7 @@
 #include "Aql/Functions.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
@@ -54,8 +55,9 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
                           LogicalCollection* collection,
                           RocksDBMdiIndexBase* index, transaction::Methods* trx,
                           zkd::byte_string min, zkd::byte_string max,
-                          transaction::BuilderLeaser prefix, std::size_t dim,
-                          ReadOwnWrites readOwnWrites, size_t lookahead)
+                          ThreadLocalBuilderLeaser::Lease prefix,
+                          std::size_t dim, ReadOwnWrites readOwnWrites,
+                          size_t lookahead)
       : IndexIterator(collection, trx, readOwnWrites),
         _min(std::move(min)),
         _max(std::move(max)),
@@ -280,7 +282,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
   zkd::byte_string const _max;
   RocksDBKeyBounds _bound;
   std::size_t const _dim;
-  transaction::BuilderLeaser const _prefix;
+  ThreadLocalBuilderLeaser::Lease const _prefix;
 
   enum class IterState {
     SEEK_ITER_TO_CUR = 0,
@@ -1057,7 +1059,7 @@ std::unique_ptr<IndexIterator> RocksDBMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  transaction::BuilderLeaser leaser(trx);
+  auto leaser = ThreadLocalBuilderLeaser::lease();
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   if (!isPrefixed()) {
@@ -1101,7 +1103,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  transaction::BuilderLeaser leaser(trx);
+  auto leaser = ThreadLocalBuilderLeaser::lease();
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
   if (!isPrefixed()) {
@@ -1152,7 +1154,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   }
 
   if (!options.checkUniqueConstraintsInPreflight) {
-    transaction::StringLeaser leased(&trx);
+    auto leased = ThreadLocalStringLeaser::lease();
     rocksdb::PinnableSlice existing(leased.get());
     if (auto s = methods->GetForUpdate(_cf, rocksdbKey.string(), &existing);
         s.ok()) {  // detected conflicting index entry

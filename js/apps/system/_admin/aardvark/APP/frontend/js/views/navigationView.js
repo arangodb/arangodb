@@ -290,17 +290,17 @@
             }
 
           }
-          infotext += '. Please contact ArangoDB sales to extend your license urgently.';
+          infotext += '. Please contact Arango sales to extend your license urgently.';
           this.appendLicenseInfoToUi(infotext, alertClasses);
           break;
         case 'expired':
           daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600*24));
-          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact Arango sales immediately.';
           alertClasses += ' alert-danger';
           this.appendLicenseInfoToUi(infotext, alertClasses);
           break;
         case 'read-only':
-          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact Arango sales immediately to extend your license.';
           alertClasses += ' alert-danger';
           this.appendLicenseInfoToUi(infotext, alertClasses);
           break;
@@ -327,7 +327,7 @@
           message =
             "Your server has reached its disk usage limit of 100GB. If you don't decrease the data size, the server will be restricted to read-only mode on " +
             readonlyDate +
-            ". Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations";
+            ". Please contact your Arango sales representative or sales@arango.ai to get a valid license and continue using ArangoDB without limitations";
           type = 'warning';
           break;
         case "read-only":
@@ -335,12 +335,12 @@
             currentTime.getTime() + 1000 * diskUsage.secondsUntilShutDown
           );
           message = 
-            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + ".";
+            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your Arango sales representative or sales@arango.ai to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + ".";
           type = 'error';
           break;
         case "shutdown":
           message =
-            "The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period. The server will be shut down in 10 minutes. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.";
+            "The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period. The server will be shut down in 10 minutes. Please contact your Arango sales representative or sales@arango.ai to get a valid license.";
           type = 'error';
           break;
         case "good":

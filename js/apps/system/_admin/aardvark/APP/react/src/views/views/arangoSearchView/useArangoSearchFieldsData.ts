@@ -128,13 +128,13 @@ const tierConsolidationPolicyFields = [
     name: "consolidationPolicy.maxSkewThreshold",
     label: "Max Skew Threshold",
     type: "number",
-    tooltip: "The maximum allowed skew threshold for consolidation."
+    tooltip: "The maximum allowed skew in segment sizes for merging segments."
   },
   {
     name: "consolidationPolicy.minDeletionRatio",
     label: "Min Deletion Ratio",
     type: "number",
-    tooltip: "The minimum allowed deletion ratio for consolidation."
+    tooltip: "The minimum required deletion ratio to cleanup segments."
   }
 ];
 const bytesAccumConsolidationPolicyFields = [

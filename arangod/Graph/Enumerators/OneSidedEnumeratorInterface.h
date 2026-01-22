@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Graph/TraverserOptions.h"
+#include "Graph/Types/VertexRef.h"
 
 #include <memory>
 #include <numeric>
@@ -73,10 +74,9 @@ class TraversalEnumerator {
       aql::QueryContext& query,
       typename Provider::Options&& baseProviderOptions,
       graph::PathValidatorOptions&& pathValidatorOptions,
-      graph::OneSidedEnumeratorOptions&& enumeratorOptions, bool useTracing)
+      graph::OneSidedEnumeratorOptions&& enumeratorOptions)
       -> std::unique_ptr<TraversalEnumerator>;
 
-  using VertexRef = velocypack::HashedStringRef;
   TraversalEnumerator() {}
   virtual ~TraversalEnumerator() {}
 

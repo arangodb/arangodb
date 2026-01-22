@@ -30,16 +30,18 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Types/UniquenessLevel.h"
+#include "Graph/Types/VertexRef.h"
+#include "Graph/Types/VertexSet.h"
 
 #include <limits>
 #include <set>
 #include <deque>
 
 namespace arangodb {
-
-using VertexRef = arangodb::velocypack::HashedStringRef;
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
 
 namespace aql {
 class TraversalStats;
@@ -58,38 +60,23 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-// This class `WeightedTwoSidedEnumerator` is used for shortest path searches,
-// whenever the // length is measured by an edge weight.
-// It works by doing a Dijkstra-like graph traversal from both sides and
-// then matching findings. As work queue it uses a priority queue, always
-// processing the next unprocessed step according to the queue.
-// This class is used in very different situations (single server, cluster,
-// various different types of smart and not so smart graphs, with tracing
-// and without, etc.). Therefore we need many template parameters. Let me
-// here give an overview over what they do:
-//  - QueueType: This is the queue being used to track which steps to visit
-//    next. It is always `WeightedQueue`, but it needs to be a template
-//    argument since there is a wrapper template for tracing `QueueTracer`,
-//    so it is sometimes QueueTracer<WeightedQueue>.
-//  - PathStoreType: This is a class to store paths. Its type depends on
-//    the type ProviderType::Step (see below) and on the presence of a
-//    tracing wrapper type.
-//  - ProviderType: This is a class which delivers the actual graph data,
-//    essentially to answer the question as to what the neighbours of a
-//    vertex are. This can be `SingleServerProvider` or `ClusterProvider`.
-//    Again, there is a tracing wrapper.
-//  - PathValidatorType: Finally, this is a class which is used to validate
-//    if paths are valid. Various filtering conditions can be handed in,
-//    but the most important one is to specify the uniqueness conditions
-//    on edges and vertices. Again, there is a tracing wrapper.
-//    For this class, the vertex uniqueness condition must be GLOBAL and
-//    the edge uniqueness condition must be PATH.
-// Please note the following subtle issue: When enumerating paths (first
-// combination above), the item on the queue is a "Step" (which encodes
-// the path so far plus one more edge). In particular, there can and will
-// be multiple Steps on the queue, which have arrived at the same vertex
-// (with different edges or indeed different paths). This is necessary,
-// since we have to enumerate all possible paths.
+// This class `WeightedShortestPathEnumerator` is used for shortest path
+// searches, whenever the // length is measured by an edge weight. It works by
+// doing a Dijkstra-like graph traversal from both sides and then matching
+// findings. As work queue it uses a priority queue, always processing the next
+// unprocessed step according to the queue. This class is used in single server
+// and cluster: The ProviderType delivers the actual graph data, essentially to
+// answer the question as to what the neighbours of a vertex are - this can be
+// `SingleServerProvider` or `ClusterProvider`. Please note the following subtle
+// issue: When enumerating paths (first combination above), the item on the
+// queue is a "Step" (which encodes the path so far plus one more edge). In
+// particular, there can and will be multiple Steps on the queue, which have
+// arrived at the same vertex (with different edges or indeed different paths).
+// This is necessary, since we have to enumerate all possible paths.
+
+// TODO: we use vertex and edge uniqueness NONE! Not sure about following the
+// comment:
+
 // Since we are only looking for a shortest path, we use global vertex
 // uniqueness. However, the implementation is slightly different from a
 // standard Dijkstra algorithm as can be found in the literature. Namely,
@@ -107,22 +94,23 @@ class PathResult;
 // visit it, we will check validity of the path and will then not visit it,
 // since global vertex uniqueness is violated.
 // This could eventually be improved but for now we run with it.
+
 // Note that the path type in the TwoSidedEnumeratorOptions must always
 // be "ShortestPath" for this class here to work.
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
+template<class ProviderType>
 class WeightedShortestPathEnumerator {
- public:
-  using Step = typename ProviderType::Step;  // public due to tracer access
-
+ private:
+  using Step = typename ProviderType::Step;
+  using QueueType = WeightedQueue<Step>;
+  using PathStoreType = PathStore<Step>;
+  using PathValidatorType =
+      PathValidator<ProviderType, PathStoreType, VertexUniquenessLevel::NONE,
+                    EdgeUniquenessLevel::NONE>;
   // A meeting point with calculated path weight
   using CalculatedCandidate = std::tuple<double, Step, Step>;
 
- private:
   enum Direction { FORWARD, BACKWARD };
-
-  using VertexRef = arangodb::velocypack::HashedStringRef;
 
   using Edge = ProviderType::Step::EdgeType;
   using EdgeSet =
@@ -216,8 +204,7 @@ class WeightedShortestPathEnumerator {
                         // without deleting its Step with the wrong
                         // weight from the queue.
     };
-    containers::FlatHashMap<typename Step::VertexType, VertexInfo>
-        _foundVertices;
+    containers::FlatHashMap<VertexRef, VertexInfo> _foundVertices;
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();

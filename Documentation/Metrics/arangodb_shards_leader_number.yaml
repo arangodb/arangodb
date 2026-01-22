@@ -25,4 +25,4 @@ troubleshoot: |
   in the ArangoDB web interface, or use the
   [cluster maintenance tools](https://github.com/arangodb/cluster-maintenance)
   (`create-move-plan` and `execute-move-plan` specifically). In the latter
-  case, contact ArangoDB customer support.
+  case, contact the Arango customer support.

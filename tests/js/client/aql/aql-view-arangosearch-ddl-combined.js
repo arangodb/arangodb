@@ -2289,7 +2289,7 @@ function IResearchFeatureDDLTestSuite2() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test creating link with 'inBackground' set to true
     ////////////////////////////////////////////////////////////////////////////
-    testCreateLinkInBackgroundMode: function () {
+    testCreateLinkInBackgroundModeSJS: function () {
       if (SYS_IS_V8_BUILD) {
         const colName = 'TestCollection';
         const viewName = 'TestView';
@@ -2350,7 +2350,61 @@ function IResearchFeatureDDLTestSuite2() {
         assertTrue(undefined === propertiesReturned.links[colName].inBackground);
       }
     },
+    testCreateLinkInBackgroundMode: function () {
+      const IM = global.instanceManager;
+      const ct = require('@arangodb/testutils/client-tools');
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+      const initialCount = 500;
+      const inTransCount = 1000;
+      const markerFileName = fs.join(fs.getTempPath(), "backgroundLinkMarker");
+      try { fs.remove(markerFileName); } catch (e) { }
+      db._useDatabase(dbName);
+      let col = db._create(colName);
+      col.ensureIndex(indexMetaGlobal);
+      let v = db._createView(viewName, 'arangosearch', {});
+      // some initial documents
+      for (let i = 0; i < initialCount; ++i) {
+        col.insert({ myField: 'test' + i, name_1: i.toString() });
+      }
+      let bgJob = ct.run.launchPlainSnippetInBG(`
+        var fs = require('fs');
+        var db = require('internal').db;
+        var db = require('internal').db;
+        let trx = db._createTransaction({collections: { write: ["${colName}"]}});
+        var c = trx.collection("${colName}");
+        fs.write("${markerFileName}", "TEST");
+        for (var i = 0; i < ${inTransCount}; ++i) {
+          c.insert({ myField: 'background' + i });
+        }
+        require('internal').sleep(20);
+        trx.commit();
+      `, 0);
+      while (!fs.exists(markerFileName)) {
+        require('internal').sleep(1); // give transaction some time to run 
+      }
+      v.properties({ links: { [colName]: { includeAllFields: true, inBackground: true } } });
+      // check that all documents are visible
+      let docs = db._query("FOR doc IN " + viewName + " OPTIONS { waitForSync: true } RETURN doc").toArray();
+      assertEqual(initialCount + inTransCount, docs.length);
 
+      // inBackground should not be returned as part of index definition
+      let indexes = col.indexes(false, true);
+      assertEqual(3, indexes.length);
+      var index = indexes[1];
+      assertEqual("inverted", index.type);
+      assertTrue(undefined === index.inBackground);
+      var link = indexes[2];
+      assertEqual("arangosearch", link.type);
+      assertTrue(undefined === link.inBackground);
+
+      // inBackground should not be returned as part of link definition
+      let propertiesReturned = v.properties();
+      assertTrue(undefined === propertiesReturned.links[colName].inBackground);
+      if (!ct.run.joinForceBGShells(IM.options, [bgJob])) {
+        throw new Error(`failed to collect ${JSON.stringify(bgJob)}`);
+      }
+    },
     testCachedColumns: function () {
       const colName = 'TestCollectionCache';
       const viewName = 'TestViewCache';

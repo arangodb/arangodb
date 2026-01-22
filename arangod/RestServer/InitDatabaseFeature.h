@@ -25,6 +25,7 @@
 
 #include <span>
 
+#include "RestServer/InitDatabaseFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -36,14 +37,12 @@ class InitDatabaseFeature final : public ArangodFeature {
   InitDatabaseFeature(Server& server,
                       std::span<const size_t> nonServerFeatures);
 
-  std::string const& defaultPassword() const { return _password; }
-  bool isInitDatabase() const { return _initDatabase; }
-  bool restoreAdmin() const { return _restoreAdmin; }
+  std::string const& defaultPassword() const { return _options.password; }
+  bool isInitDatabase() const { return _options.initDatabase; }
+  bool restoreAdmin() const { return _options.restoreAdmin; }
 
  private:
-  bool _initDatabase = false;
-  bool _restoreAdmin = false;
-  std::string _password;
+  InitDatabaseFeatureOptions _options;
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -1,11 +1,83 @@
 devel
 -----
 
+* Fixed changing writeConcern on a collection
+  could cause subsequent writes to fail due to a stale internal write flag.
+
+* Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
+  least three levels of subqueries it could happen that the executor ended up in a
+  state it could not handle and the query would throw an error.
+  The effect seen by the customer was a hanging database because a lock was held.
+
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
+* Improve the output of fields `dbStats` for every column family
+  when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
+* COR-8: Improved the accuracy of shard metrics on DBservers by updating only
+  metrics for databases with changes, rather than recalculating all metrics.
+  Added new metrics `arangodb_shards_follower_number` to track the number of
+  follower shards on each DBserver and `arangodb_shard_followers_out_of_sync_number`
+  to track follower shards that are out of sync with their leader.
+
+* FE-929, BTS-2289: bump qs from 6.11.2 to 6.14.1 for node_modules and core UI.
+
+* Make cluster traversal executor with DFS receive neighbours in batches
+  to be able to stop the retrieval early in case a limit has been reached.
+
+* Make single-server traversal executor with DFS receive neighbours in batches
+  to be able to stop the retrieval early in case a limit has been reached.
+
+* Fix concurrent reuse of builders and string buffers when using async-prefetch
+
+* Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
+  dependencies.
+
+* Licenses with "managed=true" in their grant are not "expiring". They go
+  directly from "good" to "read-only". This is relevant for the new automatic
+  license management.
+
+* Fix RocksDB cluttering into tiny SST files.
+
+* FE-914: Add UI support for `storedValues` in vector index.
+
+* FE-636: bump rollup from 2.79.1 to 2.79.2.
+
+* Replace arangodb.com with arango.ai in URLs.
+
+
+3.12.7 (2025-12-06)
+-------------------
+
+* Updated ArangoDB Starter to v0.19.15.
+
+* Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
+  dependencies.
+
+* FE-636: bump express from 4.18.2 to 4.21.2 (latest 4.X version) (ensure
+  non-vulnerable body-parser).
+
+* Fix a potential integer overflow in shortest path estimation.
+
+* Fix BTS-2268: Fixed an issue where query plan for queries with subquery is
+  causing a crash when being stored in query plan cache. The issue is a missing
+  invalidateCost from the splice-subqueries rule.
+
+* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio.
+
+* COR-45: Added support for index hints in vector search queries.
+
 * COR-13: New ArangoSearch consolidation policy
   - new algorithm that uses maxSkewThreshold and minDeletionRatio
   - Bumped ArangoSearch
 
-* The query explainer now displays the vector index used by EnumerateNearVectoNode.
+* The query explainer now displays the vector index used by
+  EnumerateNearVectorNode.
 
 * FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
 
@@ -15,42 +87,39 @@ devel
   - `arangodb_metadata_number_of_databases`: Total number of databases
   - `arangodb_metadata_number_of_collections`: Total number of collections
   - `arangodb_metadata_number_of_shards`: Total number of shards (cluster only)
-  These metrics are exposed on coordinators (in cluster mode) and single servers,
-  providing visibility into the overall size and scale of the deployment.
+  These metrics are exposed on coordinators (in cluster mode) and single
+  servers, providing visibility into the overall size and scale of the
+  deployment.
 
-* Enforce that a license with a baked in deployment ID can only be applied
-  to a deployment with that ID.
+* Enforce that a license with a baked in deployment ID can only be applied to a
+  deployment with that ID.
 
 * Export the license grant in `GET /_admin/license` in clear JSON but without
   signature in the `grant` attribute.
 
-* COR-5: Added resource metrics effective CPU cores, effective physical
-  memory, and cgroup version detection.
+* COR-5: Added resource metrics effective CPU cores, effective physical memory,
+  and cgroup version detection.
 
 * Add `storedValues` support for vector indexes. This allows storing additional
   document fields directly in the vector index, enabling optimized filtered
   vector queries when all filter attributes are covered by stored values. The
-  query optimizer can now avoid fetching full documents when all required
-  fields are available in the index.
+  query optimizer can now avoid fetching full documents when all required fields
+  are available in the index.
 
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
 
 * Fix Swagger UI missing generated data.
 
-* Updated ArangoDB Starter to v0.19.14.
-
-* Ignore flag --cluster.upgrade on DBservers, since it only concerns coordinators.
-  This fixes a clash with --database.auto-upgrade which can lead to problems during
-  an upgrade on DBservers.
-
-* Rebuilt included rclone v1.65.2 with go1.24.9 and non-vulnerable
-  dependencies.
+* Ignore flag --cluster.upgrade on DBservers, since it only concerns
+  coordinators.
+  This fixes a clash with --database.auto-upgrade which can lead to problems
+  during an upgrade on DBservers.
 
 * Update tzdata as of 05.11.2025.
 
-* Updated bundled version of Snappy library to 1.2.2. It fixes an ALUBSAN
-  issue found in ARM64.
+* Updated bundled version of Snappy library to 1.2.2. It fixes an ALUBSAN issue
+  found in ARM64.
 
 * Fix ES-2722 and COR-1: If an AQL query using ArangoSearch goes out of memory
   due to the search node materializing a document, the server would crash.
@@ -13747,7 +13816,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://docs.arangodb.com/stable/operations/security/security-options/).
+  Note: There is a [detailed description of all options](https://docs.arango.ai/arangodb/stable/operations/security/security-options/).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

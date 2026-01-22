@@ -109,21 +109,18 @@ class CircleCIGenerator(OutputGenerator):
         if "workflows" not in circleci_config:
             circleci_config["workflows"] = {}
 
-        # X64 (always included)
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
-        )
-        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        # Generate workflows for each build variant and architecture
+        build_variants = self.config.build_variants
+        architectures = [Architecture.X64, Architecture.AARCH64]
 
-        # ARM64 (with or without sanitizer - changed in merge ec7f7ef91ade)
-        build_config = BuildConfig(
-            architecture=Architecture.AARCH64,
-            sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
-        )
-        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        for build_variant in build_variants:
+            for architecture in architectures:
+                build_config = BuildConfig(
+                    architecture=architecture,
+                    build_variant=build_variant,
+                    nightly=self.config.filter_criteria.is_full_run,
+                )
+                self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         return circleci_config
 
@@ -166,8 +163,7 @@ class CircleCIGenerator(OutputGenerator):
         """Generate workflow name from build configuration."""
         suffix = "nightly" if build_config.nightly else "pr"
 
-        if build_config.sanitizer:
-            suffix += f"-{build_config.sanitizer.value}"
+        suffix += build_config.build_variant.get_suffix()
 
         if self.config.test_execution.replication_two:
             suffix += "-repl2"
@@ -189,8 +185,11 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (no sanitizer)
-        if build_config.architecture == Architecture.X64 and not build_config.sanitizer:
+        # Add non-maintainer build for x64 (non-instrumented builds only)
+        if (
+            build_config.architecture == Architecture.X64
+            and not build_config.build_variant.is_instrumented
+        ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
@@ -204,10 +203,9 @@ class CircleCIGenerator(OutputGenerator):
         """Create compilation job definition."""
         preset = "enterprise-pr"
 
-        if build_config.sanitizer:
-            preset += f"-{build_config.sanitizer.value}"
+        preset += build_config.build_variant.get_suffix()
 
-        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
+        suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
 
         params = {
@@ -228,7 +226,7 @@ class CircleCIGenerator(OutputGenerator):
 
     def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create frontend build job definition."""
-        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
+        suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}
@@ -256,8 +254,11 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
         """Add optional jobs (cppcheck, docker)."""
-        # Cppcheck for x64
-        if build_config.architecture == Architecture.X64:
+        # Cppcheck for x64 (non-instrumented builds only)
+        if (
+            build_config.architecture == Architecture.X64
+            and not build_config.build_variant.is_instrumented
+        ):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
@@ -303,11 +304,15 @@ class CircleCIGenerator(OutputGenerator):
         build_jobs: List[str],
     ) -> None:
         """Add all test jobs to workflow."""
-        # Filter jobs based on workflow's architecture
+        # Filter jobs based on workflow's architecture and build variant
         from dataclasses import replace
         from ..filters import should_include_job
 
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+        criteria = replace(
+            self.config.filter_criteria,
+            architecture=build_config.architecture,
+            build_variant=build_config.build_variant,
+        )
 
         for job in jobs:
             # Skip jobs that don't match this workflow's architecture
@@ -375,14 +380,14 @@ class CircleCIGenerator(OutputGenerator):
 
         return result
 
-    def _build_job_names(
+    def _generate_test_job_names(
         self,
         job: TestJob,
         deployment_type: DeploymentType,
         build_config: BuildConfig,
         replication_version: int,
     ) -> tuple[str, str]:
-        """Build job and suite names (applying suffix if present)."""
+        """Generate TEST job and suite names (applying suffix if present)."""
         deployment_str = self._get_deployment_string(
             deployment_type, replication_version
         )
@@ -391,9 +396,9 @@ class CircleCIGenerator(OutputGenerator):
         if job.options.suffix:
             suite_name = f"{job.name}-{job.options.suffix}"
 
-        job_name = (
-            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
-        )
+        # Build job name with architecture and sanitizer suffix for global uniqueness
+        sanitizer_suffix = build_config.build_variant.get_suffix()
+        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}{sanitizer_suffix}"
 
         return job_name, suite_name
 
@@ -526,13 +531,18 @@ class CircleCIGenerator(OutputGenerator):
         """
         is_cluster = deployment_type == DeploymentType.CLUSTER
 
-        job_name, suite_name = self._build_job_names(
+        job_name, suite_name = self._generate_test_job_names(
             job, deployment_type, build_config, replication_version
         )
 
-        # Create filter criteria with current workflow's architecture
+        # Create filter criteria with current workflow's architecture and build variant
         from dataclasses import replace
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
+        criteria = replace(
+            self.config.filter_criteria,
+            architecture=build_config.architecture,
+            build_variant=build_config.build_variant,
+        )
 
         filtered_suites = filter_suites(job, criteria)
 
@@ -553,6 +563,7 @@ class CircleCIGenerator(OutputGenerator):
             "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
+            "sanitizer": self._get_sanitizer_param(build_config),
             "arangosh_args": "A "
             + json.dumps(
                 job.arguments.arangosh_args + self.config.test_execution.arangosh_args
@@ -591,6 +602,14 @@ class CircleCIGenerator(OutputGenerator):
         """Get bucket count from job definition (before applying overrides)."""
         return job.get_bucket_count()
 
+    def _get_sanitizer_param(self, build_config: BuildConfig) -> str:
+        """Get sanitizer parameter string based on build variant."""
+        if build_config.build_variant.is_tsan:
+            return "tsan"
+        elif build_config.build_variant.is_alubsan:
+            return "alubsan"
+        return ""
+
     def _create_rta_test_jobs(
         self,
         job: TestJob,
@@ -624,11 +643,12 @@ class CircleCIGenerator(OutputGenerator):
             rta_branch = job.repository.git_branch
 
         deployments = ["single", "cluster"]
+        sanitizer_suffix = build_config.build_variant.get_suffix()
 
         result_jobs = []
         for deployment in deployments:
             job_dict = {
-                "name": f"test-{deployment}-UI",
+                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
@@ -638,6 +658,7 @@ class CircleCIGenerator(OutputGenerator):
                 "requires": build_jobs,
                 "rta-branch": rta_branch,
                 "buckets": bucket_count,
+                "sanitizer": self._get_sanitizer_param(build_config),
             }
             result_jobs.append({"run-rta-tests": job_dict})
 

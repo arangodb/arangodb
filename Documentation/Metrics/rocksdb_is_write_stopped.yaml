@@ -17,4 +17,4 @@ description: |
   files and the RocksDB background threads have not managed to keep up
   with their compaction work. This situation should be avoided, since
   nasty delays in database operations are incurred. If in doubt,
-  contact ArangoDB support.
+  contact the Arango support.

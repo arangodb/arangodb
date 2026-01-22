@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertTrue, ARGUMENTS, fail */
+/* global arango, assertEqual, assertTrue, ARGUMENTS, SYS_IS_V8_BUILD, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -111,32 +111,58 @@ function BaseTestConfig () {
   };
 
   let runRandomOpsTransaction = function(cn, n) {
-    return db._executeTransaction({
-      collections: { write: cn },
-      action: function(params) {
-        let db = require("@arangodb").db;
-        let state = {};
-        let c = db[params.cn];
-        for (let i = 0; i < params.n; ++i) {
-          let key = "testmann" + Math.floor(Math.random() * 10);
-          if (state.hasOwnProperty(key)) {
-            if (Math.random() >= 0.666) {
-              // remove
-              c.remove(key, { silent: true });
-              delete state[key];
+    if (SYS_IS_V8_BUILD) {
+      return db._executeTransaction({
+        collections: { write: cn },
+        action: function(params) {
+          let db = require("@arangodb").db;
+          let state = {};
+          let c = db[params.cn];
+          for (let i = 0; i < params.n; ++i) {
+            let key = "testmann" + Math.floor(Math.random() * 10);
+            if (state.hasOwnProperty(key)) {
+              if (Math.random() >= 0.666) {
+                // remove
+                c.remove(key, { silent: true });
+                delete state[key];
+              } else {
+                c.replace(key, { value: ++state[key] }, { silent: true });
+              }
             } else {
-              c.replace(key, { value: ++state[key] }, { silent: true });
+              state[key] = Math.floor(Math.random() * 10000);
+              c.insert({ _key: key, value: state[key] }, { silent: true });
             }
-          } else {
-            state[key] = Math.floor(Math.random() * 10000);
-            c.insert({ _key: key, value: state[key] }, { silent: true });
-          }
-        };
+          };
 
-        return state;
-      },
-      params: { cn, n }
-    });
+          return state;
+        },
+        params: { cn, n }
+      });
+    } else {
+      const tx = db._createTransaction({
+        collections: { write: [cn] },
+        waitForSync: true
+      });
+      let state = {};
+      const txn_col = tx.collection(cn);
+      for (let i = 0; i < n; ++i) {
+        let key = "testmann" + Math.floor(Math.random() * 10);
+        if (state.hasOwnProperty(key)) {
+          if (Math.random() >= 0.666) {
+            // remove
+            txn_col.remove(key, { silent: true });
+            delete state[key];
+          } else {
+            txn_col.replace(key, { value: ++state[key] }, { silent: true });
+          }
+        } else {
+          state[key] = Math.floor(Math.random() * 10000);
+          txn_col.insert({ _key: key, value: state[key] }, { silent: true });
+        }
+      }
+      tx.commit();
+      return state;
+    }
   };
 
   return {

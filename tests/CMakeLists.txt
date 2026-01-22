@@ -328,11 +328,11 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_activity_registry
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
-  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
@@ -420,11 +420,12 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(ActivityRegistry)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
-add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
+add_subdirectory(Scheduler)

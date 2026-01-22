@@ -7,10 +7,11 @@ from datetime import date
 from src.config_lib import (
     BuildConfig,
     Architecture,
-    Sanitizer,
+    BuildVariant,
     TestJob,
     SuiteConfig,
     TestOptions,
+    TestRequirements,
 )
 from src.filters import FilterCriteria
 from src.output_generators.base import (
@@ -30,13 +31,19 @@ def x64_enterprise_build():
 @pytest.fixture
 def x64_tsan_build():
     """x64 with TSAN sanitizer."""
-    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+    return BuildConfig(
+        architecture=Architecture.X64,
+        build_variant=BuildVariant.TSAN,
+    )
 
 
 @pytest.fixture
 def x64_alubsan_build():
     """x64 with ALUBSAN sanitizer."""
-    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN)
+    return BuildConfig(
+        architecture=Architecture.X64,
+        build_variant=BuildVariant.ALUBSAN,
+    )
 
 
 @pytest.fixture
@@ -51,9 +58,9 @@ def mixed_suite_job():
     return TestJob(
         name="test_job",
         suites=[
-            SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-            SuiteConfig(name="full_suite", options=TestOptions(full=True)),
-            SuiteConfig(name="any_suite", options=TestOptions()),
+            SuiteConfig(name="pr_suite", requires=TestRequirements(full=False)),
+            SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
+            SuiteConfig(name="any_suite"),
         ],
         options=TestOptions(),
     )

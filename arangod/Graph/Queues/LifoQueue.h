@@ -26,6 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "Graph/Queues/QueueEntry.h"
 
 #include <queue>
 
@@ -45,6 +46,8 @@ class LifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~LifoQueue() { this->clear(); }
 
+  bool isBatched() { return false; }
+
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
@@ -60,6 +63,11 @@ class LifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
+  template<NeighbourCursor<Step> Cursor>
+  void append(Cursor& expansion) {
+    TRI_ASSERT(false);
+  }
+
   void setStartContent(std::vector<Step> startSteps) {
     arangodb::ResourceUsageScope guard(_resourceMonitor,
                                        sizeof(Step) * startSteps.size());
@@ -71,14 +79,6 @@ class LifoQueue {
       _queue.push_back(std::move(s));
     }
     guard.steal();  // now we are responsible for tracking the memory
-  }
-
-  bool firstIsVertexFetched() const {
-    if (!isEmpty()) {
-      auto const& first = _queue.front();
-      return first.vertexFetched();
-    }
-    return false;
   }
 
   bool hasProcessableElement() const {
@@ -114,14 +114,14 @@ class LifoQueue {
     return first;
   }
 
-  Step pop() {
+  std::optional<Step> pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
         << "<LifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return first;
+    return {first};
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
@@ -141,6 +141,8 @@ class LifoQueue {
       }
     }
   }
+  template<class S, typename Inspector>
+  friend auto inspect(Inspector& f, LifoQueue<S>& x);
 
  private:
   /// @brief queue datastore
@@ -149,6 +151,9 @@ class LifoQueue {
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
-
+template<class StepType, typename Inspector>
+auto inspect(Inspector& f, LifoQueue<StepType>& x) {
+  return f.object(x).fields(f.field("queue", x._queue));
+}
 }  // namespace graph
 }  // namespace arangodb

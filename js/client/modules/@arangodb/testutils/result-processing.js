@@ -274,7 +274,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
+  let prefix = (options.cluster ? 'CL_' : 'SG_');
 
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {

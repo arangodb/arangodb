@@ -438,7 +438,7 @@ auto replicated_log::LogLeader::construct(
   if (!participants.contains(id)) [[unlikely]] {
     LOG_CTX("aa777", ERR, logContext)
         << "Leader not in participants list. Please report this error to "
-           "arangodb.com! Leader is "
+           "arango.ai! Leader is "
         << id << ", Log participants configuration is: " << *participantsConfig;
     basics::abortOrThrow(TRI_ERROR_INTERNAL, "Leader not in participants list",
                          ADB_HERE);

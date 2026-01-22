@@ -24,7 +24,10 @@
 
 #pragma once
 
+#include <unordered_map>
+#include <list>
 #include "Graph/Cache/RefactoredTraverserCache.h"
+#include "Graph/Cursors/SingleServerNeighbourCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
@@ -32,6 +35,7 @@
 #include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
 #include "Graph/Providers/SingleServer/VertexLookup.h"
 #include "Graph/Providers/SingleServer/EdgeLookup.h"
+#include "Graph/Types/VertexRef.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
@@ -68,6 +72,7 @@ class SingleServerProvider {
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
+  using NeighbourProvider = SingleServerNeighbourCursor<Step>;
 
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
@@ -78,14 +83,15 @@ class SingleServerProvider {
 
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
-  auto fetchVertices(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;
+  auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
   // dummy function, needed for OneSidedEnumerator::Provider
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
+  auto createNeighbourCursor(Step const& step, size_t position)
+      -> SingleServerNeighbourCursor<Step>&;
   auto clear() -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge,
@@ -96,7 +102,7 @@ class SingleServerProvider {
   std::string getEdgeId(typename Step::Edge const& edge);
   EdgeType getEdgeIdRef(typename Step::Edge const& edge);
 
-  void addVertexToBuilder(typename Step::Vertex const& vertex,
+  void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
 
@@ -152,6 +158,8 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
+  std::list<SingleServerNeighbourCursor<Step>> _neighbourCursors;
+  aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -6,7 +6,7 @@ accounting for architecture and sanitizer overhead.
 """
 
 from typing import Dict, Optional
-from ..config_lib import BuildConfig, ResourceSize, Sanitizer, Architecture
+from ..config_lib import BuildConfig, ResourceSize, Architecture
 
 
 class ResourceSizer:
@@ -52,31 +52,31 @@ class ResourceSizer:
         raise ValueError(f"Unknown architecture: {arch}")
 
     @classmethod
-    def _apply_sanitizer_overhead(
-        cls, size: ResourceSize, sanitizer: Optional[Sanitizer], is_cluster: bool
+    def _apply_instrumentation_overhead(
+        cls, size: ResourceSize, build_config: BuildConfig, is_cluster: bool
     ) -> ResourceSize:
         """
-        Apply sanitizer overhead to a base size.
+        Apply instrumentation overhead to a base size.
 
-        Sanitizer builds require significantly more resources due to:
+        Instrumented builds require significantly more resources due to:
         - Memory overhead from tracking/instrumentation
         - Slower execution requiring more CPU time
 
         Args:
             size: Base size before overhead
-            sanitizer: Sanitizer type (tsan, asan, ubsan)
+            build_config: Build configuration (includes variant info)
             is_cluster: Whether this is a cluster test
 
         Returns:
-            Adjusted size accounting for sanitizer overhead
+            Adjusted size accounting for instrumentation overhead
         """
         # TSAN cluster tests need the most resources - even small tests get bumped to xlarge
         if size == ResourceSize.SMALL:
-            if sanitizer == Sanitizer.TSAN and is_cluster:
+            if build_config.build_variant.is_tsan and is_cluster:
                 return ResourceSize.XLARGE
             return ResourceSize.LARGE
 
-        # Medium/large tests get bumped to xlarge for all sanitizers
+        # Medium/large tests get bumped to xlarge for all instrumented builds
         if size in (ResourceSize.MEDIUM, ResourceSize.MEDIUM_PLUS, ResourceSize.LARGE):
             return ResourceSize.XLARGE
 
@@ -100,9 +100,9 @@ class ResourceSizer:
         """
         adjusted_size = size
 
-        if build_config.sanitizer:
-            adjusted_size = cls._apply_sanitizer_overhead(
-                size, build_config.sanitizer, is_cluster
+        if build_config.build_variant.is_instrumented:
+            adjusted_size = cls._apply_instrumentation_overhead(
+                size, build_config, is_cluster
             )
 
         return cls.get_resource_class(adjusted_size, build_config.architecture)

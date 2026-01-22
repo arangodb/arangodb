@@ -543,18 +543,18 @@ exports.enterpriseLicenseVisibility = function() {
     switch (license.status) {
     case "expiring":
       console.warn("Your license is expiring soon on " + expires + ".");
-      console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
+      console.warn("Please contact your Arango sales representative or sales@arango.ai to renew your license.");
       return;
     case "expired":
       let readonly = new Date(1000 * (license.features.expires + 3600 * 24 * 14));
       console.error("Your server's license has expired.");
       console.error("Its operation will be restricted to read-only mode on " + readonly + "!");
-      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      console.error("Please contact your Arango sales representative or sales@arango.ai to renew your license immediately.");
       return;
     case "read-only":
       console.error("Your server's license expired on " + expires + ".");
       console.error("Its operation has been restricted to read-only mode!");
-      console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+      console.error("Please contact your Arango sales representative or sales@arango.ai to renew your license immediately.");
       return;
     case "good":
     default:
@@ -574,18 +574,18 @@ exports.enterpriseLicenseVisibility = function() {
         let readonly = new Date(currentTime.getTime() + 1000 * (license.diskUsage.secondsUntilReadOnly));
         console.warn("Your server has reached its disk usage limit of 100 GiB.");
         console.warn("If you don't decrease the data size, the server will be restricted to read-only mode on " + readonly + ".");
-        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations.");
+        console.warn("Please contact your Arango sales representative or sales@arango.ai to get a valid license and continue using ArangoDB without limitations.");
         return;
       case "read-only":
         let shutdown = new Date(currentTime.getTime() + 1000 * (license.diskUsage.secondsUntilShutDown));
         console.error("Your server has been restricted to read-only mode due to violation of the 100 GiB data size limit.");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible.");
+        console.error("Please contact your Arango sales representative or sales@arango.ai to get a valid license as soon as possible.");
         console.error("Without a valid license the server will be shut down on " + shutdown + ".");
         return;
       case "shutdown":
         console.error("The 100 GiB disk usage limit was reached and the server was put into the read-only mode after a grace period.");
         console.error("The server will be shut down in 10 minutes.");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.");
+        console.error("Please contact your Arango sales representative or sales@arango.ai to get a valid license.");
         return;
       case "good":
       default:

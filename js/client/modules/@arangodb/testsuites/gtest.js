@@ -87,12 +87,12 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     options.commandSwitches = options.commandSwitches.concat(testoptions);
   }
   let results = { failed: 0, [name]: {}};
-  let rootDir = fs.join(fs.getTempPath(), name);
-  let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
   const binary = locateGTest(testfilename);
   if (binary !== '') {
     let tmpMgr = new tmpDirMmgr('gtest', options);
+    let rootDir = fs.join(tmpMgr.tempDir, name);
+    let testResultJsonFile = fs.join(rootDir, 'testResults.json');
     let argv = [
       '--gtest_output=json:' + testResultJsonFile,
     ];
