@@ -39,19 +39,19 @@ function activityRegistrySuite() {
   function activityRestHandlerFilter() {
     return (a) => {
       const name = a.name.toLowerCase();
-      return name.includes("activity") && name.includes("registry") && name.includes("rest") && a.state === "Active"
+      return name.includes("activity") && name.includes("registry") && name.includes("rest") && a.state === "Active";
     };
   }
   function dumpContextFilter() {
     return (a) => {
       const name = a.name.toLowerCase();
-      return name.includes("dump") && name.includes("context") && a.state === "Active"
+      return name.includes("dump") && name.includes("context") && a.state === "Active";
     };
   }
   function dumpContextFetchFilter() {
     return (a) => {
       const name = a.name.toLowerCase();
-      return name.includes("dump") && name.includes("context") && name.includes("fetch") && a.state === "Active"
+      return name.includes("dump") && name.includes("context") && name.includes("fetch") && a.state === "Active";
     };
   }
 
@@ -61,7 +61,7 @@ function activityRegistrySuite() {
     } else {
       internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?batchId=0`, {});
     }
-    activities = activitiesModule.get_snapshot();
+    const activities = activitiesModule.get_snapshot();
     assertTrue(activities.length > 2);
     assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
     assertTrue(activities.filter(dumpContextFilter).length > 0);
@@ -90,7 +90,7 @@ function activityRegistrySuite() {
       }
 
       // activity: dump context
-      const dumpId = createDump.headers["x-arango-dump-id"]
+      const dumpId = createDump.headers["x-arango-dump-id"];
       let activities = activitiesModule.get_snapshot_from_server(server);
       assertTrue(activities.length > 1);
       assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
@@ -112,5 +112,5 @@ function activityRegistrySuite() {
   };
 }
 
-jsunity.run(activityRegistrySuite)
+jsunity.run(activityRegistrySuite);
 return jsunity.done();
