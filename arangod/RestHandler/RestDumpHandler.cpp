@@ -208,7 +208,7 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
     // be able to have a look at the activity-registry in the meantime
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   if (batch == nullptr) {
