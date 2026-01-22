@@ -161,6 +161,7 @@ target_link_libraries(arango_basic_utils
          linenoise-ng
          zlib_interface
          snappy
+         arango_activity_registry_global
 )
 
 # Enterprise

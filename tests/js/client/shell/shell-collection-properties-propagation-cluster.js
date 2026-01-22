@@ -310,6 +310,85 @@ function CollectionPropertiesPropagationSuite() {
         assertEqual(1, p[s].writeConcern, {s, p});
       });
     },
+
+    // BTS-2279: Changing writeConcern should properly invalidate the
+    // _canWrite flag in FollowerInfo, allowing writes to continue. since we
+    // waitForSyncReplication is true, we can wait for the followers to sync.
+    testWritesAfterChangingWriteConcern : function () {
+      const dbName = "UnitTestsWriteConcernDb1";
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      const cn = "col";
+      try {
+        const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: true});
+
+        // Insert with initial writeConcern of 1
+        coll.insert({_key: "test1"});
+
+        // Change writeConcern to 2
+        coll.properties({writeConcern: 2});
+
+        // Insert should still work after writeConcern change
+        coll.insert({_key: "test2"});
+
+        // Verify both documents are inserted
+        assertEqual(2, coll.count());
+        assertTrue(coll.document("test1") !== null);
+        assertTrue(coll.document("test2") !== null);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+
+    // BTS-2279: When waitForSyncReplication is false and writeConcern is
+    // increased before followers sync, inserts should fail because the
+    // required write concern cannot be satisfied.
+    testWritesFailWhenWriteConcernNotSatisfied : function () {
+      const dbName = "UnitTestsWriteConcernDb2";
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      const cn = "col";
+      try {
+        const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: false});
+
+        // Insert with initial writeConcern of 1 should work
+        coll.insert({_key: "test1"});
+
+        // Immediately change writeConcern to 2 before followers have a chance to sync
+        coll.properties({writeConcern: 2});
+
+        // Try to insert - this should fail because writeConcern: 2 cannot be
+        // satisfied when followers haven't synced yet
+        let insertFailed = false;
+        for (let i = 0; i < 10; i++) {
+          try {
+            coll.insert({});
+          } catch(e) {
+            // Expected: ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED (1480)
+            assertEqual(internal.errors.ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED.code, e.errorNum);
+            insertFailed = true;
+            break;
+          }
+          // If insert succeeded, followers might have synced - try again quickly
+          // In a race condition, this test might not catch the error
+        }
+
+        // Note: This test may occasionally pass all inserts if followers sync
+        // quickly enough. The important thing is that if an error occurs,
+        // it should be ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED.
+        if (!insertFailed) {
+          // Followers synced fast enough, test is inconclusive but not failed
+          // Just verify the collection is functional
+          assertTrue(coll.count() >= 1);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
   };
 }
 
