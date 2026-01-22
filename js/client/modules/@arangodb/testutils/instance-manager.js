@@ -131,6 +131,8 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
+    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
+
   }
 
   destructor(cleanup) {
@@ -1293,7 +1295,7 @@ class instanceManager {
 
   reconnect(privileged)
   {
-    if (this.JWT !== null && privileged) {
+    if (this.JWT !== null && privileged || this.forceJWT) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
@@ -1314,6 +1316,7 @@ class instanceManager {
         if (this.arangods[0].args.hasOwnProperty('database.password')) {
           passvoid = this.arangods[0].args['database.password'];
         }
+        print(this.endpoint, '_system', 'root', passvoid);
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
       } else {
         print("Don't have a frontend instance to connect to");
