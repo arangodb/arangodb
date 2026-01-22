@@ -535,8 +535,10 @@ void actuallyDumpCrashInfo() {
 
     // Log the backtrace that was acquired by the signal handler
     size_t bytesUsed = backtraceBufferUsed.load(std::memory_order_acquire);
+    std::string_view stacktrace =
+        std::string_view(backtraceBuffer.get(), bytesUsed);
     if (backtraceBuffer != nullptr && bytesUsed > 0) {
-      logAcquiredBacktrace(std::string_view(backtraceBuffer.get(), bytesUsed));
+      logAcquiredBacktrace(stacktrace);
     }
 
     // Flush logs
@@ -544,11 +546,7 @@ void actuallyDumpCrashInfo() {
 
     auto const* crashHandler = CrashHandler::getCrashHandler();
     if (crashHandler != nullptr) {
-      if (auto const dumpManager = crashHandler->getDumpManager();
-          dumpManager != nullptr) {
-        dumpManager->dumpCrashData(
-            std::string_view(backtraceBuffer.get(), bytesUsed));
-      }
+      crashHandler->dumpCrashData(stacktrace);
     }
   } catch (...) {
     // Ignore exceptions in crash handling
@@ -690,6 +688,12 @@ CrashHandler::~CrashHandler() {
     shutdownCrashHandler();
   }
   _theCrashHandler.store(nullptr);
+}
+
+void CrashHandler::dumpCrashData(std::string_view backtrace) const {
+  if (_dumpManager != nullptr) {
+    _dumpManager->dumpCrashData(backtrace);
+  }
 }
 
 void CrashHandler::triggerCrashHandler() {
