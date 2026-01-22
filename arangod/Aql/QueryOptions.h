@@ -147,6 +147,25 @@ struct QueryOptions {
 
   transaction::Options transactionOptions;
 
+  // Initial values for the default* statics below. These constexpr values
+  // can be used for inline member initialization to avoid static initialization
+  // order issues.
+  // TODO: The mutable global statics below are a code smell - they are used to
+  // propagate user configuration from Features to QueryOptions. This should be
+  // refactored to pass configuration explicitly rather than through global
+  // mutable state.
+  static constexpr size_t defaultInitialMemoryLimit = 0U;
+  static constexpr size_t defaultInitialMaxNumberOfPlans = 128U;
+  static constexpr size_t defaultInitialMaxNodesPerCallstack = 250U;
+  static constexpr size_t defaultInitialSpillOverThresholdNumRows = 5000000ULL;
+  static constexpr size_t defaultInitialSpillOverThresholdMemoryUsage =
+      134217728ULL;  // 128 MB
+  static constexpr size_t defaultInitialMaxDNFConditionMembers =
+      786432ULL;  // 768K
+  static constexpr double defaultInitialMaxRuntime = 0.0;
+  static constexpr bool defaultInitialFailOnWarning = false;
+  static constexpr bool defaultInitialAllowMemoryLimitOverride = true;
+
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
   static size_t defaultMaxNodesPerCallstack;

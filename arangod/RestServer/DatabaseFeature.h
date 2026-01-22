@@ -29,6 +29,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
+#include "RestServer/DatabaseFeatureOptions.h"
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
@@ -175,28 +176,30 @@ class DatabaseFeature final : public ArangodFeature {
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const noexcept { return _ignoreDatafileErrors; }
+  bool ignoreDatafileErrors() const noexcept {
+    return _options.ignoreDatafileErrors;
+  }
   bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }
-  bool waitForSync() const noexcept { return _defaultWaitForSync; }
+  bool waitForSync() const noexcept { return _options.defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept {
-    return replication::parseVersion(_defaultReplicationVersion).get();
+    return replication::parseVersion(_options.defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
   /// and indexes
-  bool extendedNames() const noexcept { return _extendedNames; }
+  bool extendedNames() const noexcept { return _options.extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNames(bool value) noexcept { _extendedNames = value; }
+  void extendedNames(bool value) noexcept { _options.extendedNames = value; }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
   void enableUpgrade() noexcept { _upgrade = true; }
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
-  size_t maxDatabases() const noexcept { return _maxDatabases; }
+  size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -224,23 +227,14 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  bool _defaultWaitForSync{false};
-  bool _ignoreDatafileErrors{false};
+  DatabaseFeatureOptions _options;
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended names for databases, collections, views and indexes
-  bool _extendedNames{true};
-  bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
-
-  std::string _defaultReplicationVersion{
-      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
-
-  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {

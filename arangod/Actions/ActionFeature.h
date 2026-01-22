@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Actions/ActionFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -42,7 +43,7 @@ class ActionFeature final : public ArangodFeature {
   bool allowUseDatabase() const;
 
  private:
-  bool _allowUseDatabase;
+  ActionFeatureOptions _options;
 };
 
 }  // namespace arangodb
