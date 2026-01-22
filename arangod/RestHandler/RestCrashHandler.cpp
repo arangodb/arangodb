@@ -114,9 +114,8 @@ void RestCrashHandler::handleGetCrash(
     VPackObjectBuilder guard(&responseBuilder);
     responseBuilder.add("crashId", VPackValue(crashId));
 
-    VPackBuilder builder;
-    velocypack::serialize(builder, contents);
-    responseBuilder.add("files", builder.slice());
+    responseBuilder.add(VPackValue("files"));
+    velocypack::serialize(responseBuilder, contents);
   }
 
   generateOk(rest::ResponseCode::OK, responseBuilder.slice());

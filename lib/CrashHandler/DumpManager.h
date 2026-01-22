@@ -24,16 +24,19 @@
 #pragma once
 
 #include <cstddef>
-#include <string>
+#include <filesystem>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "CrashHandler/DataSourceRegistry.h"
-#include "CrashHandler/DumpWriter.h"
 
 namespace arangodb::crash_handler {
 
-/// Manages the dump creation and other dumps on disk
+static constexpr size_t kMaxCrashDirectories{10};
+
+/// Manages the crash dumps on disk
 class DumpManager {
  public:
   DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
@@ -48,14 +51,15 @@ class DumpManager {
   /// @brief deletes a specific crash directory
   bool deleteCrash(std::string_view crashId);
 
-  void setCrashesDirectory(std::string const& crashesDirectory);
+  void setCrashesDirectory(std::filesystem::path const& crashesDirectory);
 
-  void cleanupOldCrashDirectories(size_t maxCrashDirectories) const;
+  void removeOldCrashDirectories(size_t maxCrashDirectories) const;
 
-  DumpWriter getDumpWriter() const;
+  /// @brief dumps crash data (data sources, system info, backtrace)
+  void dumpCrashData(std::string_view backtrace) const;
 
  private:
-  std::string _crashesDirectory;
+  std::filesystem::path _crashesDirectory;
   std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
 

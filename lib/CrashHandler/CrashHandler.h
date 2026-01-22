@@ -60,8 +60,9 @@ class CrashHandler {
 
   static CrashHandler* getCrashHandler() { return _theCrashHandler; }
 
-  /// @brief dump crash data using the configured DumpManager
-  void dumpCrashData(std::string_view backtrace) const;
+  std::shared_ptr<DumpManager const> getDumpManager() const {
+    return _dumpManager;
+  }
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();

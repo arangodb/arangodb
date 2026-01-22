@@ -44,9 +44,7 @@ CrashHandlerFeature::CrashHandlerFeature(
 void CrashHandlerFeature::start() {
   if (_enabled) {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
-
     _dumpManager->setCrashesDirectory(path);
-    _dumpManager->cleanupOldCrashDirectories(10);
   }
 }
 

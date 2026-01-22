@@ -544,8 +544,11 @@ void actuallyDumpCrashInfo() {
 
     auto const* crashHandler = CrashHandler::getCrashHandler();
     if (crashHandler != nullptr) {
-      crashHandler->dumpCrashData(
-          std::string_view(backtraceBuffer.get(), bytesUsed));
+      if (auto const dumpManager = crashHandler->getDumpManager();
+          dumpManager != nullptr) {
+        dumpManager->dumpCrashData(
+            std::string_view(backtraceBuffer.get(), bytesUsed));
+      }
     }
   } catch (...) {
     // Ignore exceptions in crash handling
@@ -687,17 +690,6 @@ CrashHandler::~CrashHandler() {
     shutdownCrashHandler();
   }
   _theCrashHandler.store(nullptr);
-}
-
-void CrashHandler::dumpCrashData(std::string_view backtrace) const {
-  if (_dumpManager != nullptr) {
-    auto const dumpWriter = _dumpManager->getDumpWriter();
-    dumpWriter.dumpDataSources();
-    dumpWriter.dumpSystemInfo();
-    if (!backtrace.empty()) {
-      dumpWriter.dumpBacktraceInfo(backtrace);
-    }
-  }
 }
 
 void CrashHandler::triggerCrashHandler() {

@@ -27,10 +27,6 @@
 #include <format>
 #include <fstream>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "CrashHandler/DataSource.h"
@@ -38,18 +34,23 @@
 
 namespace arangodb::crash_handler {
 
-DumpWriter::DumpWriter(std::string const& crashesDirectory,
+DumpWriter::DumpWriter(std::filesystem::path crashDirectory,
                        std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
-    : _dataSourceRegistry(dataSourceRegistry) {
-  auto const uuid = to_string(boost::uuids::random_generator()());
-  _crashDirectory = std::filesystem::path(crashesDirectory) / uuid;
-  std::filesystem::create_directory(_crashDirectory);
+    : _crashDirectory(std::move(crashDirectory)),
+      _dataSourceRegistry(std::move(dataSourceRegistry)) {}
+
+void DumpWriter::dumpData(std::string_view backtrace) const {
+  dumpDataSources();
+  dumpSystemInfo();
+  if (!backtrace.empty()) {
+    dumpBacktraceInfo(backtrace);
+  }
 }
 
 void DumpWriter::dumpDataSources() const {
   for (auto const* dataSource : _dataSourceRegistry->getDataSources()) {
     auto const filename =
-        std::filesystem::path(_crashDirectory) /
+        _crashDirectory /
         std::format("{}.json", dataSource->getDataSourceName());
     auto data = dataSource->getCrashData();
     std::ofstream ofs(filename);
@@ -58,8 +59,7 @@ void DumpWriter::dumpDataSources() const {
 }
 
 void DumpWriter::dumpSystemInfo() const {
-  auto const sysInfoFilename =
-      std::filesystem::path(_crashDirectory) / "system_info.txt";
+  auto const sysInfoFilename = _crashDirectory / "system_info.txt";
 
   std::string sysInfo = std::format(
       "ArangoDB Version: {}\n"
@@ -79,9 +79,8 @@ void DumpWriter::dumpSystemInfo() const {
   ofs << sysInfo;
 }
 
-void DumpWriter::dumpBacktraceInfo(std::string_view const backtrace) const {
-  auto const backtraceFilename =
-      std::filesystem::path(_crashDirectory) / "backtrace.txt";
+void DumpWriter::dumpBacktraceInfo(std::string_view backtrace) const {
+  auto const backtraceFilename = _crashDirectory / "backtrace.txt";
   std::ofstream ofs(backtraceFilename);
   ofs.write(backtrace.data(), static_cast<std::streamsize>(backtrace.size()));
 }

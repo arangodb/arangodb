@@ -25,37 +25,41 @@
 
 #include <filesystem>
 #include <queue>
+#include <fstream>
+#include <sstream>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include "Basics/FileUtils.h"
-#include "Basics/files.h"
+
+#include "CrashHandler/DumpWriter.h"
 
 namespace arangodb::crash_handler {
 
 DumpManager::DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(std::move(dataSourceRegistry)) {}
 
-void DumpManager::setCrashesDirectory(std::string const& crashesDirectory) {
-  _crashesDirectory =
-      (std::filesystem::path(crashesDirectory) / "crashes").string();
+void DumpManager::setCrashesDirectory(
+    std::filesystem::path const& crashesDirectory) {
+  _crashesDirectory = crashesDirectory / "crashes";
   if (!std::filesystem::exists(_crashesDirectory)) {
     std::filesystem::create_directories(_crashesDirectory);
   }
+
+  removeOldCrashDirectories(kMaxCrashDirectories);
 }
 
 std::vector<std::string> DumpManager::listCrashes() const {
   std::vector<std::string> crashes;
-  if (_crashesDirectory.empty()) {
+  if (_crashesDirectory.empty() ||
+      !std::filesystem::is_directory(_crashesDirectory)) {
     return {};
   }
 
-  auto entries = basics::FileUtils::listFiles(_crashesDirectory);
-  for (auto const& entry : entries) {
-    auto fullPath = basics::FileUtils::buildFilename(_crashesDirectory, entry);
-    if (basics::FileUtils::isDirectory(fullPath)) {
-      crashes.push_back(entry);
+  for (auto const& entry :
+       std::filesystem::directory_iterator(_crashesDirectory)) {
+    if (entry.is_directory()) {
+      crashes.push_back(entry.path().filename().string());
     }
   }
   return crashes;
@@ -68,17 +72,19 @@ std::unordered_map<std::string, std::string> DumpManager::getCrashContents(
   }
 
   std::unordered_map<std::string, std::string> contents;
-  auto crashDir =
-      basics::FileUtils::buildFilename(_crashesDirectory, std::string(crashId));
-  if (!basics::FileUtils::isDirectory(crashDir)) {
+  auto const crashDir = _crashesDirectory / std::string(crashId);
+  if (!std::filesystem::is_directory(crashDir)) {
     return contents;
   }
-  auto const files = basics::FileUtils::listFiles(crashDir);
-  for (auto const& file : files) {
-    auto const filePath = basics::FileUtils::buildFilename(crashDir, file);
-    if (basics::FileUtils::isRegularFile(filePath)) {
+  for (auto const& entry : std::filesystem::directory_iterator(crashDir)) {
+    if (entry.is_regular_file()) {
       try {
-        contents[file] = basics::FileUtils::slurp(filePath);
+        std::ifstream file(entry.path(), std::ios::binary);
+        if (file) {
+          std::ostringstream ss;
+          ss << file.rdbuf();
+          contents[entry.path().filename().string()] = ss.str();
+        }
       } catch (...) {
         // Skip files that can't be read
       }
@@ -91,16 +97,16 @@ bool DumpManager::deleteCrash(std::string_view crashId) {
   if (_crashesDirectory.empty()) {
     return false;
   }
-  auto crashDir = arangodb::basics::FileUtils::buildFilename(
-      _crashesDirectory, std::string(crashId));
-  if (!arangodb::basics::FileUtils::isDirectory(crashDir)) {
+  auto const crashDir = _crashesDirectory / std::string(crashId);
+  if (!std::filesystem::is_directory(crashDir)) {
     return false;
   }
-  auto res = TRI_RemoveDirectory(crashDir.c_str());
-  return res == TRI_ERROR_NO_ERROR;
+  std::error_code ec;
+  std::filesystem::remove_all(crashDir, ec);
+  return !ec;
 }
 
-void DumpManager::cleanupOldCrashDirectories(size_t maxCrashDirectories) const {
+void DumpManager::removeOldCrashDirectories(size_t maxCrashDirectories) const {
   if (_crashesDirectory.empty() ||
       !std::filesystem::is_directory(_crashesDirectory)) {
     return;
@@ -129,8 +135,17 @@ void DumpManager::cleanupOldCrashDirectories(size_t maxCrashDirectories) const {
   }
 }
 
-DumpWriter DumpManager::getDumpWriter() const {
-  return DumpWriter(_crashesDirectory, _dataSourceRegistry);
+void DumpManager::dumpCrashData(std::string_view backtrace) const {
+  if (_crashesDirectory.empty()) {
+    return;
+  }
+
+  auto const uuid = to_string(boost::uuids::random_generator()());
+  auto const crashDirectory = _crashesDirectory / uuid;
+  std::filesystem::create_directory(crashDirectory);
+
+  DumpWriter dumpWriter(crashDirectory, _dataSourceRegistry);
+  dumpWriter.dumpData(backtrace);
 }
 
 }  // namespace arangodb::crash_handler

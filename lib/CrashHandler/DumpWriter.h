@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <string>
-#include <string_view>
+#include <filesystem>
 #include <memory>
+#include <string_view>
 
 #include "CrashHandler/DataSourceRegistry.h"
 
@@ -34,17 +34,19 @@ namespace arangodb::crash_handler {
 /// Dumps the data of crash handler to the disk
 class DumpWriter {
  public:
-  DumpWriter(std::string const& crashDirectory,
+  DumpWriter(std::filesystem::path crashDirectory,
              std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
 
+  void dumpData(std::string_view backtrace) const;
+
+ private:
   void dumpDataSources() const;
 
   void dumpSystemInfo() const;
 
-  void dumpBacktraceInfo(std::string_view const backtrace) const;
+  void dumpBacktraceInfo(std::string_view backtrace) const;
 
- private:
-  std::string _crashDirectory;
+  std::filesystem::path _crashDirectory;
 
   std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
 };
