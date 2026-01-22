@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix runaway io_uring file descriptors.
+
 * Fixed changing writeConcern on a collection
   could cause subsequent writes to fail due to a stale internal write flag.
 
