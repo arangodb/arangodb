@@ -29,7 +29,7 @@ namespace arangodb {
 struct DaemonFeatureOptions {
   bool daemon = false;
   std::string pidFile = "";
-  std::string workingDirectory = "/var/tmp";
+  std::string workingDirectory = ".";
 };
 
 }  // namespace arangodb

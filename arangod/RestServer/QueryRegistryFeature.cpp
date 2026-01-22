@@ -26,7 +26,6 @@
 #include "QueryRegistryFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -34,13 +33,11 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -51,88 +48,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-
-namespace {
-
-uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction,
-                            double percentage) {
-  if (available == 0) {
-    // we don't know how much memory is available, so we cannot do any sensible
-    // calculation
-    return 0;
-  }
-
-  // this function will produce the following results for a reserveFraction of
-  // 0.2 and a percentage of 0.75 for some common available memory values:
-  //
-  //    Available memory:            0      (0MiB)  Limit:            0
-  //    unlimited, %mem:  n/a Available memory:    134217728    (128MiB)  Limit:
-  //    33554432     (32MiB), %mem: 25.0 Available memory:    268435456 (256MiB)
-  //    Limit:     67108864     (64MiB), %mem: 25.0 Available memory: 536870912
-  //    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5 Available memory:
-  //    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
-  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776
-  //    (576MiB), %mem: 56.2 Available memory:   2147483648   (2048MiB)  Limit:
-  //    1288490189   (1228MiB), %mem: 60.0 Available memory:   4294967296
-  //    (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0 Available memory:
-  //    8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
-  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511
-  //    (9830MiB), %mem: 60.0 Available memory:  25769803776  (24576MiB)  Limit:
-  //    15461882265  (14745MiB), %mem: 60.0 Available memory:  34359738368
-  //    (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0 Available
-  //    memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB),
-  //    %mem: 60.0 Available memory:  68719476736  (65536MiB)  Limit:
-  //    41231686041  (39321MiB), %mem: 60.0 Available memory: 103079215104
-  //    (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0 Available
-  //    memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB),
-  //    %mem: 60.0 Available memory: 274877906944 (262144MiB)  Limit:
-  //    164926744167 (157286MiB), %mem: 60.0 Available memory: 549755813888
-  //    (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
-
-  // for a reserveFraction of 0.05 and a percentage of 0.95 it will produce:
-  //
-  //    Available memory:            0      (0MiB)  Limit:            0
-  //    unlimited, %mem:  n/a Available memory:    134217728    (128MiB)  Limit:
-  //    33554432     (32MiB), %mem: 25.0 Available memory:    268435456 (256MiB)
-  //    Limit:     67108864     (64MiB), %mem: 25.0 Available memory: 536870912
-  //    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5 Available memory:
-  //    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
-  //    Available memory:   1073741824   (1024MiB)  Limit:    765041049
-  //    (729MiB), %mem: 71.2 Available memory:   2147483648   (2048MiB)  Limit:
-  //    1785095782   (1702MiB), %mem: 83.1 Available memory:   4294967296
-  //    (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0 Available memory:
-  //    8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
-  //    Available memory:  17179869184  (16384MiB)  Limit:  15504831938
-  //    (14786MiB), %mem: 90.2 Available memory:  25769803776  (24576MiB) Limit:
-  //    23257247908  (22179MiB), %mem: 90.2 Available memory:  34359738368
-  //    (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2 Available
-  //    memory:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB),
-  //    %mem: 90.2 Available memory:  68719476736  (65536MiB)  Limit:
-  //    62019327755  (59146MiB), %mem: 90.2 Available memory: 103079215104
-  //    (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2 Available
-  //    memory: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB),
-  //    %mem: 90.2 Available memory: 274877906944 (262144MiB)  Limit:
-  //    248077311017 (236584MiB), %mem: 90.2 Available memory: 549755813888
-  //    (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
-
-  // reserveFraction% of RAM will be considered as a reserve
-  uint64_t reserve = static_cast<uint64_t>(available * reserveFraction);
-
-  // minimum reserve memory is 256MB
-  reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
-
-  TRI_ASSERT(available > 0);
-  double f = double(1.0) - (double(reserve) / double(available));
-  double dyn = (double(available) * f * percentage);
-  if (dyn < 0.0) {
-    dyn = 0.0;
-  }
-
-  return std::max(static_cast<uint64_t>(dyn),
-                  static_cast<uint64_t>(0.25 * available));
-}
-
-}  // namespace
 
 namespace arangodb {
 
@@ -210,50 +125,6 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
   startsAfter<application_features::ClusterFeaturePhase>();
 #endif
 
-  // Initialize options with default values
-  _options.trackingEnabled = true;
-  _options.trackSlowQueries = true;
-  _options.trackQueryString = true;
-  _options.trackBindVars = true;
-  _options.trackDataSources = false;
-  _options.failOnWarning = aql::QueryOptions::defaultFailOnWarning;
-  _options.requireWith = false;
-  _options.queryCacheIncludeSystem = false;
-  _options.queryMemoryLimitOverride = true;
-#ifdef USE_ENTERPRISE
-  _options.smartJoins = true;
-  _options.parallelizeTraversals = true;
-#endif
-  _options.allowCollectionsInExpressions = false;
-  _options.logFailedQueries = false;
-  _options.maxAsyncPrefetchSlotsTotal = 256;
-  _options.maxAsyncPrefetchSlotsPerQuery = 32;
-  _options.maxQueryStringLength = 4096;
-  _options.maxCollectionsPerQuery = 2048;
-  _options.peakMemoryUsageThreshold = 1073741824;  // 1GB
-  _options.queryGlobalMemoryLimit =
-      defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90);
-  _options.queryMemoryLimit =
-      defaultMemoryLimit(PhysicalMemory::getValue(), 0.2, 0.75);
-  _options.maxDNFConditionMembers =
-      aql::QueryOptions::defaultMaxDNFConditionMembers;
-  _options.queryMaxRuntime = aql::QueryOptions::defaultMaxRuntime;
-  _options.maxQueryPlans = aql::QueryOptions::defaultMaxNumberOfPlans;
-  _options.maxNodesPerCallstack =
-      aql::QueryOptions::defaultMaxNodesPerCallstack;
-  _options.queryPlanCacheMaxEntries = 128;
-  _options.queryPlanCacheMaxMemoryUsage = 8 * 1024 * 1024;
-  _options.queryPlanCacheMaxIndividualEntrySize = 2 * 1024 * 1024;
-  _options.queryPlanCacheInvalidationTime = 900.0;
-  _options.queryCacheMaxResultsCount = 0;
-  _options.queryCacheMaxResultsSize = 0;
-  _options.queryCacheMaxEntrySize = 0;
-  _options.maxParallelism = 4;
-  _options.slowQueryThreshold = 10.0;
-  _options.slowStreamingQueryThreshold = 10.0;
-  _options.queryRegistryTTL = 0.0;
-  _options.queryCacheMode = "off";
-
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _options.queryCacheMaxResultsCount = properties.maxResultsCount;
   _options.queryCacheMaxResultsSize = properties.maxResultsSize;
@@ -322,7 +193,7 @@ limit value, the query is aborted with a *resource limit exceeded* exception.
 In a cluster, the memory accounting is done per server, so the limit value is
 effectively a memory limit per query per server node.
 
-Some operations, namely calls to AQL functions and their intermediate results, 
+Some operations, namely calls to AQL functions and their intermediate results,
 are not properly tracked.
 
 You can override the limit by setting the `memoryLimit` option for individual
@@ -359,9 +230,9 @@ Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %me
 You can set a global memory limit for the total memory used by all AQL queries
 that currently execute via the `--query.global-memory-limit` option.
 
-From ArangoDB 3.8 on, the per-query memory tracking has a granularity of 32 KB 
-chunks. That means checking for memory limits such as "1" (e.g. for testing) 
-may not make a query fail if the total memory allocations in the query don't 
+From ArangoDB 3.8 on, the per-query memory tracking has a granularity of 32 KB
+chunks. That means checking for memory limits such as "1" (e.g. for testing)
+may not make a query fail if the total memory allocations in the query don't
 exceed 32 KiB. The effective lowest memory limit value that can be enforced is
 thus 32 KiB. Memory limit values higher than 32 KiB will be checked whenever the
 total memory allocations cross a 32 KiB boundary.)");

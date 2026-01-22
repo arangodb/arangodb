@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Aql/QueryOptions.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -34,7 +36,7 @@ struct QueryRegistryFeatureOptions {
   bool trackQueryString = true;
   bool trackBindVars = true;
   bool trackDataSources = false;
-  bool failOnWarning = false;
+  bool failOnWarning = aql::QueryOptions::defaultInitialFailOnWarning;
   bool requireWith = false;
   bool queryCacheIncludeSystem = false;
   bool queryMemoryLimitOverride = true;
@@ -51,10 +53,12 @@ struct QueryRegistryFeatureOptions {
   uint64_t peakMemoryUsageThreshold = 1073741824;  // 1GB
   uint64_t queryGlobalMemoryLimit = 0;
   uint64_t queryMemoryLimit = 0;
-  size_t maxDNFConditionMembers = 786432;
-  double queryMaxRuntime = 0.0;
-  uint64_t maxQueryPlans = 128;
-  uint64_t maxNodesPerCallstack = 250;
+  size_t maxDNFConditionMembers =
+      aql::QueryOptions::defaultInitialMaxDNFConditionMembers;
+  double queryMaxRuntime = aql::QueryOptions::defaultInitialMaxRuntime;
+  uint64_t maxQueryPlans = aql::QueryOptions::defaultInitialMaxNumberOfPlans;
+  uint64_t maxNodesPerCallstack =
+      aql::QueryOptions::defaultInitialMaxNodesPerCallstack;
   uint64_t queryPlanCacheMaxEntries = 128;
   uint64_t queryPlanCacheMaxMemoryUsage = 8 * 1024 * 1024;
   uint64_t queryPlanCacheMaxIndividualEntrySize = 2 * 1024 * 1024;
@@ -67,6 +71,8 @@ struct QueryRegistryFeatureOptions {
   double slowStreamingQueryThreshold = 10.0;
   double queryRegistryTTL = 0.0;
   std::string queryCacheMode = "off";
+
+  QueryRegistryFeatureOptions();
 };
 
 }  // namespace arangodb

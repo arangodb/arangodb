@@ -142,6 +142,7 @@ add_library(arangoserver STATIC
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
