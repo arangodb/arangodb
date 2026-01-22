@@ -27,6 +27,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/datetime.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -854,8 +855,7 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   int isoYear = (int)(yww.year());
-  transaction::Methods* trx = &expressionContext->trx();
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openObject();
   builder->add("week", VPackValue(isoWeek));
   builder->add("year", VPackValue(isoYear));
@@ -1089,8 +1089,7 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     AqlValue aqlEnd = timeAqlValue(expressionContext, AFN, tp_end, true, false);
     AqlValueGuard aqlEndGuard(aqlEnd, true);
 
-    transaction::Methods* trx = &expressionContext->trx();
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("local", aqlLocal.slice());
     builder->add("tzdb", VPackValue(date::get_tzdb().version));
@@ -1160,8 +1159,7 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     AqlValue aqlEnd = timeAqlValue(expressionContext, AFN, tp_end, true, false);
     AqlValueGuard aqlEndGuard(aqlEnd, true);
 
-    transaction::Methods* trx = &expressionContext->trx();
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openObject();
     builder->add("utc", aqlUtc.slice());
     builder->add("tzdb", VPackValue(date::get_tzdb().version));
@@ -1201,8 +1199,7 @@ AqlValue functions::DateTimeZones(ExpressionContext* expressionContext,
   auto& list = date::get_tzdb_list();
   auto& db = list.front();
 
-  transaction::Methods* trx = &expressionContext->trx();
-  transaction::BuilderLeaser result(trx);
+  auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
 
   for (auto& zone : db.zones) {

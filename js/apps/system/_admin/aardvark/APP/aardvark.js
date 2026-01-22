@@ -240,7 +240,7 @@ authRouter.post('/query/debugDump', function (req, res) {
   Creates a debug output for the query in a zip file.
   This file includes the query plan and anonymized test data as
   well es collection information required for this query.
-  It is extremely helpful for the ArangoDB team to get this archive
+  It is extremely helpful for the Arango team to get this archive
   and to reproduce your case. Whenever you submit a query based issue
   please attach this file and the Team can help you much faster with it.
 `);
@@ -1000,6 +1000,762 @@ authRouter.get('/graph/:name', function (req, res) {
   This function returns vertices and edges for a specific graph.
 `);
 
+// Helper function to get attribute by key path
+var getAttributeByKey = function (o, s) {
+  s = s.replace(/\[(\w+)\]/g, '.$1');
+  s = s.replace(/^\./, '');
+  var a = s.split('.');
+  for (var i = 0, n = a.length; i < n; ++i) {
+    var k = a[i];
+    if (k in o) {
+      o = o[k];
+    } else {
+      return;
+    }
+  }
+  return o;
+};
+
+// Helper function to get pseudo-random start vertex
+var getPseudoRandomStartVertex = function (graph) {
+  var vertexCandidates = [];
+  for (var i = 0; i < graph._vertexCollections().length; i++) {
+    var vertexCollection = graph._vertexCollections()[i];
+    if (db._collection(vertexCollection.name()).count()) {
+      let randomVertex = db._query(
+        'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
+        {
+          '@vertexCollection': vertexCollection.name()
+        }
+      ).next();
+      
+      vertexCandidates.push(randomVertex);
+    }
+  }
+  
+  if (vertexCandidates.length) {
+    return _.sample(vertexCandidates);
+  }
+  return null;
+};
+
+// Helper function to determine start vertices from config
+var determineStartVertices = function (config, graph) {
+  var multipleIds;
+  var startVertex;
+
+  if (config.nodeStart) {
+    if (config.nodeStart.indexOf(' ') > -1) {
+      multipleIds = config.nodeStart.split(' ');
+    } else {
+      try {
+        startVertex = db._document(config.nodeStart);
+      } catch (e) {
+        throw new Error('bad request: ' + e.message);
+      }
+      if (!startVertex) {
+        startVertex = getPseudoRandomStartVertex(graph);
+      }
+    }
+  } else {
+    startVertex = getPseudoRandomStartVertex(graph);
+  }
+
+  return { multipleIds: multipleIds, startVertex: startVertex };
+};
+
+// Helper function to build AQL queries
+var buildAQLQueries = function (config, name, startVertex, multipleIds) {
+  var aqlQuery;
+  var aqlQueries = [];
+  var limit = 0;
+  
+  if (config.limit !== undefined) {
+    if (config.limit.length > 0 && config.limit !== '0') {
+      limit = parseInt(config.limit);
+    }
+  }
+
+  let depth = parseInt(config.depth);
+
+  if (config.query) {
+    aqlQuery = config.query;
+  } else {
+    /*
+     * ATTRIBUTES ACCESSED BY processGraphData:
+     * 
+     * VERTEX ATTRIBUTES (accessed in generateNodeObject):
+     * - Fixed: v._id, v._key (for labels and IDs)
+     * - Dynamic: v[config.nodeLabel] (when config.nodeLabel is set)
+     * - Dynamic: v[config.nodeSize] (when config.nodeSize is set)  
+     * - Dynamic: v[config.nodeColorAttribute] (when config.nodeColorAttribute is set)
+     * 
+     * EDGE ATTRIBUTES (accessed in processGraphData):
+     * - Fixed: e._id, e._from, e._to (for connectivity and IDs)
+     * - Dynamic: e[config.edgeLabel] (when config.edgeLabel is set)
+     * - Dynamic: e[config.edgeColorAttribute] (when config.edgeColorAttribute is set)
+     * 
+     * NOTE: Dynamic attributes use getAttributeByKey() for nested access (e.g. "attr.subattr")
+     */
+    
+
+
+    const buildQuery = (id, depth, limit) => {
+      // Build vertex data with pre-computed attributes
+      let vertexDataQuery = `{
+        _id: v._id,
+        _key: v._key,
+        _rev: v._rev`;
+      
+      // Add node label attributes (handle space-separated labels)
+      if (config.nodeLabel) {
+        const labelAttrs = config.nodeLabel.split(' ').filter(attr => attr.trim() !== '');
+        labelAttrs.forEach((attr, index) => {
+          const attrPath = attr.indexOf('.') > -1 ? `v.${attr}` : `v["${attr}"]`;
+          vertexDataQuery += `,
+        nodeLabel_${index}: ${attrPath}`;
+        });
+      }
+      
+      // Add node size attribute
+      if (config.nodeSize) {
+        const sizePath = config.nodeSize.indexOf('.') > -1 ? `v.${config.nodeSize}` : `v["${config.nodeSize}"]`;
+        vertexDataQuery += `,
+        nodeSize: ${sizePath}`;
+      }
+      
+      // Add node color attribute
+      if (config.nodeColorAttribute) {
+        const colorPath = config.nodeColorAttribute.indexOf('.') > -1 ? `v.${config.nodeColorAttribute}` : `v["${config.nodeColorAttribute}"]`;
+        vertexDataQuery += `,
+        nodeColorAttribute: ${colorPath}`;
+      }
+      
+      vertexDataQuery += `
+      }`;
+      
+      // Build edge data with pre-computed attributes
+      let edgeDataQuery = `{
+        _id: e._id,
+        _from: e._from,
+        _to: e._to`;
+      
+      // Add edge label attribute
+      if (config.edgeLabel && config.edgeLabel.indexOf('.') === -1) {
+        edgeDataQuery += `,
+        edgeLabel: e["${config.edgeLabel}"]`;
+      } else if (config.edgeLabel && config.edgeLabel.indexOf('.') > -1) {
+        edgeDataQuery += `,
+        edgeLabel: e.${config.edgeLabel}`;
+      }
+      
+      // Add edge color attribute
+      if (config.edgeColorAttribute) {
+        const edgeColorPath = config.edgeColorAttribute.indexOf('.') > -1 ? `e.${config.edgeColorAttribute}` : `e["${config.edgeColorAttribute}"]`;
+        edgeDataQuery += `,
+        edgeColorAttribute: ${edgeColorPath}`;
+      }
+      
+      edgeDataQuery += `
+      }`;
+      
+      return `
+        FOR v, e IN 0..${depth} ANY "${id}" GRAPH "${name}"
+        ${limit ? `LIMIT ${limit}` : ''}
+        /* Optimized query: pre-compute attribute values in AQL instead of JavaScript */
+        LET vertex_data = ${vertexDataQuery}
+        LET edge_data = ${edgeDataQuery}
+        LET p = e._key == null ? { 
+          vertices: [vertex_data], 
+          edges: [] 
+        } : { 
+          vertices: [vertex_data], 
+          edges: [edge_data] 
+        }
+        RETURN p
+      `;
+    }
+    if (multipleIds) {
+      _.each(multipleIds, function (nodeid) {
+        aqlQuery = buildQuery(nodeid, depth || 2, limit);
+        aqlQueries.push(aqlQuery);
+      });
+    } else {
+      aqlQuery = buildQuery(startVertex._id, depth || 2, limit);
+    }
+  }
+
+  return { aqlQuery: aqlQuery, aqlQueries: aqlQueries, limit: limit };
+};
+
+// Helper function to execute AQL queries and get raw data
+var executeGraphQueries = function (config, graph, aqlQuery, aqlQueries, limit) {
+  var cursor;
+  
+  // get all nodes and edges, even if they are not connected
+  if (config.mode === 'all') {
+    var insertedEdges = 0;
+    var insertedNodes = 0;
+    var tmpEdges, tmpNodes;
+    cursor = {
+      json: [{
+        vertices: [],
+        edges: []
+      }]
+    };
+
+    // get all nodes
+    _.each(graph._vertexCollections(), function (node) {
+      if (insertedNodes < limit || limit === 0) {
+        tmpNodes = node.all().limit(limit).toArray();
+        _.each(tmpNodes, function (n) {
+          cursor.json[0].vertices.push(n);
+        });
+        insertedNodes += tmpNodes.length;
+      }
+    });
+    // get all edges
+    _.each(graph._edgeCollections(), function (edge) {
+      if (insertedEdges < limit || limit === 0) {
+        tmpEdges = edge.all().limit(limit).toArray();
+        _.each(tmpEdges, function (e) {
+          cursor.json[0].edges.push(e);
+        });
+        insertedEdges += tmpEdges.length;
+      }
+    });
+  } else {
+    // get all nodes and edges which are connected to the given start node
+    try {
+      if (aqlQueries.length === 0) {
+        cursor = AQL_EXECUTE(aqlQuery);
+      } else {
+        var x;
+        cursor = AQL_EXECUTE(aqlQueries[0]);
+        for (var k = 1; k < aqlQueries.length; k++) {
+          x = AQL_EXECUTE(aqlQueries[k]);
+          _.each(x.json, function (val) {
+            cursor.json.push(val);
+          });
+        }
+      }
+    } catch (e) {
+      const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+      throw error;
+    }
+  }
+
+  return cursor;
+};
+
+// Helper function to truncate strings
+var truncate = function (str, n) {
+  return (str.length > n) ? str.slice(0, n-1) + '...' : str;
+};
+
+// Helper function to generate node object
+var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors, tmpObjNodes, nodesColorAttributes, nodesSizeValues) {
+  var label = "";
+  var tooltipText = "";
+
+  if (config.nodeLabel) {
+    const labelAttrs = config.nodeLabel.split(' ').filter(attr => attr.trim() !== '');
+    var labelParts = [];
+    var tooltipParts = [];
+    
+    labelAttrs.forEach((attr, index) => {
+      var attrVal = node[`nodeLabel_${index}`]; // Use pre-computed value from AQL
+      var notFoundString = attr + ": (attribute not found)";
+      
+      if (attrVal !== undefined && attrVal !== null) {
+        if (typeof attrVal === 'string') {
+          labelParts.push(attr + ": " + attrVal);
+          tooltipParts.push(attr + ": " + attrVal);
+        } else {
+          labelParts.push(attr + ": " + JSON.stringify(attrVal));
+          tooltipParts.push(attr + ": " + JSON.stringify(attrVal));
+        }
+      } else {
+        labelParts.push(notFoundString);
+        tooltipParts.push(notFoundString);
+      }
+    });
+    
+    if (labelParts.length === 0) {
+      // Fallback if no attributes were processed
+      label = node._key || node._id;
+      tooltipText = node._key || node._id;
+    } else if (labelParts.length === 1) {
+      // Single attribute case - don't truncate for missing attributes, only for found ones
+      if (labelParts[0].includes("(attribute not found)")) {
+        label = labelParts[0]; // Don't truncate missing attribute messages
+      } else {
+        label = truncate(labelParts[0], 35);
+      }
+      tooltipText = tooltipParts[0];
+    } else {
+      // Multiple attributes case
+      label = truncate(labelParts[0], 16) + "...";
+      tooltipText = tooltipParts.join('\n');
+    }
+  } else {
+    label = node._key || node._id;
+    tooltipText = node._key || node._id;
+  }
+
+  if (config.nodeLabelByCollection === 'true') {
+    label += ' - ' + node._id.split('/')[0];
+  }
+  if (typeof label === 'number') {
+    label = JSON.stringify(label);
+  }
+
+  let sizeAttributeFound;
+  if (config.nodeSize && config.nodeSizeByEdges === 'false') {
+    nodeSize = 20;
+    if (Number.isInteger(node.nodeSize)) { // Use pre-computed value from AQL
+      nodeSize = node.nodeSize;  
+      sizeAttributeFound = true;
+    } else {
+      sizeAttributeFound = false;
+    }
+    
+    sizeCategory = node.nodeSize || ''; // Use pre-computed value from AQL
+    nodesSizeValues.push(node.nodeSize); // Use pre-computed value from AQL
+  }
+
+  var calculatedNodeColor = '#48BB78';
+  if (config.nodeColor !== undefined) {
+    if(!config.nodeColor.startsWith('#')) {
+      calculatedNodeColor = '#' + config.nodeColor;
+    } else {
+      calculatedNodeColor = config.nodeColor;
+    }
+  }
+    
+  var nodeObj = {
+    id: node._id,
+    label: label,
+    size: nodeSize || 20,
+    value: nodeSize || 20,
+    sizeCategory: sizeCategory || '',
+    shape: "dot",
+    color: calculatedNodeColor,
+    font: {
+      multi: 'html',
+      strokeWidth: 2,
+      strokeColor: '#ffffff',
+      vadjust: -7
+    },
+    title: tooltipText,
+    sizeAttributeFound
+  };
+
+  if (config.nodeColorByCollection === 'true') {
+    var coll = node._id.split('/')[0];
+    nodeObj.group = coll;
+    nodeObj.color = "";
+  } else if (config.nodeColorAttribute !== '') {
+    var attr = node.nodeColorAttribute; // Use pre-computed value from AQL
+    if (attr) {
+      nodeObj.group = JSON.stringify(attr);
+      nodeObj.color = "";
+      nodeObj.colorAttributeFound = true;
+    } else {
+      nodeObj.colorAttributeFound = false;
+    }
+  }
+
+  nodeObj.sortColor = nodeObj.color;
+  return nodeObj;
+};
+
+// Helper function to process raw cursor data into nodes and edges
+var processGraphData = function (cursor, config, colors, startVertex, multipleIds) {
+  var nodesObj = {};
+  var nodesArr = [];
+  var edgesColorAttributes = [];
+  if(config.edgesColorAttributes) {
+    edgesColorAttributes = JSON.parse(config.edgesColorAttributes);
+  }
+  var nodesColorAttributes = [];
+  if(config.nodesColorAttributes) {
+    nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
+  }
+  var nodesSizeValues = [];
+  var connectionsCounts = [];
+
+  var nodeNames = {};
+  var edgesObj = {};
+  var edgesArr = [];
+  var nodeEdgesCount = {};
+  var handledEdges = {};
+
+  var tmpObjEdges = {};
+  var tmpObjNodes = {};
+  var nodeLabel;
+  var nodeSize;
+  var sizeCategory;
+  var notFoundString = "(attribute not found)";
+
+  _.each(cursor.json, function (obj) {
+    var edgeLabel = '';
+    var edgeObj;
+    _.each(obj.edges, function (edge) {
+      if (edge._to && edge._from) {
+        if (config.edgeLabel && config.edgeLabel.length > 0) {
+          // Use pre-computed edge label from AQL
+          var edgeLabelValue = edge.edgeLabel;
+          if (edgeLabelValue !== undefined && edgeLabelValue !== null) {
+            if (typeof edgeLabelValue === 'string') {
+              edgeLabel = edgeLabelValue;
+            } else {
+              edgeLabel = JSON.stringify(edgeLabelValue);
+            }
+          } else {
+            edgeLabel = notFoundString;
+          }
+
+          if (typeof edgeLabel !== 'string') {
+            edgeLabel = JSON.stringify(edgeLabel);
+          }
+          if (config.edgeLabelByCollection === 'true') {
+            edgeLabel += ' - ' + edge._id.split('/')[0];
+          }
+        } else {
+          if (config.edgeLabelByCollection === 'true') {
+            edgeLabel = edge._id.split('/')[0];
+          }
+        }
+
+        if (config.nodeSizeByEdges === 'true') {
+          if (handledEdges[edge._id] === undefined) {
+            handledEdges[edge._id] = true;
+
+            if (nodeEdgesCount[edge._from] === undefined) {
+              nodeEdgesCount[edge._from] = 1;
+            } else {
+              nodeEdgesCount[edge._from] += 1;
+            }
+
+            if (nodeEdgesCount[edge._to] === undefined) {
+              nodeEdgesCount[edge._to] = 1;
+            } else {
+              nodeEdgesCount[edge._to] += 1;
+            }
+          }
+        }
+
+        var calculatedEdgeColor = '#1D2A12';
+        if (config.edgeColor !== undefined) {
+          calculatedEdgeColor = '#' + config.edgeColor;
+        }
+
+        var edgestyle = {};
+        if(config.edgeType !== undefined) {
+          if(config.edgeType === 'dashed') {
+            edgestyle = {
+              dashes: [5, 5]
+            };
+          } else if(config.edgeType === 'dotted') {
+            edgestyle = {
+              dashes: [1, 3]
+            };
+          }
+        }
+        edgeObj = {
+          id: edge._id,
+          source: edge._from,
+          from: edge._from,
+          label: edgeLabel,
+          target: edge._to,
+          to: edge._to,
+          color: calculatedEdgeColor,
+          font: {
+            strokeWidth: 2,
+            strokeColor: '#ffffff',
+            align: 'top'
+          },
+          length: 500,
+          ...edgestyle
+        };
+
+        if (config.edgeEditable === 'true') {
+          edgeObj.size = 1;
+        } else {
+          edgeObj.size = 1;
+        }
+
+        if (config.edgeColorByCollection === 'true') {
+          var coll = edge._id.split('/')[0];
+
+          if (tmpObjEdges.hasOwnProperty(coll)) {
+            edgeObj.colorfromedges = tmpObjEdges[coll];
+            edgeObj.color = tmpObjEdges[coll] || '#1D2A12'
+          } else {
+            tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
+            edgeObj.color = tmpObjEdges[coll];
+          }
+        } else if (config.edgeColorAttribute !== '') {
+          if(edge.edgeColorAttribute) { // Use pre-computed value from AQL
+            edgeObj.colorCategory = edge.edgeColorAttribute || '';
+            const tempEdgeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+            
+            const edgeColorObj = {
+              'name': edge.edgeColorAttribute || '',
+              'color': tempEdgeColor
+            };
+
+            const edgesColorAttributeIndex = edgesColorAttributes.findIndex(object => object.name === edgeColorObj.name);
+            if (edgesColorAttributeIndex === -1) {
+              edgesColorAttributes.push(edgeColorObj);
+            }
+          }
+
+          var attr = edge.edgeColorAttribute; // Use pre-computed value from AQL
+          if (attr) {
+            if (tmpObjEdges.hasOwnProperty(attr)) {
+              edgeObj.color = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
+              edgeObj[config.edgeColorAttribute] = attr;
+              edgeObj.attributeColor = tmpObjEdges[attr];
+            } else {
+              tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
+              edgeObj.color = tmpObjEdges[attr];
+            }
+            edgeObj.colorAttributeFound = true;
+          } else {
+            edgeObj.colorAttributeFound = false;
+          }
+        }
+      }
+      edgeObj.sortColor = edgeObj.color;
+      edgesObj[edge._id] = edgeObj;
+    });
+
+    _.each(obj.vertices, function (node) {
+      if (node !== null) {
+        nodeNames[node._id] = true;
+        nodesObj[node._id] = generateNodeObject(node, config, nodeSize, sizeCategory, colors, tmpObjNodes, nodesColorAttributes, nodesSizeValues);
+      }
+    });
+  });
+
+  // In case our AQL query did not deliver any nodes, we will put the "startVertex" into the "nodes" list
+  if (Object.keys(nodesObj).length === 0 && startVertex) {
+    nodeNames[startVertex._id] = true;
+    nodesObj[startVertex._id] = generateNodeObject(startVertex, config, nodeSize, sizeCategory, colors, tmpObjNodes, nodesColorAttributes, nodesSizeValues);
+  }
+
+  let nodeColorAttributeFound;
+  let nodeSizeAttributeFound;
+  
+  _.each(nodesObj, function (node) {
+    if (config.nodeSizeByEdges === 'true') {
+      node.nodeEdgesCount = nodeEdgesCount[node.id];
+      node.value = nodeEdgesCount[node.id];
+      connectionsCounts.push(nodeEdgesCount[node.id]);
+
+      if (Number.isNaN(node.size)) {
+        node.size = 10;
+      }
+    }
+
+    if(multipleIds !== undefined) {
+      if(multipleIds.includes(node.id)) {
+        node.borderWidth = 4;
+        node.shadow = {
+          enabled: true,
+          color: 'rgba(0,0,0,0.5)',
+          size: 16,
+          x: 0,
+          y: 0
+        };
+        node.shapeProperties = {
+          borderDashes: [10, 15]
+        };
+      }
+    } else {
+      if(node.id === startVertex._id) {
+        node.borderWidth = 4;
+        node.shadow = {
+          enabled: true,
+          color: 'rgba(0,0,0,0.5)',
+          size: 16,
+          x: 0,
+          y: 0
+        };
+        node.shapeProperties = {
+          borderDashes: [10, 15]
+        };
+      }
+    }
+    if (node.colorAttributeFound) {
+        nodeColorAttributeFound = true;
+    }
+    if (node.sizeAttributeFound) {
+        nodeSizeAttributeFound = true;
+    }
+    nodesArr.push(node);
+  });
+
+  var nodeNamesArr = [];
+  _.each(nodeNames, function (found, key) {
+    nodeNamesArr.push(key);
+  });
+
+  let edgeColorAttributeFound;
+  _.each(edgesObj, function (edge) {
+    if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
+      edgesArr.push(edge);
+    }
+    if(edge.colorAttributeFound) {
+      edgeColorAttributeFound = true;
+    }
+  });
+
+  return {
+    nodesArr: nodesArr,
+    edgesArr: edgesArr,
+    edgesColorAttributes: edgesColorAttributes,
+    nodesColorAttributes: nodesColorAttributes,
+    nodesSizeValues: nodesSizeValues,
+    connectionsCounts: connectionsCounts,
+    nodeColorAttributeFound: nodeColorAttributeFound,
+    nodeSizeAttributeFound: nodeSizeAttributeFound,
+    edgeColorAttributeFound: edgeColorAttributeFound
+  };
+};
+
+// Helper function to generate layout configuration
+var generateLayoutConfiguration = function (config) {
+  const interactionOptions = {
+    dragNodes: true,
+    dragView: true,
+    hideEdgesOnDrag: false,
+    hideNodesOnDrag: false,
+    hover: true,
+    hoverConnectedEdges: false,
+    keyboard: {
+      enabled: false,
+      speed: {
+        x: 3,
+        y: 3,
+        zoom: 0.02
+      },
+      bindToWindow: false
+    },
+    multiselect: false,
+    navigationButtons: false,
+    selectable: true,
+    selectConnectedEdges: false,
+    tooltipDelay: 300,
+    zoomSpeed: 0.25,
+    zoomView: true
+  };
+
+  const barnesHutOptions = {
+    interaction: interactionOptions,
+    layout: {
+        randomSeed: 0,
+        hierarchical: false
+    },
+    edges: {
+      smooth: { type:"dynamic" },
+      arrows: {
+        to: {
+          enabled: (config.edgeDirection === "true"),
+          type: "arrow",
+          scaleFactor: 0.5
+        },
+      },
+    },
+    physics: {
+        barnesHut: {
+            gravitationalConstant: -2250,
+            centralGravity: 0.4,
+            springLength: 76,
+            damping: 0.095
+        },
+        solver: "barnesHut"
+    }
+  };
+
+  const hierarchicalOptions = {
+    interaction: interactionOptions,
+      layout: {
+        randomSeed: 0,
+        hierarchical: {
+          levelSeparation: 150,
+          nodeSpacing: 300,
+          direction: "UD"
+        },
+      },
+      edges: {
+        smooth: { type:"dynamic" },
+        arrows: {
+          to: {
+            enabled: (config.edgeDirection === "true"),
+            type: "arrow",
+            scaleFactor: 0.5
+          },
+        },
+      },
+      physics: {
+        barnesHut: {
+          gravitationalConstant: -2250,
+          centralGravity: 0.4,
+          damping: 0.095
+        },
+        solver: "barnesHut"
+      }
+  };
+
+  const forceAtlas2BasedOptions = {
+    interaction: interactionOptions,
+        layout: {
+            randomSeed: 0,
+            hierarchical: false
+        },
+        edges: {
+          smooth: { type:"dynamic" },
+          arrows: {
+            to: {
+              enabled: (config.edgeDirection === "true"),
+              type: "arrow",
+              scaleFactor: 0.5
+            },
+          },
+        },
+        physics: {
+          forceAtlas2Based: {
+            springLength: 10,
+            springConstant: 1.5,
+            gravitationalConstant: -500
+          },
+          minVelocity: 0.75,
+          solver: "forceAtlas2Based"
+        }
+    };
+
+    let layoutObject = hierarchicalOptions;
+    
+    switch (config.layout) {
+      case 'forceAtlas2':
+        layoutObject = forceAtlas2BasedOptions;
+        break;
+      case 'barnesHut':
+        layoutObject = barnesHutOptions;
+        break;
+      case 'hierarchical':
+        layoutObject = hierarchicalOptions;
+        break;
+      default:
+        layoutObject = barnesHutOptions;
+    }
+
+    return layoutObject;
+};
+
 authRouter.get('/graphs-v2/:name', function (req, res) {
   var name = req.pathParams.name;
   var gm;
@@ -1052,7 +1808,6 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
   }
 
   var edgesCollections = [];
-
   _.each(graph._edgeCollections(), function (edge) {
     edgesCollections.push({
       name: edge.name(),
@@ -1066,7 +1821,6 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
   }
 
   var vertexCollections = [];
-
   _.each(graphVertexCollections, function (vertex) {
     vertexCollections.push({
       name: vertex.name(),
@@ -1075,61 +1829,22 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
   });
 
   var config;
-
   try {
     config = req.queryParams;
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
   }
 
-  var getPseudoRandomStartVertex = function () {
-    var vertexCandidates = [];
-    for (var i = 0; i < graph._vertexCollections().length; i++) {
-      var vertexCollection = graph._vertexCollections()[i];
-      if (db._collection(vertexCollection.name()).count()) {
-        let randomVertex = db._query(
-          'FOR vertex IN @@vertexCollection SORT rand() LIMIT 1 RETURN vertex',
-          {
-            '@vertexCollection': vertexCollection.name()
-          }
-        ).next();
-        
-        vertexCandidates.push(randomVertex);
-      }
-    }
-    
-    if (vertexCandidates.length) {
-      return _.sample(vertexCandidates);
-    }
-    return null;
-  };
-
-  var multipleIds;
-  var startVertex; // will be "randomly" chosen if no start vertex is specified
-
-  if (config.nodeStart) {
-    if (config.nodeStart.indexOf(' ') > -1) {
-      multipleIds = config.nodeStart.split(' ');
-    } else {
-      try {
-        startVertex = db._document(config.nodeStart);
-      } catch (e) {
-        res.throw('bad request', e.message, {cause: e});
-      }
-      if (!startVertex) {
-        startVertex = getPseudoRandomStartVertex();
-      }
-    }
-  } else {
-    startVertex = getPseudoRandomStartVertex();
+  // Determine start vertices
+  var startInfo;
+  try {
+    startInfo = determineStartVertices(config, graph);
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
   }
-
-  var limit = 0;
-  if (config.limit !== undefined) {
-    if (config.limit.length > 0 && config.limit !== '0') {
-      limit = parseInt(config.limit);
-    }
-  }
+  
+  var multipleIds = startInfo.multipleIds;
+  var startVertex = startInfo.startVertex;
 
   var toReturn;
   // if we have multiple start nodes than startVertex === undefined
@@ -1148,640 +1863,39 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
       }
     }
   } else {
-    var aqlQuery;
-    var aqlQueries = [];
-
-    let depth = parseInt(config.depth);
-
-    if (config.query) {
-      aqlQuery = config.query;
-    } else {
-      if (multipleIds) {
-        /* TODO: uncomment after #75 fix
-          aqlQuery =
-            'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
-            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY x GRAPH "' + name + '"';
-        */
-        _.each(multipleIds, function (nodeid) {
-          aqlQuery =
-            'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
-          if (limit !== 0) {
-            aqlQuery += ' LIMIT ' + limit;
-          }
-          aqlQuery += ' RETURN p';
-          aqlQueries.push(aqlQuery);
-        });
-      } else {
-        aqlQuery =
-          'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
-        if (limit !== 0) {
-          aqlQuery += ' LIMIT ' + limit;
-        }
-        aqlQuery += ' RETURN p';
-      }
-    }
-
-    var getAttributeByKey = function (o, s) {
-      s = s.replace(/\[(\w+)\]/g, '.$1');
-      s = s.replace(/^\./, '');
-      var a = s.split('.');
-      for (var i = 0, n = a.length; i < n; ++i) {
-        var k = a[i];
-        if (k in o) {
-          o = o[k];
-        } else {
-          return;
-        }
-      }
-      return o;
-    };
-
+    // Build and execute AQL queries
+    var queryInfo = buildAQLQueries(config, name, startVertex, multipleIds);
+    
     var cursor;
-    // get all nodes and edges, even if they are not connected
-    // atm there is no server side function, so we need to get all docs
-    // and edges of all related collections until the given limit is reached.
-    if (config.mode === 'all') {
-      var insertedEdges = 0;
-      var insertedNodes = 0;
-      var tmpEdges, tmpNodes;
-      cursor = {
-        json: [{
-          vertices: [],
-          edges: []
-        }]
-      };
-
-      // get all nodes
-      _.each(graph._vertexCollections(), function (node) {
-        if (insertedNodes < limit || limit === 0) {
-          tmpNodes = node.all().limit(limit).toArray();
-          _.each(tmpNodes, function (n) {
-            cursor.json[0].vertices.push(n);
-          });
-          insertedNodes += tmpNodes.length;
-        }
-      });
-      // get all edges
-      _.each(graph._edgeCollections(), function (edge) {
-        if (insertedEdges < limit || limit === 0) {
-          tmpEdges = edge.all().limit(limit).toArray();
-          _.each(tmpEdges, function (e) {
-            cursor.json[0].edges.push(e);
-          });
-          insertedEdges += tmpEdges.length;
-        }
-      });
-    } else {
-      // get all nodes and edges which are connected to the given start node
-      try {
-        if (aqlQueries.length === 0) {
-          cursor = AQL_EXECUTE(aqlQuery);
-        } else {
-          var x;
-          cursor = AQL_EXECUTE(aqlQueries[0]);
-          for (var k = 1; k < aqlQueries.length; k++) {
-            x = AQL_EXECUTE(aqlQueries[k]);
-            _.each(x.json, function (val) {
-              cursor.json.push(val);
-            });
-          }
-        }
-      } catch (e) {
-        const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
-        res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
-      }
+    try {
+      cursor = executeGraphQueries(config, graph, queryInfo.aqlQuery, queryInfo.aqlQueries, queryInfo.limit);
+    } catch (e) {
+      res.throw(actions.arangoErrorToHttpCode(e.errorNum), e);
     }
 
-    var nodesObj = {};
-    var nodesArr = [];
-    var edgesColorAttributes = [];
-    if(config.edgesColorAttributes) {
-      edgesColorAttributes = JSON.parse(config.edgesColorAttributes);
-    }
-    var nodesColorAttributes = [];
-    if(config.nodesColorAttributes) {
-      nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
-    }
-    var nodesSizeValues = [];
-    var nodesSizeMinMax = [];
-    var connectionsCounts = [];
-    var connectionsMinMax = [];
+    // Process raw data into formatted nodes and edges
+    var processedData = processGraphData(cursor, config, colors, startVertex, multipleIds);
 
-    var nodeNames = {};
-    var edgesObj = {};
-    var edgesArr = [];
-    var nodeEdgesCount = {};
-    var handledEdges = {};
+    // Generate layout configuration
+    var layoutObject = generateLayoutConfiguration(config);
 
-    var tmpObjEdges = {};
-    var tmpObjNodes = {};
-    var nodeLabel;
-    var nodeSize;
-    var sizeCategory;
-    var nodeObj;
-    var notFoundString = "(attribute not found)";
-
-    const truncate = (str, n) => {
-      return (str.length > n) ? str.slice(0, n-1) + '...' : str;
-    };
-    
-    const generateNodeObject = (node) => {
-      nodeNames[node._id] = true;
-      var label = "";
-      var tooltipText = "";
-
-      if (config.nodeLabel) {
-        var nodeLabelArr = config.nodeLabel.trim().split(" ");
-        // in case multiple node labels are given
-        if (nodeLabelArr.length > 1) {
-          _.each(nodeLabelArr, function (attr) {
-
-            var attrVal = getAttributeByKey(node, attr);
-            if (attrVal !== undefined) {
-              if (typeof attrVal === 'string') {
-                tooltipText += attr + ": " + attrVal + "\n";
-              } else {
-                // in case we do not have a string here, we need to stringify it
-                // otherwise we might end up sending not displayable values.
-                tooltipText += attr + ": " + JSON.stringify(attrVal) + "\n";
-              }
-            } else {
-              label += attr + ": " + notFoundString;
-              tooltipText += attr + ": " + notFoundString + "\n";
-            }
-            
-          });
-          // in case of multiple node labels just display the first one in the graph
-          // and the others in the tooltip
-          var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
-          if (firstAttrVal !== undefined) {
-            if (typeof firstAttrVal === 'string') {
-              label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
-            } else {
-              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(firstAttrVal), 16) + " ...";
-            }
-          } else {
-            label = nodeLabelArr[0] + ": " + notFoundString + " ...";
-          }
-        } else {
-          // in case of single node attribute given
-          var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
-          if (singleAttrVal !== undefined) {
-            if (typeof singleAttrVal === 'string') {
-              label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
-              tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
-            } else {
-              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
-              tooltipText = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
-            }
-          } else {
-            label = nodeLabelArr[0] + ": " + notFoundString;
-            tooltipText = nodeLabelArr[0] + ": " + notFoundString;
-          }
-        }
-      } else {
-        label = node._key || node._id;
-        tooltipText = node._key || node._id;
-      }
-
-      if (config.nodeLabelByCollection === 'true') {
-        label += ' - ' + node._id.split('/')[0];
-      }
-      if (typeof label === 'number') {
-        label = JSON.stringify(label);
-      }
-      let sizeAttributeFound;
-      if (config.nodeSize && config.nodeSizeByEdges === 'false') {
-        nodeSize = 20;
-        if (Number.isInteger(node[config.nodeSize])) {
-          nodeSize = node[config.nodeSize];  
-          sizeAttributeFound = true;
-        } else {
-          sizeAttributeFound = false;
-        }
-        
-        sizeCategory = node[config.nodeSize] || '';
-        nodesSizeValues.push(node[config.nodeSize]);
-      }
-      var calculatedNodeColor = '#48BB78';
-      if (config.nodeColor !== undefined) {
-        if(!config.nodeColor.startsWith('#')) {
-          calculatedNodeColor = '#' + config.nodeColor;
-        } else {
-          calculatedNodeColor = config.nodeColor;
-        }
-      }
-        
-      nodeObj = {
-        id: node._id,
-        label: label,
-        size: nodeSize || 20,
-        value: nodeSize || 20,
-        sizeCategory: sizeCategory || '',
-        shape: "dot",
-        color: calculatedNodeColor,
-        font: {
-          multi: 'html',
-          strokeWidth: 2,
-          strokeColor: '#ffffff',
-          vadjust: -7
-        },
-        title: tooltipText,
-        sizeAttributeFound
-      };
-
-      if (config.nodeColorByCollection === 'true') {
-        var coll = node._id.split('/')[0];
-        nodeObj.group = coll;
-        nodeObj.color = "";
-      } else if (config.nodeColorAttribute !== '') {
-        var attr = node[config.nodeColorAttribute]
-        if (attr) {
-          nodeObj.group = JSON.stringify(attr);
-          nodeObj.color = "";
-          nodeObj.colorAttributeFound = true;
-        } else {
-          nodeObj.colorAttributeFound = false;
-        }
-      }
-
-      nodeObj.sortColor = nodeObj.color;
-      return nodeObj;
-    }
-
-
-    
-
-    _.each(cursor.json, function (obj) {
-      var edgeLabel = '';
-      var edgeObj;
-      _.each(obj.edges, function (edge) {
-        if (edge._to && edge._from) {
-          if (config.edgeLabel && config.edgeLabel.length > 0) {
-            // configure edge labels
-
-            if (config.edgeLabel.indexOf('.') > -1) {
-              edgeLabel = getAttributeByKey(edge, config.edgeLabel);
-              if (nodeLabel === undefined || nodeLabel === '') {
-                edgeLabel = edgeLabel._id;
-              }
-            } else {
-              if (edge[config.edgeLabel] !== undefined) {
-                if (typeof edge[config.edgeLabel] === 'string') {
-                  edgeLabel = edge[config.edgeLabel];
-                } else {
-                  // in case we do not have a string here, we need to stringify it
-                  // otherwise we might end up sending not displayable values.
-                  edgeLabel = JSON.stringify(edge[config.edgeLabel]);
-                }
-              } else {
-                // in case the document does not have the edgeLabel in it, return fallback string
-                edgeLabel = notFoundString;
-              }
-            }
-
-            if (typeof edgeLabel !== 'string') {
-              edgeLabel = JSON.stringify(edgeLabel);
-            }
-            if (config.edgeLabelByCollection === 'true') {
-              edgeLabel += ' - ' + edge._id.split('/')[0];
-            }
-          } else {
-            if (config.edgeLabelByCollection === 'true') {
-              edgeLabel = edge._id.split('/')[0];
-            }
-          }
-
-          if (config.nodeSizeByEdges === 'true') {
-            if (handledEdges[edge._id] === undefined) {
-              handledEdges[edge._id] = true;
-
-              if (nodeEdgesCount[edge._from] === undefined) {
-                nodeEdgesCount[edge._from] = 1;
-              } else {
-                nodeEdgesCount[edge._from] += 1;
-              }
-
-              if (nodeEdgesCount[edge._to] === undefined) {
-                nodeEdgesCount[edge._to] = 1;
-              } else {
-                nodeEdgesCount[edge._to] += 1;
-              }
-            }
-          }
-
-          var calculatedEdgeColor = '#1D2A12';
-          if (config.edgeColor !== undefined) {
-            calculatedEdgeColor = '#' + config.edgeColor;
-          }
-
-          var edgestyle = {};
-          if(config.edgeType !== undefined) {
-            if(config.edgeType === 'dashed') {
-              edgestyle = {
-                dashes: [5, 5]
-              };
-            } else if(config.edgeType === 'dotted') {
-              edgestyle = {
-                dashes: [1, 3]
-              };
-            }
-          }
-          edgeObj = {
-            id: edge._id,
-            source: edge._from,
-            from: edge._from,
-            label: edgeLabel,
-            target: edge._to,
-            to: edge._to,
-            color: calculatedEdgeColor,
-            font: {
-              strokeWidth: 2,
-              strokeColor: '#ffffff',
-              align: 'top'
-            },
-            length: 500,
-            ...edgestyle
-          };
-
-          if (config.edgeEditable === 'true') {
-            edgeObj.size = 1;
-          } else {
-            edgeObj.size = 1;
-          }
-
-          if (config.edgeColorByCollection === 'true') {
-            var coll = edge._id.split('/')[0];
-
-            if (tmpObjEdges.hasOwnProperty(coll)) {
-              edgeObj.colorfromedges = tmpObjEdges[coll];
-              edgeObj.color = tmpObjEdges[coll] || '#1D2A12'
-            } else {
-              tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
-              edgeObj.color = tmpObjEdges[coll];
-            }
-          } else if (config.edgeColorAttribute !== '') {
-            if(edge[config.edgeColorAttribute]) {
-              edgeObj.colorCategory = edge[config.edgeColorAttribute] || '';
-              const tempEdgeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-              
-              const edgeColorObj = {
-                'name': edge[config.edgeColorAttribute] || '',
-                'color': tempEdgeColor
-              };
-
-              const edgesColorAttributeIndex = edgesColorAttributes.findIndex(object => object.name === edgeColorObj.name);
-              if (edgesColorAttributeIndex === -1) {
-                edgesColorAttributes.push(edgeColorObj);
-              }
-            }
-
-            var attr = edge[config.edgeColorAttribute];
-            if (attr) {
-              if (tmpObjEdges.hasOwnProperty(attr)) {
-                edgeObj.color = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
-                //edgeObj.style.fill = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
-                edgeObj[config.edgeColorAttribute] = attr;
-                edgeObj.attributeColor = tmpObjEdges[attr];
-              } else {
-                tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
-                edgeObj.color = tmpObjEdges[attr];
-                //edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
-              }
-              edgeObj.colorAttributeFound = true;
-            } else {
-              edgeObj.colorAttributeFound = false;
-            }
-          }
-        }
-        edgeObj.sortColor = edgeObj.color;
-        edgesObj[edge._id] = edgeObj;
-      });
-
-      _.each(obj.vertices, function (node) {
-        if (node !== null) {
-          nodesObj[node._id] = generateNodeObject(node);
-        }
-      });
-    });
-
-    // In case our AQL query did not deliver any nodes, we will put the "startVertex" into the "nodes" list
-    // as well (to be able to display at least the starting point of our graph)
-    if (Object.keys(nodesObj).length === 0 && startVertex) {
-      nodesObj[startVertex._id] = generateNodeObject(startVertex);
-    }
-
-    let nodeColorAttributeFound;
-    let nodeSizeAttributeFound;
-    
-    _.each(nodesObj, function (node) {
-      if (config.nodeSizeByEdges === 'true') {
-        // + 10 visual adjustment sigma
-        node.nodeEdgesCount = nodeEdgesCount[node.id];
-        node.value = nodeEdgesCount[node.id];
-        connectionsCounts.push(nodeEdgesCount[node.id]);
-
-        // if a node without edges is found, use def. size 10
-        if (Number.isNaN(node.size)) {
-          node.size = 10;
-        }
-      }
-
-      if(multipleIds !== undefined) {
-        // mark every starting node
-        if(multipleIds.includes(node.id)) {
-          node.borderWidth = 4;
-          node.shadow = {
-            enabled: true,
-            color: 'rgba(0,0,0,0.5)',
-            size: 16,
-            x: 0,
-            y: 0
-          };
-          node.shapeProperties = {
-            borderDashes: [10, 15]
-          };
-        }
-      } else {
-        // mark the one starting node
-        if(node.id === startVertex._id) {
-          node.borderWidth = 4;
-          node.shadow = {
-            enabled: true,
-            color: 'rgba(0,0,0,0.5)',
-            size: 16,
-            x: 0,
-            y: 0
-          };
-          node.shapeProperties = {
-            borderDashes: [10, 15]
-          };
-        }
-      }
-      if (node.colorAttributeFound) {
-          nodeColorAttributeFound = true;
-      }
-      if (node.sizeAttributeFound) {
-          nodeSizeAttributeFound = true;
-      }
-      nodesArr.push(node);
-    });
-
-    var nodeNamesArr = [];
-    _.each(nodeNames, function (found, key) {
-      nodeNamesArr.push(key);
-    });
-
-    let edgeColorAttributeFound;
-    // array format for sigma.js
-    _.each(edgesObj, function (edge) {
-      if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
-        edgesArr.push(edge);
-      }
-      if(edge.colorAttributeFound) {
-        edgeColorAttributeFound = true;
-      }
-    });
-
-    const interactionOptions = {
-      dragNodes: true,
-      dragView: true,
-      hideEdgesOnDrag: false,
-      hideNodesOnDrag: false,
-      hover: true,
-      hoverConnectedEdges: false,
-      keyboard: {
-        enabled: false,
-        speed: {
-          x: 3,
-          y: 3,
-          zoom: 0.02
-        },
-        bindToWindow: false
-      },
-      multiselect: false,
-      navigationButtons: false,
-      selectable: true,
-      selectConnectedEdges: false,
-      tooltipDelay: 300,
-      zoomSpeed: 0.25,
-      zoomView: true
-    };
-
-    const barnesHutOptions = {
-      interaction: interactionOptions,
-      layout: {
-          randomSeed: 0,
-          hierarchical: false
-      },
-      edges: {
-        smooth: { type:"dynamic" },
-        arrows: {
-          to: {
-            enabled: (config.edgeDirection === "true"),
-            type: "arrow",
-            scaleFactor: 0.5
-          },
-        },
-      },
-      physics: {
-          barnesHut: {
-              gravitationalConstant: -2250,
-              centralGravity: 0.4,
-              springLength: 76,
-              damping: 0.095
-          },
-          solver: "barnesHut"
-      }
-    };
-
-    const hierarchicalOptions = {
-      interaction: interactionOptions,
-        layout: {
-          randomSeed: 0,
-          hierarchical: {
-            levelSeparation: 150,
-            nodeSpacing: 300,
-            direction: "UD"
-          },
-        },
-        edges: {
-          smooth: { type:"dynamic" },
-          arrows: {
-            to: {
-              enabled: (config.edgeDirection === "true"),
-              type: "arrow",
-              scaleFactor: 0.5
-            },
-          },
-        },
-        physics: {
-          barnesHut: {
-            gravitationalConstant: -2250,
-            centralGravity: 0.4,
-            damping: 0.095
-          },
-          solver: "barnesHut"
-        }
-    };
-
-    const forceAtlas2BasedOptions = {
-      interaction: interactionOptions,
-          layout: {
-              randomSeed: 0,
-              hierarchical: false
-          },
-          edges: {
-            smooth: { type:"dynamic" },
-            arrows: {
-              to: {
-                enabled: (config.edgeDirection === "true"),
-                type: "arrow",
-                scaleFactor: 0.5
-              },
-            },
-          },
-          physics: {
-            forceAtlas2Based: {
-              springLength: 10,
-              springConstant: 1.5,
-              gravitationalConstant: -500
-            },
-            minVelocity: 0.75,
-            solver: "forceAtlas2Based"
-          }
-      };
-
-      let layoutObject = hierarchicalOptions;
-      
-      switch (config.layout) {
-        case 'forceAtlas2':
-          layoutObject = forceAtlas2BasedOptions;
-          break;
-        case 'barnesHut':
-          layoutObject = barnesHutOptions;
-          break;
-        case 'hierarchical':
-          layoutObject = hierarchicalOptions;
-          break;
-        default:
-          layoutObject = barnesHutOptions;
-      }
+    // Build final response
     const nodeSizeAttributeMessage = 
-      !nodeSizeAttributeFound && config.nodeSize
+      !processedData.nodeSizeAttributeFound && config.nodeSize
         ? "Invalid attribute specified"
         : "";
     const nodeColorAttributeMessage = 
-      !nodeColorAttributeFound && config.nodeColorAttribute
+      !processedData.nodeColorAttributeFound && config.nodeColorAttribute
         ? "Invalid attribute specified"
         : "";
     const edgeColorAttributeMessage = 
-      !edgeColorAttributeFound && config.edgeColorAttribute
+      !processedData.edgeColorAttributeFound && config.edgeColorAttribute
         ? "Invalid attribute specified"
         : "";
+
     toReturn = {
-      nodes: nodesArr,
-      edges: edgesArr,
+      nodes: processedData.nodesArr,
+      edges: processedData.edgesArr,
       settings: {
         nodeColorAttributeMessage,
         nodeSizeAttributeMessage,
@@ -1791,12 +1905,12 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         vertexCollections: vertexCollections,
         edgesCollections: edgesCollections,
         startVertex: startVertex,
-        nodesColorAttributes: nodesColorAttributes,
-        edgesColorAttributes: edgesColorAttributes,
-        nodesSizeValues: nodesSizeValues,
-        nodesSizeMinMax: [Math.min(...nodesSizeValues), Math.max(...nodesSizeValues)],
-        connectionsCounts: connectionsCounts,
-        connectionsMinMax: [Math.min(...connectionsCounts), Math.max(...connectionsCounts)]
+        nodesColorAttributes: processedData.nodesColorAttributes,
+        edgesColorAttributes: processedData.edgesColorAttributes,
+        nodesSizeValues: processedData.nodesSizeValues,
+        nodesSizeMinMax: processedData.nodesSizeValues.length > 0 ? [Math.min(...processedData.nodesSizeValues), Math.max(...processedData.nodesSizeValues)] : [null, null],
+        connectionsCounts: processedData.connectionsCounts,
+        connectionsMinMax: processedData.connectionsCounts.length > 0 ? [Math.min(...processedData.connectionsCounts), Math.max(...processedData.connectionsCounts)] : [null, null]
       }
     };
     if (isEnterprise) {

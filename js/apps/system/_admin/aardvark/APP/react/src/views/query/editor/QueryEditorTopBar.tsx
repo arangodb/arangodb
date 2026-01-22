@@ -73,7 +73,7 @@ export const QueryEditorTopBar = () => {
       )}
       <Flex marginLeft="auto" gap="4" alignItems="center">
         <ExternalLink
-          href={`https://docs.arangodb.com/${version}/develop/http-api/queries/aql-queries/#create-a-cursor`}
+          href={`https://docs.arango.ai/arangodb/${version}/develop/http-api/queries/aql-queries/#create-a-cursor`}
         >
           Docs
         </ExternalLink>

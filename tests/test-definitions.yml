@@ -1,0 +1,780 @@
+# https://github.com/arangodb/oskar#testing
+
+# Single Server only Tests
+- single_server_only:
+    options:
+      type: single
+    suites:
+      - BackupAuthNoSysTests
+      - BackupAuthSysTests
+      - BackupNoAuthSysTests
+      - arangosh
+- single_server_only_part2:
+    options:
+      type: single
+    suites:
+      - arangobench
+      - permissions
+      - paths_server
+      - version
+
+# Single Server Replication Tests
+- replication_fuzz:
+    options:
+      priority: 500
+      parallelity: 4
+      size: small
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+- replication_ongoing:
+    options:
+      priority: 500
+      parallelity: 3
+      size: small
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+- replication_ongoing_frompresent:
+    options:
+      parallelity: 3
+      size: small
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+- replication_ongoing_global:
+    options:
+      priority: 500
+      parallelity: 3
+      size: small
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+- replication_ongoing_global_spec:
+    options:
+      parallelity: 3
+      size: small
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+# one run for each test...
+- replication_static:
+    options:
+      priority: 500
+      parallelity: 3
+      size: small
+      type: single
+      buckets: 2
+    args:
+      extraArgs:log.level: replication=trace
+      extraArgs:experimental-vector-index: true
+# TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
+# For CircleCI we have a special case in the generate_config script to override this. Once we can change the buckets
+# here, make sure to remove this special case!
+- replication_sync:
+    options:
+      priority: 8000
+      buckets: 9
+      parallelity: 3
+      size: medium
+      type: single
+    args:
+      extraArgs:log.level: replication=trace
+
+- shell_replication:
+    options:
+      parallelity: 3
+      size: small
+      type: single
+- http_replication:
+    options:
+      priority: 500
+      parallelity: 3
+      size: small
+      type: single
+
+
+- authentication_audit_endpoints_import_export_agency:
+    options:
+      type: single
+    suites:
+      - fuerte:
+          args:
+            protocol: ssl
+          requires:
+            coverage: false
+      - endpoints:
+          args:
+            skipEndpointsIpv6: true
+      - audit_client
+      - audit_server
+      - authentication
+      - importing
+      - export
+      - agency
+      - agency-restart
+      - fuerte:
+          requires:
+            coverage: false
+- recovery:
+    options:
+      priority: 2000
+      buckets: 8
+      parallelity: 3
+      size: small
+      type: single
+
+# cluster
+- recovery_cluster:
+    options:
+      priority: 2000
+      type: cluster
+      buckets: 8
+    args:
+      extremeVerbosity: true
+
+- recovery_server:
+    options:
+      priority: 2000
+      buckets: 3
+      parallelity: 3
+      size: small
+      type: single
+
+- shell_api:
+    options:
+      priority: 500
+      type: single
+
+- shell_api_multi:
+    options:
+      priority: 500
+      type: single
+    suites:
+      - shell_api_multi:
+          args:
+            http: true
+      - shell_api_multi:
+          args:
+            ssl: true
+            suffix: ssl
+
+# Shell client tests Single Server; distribute evenly
+- shell_client:
+    options:
+      priority: 250
+      parallelity: 2
+      buckets: 4
+      type: single
+      size: medium
+
+# shell_client_multi tests run quite long, so want to have a separate job for each protocol
+- shell_client_multi:
+    options:
+      priority: 1500
+      parallelity: 2
+      type: single
+      suffix: http2
+    args:
+      http2: true
+- shell_client_multi:
+    options:
+      priority: 1500
+      parallelity: 2
+      type: single
+      suffix: http
+    args:
+      http: true
+
+- shell_client_transaction:
+    options:
+      priority: 750
+      type: single
+    suites:
+      - shell_client_transaction:
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_transaction:
+          args:
+            http: true
+            suffix: http
+
+- shell_client_traffic:
+    options:
+      priority: 250
+      parallelity: 1
+      type: single
+    suites:
+      - shell_client_traffic:
+          args:
+            http: true
+            suffix: http
+      - shell_client_traffic:
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_traffic:
+          args:
+            http: true
+            ssl: true
+            suffix: http-ssl
+      - shell_client_traffic:
+          args:
+            http2: true
+            ssl: true
+            suffix: http2-ssl
+
+- shell_client_aql:
+    options:
+      buckets: 19
+      priority: 250
+      type: single
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
+
+- gtest_iresearch:
+    options:
+      priority: 1000
+      parallelity: 3
+      size: medium
+      type: single
+    requires:
+      coverage: false
+- gtest_arangodb:
+    options:
+      priority: 1000
+      parallelity: 3
+      size: large
+      type: single
+    requires:
+      coverage: false
+- rta_makedata:
+    options:
+      type: mixed
+    suites:
+      - rta_makedata:
+          args:
+            suffix: single
+      - rta_makedata:
+          args:
+            cluster: true
+            suffix: cluster
+      - rta_makedata:
+          args:
+            cluster: true
+            forceOneShard: true
+            suffix: cluster-oneshard
+
+- chaos:
+    options:
+      type: cluster
+      parallelity: 8
+    requires:
+      coverage: false
+      full: false
+    args:
+      dumpAgencyOnError: true
+- chaos_subq:
+    options:
+      priority: 1000
+      size: medium+
+    requires:
+      coverage: false
+      full: true
+    arangosh_args:
+      javascript.v8-max-heap: "32768"
+      javascript.gc-interval: "25"
+    args:
+      dumpAgencyOnError: true
+
+- arangobench_deadlock_audit:
+    options:
+      priority: 1000
+      type: mixed
+    suites:
+      - deadlock:
+          args:
+            dumpAgencyOnError: true
+            cluster: true
+      - arangobench:
+          args:
+            dumpAgencyOnError: true
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: cluster
+            dumpAgencyOnError: true
+            cluster: true
+      - audit_client:
+          args:
+            cluster: true
+      - audit_server:
+          args:
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: single
+
+- restart:
+    options:
+      priority: 1000
+      size: medium
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+      forceJson: true
+
+- load_balancing:
+    options:
+      priority: 500
+      size: medium
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- load_balancing_auth:
+    options:
+      priority: 500
+      size: small
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+
+#- replication2_client:
+#    options:
+#      size: small
+#      type: cluster
+#- replication2_server:
+#    options:
+#      size: medium
+#      type: cluster
+#      buckets: 3
+#    args:
+#        --dumpAgencyOnError true
+# see also DISABLED restart tests when re-enabling!
+
+- resilience_analyzers:
+    options:
+      priority: 500
+      size: medium
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- resilience_failover:
+    options:
+      priority: 1200
+      size: medium
+      buckets: 4
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- resilience_move:
+    options:
+      priority: 600
+      size: medium
+      buckets: 3
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- resilience_sharddist:
+    options:
+      size: small
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+
+- shell_api:
+    options:
+      priority: 500
+      type: cluster
+
+- shell_api_multi:
+    options:
+      priority: 500
+      type: cluster
+      suffix: http
+- shell_api_multi:
+    options:
+      priority: 500
+      type: cluster
+      suffix: https
+    args:
+      protocol: ssl
+
+# shell_client_multi tests run quite long, so want to have a separate job for each protocol
+- shell_client_multi:
+    options:
+      priority: 1500
+      type: cluster
+      suffix: http
+    args:
+      http: true
+- shell_client_multi:
+    options:
+      priority: 1500
+      type: cluster
+      suffix: http2
+    args:
+      http2: true
+
+# different number of buckets in cluster
+- shell_client_aql:
+    options:
+      priority: 1000
+      size: medium+
+      type: cluster
+      buckets: 20
+    args:
+      dumpAgencyOnError: true
+      # TODO: BTS-2283
+      encryptionAtRest: false
+- shell_client:
+    options:
+      priority: 500
+      type: cluster
+      size: medium+
+      buckets: 20
+    args:
+      dumpAgencyOnError: true
+- shell_client_transaction:
+    options:
+      priority: 500
+      type: cluster
+      parallelity: 5
+      size: small
+      buckets: 5
+    args:
+      dumpAgencyOnError: true
+#- shell_client_replication2_recovery:
+#    options:
+#      priority: 500
+#      size: medium
+#      type: cluster
+#    args:
+#      dumpAgencyOnError: true
+
+
+# shell aql vector index tests
+- shell_client_aql_vector:
+    options:
+      priority: 1000
+      size: medium+
+      type: cluster
+      buckets: 1
+    args:
+      dumpAgencyOnError: true
+
+# Common Tests
+- import_export:
+    options:
+      parallelity: 5
+      size: small
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - importing
+      - export
+
+- hot_backup:
+    options:
+      buckets: auto
+      type: single
+      size: medium
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
+- hot_backup:
+    options:
+      buckets: auto
+      type: cluster
+      size: large
+      parallelity: 5
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
+
+# frequent restarts impose more threats to the SUT, increase parallelity.
+- server_parameters:
+    options:
+      priority: 1000
+      parallelity: 3
+      buckets: 3
+      type: single
+    args:
+      dumpAgencyOnError: true
+- server_parameters:
+    options:
+      priority: 1000
+      parallelity: 5
+      buckets: 10
+      size: large
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+- server_permissions:
+    options:
+      priority: 1000
+      parallelity: 5
+      size: small
+      buckets: 2
+    args:
+      dumpAgencyOnError: true
+
+# Dump Tests
+- dump_single:
+    options:
+      buckets: auto
+      type: single
+      size: medium
+    suites:
+      - dump_jwt
+      - dump_multiple_same
+      - dump_multiple_two
+      - dump_non_parallel
+      - dump_maskings
+      - dump
+      - dump:
+          options:
+            suffix: _vpack
+          args:
+            dumpVPack: true
+        # takes long, needs to go first. However, doesn't utilize the SUT hard.
+      - dump_with_crashes:
+          options:
+            parallelity: 1
+            priority: 2000
+      - dump_with_crashes_non_parallel:
+          options:
+            parallelity: 1
+            priority: 2000
+
+- dump_cluster_medium:
+    options:
+      buckets: auto
+      type: cluster
+      size: medium
+      parallelity: 5
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - dump
+      - dump:
+            options:
+              suffix: _vpack
+            args:
+              dumpVPack: true
+      - dump_authentication
+      - dump_jwt
+      - dump_multiple_same
+      - dump_non_parallel
+      - dump_maskings
+      - dump_encrypted
+      - dump_mixed_cluster_single
+      - dump_mixed_cluster_single:
+            options:
+              suffix: vpack
+            args:
+              dumpVPack: true
+      - dump_with_crashes:
+            options:
+              parallelity: 1
+              priority: 2000
+            requires:
+              full: true
+      - dump_with_crashes_non_parallel:
+            options:
+              parallelity: 1
+              priority: 2000
+        # BTS-1852 enable after fix:
+        #- dump:
+        #    options:
+        #      name: dump_singleshard_cluster
+        #    args:
+        #      dumpVPack: true
+        #      forceOneShard: true
+
+- dump_cluster_large:
+    options:
+      buckets: auto
+      type: cluster
+      size: large
+      parallelity: 5
+    args:
+      extremeVerbosity: true
+      dumpAgencyOnError: true
+    suites:
+      - dump_multiple_two
+      - dump_mixed_single_cluster
+      - dump_mixed_single_cluster:
+            options:
+              suffix: vpack
+            args:
+              dumpVPack: true
+
+# Full Tests Single Server
+- shell_fuzzer:
+    options:
+      type: cluster
+      priority: 500
+      parallelity: 6
+      size: large
+    requires:
+      full: true
+      coverage: false
+    arangosh_args:
+      log.level: httpclient=trace
+      log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+- shell_fuzzer:
+    options:
+      type: single
+      priority: 500
+    requires:
+      full: true
+      coverage: false
+    arangosh_args:
+      log.level: httpclient=trace
+      log.output: httpclient=file://@TEMP_BASE_DIR@/httptrace.log
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+- authentication_parameters:
+    options:
+      type: single
+      priority: 1000
+    requires:
+      full: true
+- config:
+    options:
+      type: single
+      priority: 1000
+    requires:
+      full: true
+- foxx_manager:
+    options:
+      type: single
+      priority: 500
+    requires:
+      full: true
+- queryCacheAuthorization:
+    options:
+      type: single
+      priority: 500
+    requires:
+      full: true
+- readOnly:
+    options:
+      type: single
+      priority: 500
+    requires:
+      full: true
+- replication_aql:
+    options:
+      priority: 1000
+      type: single
+    requires:
+      full: true
+- replication_random:
+    options:
+      priority: 1000
+      type: single
+
+    requires:
+      full: true
+# Full Cluster Tests
+- authentication:
+    options:
+      type: cluster
+      priority: 500
+      buckets: 3
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- chaos:
+    options:
+      type: cluster
+      priority: 9600
+      size: large
+      # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+      timeLimit: 9600
+    requires:
+      coverage: false
+      full: true
+    args:
+      dumpAgencyOnError: true
+      skipNightly: false
+- resilience_failover_failure:
+    options:
+      type: cluster
+      priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- resilience_failover_view:
+    options:
+      type: cluster
+      priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- resilience_transactions:
+    options:
+      type: cluster
+      priority: 500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+- wal_cleanup:
+    options:
+      type: cluster
+      priority: 2500
+    requires:
+      full: true
+    args:
+      dumpAgencyOnError: true
+
+# Common Full Tests
+- communication:
+    options:
+      buckets: auto
+      priority: 1000
+      parallelity: 2
+      type: single
+    requires:
+      full: true
+    suites:
+      - communication
+      - communication_ssl
+- communication:
+    options:
+      buckets: auto
+      priority: 1000
+      size: large
+      parallelity: 6
+      type: cluster
+    requires:
+      full: true
+    suites:
+      - communication
+      - communication_ssl
+

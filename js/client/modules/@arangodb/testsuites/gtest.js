@@ -86,13 +86,13 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     }
     options.commandSwitches = options.commandSwitches.concat(testoptions);
   }
-  let results = { failed: 0 };
-  let rootDir = fs.join(fs.getTempPath(), name);
-  let testResultJsonFile = fs.join(rootDir, 'testResults.json');
+  let results = { failed: 0, [name]: {}};
 
   const binary = locateGTest(testfilename);
   if (binary !== '') {
     let tmpMgr = new tmpDirMmgr('gtest', options);
+    let rootDir = fs.join(tmpMgr.tempDir, name);
+    let testResultJsonFile = fs.join(rootDir, 'testResults.json');
     let argv = [
       '--gtest_output=json:' + testResultJsonFile,
     ];
@@ -111,12 +111,16 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     // all non gtest args have to come last
     argv.push('--log.line-number');
     argv.push(options.extremeVerbosity ? "true" : "false");
-    results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
-    results[name].failed = results[name].status ? 0 : 1;
-    if (!results[name].status) {
-      results.failed += 1;
+    let ret = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+    results[name].failed = ret.status ? 0 : 1;
+    results[name].status = ret.status;
+    results = getGTestResults(testResultJsonFile, results, name);
+    if (Object.keys(results[name]).length < 2) {
+      if (!ret.status) {
+        results.failed += 1;
+      }
+      results[name][name] = ret;
     }
-    results = getGTestResults(testResultJsonFile, results);
     tmpMgr.destructor((results.failed === 0) && options.cleanup);
   } else {
     results.failed += 1;

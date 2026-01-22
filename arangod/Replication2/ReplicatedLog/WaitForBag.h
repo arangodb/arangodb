@@ -26,6 +26,9 @@
 #include <exception>
 #include <vector>
 
+#include "Futures/Promise.h"
+#include "Logger/LogContext.h"
+
 namespace arangodb::futures {
 template<typename T>
 class Future;
@@ -35,6 +38,8 @@ struct Unit;
 }  // namespace arangodb::futures
 
 namespace arangodb {
+
+class LogContext;
 
 struct WaitForBag {
   WaitForBag() = default;
@@ -48,7 +53,11 @@ struct WaitForBag {
   [[nodiscard]] auto empty() const noexcept -> bool;
 
  private:
-  std::vector<futures::Promise<futures::Unit>> _waitForBag;
+  struct PromiseWithContext {
+    futures::Promise<futures::Unit> promise;
+    LogContext logContext;
+  };
+  std::vector<PromiseWithContext> _waitForBag;
 };
 
 }  // namespace arangodb

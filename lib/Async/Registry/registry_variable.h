@@ -22,20 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "registry.h"
+#include "Async/Registry/promise.h"
+#include "Containers/Concurrent/Registry.h"
 
 namespace arangodb::async_registry {
 
-// TODO somehow get rid of this global variable
+using ThreadRegistry = containers::ThreadRegistry<Promise>;
+using Registry = containers::Registry<Promise>;
+
 /**
-   Global variable that holds all coroutines.
+   Global variable that holds all active coroutines.
+
+   Includes a list of coroutine thread owned lists, one for each initialized
+   thread.
  */
 extern Registry registry;
 
 /**
-   Get registry of all active coroutine promises on this thread.
+   Get thread registry of all active coroutine promises on current thread.
+
+   Creates the thread registry when called for the first time and adds it to the
+   global registry.
  */
 auto get_thread_registry() noexcept -> ThreadRegistry&;
 
-auto get_current_coroutine() noexcept -> Requester*;
 }  // namespace arangodb::async_registry

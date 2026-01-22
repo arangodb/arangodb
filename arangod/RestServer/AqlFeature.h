@@ -24,9 +24,15 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
+#include "Aql/QueryString.h"
 #include "RestServer/arangod.h"
+#include "Transaction/Context.h"
 
 namespace arangodb {
+
+class ApiRecordingFeature;
 
 class AqlFeature final : public ArangodFeature {
  public:
@@ -39,6 +45,17 @@ class AqlFeature final : public ArangodFeature {
   static void unlease() noexcept;
   void start() override final;
   void stop() override final;
+
+  ApiRecordingFeature* apiRecordingFeature();
+
+  std::shared_ptr<arangodb::aql::Query> createQuery(
+      std::shared_ptr<arangodb::transaction::Context> ctx,
+      arangodb::aql::QueryString queryString,
+      std::shared_ptr<velocypack::Builder> bindParameters,
+      arangodb::aql::QueryOptions options, Scheduler* scheduler);
+
+ private:
+  ApiRecordingFeature* _apiRecordingFeature = nullptr;
 };
 
 }  // namespace arangodb

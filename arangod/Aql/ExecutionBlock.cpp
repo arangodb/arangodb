@@ -33,8 +33,11 @@
 #include "Aql/Query.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -186,7 +189,9 @@ void ExecutionBlock::traceExecuteEnd(
                    return "nullptr";
                  } else {
                    auto const* opts = &_engine->getQuery().vpackOptions();
-                   VPackBuilder builder;
+                   velocypack::SupervisedBuffer sb(
+                       _engine->getQuery().resourceMonitor());
+                   VPackBuilder builder(sb);
                    block->toSimpleVPack(opts, builder);
                    return VPackDumper::toString(builder.slice(), opts);
                  }
@@ -206,3 +211,7 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
   return absl::StrCat(printTypeInfo(), " this=", (uintptr_t)this,
                       " id=", getPlanNode()->id().id());
 }
+
+auto ExecutionBlock::stopAsyncTasks() -> void {}
+
+auto ExecutionBlock::isPrefetchTaskActive() noexcept -> bool { return false; }

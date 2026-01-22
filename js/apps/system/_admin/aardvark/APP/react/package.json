@@ -16,9 +16,8 @@
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
     "arangojs": "^9.1.0",
-    "axios": "^0.21.2",
     "backbone": "^1.4.1",
-    "crypto-js": "^3.3.0",
+    "crypto-js": "^4.2.0",
     "d3": "^3.5.17",
     "formik": "^2.4.6",
     "framer-motion": "^11.3.19",
@@ -34,7 +33,7 @@
     "lodash": "^4.17.21",
     "marked": "^0.7.0",
     "minimatch": "^3.1.2",
-    "moment": "2.18.1",
+    "moment": "2.30.1",
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
     "papaparse": "^5.4.1",
@@ -98,8 +97,9 @@
     "@types/underscore": "^1.11.4",
     "compression-webpack-plugin": "^10.0.0",
     "html-loader": "^4.2.0",
-    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-middleware": "^2.0.9",
     "imports-loader": "^4.0.1",
+    "jest-environment-jsdom": "^30.0.5",
     "patch-package": "^6.5.1",
     "querystring-es3": "^0.2.1",
     "raw-loader": "^4.0.2",
@@ -109,6 +109,16 @@
     "typescript": "^4.9.5",
     "underscore-template-loader": "^1.2.0",
     "url": "^0.11.0"
+  },
+  "resolutions": {
+    "jest": "^30.0.5",
+    "jest-worker": "^30.0.5",
+    "@babel/traverse": "^7.28.0",
+    "braces": "^3.0.3",
+    "express": "^4.21.0",
+    "rollup": "^2.79.2",
+    "webpack-dev-middleware": "^5.3.4",
+    "qs": "^6.14.1"
   },
   "babel": {
     "presets": [

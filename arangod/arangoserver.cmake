@@ -1,11 +1,11 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
-  Actions/actions.cpp
   Actions/RestActionHandler.cpp
+  Actions/actions.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
-  Auth/UserManager.cpp
+  Auth/UserManagerImpl.cpp
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
@@ -61,6 +61,7 @@ add_library(arangoserver STATIC
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
@@ -69,8 +70,10 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
+  RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
+  RestHandler/RestAdminDeploymentHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
@@ -129,13 +132,14 @@ add_library(arangoserver STATIC
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
-  RestServer/InitDatabaseFeature.cpp
   RestServer/IOHeartbeatThread.cpp
+  RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
+  RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp
@@ -148,9 +152,9 @@ add_library(arangoserver STATIC
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
+  RestServer/VectorIndexFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  RestServer/VectorIndexFeature.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -179,7 +183,7 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8) 
+if (USE_V8)
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
     FeaturePhases/V8FeaturePhase.cpp

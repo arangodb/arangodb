@@ -8,10 +8,9 @@ import { CancelQueryButton } from "./CancelQueryButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 
 export const QueryResultLoading = ({
-  queryResult, index
+  queryResult
 }: {
   queryResult: QueryResultType;
-  index: number;
 }) => {
   return (
     <Flex
@@ -26,7 +25,7 @@ export const QueryResultLoading = ({
       <ResultTypeBox queryResult={queryResult} />
       <Spinner size="sm" />
       <Text>Query in progress</Text>
-      <CancelQueryButton index={index} asyncJobId={queryResult.asyncJobId} />
+      <CancelQueryButton asyncJobId={queryResult.asyncJobId} />
     </Flex>
   );
 };

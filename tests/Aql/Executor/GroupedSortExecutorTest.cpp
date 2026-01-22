@@ -58,14 +58,12 @@ class GroupedSortExecutorTest : public AqlExecutorTestCaseWithParam<SplitType> {
                                 std::vector<RegisterId> sortRegisters) {
     return GroupedSortExecutorInfos{getSortRegisters(sortRegisters),
                                     groupedRegisters, false, vpackOptions,
-                                    resourceMonitor};
+                                    monitor};
   }
 
  protected:
-  arangodb::GlobalResourceMonitor global{};
-  arangodb::ResourceMonitor resourceMonitor{global};
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0, false, resourceMonitor};
+  Variable sortVar{"mySortVar", 0, false, monitor};
 };
 
 INSTANTIATE_TEST_CASE_P(GroupedSortExecutorTest, GroupedSortExecutorTest,

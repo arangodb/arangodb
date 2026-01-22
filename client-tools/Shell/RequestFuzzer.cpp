@@ -22,66 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestFuzzer.h"
-
 namespace {
 
 static constexpr char alphaNumericChars[] =
     "0123456789"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz";
-
-static constexpr std::array<std::string_view, 13> wordListForRoute = {
-    {"/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
-     "/license", "/collection", "/database", "/current", "/log", "/"}};
-
-static constexpr std::array<std::string_view, 48> wordListForKeys = {
-    {"Accept",
-     "",
-     "Accept-Charset",
-     "Accept-Encoding",
-     "Accept-Language",
-     "Accept-Ranges",
-     "Allow",
-     "Authorization",
-     "Cache-control",
-     "Connection",
-     "Content-encoding",
-     "Content-language",
-     "Content-location",
-     "Content-MD5",
-     "Content-range",
-     "Content-type",
-     "Date",
-     "ETag",
-     "Expect",
-     "Expires",
-     "From",
-     "Host",
-     "If-Match",
-     "If-modified-since",
-     "If-none-match",
-     "If-range",
-     "If-unmodified-since",
-     "Last-modified",
-     "Location",
-     "Max-forwards",
-     "Pragma",
-     "Proxy-authenticate",
-     "Proxy-authorization",
-     "Range",
-     "Referer",
-     "Retry-after",
-     "Server",
-     "TE",
-     "Trailer",
-     "Transfer-encoding",
-     "Upgrade",
-     "User-agent",
-     "Vary",
-     "Via",
-     "Warning",
-     "Www-authenticate",
-     "random"}};
 
 }  // namespace
 
@@ -133,13 +79,13 @@ void RequestFuzzer::randomizeLineOperation(uint32_t numIts) {
         break;
       }
       case LineOperation::kAddLine: {
-        if (_usedKeys.size() <= wordListForKeys.size() - 5) {
+        if (_usedKeys.size() <= _wordListForKeys.size() - 5) {
           std::string keyName;
           do {
             uint32_t keyPos = generateRandNumWithinRange<uint32_t>(
-                0, static_cast<uint32_t>(wordListForKeys.size()) - 1);
-            if (wordListForKeys[keyPos] != "random") {
-              keyName = wordListForKeys[keyPos];
+                0, static_cast<uint32_t>(_wordListForKeys.size()) - 1);
+            if (_wordListForKeys[keyPos] != "random") {
+              keyName = _wordListForKeys[keyPos];
             } else {
               keyName.clear();
               randomizeCharOperation(keyName, 1);
@@ -177,7 +123,7 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
 
   std::string header;
   auto req = std::make_unique<fuerte::Request>();
-  fuerte::RestVerb requestType = generateHeader(header);
+  fuerte::RestVerb requestType = generateHeader(header, req->header.path);
   req->header.restVerb = requestType;
 
   if (requestType != fuerte::RestVerb::Get &&
@@ -204,7 +150,8 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
   return req;  // for not preventing copy elision
 }
 
-fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
+fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header,
+                                               std::string& path) {
   fuerte::RestVerb requestType = fuerte::RestVerb::Illegal;
 
   std::string firstLine;
@@ -217,13 +164,14 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
     randomizeCharOperation(firstLine, 1);
   }
   firstLine.append(" ");
+  auto len = firstLine.length();
   uint32_t numNestedRoutes =
       generateRandNumWithinRange<uint32_t>(1, kMaxNestedRoutes);
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
     uint32_t routePos = generateRandNumWithinRange<uint32_t>(
-        0, static_cast<uint32_t>(wordListForRoute.size()) - 1);
+        0, static_cast<uint32_t>(_wordListForRoute.size()) - 1);
     if (generateRandNumWithinRange<uint32_t>(0, 99) > 10) {
-      firstLine.append(wordListForRoute[routePos]);
+      firstLine.append(_wordListForRoute[routePos]);
     } else {
       firstLine.append("/");
       randomizeCharOperation(firstLine, 1);
@@ -256,7 +204,9 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
                                             (sizeof(alphaNumericChars) - 1)]);
     }
   }
-
+  if (len != firstLine.length()) {
+    path = firstLine.substr(len + 1, firstLine.length() - len + 1);
+  }
   firstLine.push_back(' ');
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");

@@ -1,7 +1,7 @@
 # ArangoDB configuration file
 # 
 # Documentation: 
-# https://www.arangodb.com/docs/stable/administration-configuration.html
+# https://docs.arango.ai/arangodb/stable/operations/administration/configuration/
 # 
 
 [database]
@@ -19,7 +19,7 @@ directory = @LOCALSTATEDIR@/lib/arangodb3
 #   endpoint = tcp://0.0.0.0:8529
 #   endpoint = tcp://127.0.0.1:8529
 #   endpoint = tcp://localhost:8529
-#   endpoint = tcp://myserver.arangodb.com:8529
+#   endpoint = tcp://myserver.arango.ai:8529
 #   endpoint = tcp://[::]:8529
 #   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
 #

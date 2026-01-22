@@ -1,5 +1,6 @@
 import React from "react";
 import { parseQuery } from "./queryHelper";
+import { isEqual } from "lodash";
 type CachedQuery = {
   query: string;
   parameter: { [key: string]: string };
@@ -35,6 +36,16 @@ export const useQueryEditorHandlers = () => {
         acc[bindParam] = prevQueryBindParam;
         return acc;
       }, {} as { [key: string]: string });
+
+      const areParamsEqual = isEqual(parsedBindParamsMap, prevQueryBindParams);
+      if (areParamsEqual) {
+        window.sessionStorage.setItem(
+          "cachedQuery",
+          JSON.stringify({ query: value, parameter: prevQueryBindParams })
+        );
+        return prevQueryBindParams;
+      }
+
       window.sessionStorage.setItem(
         "cachedQuery",
         JSON.stringify({ query: value, parameter: parsedBindParamsMap })

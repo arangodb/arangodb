@@ -83,6 +83,48 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
+  let coordinatorId = null;
+  try {
+    coordinatorId = JSON.parse(req.body).coordinatorId;
+  } catch (e) {
+    // noop
+  }
+  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
+  if (thisCoordinatorId && coordinatorId && thisCoordinatorId !== coordinatorId) {
+    // In case our original received request does not match the provided
+    // coordinatorId (if available), we don't want to upgrade/replace or install
+    // the foxx application on this coordinator, as another coordinator will
+    // perform the actual operation.
+
+    let coordinatorToEndpointMap = {};
+    const coordinators = global.ArangoClusterInfo.getCoordinators();
+    coordinators.forEach((coordinatorId) => {
+      const endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinatorId);
+      coordinatorToEndpointMap[coordinatorId] = cluster.endpointToURL(endpoint);
+    });
+
+    const endpointToUse = coordinatorToEndpointMap[coordinatorId];
+    if (!endpointToUse) {
+      // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
+      throw new ArangoError({
+        errorNum: errors.ERROR_ARANGO_ILLEGAL_NAME.code,
+        errorMessage: 'Supplied wrong coordinatorId'
+      });
+    }
+
+    const response = request[req.method.toLowerCase()]({
+      url: `${endpointToUse}${req.originalUrl}`,
+      headers: req.headers,
+      body: req.body,
+      json: false,
+    });
+
+    res.status(response.statusCode);
+    res.set(response.headers);
+    res.body = response.body;
+    return;
+  }
+  
   const mount = decodeURIComponent(req.queryParams.mount);
   const upgrade = req.queryParams.upgrade;
   const replace = req.queryParams.replace;
@@ -94,31 +136,13 @@ installer.use(function (req, res, next) {
   options.teardown = req.queryParams.teardown;
   let service;
 
-  let continueFoxxOperation = true;
-  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
-  if (thisCoordinatorId) {
-    if (req.body.coordinatorId) {
-      if (thisCoordinatorId !== req.body.coordinatorId) {
-        // In case our original received request does not match the provided
-        // coordinatorId (if available), we don't want to upgrade/replace or install
-        // the foxx application on this coordinator, as another coordinator will
-        // perform the actual operation.
-        continueFoxxOperation = false;
-      }
-    }
-  }
-
   try {
-    if (!continueFoxxOperation) {
-      service = FoxxManager.lookupService(mount);
+    if (upgrade) {
+      service = FoxxManager.upgrade(appInfo, mount, options);
+    } else if (replace) {
+      service = FoxxManager.replace(appInfo, mount, options);
     } else {
-      if (upgrade) {
-        service = FoxxManager.upgrade(appInfo, mount, options);
-      } else if (replace) {
-        service = FoxxManager.replace(appInfo, mount, options);
-      } else {
-        service = FoxxManager.install(appInfo, mount, options);
-      }
+      service = FoxxManager.install(appInfo, mount, options);
     }
   } catch (e) {
     if (e.isArangoError && [
@@ -228,55 +252,6 @@ installer.put('/generate', (req, res) => {
 `);
 
 installer.put('/zip', function (req) {
-  // This PUT API endpoint installs a ZIP file which has been already uploaded.
-  // In case of a SingleServer - no special treatment is required.
-  // In case of a Cluster - special treatment is required in case a LoadBalancer is being used.
-  // Therefore, this route now is able to read a "coordinatorId" if set in the request and will
-  // forward the request to the correct Coordinator which has the file upload available.
-
-  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
-  if (thisCoordinatorId) {
-    // If we end up here, we're in a clustered environment.
-    // We need to check if this Coordinator is the same as the requested Coordinator (coordinatorId).
-    if (req.body.coordinatorId) {
-      // Only do the forward if a coordinatorId is set, but differs to our local coordinatorId
-      if (thisCoordinatorId !== req.body.coordinatorId) {
-        const mount = decodeURIComponent(req.queryParams.mount);
-        const database = decodeURIComponent(req.database);
-
-        // CoordinatorId's differ - we need to forward this request to the proper coordinator.
-        let coordinatorToEndpointMap = {};
-        const coordinators = global.ArangoClusterInfo.getCoordinators();
-        coordinators.forEach((coordinatorId) => {
-          const endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinatorId);
-          coordinatorToEndpointMap[coordinatorId] = cluster.endpointToURL(endpoint);
-        });
-
-        const endpointToUse = coordinatorToEndpointMap[req.body.coordinatorId];
-        if (!endpointToUse) {
-          // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
-          throw new ArangoError({
-            errorNum: errors.ERROR_ARANGO_ILLEGAL_NAME.code,
-            errorMessage: 'Supplied wrong coordinatorId'
-          });
-        }
-        const forwardUrl = `${endpointToUse}/_db/${database}/_admin/aardvark/foxxes/zip?mount=${encodeURIComponent(mount)}`;
-
-        // Response body will be handled in the "installer.use" section and simply be listed instead of the actual
-        // upgrade / install / replace operation.
-        request.put({
-          url: forwardUrl,
-          json: true,
-          body: req.body,
-          headers: {
-            'Authorization': req.headers.authorization
-          }
-        });
-        return;
-      }
-    }
-  }
-
   const tempFile = joinPath(fs.getTempPath(), req.body.zipFile);
   req.body = fs.readFileSync(tempFile);
   try {

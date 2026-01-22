@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -75,7 +76,12 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<options::ProgramOptions> options(
         new options::ProgramOptions(
             argv[0], "Usage: " + context.binaryName() + " [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+            "For more information use:", BIN_DIRECTORY
+#ifndef USE_V8
+            ,
+            arangodb::options::ParseJsOps::parseJS
+#endif
+            ));
     ArangoshServer server(options, BIN_DIRECTORY);
 
     server.addFeatures(Visitor{
@@ -89,6 +95,12 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        [&](ArangoshServer& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(
+              server, context.binaryName());
+        },
+#endif
         [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());
         },

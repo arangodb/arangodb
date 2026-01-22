@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -40,10 +40,7 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-  bool isAdminUser() const;
-  bool canAccessUser(std::string const& user) const;
-
-  /// helper to generate a compliant response for individual user requests
+  // helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code,
                           velocypack::Builder const& doc);
 

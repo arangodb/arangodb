@@ -189,6 +189,16 @@ function shellClientMulti (options) {
 //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_server: {
+        status: false,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: false
+    };
+  }
+
   let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
 
   testCases = tu.splitBuckets(options, testCases);
@@ -233,7 +243,7 @@ function shellClientAqlVector (options) {
 
   let opts = ensureServers(options, 3);
   let moreOptions = {
-    "experimental-vector-index": "true",
+    "vector-index": "true",
   };
 
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
@@ -268,10 +278,14 @@ function shellClientTransaction(options) {
   let opts = ensureServers(options, 3);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
-  let moreOptions = {
-    "agency.supervision-ok-threshold": "1.5",
-    "agency.supervision-grace-period": "3.0",
-  };
+  let moreOptions = {};
+  if (options.cluster) {
+    moreOptions = {
+      "agency.supervision-ok-threshold": "1.5",
+      "agency.supervision-grace-period": "3.0",
+    };
+  }
+
   let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;

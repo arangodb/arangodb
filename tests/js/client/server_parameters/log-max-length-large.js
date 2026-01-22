@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertMatch, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,17 +25,17 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.max-entry-length': '1048576', 
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
@@ -54,49 +54,46 @@ function LoggerSuite() {
     },
 
     testLogEntries: function() {
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-require('console').log("testmann: " + Array(32768).join("x")); 
-require('console').log("testmann: " + Array(65536).join("y")); 
-require('console').log("testmann: " + Array(1048576).join("z")); 
-require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        logServer("testmann: start");
+        logServer("testmann: " + Array(32768).join("x"));
+        logServer("testmann: " + Array(65536).join("y"));
+        logServer("testmann: " + Array(1048576).join("z"));
+        logServer("testmann: done", "error");
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+          if (filtered.length === 5) {
+            break;
+          }
 
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === 5) {
-          break;
+          require("internal").sleep(0.5);
         }
+        assertEqual(5, filtered.length);
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(5, filtered.length);
-          
-      assertTrue(filtered[0].match(/testmann: start/));
-      assertTrue(filtered[1].match(/testmann: xxxxxxxx/));
-      assertTrue(filtered[2].match(/testmann: yyyyyyyy/));
-      assertTrue(filtered[3].match(/testmann: zzzzzzzz/));
-      assertTrue(filtered[4].match(/testmann: done/));
+        assertTrue(filtered[0].match(/testmann: start/));
+        assertTrue(filtered[1].match(/testmann: xxxxxxxx/));
+        assertTrue(filtered[2].match(/testmann: yyyyyyyy/));
+        assertTrue(filtered[3].match(/testmann: zzzzzzzz/));
+        assertTrue(filtered[4].match(/testmann: done/));
 
-      assertTrue(filtered[1].length >= 32768, filtered[1].length);
-      assertTrue(filtered[2].length >= 65536, filtered[2].length);
-      // this line must have been shortened
-      assertTrue(filtered[3].length === 1048576 + '...'.length, filtered[3].length);
+        assertTrue(filtered[1].length >= 32768, filtered[1].length);
+        assertTrue(filtered[2].length >= 65536, filtered[2].length);
+        // this line must have been shortened
+        assertTrue(filtered[3].length === 1048576 + '...'.length, filtered[3].length);
+      });
+      IM.reconnectMe();
     },
 
   };

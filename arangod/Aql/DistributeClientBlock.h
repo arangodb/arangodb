@@ -73,6 +73,26 @@ class DistributeClientBlock {
   auto execute(AqlCallStack callStack, ExecutionState upstreamState)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
+  /**
+   * @brief Check if we have received a hard limit
+   * @return true if we have received a hard limit
+   */
+  auto gotHardLimit() const -> bool;
+
+  /**
+   * @brief Reset the hard limit
+   */
+  auto resetHardLimit() -> void;
+
+  /**
+   * @brief Set hard limit has been seen.
+   */
+  auto setSeenHardLimit() -> void;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto remainingRows() const -> uint64_t;
+#endif
+
  private:
   /**
    * @brief This call will join as many blocks as available from the queue
@@ -96,6 +116,7 @@ class DistributeClientBlock {
   // This is unique_ptr to get away with everything being forward declared...
   std::unique_ptr<ExecutionBlock> _executor;
   bool _executorHasMore = false;
+  bool _gotHardLimit = false;
 };
 
 }  // namespace aql

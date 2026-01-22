@@ -22,6 +22,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <ranges>
+#include <vector>
 #include "IResearchViewExecutorBase.h"
 
 #include "Aql/ExecutionPlan.h"
@@ -56,8 +58,30 @@ inline velocypack::Slice getStoredValue(
   if (!slice.isObject()) {
     return velocypack::Slice::nullSlice();
   }
-  auto value = slice.get(sort.postfix);
-  return !value.isNone() ? value : velocypack::Slice::nullSlice();
+
+  //  split dot separated query attributes from the SORT clause.
+  //  eg.
+  //    Query: for doc in view sort doc.l1.l2.l3.l4 desc limit 10 return doc
+  //    primarySort: { field: "l1.l2", asc: true }
+  //  W.r.t to the sort field ("l1.l2"), the query attribute in the sort clause
+  //  has a postfix of "l3.l4"
+  auto splitPostfixAttrs = [](const std::string& input) {
+    std::string_view view = input;
+    std::vector<std::string> postfixAttrs;
+    for (auto part : std::views::split(view, '.')) {
+      postfixAttrs.emplace_back(part.begin(), part.end());
+    }
+
+    return postfixAttrs;
+  };
+
+  auto attrs = splitPostfixAttrs(sort.postfix);
+  slice = slice.get(attrs.begin(), attrs.end());
+  if (slice.isNone()) {
+    return velocypack::Slice::nullSlice();
+  }
+
+  return slice;
 }
 
 template<typename ValueType, typename HeapSortType>
@@ -81,8 +105,8 @@ class BufferHeapSortContext {
                                : lhs_stored->score > rhs_stored->score;
         }
       } else {
-        auto res = basics::VelocyPackHelper::compare(lhs_stored->slice,
-                                                     rhs_stored->slice, true);
+        auto res = basics::VelocyPackHelper::compare(
+            lhs_stored->slice.slice(), rhs_stored->slice.slice(), true);
         if (res != 0) {
           return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
         }
@@ -106,8 +130,8 @@ class BufferHeapSortContext {
         }
       } else {
         auto value = stored(cmp);
-        auto res =
-            basics::VelocyPackHelper::compare(lhs_values->slice, value, true);
+        auto res = basics::VelocyPackHelper::compare(lhs_values->slice.slice(),
+                                                     value, true);
         if (res != 0) {
           return (kSortMultiplier[size_t{cmp.ascending}] * res) < 0;
         }
@@ -236,13 +260,24 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSortDocument(
         valueSlot = val;
         slice = getStoredValue(valueSlot, cmp);
       }
+
+      //  COR-74, BTS-2283: Using SharedSlice in HeapSortValue struct since it
+      //  creates a copy of the slice representing the stored value and receives
+      //  ownership of that copy. As a result, we get different items in the
+      //  heap sort vector unlike before where we had the same Slice in all
+      //  buckets of the heap sort vector.
+      velocypack::SharedSlice ss;
+      velocypack::Builder builder(slice);
+      ss = std::move(builder).sharedSlice();
+
       if constexpr (fullHeap) {
-        _heapSortValues[heapSortValuesIndex].slice = slice;
+        _heapSortValues[heapSortValuesIndex].slice = ss;
       } else {
-        _heapSortValues.push_back(HeapSortValue{.slice = slice});
+        _heapSortValues.push_back(HeapSortValue{.slice = ss});
       }
-      TRI_ASSERT(getStoredValue(valueSlot, cmp).begin() ==
-                 _heapSortValues[heapSortValuesIndex].slice.begin());
+      TRI_ASSERT(getStoredValue(valueSlot, cmp)
+                     .binaryEquals(
+                         _heapSortValues[heapSortValuesIndex].slice.slice()));
       ++storedSliceIdx;
     }
     ++heapSortValuesIndex;
@@ -403,7 +438,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
-    aql::DocumentData data) noexcept {
+    aql::DocumentData data) {
   static_assert(isMaterialized);
   outputRow.moveValueInto(documentOutReg, inputRow, &data);
 }

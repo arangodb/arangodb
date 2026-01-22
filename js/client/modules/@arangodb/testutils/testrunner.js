@@ -53,7 +53,7 @@ function isBucketized(testBuckets) {
 }
 exports.sutFilters = {
   checkUsers: ["users"],
-  checkCollections: ["tasks", "collections", "views", "graphs"],
+  checkCollections: ["tasks-sjs", "collections", "views", "graphs"],
   checkDBs: ["databases"]
 };
 class testRunner {
@@ -81,11 +81,17 @@ class testRunner {
     this.shellTimeout = arango.timeout();
   }
   loadSutChecks(disableCheckFilter) {
+    const skipServerJS = this.options.skipServerJS;
     let sutCheckers = _.filter(fs.list(fs.join(__dirname, 'sutcheckers')),
                               function (p) {
                                 let extension = p.substr(-3);
                                 let basename = p.slice(0, -3);
+                                let filterByJs = true;
+                                if (skipServerJS) {
+                                  filterByJs = basename.indexOf('-sjs') === -1;
+                                }
                                 return (
+                                  filterByJs &&
                                   (extension === '.js') &&
                                   (disableCheckFilter.filter(f => f === basename).length === 0)
                                 );
@@ -138,13 +144,15 @@ class testRunner {
     }
     return true;
   }
-  setResult(te, serverDead, res) {
+  setResult(te, serverDead, res, which) {
     let orgRes = JSON.stringify(this.results[this.translateResult(te)]);
-    this.results[this.translateResult(te)] = res;
+    res.message += "\n - Original test status: \n" + orgRes;
+    this.results[this.translateResult(te)] = {
+      [`SUT-checker "${which}"`]: res
+    };
     if (serverDead) {
       this.serverDead = true;
     }
-    this.results[this.translateResult(te)].message += " - Original test status: \n" + orgRes;
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief Hooks that you can overload to be invoked in different phases:
@@ -177,17 +185,15 @@ class testRunner {
   abortTestOnError(te) {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
-      let originalMessage;
+      let originalMessage = "";
       if (this.results.hasOwnProperty(te) && this.results[this.translateResult(te)].hasOwnProperty('message')) {
         originalMessage = this.results[this.translateResult(te)].message;
       }
-      this.results['SKIPPED'] = {
-        status: false,
-        message: ""
-      };
       this.results[this.translateResult(te)] = {
-        status: false,
-        message: 'server unavailable for testing. ' + originalMessage
+        'FATAL': {
+          status: false,
+          message: 'server unavailable for testing. ' + originalMessage
+        }
       };
     } else {
       if (this.results['SKIPPED'].message !== '') {
@@ -398,7 +404,11 @@ class testRunner {
               continue;
             }
           } else {
-            this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
+            this.results[this.translateResult(te)] = {
+              "FATAL": {
+                message: "Instance not healthy! " + JSON.stringify(reply)
+              }
+            };
             continue;
           }
           first = false;

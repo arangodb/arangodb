@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -83,6 +84,12 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        [&](ArangoVPackServer& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(
+              server, context.binaryName());
+        },
+#endif
         [](ArangoVPackServer& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, false);
         }});

@@ -17,6 +17,7 @@ import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJ
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
+import type { QueryOptions } from "arangojs/database";
 
 const BASIC_QUERY_OPTIONS = {
   memoryLimit: {
@@ -85,6 +86,13 @@ const ADVANCED_QUERY_OPTIONS = {
     label: "Intermediate Commit Count"
   }
 };
+
+type QueryOptionsType = QueryOptions & {
+  optimizer?: {
+    rules?: string[];
+  };
+};
+
 export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
   const {
     queryOptions,
@@ -99,7 +107,7 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
   }
   return (
     <Box position="relative" height="full">
-      <ControlledJSONEditor
+      <ControlledJSONEditor<QueryOptionsType>
         ref={bindVariablesJsonEditorRef}
         mode="code"
         defaultValue={{
@@ -115,7 +123,7 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
           };
           if (!errors.length) {
             setQueryOptions(updatedOptions || {});
-            setDisabledRules(updatedValue.optimizer?.rules);
+            setDisabledRules(updatedValue.optimizer?.rules || []);
           }
         }}
         htmlElementProps={{
@@ -194,6 +202,20 @@ const QueryOptionForm = () => {
   );
 };
 
+const parseInputValue = (
+  value: string,
+  type: string
+): string | number | undefined => {
+  if (type === "number") {
+    // for number inputs, convert empty string to undefined to avoid defaulting to 0
+    if (value === "") {
+      return undefined;
+    }
+    return Number(value);
+  }
+  return value;
+};
+
 const QueryOptionRow = ({
   queryOptionKey,
   options
@@ -235,7 +257,7 @@ const QueryOptionRow = ({
         }}
         type={option.type}
         onChange={e => {
-          const updatedValue = e.target.value;
+          const updatedValue = parseInputValue(e.target.value, option.type);
           setQueryOptions(prev => {
             return { ...prev, [queryOptionKey]: updatedValue };
           });

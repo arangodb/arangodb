@@ -158,6 +158,19 @@ class GraphManager {
   Result applyOnAllGraphs(
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
+  /**
+   * @brief Find whether there is a named graph which contains any of the
+   * given edge collections.
+   *
+   * @param edgeCollectionNames The names of the edge collections to look for
+   *
+   * @return a set of fromCollections and toCollections implied by
+   * edgeCollections.
+   */
+  auto findImplicitVertexCollectionsFromEdgeCollections(
+      containers::FlatHashSet<std::string> const& edgeCollections) const
+      -> ResultT<containers::FlatHashSet<std::string>>;
+
  private:
   /**
    * @brief Invalidate all query optimizer caches in the database of this

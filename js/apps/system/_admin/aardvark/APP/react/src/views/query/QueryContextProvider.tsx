@@ -31,7 +31,7 @@ type QueryContextType = {
   onProfile: (options: QueryExecutionOptions) => void;
   onExplain: (options: QueryExecutionOptions) => void;
   queryResults: QueryResultType[];
-  onRemoveResult: (index: number) => void;
+  onRemoveResult: (asyncJobId: string) => void;
   onRemoveAllResults: () => void;
   currentView?: "saved" | "editor";
   setCurrentView: (view: "saved" | "editor") => void;

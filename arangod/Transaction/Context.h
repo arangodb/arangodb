@@ -26,7 +26,6 @@
 #include <memory>
 
 #include "Basics/Exceptions.h"
-#include "Containers/SmallVector.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
@@ -36,7 +35,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace velocypack {
-class Builder;
 struct CustomTypeHandler;
 }  // namespace velocypack
 
@@ -75,23 +73,11 @@ class Context {
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  /// @brief temporarily lease a std::string
-  TEST_VIRTUAL std::string* leaseString();
-
-  /// @brief return a temporary std::string object
-  TEST_VIRTUAL void returnString(std::string* str) noexcept;
-
-  /// @brief temporarily lease a Builder object
-  TEST_VIRTUAL arangodb::velocypack::Builder* leaseBuilder();
-
-  /// @brief return a temporary Builder object
-  TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
-
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options const* getVPackOptions() const noexcept;
 
   /// @brief get a custom type handler
-  virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
+  velocypack::CustomTypeHandler* getCustomTypeHandler() const noexcept;
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
@@ -130,7 +116,7 @@ class Context {
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
 
-  CollectionNameResolver const& resolver();
+  CollectionNameResolver const& resolver() const noexcept;
 
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
@@ -153,18 +139,18 @@ class Context {
       transaction::Options const& options);
 
   TRI_vocbase_t& _vocbase;
-  std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
-  containers::SmallVector<std::string*, 4> _strings;
+ private:
+  std::unique_ptr<CollectionNameResolver> _resolver;
+
+ protected:
+  std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   velocypack::Options _options;
 
   OperationOrigin _operationOrigin;
 
  private:
-  std::unique_ptr<CollectionNameResolver> _resolver;
-
   std::shared_ptr<CounterGuard> _counterGuard;
 
   struct {

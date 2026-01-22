@@ -30,6 +30,7 @@
 #include <thread>
 
 #include "Async/Registry/promise.h"
+#include "Containers/Concurrent/thread.h"
 #include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
@@ -273,7 +274,7 @@ class [[nodiscard]] Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    update_requester(async_registry::Requester::current_thread());
+    update_requester_to_current_thread();
     detail::waitImpl(*this);
   }
 
@@ -313,7 +314,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -344,7 +345,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -352,7 +353,7 @@ class [[nodiscard]] Future {
       } else {
         try {
           auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
-          f.update_requester({future_id});
+          f.update_requester(future_id);
           std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
@@ -380,7 +381,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       pr.setTry(detail::makeTryWith([&fn, &t] {
@@ -403,12 +404,12 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<F>(func), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       try {
         auto f = std::invoke(std::forward<F>(fn), std::move(t));
-        f.update_requester({future_id});
+        f.update_requester(future_id);
         std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
@@ -443,7 +444,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -477,7 +478,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    update_requester({future.id()});
+    update_requester(future.id());
     getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -486,7 +487,7 @@ class [[nodiscard]] Future {
         } catch (ET& e) {
           try {
             auto f = std::invoke(std::forward<DF>(fn), e);
-            f.update_requester({future_id});
+            f.update_requester(future_id);
             std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
@@ -503,16 +504,21 @@ class [[nodiscard]] Future {
     return future;
   }
 
-  auto update_requester(async_registry::Requester waiter) {
+  auto update_requester(std::optional<async_registry::PromiseId> requester) {
     if (_state != nullptr) {
-      _state->update_requester(waiter);
+      _state->update_requester(requester);
     }
   }
-  auto id() -> void* {
+  auto update_requester_to_current_thread() {
     if (_state != nullptr) {
-      return _state->id();
+      _state->update_requester_to_current_thread();
+    }
+  }
+  auto id() -> std::optional<async_registry::PromiseId> {
+    if (_state != nullptr) {
+      return {_state->id()};
     } else {
-      return nullptr;
+      return std::nullopt;
     }
   }
 

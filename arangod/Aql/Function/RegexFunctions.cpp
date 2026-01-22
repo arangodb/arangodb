@@ -28,6 +28,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/Utf8Helper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -72,7 +73,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 0);
 
   if (parameters.size() == 1) {
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openArray();
     builder->add(aqlValueToMatch.slice());
     builder->close();
@@ -82,7 +83,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex =
@@ -106,7 +107,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   icu_64_64::UnicodeString valueToMatch(
       buffer->data(), static_cast<uint32_t>(buffer->length()));
 
-  transaction::BuilderLeaser result(trx);
+  auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
 
   if (!isEmptyExpression && (buffer->length() == 0)) {
@@ -173,7 +174,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
   if (parameters.size() == 1) {
     // pre-documented edge-case: if we only have the first parameter, return it.
-    transaction::BuilderLeaser builder(trx);
+    auto builder = ThreadLocalBuilderLeaser::lease();
     builder->openArray();
     builder->add(aqlValueToSplit.slice());
     builder->close();
@@ -183,7 +184,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
 
   // build pattern from parameter #1
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   AqlValue const& regex =
@@ -207,7 +208,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   icu_64_64::UnicodeString valueToSplit(buffer->data(),
                                         static_cast<int32_t>(buffer->length()));
 
-  transaction::BuilderLeaser result(trx);
+  auto result = ThreadLocalBuilderLeaser::lease();
   result->openArray();
   if (!isEmptyExpression && (buffer->length() == 0)) {
     // Edge case: splitting an empty string by non-empty expression produces an
@@ -286,7 +287,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = getBooleanParameter(parameters, 2, false);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1
@@ -332,7 +333,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   transaction::Methods* trx = &expressionContext->trx();
   auto const& vopts = trx->vpackOptions();
   bool const caseInsensitive = getBooleanParameter(parameters, 3, false);
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   // build pattern from parameter #1

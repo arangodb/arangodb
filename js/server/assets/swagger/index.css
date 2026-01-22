@@ -59,4 +59,10 @@ body {
     font-family: sans-serif;
     font-weight: normal;
 }
+
+.swagger-ui .try-out__btn {
+    background-color: #5b6f3e;
+    border-color: #5b6f3e;
+    color: #fff;
+}
 /* #endregion */

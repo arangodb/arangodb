@@ -341,8 +341,7 @@ AqlValue functions::BitDeconstruct(ExpressionContext* expressionContext,
     VPackSlice v = value.slice();
     auto num = bitOperationValue<uint64_t>(v);
     if (num.has_value()) {
-      transaction::Methods* trx = &expressionContext->trx();
-      transaction::BuilderLeaser builder(trx);
+      auto builder = ThreadLocalBuilderLeaser::lease();
       builder->openArray();
       uint32_t compare = 1;
       for (uint32_t i = 0; i < functions::bitFunctionsMaxSupportedBits; ++i) {

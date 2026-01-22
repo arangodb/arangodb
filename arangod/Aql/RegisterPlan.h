@@ -24,21 +24,30 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/RegisterId.h"
 #include "Aql/VarInfoMap.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
+#include "Basics/Exceptions.h"
 
 #include <iosfwd>
 #include <map>
 #include <memory>
 #include <stack>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb::velocypack {
 class Builder;
 class Slice;
 }  // namespace arangodb::velocypack
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+namespace arangodb::tests::aql {
+struct ExecutionNodeMock;
+}
+#endif
 
 namespace arangodb::aql {
 
@@ -158,6 +167,25 @@ struct RegisterPlanT final
 
  private:
   unsigned int depth;
+};
+
+class MissingVariablesException : public basics::Exception {
+ public:
+  MissingVariablesException(Variable const* variable, ExecutionNode const* node,
+                            basics::SourceLocation location);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  MissingVariablesException(Variable const* variable,
+                            tests::aql::ExecutionNodeMock const* node,
+                            basics::SourceLocation location);
+#endif
+
+  auto variable() const noexcept -> Variable const*;
+  auto node() const noexcept -> ExecutionNode const*;
+
+ private:
+  Variable const* _variable{};
+  ExecutionNode const* _node{};
 };
 
 template<typename T>

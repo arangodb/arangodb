@@ -25,6 +25,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -53,7 +54,7 @@ RestImportHandler::RestImportHandler(ArangodServer& server,
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
-RestStatus RestImportHandler::execute() {
+auto RestImportHandler::executeAsync() -> futures::Future<futures::Unit> {
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;
 
@@ -99,14 +100,21 @@ RestStatus RestImportHandler::execute() {
       std::string const& documentType = _request->value("type", found);
 
       if (_request->contentType() == arangodb::ContentType::VPACK) {
-        return waitForFuture(createFromVPack(documentType));
+        co_await createFromVPack(documentType);
+        co_return;
       } else if (found &&
                  (documentType == "documents" || documentType == "array" ||
                   documentType == "list" || documentType == "auto")) {
-        return waitForFuture(createFromJson(documentType));
-      } else {
+        co_await createFromJson(documentType);
+        co_return;
+      } else if (!found || documentType == "") {
         // CSV
-        return waitForFuture(createFromKeyValueList());
+        co_await createFromKeyValueList();
+        co_return;
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "invalid value for 'type'");
+        co_return;
       }
     } break;
 
@@ -116,7 +124,7 @@ RestStatus RestImportHandler::execute() {
   }
 
   // this handler is done
-  return RestStatus::DONE;
+  co_return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +199,7 @@ ErrorCode RestImportHandler::handleSingleDocument(
   }
 
   // document ok, now import it
-  transaction::BuilderLeaser newBuilder(&trx);
+  auto newBuilder = ThreadLocalBuilderLeaser::lease();
   tempBuilder.clear();
 
   // add prefixes to _from and _to
@@ -235,8 +243,8 @@ ErrorCode RestImportHandler::handleSingleDocument(
     tempBuilder.close();
 
     if (tempBuilder.slice().length() > 0) {
-      VPackCollection::merge(*(newBuilder.builder()), slice,
-                             tempBuilder.slice(), false, false);
+      VPackCollection::merge(*(newBuilder.get()), slice, tempBuilder.slice(),
+                             false, false);
       slice = newBuilder->slice();
     }
   }
@@ -421,10 +429,12 @@ futures::Future<futures::Unit> RestImportHandler::createFromJson(
       if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
+        TRI_ASSERT(ptr < pos);
         parseVelocyPackLine(tmpBuilder, ptr, pos, success);
         ptr = pos + 1;
       } else {
         // last-line, non-empty
+        TRI_ASSERT(ptr < end);
         parseVelocyPackLine(tmpBuilder, ptr, end, success);
         ptr = end;
       }
@@ -712,6 +722,12 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
     --lineEnd;
   }
 
+  if (lineStart >= lineEnd) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string array found in first line");
+    co_return;
+  }
+
   *(const_cast<char*>(lineEnd)) = '\0';
   bool success = false;
   VPackBuilder parsedKeys;
@@ -817,7 +833,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
       --lineEnd;
     }
 
-    if (lineStart == lineEnd) {
+    if (lineStart >= lineEnd) {
       ++result._numEmpty;
       continue;
     }

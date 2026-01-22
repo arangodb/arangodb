@@ -30,6 +30,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
@@ -2015,7 +2016,7 @@ Result RocksDBCollection::lookupDocumentVPack(
     }
   }
 
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   rocksdb::PinnableSlice ps(buffer.get());
 
   RocksDBMethods* mthd =

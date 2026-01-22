@@ -482,23 +482,26 @@ void Collections::enumerate(
     TRI_vocbase_t* vocbase,
     std::function<void(std::shared_ptr<LogicalCollection> const&)> const&
         func) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::vector<std::shared_ptr<LogicalCollection>> colls =
-        ci.getCollections(vocbase->name());
-
-    for (std::shared_ptr<LogicalCollection> const& c : colls) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
-  } else {
-    for (auto const& c : vocbase->collections(false)) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
+  auto const collections = getNotDeleted(*vocbase);
+  for (auto& collection : collections) {
+    func(collection);
   }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
+    TRI_vocbase_t const& vocbase) {
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  if (ServerState::instance()->isCoordinator()) {
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    collections = ci.getCollections(vocbase.name());
+  } else {
+    collections = vocbase.collections(false);
+  }
+  std::vector<std::shared_ptr<LogicalCollection>> result;
+  std::erase_if(collections, [](std::shared_ptr<LogicalCollection> const& c) {
+    return c->deleted();
+  });
+  return collections;
 }
 
 /*static*/ Result methods::Collections::lookup(  // find collection
@@ -694,39 +697,31 @@ Collections::create(         // create collection
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
-      int tries = 0;
-      while (true) {
-        Result r = um->updateUser(exec.user(), [&](auth::User& entry) {
-          for (auto const& col : *results) {
-            // do not grant rights on system collections
-            if (!col->system()) {
-              entry.grantCollection(vocbase.name(), col->name(),
-                                    auth::Level::RW);
+      Result r = um->updateUser(
+          exec.user(),
+          [&](auth::User& entry) {
+            for (auto const& col : *results) {
+              // do not grant rights on system collections
+              if (!col->system()) {
+                entry.grantCollection(vocbase.name(), col->name(),
+                                      auth::Level::RW);
+              }
             }
-          }
-          return TRI_ERROR_NO_ERROR;
-        });
-        if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) ||
-            r.is(TRI_ERROR_USER_EXTERNAL)) {
-          // it seems to be allowed to created collections with an unknown user
-          break;
-        }
-        if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-          // This could be 116bb again, as soon as "old code" is removed
-          LOG_TOPIC("116bc", WARN, Logger::AUTHENTICATION)
-              << "Updating user failed with error: " << r.errorMessage()
-              << ". giving up!";
-          for (auto const& col : *results) {
-            events::CreateCollection(vocbase.name(), col->name(),
-                                     r.errorNumber());
-          }
-          return r;
-        }
-        // try again in case of conflict
-        // This could be ff123 again, as soon as "old code" is removed
-        LOG_TOPIC("ff124", TRACE, Logger::AUTHENTICATION)
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::Yes);
+      const bool expectedResult = r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) ||
+                                  r.is(TRI_ERROR_USER_EXTERNAL);
+      if (!expectedResult) {
+        // This could be 116bb again, as soon as "old code" is removed
+        LOG_TOPIC("116bc", WARN, Logger::AUTHENTICATION)
             << "Updating user failed with error: " << r.errorMessage()
-            << ". trying again";
+            << ". giving up!";
+        for (auto const& col : *results) {
+          events::CreateCollection(vocbase.name(), col->name(),
+                                   r.errorNumber());
+        }
+        return r;
       }
     }
   } catch (basics::Exception const& ex) {
@@ -1314,7 +1309,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
           [&](auth::User& entry) -> bool {
             return entry.removeCollection(dbname, collName);
           },
-          /*retryOnConflict*/ true);
+          auth::UserManager::RetryOnConflict::Yes);
     }
   }
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());

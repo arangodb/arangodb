@@ -37,6 +37,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
+const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";

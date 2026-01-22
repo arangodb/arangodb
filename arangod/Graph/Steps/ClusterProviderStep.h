@@ -29,6 +29,8 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/Types/ValidationResult.h"
+#include "Graph/Types/VertexRef.h"
+
 #include "Transaction/Methods.h"
 
 namespace arangodb::graph {
@@ -36,29 +38,9 @@ namespace arangodb::graph {
 template<class StepImpl>
 class ClusterProvider;
 
-class ClusterProviderStep
-    : public arangodb::graph::BaseStep<ClusterProviderStep> {
+class ClusterProviderStep : public arangodb::graph::BaseStep {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
-  using VertexType = arangodb::velocypack::HashedStringRef;
-
-  class Vertex {
-   public:
-    explicit Vertex(VertexType v) : _vertex(std::move(v)) {}
-
-    [[nodiscard]] VertexType const& getID() const noexcept;
-
-    bool operator<(Vertex const& other) const noexcept {
-      return _vertex < other._vertex;
-    }
-
-    bool operator>(Vertex const& other) const noexcept {
-      return _vertex > other._vertex;
-    }
-
-   private:
-    VertexType _vertex;
-  };
 
   class Edge {
    public:
@@ -74,18 +56,18 @@ class ClusterProviderStep
     EdgeType _edge;
   };
 
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+  ClusterProviderStep(VertexRef v, EdgeType edge, size_t prev,
                       FetchedType fetched, size_t depth, double weight);
-  ClusterProviderStep(VertexType v, size_t depth, double weight = 0.0);
+  ClusterProviderStep(VertexRef v, size_t depth, double weight = 0.0);
 
  private:
-  ClusterProviderStep(VertexType const& v, EdgeType const& edge, size_t prev);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+  ClusterProviderStep(VertexRef const& v, EdgeType const& edge, size_t prev);
+  ClusterProviderStep(VertexRef v, EdgeType edge, size_t prev,
                       FetchedType fetched);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+  ClusterProviderStep(VertexRef v, EdgeType edge, size_t prev,
                       FetchedType fetched, size_t depth);
 
-  explicit ClusterProviderStep(VertexType const& v);
+  explicit ClusterProviderStep(VertexRef const& v);
 
  public:
   ~ClusterProviderStep();
@@ -94,7 +76,7 @@ class ClusterProviderStep
     return _vertex < other._vertex;
   }
 
-  [[nodiscard]] Vertex const& getVertex() const noexcept { return _vertex; }
+  [[nodiscard]] VertexRef const& getVertex() const noexcept { return _vertex; }
   [[nodiscard]] Edge const& getEdge() const noexcept { return _edge; }
 
   [[nodiscard]] std::string toString() const {
@@ -123,20 +105,10 @@ class ClusterProviderStep
   bool isUnknown() const noexcept { return _validationStatus.isUnknown(); }
 
   // beware: returns a *copy* of the vertex id
-  [[nodiscard]] VertexType getVertexIdentifier() const {
-    return _vertex.getID();
-  }
+  [[nodiscard]] VertexRef getVertexIdentifier() const { return _vertex; }
 
   // beware: returns a *copy* of the edge id
   [[nodiscard]] EdgeType getEdgeIdentifier() const { return _edge.getID(); }
-
-  [[nodiscard]] std::string getCollectionName() const {
-    auto collectionNameResult = extractCollectionName(_vertex.getID());
-    if (collectionNameResult.fail()) {
-      THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-    }
-    return collectionNameResult.get().first;
-  }
 
   friend auto operator<<(std::ostream& out, ClusterProviderStep const& step)
       -> std::ostream&;
@@ -162,10 +134,15 @@ class ClusterProviderStep
   }
 
  private:
-  Vertex _vertex;
+  VertexRef _vertex;
   Edge _edge;
   FetchedType _fetchedStatus;
   ValidationResult _validationStatus;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ClusterProviderStep& x) {
+  return f.object(x).fields(f.field("vertex", x.getVertex().getID()),
+                            f.field("edge", x.getEdge().getID()));
+}
 
 }  // namespace arangodb::graph

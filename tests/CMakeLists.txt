@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
+  Aql/AqlMergeTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueCompare.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
@@ -130,6 +131,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/IndexAggregateScanExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
   Aql/Executor/LimitExecutorTest.cpp
   Aql/Executor/NoResultsExecutorTest.cpp
@@ -294,6 +296,8 @@ if (LINUX)
   endif ()
 endif ()
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
+
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
@@ -324,8 +328,9 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_async_registry_server
+  arango_tests_activity_registry
   arango_tests_basics
+  arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
   arango_tests_graph
@@ -333,6 +338,7 @@ target_link_libraries(arangodbtests
   arango_tests_zkd
   arango_tests_actor
   arango_tests_inspection
+  arango_tests_internal_rest_handler
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -414,8 +420,11 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(ActivityRegistry)
 add_subdirectory(Actor)
 add_subdirectory(Async)
-add_subdirectory(AsyncRegistryServer)
+add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
+add_subdirectory(SystemMonitor)
+add_subdirectory(InternalRestHandler)

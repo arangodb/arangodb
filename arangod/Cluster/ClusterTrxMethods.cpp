@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -285,94 +286,101 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                                   VPackBuffer<uint8_t>(), reqOpts, headers));
   }
 
-  return futures::collectAll(requests).thenValue(
-      [=, commitGuard = std::move(commitGuard)](
-          std::vector<Try<network::Response>>&& responses) -> Result {
-        if (state->isCoordinator()) {
-          TRI_ASSERT(state->id().isCoordinatorTransactionId());
+  auto fut = futures::collectAll(requests);
+  if (api == transaction::MethodsApi::Synchronous) {
+    // Wait here if the caller is synchronous, because in this case,
+    // skipScheduler is set and we must not execute arbitrary code on the
+    // network thread. Waiting here will ensure that the current thread
+    // continues execution after the following co_await, and not the network
+    // thread resolving the promise.
+    fut.wait();
+  }
+  return std::move(fut).thenValue([=, commitGuard = std::move(commitGuard)](
+                                      std::vector<Try<network::Response>>&&
+                                          responses) -> Result {
+    if (state->isCoordinator()) {
+      TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
-          Result error;
-          for (Try<arangodb::network::Response> const& tryRes : responses) {
-            network::Response const& resp =
-                tryRes.get();  // throws exceptions upwards
-            Result res = ::checkTransactionResult(tidPlus, status, resp);
-            if (res.fail()) {
-              LOG_TOPIC("59bb0", ERR, Logger::TRANSACTIONS)
-                  << " failed to " << stateString << " transaction "
-                  << state->id() << " on server " << resp.destination;
-              error = std::move(res);
-              if (resp.fail()) {
-                // only on communication error
-                state->vocbase()
-                    .metrics()
-                    .transactions_lost_subordinates->count();
-              }
-              break;
-            }
+      Result error;
+      for (Try<arangodb::network::Response> const& tryRes : responses) {
+        network::Response const& resp =
+            tryRes.get();  // throws exceptions upwards
+        Result res = ::checkTransactionResult(tidPlus, status, resp);
+        if (res.fail()) {
+          LOG_TOPIC("59bb0", ERR, Logger::TRANSACTIONS)
+              << " failed to " << stateString << " transaction " << state->id()
+              << " on server " << resp.destination;
+          error = std::move(res);
+          if (resp.fail()) {
+            // only on communication error
+            state->vocbase().metrics().transactions_lost_subordinates->count();
           }
-
-          return error;
+          break;
         }
+      }
 
-        TRI_ASSERT(state->isDBServer());
-        TRI_ASSERT(state->id().isLeaderTransactionId());
+      return error;
+    }
 
-        // Drop all followers that were not successful:
-        for (Try<arangodb::network::Response> const& tryRes : responses) {
-          network::Response const& resp =
-              tryRes.get();  // throws exceptions upwards
+    TRI_ASSERT(state->isDBServer());
+    TRI_ASSERT(state->id().isLeaderTransactionId());
 
-          Result res = ::checkTransactionResult(tidPlus, status, resp);
-          if (res.fail()) {  // remove followers for all participating
-                             // collections
-            ServerID follower = resp.serverId();
-            LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
+    // Drop all followers that were not successful:
+    for (Try<arangodb::network::Response> const& tryRes : responses) {
+      network::Response const& resp =
+          tryRes.get();  // throws exceptions upwards
+
+      Result res = ::checkTransactionResult(tidPlus, status, resp);
+      if (res.fail()) {  // remove followers for all participating
+                         // collections
+        ServerID follower = resp.serverId();
+        LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
+            << "synchronous replication of transaction " << stateString
+            << " operation: "
+            << "dropping follower " << follower
+            << " for all participating shards in"
+            << " transaction " << state->id().id() << " (status "
+            << arangodb::transaction::statusString(status)
+            << "), status code: " << static_cast<int>(resp.statusCode())
+            << ", message: " << resp.combinedResult().errorMessage();
+        state->allCollections([&](TransactionCollection& tc) {
+          auto cc = tc.collection();
+          if (cc) {
+            LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
                 << "synchronous replication of transaction " << stateString
                 << " operation: "
-                << "dropping follower " << follower
-                << " for all participating shards in"
-                << " transaction " << state->id().id() << " (status "
-                << arangodb::transaction::statusString(status)
-                << "), status code: " << static_cast<int>(resp.statusCode())
-                << ", message: " << resp.combinedResult().errorMessage();
-            state->allCollections([&](TransactionCollection& tc) {
-              auto cc = tc.collection();
-              if (cc) {
-                LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication of transaction " << stateString
-                    << " operation: "
-                    << "dropping follower " << follower << " for shard "
-                    << cc->vocbase().name() << "/" << tc.collectionName()
-                    << ": " << resp.combinedResult().errorMessage();
+                << "dropping follower " << follower << " for shard "
+                << cc->vocbase().name() << "/" << tc.collectionName() << ": "
+                << resp.combinedResult().errorMessage();
 
-                Result r = cc->followers()->remove(follower);
-                if (r.fail()) {
-                  LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
-                      << "synchronous replication: could not drop follower "
-                      << follower << " for shard " << cc->vocbase().name()
-                      << "/" << tc.collectionName() << ": " << r.errorMessage();
-                  if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-                    // In this case, we know that we are not or no longer
-                    // the leader for this shard. Therefore we need to
-                    // send a code which let's the coordinator retry.
-                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-                  } else {
-                    // In this case, some other error occurred and we
-                    // most likely are still the proper leader, so
-                    // the error needs to be reported and the local
-                    // transaction must be rolled back.
-                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                  }
-                }
+            Result r = cc->followers()->remove(follower);
+            if (r.fail()) {
+              LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
+                  << "synchronous replication: could not drop follower "
+                  << follower << " for shard " << cc->vocbase().name() << "/"
+                  << tc.collectionName() << ": " << r.errorMessage();
+              if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                // In this case, we know that we are not or no longer
+                // the leader for this shard. Therefore we need to
+                // send a code which let's the coordinator retry.
+                res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+              } else {
+                // In this case, some other error occurred and we
+                // most likely are still the proper leader, so
+                // the error needs to be reported and the local
+                // transaction must be rolled back.
+                res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               }
-              // continue dropping the follower for all shards in this
-              // transaction
-              return true;
-            });
+            }
           }
-        }
-        return Result();  // succeed even if some followers did not commit
-      });
+          // continue dropping the follower for all shards in this
+          // transaction
+          return true;
+        });
+      }
+    }
+    return Result();  // succeed even if some followers did not commit
+  });
 }
 
 Future<Result> commitAbortTransaction(transaction::Methods& trx,
@@ -438,7 +446,17 @@ Future<Result> beginTransactionOnLeaders(
 
       TransactionId const tid = state->id().child();
 
-      auto responses = co_await futures::collectAll(requests);
+      auto fut = futures::collectAll(requests);
+      if (api == transaction::MethodsApi::Synchronous) {
+        // Wait here if the caller is synchronous, because in this case,
+        // skipScheduler is set and we must not execute arbitrary code on the
+        // network thread. Waiting here will ensure that the current thread
+        // continues execution after the following co_await, and not the network
+        // thread resolving the promise.
+        fut.wait();
+      }
+
+      auto responses = co_await std::move(fut);
 
       // We need to make sure to get() all responses.
       // Otherwise they will eventually resolve and trigger the
@@ -506,8 +524,16 @@ Future<Result> beginTransactionOnLeaders(
       serverBefore = leader;
 #endif
 
-      auto const resolvedResponse =
-          co_await ::beginTransactionRequest(*state, leader, api);
+      auto fut = ::beginTransactionRequest(*state, leader, api);
+      if (api == transaction::MethodsApi::Synchronous) {
+        // Wait here if the caller is synchronous, because in this case,
+        // skipScheduler is set and we must not execute arbitrary code on the
+        // network thread. Waiting here will ensure that the current thread
+        // continues execution after the following co_await, and not the network
+        // thread resolving the promise.
+        fut.wait();
+      }
+      auto const resolvedResponse = co_await std::move(fut);
       if (resolvedResponse.fail()) {
         co_return resolvedResponse.combinedResult();
       }
@@ -551,7 +577,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     }
     TRI_ASSERT(state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED) ||
                state.id().isLeaderTransactionId());
-    transaction::BuilderLeaser builder(trx.transactionContextPtr());
+    auto builder = ThreadLocalBuilderLeaser::lease();
     ::buildTransactionBody(state, server, *builder);
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
@@ -588,7 +614,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
       value.append(" aql");  // This is a single AQL query
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      transaction::BuilderLeaser builder(trx.transactionContextPtr());
+      auto builder = ThreadLocalBuilderLeaser::lease();
       ::buildTransactionBody(state, server, *builder);
       headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction

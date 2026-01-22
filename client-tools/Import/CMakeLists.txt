@@ -18,7 +18,6 @@ add_executable(${BIN_ARANGOIMPORT}
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
-  arango
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

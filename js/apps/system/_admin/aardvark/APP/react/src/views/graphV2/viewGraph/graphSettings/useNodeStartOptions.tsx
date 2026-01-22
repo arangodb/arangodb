@@ -19,23 +19,28 @@ const fetchOptions = async ({
   values: OptionType[];
 }) => {
   const inputSplit = inputValue.split("/");
-  const [collectionName] = inputSplit;
   const db = getCurrentDB();
   if (inputSplit.length === 1) {
     // filter here
     const finalOptions = inputValue
       ? collectionOptions?.filter(option =>
-          option.value.includes(inputValue)
-        ) || []
+        option.value.includes(inputValue)
+      ) || []
       : collectionOptions || [];
     return Promise.resolve(finalOptions);
   }
-  const valuesList = values.map(value => value.value);
+  const [collectionName, documentKey] = inputSplit;
+  const valuesList = values
+    .map(value => value.value.split("/"))
+    .filter(valueSplit => valueSplit.length > 1 && valueSplit[0] === collectionName)
+    .map(valueSplit => valueSplit[1]);
   const colQuery = aql`
       FOR doc IN ${db.collection(collectionName)}
-      FILTER doc._id >= ${inputValue} && STARTS_WITH(doc._id, ${inputValue}) 
-      FILTER doc._id NOT IN ${valuesList}
+      FILTER doc._key >= ${documentKey}
+      FILTER doc._key NOT IN ${valuesList}
+      SORT doc._key
       LIMIT 5
+      FILTER STARTS_WITH(doc._key, ${documentKey}) 
       RETURN doc._id`;
 
   const cursor = await db.query(colQuery);
@@ -51,6 +56,14 @@ const fetchOptions = async ({
   });
 };
 
+const useDebouncedValue = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+  return debouncedValue;
+};
 /**
  * Takes the graph name and
  * the input entered by the user,
@@ -70,6 +83,8 @@ export const useNodeStartOptions = ({
   inputValue: string;
   values: OptionType[];
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const debouncedInputValue = useDebouncedValue(inputValue, 500);
   const [vertexOptions, setVertexOptions] = useState<
     OptionType[] | undefined
   >();
@@ -90,18 +105,21 @@ export const useNodeStartOptions = ({
     };
     fetchGraphVertexCollection();
   }, [graphName]);
-
+  useEffect(() => {
+    setIsLoading(true);
+  }, [inputValue]);
   // loads options based on inputValue
   useEffect(() => {
     const loadVertexOptions = async () => {
       const vertexOptions = await fetchOptions({
-        inputValue,
+        inputValue: debouncedInputValue,
         collectionOptions,
         values
       });
       setVertexOptions(vertexOptions);
+      setIsLoading(false);
     };
     loadVertexOptions();
-  }, [inputValue, collectionOptions, values]);
-  return { options: vertexOptions };
+  }, [debouncedInputValue, collectionOptions, values]);
+  return { options: vertexOptions, isLoading };
 };

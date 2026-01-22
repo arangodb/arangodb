@@ -23,11 +23,15 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
 #include "Aql/Collections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
+#include "Graph/EdgeDocumentToken.h"
+#include "Graph/Cursors/EdgeCursor.h"
 
 struct TRI_vocbase_t;
 
@@ -48,7 +52,6 @@ class VariableGenerator;
 
 namespace graph {
 struct BaseOptions;
-class EdgeCursor;
 struct ShortestPathOptions;
 }  // namespace graph
 
@@ -59,6 +62,36 @@ class Slice;
 
 namespace traverser {
 struct TraverserOptions;
+
+struct EdgeCursorForMultipleVertices {
+  size_t _depth;
+  uint64_t _batchSize;
+  std::vector<std::string> _vertices;
+  size_t _nextVertex;
+  std::unique_ptr<graph::EdgeCursor> _cursor;
+  size_t _nextBatch = 0;
+  VPackBuilder _variables;
+  EdgeCursorForMultipleVertices(size_t depth, uint64_t batchSize,
+                                std::vector<std::string> vertices,
+                                std::unique_ptr<graph::EdgeCursor> cursor,
+                                VPackBuilder variables)
+      : _depth{depth},
+        _batchSize{batchSize},
+        _vertices{std::move(vertices)},
+        _nextVertex{0},
+        _cursor{std::move(cursor)},
+        _variables{std::move(variables)} {
+    TRI_ASSERT(_cursor != nullptr);
+    rearm();
+  }
+  auto rearm() -> bool;
+  auto hasMore() -> bool;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, EdgeCursorForMultipleVertices& x) {
+  return f.object(x).fields(f.field("depth", x._depth),
+                            f.field("vertices", x._vertices));
+}
 
 class BaseEngine {
  public:
@@ -91,6 +124,9 @@ class BaseEngine {
   virtual graph::BaseOptions const& options() const = 0;
 
  protected:
+  VPackBuilder _docBuilder;
+  VPackSlice lookupToken(graph::EdgeDocumentToken const& idToken);
+
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   std::unique_ptr<transaction::Methods> _trx;
@@ -110,11 +146,16 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t,
-                arangodb::velocypack::Builder&);
+  // old behaviour
+  void allEdges(std::vector<std::string> const& vertices, size_t depth,
+                VPackSlice variables, VPackBuilder& builder);
 
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
+  // new behaviour
+  size_t createNewCursor(size_t depth, uint64_t batchSize,
+                         std::vector<std::string> vertices,
+                         VPackSlice variables);
+  Result nextEdgeBatch(size_t cursorId, size_t batchId, VPackBuilder& builder);
+  void addAndClearStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
@@ -133,11 +174,14 @@ class BaseTraverserEngine : public BaseEngine {
 
   graph::BaseOptions const& options() const override;
 
+  using CursorId = size_t;
+  std::unordered_map<CursorId, EdgeCursorForMultipleVertices> _cursors;
+  CursorId _nextCursorId = 0;
+
  protected:
+  std::unique_ptr<graph::EdgeCursor> getCursor(uint64_t currentDepth);
+
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
-      _depthSpecificCursors;
-  std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
 

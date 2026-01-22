@@ -11,6 +11,7 @@ import { MDIIndexForm } from "./MDIIndexForm";
 import { MDIPrefixedIndexForm } from "./MDIPrefixedIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
+import { VectorIndexForm } from "./vectorIndex/VectorIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
@@ -78,6 +79,9 @@ const IndexTypeForm = ({
   }
   if (type === "mdi-prefixed") {
     return <MDIPrefixedIndexForm onClose={onClose} />;
+  }
+  if (type === "vector") {
+    return <VectorIndexForm onClose={onClose} />;
   }
   return <></>;
 };

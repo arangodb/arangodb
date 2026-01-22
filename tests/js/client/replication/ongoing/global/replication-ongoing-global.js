@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS */
+/* global assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, arango, ARGUMENTS, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,6 +28,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
+const ct = require('@arangodb/testutils/client-tools');
 
 const replication = require('@arangodb/replication');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -36,18 +37,20 @@ const compareTicks = replication.compareTicks;
 const console = require('console');
 const internal = require('internal');
 
-const leaderEndpoint = arango.getEndpoint();
-const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
-
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
 
-const connectToLeader = function () {
+let IM = global.instanceManager;
+const leaderEndpoint = IM.arangods[0].endpoint;
+const followerEndpoint = IM.arangods[1].endpoint;
+
+
+const connectToLeader = function() {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-const connectToFollower = function () {
+const connectToFollower = function() {
   reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
@@ -547,35 +550,57 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function (params) {
-              let wait = require('internal').wait;
-              let db = require('internal').db;
-              let c = db._collection(params.cn);
+          if (SYS_IS_V8_BUILD) {
+            db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function (params) {
+                let wait = require('internal').wait;
+                let db = require('internal').db;
+                let c = db._collection(params.cn);
 
-              for (let i = 0; i < 10; ++i) {
-                c.insert({
-                  test1: i,
-                  type: 'longTransactionBlocking',
-                  coll: 'UnitTestsReplication'
-                });
-                c.insert({
-                  test2: i,
-                  type: 'longTransactionBlocking',
-                  coll: 'UnitTestsReplication'
-                });
+                for (let i = 0; i < 10; ++i) {
+                  c.insert({
+                    test1: i,
+                    type: 'longTransactionBlocking',
+                    coll: 'UnitTestsReplication'
+                  });
+                  c.insert({
+                    test2: i,
+                    type: 'longTransactionBlocking',
+                    coll: 'UnitTestsReplication'
+                  });
 
-                // intentionally delay the transaction
-                wait(0.75, false);
+                  // intentionally delay the transaction
+                  wait(0.75, false);
+                }
+              },
+              params: {
+                cn: cn
               }
-            },
-            params: {
-              cn: cn
+            });
+          } else {
+            const tx = db._createTransaction({
+              collections: { write: [cn] },
+            });
+            const txn_col = tx.collection(cn);
+            for (let i = 0; i < 10; ++i) {
+              txn_col.insert({
+                test1: i,
+                type: 'longTransactionBlocking',
+                coll: 'UnitTestsReplication'
+              });
+              txn_col.insert({
+                test2: i,
+                type: 'longTransactionBlocking',
+                coll: 'UnitTestsReplication'
+              });
+              // intentionally delay the transaction
+              require('internal').wait(0.75, false);
             }
-          });
+            tx.commit();
+          }
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -604,6 +629,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLongTransactionAsync: function () {
+      let clients = [];
       connectToLeader();
 
       compare(
@@ -612,43 +638,69 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          let func = db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function (params) {
-              let wait = require('internal').wait;
-              let db = require('internal').db;
-              let c = db._collection(params.cn);
+          if (SYS_IS_V8_BUILD) {
+            let func = db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function (params) {
+                let wait = require('internal').wait;
+                let db = require('internal').db;
+                let c = db._collection(params.cn);
 
+                for (let i = 0; i < 10; ++i) {
+                  c.insert({
+                    test1: i,
+                    type: 'longTransactionAsync',
+                    coll: 'UnitTestsReplication'
+                  });
+                  c.insert({
+                    test2: i,
+                    type: 'longTransactionAsync',
+                    coll: 'UnitTestsReplication'
+                  });
+
+                  // intentionally delay the transaction
+                  wait(3.0, false);
+                }
+              },
+              params: {
+                cn: cn
+              }
+            });
+
+            state.task = require('@arangodb/tasks').register({
+              name: 'replication-test-async',
+              command: String(func),
+              params: {
+                cn: cn
+              }
+            }).id;
+          } else {
+            let func = function(cn) {
+              let db = require('internal').db;
+              const tx = db._createTransaction({
+                collections: { write: [cn] },
+              });
+              const txn_col = tx.collection(cn);
               for (let i = 0; i < 10; ++i) {
-                c.insert({
+                txn_col.insert({
                   test1: i,
                   type: 'longTransactionAsync',
                   coll: 'UnitTestsReplication'
                 });
-                c.insert({
+                txn_col.insert({
                   test2: i,
                   type: 'longTransactionAsync',
                   coll: 'UnitTestsReplication'
                 });
-
                 // intentionally delay the transaction
-                wait(3.0, false);
+                require('internal').wait(3.0, false);
               }
-            },
-            params: {
-              cn: cn
-            }
-          });
-
-          state.task = require('@arangodb/tasks').register({
-            name: 'replication-test-async',
-            command: String(func),
-            params: {
-              cn: cn
-            }
-          }).id;
+              tx.commit();
+            };
+            clients.push(ct.run.launchPlainSnippetInBG(`let fn = ${String(func)}("${cn}");`, 1));
+          }
         },
 
         function (state) {
@@ -656,8 +708,16 @@ function BaseTestConfig () {
 
           connectToLeader();
           try {
-            require('@arangodb/tasks').get(state.task);
-            // task exists
+            if (SYS_IS_V8_BUILD) {
+              require('@arangodb/tasks').get(state.task);
+              // task exists
+            } else {
+              clients[0].status = internal.statusExternal(clients[0].pid);
+              if (clients[0].status.status !== "RUNNING") {
+                throw new Error("done");
+                // shell is gone.
+              }
+            }
             connectToFollower();
             return 'wait';
           } catch (err) {
@@ -682,6 +742,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLongTransactionAsyncWithFollowerRestarts: function () {
+      let clients = [];
       connectToLeader();
 
       compare(
@@ -690,43 +751,70 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          let func = db._executeTransaction({
-            collections: {
-              write: cn
-            },
-            action: function (params) {
-              let wait = require('internal').wait;
-              let db = require('internal').db;
-              let c = db._collection(params.cn);
+          if (SYS_IS_V8_BUILD) {
+            let func = db._executeTransaction({
+              collections: {
+                write: cn
+              },
+              action: function (params) {
+                let wait = require('internal').wait;
+                let db = require('internal').db;
+                let c = db._collection(params.cn);
 
+                for (let i = 0; i < 10; ++i) {
+                  c.insert({
+                    test1: i,
+                    type: 'longTransactionAsyncWithFollowerRestarts',
+                    coll: 'UnitTestsReplication'
+                  });
+                  c.insert({
+                    test2: i,
+                    type: 'longTransactionAsyncWithFollowerRestarts',
+                    coll: 'UnitTestsReplication'
+                  });
+
+                  // intentionally delay the transaction
+                  wait(0.75, false);
+                }
+              },
+              params: {
+                cn: cn
+              }
+            });
+
+            state.task = require('@arangodb/tasks').register({
+              name: 'replication-test-async-with-restart',
+              command: String(func),
+              params: {
+                cn: cn
+              }
+            }).id;
+
+          } else {
+            let func = function(cn) {
+              let db = require('internal').db;
+              const tx = db._createTransaction({
+                collections: { write: [cn] },
+              });
+              const txn_col = tx.collection(cn);
               for (let i = 0; i < 10; ++i) {
-                c.insert({
+                txn_col.insert({
                   test1: i,
                   type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
-                c.insert({
+                txn_col.insert({
                   test2: i,
                   type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
-
                 // intentionally delay the transaction
-                wait(0.75, false);
+                require('internal').wait(0.75, false);
               }
-            },
-            params: {
-              cn: cn
-            }
-          });
-
-          state.task = require('@arangodb/tasks').register({
-            name: 'replication-test-async-with-restart',
-            command: String(func),
-            params: {
-              cn: cn
-            }
-          }).id;
+              tx.commit();
+            };
+            clients.push(ct.run.launchPlainSnippetInBG(`let fn = ${String(func)}("${cn}");`, 1));
+          }
         },
 
         function (state) {
@@ -737,8 +825,16 @@ function BaseTestConfig () {
 
           connectToLeader();
           try {
-            require('@arangodb/tasks').get(state.task);
-            // task exists
+            if (SYS_IS_V8_BUILD) {
+              require('@arangodb/tasks').get(state.task);
+              // task exists
+            } else {
+              clients[0].status = internal.statusExternal(clients[0].pid);
+              if (clients[0].status.status !== "RUNNING") {
+                throw new Error("done");
+                // shell is gone.
+              }
+            }
             connectToFollower();
 
             replication.globalApplier.start();

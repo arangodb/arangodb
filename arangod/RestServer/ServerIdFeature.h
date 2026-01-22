@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
 

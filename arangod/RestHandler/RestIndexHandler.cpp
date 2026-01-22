@@ -24,6 +24,7 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/async.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -34,15 +35,12 @@
 #include "Network/NetworkFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
-#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -63,83 +61,36 @@ RestIndexHandler::RestIndexHandler(ArangodServer& server,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestIndexHandler::~RestIndexHandler() {
-  std::unique_lock<std::mutex> locker(_mutex);
-  shutdownBackgroundThread();
-}
-
-RestStatus RestIndexHandler::execute() {
+futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     if (_request->suffixes().size() == 1 &&
         _request->suffixes()[0] == "selectivity") {
-      return waitForFuture(getSelectivityEstimates());
+      co_await getSelectivityEstimates();
+      co_return;
     }
-    return getIndexes();
-  } else if (type == rest::RequestType::POST) {
+    co_await getIndexes();
+    co_return;
+  }
+  if (type == rest::RequestType::POST) {
     if (_request->suffixes().size() == 1 &&
         _request->suffixes()[0] == "sync-caches") {
       // this is an unofficial API to sync the in-memory
       // index caches with the data queued in the index
       // refill background thread. it is not supposed to
       // be used publicly.
-      return syncCaches();
+      co_return syncCaches();
     }
-    return createIndex();
-  } else if (type == rest::RequestType::DELETE_REQ) {
-    return dropIndex();
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_await createIndex();
+    co_return;
   }
-}
-
-RestStatus RestIndexHandler::continueExecute() {
-  TRI_ASSERT(_request->requestType() == rest::RequestType::POST);
-
-  std::unique_lock<std::mutex> locker(_mutex);
-
-  shutdownBackgroundThread();
-
-  if (_createInBackgroundData.result.ok()) {
-    TRI_ASSERT(_createInBackgroundData.response.slice().isObject());
-
-    VPackSlice created =
-        _createInBackgroundData.response.slice().get("isNewlyCreated");
-    auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
-                                                   : rest::ResponseCode::OK;
-
-    generateResult(r, _createInBackgroundData.response.slice());
-  } else {
-    if (_createInBackgroundData.result.is(TRI_ERROR_FORBIDDEN) ||
-        _createInBackgroundData.result.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
-      generateError(_createInBackgroundData.result);
-    } else {  // http_server compatibility
-      generateError(rest::ResponseCode::BAD,
-                    _createInBackgroundData.result.errorNumber(),
-                    _createInBackgroundData.result.errorMessage());
-    }
+  if (type == rest::RequestType::DELETE_REQ) {
+    co_await dropIndex();
+    co_return;
   }
-
-  return RestStatus::DONE;
-}
-
-void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
-  auto sg = arangodb::scopeGuard(
-      [&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
-  if (isFinalized && _request->requestType() == rest::RequestType::POST) {
-    std::unique_lock<std::mutex> locker(_mutex);
-    shutdownBackgroundThread();
-  }
-}
-
-void RestIndexHandler::shutdownBackgroundThread() {
-  if (_createInBackgroundData.thread != nullptr) {
-    _createInBackgroundData.thread->join();
-    _createInBackgroundData.thread.reset();
-  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
@@ -150,11 +101,9 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
           .getFeature<ClusterFeature>()
           .clusterInfo()
           .getCollectionNT(_vocbase.name(), cName);
-    } else {
-      return _vocbase.lookupCollection(cName);
     }
+    return _vocbase.lookupCollection(cName);
   }
-
   return nullptr;
 }
 
@@ -162,7 +111,7 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
 // / @brief get index infos
 // //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestIndexHandler::getIndexes() {
+async<void> RestIndexHandler::getIndexes() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     // .............................................................................
@@ -175,7 +124,7 @@ RestStatus RestIndexHandler::getIndexes() {
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return RestStatus::DONE;
+      co_return;
     }
 
     auto flags = Index::makeFlags(Index::Serialize::Estimates);
@@ -195,12 +144,12 @@ RestStatus RestIndexHandler::getIndexes() {
     if (!ServerState::instance()->isCoordinator() || !withHidden) {
       // simple case: no in-progress indexes to return
       VPackBuilder indexes;
-      Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes)
-                       .waitAndGet();
+      Result res =
+          co_await methods::Indexes::getAll(*coll, flags, withHidden, indexes);
       if (!res.ok()) {
         generateError(rest::ResponseCode::BAD, res.errorNumber(),
                       res.errorMessage());
-        return RestStatus::DONE;
+        co_return;
       }
 
       TRI_ASSERT(indexes.slice().isArray());
@@ -224,38 +173,66 @@ RestStatus RestIndexHandler::getIndexes() {
       // we need to wait for the latest commit index here, because otherwise
       // we may not see all indexes that were declared ready by the
       // supervision.
-      ac.waitForLatestCommitIndex().waitAndGet();
+      co_await ac.waitForLatestCommitIndex();
 
       auto [plannedIndexes, idx] = ac.get(ap);
 
+      // Let's wait until the ClusterInfo has processed at least this
+      // Raft index. This means that if an index is no longer `isBuilding`
+      // in the agency Plan, then ClusterInfo should know it.
+      co_await _vocbase.server()
+          .getFeature<ClusterFeature>()
+          .clusterInfo()
+          .waitForPlan(idx);
+
       // now fetch list of ready indexes
       VPackBuilder indexes;
-      Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes)
-                       .waitAndGet();
+      Result res =
+          co_await methods::Indexes::getAll(*coll, flags, withHidden, indexes);
       if (!res.ok()) {
         generateError(rest::ResponseCode::BAD, res.errorNumber(),
                       res.errorMessage());
-        return RestStatus::DONE;
+        co_return;
       }
 
       TRI_ASSERT(indexes.slice().isArray());
 
-      // all indexes we already reported
+      // ATTENTION: In the agency, the ID of the index is stored as a string
+      // without a prefix for the collection name. However, in the velocypack
+      // which is reported from `getAll` above, the ID is a string with the
+      // collection name and a slash as a prefix, like it is reported in the
+      // external API. Since we now must compare IDs between the two sources,
+      // we must be careful!
+
+      // Our task is now the following: We first take the indexes reported by
+      // `getAll`. However, this misses indexes which are still being built.
+      // Therefore, we then add those indexes from the agency plan, which have
+      // the `isBuilding` attribute still set to `true` (unless they are already
+      // actually present locally, which can happen, if our agency snapshot is
+      // a bit older, note that above we **first** get the indexes from the
+      // agency cache, then we wait until `ClusterInfo` has processed the
+      // raft index, and then we get the indexes
+      // from the local `LogicalCollection`!).
+
+      // all indexes we already reported:
       containers::FlatHashSet<std::string> covered;
 
       tmp.add(VPackValue("indexes"));
 
       {
         VPackArrayBuilder guard(&tmp);
-        // first return all ready indexes
+        // first return all ready indexes from the `LogicalCollection` object.
         for (auto pi : VPackArrayIterator(indexes.slice())) {
           std::string_view iid = pi.get("id").stringView();
           tmp.add(pi);
 
           // note this index as already covered
+          if (auto pos = iid.find('/'); pos != std::string::npos) {
+            iid = iid.substr(pos + 1);
+          }
           covered.emplace(iid);
         }
-        // now return all in-progress indexes, if any
+        // now return all indexes which are currently being built:
         for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
           std::string_view iid = pi.get("id").stringView();
           // avoid reporting an index twice
@@ -267,9 +244,16 @@ RestStatus RestIndexHandler::getIndexes() {
           VPackObjectBuilder o(&tmp);
           for (auto source :
                VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-            tmp.add(source.key.stringView(), source.value);
+            if (source.key.stringView() == StaticStrings::IndexId) {
+              tmp.add(StaticStrings::IndexId,
+                      VPackValue(
+                          absl::StrCat(cName, "/", source.value.stringView())));
+            } else {
+              tmp.add(source.key.stringView(), source.value);
+            }
           }
 
+          // In this case we have to ask the shards about how far they are:
           double progress = 0;
           auto const shards = coll->shardIds();
           auto const body = VPackBuffer<uint8_t>();
@@ -355,8 +339,7 @@ RestStatus RestIndexHandler::getIndexes() {
       // value. this attribute should be deprecated and removed
       tmp.add("identifiers", VPackValue(VPackValueType::Object));
       for (auto pi : VPackArrayIterator(indexes.slice())) {
-        std::string_view iid = pi.get("id").stringView();
-        tmp.add(iid, pi);
+        tmp.add(pi.get(StaticStrings::IndexId).stringView(), pi);
       }
       for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
         std::string_view iid = pi.get("id").stringView();
@@ -365,7 +348,17 @@ RestStatus RestIndexHandler::getIndexes() {
             !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
           continue;
         }
-        tmp.add(iid, pi);
+        std::string id_str = absl::StrCat(cName, "/", iid);
+        tmp.add(VPackValue(id_str));
+        VPackObjectBuilder o(&tmp);
+        for (auto source :
+             VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
+          if (source.key.stringView() == StaticStrings::IndexId) {
+            tmp.add(StaticStrings::IndexId, VPackValue(id_str));
+          } else {
+            tmp.add(source.key.stringView(), source.value);
+          }
+        }
       }
     }
 
@@ -382,7 +375,7 @@ RestStatus RestIndexHandler::getIndexes() {
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return RestStatus::DONE;
+      co_return;
     }
 
     std::string const& iid = suffixes[1];
@@ -391,7 +384,7 @@ RestStatus RestIndexHandler::getIndexes() {
 
     VPackBuilder output;
     Result res =
-        methods::Indexes::getIndex(*coll, tmp.slice(), output).waitAndGet();
+        co_await methods::Indexes::getIndex(*coll, tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -407,7 +400,6 @@ RestStatus RestIndexHandler::getIndexes() {
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
-  return RestStatus::DONE;
 }
 
 futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
@@ -448,7 +440,7 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 
   TRI_ASSERT(trx != nullptr);
 
-  Result res = trx->begin();
+  Result res = co_await trx->beginAsync();
   if (res.fail()) {
     generateError(res);
     co_return;
@@ -464,7 +456,7 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   builder.add(StaticStrings::Code,
               VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   builder.add("indexes", VPackValue(VPackValueType::Object));
-  for (std::shared_ptr<Index> idx : idxs) {
+  for (auto const& idx : idxs) {
     if (idx->inProgress() || idx->isHidden()) {
       continue;
     }
@@ -478,15 +470,14 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   builder.close();
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
-  co_return;
 }
 
-RestStatus RestIndexHandler::createIndex() {
+async<void> RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
   if (!suffixes.empty()) {
     events::CreateIndexEnd(_vocbase.name(), "(unknown)", body,
@@ -494,7 +485,7 @@ RestStatus RestIndexHandler::createIndex() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   absl::StrCat("expecting POST ", _request->requestPath(),
                                "?collection=<collection-name>"));
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool found = false;
@@ -504,7 +495,7 @@ RestStatus RestIndexHandler::createIndex() {
                            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto coll = collection(cName);
@@ -513,7 +504,7 @@ RestStatus RestIndexHandler::createIndex() {
                            TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   VPackBuilder copy;
@@ -528,70 +519,52 @@ RestStatus RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  auto execContext = VocbaseContext::create(*_request, _vocbase);
-  // this is necessary, because the execContext will release the vocbase in its
-  // dtor
-  if (!_vocbase.use()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  Result result;
+  try {
+    arangodb::velocypack::Builder response;
+    result = co_await methods::Indexes::ensureIndex(*coll, indexInfo.slice(),
+                                                    true, response);
+
+    if (result.ok()) {
+      TRI_ASSERT(response.slice().isObject());
+      VPackSlice const created = response.slice().get("isNewlyCreated");
+      auto const resCode = created.isBool() && created.getBool()
+                               ? rest::ResponseCode::CREATED
+                               : rest::ResponseCode::OK;
+
+      VPackBuilder b;
+      b.openObject();
+      b.add(StaticStrings::Error, VPackValue(false));
+      b.add(StaticStrings::Code, VPackValue(static_cast<int>(resCode)));
+      b.close();
+      response = VPackCollection::merge(response.slice(), b.slice(), false);
+      generateResult(resCode, response.slice());
+      co_return;
+    }
+  } catch (basics::Exception const& ex) {
+    result = Result(ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    result = Result(TRI_ERROR_INTERNAL, ex.what());
   }
 
-  std::unique_lock<std::mutex> locker(_mutex);
-
-  // the following callback is executed in a background thread
-  auto cb = [this, self = shared_from_this(),
-             execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo)] {
-    ExecContextScope scope(std::move(execContext));
-    {
-      std::unique_lock<std::mutex> locker(_mutex);
-
-      try {
-        _createInBackgroundData.result =
-            methods::Indexes::ensureIndex(*collection, body.slice(), true,
-                                          _createInBackgroundData.response)
-                .waitAndGet();
-
-        if (_createInBackgroundData.result.ok()) {
-          VPackSlice created =
-              _createInBackgroundData.response.slice().get("isNewlyCreated");
-          auto r = created.isBool() && created.getBool()
-                       ? rest::ResponseCode::CREATED
-                       : rest::ResponseCode::OK;
-
-          VPackBuilder b;
-          b.openObject();
-          b.add(StaticStrings::Error, VPackValue(false));
-          b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
-          b.close();
-          _createInBackgroundData.response = VPackCollection::merge(
-              _createInBackgroundData.response.slice(), b.slice(), false);
-        }
-      } catch (basics::Exception const& ex) {
-        _createInBackgroundData.result = Result(ex.code(), ex.message());
-      } catch (std::exception const& ex) {
-        _createInBackgroundData.result = Result(TRI_ERROR_INTERNAL, ex.what());
-      }
-    }
-
-    // notify REST handler
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       [self]() { self->wakeupHandler(); });
-  };
-
-  // start background thread
-  _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
-
-  return RestStatus::WAITING;
+  if (result.is(TRI_ERROR_FORBIDDEN) ||
+      result.is(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
+    generateError(result);
+  } else {
+    // http_server compatibility
+    generateError(rest::ResponseCode::BAD, result.errorNumber(),
+                  result.errorMessage());
+  }
 }
 
-RestStatus RestIndexHandler::dropIndex() {
+async<void> RestIndexHandler::dropIndex() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 2) {
     events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)",
                       TRI_ERROR_HTTP_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /<collection-name>/<index-identifier>");
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::string const& cName = suffixes[0];
@@ -601,7 +574,7 @@ RestStatus RestIndexHandler::dropIndex() {
                       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::string const& iid = suffixes[1];
@@ -613,7 +586,7 @@ RestStatus RestIndexHandler::dropIndex() {
         VPackValue(absl::StrCat(cName, TRI_INDEX_HANDLE_SEPARATOR_STR, iid)));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice()).waitAndGet();
+  Result res = co_await methods::Indexes::drop(*coll, idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();
@@ -625,13 +598,11 @@ RestStatus RestIndexHandler::dropIndex() {
   } else {
     generateError(res);
   }
-  return RestStatus::DONE;
 }
 
-RestStatus RestIndexHandler::syncCaches() {
+void RestIndexHandler::syncCaches() {
   StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-  return RestStatus::DONE;
 }

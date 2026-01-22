@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include "Aql/OutputAqlItemRow.h"
+#include "Basics/Exceptions.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
@@ -88,6 +90,7 @@ class MaterializeSearchExecutor;
 template<typename FetcherType, typename ModifierType>
 class ModificationExecutor;
 struct IndexDistinctScanExecutor;
+struct IndexAggregateScanExecutor;
 
 class LimitExecutor;
 class ReturnExecutor;
@@ -135,66 +138,33 @@ using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 using KPath = arangodb::graph::KPathEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using KPathTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using AllShortestPaths = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
-using AllShortestPathsTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
-    arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
-using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
 using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-
 using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedYenPathsTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
-
 using WeightedYenPathsCluster =
     arangodb::graph::WeightedYenEnumeratorWithProvider<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using WeightedYenPathsClusterTracer =
-    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
-using WeightedKShortestPathsTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
-
 using ShortestPath = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
-using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
@@ -202,49 +172,26 @@ using WeightedShortestPath =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
-using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
-        arangodb::graph::SingleServerProvider<
-            arangodb::graph::SingleServerProviderStep>>;
 
 /* ClusterProvider Section */
 using KPathCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using KPathClusterTracer = arangodb::graph::TracedKPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using AllShortestPathsCluster = arangodb::graph::AllShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using AllShortestPathsClusterTracer =
-    arangodb::graph::TracedAllShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using KShortestPathsCluster = arangodb::graph::KShortestPathsEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
-using KShortestPathsClusterTracer =
-    arangodb::graph::TracedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPathsCluster =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using WeightedKShortestPathsClusterTracer =
-    arangodb::graph::TracedWeightedKShortestPathsEnumerator<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-
 using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
-    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
     arangodb::graph::WeightedShortestPathEnumeratorAlias<
-        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
-using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -348,12 +295,58 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if (_prefetchTask && !_prefetchTask->isConsumed() &&
-      !_prefetchTask->tryClaim()) {
-    // some thread is still working on our prefetch task
-    // -> we need to wait for that task to finish first!
-    _prefetchTask->waitFor();
+  stopAsyncTasks();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
+  if (_prefetchTask) {
+    // Double use diagnostics:
+    uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
+    if (userCount > 0) {
+      _logStacktrace.store(true, std::memory_order_relaxed);
+      LOG_TOPIC("52637", ERR, Logger::AQL)
+          << "ALERT: Double use of ExecutionBlock detected, "
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
+      CrashHandler::logBacktrace();
+    }
+    auto guard = scopeGuard([&]() noexcept {
+      _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
+      if (_logStacktrace.load(std::memory_order_relaxed)) {
+        LOG_TOPIC("52638", WARN, Logger::AQL)
+            << "ALERT: Found _logStacktrace:"
+            << " Blockinfo: " << printBlockInfo()
+            << " Query ID: " << getQuery().id() << ", stacktrace:";
+        CrashHandler::logBacktrace();
+      }
+    });
+    if (!_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        // some thread is still working on our prefetch task
+        // -> we need to wait for that task to finish first!
+        _prefetchTask->waitFor();
+      }
+      // We either claimed the task, or it is finished. Now we have to discard
+      // it, for two reasons:
+      // 1) The state must not stay InProgress (if we claimed the task), so a
+      //    second call to `stopAsyncTasks()`, which is currently done, will not
+      //    wait forever.
+      // 2) We must destroy the result (if the task finished), so a possible
+      //    SharedAqlItemBlockPtr will return the AqlItemBlock to the
+      //    AqlItemBlockManager. Note that the callback executed by the
+      //    scheduler queue will release its shared_ptr to the prefetch task
+      //    after it has finished; so it is possible that the task outlives the
+      //    query, and thus the AqlItemBlockManager.
+      _prefetchTask->discard(/*isFinished*/ false);
+    }
   }
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
+  return _prefetchTask != nullptr &&
+         (!_prefetchTask->isConsumed() && !_prefetchTask->isFinished());
 }
 
 template<class Executor>
@@ -489,6 +482,27 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
 template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
+  // Double use diagnostics:
+  uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
+  if (userCount > 0) {
+    _logStacktrace.store(true, std::memory_order_relaxed);
+    LOG_TOPIC("52635", WARN, Logger::AQL)
+        << "ALERT: Double use of ExecutionBlock detected, "
+        << " Blockinfo: " << printBlockInfo()
+        << " Query ID: " << getQuery().id() << ", stacktrace:";
+    CrashHandler::logBacktrace();
+  }
+  auto waechter = scopeGuard([&]() noexcept {
+    _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
+    if (_logStacktrace.load(std::memory_order_relaxed)) {
+      LOG_TOPIC("52636", WARN, Logger::AQL)
+          << "ALERT: Found _logStacktrace:"
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
+      CrashHandler::logBacktrace();
+    }
+  });
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
@@ -787,37 +801,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
               (is_one_of_v<
                   Executor, FilterExecutor, ShortestPathExecutor<ShortestPath>,
-                  ShortestPathExecutor<ShortestPathTracer>,
                   ShortestPathExecutor<ShortestPathCluster>,
-                  ShortestPathExecutor<ShortestPathClusterTracer>,
                   ShortestPathExecutor<WeightedShortestPath>,
-                  ShortestPathExecutor<WeightedShortestPathTracer>,
                   ShortestPathExecutor<WeightedShortestPathCluster>,
-                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor, EnumeratePathsExecutor<KPath>,
-                  EnumeratePathsExecutor<KPathTracer>,
                   EnumeratePathsExecutor<KPathCluster>,
-                  EnumeratePathsExecutor<KPathClusterTracer>,
                   EnumeratePathsExecutor<AllShortestPaths>,
-                  EnumeratePathsExecutor<AllShortestPathsTracer>,
                   EnumeratePathsExecutor<AllShortestPathsCluster>,
-                  EnumeratePathsExecutor<AllShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<KShortestPaths>,
-                  EnumeratePathsExecutor<KShortestPathsTracer>,
                   EnumeratePathsExecutor<KShortestPathsCluster>,
-                  EnumeratePathsExecutor<KShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPaths>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
-                  EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<YenPaths>,
-                  EnumeratePathsExecutor<YenPathsTracer>,
                   EnumeratePathsExecutor<YenPathsCluster>,
-                  EnumeratePathsExecutor<YenPathsClusterTracer>,
                   EnumeratePathsExecutor<WeightedYenPaths>,
-                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
                   EnumeratePathsExecutor<WeightedYenPathsCluster>,
-                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
@@ -854,6 +852,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Upsert>,
                   MultipleRemoteModificationExecutor, SortExecutor,
                   EnumerateNearVectorsExecutor, IndexDistinctScanExecutor,
+                  IndexAggregateScanExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
                   MaterializeSearchExecutor>) ||
@@ -1034,12 +1033,31 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // At the moment we may spawn one task per execution node
 
       if (shouldSchedule) {
-        bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
+              TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                // We need to simulate that we are not picking up this task.
+                // So we simply continue sleeping until the failure point is
+                // erased.
+                bool needSleep = true;
+                while (needSleep) {
+                  needSleep = false;
+                  TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                    needSleep = true;
+                  }
+                  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+              }
               if (!task->tryClaimOrAbandon()) {
                 return;
               }
+
+              TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(100ms);
+              }
+
               // task is a copy of the PrefetchTask shared_ptr, and we will only
               // attempt to execute the task if we successfully claimed the
               // task. i.e., it does not matter if this task lingers around in
@@ -1060,6 +1078,16 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                      absl::StrCat(ex.what(), " [node #",
                                   block->getPlanNode()->id().id(), ": ",
                                   block->getPlanNode()->getTypeString(), "]")});
+              }
+
+              TRI_IF_FAILURE("AsyncPrefetch::delayDestructor") {
+                // Delay the destruction of `task` to make it likely that the
+                // Query, and with it the AqlItemBlockManager, is destructed
+                // before the PrefetchTask. That way we can assert that the
+                // result, and possible SharedAqlItemBlockPtrs in it, will be
+                // destroyed before the AqlItemBlockManager.
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1ms);
               }
             });
 
@@ -1149,97 +1177,6 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-template<class Executor>
-template<class E>
-auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
-    AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  static_assert(std::is_same_v<Executor, E> &&
-                executorHasSideEffects<Executor>);
-  if (!stack.needToCountSubquery()) {
-    // We need to really produce things here
-    // fall back to original version as any other executor.
-    auto res = shadowRowForwarding(stack);
-    return res;
-  }
-  TRI_ASSERT(_outputItemRow);
-  TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(!_outputItemRow->allRowsUsed());
-  if (!_lastRange.hasShadowRow()) {
-    // We got back without a ShadowRow in the LastRange
-    // Let client call again
-    return ExecState::DONE;
-  }
-
-  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-  TRI_ASSERT(shadowRow.isInitialized());
-  uint64_t depthSkippingNow =
-      static_cast<uint64_t>(stack.shadowRowDepthToSkip());
-  uint64_t shadowDepth = shadowRow.getDepth();
-  bool didWriteRow = false;
-  if (shadowRow.isRelevant()) {
-    LOG_QUERY("1b257", DEBUG) << printTypeInfo() << " init executor.";
-    // We found a relevant shadow Row.
-    // We need to reset the Executor
-    resetExecutor();
-  }
-
-  if (depthSkippingNow > shadowDepth) {
-    // We are skipping the outermost Subquery.
-    // Simply drop this ShadowRow
-  } else if (depthSkippingNow == shadowDepth) {
-    // We are skipping on this subquery level.
-    // Skip the row, but report skipped 1.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    if (shadowCall.needSkipMore()) {
-      shadowCall.didSkip(1);
-      shadowCall.resetSkipCount();
-      skipResult.didSkipSubquery(1, shadowDepth);
-    } else if (shadowCall.getLimit() > 0) {
-      TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-      _outputItemRow->moveRow(shadowRow);
-      shadowCall.didProduce(1);
-      TRI_ASSERT(_outputItemRow->produced());
-      _outputItemRow->advanceRow();
-      didWriteRow = true;
-    } else {
-      TRI_ASSERT(shadowCall.hardLimit == 0);
-      // Simply drop this shadowRow!
-    }
-  } else {
-    // We got a shadowRow of a subquery we are not skipping here.
-    // Do proper reporting on it's call.
-    AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
-    TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-    _outputItemRow->moveRow(shadowRow);
-    shadowCall.didProduce(1);
-
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    didWriteRow = true;
-  }
-  if (state == ExecutorState::DONE) {
-    // We have consumed everything, we are
-    // Done with this query
-    return ExecState::DONE;
-  } else if (_lastRange.hasDataRow()) {
-    // Multiple concatenated Subqueries
-    return ExecState::NEXTSUBQUERY;
-  } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows, we
-    // need to forward them
-    return ExecState::SHADOWROWS;
-  } else if (didWriteRow) {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::DONE;
-  } else {
-    // Done with this subquery.
-    // We did not write any output yet.
-    // So we can continue with upstream.
-    return ExecState::UPSTREAM;
-  }
 }
 
 template<typename Executor>
@@ -1383,86 +1320,184 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 }
 
 template<class Executor>
+auto ExecutionBlockImpl<Executor>::forwardShadowRow(
+    AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+    ShadowAqlItemRow& shadowRow) -> void {
+  auto shadowDepth = shadowRow.getDepth();
+  auto& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+  _outputItemRow->moveRow(shadowRow);
+  shadowCall.didProduce(1);
+  TRI_ASSERT(_outputItemRow->produced());
+  _outputItemRow->advanceRow();
+
+  // The call at the next level produced the stuff for this shadow row
+  // and hence should be popped.
+  // TODO: Technically all calls of lower depth should be popped (and are
+  // at the end of this function. This means that the call at shadowDepth-1
+  // is pooped twice. Thid has no effect since popping a call is idempotent.
+  if (!shadowRow.isRelevant()) {
+    std::ignore = stack.modifyCallListAtDepth(shadowDepth - 1).popNextCall();
+  }
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::sideEffectSkipHandling(
+    AqlCallStack& stack, std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+    ShadowAqlItemRow& shadowRow, SkipResult& skipped) -> SideEffectSkipResult {
+  auto shadowDepth = shadowRow.getDepth();
+
+  auto maybeDepthSkippingNow = stack.shadowRowDepthToSkip();
+  if (maybeDepthSkippingNow.has_value()) {
+    auto depthSkippingNow = maybeDepthSkippingNow.value();
+    if (depthSkippingNow > shadowDepth) {
+      if (!stack.modifyCallListAtDepth(depthSkippingNow).hasMoreCalls()) {
+        // We don't have a call for an outer subquery;
+        // we have to wait for the next one before we can make a decision what
+        // to do with the current shadow row.
+        return SideEffectSkipResult::RETURN_DONE;
+      }
+      // We are skipping an outer Subquery.
+      // Simply drop this ShadowRow
+      return SideEffectSkipResult::DROP_SHADOW_ROW;
+    } else if (depthSkippingNow == shadowDepth) {
+      AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
+      // We are skipping on this subquery level.
+      // Skip the row, but report skipped 1.
+      if (shadowCall.needSkipMore()) {
+        shadowCall.didSkip(1);
+        shadowCall.resetSkipCount();
+        skipped.didSkipSubquery(1, shadowDepth);
+        // also does not write the shadow row.
+        return SideEffectSkipResult::DROP_SHADOW_ROW;
+      } else if (shadowCall.getLimit() > 0) {
+        TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
+        return SideEffectSkipResult::FORWARD_SHADOW_ROW;
+      } else {
+        TRI_ASSERT(shadowCall.hardLimit == 0);
+        // Simply drop this shadowRow!
+        return SideEffectSkipResult::DROP_SHADOW_ROW;
+      }
+    } else /* depthSkippingNow < shadowDepth */ {
+      // We got a shadowRow of a subquery we are not skipping here.
+      // Do proper reporting on its call.
+    }
+  }
+  return SideEffectSkipResult::FORWARD_SHADOW_ROW;
+}
+
+template<class Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     -> ExecState {
   if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
     return shadowRowForwardingSubqueryStart(stack);
   } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
     return shadowRowForwardingSubqueryEnd(stack);
-  } else {
-    TRI_ASSERT(_outputItemRow);
-    TRI_ASSERT(_outputItemRow->isInitialized());
-    TRI_ASSERT(!_outputItemRow->allRowsUsed());
-    if (!_lastRange.hasShadowRow()) {
-      // We got back without a ShadowRow in the LastRange
-      // Let us continue with the next Subquery
-      return ExecState::NEXTSUBQUERY;
-    }
+  }
 
-    bool const hasDoneNothing =
-        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
-    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-    TRI_ASSERT(shadowRow.isInitialized());
-
-    // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
-    // SENSIBLE WAY!
-    //
-    // the row fetcher doesn't know its ranges, the ranges don't know the
-    // fetcher
-    //
-    // ranges synchronize shadow rows, and fetcher synchronizes skipping
-    //
-    // but there are interactions between the two.
-    if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-      fetcher().resetDidReturnSubquerySkips(shadowRow.getDepth());
-    }
-
-    countShadowRowProduced(stack, shadowRow.getDepth());
-    if (shadowRow.isRelevant()) {
-      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-      // We found a relevant shadow Row.
-      // We need to reset the Executor
-      resetExecutor();
-    }
-
-    _outputItemRow->moveRow(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-    if (state == ExecutorState::DONE) {
-      // We have consumed everything, we are
-      // Done with this query
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+  if (!_lastRange.hasShadowRow()) {
+    // TODO: the original sideEffectShadowRowForwarding returns
+    // ExecState::DONE in this case. It is likely correct
+    // to just return ExecState::NEXTSUBQUERY and remove this
+    // case distinction.
+    // Let's do that in a separate PR. In particular keep UPSERT in mind.
+    if constexpr (executorHasSideEffects<Executor>) {
       return ExecState::DONE;
-    } else if (_lastRange.hasDataRow()) {
-      /// NOTE: We do not need popDepthsLowerThan here, as we already
-      /// have a new DataRow from upstream, so the upstream
-      /// block has decided it is correct to continue.
-      // Multiple concatenated Subqueries
-      return ExecState::NEXTSUBQUERY;
-    } else if (_lastRange.hasShadowRow()) {
-      // We still have shadowRows.
-      auto const& lookAheadRow = _lastRange.peekShadowRow();
-      if (lookAheadRow.isRelevant()) {
-        // We are starting the NextSubquery here.
-        if constexpr (Executor::Properties::allowsBlockPassthrough ==
-                      BlockPassthrough::Enable) {
-          // TODO: Check if this works with skip forwarding
-          return ExecState::SHADOWROWS;
-        }
-        return ExecState::NEXTSUBQUERY;
-      }
-      // we need to forward them
-      return ExecState::SHADOWROWS;
     } else {
-      if (hasDoneNothing && !shadowRow.isRelevant()) {
-        stack.popDepthsLowerThan(shadowRow.getDepth());
-      }
-
-      // End of input, need to fetch new!
-      // Just start with the next subquery.
-      // If in doubt the next row will be a shadowRow again,
-      // this will be forwarded than.
       return ExecState::NEXTSUBQUERY;
     }
+  }
+
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+
+  TRI_ASSERT(shadowRow.isInitialized());
+  if (shadowRow.isRelevant()) {
+    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+    // We found a relevant shadow Row.
+    // We need to reset the Executor
+    resetExecutor();
+  }
+
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
+  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+  // SENSIBLE WAY!
+  //
+  // the row fetcher doesn't know its ranges, the ranges don't know the
+  // fetcher
+  //
+  // ranges synchronize shadow rows, and fetcher synchronizes skipping
+  //
+  // but there are interactions between the two.
+  //
+  // Also note that executors with this DataRange type have no side effects,
+  // so merging the two functions can leave this in place
+  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+    static_assert(!executorHasSideEffects<Executor>);
+    auto shadowDepth = shadowRow.getDepth();
+    fetcher().resetDidReturnSubquerySkips(shadowDepth);
+  }
+
+  bool didWriteShadowRow = false;
+  if constexpr (executorHasSideEffects<Executor>) {
+    auto r = sideEffectSkipHandling(stack, _outputItemRow, shadowRow, _skipped);
+    switch (r) {
+      case SideEffectSkipResult::RETURN_DONE: {
+        return ExecState::DONE;
+      } break;
+      case SideEffectSkipResult::FORWARD_SHADOW_ROW: {
+        forwardShadowRow(stack, _outputItemRow, shadowRow);
+        didWriteShadowRow = true;
+      } break;
+      case SideEffectSkipResult::DROP_SHADOW_ROW: {
+      } break;
+    }
+  } else {
+    forwardShadowRow(stack, _outputItemRow, shadowRow);
+    didWriteShadowRow = true;
+  }
+
+  if (state == ExecutorState::DONE) {
+    // We have consumed everything, we are
+    // Done with this query
+    return ExecState::DONE;
+  } else if (_lastRange.hasDataRow()) {
+    // Multiple concatenated Subqueries
+    return ExecState::NEXTSUBQUERY;
+  } else if (_lastRange.hasShadowRow()) {
+    // We still have shadowRows.
+    auto const& lookAheadRow = _lastRange.peekShadowRow();
+    if (lookAheadRow.isRelevant()) {
+      // We are starting the NextSubquery here.
+      if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                    BlockPassthrough::Enable) {
+        // TODO: Check if this works with skip forwarding
+        return ExecState::SHADOWROWS;
+      }
+      return ExecState::NEXTSUBQUERY;
+    }
+    // we need to forward them
+    return ExecState::SHADOWROWS;
+  } else if (didWriteShadowRow) {
+    // call has not produced output or skips, and the shadow row is not
+    // relevant.
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
+    // End of input, need to fetch new!
+    // Just start with the next subquery.
+    // If in doubt the next row will be a shadowRow again,
+    // this will be forwarded than.
+
+    return ExecState::NEXTSUBQUERY;
+  } else {
+    // Did not write any output, the only choice is to ask upstream for more
+    // this can only happen when sideeffects are handled
+    return ExecState::UPSTREAM;
   }
 }
 
@@ -1628,7 +1663,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
       // We need to check inside a subquery if the outer query has been skipped.
       // But we only need to do this if we were not in WAITING state.
       if (ctx.stack.needToSkipSubquery() && _lastRange.hasValidRow()) {
-        auto depthToSkip = ctx.stack.shadowRowDepthToSkip();
+        auto depthToSkip = ctx.stack.shadowRowDepthToSkip().value();
         auto& shadowCall = ctx.stack.modifyCallAtDepth(depthToSkip);
         // We can never hit an offset on the shadowRow level again,
         // we can only hit this with HARDLIMIT / FULLCOUNT
@@ -2205,12 +2240,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         }
 
         TRI_ASSERT(!_outputItemRow->allRowsUsed());
-        if constexpr (executorHasSideEffects<Executor>) {
-          _execState = sideEffectShadowRowForwarding(ctx.stack, _skipped);
-        } else {
-          // This may write one or more rows.
-          _execState = shadowRowForwarding(ctx.stack);
-        }
+        // This may write one or more rows.
+        _execState = shadowRowForwarding(ctx.stack);
         if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
           // Produce might have modified the clientCall
           // But only do this if we are not subquery.
@@ -2436,8 +2467,7 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::countShadowRowProduced(AqlCallStack& stack,
                                                           size_t depth)
     -> void {
-  auto& subList = stack.modifyCallListAtDepth(depth);
-  auto& subCall = subList.modifyNextCall();
+  auto& subCall = stack.modifyCallAtDepth(depth);
   subCall.didProduce(1);
   if (depth > 0) {
     // We have written a ShadowRow.
@@ -2508,6 +2538,11 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 }
 
 template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::isFinished() const noexcept {
+  return _state.load(std::memory_order_relaxed).status == Status::Finished;
+}
+
+template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
   auto state = _state.load(std::memory_order_relaxed);
   while (true) {
@@ -2568,16 +2603,41 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
+  uint64_t count = _numberWaiters.fetch_add(1, std::memory_order_relaxed);
+  if (count > 0) {
+    LOG_TOPIC("62515", WARN, Logger::AQL)
+        << "ALERT: Detected " << count + 1 << " waiters for a PrefetchTask, "
+        << " Blockinfo: " << _block.printBlockInfo()
+        << " Query ID: " << _block.getQuery().id() << ", stacktrace:";
+    CrashHandler::logBacktrace();
+    _logStacktrace.store(true, std::memory_order_relaxed);
+  }
   std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
-    return;
+  while (_state.load(std::memory_order_acquire).status != Status::Finished) {
+    std::cv_status s = _bell.wait_for(guard, std::chrono::milliseconds(1000));
+    if (s == std::cv_status::timeout) {
+      auto state = _state.load(std::memory_order_relaxed);
+      // We only log this if the status is not "InProgress", since
+      // this is the only one we expect when a timeout occurs!
+      if (state.status != Status::InProgress) {
+        LOG_TOPIC("62514", INFO, Logger::AQL)
+            << "Have waited for a second on an async prefetch task, "
+               "state is "
+            << (int)state.status << " abandoned: " << state.abandoned
+            << " Blockinfo: " << _block.printBlockInfo()
+            << " Query ID: " << _block.getQuery().id();
+      }
+    }
   }
-
-  _bell.wait(guard, [this]() {
-    // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire).status == Status::Finished;
-  });
+  count = _numberWaiters.fetch_sub(1, std::memory_order_relaxed);
+  if (_logStacktrace.load(std::memory_order_relaxed) == true) {
+    LOG_TOPIC("62516", WARN, Logger::AQL) << "ALERT: Found logStacktrace:";
+    CrashHandler::logBacktrace();
+    if (count == 0) {
+      _logStacktrace.store(false, std::memory_order_relaxed);
+    }
+  }
 }
 
 template<class Executor>

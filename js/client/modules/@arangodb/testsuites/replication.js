@@ -66,6 +66,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_replication: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
   var opts = {
@@ -99,7 +108,7 @@ function shellClientReplicationApi (options) {
 }
 
 
-class replicationRunner extends trs.runInArangoshRunner {
+class replicationRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, serverOptions, startReplication=false) {
     super(options, testname, serverOptions);
     this.options.singles = 2;
@@ -122,19 +131,23 @@ class replicationRunner extends trs.runInArangoshRunner {
     let state = true;
     this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
     if (this.startReplication) {
-      let res = ct.run.arangoshCmd(this.options, this.instanceManager,
-                                   {}, [
-        '--javascript.execute-string',
-        `
+      [0, 1].forEach(which => {
+        this.instanceManager.endpoint = this.instanceManager.arangods[which].endpoint;
+        this.instanceManager.arangods[which].connect();
+        let res = ct.run.arangoshCmd(this.options, this.instanceManager,
+                                     {}, [
+                                       '--javascript.execute-string',
+                                       `
           var users = require("@arangodb/users");
           users.save("replicator-user", "replicator-password", true);
           users.grantDatabase("replicator-user", "_system");
           users.grantCollection("replicator-user", "_system", "*", "rw");
           users.reload();
           `
-      ],
-                                   this.options.coreCheck);
-      state = res.status;
+                                     ],
+                                     this.options.coreCheck);
+        state = res.status;
+      });
     }
     return {
       message: message,
@@ -193,13 +206,16 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
-
-  return new replicationRunner(
-    options,
+  testCases = tu.splitBuckets(options, testCases);
+  let localOptions = Object.assign({extraArgs: {'vector-index': true}}, options, tu.testServerAuthInfo);
+  let ret = new replicationRunner(
+    localOptions,
     'leader_static',
     {
       'server.authentication': 'true'
     }, true).run(testCases);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

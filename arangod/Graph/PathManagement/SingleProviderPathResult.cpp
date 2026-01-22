@@ -26,9 +26,7 @@
 #include "Basics/StaticStrings.h"
 
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/Providers/ClusterProvider.h"
-#include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 
@@ -63,13 +61,13 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear()
 
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::appendVertex(
-    typename Step::Vertex v) -> void {
+    VertexRef v) -> void {
   _vertices.push_back(std::move(v));
 }
 
 template<class ProviderType, class PathStoreType, class Step>
 auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::prependVertex(
-    typename Step::Vertex v) -> void {
+    VertexRef v) -> void {
   _vertices.insert(_vertices.begin(), std::move(v));
 }
 
@@ -192,24 +190,10 @@ template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::PathStore<SingleServerProviderStep>,
     SingleServerProviderStep>;
 
-template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<
-        ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    SingleServerProviderStep>;
-
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
     ::arangodb::graph::PathStore<enterprise::SmartGraphStep>,
-    enterprise::SmartGraphStep>;
-
-template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<
-        ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<enterprise::SmartGraphStep>>,
     enterprise::SmartGraphStep>;
 #endif
 
@@ -220,22 +204,8 @@ template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>,
     ::arangodb::graph::ClusterProviderStep>;
 
-template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<
-        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::ClusterProviderStep>;
-
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::enterprise::SmartGraphProvider<ClusterProviderStep>,
     ::arangodb::graph::PathStore<ClusterProviderStep>, ClusterProviderStep>;
-
-template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::ProviderTracer<
-        ::arangodb::graph::enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ClusterProviderStep>;
 #endif

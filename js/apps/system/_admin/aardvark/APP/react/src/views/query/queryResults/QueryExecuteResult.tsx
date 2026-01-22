@@ -27,10 +27,8 @@ import { DisplayType, useDisplayTypes } from "./useDisplayTypes";
 import { useSyncQueryExecuteJob } from "./useSyncQueryExecuteJob";
 
 export const QueryExecuteResult = ({
-  index,
   queryResult
 }: {
-  index: number;
   queryResult: QueryResultType;
 }) => {
   useSyncQueryExecuteJob({
@@ -56,10 +54,10 @@ export const QueryExecuteResult = ({
     };
   }, [queryResult]);
   if (queryResult.status === "loading") {
-    return <QueryResultLoading index={index} queryResult={queryResult} />;
+    return <QueryResultLoading queryResult={queryResult} />;
   }
   if (queryResult.status === "error") {
-    return <QueryResultError index={index} queryResult={queryResult} />;
+    return <QueryResultError queryResult={queryResult} />;
   }
   return (
     <Box
@@ -72,7 +70,6 @@ export const QueryExecuteResult = ({
         setCurrentDisplayType={setCurrentDisplayType}
         currentDisplayType={currentDisplayType}
         displayTypes={displayTypes}
-        index={index}
       />
       <WarningPane queryResult={limitedQueryResult} />
       <QueryExecuteResultDisplay
@@ -149,14 +146,12 @@ const QueryExecuteResultHeader = ({
   queryResult,
   setCurrentDisplayType,
   currentDisplayType,
-  displayTypes,
-  index
+  displayTypes
 }: {
   queryResult: QueryResultType<any>;
   setCurrentDisplayType: React.Dispatch<React.SetStateAction<DisplayType>>;
   currentDisplayType: string;
   displayTypes: DisplayType[];
-  index: number;
 }) => {
   return (
     <Flex padding="2" alignItems="center">
@@ -170,7 +165,7 @@ const QueryExecuteResultHeader = ({
           currentDisplayType={currentDisplayType}
           displayTypes={displayTypes}
         />
-        <RemoveResultButton index={index} />
+        <RemoveResultButton asyncJobId={queryResult.asyncJobId} />
       </Stack>
     </Flex>
   );

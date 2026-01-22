@@ -123,8 +123,24 @@ function WriteConcernReadOnlyMetricSuite() {
       // change write concern
       c.properties({writeConcern: 1});
 
-      // should work fine
-      c.insert({});
+      // This waits until the property is set in the agency, however,
+      // it is possible that the leader needs some more time to receive
+      // this information, therefore we do a relatively short retry loop
+      // for the next operation:
+
+      let tries = 10;
+      while (true) {
+        // should work fine:
+        try {
+          c.insert({});
+          break;
+        } catch (err) {
+        }
+        if (--tries === 0) {
+          assertTrue(false, "insert() should have worked within 5 seconds");
+        }
+        internal.wait(0.5);
+      }
 
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
       assertEqual(metricValue, 0);

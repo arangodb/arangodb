@@ -95,9 +95,9 @@ union DocumentValue {
   size_t result;
 };
 
-union HeapSortValue {
+struct HeapSortValue {
   irs::score_t score;
-  velocypack::Slice slice;
+  velocypack::SharedSlice slice;
 };
 
 struct ExecutorValue {
@@ -667,7 +667,7 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    void moveInto(aql::DocumentData data) noexcept;
+    void moveInto(aql::DocumentData data);
 
    private:
     RegisterId documentOutReg;

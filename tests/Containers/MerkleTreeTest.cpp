@@ -727,7 +727,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyFullLarge) {
   t1.serializeBinary(
       t1s,
       arangodb::containers::MerkleTreeBase::BinaryFormat::CompressedSnappyFull);
-  EXPECT_EQ(2143871, t1s.size());
+  EXPECT_EQ(2142556, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<
       ::arangodb::containers::FnvHashProvider, 3>>
@@ -750,7 +750,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLazySmall) {
   t1.serializeBinary(
       t1s,
       arangodb::containers::MerkleTreeBase::BinaryFormat::CompressedSnappyLazy);
-  EXPECT_EQ(548, t1s.size());
+  EXPECT_EQ(520, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<
       ::arangodb::containers::FnvHashProvider, 3>>
@@ -779,7 +779,7 @@ TEST(MerkleTreeTest, test_serializeBinarySnappyLazyLarge) {
   t1.serializeBinary(
       t1s,
       arangodb::containers::MerkleTreeBase::BinaryFormat::CompressedSnappyLazy);
-  EXPECT_EQ(2116630, t1s.size());
+  EXPECT_EQ(2115317, t1s.size());
 
   std::unique_ptr<::arangodb::containers::MerkleTree<
       ::arangodb::containers::FnvHashProvider, 3>>

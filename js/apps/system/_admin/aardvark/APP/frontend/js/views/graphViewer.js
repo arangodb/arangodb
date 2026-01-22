@@ -162,7 +162,7 @@
 
       // render navigation
       $('#subNavigationBar .breadcrumb').html(
-        'Graph: ' + this.name
+        'Graph: ' + _.escape(this.name)
       );
 
       this.resize();
@@ -458,7 +458,7 @@
                 }
               } else {
                 message = e.responseJSON.errorMessage;
-                $('#calculatingGraph').html('Failed to fetch graph information: ' + e.responseJSON.errorMessage);
+                $('#calculatingGraph').html('Failed to fetch graph information: ' + _.escape(e.responseJSON.errorMessage));
               }
               arangoHelper.arangoError('Graph', message);
             } catch (ignore) {}

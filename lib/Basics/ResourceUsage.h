@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "Basics/NumberUtils.h"
-
 #include <atomic>
 #include <cstdint>
 #include <memory>
+
+#include "Basics/NumberUtils.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 class GlobalResourceMonitor;
@@ -102,6 +103,8 @@ class ResourceUsageScope {
  public:
   ResourceUsageScope(ResourceUsageScope const&) = delete;
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+  ResourceUsageScope(ResourceUsageScope&&);
+  ResourceUsageScope& operator=(ResourceUsageScope&&) = delete;
 
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
 
@@ -128,6 +131,8 @@ class ResourceUsageScope {
 
   std::uint64_t trackedAndSteal() noexcept;
 
+  std::uint64_t current() const noexcept;
+
  private:
   ResourceMonitor& _resourceMonitor;
   std::uint64_t _value;
@@ -145,7 +150,14 @@ class ResourceUsageAllocatorBase : public Allocator {
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
-  ResourceUsageAllocatorBase() = delete;
+  ResourceUsageAllocatorBase() { /* We shouldn't be here */
+    // Morally, we should have a compile time check here and delete this
+    // constructor. However, modern versions of the stl and compilers insist
+    // that a `std::basic_string` has a default constructor. Therefore we use
+    // this cludge here and make this constructor fail even in production
+    // builds at runtime.
+    ADB_PROD_ASSERT(false);
+  }
 
   template<typename... Args>
   ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)

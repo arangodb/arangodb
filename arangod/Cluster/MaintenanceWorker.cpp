@@ -172,18 +172,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->incStats();
         _loopState = eRUN_NEXT;
       }  // if
-
-      // move execution to PreAction if it exists
-      if (_curAction->getPreAction()) {
-        std::shared_ptr<Action> tempPtr;
-
-        _curAction->setState(WAITING);
-        tempPtr = _curAction;
-        _curAction = _curAction->getPreAction();
-        _curAction->setPostAction(
-            std::make_shared<ActionDescription>(tempPtr->describe()));
-        _loopState = eRUN_FIRST;
-      }  // if
     } else {
       // this state should not exist, but deal with it
       _loopState = (_directAction ? eSTOP : eFIND_ACTION);
@@ -207,32 +195,20 @@ void MaintenanceWorker::nextState(bool actionMore) {
           _feature.requeueAction(_curAction, _curAction->requeuePriority());
         }
 
-        // continue execution with "next" action tied to this one
-        if (_curAction->getPostAction()) {
-          _curAction = _curAction->getPostAction();
-          _curAction->clearPreAction();
-          _loopState =
-              (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
-          _curAction->setState(EXECUTING);
-        } else {
-          _curAction.reset();
-          _loopState = (_directAction ? eSTOP : eFIND_ACTION);
-        }  // else
+        _curAction.reset();
+        _loopState = (_directAction ? eSTOP : eFIND_ACTION);
       } else {
         std::shared_ptr<Action> failAction(_curAction);
 
         // fail all actions that would follow
-        do {
-          failAction->endStats();
-          failAction->setState(FAILED);
-          if (failAction->requeueRequested()) {
-            LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
-                << "Requeueing action " << *failAction << " with new priority "
-                << failAction->requeuePriority();
-            _feature.requeueAction(failAction, failAction->requeuePriority());
-          }
-          failAction = failAction->getPostAction();
-        } while (failAction);
+        failAction->endStats();
+        failAction->setState(FAILED);
+        if (failAction->requeueRequested()) {
+          LOG_TOPIC("a4353", DEBUG, Logger::MAINTENANCE)
+              << "Requeueing action " << *failAction << " with new priority "
+              << failAction->requeuePriority();
+          _feature.requeueAction(failAction, failAction->requeuePriority());
+        }
         _loopState = (_directAction ? eSTOP : eFIND_ACTION);
       }  // else
     } else {

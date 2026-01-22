@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull*/
+/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -443,15 +443,21 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
+      assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
 
       meta = {
         commitIntervalMsec: 12345,
@@ -478,7 +484,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
+      assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -1242,15 +1248,22 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
+      assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
+
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },
@@ -1316,14 +1329,20 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual("none", properties.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(5000, properties.consolidationIntervalMsec);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
 
       meta = {};
       if (isEnterprise) {
@@ -1376,14 +1395,20 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual("none", properties.primarySortCompression);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(5000, properties.consolidationIntervalMsec);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
     },
 
     testLinkModify: function () {
@@ -2264,7 +2289,70 @@ function IResearchFeatureDDLTestSuite2() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test creating link with 'inBackground' set to true
     ////////////////////////////////////////////////////////////////////////////
+    testCreateLinkInBackgroundModeSJS: function () {
+      if (SYS_IS_V8_BUILD) {
+        const colName = 'TestCollection';
+        const viewName = 'TestView';
+        const initialCount = 500;
+        const inTransCount = 1000;
+        const markerFileName = fs.join(fs.getTempPath(), "backgroundLinkMarker");
+        try { fs.remove(markerFileName); } catch (e) { }
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.ensureIndex(indexMetaGlobal);
+        let v = db._createView(viewName, 'arangosearch', {});
+        // some initial documents
+        for (let i = 0; i < initialCount; ++i) {
+          col.insert({ myField: 'test' + i, name_1: i.toString() });
+        }
+        let commandText = function (params) {
+          var db = require('internal').db;
+          db._executeTransaction({
+            collections: { write: params.colName },
+            action: function (params) {
+              var fs = require('fs');
+              var db = require('internal').db;
+              var c = db._collection(params.colName);
+              fs.write(params.markerFileName, "TEST");
+              for (var i = 0; i < params.inTransCount; ++i) {
+                c.insert({ myField: 'background' + i });
+              }
+              require('internal').sleep(20);
+            },
+            params: params
+          });
+        };
+        tasks.register({
+          command: commandText,
+          params: { colName, inTransCount, dbName, markerFileName },
+          name: taskCreateLinkInBackground
+        });
+        while (!fs.exists(markerFileName)) {
+          require('internal').sleep(1); // give transaction some time to run 
+        }
+        v.properties({ links: { [colName]: { includeAllFields: true, inBackground: true } } });
+        // check that all documents are visible
+        let docs = db._query("FOR doc IN " + viewName + " OPTIONS { waitForSync: true } RETURN doc").toArray();
+        assertEqual(initialCount + inTransCount, docs.length);
+
+        // inBackground should not be returned as part of index definition
+        let indexes = col.indexes(false, true);
+        assertEqual(3, indexes.length);
+        var index = indexes[1];
+        assertEqual("inverted", index.type);
+        assertTrue(undefined === index.inBackground);
+        var link = indexes[2];
+        assertEqual("arangosearch", link.type);
+        assertTrue(undefined === link.inBackground);
+
+        // inBackground should not be returned as part of link definition
+        let propertiesReturned = v.properties();
+        assertTrue(undefined === propertiesReturned.links[colName].inBackground);
+      }
+    },
     testCreateLinkInBackgroundMode: function () {
+      const IM = global.instanceManager;
+      const ct = require('@arangodb/testutils/client-tools');
       const colName = 'TestCollection';
       const viewName = 'TestView';
       const initialCount = 500;
@@ -2279,28 +2367,19 @@ function IResearchFeatureDDLTestSuite2() {
       for (let i = 0; i < initialCount; ++i) {
         col.insert({ myField: 'test' + i, name_1: i.toString() });
       }
-      let commandText = function (params) {
+      let bgJob = ct.run.launchPlainSnippetInBG(`
+        var fs = require('fs');
         var db = require('internal').db;
-        db._executeTransaction({
-          collections: { write: params.colName },
-          action: function (params) {
-            var fs = require('fs');
-            var db = require('internal').db;
-            var c = db._collection(params.colName);
-            fs.write(params.markerFileName, "TEST");
-            for (var i = 0; i < params.inTransCount; ++i) {
-              c.insert({ myField: 'background' + i });
-            }
-            require('internal').sleep(20);
-          },
-          params: params
-        });
-      };
-      tasks.register({
-        command: commandText,
-        params: { colName, inTransCount, dbName, markerFileName },
-        name: taskCreateLinkInBackground
-      });
+        var db = require('internal').db;
+        let trx = db._createTransaction({collections: { write: ["${colName}"]}});
+        var c = trx.collection("${colName}");
+        fs.write("${markerFileName}", "TEST");
+        for (var i = 0; i < ${inTransCount}; ++i) {
+          c.insert({ myField: 'background' + i });
+        }
+        require('internal').sleep(20);
+        trx.commit();
+      `, 0);
       while (!fs.exists(markerFileName)) {
         require('internal').sleep(1); // give transaction some time to run 
       }
@@ -2322,6 +2401,9 @@ function IResearchFeatureDDLTestSuite2() {
       // inBackground should not be returned as part of link definition
       let propertiesReturned = v.properties();
       assertTrue(undefined === propertiesReturned.links[colName].inBackground);
+      if (!ct.run.joinForceBGShells(IM.options, [bgJob])) {
+        throw new Error(`failed to collect ${JSON.stringify(bgJob)}`);
+      }
     },
     testCachedColumns: function () {
       const colName = 'TestCollectionCache';

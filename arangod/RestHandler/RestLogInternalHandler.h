@@ -36,12 +36,12 @@ class RestLogInternalHandler : public RestVocbaseBaseHandler {
   ~RestLogInternalHandler() override;
 
  public:
-  RestStatus execute() final;
+  auto executeAsync() -> futures::Future<futures::Unit> final;
   char const* name() const final { return "RestLogInternalHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
 
  private:
-  RestStatus handleAppendEntries();
-  RestStatus handleUpdateSnapshotStatus();
+  auto handleAppendEntries() -> async<void>;
+  void handleUpdateSnapshotStatus();
 };
 }  // namespace arangodb

@@ -41,7 +41,7 @@
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 RocksDBWalAccess::RocksDBWalAccess(RocksDBEngine& engine) : _engine(engine) {}
 
@@ -100,7 +100,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
  public:
   MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, size_t maxResponseSize)
-      : WalAccessContext(engine.server(), filter, f),
+      : WalAccessContext(engine.getDatabaseFeature(), filter, f),
         _engine(engine),
         _definitionsCF(RocksDBColumnFamilyManager::get(
                            RocksDBColumnFamilyManager::Family::Definitions)
@@ -1056,3 +1056,5 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // << " latestTick: " << latestTick;
   return result;
 }
+
+}  // namespace arangodb

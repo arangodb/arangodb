@@ -34,10 +34,6 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
-// TODO: enable this once we upgrade to a newer version of RocksDB and
-// remove the ifdefs
-#undef ARANGODB_ROCKSDB8
-
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -49,12 +45,17 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public ArangodFeature,
+class RocksDBOptionFeature final : public ApplicationFeature,
                                    public RocksDBOptionsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
-  explicit RocksDBOptionFeature(Server& server);
+  template<typename Server>
+  explicit RocksDBOptionFeature(Server& server,
+                                AgencyFeature const* agencyFeature);
+  template<typename Server>
+  static auto construct(Server& server, AgencyFeature const* agencyFeature)
+      -> std::unique_ptr<RocksDBOptionFeature>;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -84,6 +85,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
+  AgencyFeature const* _agencyFeature{nullptr};
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
@@ -107,19 +109,13 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
-#ifdef ARANGODB_ROCKSDB8
   // only used for HyperClockCache
   uint64_t _blockCacheEstimatedEntryCharge;
-#endif
   uint64_t _minBlobSize;
   uint64_t _blobFileSize;
-#ifdef ARANGODB_ROCKSDB8
   uint32_t _blobFileStartingLevel;
-#endif
   bool _enableBlobFiles;
-#ifdef ARANGODB_ROCKSDB8
   bool _enableBlobCache;
-#endif
   double _blobGarbageCollectionAgeCutoff;
   double _blobGarbageCollectionForceThreshold;
   double _bloomBitsPerKey;
@@ -138,12 +134,11 @@ class RocksDBOptionFeature final : public ArangodFeature,
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
+  bool _optimizeFiltersForMemory;
   bool _enableIndexCompression;
   bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
-#ifdef ARANGODB_ROCKSDB8
   bool _prepopulateBlobCache;
-#endif
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
   bool _reserveFileMetadataMemory;

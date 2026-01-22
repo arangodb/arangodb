@@ -404,8 +404,8 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 7.2.0
-* Date: 2022-05-05
+* Version: 9.5, commit 15d9988ab219a8a7bf38ef42d840f89ff1232be7
+* Date: 2024-07-22 13:15:09 -0700
 * GitHub: https://github.com/arangodb/rocksdb
 * License: https://github.com/arangodb/rocksdb/blob/main/README.md
 * License Name: Apache License 2.0
@@ -434,7 +434,7 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.9
+* Version: 1.2.2
 * Date: 2021-05-04 22:28:33Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING

@@ -40,7 +40,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   ~RestDocumentHandler();
 
  public:
-  RestStatus execute() override final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const override final { return "RestDocumentHandler"; }
   RequestLane lane() const override final;
 
@@ -48,32 +48,31 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
  private:
   // inserts a document
-  [[nodiscard]] futures::Future<futures::Unit> insertDocument();
+  async<void> insertDocument();
 
   // reads a single or all documents
-  RestStatus readDocument();
+  async<void> readDocument();
 
   // reads a single document
-  [[nodiscard]] futures::Future<futures::Unit> readSingleDocument(
-      bool generateBody);
+  async<void> readSingleDocument(bool generateBody);
 
   // reads multiple documents
-  [[nodiscard]] futures::Future<futures::Unit> readManyDocuments();
+  async<void> readManyDocuments();
 
   // reads a single document head
-  RestStatus checkDocument();
+  async<void> checkDocument();
 
   // replaces a document
-  RestStatus replaceDocument();
+  async<void> replaceDocument();
 
   // updates a document
-  RestStatus updateDocument();
+  async<void> updateDocument();
 
   // helper function for replace and update
-  [[nodiscard]] futures::Future<futures::Unit> modifyDocument(bool);
+  async<void> modifyDocument(bool);
 
   // removes a document
-  [[nodiscard]] futures::Future<futures::Unit> removeDocument();
+  async<void> removeDocument();
 
   void handleFillIndexCachesValue(OperationOptions& options);
 

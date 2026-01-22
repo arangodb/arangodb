@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -30,8 +30,15 @@ const internal = require("internal");
 const errors = internal.errors;
 const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
 
 const cn = "UnitTestsCollection";
+let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
@@ -1437,89 +1444,93 @@ function DuplicateValuesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniquenessAndLookup: function() {
-      var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
+      if (SYS_IS_V8_BUILD) {
+        var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
 
-      assertEqual("persistent", idx.type);
-      assertTrue(idx.unique);
-      assertEqual(["value"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
+        assertEqual("persistent", idx.type);
+        assertTrue(idx.unique);
+        assertEqual(["value"], idx.fields);
+        assertTrue(idx.isNewlyCreated);
 
-      const bound = 1000;
+        const bound = 1000;
 
-      let docs = [];
-      for (let i = -bound; i < bound; ++i) {
-        docs.push({value: i});
-      }
-      collection.insert(docs);
+        let docs = [];
+        for (let i = -bound; i < bound; ++i) {
+          docs.push({value: i});
+        }
+        collection.insert(docs);
 
-      internal.db._executeTransaction({
-        collections: {write: cn},
-        action: function(params) {
-          // need to run compaction in the rocksdb case, as the lookups
-          // may use bloom filters afterwards but not for memtables
-          require("internal").db[params.cn].compact();
-        },
-        params: {cn}
-      });
+        internal.db._executeTransaction({
+          collections: {write: cn},
+          action: function(params) {
+            // need to run compaction in the rocksdb case, as the lookups
+            // may use bloom filters afterwards but not for memtables
+            require("internal").db[params.cn].compact();
+          },
+          params: {cn}
+        });
 
-      assertEqual(2 * bound, collection.count());
+        assertEqual(2 * bound, collection.count());
 
-      for (let i = -bound; i < bound; ++i) {
-        let docs = collection.byExample({value: i}).toArray();
-        assertEqual(1, docs.length);
-        assertEqual(i, docs[0].value);
+        for (let i = -bound; i < bound; ++i) {
+          let docs = collection.byExample({value: i}).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(i, docs[0].value);
 
-        collection.update(docs[0]._key, docs[0]);
-      }
+          collection.update(docs[0]._key, docs[0]);
+        }
 
-      for (let i = -bound; i < bound; ++i) {
-        try {
-          collection.insert({value: i});
-          fail();
-        } catch (err) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        for (let i = -bound; i < bound; ++i) {
+          try {
+            collection.insert({value: i});
+            fail();
+          } catch (err) {
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+          }
         }
       }
     },
 
     testUniquenessAndLookup2: function() {
-      var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
+      if (SYS_IS_V8_BUILD) {
+        var idx = collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
 
-      assertEqual("persistent", idx.type);
-      assertTrue(idx.unique);
-      assertEqual(["value"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
+        assertEqual("persistent", idx.type);
+        assertTrue(idx.unique);
+        assertEqual(["value"], idx.fields);
+        assertTrue(idx.isNewlyCreated);
 
-      let i = 0;
-      while (i < 100000) {
-        let docs = [];
-        for (let j = 0; j < 20; ++j) {
-          docs.push({value: i++});
+        let i = 0;
+        while (i < 100000) {
+          let docs = [];
+          for (let j = 0; j < 20; ++j) {
+            docs.push({value: i++});
+          }
+          collection.insert(docs);
+          i *= 2;
         }
-        collection.insert(docs);
-        i *= 2;
-      }
 
-      internal.db._executeTransaction({
-        collections: {write: cn},
-        action: function(params) {
-          // need to run compaction in the rocksdb case, as the lookups
-          // may use bloom filters afterwards but not for memtables
-          require("internal").db[params.cn].compact();
-        },
-        params: {cn}
-      });
+        internal.db._executeTransaction({
+          collections: {write: cn},
+          action: function(params) {
+            // need to run compaction in the rocksdb case, as the lookups
+            // may use bloom filters afterwards but not for memtables
+            require("internal").db[params.cn].compact();
+          },
+          params: {cn}
+        });
 
-      i = 0;
-      while (i < 100000) {
-        for (let j = 0; j < 20; ++j) {
-          let docs = collection.byExample({value: i}).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(i, docs[0].value);
-          collection.update(docs[0]._key, docs[0]);
-          ++i;
+        i = 0;
+        while (i < 100000) {
+          for (let j = 0; j < 20; ++j) {
+            let docs = collection.byExample({value: i}).toArray();
+            assertEqual(1, docs.length);
+            assertEqual(i, docs[0].value);
+            collection.update(docs[0]._key, docs[0]);
+            ++i;
+          }
+          i *= 2;
         }
-        i *= 2;
       }
     },
 
@@ -1605,30 +1616,20 @@ function MultiIndexRollbackSuite() {
 
 function ParallelIndexSuite() {
   'use strict';
-  let tasks = require("@arangodb/tasks");
+  let clients = [];
 
   return {
 
     setUp: function() {
+      clients = [];
       internal.db._drop(cn);
       internal.db._create(cn);
     },
 
     tearDown: function() {
-      let rounds = 0;
-      while(true) {
-        const stillRunning = tasks.get().filter(function(task) {
-          return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)); });
-        if(stillRunning.length === 0) {
-          break;
-        }
-        require("internal").wait(0.5, false);
-        rounds++;
-        if(rounds % 10 === 0) {
-          console.log("After %s rounds there are still the following tasks %s", rounds, JSON.stringify(stillRunning));
-        }
-      }
+      joinBGShells(IM.options, clients, waitFor, cn);
       internal.db._drop(cn);
+      
     },
 
     testCreateInParallel: function() {
@@ -1649,7 +1650,7 @@ function ParallelIndexSuite() {
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
-          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
+          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreate" + i)});
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
@@ -1679,7 +1680,7 @@ function ParallelIndexSuite() {
         }
         for (let i = indexes.length - 1; i < Math.min(noIndexes, indexes.length - 1 + maxThreads); ++i) {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
-          tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
+          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateDuplicate" + i)});
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
@@ -1713,8 +1714,8 @@ function IndexUpdateSuite() {
     tearDown: function() {
       internal.db._drop(cn);
     },
-
-    testUpdateCollectionPropertiesWithView: function() {
+ 
+   testUpdateCollectionPropertiesWithView: function() {
       let view = internal.db._createView(cn + "View", "arangosearch", {});
 
       try {

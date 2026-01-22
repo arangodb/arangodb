@@ -46,31 +46,29 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
     return RequestLane::AGENCY_CLUSTER;
   }
 
-  RestStatus execute() override;
-
-  using fvoid = futures::Future<futures::Unit>;
-
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   /**
    * @brief Async call to Agent poll with index to wait for within timeout
    */
-  RestStatus pollIndex(consensus::index_t const& index, double const& timeout);
+  auto pollIndex(consensus::index_t const& index, double const& timeout)
+      -> async<void>;
 
  private:
-  RestStatus reportErrorEmptyRequest();
-  RestStatus reportTooManySuffices();
-  RestStatus reportUnknownMethod();
-  RestStatus reportMessage(arangodb::rest::ResponseCode, std::string const&);
-  RestStatus handleStores();
-  RestStatus handleStore();
-  RestStatus handleRead();
-  RestStatus handleWrite();
-  RestStatus handleTransact();
-  RestStatus handleConfig();
-  RestStatus reportMethodNotAllowed();
-  RestStatus handleState();
-  RestStatus handleTransient();
-  RestStatus handleInquire();
-  RestStatus handlePoll();
+  void reportErrorEmptyRequest();
+  void reportTooManySuffices();
+  void reportUnknownMethod();
+  void reportMessage(arangodb::rest::ResponseCode, std::string const&);
+  void handleStores();
+  void handleStore();
+  void handleRead();
+  void handleWrite();
+  void handleTransact();
+  void handleConfig();
+  void reportMethodNotAllowed();
+  void handleState();
+  void handleTransient();
+  void handleInquire();
+  auto handlePoll() -> async<void>;
 
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;

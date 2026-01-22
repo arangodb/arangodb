@@ -225,9 +225,16 @@ class ClusterInfo final {
   template<typename T>
   using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
+  template<typename K>
+  using FlatHashSet = containers::FlatHashSet<K, Hasher, KeyEqual,
+                                              ClusterInfoResourceAllocator<K>>;
+
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
+  using DatabaseBlockers = FlatHashSet<pmr::CollectionID>;
+  using AllCollectionNameBlockers =
+      FlatMapShared<pmr::DatabaseID, DatabaseBlockers const>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
@@ -308,6 +315,15 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t uniqid(uint64_t = 1);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a number of cluster-wide unique IDs, returns the first
+  /// one and guarantees that <number> are reserved for the caller.
+  /// This variant uses _agency to directly get things from the agency.
+  /// If the optional value is empty, an error occurred.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::optional<uint64_t> uniqidFromAgency(uint64_t number);
 
   /**
    * @brief Agency dump including replicated log and compaction
@@ -504,6 +520,11 @@ class ClusterInfo final {
 
   /// @brief get shard statistics for all databases, split by servers.
   Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
+
+  /// @brief update metadata metrics (number of databases, collections, shards)
+  /// This should only be called on coordinators while holding _planProt write
+  /// lock
+  void updateMetadataMetrics();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -1099,6 +1120,16 @@ class ClusterInfo final {
   /// @brief histogram for loadCurrent runtime
   metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
 
+  struct MetadataMetrics {
+    metrics::Gauge<std::uint64_t>& numberOfShards;
+    metrics::Gauge<std::uint64_t>& numberOfCollections;
+    metrics::Gauge<std::uint64_t>& numberOfDatabases;
+
+    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+  };
+  // Report these only on Coordinators.
+  std::optional<MetadataMetrics> _metadataMetrics;
+
   ClusterInfoResourceMonitor _resourceMonitor;
 
   // The servers, first all, we only need Current here:
@@ -1173,6 +1204,12 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
+  // We need to track names of isBuilding data sources, because we must
+  // forbid the creation of data sources with names which do already exist.
+  // This is per database.
+  AllCollectionNameBlockers _collectionNameBlockers;
+  AllCollectionNameBlockers _newCollectionNameBlockers;
+
   // TODO is it ok to don't account value for _shards?
   FlatMapShared<pmr::CollectionID, std::vector<ShardID> const>
       _shards;  // from Plan/Collections/

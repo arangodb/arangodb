@@ -26,11 +26,11 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
+#include "Agency/Job.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -42,15 +42,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -66,7 +63,6 @@
 
 #include <absl/strings/escaping.h>
 
-#include <algorithm>
 #include <array>
 
 using namespace arangodb;
@@ -762,7 +758,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     uint64_t planIndex,
     containers::FlatHashMap<std::string,
                             std::shared_ptr<VPackBuilder const>> const& current,
-    uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
@@ -1253,7 +1249,7 @@ arangodb::Result arangodb::maintenance::executePlan(
       action->toVelocyPack(report);
     }
     if (!action->isRunEvenIfDuplicate()) {
-      feature.addAction(std::move(action), false);
+      feature.addAction(std::move(action));
     } else {
       TRI_ASSERT(action->has(SHARD));
       TRI_ASSERT(action->has(DATABASE));
@@ -1265,7 +1261,7 @@ arangodb::Result arangodb::maintenance::executePlan(
       bool ok = feature.lockShard(shardName, action);
       if (ok) {
         try {
-          Result res = feature.addAction(std::move(action), false);
+          Result res = feature.addAction(std::move(action));
           if (res.fail()) {
             feature.unlockShard(shardName);
           }
@@ -1925,10 +1921,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs,
+    VPackBuilder& report, ReplicatedLogStatusMapByDatabase const& localLogs,
     ShardIdToLogIdMapByDatabase const& localShardIdToLogId) {
   for (auto const& dbName : dirty) {
+    // initialize database statistics for this database, resetting whatever was
+    // previously
+    ShardStatistics newDatabaseStats;
     auto lit = local.find(dbName);
     VPackSlice ldb;
     if (lit == local.end()) {
@@ -2061,7 +2059,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         TRI_ASSERT(shSlice.isObject());
         auto const colName =
             shSlice.get(StaticStrings::DataSourcePlanId).copyString();
-        shardStats.numShards += 1;
+        newDatabaseStats.increaseNumberOfShards();
 
         if (replicationVersion == replication::Version::TWO &&
             !isReplication2Leader(shName, logs->second, shardsToLogs->second)) {
@@ -2150,12 +2148,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               continue;
             }
 
-            shardStats.numLeaderShards += 1;
+            newDatabaseStats.increaseNumberOfLeaderShards();
             if (!shardInSync) {
-              shardStats.numOutOfSyncShards += 1;
+              newDatabaseStats.increaseNumberOfOutOfSyncShards();
             }
             if (!shardReplicated) {
-              shardStats.numNotReplicated += 1;
+              newDatabaseStats.increaseNumberOfNotReplicatedShards();
             }
 
             auto cp = std::vector<std::string>{AgencyCommHelper::path(),
@@ -2265,7 +2263,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                   // server might not be aware of its own previous writes. We
                   // have to be careful not to override Current with outdated
                   // information. The most up-to-date list of followers can be
-                  // obtained from the the local collection information. In this
+                  // obtained from the local collection information. In this
                   // case, it is safe to rely on it, because we are the leader
                   // and we have just resigned. No other server has been able to
                   // take over yet.
@@ -2296,6 +2294,51 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                                      "/shards/" + shName,
                                  thePlanList);
                     }
+                  }
+                }
+              } else {
+                TRI_ASSERT(replicationVersion != replication::Version::TWO)
+                    << "Follower out-of-sync tracking is not implemented for "
+                       "replication2. Database: "
+                    << dbName << ", shard: " << shName;
+
+                // We are the follower
+                if (s.isArray() && shardMap.contains(shName)) {
+                  const auto isFollowerFollowing = [&]() {
+                    for (const auto& it : VPackArrayIterator(s)) {
+                      if (it.stringView() == serverId) {
+                        return true;
+                      }
+                    }
+                    return false;
+                  };
+
+                  const auto checkIsLeaderNotYetKnown = [&]() {
+                    VPackSlice localdb;
+                    if (lit != local.end()) {
+                      localdb = lit->second->slice();
+                    }
+                    if (const std::string& shardName = shName;
+                        localdb.isObject() && localdb.hasKey(shardName)) {
+                      VPackSlice theLeader = VPackSlice::emptyStringSlice();
+                      VPackSlice lshard = localdb.get(shardName);
+                      TRI_ASSERT(lshard.isObject());
+                      if (lshard.isObject()) {  // just in case
+                        theLeader = lshard.get(THE_LEADER);
+                        if (theLeader.isString() &&
+                            theLeader.stringView() ==
+                                maintenance::ResignShardLeadership::
+                                    LeaderNotYetKnownString) {
+                          return true;
+                        }
+                      }
+                    }
+
+                    return false;
+                  };
+
+                  if (!isFollowerFollowing() || checkIsLeaderNotYetKnown()) {
+                    newDatabaseStats.increaseNumberOfFollowersOutOfSync();
                   }
                 }
               }
@@ -2426,6 +2469,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           << "caught exception in Maintenance for database '" << dbName
           << "': " << ex.what();
       throw;
+    }
+
+    auto const planIt = plan.find(dbName);
+    auto const localIt = local.find(dbName);
+    if (planIt == plan.end() && localIt == local.end()) {
+      feature._databaseShardsStats.erase(dbName);
+    } else {
+      feature._databaseShardsStats[dbName] = std::move(newDatabaseStats);
     }
   }  // next database
 
@@ -2711,6 +2762,25 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             << " current servers = " << cservers.toJson()
             << " local theLeader = " << theLeader.toJson();
 
+        if (!feature.increaseNumberOfSyncShardActionsQueued()) {
+          // Roll back the counting:
+          feature.decreaseNumberOfSyncShardActionsQueued();
+          // Need to revisit this database on next run:
+          makeDirty.emplace(dbname);
+          LOG_TOPIC("25342", DEBUG, Logger::MAINTENANCE)
+              << "Not scheduling necessary SynchronizeShard actions because "
+                 "too many are already in flight.";
+          continue;
+        }
+
+        // From here on, we must be very careful, if we do not manage to
+        // schedule the action below, we must decrease the number of sync shard
+        // actions queued again! Otherwise we lose counter values and
+        // eventually, we no longer schedule SynchronizeShard actions at all!
+        ScopeGuard scopeGuard([&feature]() noexcept {
+          feature.decreaseNumberOfSyncShardActionsQueued();
+        });
+
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
             needsResyncBecauseOfRestart ? "true" : "false";
@@ -2734,8 +2804,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);
         try {
-          Result res = feature.addAction(description, false);
-          if (res.fail()) {
+          Result res = feature.addAction(description);
+          if (res.ok()) {
+            scopeGuard.cancel();  // Here we can be sure that the action is
+                                  // queued and will eventually be executed,
+                                  // then we decrease the counter again!
+          } else {
             feature.unlockShard(shardName);
           }
         } catch (std::exception const& exc) {
@@ -2770,7 +2844,6 @@ arangodb::Result arangodb::maintenance::phaseTwo(
   feature.copyAllErrors(allErrors);
 
   arangodb::Result result;
-  ShardStatistics shardStats{};  // zero initialize
 
   report.add(VPackValue(PHASE_TWO));
   {
@@ -2782,9 +2855,9 @@ arangodb::Result arangodb::maintenance::phaseTwo(
       VPackObjectBuilder agency(&report);
       // Update Current
       try {
-        result = reportInCurrent(feature, plan, dirty, cur, local, allErrors,
-                                 serverId, report, shardStats, localLogs,
-                                 localShardIdToLogId);
+        result =
+            reportInCurrent(feature, plan, dirty, cur, local, allErrors,
+                            serverId, report, localLogs, localShardIdToLogId);
       } catch (std::exception const& e) {
         LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what();
@@ -2819,19 +2892,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(
           .count();
   TRI_ASSERT(feature._phase2_runtime_msec != nullptr);
   feature._phase2_runtime_msec->count(total_ms);
-
-  TRI_ASSERT(feature._shards_out_of_sync != nullptr);
-  feature._shards_out_of_sync->store(shardStats.numOutOfSyncShards,
-                                     std::memory_order_relaxed);
-  TRI_ASSERT(feature._shards_total_count != nullptr);
-  feature._shards_total_count->store(shardStats.numShards,
-                                     std::memory_order_relaxed);
-  TRI_ASSERT(feature._shards_leader_count != nullptr);
-  feature._shards_leader_count->store(shardStats.numLeaderShards,
-                                      std::memory_order_relaxed);
-  TRI_ASSERT(feature._shards_not_replicated_count != nullptr);
-  feature._shards_not_replicated_count->store(shardStats.numNotReplicated,
-                                              std::memory_order_relaxed);
+  feature.updateDatabaseStatistics();
 
   return result;
 }

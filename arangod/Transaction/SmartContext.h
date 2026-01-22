@@ -51,9 +51,6 @@ class SmartContext : public Context {
   /// @brief destroy the context
   ~SmartContext();
 
-  /// @brief order a custom type handler
-  velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
-
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override final { return true; }
 

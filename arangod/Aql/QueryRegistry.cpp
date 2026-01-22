@@ -50,6 +50,41 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace std::chrono_literals;
+
+static auto constexpr kWaitUntilLoggingFor = 5s;
+
+void QueryRegistry::postQueryDestructionTrackingTask(
+    QueryId queryId, QueryInfo& queryInfoLifetimeExtension) {
+  auto queryDestructionContext =
+      QueryDestructionContext(queryId, queryInfoLifetimeExtension._queryString,
+                              queryInfoLifetimeExtension._errorCode,
+                              queryInfoLifetimeExtension._finished);
+
+  if (SchedulerFeature::SCHEDULER != nullptr) {
+    auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        kWaitUntilLoggingFor,
+        [queryCtx = std::move(queryDestructionContext),
+         startTime = std::chrono::steady_clock::now()](
+            bool cancelled) mutable noexcept {
+          if (cancelled) {
+            return;
+          }
+
+          auto const timeDiff =
+              std::chrono::duration_cast<std::chrono::seconds>(
+                  std::chrono::steady_clock::now() - startTime);
+          LOG_TOPIC("a16bf", WARN, Logger::QUERIES)
+              << "Query info destruction is taking: " << timeDiff
+              << ", query id: " << queryCtx.id
+              << ", query: " << queryCtx.queryString
+              << ", finished: " << queryCtx.finished
+              << ", errorCode: " << queryCtx.errorCode;
+        });
+    queryInfoLifetimeExtension._destructionTrackingTask.swap(delayedTask);
+  }
+}
 
 QueryRegistry::~QueryRegistry() {
   disallowInserts();
@@ -220,6 +255,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   // so this must be done outside the lock
   futures::Promise<std::shared_ptr<ClusterQuery>> finishPromise;
   std::shared_ptr<ClusterQuery> queryToFinish;
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -267,7 +303,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
       if (canDestroyQuery) {
         auto queryMapIt = _queries.find(ei._queryInfo->_query->id());
         TRI_ASSERT(queryMapIt != _queries.end());
-        deleteQuery(queryMapIt);
+        queryInfoLifetimeExtension = deleteQuery(queryMapIt);
       } else if (ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
@@ -276,49 +312,79 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
+  if (queryInfoLifetimeExtension) {
+    postQueryDestructionTrackingTask(queryInfoLifetimeExtension->_query->id(),
+                                     *queryInfoLifetimeExtension);
+    // Now explicitly destroy the QueryInfo before we resolve the promise,
+    // but no longer under the lock:
+    queryInfoLifetimeExtension.reset();
+  }
   finishPromise.setValue(std::move(queryToFinish));
 }
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
-  WRITE_LOCKER(writeLocker, _lock);
+  // The queryInfo which holds the reference to _query should survive outside
+  // the loop so that the query destruction is triggered after the lock
+  // is released
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
+  {
+    WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMap::iterator queryMapIt = lookupQueryForFinalization(id, errorCode);
-  if (queryMapIt == _queries.end()) {
-    return;
+    QueryInfoMap::iterator queryMapIt =
+        lookupQueryForFinalization(id, errorCode);
+    if (queryMapIt == _queries.end()) {
+      return;
+    }
+
+    if (queryMapIt->second->_numOpen == 0) {
+      queryInfoLifetimeExtension = deleteQuery(queryMapIt);
+    }
   }
-
-  if (queryMapIt->second->_numOpen == 0) {
-    deleteQuery(queryMapIt);
+  if (queryInfoLifetimeExtension) {
+    postQueryDestructionTrackingTask(id, *queryInfoLifetimeExtension);
+    // Now explicitly destroy the QueryInfo before we resolve the promise,
+    // but no longer under the lock:
+    queryInfoLifetimeExtension.reset();
   }
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     QueryId id, ErrorCode errorCode) {
-  WRITE_LOCKER(writeLocker, _lock);
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
+  std::shared_ptr<ClusterQuery> result;
+  {
+    WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMap::iterator queryMapIt = lookupQueryForFinalization(id, errorCode);
-  if (queryMapIt == _queries.end()) {
-    return std::shared_ptr<ClusterQuery>();
+    QueryInfoMap::iterator queryMapIt =
+        lookupQueryForFinalization(id, errorCode);
+    if (queryMapIt == _queries.end()) {
+      return std::shared_ptr<ClusterQuery>();
+    }
+    TRI_ASSERT(queryMapIt->second);
+    auto& queryInfo = *queryMapIt->second;
+
+    TRI_ASSERT(!queryInfo._finished);
+    if (queryInfo._finished) {
+      return std::shared_ptr<ClusterQuery>();
+    }
+
+    queryInfo._finished = true;
+    if (queryInfo._numOpen > 0) {
+      // we return a future for this queryInfo which will be resolved once the
+      // last thread closes its engine
+      return queryInfo._promise.getFuture();
+    }
+
+    result = queryInfo._query;
+    queryInfoLifetimeExtension = deleteQuery(queryMapIt);
   }
-  TRI_ASSERT(queryMapIt->second);
-  auto& queryInfo = *queryMapIt->second;
+  postQueryDestructionTrackingTask(id, *queryInfoLifetimeExtension);
+  // Now explicitly destroy the QueryInfo before we resolve the promise,
+  // but no longer under the lock:
+  queryInfoLifetimeExtension.reset();
 
-  TRI_ASSERT(!queryInfo._finished);
-  if (queryInfo._finished) {
-    return std::shared_ptr<ClusterQuery>();
-  }
-
-  queryInfo._finished = true;
-  if (queryInfo._numOpen > 0) {
-    // we return a future for this queryInfo which will be resolved once the
-    // last thread closes its engine
-    return queryInfo._promise.getFuture();
-  }
-
-  auto result = queryInfo._query;
-  deleteQuery(queryMapIt);
   return result;
 }
 
@@ -365,7 +431,8 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   return queryMapIt;
 }
 
-void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
+std::unique_ptr<QueryRegistry::QueryInfo> QueryRegistry::deleteQuery(
+    QueryInfoMap::iterator queryMapIt) {
   auto id = queryMapIt->first;
   // move query into our unique ptr, so we can process it outside
   // of the lock
@@ -396,6 +463,8 @@ void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
 
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
+
+  return queryInfo;
 }
 
 /// used for a legacy shutdown
@@ -706,11 +775,23 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
       _isTombstone(true) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() {
+  auto const startDestructionTime = std::chrono::steady_clock::now();
+  auto const queryId = _query != nullptr ? _query->id() : 0;
+  using namespace std::chrono_literals;
   if (!_promise.isFulfilled()) {
     // we just set a dummy value to avoid abandoning the promise, because this
     // makes it much more difficult to debug cases where we _must not_ abandon a
     // promise
     _promise.setValue(std::shared_ptr<ClusterQuery>{nullptr});
+  }
+
+  _query.reset();
+  auto const diff = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::steady_clock::now() - startDestructionTime);
+  if (diff > kWaitUntilLoggingFor) {
+    LOG_TOPIC("a16ba", WARN, Logger::QUERIES)
+        << "Query info destruction took: " << diff
+        << " with query id: " << queryId;
   }
 }
 

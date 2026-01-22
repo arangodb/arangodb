@@ -274,7 +274,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
+  let prefix = (options.cluster ? 'CL_' : 'SG_');
 
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {
@@ -303,6 +303,13 @@ function saveToJunitXML(options, results) {
         name: state.xmlName,
       };
       state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
+      if (testSuite.hasOwnProperty('message') && testSuite.message !== "") {
+        state.xml.elem('testcase', addOptionalDuration({ name: `whole testsuite ${testSuiteName} failed` }, testSuiteName), false);
+        state.xml.elem('failure');
+        state.xml.text('<![CDATA[' + stripAnsiColors(testSuite.message) + ']]>\n');
+        state.xml.elem('/failure');
+        state.xml.elem('/testcase');
+      }
     },
     testCase: function(options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
@@ -495,7 +502,7 @@ function unitTestPrettyPrintResults (options, results) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            m = '      "' + one + '" failed: ' + details[one].replaceAll('\\n', '\n');
+            m = '  ****> "' + one + '" failed:\n' + details[one].replaceAll('\\n', '\n');
             failedMessages += RED + m + RESET + '\n\n';
             onlyFailedMessages += m + '\n\n';
             count++;
@@ -1107,7 +1114,7 @@ function getFailedTestCases(options) {
   }
 }
 
-function getGTestResults(fileName, defaultResults) {
+function getGTestResults(fileName, defaultResults, name) {
   let results = defaultResults;
   if (!fs.exists(fileName)) {
     defaultResults.failed += 1;
@@ -1118,7 +1125,7 @@ function getGTestResults(fileName, defaultResults) {
   results.failed = gTestResults.failures + gTestResults.errors;
   results.status = (gTestResults.errors === 0) && (gTestResults.failures === 0);
   gTestResults.testsuites.forEach(function (testSuite) {
-    results[testSuite.name] = {
+    results[name][testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
       status: (testSuite.failures + testSuite.errors) === 0,
       duration: parseFloat(testSuite.time) * 1000 // gtest writes sec, internally we have ms
@@ -1127,11 +1134,14 @@ function getGTestResults(fileName, defaultResults) {
       const message = testSuite.testsuite.flatMap(
         suite => {
           if (suite.hasOwnProperty('failures')) {
-            return suite.failures.map(fail => fail.failure).join("\n");
+            return suite.classname + " - " +
+              suite.file + ":" + suite.line + " - " +
+              suite.name + ":\n" +
+              suite.failures.map(fail => fail.failure).join("\n");
           }
           return [];
         }).join("\n");
-      results[testSuite.name].message = message;
+      results[name][testSuite.name].message = message;
     }
   });
   return results;
@@ -1172,7 +1182,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `crashAnalysisText`: output of debugger in case of crash',
     '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
     '   - `writeXmlReport`:  Write junit xml report files',
-    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
+    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `outXml`',
     ''
   ]);
 };

@@ -1,10 +1,12 @@
 # Contributing
 
-We welcome bug fixes and patches from 3rd party contributors. Please
-see the [Contributor Agreement](https://www.arangodb.com/community#contribute)
-for details.
+We welcome bug fixes and patches from 3rd party contributors.
+Please see the applicable agreement for details:
 
-Please follow these guidelines if you want to contribute to ArangoDB:
+- [Individual Contributor License Agreement](https://arango.ai/contributor-license)
+- [Corporate Contributor License Agreement](https://arango.ai/corporate-cla)
+
+Please follow below guidelines if you want to contribute to ArangoDB.
 
 # Reporting Bugs
 
@@ -39,7 +41,7 @@ yet.
   the appropriate branches there. This will most likely be **devel**.
 
 - You must use the Apache License for your changes and have signed our
-  [CLA](https://arangodb.com/community/#contribute). We cannot accept pull requests
+  [CLA](#contributing). We cannot accept pull requests
   from contributors who didn't sign the CLA.
 
 - Please let us know if you plan to work on a ticket. This way we can make sure
@@ -310,6 +312,19 @@ configuration files in `usr/etc/arangodb3/`, and so on.
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
+### Building Locally
+
+Recommended for Debian-based Linux. First, install dependencies:
+- `clang-19`
+- `libomp-19-dev`
+- `liblapack-dev`
+- `libopenblas-dev`
+- `cmake` (at least 3.21)
+- `libssl-dev`
+- `libstdc++-14-dev`
+
+After installing, follow the general build steps above.
+
 ### Building the Web Interface
 
 The web interface is also known as the Web UI, frontend, or _Aardvark_.
@@ -544,7 +559,7 @@ SIGABRT. SIGKILL signals, which the operating system can send to a process in ca
 
 In case the crash handler receives one of the mentioned interceptable signals, it will
 write basic crash information to the logfile and a backtrace of the call site.
-The backtrace can be provided to the ArangoDB support for further inspection. Note that
+The backtrace can be provided to the Arango support for further inspection. Note that
 backtraces are only usable if debug symbols for ArangoDB have been installed as well.
 
 After logging the crash information, the crash handler will execute the default action for
@@ -1192,6 +1207,12 @@ Debugging a storage engine:
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
 
+### Filtering GDB stacktraces 
+`scripts/filter_stacktraces.js [list of gdb output files] --extremeVerbosity true`
+- reads `js/client/modules/@arangodb/testutils/filter_gdb_stacks.json` 
+- applies it to all files with the output of gdb with stacktraces, filtering out threads in the json file.
+- `--extremeVerbosity` will print unfiltered stacks in order to ease adding them to `filter_gdb_stacks.json`.
+
 ### Forcing downgrade from VPack to JSON
 
 While velocypack is better for the machine to machine communication, JSON does a better job
@@ -1205,7 +1226,7 @@ Hence a downgrade of the communication to JSON can be made at start time:
 Don't want to miss a beat of your test? If you want to invoke tcpdump with sudo,
 make sure that your current shell has sudo enabled. Try like this:
 
-    sudo /bin/true; ./scripts/unittest http_server \
+    sudo -v; ./scripts/unittest http_server \
       --sniff sudo --cleanup false
 
 The pcap file will end up in your tests temporary directory. You may need to
@@ -1318,10 +1339,10 @@ arangodb directory.
 
 # Additional Resources
 
-- [ArangoDB website](https://www.arangodb.com/)
+- [Arango website](https://arango.ai/)
 
-- [ArangoDB on Twitter](https://twitter.com/arangodb)
+- [Arango on X](https://x.com/arangoai)
 
 - [General GitHub documentation](https://help.github.com/)
 
-- [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)
+- [GitHub pull request documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)

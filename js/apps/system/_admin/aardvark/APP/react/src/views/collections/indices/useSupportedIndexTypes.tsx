@@ -63,5 +63,9 @@ const indexTypeOptions: {
   {
     label: "Inverted Index",
     value: "inverted"
+  },
+  {
+    label: "Vector index",
+    value: "vector"
   }
 ];

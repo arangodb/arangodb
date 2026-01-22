@@ -81,9 +81,6 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
-
-  bool authentication() const noexcept;
-
   // get single endpoint. used by client tools that can handle only one endpoint
   std::string endpoint() const;
   // set single endpoint
@@ -97,6 +94,9 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
+
+  std::string jwtToken() const;
+  void setJwtToken(std::string_view jwtToken);
 
   double connectionTimeout() const noexcept;
   double requestTimeout() const noexcept;
@@ -114,6 +114,8 @@ class ClientFeature final : public HttpEndpointProvider {
   void setCompressTransfer(bool value) noexcept;
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
+  double jwtRenewalThreshold() const noexcept;
+  void setJwtRenewalThreshold(double value) noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -148,6 +150,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
   void readPassword();
   void readJwtSecret();
+  void readJwtToken();
   void loadJwtSecretFile();
 
   CommunicationFeaturePhase& _comm;
@@ -164,8 +167,10 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string _password;
   std::string _jwtSecret;
   std::string _jwtSecretFile;
+  std::string _jwtToken;
   double _connectionTimeout;
   double _requestTimeout;
+  double _jwtRenewalThreshold;  // seconds before expiry to renew JWT
   uint64_t _maxPacketSize;
   // if > 0, it means that request bodies >= this value will be
   // sent our compressed.

@@ -26,7 +26,7 @@ threshold: |
   ArangoDB than RocksDB can keep up with its background processing.
   This has lead to actual write stops, which are bad since they can lead
   to unavailability. If you see this number grow, you need to act,
-  if in doubt, contact ArangoDB support.
+  if in doubt, contact the Arango support.
 troubleshoot: |
   Quite often, RocksDB is limited by the available I/O bandwidth. Sometimes,
   it is not the bandwidth itself, but the number of I/O operations per

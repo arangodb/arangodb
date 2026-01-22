@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphOperations.h"
 #include "Logger/LogMacros.h"
@@ -1292,4 +1293,38 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // time, this fixes itself. After all, the only thing we could potentially
   // do would be to retry, but this is already done by `sendRequestRetry`.
   // So we just return here and let the request objects go out of scope.
+}
+
+auto GraphManager::findImplicitVertexCollectionsFromEdgeCollections(
+    containers::FlatHashSet<std::string> const& edgeCollections) const
+    -> ResultT<containers::FlatHashSet<std::string>> {
+  auto result = containers::FlatHashSet<std::string>{};
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    for (auto&& edgeCollectionName : edgeCollections) {
+      auto maybeDef = graph->getEdgeDefinition(edgeCollectionName);
+      if (maybeDef.has_value()) {
+        auto& def = maybeDef->get();
+
+        auto const& from = def.getFrom();
+        for (auto&& cn : from) {
+          result.insert(cn);
+        }
+
+        auto const& to = def.getTo();
+        for (auto&& cn : to) {
+          result.insert(cn);
+        }
+      }
+    }
+    return Result{};
+  };
+
+  Result res = applyOnAllGraphs(callback);
+
+  if (res.fail()) {
+    return res;
+  } else {
+    return {result};
+  }
 }

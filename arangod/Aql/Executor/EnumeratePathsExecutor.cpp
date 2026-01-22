@@ -27,6 +27,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -233,8 +234,8 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      _finder.reset(arangodb::velocypack::HashedStringRef(source),
-                    arangodb::velocypack::HashedStringRef(target));
+      _finder.reset(VertexRef{arangodb::velocypack::HashedStringRef(source)},
+                    VertexRef{arangodb::velocypack::HashedStringRef(target)});
       return true;
     }
   }
@@ -244,10 +245,9 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
 template<class FinderType>
 auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
-  transaction::BuilderLeaser tmp{&_trx};
-  tmp->clear();
+  auto tmp = ThreadLocalBuilderLeaser::lease();
 
-  if (_finder.getNextPath(*tmp.builder())) {
+  if (_finder.getNextPath(*tmp.get())) {
     AqlValue path{tmp->slice()};
     AqlValueGuard guard{path, true};
     output.moveValueInto(_infos.getOutputRegister(), _inputRow, &guard);
@@ -329,43 +329,27 @@ using SingleServer = SingleServerProvider<SingleServerProviderStep>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     AllShortestPathsEnumerator<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedAllShortestPathsEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedKShortestPathsEnumerator<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     YenEnumeratorWithProvider<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedYenEnumeratorWithProvider<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedYenEnumeratorWithProvider<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedWeightedYenEnumeratorWithProvider<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedAllShortestPathsEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedKShortestPathsEnumerator<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     YenEnumeratorWithProvider<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedYenEnumeratorWithProvider<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedYenEnumeratorWithProvider<SingleServer>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedWeightedYenEnumeratorWithProvider<SingleServer>>;
 
 /* ClusterProvider Section */
 
@@ -373,42 +357,24 @@ using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedWeightedKShortestPathsEnumerator<
-        ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     YenEnumeratorWithProvider<ClustProvider>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedYenEnumeratorWithProvider<ClustProvider>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     WeightedYenEnumeratorWithProvider<ClustProvider>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedWeightedYenEnumeratorWithProvider<ClustProvider>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedKShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedWeightedKShortestPathsEnumerator<
-        ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     YenEnumeratorWithProvider<ClustProvider>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedYenEnumeratorWithProvider<ClustProvider>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedYenEnumeratorWithProvider<ClustProvider>>;
-template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedWeightedYenEnumeratorWithProvider<ClustProvider>>;

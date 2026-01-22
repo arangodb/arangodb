@@ -25,10 +25,9 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
-#include "Cluster/ClusterTypes.h"
+#include "Cluster/MaintenanceOptions.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -46,6 +45,21 @@ namespace arangodb {
 class LogicalCollection;
 namespace maintenance {
 enum ActionState;
+
+/// @brief Statistics about shards in for every database
+struct ShardStatistics {
+  uint64_t shards{0};
+  uint64_t leaderShards{0};
+  uint64_t outOfSyncShards{0};
+  uint64_t notReplicated{0};
+  uint64_t followersOutOfSync{0};
+
+  void increaseNumberOfShards() noexcept { ++shards; }
+  void increaseNumberOfLeaderShards() noexcept { ++leaderShards; }
+  void increaseNumberOfOutOfSyncShards() noexcept { ++outOfSyncShards; }
+  void increaseNumberOfNotReplicatedShards() noexcept { ++notReplicated; }
+  void increaseNumberOfFollowersOutOfSync() noexcept { ++followersOutOfSync; }
+};
 
 // The following is used in multiple Maintenance actions and therefore
 // made available here.
@@ -126,31 +140,15 @@ class MaintenanceFeature : public ArangodFeature {
   //
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
   virtual Result addAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow = false);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(std::shared_ptr<maintenance::Action> action,
-                           bool executeNow = false);
-
-  /// @brief Internal API that allows existing actions to create pre actions
-  /// FIXDOC: Please explain how this works in a lot more detail, for example,
-  /// say if this can be called in the code of an Action and if the already
-  /// running action is postponed in this case. Explain semantics such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> preAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
-
-  /// @brief Internal API that allows existing actions to create post actions
-  /// FIXDOC: Please explain how this works in a lot more detail, such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> postAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::Action> action);
 
   /// returns whether or not the shard has an action of the specified type
   /// (equivalent to NAME) that has the specified state
@@ -171,6 +169,18 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
 
+  /// @brief Count a SynchronizeShard actions in flight, returns `false`
+  /// if there are two many already, in which case the number is not
+  /// increased.
+  bool increaseNumberOfSyncShardActionsQueued() noexcept {
+    uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
+    return n <= _options.maximalNumberOfSyncShardActionsQueued;
+  }
+
+  void decreaseNumberOfSyncShardActionsQueued() noexcept {
+    _numberOfSyncShardActionsQueued.fetch_sub(1);
+  }
+
   /// @brief check if a database is dirty
   bool isDirty(std::string const& dbName) const;
 
@@ -181,16 +191,16 @@ class MaintenanceFeature : public ArangodFeature {
   Result requeueAction(std::shared_ptr<maintenance::Action>& action,
                        int newPriority);
 
+  void updateDatabaseStatistics();
+
  protected:
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  void registerAction(std::shared_ptr<maintenance::Action> action,
-                      bool executeNow);
+  void registerAction(std::shared_ptr<maintenance::Action> action);
 
   std::shared_ptr<maintenance::Action> createAndRegisterAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
  public:
   /// @brief This API will attempt to fail an existing Action that is waiting
@@ -222,7 +232,9 @@ class MaintenanceFeature : public ArangodFeature {
 
   /// @brief Return number of seconds to say "not done" to block retries too
   /// soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
+  uint32_t getSecondsActionsBlock() const {
+    return _options.secondsActionsBlock;
+  }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -460,30 +472,11 @@ class MaintenanceFeature : public ArangodFeature {
  protected:
   ClusterFeature* _clusterFeature;
 
-  /// @brief option for forcing this feature to always be enable - used by the
-  /// catch tests
-  bool _forceActivation;
-
-  bool _resignLeadershipOnShutdown;
+  /// @brief All configurable options for MaintenanceFeature
+  MaintenanceOptions _options;
 
   /// @brief detect fresh start
   bool _firstRun;
-
-  /// @brief tunable option for thread pool size
-  uint32_t _maintenanceThreadsMax;
-
-  /// @brief tunable option for number of slow threads
-  uint32_t _maintenanceThreadsSlowMax;
-
-  /// @brief tunable option for number of seconds COMPLETE or FAILED actions
-  /// block
-  ///  duplicates from adding to _actionRegistry
-  int32_t _secondsActionsBlock;
-
-  /// @brief tunable option for number of seconds COMPLETE and FAILED actions
-  /// remain
-  ///  within _actionRegistry
-  int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
@@ -590,6 +583,16 @@ class MaintenanceFeature : public ArangodFeature {
   std::vector<std::string> _databasesToCheck;
   size_t _lastNumberOfDatabases;
 
+  // Here we count how many SynchronizeShard actions are either queued
+  // or currently executing. We use this number to avoid scheduling too
+  // many of them, since each one of then holds the shard lock and prevents
+  // other - potentially higher priority actions - from being scheduled.
+  // This is in particular important for TakeoverShardLeadership actions,
+  // which can become necessary when a dbserver should be come a leader but
+  // still has a SynchronizeShard action queued from its previous life as
+  // a shard follower for the shard.
+  std::atomic<uint64_t> _numberOfSyncShardActionsQueued = 0;
+
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec =
       nullptr;
@@ -619,11 +622,17 @@ class MaintenanceFeature : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>*
       _maintenance_action_runtime_msec = nullptr;
 
-  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
   metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_follower_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
+  metrics::Gauge<uint64_t>* _followers_out_of_sync_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
   metrics::Counter* _sync_timeouts_total = nullptr;
+
+  // contains statistics about shards for all databases
+  std::unordered_map<std::string, maintenance::ShardStatistics>
+      _databaseShardsStats;
 };
 
 }  // namespace arangodb

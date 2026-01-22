@@ -55,7 +55,7 @@ AqlValue functions::JsonStringify(ExpressionContext* exprCtx, AstNode const&,
   AqlValueMaterializer materializer(vopts);
   VPackSlice slice = materializer.slice(value);
 
-  transaction::StringLeaser buffer(trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());

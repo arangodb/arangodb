@@ -74,6 +74,7 @@ class V8ClientConnection {
 
   bool isConnected() const;
 
+  void prepareConnection();
   void connect();
   void reconnect();
 
@@ -98,6 +99,13 @@ class V8ClientConnection {
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
+  std::string getLocalEndpoint() {
+    if (_connection) {
+      return _connection->localEndpoint();
+    } else {
+      return "not connected";
+    }
+  }
   ArangoshServer& server();
 
   v8::Handle<v8::Value> getData(
@@ -162,7 +170,7 @@ class V8ClientConnection {
  private:
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
-  std::shared_ptr<fuerte::Connection> acquireConnection();
+  std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
 
   v8::Local<v8::Value> requestData(
       v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,
@@ -189,12 +197,30 @@ class V8ClientConnection {
     _lastErrorMessage = msg;
   }
 
+  // Helper function to authenticate via /_open/auth endpoint
+  ResultT<std::string> authenticateViaOpenAuth();
+
+  // Helper function to extract expiration time from JWT token
+  std::optional<double> extractJwtExpiration(std::string const& jwt);
+
+  // Helper function to check if JWT token needs renewal
+  bool needsTokenRenewal();
+
+  // Helper function to renew JWT token
+  void renewJwtToken();
+
  private:
   ArangoshServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
+
+  // Store credentials for JWT token renewal
+  std::string _storedUsername;
+  std::string _storedPassword;
+  std::string _currentJwtToken;
+  double _jwtTokenExpiry;  // expiration time in seconds since epoch
 
   mutable std::recursive_mutex _lock;
   unsigned _lastHttpReturnCode;
@@ -208,6 +234,7 @@ class V8ClientConnection {
   fuerte::ConnectionBuilder _connectedBuilder;
   std::string _currentConnectionId;
   std::shared_ptr<fuerte::Connection> _connection;
+  bool _foundConnectionClose;
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;

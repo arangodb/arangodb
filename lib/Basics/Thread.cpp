@@ -156,7 +156,12 @@ void Thread::startThread(void* arg) {
 TRI_pid_t Thread::currentProcessId() { return getpid(); }
 
 /// @brief returns the kernel thread id
+#ifdef HAVE_SYS_GETTID
 TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+#else
+#include <sys/syscall.h>
+TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
@@ -215,7 +220,7 @@ Thread::~Thread() {
   LOG_TOPIC("944b1", TRACE, Logger::THREADS)
       << "delete(" << _name << "), state: " << stringify(state);
 
-  if (state != ThreadState::STOPPED) {
+  if (state != ThreadState::STOPPED && state != ThreadState::CREATED) {
     LOG_TOPIC("80e0e", FATAL, arangodb::Logger::FIXME)
         << "thread '" << _name << "' is not stopped but " << stringify(state)
         << ". shutting down hard";

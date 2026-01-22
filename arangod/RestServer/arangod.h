@@ -62,6 +62,11 @@ namespace async_registry {
 class Feature;
 
 }
+namespace activity_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
@@ -97,6 +102,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class ApiRecordingFeature;
 class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
@@ -142,7 +148,9 @@ class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 class VectorIndexFeature;
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class ProcessEnvironmentFeature;
+#endif
 namespace transaction {
 
 class ManagerFeature;
@@ -202,8 +210,10 @@ using ArangodFeaturesList = TypeList<
     VersionFeature,
     ActionFeature,
     AgencyFeature,
+    ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
+    activity_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT
@@ -255,6 +265,9 @@ using ArangodFeaturesList = TypeList<
     ReplicationTimeoutFeature,
     SchedulerFeature,
     VectorIndexFeature,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ProcessEnvironmentFeature,
+#endif
 #ifdef USE_V8
     ScriptFeature,
 #endif

@@ -1438,7 +1438,20 @@ function processQuery(query, explain, planIndex) {
           searchParameters = keyword(' WITH SEARCH PARAMETERS ') + JSON.stringify(node.searchParameters);
         }
 
-        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters;
+        let filter = '';
+        if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
+          filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
+          if (node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
+            filter += annotation(" /* covered by storedValues */");
+          }
+        }
+
+        // Register the index used for near vector search
+        if (node.hasOwnProperty('index')) {
+          iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + filter;
       }
       case 'EnumerateViewNode':
         var condition = '';
@@ -1838,9 +1851,18 @@ function processQuery(query, explain, planIndex) {
         return collect;
       case 'IndexCollectNode':
         iterateIndexes(node.index, 0, node, types, false);
-        return keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+        let indexCollect = keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
           return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
-        }).join(', ') + annotation(' /* distinct value index scan */');
+        }).join(', ');
+        if (node.aggregations.length > 0) {
+          indexCollect += keyword(' AGGREGATE') + ' ' +
+              node.aggregations.map(function (node) {
+                return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + buildExpression(node.expression) + ')';
+              }).join(', ') + annotation(' /* full index scan */');
+        } else {
+          indexCollect += annotation(' /* distinct value index scan */');
+        }
+        return indexCollect;
       case 'SortNode':
         const groupedElements = node.numberOfTopGroupedElements > 0 ?
           '; ' + keyword('GROUPED BY') + ' '

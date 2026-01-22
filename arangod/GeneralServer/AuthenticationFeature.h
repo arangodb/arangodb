@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "AuthenticationOptions.h"
 #include "Basics/Result.h"
 #include "RestServer/arangod.h"
 
@@ -71,10 +72,16 @@ class AuthenticationFeature final : public ArangodFeature {
   std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
 #endif
 
-  double sessionTimeout() const { return _sessionTimeout; }
+  double sessionTimeout() const { return _options.sessionTimeout; }
+  double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }
+  double maximalJwtExpiryTime() const { return _options.maximalJwtExpiryTime; }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setUserManager(std::unique_ptr<auth::UserManager>);
+#endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:
   /// load JWT secret from file specified at startup
@@ -85,24 +92,11 @@ class AuthenticationFeature final : public ArangodFeature {
 
   static constexpr size_t kMaxSecretLength = 64;
 
+  AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
-  bool _authenticationUnixSockets;
-  bool _authenticationSystemOnly;
-  bool _active;
-  double _authenticationTimeout;
-  double _sessionTimeout;
 
   mutable std::mutex _jwtSecretsLock;
-
-  std::string _jwtSecretProgramOption;
-  std::string _jwtSecretKeyfileProgramOption;
-  std::string _jwtSecretFolderProgramOption;
-
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> _jwtPassiveSecrets;
-#endif
 
   static std::atomic<AuthenticationFeature*> INSTANCE;
 };

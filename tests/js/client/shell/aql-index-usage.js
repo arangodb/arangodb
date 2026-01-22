@@ -29,16 +29,24 @@ let jsunity = require("jsunity");
 
 let arangodb = require("@arangodb");
 let db = arangodb.db;
-let tasks = require("@arangodb/tasks");
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+
 let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 function IndexUsageSuite () {
   const cnData = "UnitTestsCollection"; // used for test data
   const cnComm = "UnitTestsCommunication"; // used for communication
+  let clients = [];
 
   return {
 
     setUp : function () {
+      clients = [];
       db._drop(cnData);
       db._drop(cnComm);
       db._create(cnData);
@@ -52,6 +60,7 @@ function IndexUsageSuite () {
     },
 
     tearDown : function () {
+      joinBGShells(IM.options, clients, waitFor, cnData);
       db._drop(cnData);
       db._drop(cnComm);
       if (IM.debugCanUseFailAt()) {
@@ -60,11 +69,10 @@ function IndexUsageSuite () {
     },
 
     testIndexUsage : function () {
-      let task = tasks.register({
-        command: function(params) {
+      clients.push({client: launchPlainSnippetInBG(`
           require('jsunity').jsUnity.attachAssertions();
           let db = require("internal").db;
-          let comm = db[params.cnComm];
+          let comm = db["${cnComm}"];
           let errors = require("@arangodb").errors;
           comm.insert({ _key: "runner1", value: 0 });
 
@@ -77,7 +85,7 @@ function IndexUsageSuite () {
           let start = time();
           do {
             try {
-              db._query("FOR doc IN " + params.cnData + " FILTER doc.value > 10 LIMIT 10 RETURN doc");
+              db._query("FOR doc IN ${cnData} FILTER doc.value > 10 LIMIT 10 RETURN doc");
               comm.update("runner1", { value: ++success });
             } catch (err) {
               // if the index that was picked for the query is dropped in the meantime,
@@ -86,9 +94,7 @@ function IndexUsageSuite () {
                          err.errorNum === errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
             }
           } while (time() - start < 10.0);
-        },
-        params: { cnComm, cnData }
-      });
+        `, 'testIndexUsage')});
 
       let comm = db[cnComm];
       comm.insert({ _key: "runner2" });
@@ -108,15 +114,6 @@ function IndexUsageSuite () {
         ++success;
       } while (time() - start < 10.0);
 
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
 
       assertEqual(2, comm.count());
       let doc = comm.document("runner1");
@@ -128,11 +125,10 @@ function IndexUsageSuite () {
       if (IM.debugCanUseFailAt()) {
         IM.debugSetFailAt("RocksDBCollection::read-delay");
 
-        const task = tasks.register({
-          command: function(params) {
+      clients.push({client: launchPlainSnippetInBG(`
             require('jsunity').jsUnity.attachAssertions();
             const {db, time} = require("internal");
-            const comm = db[params.cnComm];
+            const comm = db["${cnComm}"];
             comm.insert({ _key: "runner1", value: 0 });
 
             while (!comm.exists("runner2")) {
@@ -145,9 +141,7 @@ function IndexUsageSuite () {
             do {
               comm.update("runner1", { value: ++cnt });
             } while (time() - start < 10.0);
-          },
-          params: { cnComm, cnData }
-        });
+        `, 'testPrimaryIndexLookupConsistency')});
 
         const comm = db[cnComm];
         comm.insert({ _key: "runner2" });
@@ -161,16 +155,6 @@ function IndexUsageSuite () {
         do {
           assertTrue(comm.exists("runner1"));
         } while (time() - start < 10.0);
-
-        while (true) {
-          try {
-            tasks.get(task);
-            require("internal").wait(0.25, false);
-          } catch (err) {
-            // "task not found" means the task is finished
-            break;
-          }
-        }
       }
     },
   };

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, before, after, it */
+/* global describe, before, after, it, SYS_IS_V8_BUILD */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -627,10 +627,12 @@ describe('Rule optimize-traversals', () => {
       `{foo: 'bar'}`
     ];
 
-    const functValues = [
-      `NOOPT(V8(3+2))`,
+    let functValues = [
       `APPEND(['foo'], ['bar'], false)`
     ];
+    if (SYS_IS_V8_BUILD) {
+      functValues.push(`NOOPT(V8(3+2))`);
+    }
     const queryStart = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH '${graphName}' FILTER `;
     const queryEnd = ` RETURN {v,e,p}`;
 

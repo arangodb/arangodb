@@ -1808,10 +1808,27 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
       }
     }
   }
-  indexes = newIndexes.slice();
+
+  VPackBuilder rewrittenParametersBuilder;
+  TRI_ASSERT(parameters.isObject())
+      << "The parameters is expected to be an object!";
+  {
+    VPackObjectBuilder guard(&rewrittenParametersBuilder);
+    VPackObjectIterator it(parameters);
+    for (VPackObjectIterator it(parameters); it.valid(); it.next()) {
+      auto const key = it.key();
+      if (key.toString() == "indexes") {
+        continue;
+      }
+      rewrittenParametersBuilder.add(key);
+      rewrittenParametersBuilder.add(it.value());
+    }
+    rewrittenParametersBuilder.add("indexes", newIndexes.slice());
+  }
+  auto rewrittenParameters = rewrittenParametersBuilder.slice();
 
   // re-create indexes
-  if (indexes.length() > 0) {
+  if (rewrittenParameters.get("indexes").length() > 0) {
     // we actually have indexes
 
     if (options.progress) {
@@ -1819,7 +1836,7 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
           << "# Creating indexes for collection '" << collectionName << "'...";
     }
 
-    result = sendRestoreIndexes(client, parameters);
+    result = sendRestoreIndexes(client, rewrittenParameters);
 
     if (result.fail()) {
       LOG_TOPIC("db937", WARN, Logger::RESTORE)

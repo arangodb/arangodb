@@ -353,6 +353,7 @@ function BaseChaosSuite(testOpts) {
     testRunChaos: function () {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
+        const errors = require("@arangodb").errors;
         
         const generateAttributes = (n) => {
           let attrs = "";
@@ -510,7 +511,6 @@ function BaseChaosSuite(testOpts) {
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
               query(`FOR doc IN ${c.name()} LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO ${c.name()} OPTIONS ${JSON.stringify(o)}`, {limit}, qo);
             } else if (d >= 0.60) {
-              const limit = Math.floor(Math.random() * 100) + 1;
               let keys = [];
               for (let i = 0; i < keys; ++i) {
                 keys.push(key());
@@ -518,7 +518,6 @@ function BaseChaosSuite(testOpts) {
               log(`RUNNING DOCUMENT BATCH LOOKUP.`);
               c.document(keys);
             } else if (d >= 0.55) {
-              const limit = Math.floor(Math.random() * 100) + 1;
               let keys = [];
               for (let i = 0; i < keys; ++i) {
                 keys.push(key());
@@ -540,15 +539,26 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {
             log(`executing previous command triggered exception ${err}`);
             // none of the following errors are expected in this test:
-            if (require("@arangodb").errors.ERROR_QUERY_PARSE === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_EMPTY === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_COMPILE_TIME_OPTIONS === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETERS_INVALID === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_MISSING === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_TYPE === err.errorNum) {
+            if ([
+                  errors.ERROR_QUERY_PARSE,
+                  errors.ERROR_QUERY_EMPTY,
+                  errors.ERROR_QUERY_COMPILE_TIME_OPTIONS,
+                  errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
+                  errors.ERROR_QUERY_BIND_PARAMETERS_INVALID,
+                  errors.ERROR_QUERY_BIND_PARAMETER_MISSING,
+                  errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
+                  errors.ERROR_QUERY_BIND_PARAMETER_TYPE,
+                ].some(e => e.code === err.errorNum)
+            ) {
               throw err;
+            }
+            if (testOpts.withStreamingTransactions
+                && [errors.ERROR_CLUSTER_TIMEOUT, errors.ERROR_HTTP_REQUEST_TIMEOUT]
+                    .some(e => e.code === err.errorNum)) {
+              // After an operation using a specific streaming transaction fails due to a network timeout, it is no
+              // longer safe to use that transaction: The previous operation might still be running, and concurrent
+              // use of streaming transactions is (currently) disallowed and UB.
+              break;
             }
           }
         }
@@ -565,12 +575,12 @@ function BaseChaosSuite(testOpts) {
             }
             trx = null;
           } catch (e) {
-            if (require("@arangodb").errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
+            if (errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
               log(`aborting trx abort/commit loop because trx was not found`);
               break;
             }
             // due to contention we could have a lock timeout here
-            if (require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+            if (errors.ERROR_LOCKED.code !== e.errorNum) {
               log(`aborting trx abort/commit loop because of unexpected error ${JSON.stringify(e)}`);
               throw e;
             }

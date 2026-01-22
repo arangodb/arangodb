@@ -94,6 +94,9 @@ struct Collections {
       TRI_vocbase_t* vocbase,
       std::function<void(std::shared_ptr<LogicalCollection> const&)> const&);
 
+  static std::vector<std::shared_ptr<LogicalCollection>> getNotDeleted(
+      const TRI_vocbase_t& vocbase);
+
   /// @brief lookup a collection in vocbase or clusterinfo.
   static Result lookup(              // find collection
       TRI_vocbase_t const& vocbase,  // vocbase to search

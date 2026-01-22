@@ -85,7 +85,7 @@ const initialValues: InvertedIndexValuesType = {
   fields: [],
   cleanupIntervalStep: 2,
   commitIntervalMsec: 1000,
-  consolidationIntervalMsec: 1000,
+  consolidationIntervalMsec: 5000,
   writebufferIdle: 64,
   writebufferActive: 0,
   writebufferSizeMax: 33554432,
@@ -101,10 +101,10 @@ const initialValues: InvertedIndexValuesType = {
   ],
   consolidationPolicy: {
     type: "tier",
-    segmentsMin: 1,
-    segmentsMax: 10,
-    segmentsBytesMax: 5368709120,
-    segmentsBytesFloor: 2097152,
+    segmentsMin: 50,
+    segmentsMax: 200,
+    segmentsBytesMax: 8589934592,
+    segmentsBytesFloor: 25165824,
     minScore: 0
   }
 };

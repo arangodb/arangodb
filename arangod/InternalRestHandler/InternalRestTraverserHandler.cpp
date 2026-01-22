@@ -35,11 +35,150 @@
 
 #include <Logger/LogMacros.h>
 #include <chrono>
+#include <cstdint>
 #include <thread>
+#include <variant>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
+
+#define LOG_TRAVERSAL LOG_DEVEL_IF(false)
+
+namespace {
+
+struct StartEdgeQuery {
+  std::vector<std::string> vertexKeys;
+  size_t depth;
+  VPackSlice variables;
+  std::optional<uint64_t> batchSize = std::nullopt;
+};
+
+struct Continue {
+  size_t cursorId;
+};
+
+struct EdgeQuery {
+  std::variant<Continue, StartEdgeQuery> query;
+  size_t batchId = 0;
+};
+ResultT<EdgeQuery> parseQuery(VPackSlice body) {
+  auto maybeCursorId = body.get("cursorId");
+  if (not maybeCursorId.isNone()) {
+    if (not maybeCursorId.isInteger()) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting cursor id as integer");
+    }
+    auto cursorId = maybeCursorId.getInt();
+    if (cursorId < 0) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting cursor id >= 0");
+    }
+    auto maybeBatchId = body.get("batchId");
+    if (maybeBatchId.isNone() || not maybeBatchId.isInteger()) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting integer batch id");
+    }
+    auto batchId = maybeBatchId.getInt();
+    if (batchId < 0) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting batch id >= 0");
+    }
+
+    return EdgeQuery{
+        .query = Continue{.cursorId = static_cast<size_t>(cursorId)},
+        .batchId = static_cast<size_t>(batchId)};
+  }
+
+  // keys
+  VPackSlice keysSlice = body.get("keys");
+  if (!keysSlice.isString() && !keysSlice.isArray()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'keys' to be a string or an array value.");
+  }
+  std::vector<std::string> vertices;
+  if (keysSlice.isArray()) {
+    for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
+      TRI_ASSERT(vertex.isString());
+      vertices.emplace_back(vertex.copyString());
+    }
+  } else if (keysSlice.isString()) {
+    vertices.emplace_back(keysSlice.copyString());
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+
+  // depth
+  VPackSlice depthSlice = body.get("depth");
+  if (!depthSlice.isInteger()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'depth' to be an integer value");
+  }
+  auto depth = depthSlice.getNumericValue<size_t>();
+
+  // variables
+  VPackSlice variables = body.get("variables");
+
+  // batch size
+  auto maybeBatchSize = body.get("batchSize");
+  if (maybeBatchSize.isNone()) {
+    return EdgeQuery{StartEdgeQuery{
+        .vertexKeys = vertices, .depth = depth, .variables = variables}};
+  }
+  if (not maybeBatchSize.isInteger()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'batchSize' to be an integer value");
+  }
+  auto batchSizeInt = maybeBatchSize.getInt();
+  if (batchSizeInt <= 0) {
+    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                     "expecting 'batchSize' to be positive");
+  }
+  auto batchSize = static_cast<uint64_t>(batchSizeInt);
+
+  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
+                                  .depth = depth,
+                                  .variables = variables,
+                                  .batchSize = batchSize}};
+}
+
+}  // namespace
+
+auto InternalRestTraverserHandler::get_engine(uint64_t engineId)
+    -> ResultT<traverser::BaseEngine*> {
+  std::chrono::time_point<std::chrono::steady_clock> start =
+      std::chrono::steady_clock::now();
+  while (true) {
+    try {
+      auto engine = _registry->openGraphEngine(engineId);
+      if (engine != nullptr) {
+        return {engine};
+      }
+      return ResultT<traverser::BaseEngine*>::error(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "invalid TraverserEngine id - potentially the AQL query "
+          "was already aborted or timed out");
+    } catch (basics::Exception const& ex) {
+      // it is possible that the engine is already in use
+      if (ex.code() != TRI_ERROR_LOCKED) {
+        throw;
+      }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    if (server().isStopping()) {
+      return {TRI_ERROR_SHUTTING_DOWN};
+    }
+
+    if (start + std::chrono::seconds(60) < std::chrono::steady_clock::now()) {
+      // timeout
+      return {TRI_ERROR_LOCK_TIMEOUT};
+    }
+  }
+}
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
@@ -49,10 +188,11 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
   TRI_ASSERT(_registry != nullptr);
 }
 
-RestStatus InternalRestTraverserHandler::execute() {
+auto InternalRestTraverserHandler::executeAsync()
+    -> futures::Future<futures::Unit> {
   if (!ServerState::instance()->isDBServer()) {
     generateForbidden();
-    return RestStatus::DONE;
+    co_return;
   }
 
   // extract the sub-request type
@@ -62,7 +202,9 @@ RestStatus InternalRestTraverserHandler::execute() {
   try {
     switch (type) {
       case RequestType::POST:
-        createEngine();
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "API traversal engine creation no longer supported");
         break;
       case RequestType::PUT:
         queryEngine();
@@ -84,14 +226,7 @@ RestStatus InternalRestTraverserHandler::execute() {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
-  // this handler is done
-  return RestStatus::DONE;
-}
-
-void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "API traversal engine creation no longer supported");
+  co_return;
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -123,39 +258,17 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> start =
-      std::chrono::steady_clock::now();
-
-  traverser::BaseEngine* engine = nullptr;
-  while (true) {
-    try {
-      engine = _registry->openGraphEngine(engineId);
-      if (engine != nullptr) {
-        break;
-      }
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid TraverserEngine id - potentially the AQL query "
-                    "was already aborted or timed out");
-      return;
-    } catch (basics::Exception const& ex) {
-      // it is possible that the engine is already in use
-      if (ex.code() != TRI_ERROR_LOCKED) {
-        throw;
-      }
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    if (server().isStopping()) {
-      generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
-      return;
-    }
-
-    if (start + std::chrono::seconds(60) < std::chrono::steady_clock::now()) {
-      // timeout
+  auto maybeEngine = get_engine(engineId);
+  if (not maybeEngine.ok()) {
+    if (maybeEngine.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
       return;
     }
+    generateError(ResponseCode::BAD, maybeEngine.errorNumber(),
+                  maybeEngine.errorMessage());
+    return;
   }
+  auto engine = maybeEngine.get();
 
   TRI_ASSERT(engine != nullptr);
 
@@ -177,33 +290,60 @@ void InternalRestTraverserHandler::queryEngine() {
 
   VPackBuilder result;
   if (option == "edge") {
-    VPackSlice keysSlice = body.get("keys");
-
-    if (!keysSlice.isString() && !keysSlice.isArray()) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expecting 'keys' to be a string or an array value.");
-      return;
-    }
-
     switch (engine->getType()) {
       case BaseEngine::EngineType::TRAVERSER: {
-        VPackSlice depthSlice = body.get("depth");
-        if (!depthSlice.isInteger()) {
-          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "expecting 'depth' to be an integer value");
-          return;
-        }
         // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
 
-        VPackSlice variables = body.get("variables");
-        eng->injectVariables(variables);
+        auto query = parseQuery(body);
+        if (not query.ok()) {
+          generateError(ResponseCode::BAD, query.errorNumber(),
+                        query.errorMessage());
+          return;
+        }
 
-        eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
-        break;
+        auto startQuery = query.get().query;
+        size_t cursorId;
+        if (std::holds_alternative<StartEdgeQuery>(startQuery)) {
+          auto q = std::get<StartEdgeQuery>(startQuery);
+          if (q.batchSize.has_value()) {
+            cursorId =
+                eng->createNewCursor(q.depth, q.batchSize.value(),
+                                     std::move(q.vertexKeys), q.variables);
+          } else {
+            // old behaviour
+            eng->allEdges(q.vertexKeys, q.depth, q.variables, result);
+            generateResult(ResponseCode::OK, result.slice(), engine->context());
+            return;
+          }
+        } else {
+          auto q = std::get<Continue>(startQuery);
+          cursorId = q.cursorId;
+        }
+
+        result.openObject();
+        auto res = eng->nextEdgeBatch(cursorId, query.get().batchId, result);
+        if (res.fail()) {
+          generateError(ResponseCode::BAD, res.errorNumber(),
+                        res.errorMessage());
+          return;
+        }
+        eng->addAndClearStatistics(result);
+        result.close();
+        LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                      << inspection::json(result);
+
+        generateResult(ResponseCode::OK, result.slice(), engine->context());
+        return;
       }
       case BaseEngine::EngineType::SHORTESTPATH: {
+        VPackSlice keysSlice = body.get("keys");
+        if (!keysSlice.isString() && !keysSlice.isArray()) {
+          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "expecting 'keys' to be a string or an array value.");
+          return;
+        }
         VPackSlice bwSlice = body.get("backward");
         if (!bwSlice.isBool()) {
           generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -260,6 +400,8 @@ void InternalRestTraverserHandler::queryEngine() {
       generateError(ResponseCode::BAD, ex.code(), ex.what());
       return;
     }
+    LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                  << inspection::json(result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");

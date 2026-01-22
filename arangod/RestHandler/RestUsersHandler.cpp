@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,7 +30,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -42,9 +41,7 @@
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a collection exists in database or a wildcard was specified
-////////////////////////////////////////////////////////////////////////////////
+// a collection exists in database or a wildcard was specified
 arangodb::Result existsCollection(arangodb::ArangodServer& server,
                                   std::string const& database,
                                   std::string const& collection) {
@@ -111,20 +108,6 @@ RestStatus RestUsersHandler::execute() {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-}
-
-bool RestUsersHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
-bool RestUsersHandler::canAccessUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return isAdminUser();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -215,7 +198,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   return RestStatus::DONE;
 }
 
-/// generate response for /_api/user/database?full=true/false
+// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
                                               std::string const& username,
                                               bool full) {
@@ -269,7 +252,7 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   }
 }
 
-/// helper to create(0), replace(1), update(2) a user
+// helper to create(0), replace(1), update(2) a user
 static Result StoreUser(auth::UserManager* um, int mode,
                         std::string const& user, VPackSlice json) {
   std::string passwd;
@@ -289,27 +272,31 @@ static Result StoreUser(auth::UserManager* um, int mode,
   } else if (mode == 2) {
     VPackBuilder doc = um->serializeUser(user);
     VPackSlice u = doc.slice();
-    r = um->updateUser(user, [&](auth::User& entry) {
-      if (json.isObject()) {
-        if (json.get("passwd").isString()) {
-          entry.updatePassword(passwd);
-        }
-        if (json.get("active").isBool()) {
-          entry.setActive(active);
-        }
-      }
+    r = um->updateUser(
+        user,
+        [&](auth::User& entry) {
+          if (json.isObject()) {
+            if (json.get("passwd").isString()) {
+              entry.updatePassword(passwd);
+            }
+            if (json.get("active").isBool()) {
+              entry.setActive(active);
+            }
+          }
 
-      VPackSlice oldExtra = u.get("extra");
-      if (extra.isObject() && oldExtra.isObject()) {
-        // Both `extra` and `oldExtra` are objects, so perform a deep merge.
-        entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
-      } else if (!extra.isNone()) {
-        // `extra` or `oldExtra` is not an object, so a deep merge is not
-        // possible. Just overwrite the old value.
-        entry.setUserData(VPackBuilder(extra));
-      }
-      return TRI_ERROR_NO_ERROR;
-    });
+          VPackSlice oldExtra = u.get("extra");
+          if (extra.isObject() && oldExtra.isObject()) {
+            // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+            entry.setUserData(
+                VPackCollection::merge(oldExtra, extra, true, false));
+          } else if (!extra.isNone()) {
+            // `extra` or `oldExtra` is not an object, so a deep merge is not
+            // possible. Just overwrite the old value.
+            entry.setUserData(VPackBuilder(extra));
+          }
+          return TRI_ERROR_NO_ERROR;
+        },
+        auth::UserManager::RetryOnConflict::No);
   }
 
   return r;
@@ -349,7 +336,8 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     if (s.isString()) {
       password = s.copyString();
     }
-    if (um->checkPassword(user, password)) {
+    std::string un;
+    if (um->checkCredentials(user, password, un)) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
@@ -424,17 +412,20 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       b(VPackValue(VPackValueType::Object));
 
-      Result r = um->updateUser(name, [&](auth::User& entry) {
-        if (coll.empty()) {
-          entry.grantDatabase(db, lvl);
-          b(db, VPackValue(convertFromAuthLevel(lvl)))();
-        } else {
-          entry.grantCollection(db, coll, lvl);
-          b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
-        }
+      Result r = um->updateUser(
+          name,
+          [&](auth::User& entry) {
+            if (coll.empty()) {
+              entry.grantDatabase(db, lvl);
+              b(db, VPackValue(convertFromAuthLevel(lvl)))();
+            } else {
+              entry.grantCollection(db, coll, lvl);
+              b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
+            }
 
-        return TRI_ERROR_NO_ERROR;
-      });
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::No);
 
       if (r.ok()) {
         generateUserResult(ResponseCode::OK, b);
@@ -454,29 +445,33 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         // The API expects: { value : <toStore> }
         // If we get sth else than the above it is translated
         // to a remove of the config option.
-        res = um->updateUser(name, [&](auth::User& u) {
-          VPackSlice newVal = body;
-          VPackSlice oldConf = u.configData();
-          if (!newVal.isObject() || !newVal.hasKey("value")) {
-            if (oldConf.isObject() && oldConf.hasKey(key)) {
-              u.setConfigData(VPackCollection::remove(
-                  oldConf, std::unordered_set<std::string>{key}));
-            }       // Nothing to do. We do not have a config yet.
-          } else {  // We need to merge the new key into the config
-            VPackBuilder b;
-            b(VPackValue(VPackValueType::Object))(key, newVal.get("value"))();
+        res = um->updateUser(
+            name,
+            [&](auth::User& u) {
+              VPackSlice newVal = body;
+              VPackSlice oldConf = u.configData();
+              if (!newVal.isObject() || !newVal.hasKey("value")) {
+                if (oldConf.isObject() && oldConf.hasKey(key)) {
+                  u.setConfigData(VPackCollection::remove(
+                      oldConf, std::unordered_set<std::string>{key}));
+                }       // Nothing to do. We do not have a config yet.
+              } else {  // We need to merge the new key into the config
+                VPackBuilder b;
+                b(VPackValue(VPackValueType::Object))(key,
+                                                      newVal.get("value"))();
 
-            if (oldConf.isObject() &&
-                !oldConf.isEmptyObject()) {  // merge value in
-              u.setConfigData(
-                  VPackCollection::merge(oldConf, b.slice(), false));
-            } else {
-              u.setConfigData(std::move(b));
-            }
-          }
+                if (oldConf.isObject() &&
+                    !oldConf.isEmptyObject()) {  // merge value in
+                  u.setConfigData(
+                      VPackCollection::merge(oldConf, b.slice(), false));
+                } else {
+                  u.setConfigData(std::move(b));
+                }
+              }
 
-          return TRI_ERROR_NO_ERROR;
-        });
+              return TRI_ERROR_NO_ERROR;
+            },
+            auth::UserManager::RetryOnConflict::No);
       }
       if (res.ok()) {
         resetResponse(ResponseCode::OK);
@@ -542,10 +537,13 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
     if (suffixes[1] == "config" && canAccessUser(user)) {
-      Result r = um->updateUser(user, [&](auth::User& u) {
-        u.setConfigData(VPackBuilder());
-        return TRI_ERROR_NO_ERROR;
-      });
+      Result r = um->updateUser(
+          user,
+          [&](auth::User& u) {
+            u.setConfigData(VPackBuilder());
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::No);
       if (r.ok()) {
         resetResponse(ResponseCode::OK);
       } else {
@@ -579,15 +577,18 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         }
       }
 
-      Result r = um->updateUser(user, [&](auth::User& entry) {
-        if (coll.empty()) {
-          entry.removeDatabase(db);
-        } else {
-          entry.removeCollection(db, coll);
-        }
+      Result r = um->updateUser(
+          user,
+          [&](auth::User& entry) {
+            if (coll.empty()) {
+              entry.removeDatabase(db);
+            } else {
+              entry.removeCollection(db, coll);
+            }
 
-        return TRI_ERROR_NO_ERROR;
-      });
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::Yes);
 
       if (r.ok()) {
         VPackBuilder b;
@@ -602,15 +603,19 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       // remove internal config data, used in the WebUI
       if (canAccessUser(user)) {
         std::string const& key = suffixes[2];
-        Result r = um->updateUser(user, [&](auth::User& u) {
-          VPackBuilder b;
-          b(VPackValue(VPackValueType::Object))(key, VPackSlice::nullSlice())();
-          if (!u.configData().isNone()) {
-            u.setConfigData(
-                VPackCollection::merge(u.configData(), b.slice(), false, true));
-          }
-          return TRI_ERROR_NO_ERROR;
-        });
+        Result r = um->updateUser(
+            user,
+            [&](auth::User& u) {
+              VPackBuilder b;
+              b(VPackValue(VPackValueType::Object))(key,
+                                                    VPackSlice::nullSlice())();
+              if (!u.configData().isNone()) {
+                u.setConfigData(VPackCollection::merge(u.configData(),
+                                                       b.slice(), false, true));
+              }
+              return TRI_ERROR_NO_ERROR;
+            },
+            auth::UserManager::RetryOnConflict::No);
 
         if (r.ok()) {
           resetResponse(ResponseCode::OK);

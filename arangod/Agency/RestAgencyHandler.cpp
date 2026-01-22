@@ -33,6 +33,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 
+#include <Async/async.h>
 #include <velocypack/Builder.h>
 
 #include <thread>
@@ -53,29 +54,26 @@ RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
                                      GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
-RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
+void RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::reportTooManySuffices() {
+void RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::reportUnknownMethod() {
+void RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
-                                            std::string const& message) {
+void RestAgencyHandler::reportMessage(rest::ResponseCode code,
+                                      std::string const& message) {
   LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
@@ -83,7 +81,6 @@ RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
     body.add("message", VPackValue(message));
   }
   generateResult(code, body.slice());
-  return RestStatus::DONE;
 }
 
 void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
@@ -99,7 +96,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
   }
 }
 
-RestStatus RestAgencyHandler::handleTransient() {
+void RestAgencyHandler::handleTransient() {
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
@@ -151,8 +148,6 @@ RestStatus RestAgencyHandler::handleTransient() {
       redirectRequest(ret.redirect);
     }
   }
-
-  return RestStatus::DONE;
 }
 
 /// Poll from agency starting with start.
@@ -160,80 +155,73 @@ RestStatus RestAgencyHandler::handleTransient() {
 /// { accepted:bool, result: { firstIndex, commitIndex, logs:[{index, log}] } }
 /// if !accepted, lost leadership
 /// else respond
-RestStatus RestAgencyHandler::pollIndex(index_t const& start,
-                                        double const& timeout) {
+auto RestAgencyHandler::pollIndex(index_t const& start, double const& timeout)
+    -> async<void> {
   auto pollResult = _agent->poll(start, timeout);
 
   if (std::get<1>(pollResult)) {
-    return waitForFuture(
-        std::move(std::get<0>(pollResult))
-            .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
-              VPackSlice res = rb->slice();
+    try {
+      auto rb = co_await std::move(std::get<0>(pollResult));
 
-              if (res.isObject() && res.hasKey("result")) {
-                if (res.hasKey(StaticStrings::Error)) {  // leadership loss
-                  generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                                TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                                "No leader");
-                  return;
-                }
+      VPackSlice res = rb->slice();
 
-                VPackSlice slice = res.get("result");
+      if (res.isObject() && res.hasKey("result")) {
+        if (res.hasKey(StaticStrings::Error)) {  // leadership loss
+          generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+          co_return;
+        }
 
-                if (slice.hasKey("log")) {
-                  VPackBuilder builder;
-                  {
-                    VPackObjectBuilder ob(&builder);
-                    builder.add(StaticStrings::Error, VPackValue(false));
-                    builder.add("code", VPackValue(int(ResponseCode::OK)));
-                    builder.add(VPackValue("result"));
-                    VPackObjectBuilder r(&builder);
-                    if (!slice.get("firstIndex").isNumber()) {
-                      generateError(rest::ResponseCode::SERVER_ERROR,
-                                    TRI_ERROR_HTTP_SERVER_ERROR,
-                                    "invalid first log index.");
-                      return;
-                    } else if (slice.get("firstIndex").getNumber<uint64_t>() >
-                               start) {
-                      generateError(
-                          rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR,
-                          "first log index is greater than requested.");
-                      return;
-                    }
-                    uint64_t firstIndex =
-                                 slice.get("firstIndex").getNumber<uint64_t>(),
-                             i = 0;
+        VPackSlice slice = res.get("result");
 
-                    builder.add("commitIndex", slice.get("commitIndex"));
-                    VPackSlice logs = slice.get("log");
-                    if (start <= firstIndex) {
-                      builder.add("firstIndex", logs[i].get("index"));
-                    }
-                    builder.add(VPackValue("log"));
-                    VPackArrayBuilder a(&builder);
-                    if (start <= firstIndex) {
-                      uint64_t i = start - firstIndex;
-                      for (; i < logs.length(); ++i) {
-                        builder.add(logs[i]);
-                      }
-                    }
-                  }
-                  generateResult(rest::ResponseCode::OK,
-                                 std::move(*builder.steal()));
-                } else {
-                  generateResult(rest::ResponseCode::OK,
-                                 std::move(*rb->steal()));
-                }
-              } else {
-                generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-              }
-            })
-            .thenError<std::exception>([this](std::exception const& e) {
+        if (slice.hasKey("log")) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(StaticStrings::Error, VPackValue(false));
+            builder.add("code", VPackValue(int(ResponseCode::OK)));
+            builder.add(VPackValue("result"));
+            VPackObjectBuilder r(&builder);
+            if (!slice.get("firstIndex").isNumber()) {
               generateError(rest::ResponseCode::SERVER_ERROR,
-                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-            }));
+                            TRI_ERROR_HTTP_SERVER_ERROR,
+                            "invalid first log index.");
+              co_return;
+            } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR,
+                            "first log index is greater than requested.");
+              co_return;
+            }
+            uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(),
+                     i = 0;
+
+            builder.add("commitIndex", slice.get("commitIndex"));
+            VPackSlice logs = slice.get("log");
+            if (start <= firstIndex) {
+              builder.add("firstIndex", logs[i].get("index"));
+            }
+            builder.add(VPackValue("log"));
+            VPackArrayBuilder a(&builder);
+            if (start <= firstIndex) {
+              uint64_t i = start - firstIndex;
+              for (; i < logs.length(); ++i) {
+                builder.add(logs[i]);
+              }
+            }
+          }
+          generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+        } else {
+          generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+        }
+      } else {
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+      }
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }
   } else {
     auto const& leader = std::get<2>(pollResult);
     if (leader == NO_LEADER) {
@@ -242,7 +230,7 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
     } else {
       redirectRequest(leader);
     }
-    return RestStatus::DONE;
+    co_return;
   }
 }
 
@@ -267,10 +255,10 @@ static bool readValue(GeneralRequest const& req, char const* name, T& val) {
 }
 }  // namespace
 
-RestStatus RestAgencyHandler::handlePoll() {
+auto RestAgencyHandler::handlePoll() -> async<void> {
   // GET only
   if (_request->requestType() != rest::RequestType::GET) {
-    return reportMethodNotAllowed();
+    co_return reportMethodNotAllowed();
   }
 
   // WARNING ////////////////////////////////////////////////////
@@ -278,12 +266,12 @@ RestStatus RestAgencyHandler::handlePoll() {
   auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
     if (leaderId == NO_LEADER) {
-      return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                           "No leader");
+      co_return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                              "No leader");
     } else {
       TRI_ASSERT(leaderId != _agent->id());
       redirectRequest(leaderId);
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
@@ -294,10 +282,10 @@ RestStatus RestAgencyHandler::handlePoll() {
   readValue(*_request, "index", index);
   readValue(*_request, "timeout", timeout);
 
-  return pollIndex(index, timeout);
+  co_return co_await pollIndex(index, timeout);
 }
 
-RestStatus RestAgencyHandler::handleStores() {
+void RestAgencyHandler::handleStores() {
   if (_request->requestType() == rest::RequestType::GET) {
     Builder body;
     {
@@ -325,13 +313,13 @@ RestStatus RestAgencyHandler::handleStores() {
       }
     }
     generateResult(rest::ResponseCode::OK, body.slice());
-    return RestStatus::DONE;
+    return;
   }
 
   return reportMethodNotAllowed();
 }
 
-RestStatus RestAgencyHandler::handleStore() {
+void RestAgencyHandler::handleStore() {
   if (_request->requestType() == rest::RequestType::POST) {
     velocypack::Slice query = _request->payload();
     arangodb::consensus::index_t index = 0;
@@ -348,14 +336,13 @@ RestStatus RestAgencyHandler::handleStore() {
     } catch (...) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-
-    return RestStatus::DONE;
+    return;
   }
 
   return reportMethodNotAllowed();
 }
 
-RestStatus RestAgencyHandler::handleWrite() {
+void RestAgencyHandler::handleWrite() {
   using namespace std::chrono;
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
@@ -480,11 +467,9 @@ RestStatus RestAgencyHandler::handleWrite() {
       redirectRequest(ret.redirect);
     }
   }
-
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::handleTransact() {
+void RestAgencyHandler::handleTransact() {
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
@@ -541,11 +526,9 @@ RestStatus RestAgencyHandler::handleTransact() {
       redirectRequest(ret.redirect);
     }
   }
-
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::handleInquire() {
+void RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
     return reportMethodNotAllowed();
   }
@@ -558,7 +541,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   } catch (std::exception const& ex) {
     LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return RestStatus::DONE;
+    return;
   }
 
   // Leadership established?
@@ -650,11 +633,9 @@ RestStatus RestAgencyHandler::handleInquire() {
       redirectRequest(ret.redirect);
     }
   }
-
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::handleRead() {
+void RestAgencyHandler::handleRead() {
   if (_request->requestType() == rest::RequestType::POST) {
     velocypack::Slice query;
     try {
@@ -684,13 +665,13 @@ RestStatus RestAgencyHandler::handleRead() {
         redirectRequest(ret.redirect);
       }
     }
-    return RestStatus::DONE;
+    return;
   }
 
   return reportMethodNotAllowed();
 }
 
-RestStatus RestAgencyHandler::handleConfig() {
+void RestAgencyHandler::handleConfig() {
   LOG_TOPIC("eda22", DEBUG, Logger::AGENCY) << "handleConfig start";
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
@@ -699,7 +680,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     e.what());
-      return RestStatus::DONE;
+      return;
     }
   } else if (_request->requestType() == rest::RequestType::PUT) {
     try {
@@ -707,7 +688,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     e.what());
-      return RestStatus::DONE;
+      return;
     }
   }
 
@@ -736,10 +717,9 @@ RestStatus RestAgencyHandler::handleConfig() {
   generateResult(rest::ResponseCode::OK, body.slice());
 
   LOG_TOPIC("77891", DEBUG, Logger::AGENCY) << "handleConfig after before done";
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::handleState() {
+void RestAgencyHandler::handleState() {
   bool found;
   std::string const& val_str = _request->value("redirectToLeader", found);
   bool redirectToLeader = found && val_str == "true";
@@ -754,7 +734,7 @@ RestStatus RestAgencyHandler::handleState() {
       }
       if (leader != _agent->id()) {
         redirectRequest(leader);
-        return RestStatus::DONE;
+        return;
       }
     }
   }
@@ -769,59 +749,57 @@ RestStatus RestAgencyHandler::handleState() {
   auto origin = transaction::OperationOriginInternal{"returning agency state"};
   transaction::StandaloneContext ctx(_vocbase, origin);
   generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::reportMethodNotAllowed() {
+void RestAgencyHandler::reportMethodNotAllowed() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAgencyHandler::execute() {
+auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
   response()->setAllowCompression(
       rest::ResponseCompressionType::kAllowCompression);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request
-      return reportErrorEmptyRequest();
+      co_return reportErrorEmptyRequest();
     } else if (suffixes.size() > 1) {  // path size >= 2
-      return reportTooManySuffices();
+      co_return reportTooManySuffices();
     } else {
       if (suffixes[0] == "write") {
-        return handleWrite();
+        co_return handleWrite();
       } else if (suffixes[0] == "read") {
-        return handleRead();
+        co_return handleRead();
       } else if (suffixes[0] == "poll") {
-        return handlePoll();
+        co_return co_await handlePoll();
       } else if (suffixes[0] == "inquire") {
-        return handleInquire();
+        co_return handleInquire();
       } else if (suffixes[0] == "transient") {
-        return handleTransient();
+        co_return handleTransient();
       } else if (suffixes[0] == "transact") {
-        return handleTransact();
+        co_return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
             _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
+          co_return reportMethodNotAllowed();
         }
-        return handleConfig();
+        co_return handleConfig();
       } else if (suffixes[0] == "state") {
         if (_request->requestType() != rest::RequestType::GET) {
-          return reportMethodNotAllowed();
+          co_return reportMethodNotAllowed();
         }
-        return handleState();
+        co_return handleState();
       } else if (suffixes[0] == "stores") {
-        return handleStores();
+        co_return handleStores();
       } else if (suffixes[0] == "store") {
-        return handleStore();
+        co_return handleStore();
       } else {
-        return reportUnknownMethod();
+        co_return reportUnknownMethod();
       }
     }
   } catch (...) {
     // Ignore this error
   }
-  return RestStatus::DONE;
+  co_return;
 }

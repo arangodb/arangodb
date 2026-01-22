@@ -1,0 +1,40 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+#include "Graph/Types/VertexRef.h"
+
+namespace arangodb::graph {
+
+[[nodiscard]] auto VertexRef::collectionName() const
+    -> ResultT<std::string_view> {
+  size_t pos = _vertex.find('/');
+  if (pos == std::string::npos) {
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);
+    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
+                  "invalid VertexRef " + _vertex.toString()};
+  }
+
+  return _vertex.substr(0, pos).stringView();
+}
+
+}  // namespace arangodb::graph

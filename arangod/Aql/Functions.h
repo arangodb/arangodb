@@ -579,6 +579,9 @@ AqlValue ApproxNearCosine(arangodb::aql::ExpressionContext*, AstNode const&,
 AqlValue ApproxNearL2(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 
+AqlValue ApproxNearInnerProduct(arangodb::aql::ExpressionContext*,
+                                AstNode const&, VPackFunctionParametersView);
+
 AqlValue DecayGauss(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 

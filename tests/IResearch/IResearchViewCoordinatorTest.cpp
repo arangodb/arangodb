@@ -27,11 +27,7 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -41,26 +37,18 @@
 #include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
-#include "Auth/UserManager.h"
+#include "Async/async.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/files.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#ifdef USE_V8
-#include "FeaturePhases/V8FeaturePhase.h"
-#endif
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -68,24 +56,10 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "Random/RandomFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 #include "velocypack/Iterator.h"
@@ -103,18 +77,43 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
+    expectUserManagerCalls();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
   }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view cname) {
+          auto const it = _userMap.find(username);
+          if (it == _userMap.end()) {
+            return auth::Level::NONE;
+          }
+          EXPECT_EQ(username, it->second.username());
+          return it->second.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .WillRepeatedly(WithArgs<0>(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
+  }
+  arangodb::auth::UserMap _userMap;
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
   }
-
-  ~IResearchViewCoordinatorTest() = default;
 };
 
 #ifdef USE_ENTERPRISE
@@ -247,6 +246,9 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  userManager->setAuthInfo({});
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -452,13 +454,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     };
     auto execContext = std::make_shared<ExecContext>();
     arangodb::ExecContextScope execContextScope(execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
@@ -868,11 +863,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorised (NONE collection) as per
     // https://github.com/arangodb/backlog/issues/459
     {
@@ -1198,7 +1188,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1206,23 +1196,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1287,7 +1283,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1300,23 +1296,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1364,7 +1366,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1372,23 +1374,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1577,7 +1585,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1585,23 +1593,29 @@ TEST_F(IResearchViewCoordinatorTest,
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1666,7 +1680,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1679,23 +1693,29 @@ TEST_F(IResearchViewCoordinatorTest,
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1743,7 +1763,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1751,23 +1771,29 @@ TEST_F(IResearchViewCoordinatorTest,
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1954,7 +1980,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1962,23 +1988,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2043,7 +2075,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2056,23 +2088,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2120,7 +2158,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2128,23 +2166,29 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2333,7 +2377,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2341,23 +2385,29 @@ TEST_F(IResearchViewCoordinatorTest,
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2422,7 +2472,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2435,23 +2485,29 @@ TEST_F(IResearchViewCoordinatorTest,
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2499,7 +2555,7 @@ TEST_F(IResearchViewCoordinatorTest,
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2507,23 +2563,29 @@ TEST_F(IResearchViewCoordinatorTest,
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2711,7 +2773,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2724,23 +2786,29 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -2800,7 +2868,7 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -2808,23 +2876,29 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -4498,10 +4572,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
-
     EXPECT_TRUE((
         TRI_ERROR_FORBIDDEN ==
         logicalView->properties(linksJson->slice(), true, true).errorNumber()));
@@ -6075,10 +6145,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
-
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
                   .errorNumber());
@@ -6304,11 +6370,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -6439,9 +6500,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6550,11 +6608,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6722,11 +6775,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6922,11 +6970,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7212,11 +7255,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7347,9 +7385,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, true)
@@ -7457,11 +7492,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7637,11 +7667,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7838,11 +7863,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7957,7 +7977,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
         arangodb::transaction::StandaloneContext::create(
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
-    query->prepareQuery();
+    arangodb::tests::waitForAsync(query->prepareQuery());
 
     arangodb::aql::SingletonNode singleton(query->plan(),
                                            arangodb::aql::ExecutionNodeId{0});

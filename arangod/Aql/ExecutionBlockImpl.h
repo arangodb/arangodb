@@ -42,6 +42,12 @@
 
 namespace arangodb {
 class ExecContext;
+namespace futures {
+template<typename T>
+class Future;
+
+struct Unit;
+}  // namespace futures
 }  // namespace arangodb
 
 namespace arangodb::aql {
@@ -235,6 +241,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto testInjectInputRange(DataRange range, SkipResult skipped) -> void;
 #endif
 
+  void stopAsyncTasks() override;
+
+  bool isPrefetchTaskActive() noexcept override;
+
  private:
   struct ExecutionContext {
     ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);
@@ -316,14 +326,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // as soon as we reach a place where there is no skip
   // ordered in the outer shadow rows, this call
   // will fall back to shadowRowForwarding.
-  // We need to make this method a template to prevent it from being implicitly
-  // instantiated for explicit ExecutionBlockImpl instantiations, because that
-  // would cause the static assert in the implementation to fail for executors
-  // that don't have side effects.
-  template<class E = Executor>
-  [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
-                                                   SkipResult& skipResult)
-      -> ExecState;
 
   void initOnce();
 
@@ -339,18 +341,32 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
+  auto forwardShadowRow(AqlCallStack& stack,
+                        std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                        ShadowAqlItemRow& shadowRow) -> void;
+
+  enum class SideEffectSkipResult {
+    FORWARD_SHADOW_ROW,
+    DROP_SHADOW_ROW,
+    RETURN_DONE
+  };
+  auto sideEffectSkipHandling(AqlCallStack& stack,
+                              std::unique_ptr<OutputAqlItemRow>& _outputItemRow,
+                              ShadowAqlItemRow& shadowRow, SkipResult& skipped)
+      -> SideEffectSkipResult;
+
  private:
   /**
    * @brief The PrefetchTask is used to asynchronously prefetch the next batch
    * from upstream. Each block holds only a single instance (if any), so each
    * block can have max one pending async prefetch task. This instance is
-   * created on demand when the first async request is spawned, later tasks can
-   * reuse that instance.
-   * The async task is queued on the global scheduler so it can be picked up by
-   * some worker thread. However, sometimes the original thread might that
-   * created the task might be faster, in which case we don't want to wait
-   * until a worker has picked up the task. Instead, any thread that wants to
-   * process the task has to _claim_ it. This is managed via the task's `state`.
+   * created on demand when the first async request is spawned, later tasks
+   * can reuse that instance. The async task is queued on the global scheduler
+   * so it can be picked up by some worker thread. However, sometimes the
+   * original thread that created the task might be faster, in which
+   * case we don't want to wait until a worker has picked up the task.
+   * Instead, any thread that wants to process the task has to _claim_ it.
+   * This is managed via the task's `state`.
    *
    * Before the task is queued on the scheduler, `state` is set to `Pending`.
    * When a thread wants to process the task, it must call `tryClaim` which
@@ -365,6 +381,26 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * to `Finished`, then fetches the result and sets `state` to `Consumed`.
    * This is necessary to avoid waiting for a task that has already been
    * consumed.
+   *
+   * An additional note on stopping the query early: In this case
+   * we now have at least two concurrent operations, the cleanup
+   * which will eventually destruct all objects in the query, and
+   * an async prefetch task.
+   * This stop process now needs to ensure that the prefetchTask is
+   * either completed or will not be started.
+   * Therefore, if the task is not consumed, the prefetch task is tried to
+   * get claimed with above mechanism. If we can not claim it, we need
+   * to wait for it to finish, as someone is actively working on it.
+   * If we claimed it, we need to discard it, as it is not needed anymore.
+   *
+   * Also, please note: When we are cleaning up the query in stopAsyncTasks(),
+   * the execution order guarantees that for any ExecutionBlock we can only have
+   * one thread that is either in the "execute" or in the "stopAsyncTasks"
+   * codepath. The ExecutionBlock may have the prefetch task running, but that
+   * only is within the executeFetcher, so already on the way to the next
+   * Executor. And as we are stopping executors from "RETURN" to "Singleton" we
+   * guarantee that we can only have prefetch tasks active for Executors in
+   * earlier parts of the query.
    */
   struct PrefetchTask {
     enum class Status { Pending, InProgress, Finished, Consumed };
@@ -375,6 +411,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
         : _block(block), _stack(stack) {}
 
     bool isConsumed() const noexcept;
+    bool isFinished() const noexcept;
     bool tryClaim() noexcept;
     bool tryClaimOrAbandon() noexcept;
     void waitFor() const noexcept;
@@ -406,6 +443,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
     ExecutionBlockImpl& _block;
     AqlCallStack _stack;
+    mutable std::atomic<uint64_t> _numberWaiters{0};
+    mutable std::atomic<bool> _logStacktrace{false};
   };
 
   /**

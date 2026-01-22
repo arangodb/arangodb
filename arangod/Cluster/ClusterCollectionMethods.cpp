@@ -192,9 +192,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   double pollInterval = ci.getPollInterval();
   AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
 
-  // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
-  while (true) {
+  // Retry for at most 60s:
+  auto startTime = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - startTime <
+         std::chrono::seconds(60)) {
     // TODO: Is this necessary?
     ci.loadCurrentDBServers();
     auto planVersion =
@@ -203,6 +205,54 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       return planVersion.result();
     }
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
+
+    // Now check if any of the to-be-created collections has
+    // `distributeShardsLike` set to a collection, which already exists.
+    // If so, we need to check if any of its shards currently have
+    // their leader asked to resign!
+    // Note that this might see a newer version of the plan than seen
+    // above! However, in that case our precondition below will fail
+    // anyway. Therefore, if this precondition does not fail, the plan
+    // version has not changed, and so the checks below here have indeed
+    // seen the same state, so we are good.
+    std::unordered_set<std::string> distributeShardsLikeColls;
+    auto const& colls = writer.collectionsToCreate();
+    for (auto const& c : colls) {
+      if (c.properties().distributeShardsLike.has_value()) {
+        distributeShardsLikeColls.insert(
+            c.properties().distributeShardsLike.value());
+      }
+    }
+    // If we have some, let's see if they are about to be generated or not:
+    if (!distributeShardsLikeColls.empty()) {
+      for (auto const& c : colls) {
+        auto const& name = c.getName();
+        distributeShardsLikeColls.erase(name);
+      }
+    }
+    // If we still have some, they must be existing collections and we must
+    // check that their leaders are not asked to resign:
+    if (!distributeShardsLikeColls.empty()) {
+      bool seenResignation = false;
+      for (auto const& c : distributeShardsLikeColls) {
+        auto coll = ci.getCollection(databaseName, c);
+        for (auto const& s : *coll->shardIds()) {
+          if (!s.second.empty() && s.second[0].starts_with("_")) {
+            seenResignation = true;
+          }
+        }
+      }
+      if (seenResignation) {
+        // In this case we must not proceed, or else the MoveShard job
+        // which is currently asking all leaders to resign is getting stuck.
+        // The outer retry loop will retry.
+        LOG_TOPIC("abbbe", INFO, Logger::CLUSTER)
+            << "Cannot create collection since a leader is being moved, "
+               "delaying for 1 second...";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        continue;
+      }
+    }
 
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
@@ -316,8 +366,37 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
             << "createCollectionCoordinator, Plan changed, waiting for "
                "success...";
 
+        const auto& agencyCache =
+            server.getFeature<ClusterFeature>().agencyCache();
+        auto baseCollectionPath =
+            std::string("Plan/Collections/") + std::string(databaseName) + "/";
+
         // Now "busy-loop"
         while (!server.isStopping()) {
+          //  Between the starting of collection creation process and its
+          //  completion, if the agency supervision momentarily marks the
+          //  coordinator as BAD (maybe because it is unreachable due to n/w
+          //  issues), the agency supervision will delete the collection name(s)
+          //  from Plan/Collections/<database>. When the coordinator comes back,
+          //  it will continue waiting endlessly for the collection(s) that will
+          //  never be created.
+          //
+          //  Check if the collection name(s) is still present in Plan, report
+          //  error otherwise.
+          //
+          {
+            auto [query, index] = agencyCache.get(baseCollectionPath);
+            auto slice = query->slice();
+            for (const auto& coll : colls) {
+              const auto& collId = coll.getCID();
+              if (!slice.hasKey(collId)) {
+                callbackInfos->addReport(
+                    collId,
+                    Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION));
+              }
+            }
+          }
+
           auto maybeFinalResult = callbackInfos->getResultIfAllReported();
           if (maybeFinalResult.has_value()) {
             // We have a final result. we are complete
@@ -374,8 +453,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 }
                 // get current raft index; this is at least as high as the one
                 // we just waited for in waitForPlan
-                auto& agencyCache =
-                    server.getFeature<ClusterFeature>().agencyCache();
                 auto const index = agencyCache.index();
                 // wait for cluster info/current to catch up as well
                 auto futCurrent = ci.waitForCurrent(index);
@@ -444,6 +521,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       // checked at the beginning of this retry loop
     }
   }
+  return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
+          "Failed to create collection after 60 retries, giving up."};
 }
 
 Result impl(ClusterInfo& ci, ArangodServer& server,

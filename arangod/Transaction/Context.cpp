@@ -68,9 +68,12 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase,
                               OperationOrigin operationOrigin)
     : _vocbase(vocbase),
-      _customTypeHandler(),
+      _resolver(std::make_unique<CollectionNameResolver>(_vocbase)),
+      _customTypeHandler(createCustomTypeHandler(_vocbase, *_resolver)),
       _options(velocypack::Options::Defaults),
-      _operationOrigin(operationOrigin) {}
+      _operationOrigin(operationOrigin) {
+  _options.customTypeHandler = _customTypeHandler.get();
+}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
@@ -84,21 +87,7 @@ transaction::Context::~Context() {
 /// currently called by dtor and by unit test mocks.
 /// we cannot move this into the dtor (where it was before) because
 /// the mocked objects in unittests do not seem to call it and effectively leak.
-void transaction::Context::cleanup() noexcept {
-  // free all VPackBuilders we handed out
-  for (auto& it : _builders) {
-    delete it;
-  }
-  _builders.clear();
-
-  // clear all strings handed out
-  for (auto& it : _strings) {
-    delete it;
-  }
-  _strings.clear();
-
-  _resolver.reset();
-}
+void transaction::Context::cleanup() noexcept { _resolver.reset(); }
 
 /// @brief factory to create a custom type handler, not managed
 std::unique_ptr<VPackCustomTypeHandler>
@@ -107,75 +96,20 @@ transaction::Context::createCustomTypeHandler(
   return std::make_unique<::CustomTypeHandler>(vocbase, resolver);
 }
 
-/// @brief temporarily lease a std::string
-std::string* transaction::Context::leaseString() {
-  if (_strings.empty()) {
-    // create a new string and return it
-    return new std::string();
-  }
-
-  // re-use an existing string
-  std::string* s = _strings.back();
-  TRI_ASSERT(s != nullptr);
-  s->clear();
-  _strings.pop_back();
-  return s;
-}
-
-/// @brief return a temporary std::string object
-void transaction::Context::returnString(std::string* str) noexcept {
-  TRI_ASSERT(str != nullptr);
-  try {  // put string back into our vector of strings
-    _strings.push_back(str);
-  } catch (...) {
-    // no harm done. just wipe the string
-    delete str;
-  }
-}
-
-/// @brief temporarily lease a Builder object
-VPackBuilder* transaction::Context::leaseBuilder() {
-  if (_builders.empty()) {
-    // create a new builder and return it
-    return new VPackBuilder();
-  }
-
-  // re-use an existing builder
-  VPackBuilder* b = _builders.back();
-  TRI_ASSERT(b != nullptr);
-  b->clear();
-  _builders.pop_back();
-
-  return b;
-}
-
-/// @brief return a temporary Builder object
-void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
-  TRI_ASSERT(builder != nullptr);
-  try {
-    // put builder back into our vector of builders
-    _builders.push_back(builder);
-  } catch (...) {
-    // no harm done. just wipe the builder
-    delete builder;
-  }
-}
-
 /// @brief get velocypack options with a custom type handler
-VPackOptions* transaction::Context::getVPackOptions() {
-  if (_customTypeHandler == nullptr) {
-    // this modifies options!
-    orderCustomTypeHandler();
-  }
-
+VPackOptions const* transaction::Context::getVPackOptions() const noexcept {
   return &_options;
 }
 
+velocypack::CustomTypeHandler* transaction::Context::getCustomTypeHandler()
+    const noexcept {
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  return _customTypeHandler.get();
+}
+
 /// @brief create a resolver
-CollectionNameResolver const& transaction::Context::resolver() {
-  if (_resolver == nullptr) {
-    _resolver = std::make_unique<CollectionNameResolver>(_vocbase);
-  }
+CollectionNameResolver const& transaction::Context::resolver() const noexcept {
+  TRI_ASSERT(_resolver != nullptr);
   return *_resolver;
 }
 

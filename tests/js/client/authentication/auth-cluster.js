@@ -43,7 +43,7 @@ function AuthSuite() {
 
   // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
-  //const user = 'hackers@arangodb.com';
+  //const user = 'hackers@arango.ai';
 
   // supply "PRMR" or "AGNT" or "CRDN"
   function getServersWithRole(role) {

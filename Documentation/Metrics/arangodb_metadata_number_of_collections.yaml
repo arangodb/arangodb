@@ -1,0 +1,33 @@
+name: arangodb_metadata_number_of_collections
+introducedIn: "3.12.7"
+help: |
+  Global number of collections.
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - single
+description: |
+  Total number of collections in the deployment (cluster or single server).
+  This includes system collections.
+troubleshoot: |
+  **Configuration:**
+  - No global limit on collection count
+  - Query limit: `--query.max-collections-per-query` (default: 2048)
+  - Queries exceeding this fail with "too many collections/shards" error
+
+  **Impact:**
+  - High counts affect startup/shutdown times, memory, and file descriptors
+  - Each collection consumes memory for indexes and metadata
+  - Impacts backup and restore operations
+
+  **Recommendations:**
+  - Remove unused or temporary collections regularly
+  - Consider consolidating related collections
+  - Review schema design to reduce collection proliferation
+
+  **See also:**
+  - Query limits: https://github.com/arangodb/arangodb/issues/10787
+  - Operational factors: https://docs.arango.ai/arangodb/stable/develop/operational-factors/

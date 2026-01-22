@@ -23,10 +23,11 @@
 
 #pragma once
 
+#include "Graph/Types/VertexRef.h"
+
 namespace arangodb {
 namespace graph {
 
-using VertexRef = arangodb::velocypack::HashedStringRef;
 using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                                 std::equal_to<VertexRef>>;
 

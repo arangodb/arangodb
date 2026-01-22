@@ -7,17 +7,632 @@ devel
   is necessary, since a vector index can only be created if enough data
   for learning is available.
 
+* Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
+  least three levels of subqueries it could happen that the executor ended up in a
+  state it could not handle and the query would throw an error.
+  The effect seen by the customer was a hanging database because a lock was held.
+
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
+* Improve the output of fields `dbStats` for every column family
+  when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
+* COR-8: Improved the accuracy of shard metrics on DBservers by updating only
+  metrics for databases with changes, rather than recalculating all metrics.
+  Added new metrics `arangodb_shards_follower_number` to track the number of
+  follower shards on each DBserver and `arangodb_shard_followers_out_of_sync_number`
+  to track follower shards that are out of sync with their leader.
+
+* FE-929, BTS-2289: bump qs from 6.11.2 to 6.14.1 for node_modules and core UI.
+
+* Make cluster traversal executor with DFS receive neighbours in batches
+  to be able to stop the retrieval early in case a limit has been reached.
+
+* Make single-server traversal executor with DFS receive neighbours in batches
+  to be able to stop the retrieval early in case a limit has been reached.
+
+* Fix concurrent reuse of builders and string buffers when using async-prefetch
+
+* Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
+  dependencies.
+
+* Licenses with "managed=true" in their grant are not "expiring". They go
+  directly from "good" to "read-only". This is relevant for the new automatic
+  license management.
+
+* Fix RocksDB cluttering into tiny SST files.
+
+* FE-914: Add UI support for `storedValues` in vector index.
+
+* FE-636: bump rollup from 2.79.1 to 2.79.2.
+
+* Replace arangodb.com with arango.ai in URLs.
+
+
+3.12.7 (2025-12-06)
+-------------------
+
+* Updated ArangoDB Starter to v0.19.15.
+
+* Rebuilt included rclone v1.65.2 with go1.24.11 and non-vulnerable
+  dependencies.
+
+* FE-636: bump express from 4.18.2 to 4.21.2 (latest 4.X version) (ensure
+  non-vulnerable body-parser).
+
+* Fix a potential integer overflow in shortest path estimation.
+
+* Fix BTS-2268: Fixed an issue where query plan for queries with subquery is
+  causing a crash when being stored in query plan cache. The issue is a missing
+  invalidateCost from the splice-subqueries rule.
+
+* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio.
+
+* COR-45: Added support for index hints in vector search queries.
+
+* COR-13: New ArangoSearch consolidation policy
+  - new algorithm that uses maxSkewThreshold and minDeletionRatio
+  - Bumped ArangoSearch
+
+* The query explainer now displays the vector index used by
+  EnumerateNearVectorNode.
+
+* FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
+
+* FE-636: bump braces from 3.0.2 to 3.0.3.
+
+* COR-8: Added new metrics to track deployment metadata:
+  - `arangodb_metadata_number_of_databases`: Total number of databases
+  - `arangodb_metadata_number_of_collections`: Total number of collections
+  - `arangodb_metadata_number_of_shards`: Total number of shards (cluster only)
+  These metrics are exposed on coordinators (in cluster mode) and single
+  servers, providing visibility into the overall size and scale of the
+  deployment.
+
+* Enforce that a license with a baked in deployment ID can only be applied to a
+  deployment with that ID.
+
+* Export the license grant in `GET /_admin/license` in clear JSON but without
+  signature in the `grant` attribute.
+
+* COR-5: Added resource metrics effective CPU cores, effective physical memory,
+  and cgroup version detection.
+
+* Add `storedValues` support for vector indexes. This allows storing additional
+  document fields directly in the vector index, enabling optimized filtered
+  vector queries when all filter attributes are covered by stored values. The
+  query optimizer can now avoid fetching full documents when all required fields
+  are available in the index.
+
+* Ensure the js/node/package.json and js/node/package-lock.json have correct
+  versions of the included node packages.
+
+* Fix Swagger UI missing generated data.
+
+* Ignore flag --cluster.upgrade on DBservers, since it only concerns
+  coordinators.
+  This fixes a clash with --database.auto-upgrade which can lead to problems
+  during an upgrade on DBservers.
+
+* Update tzdata as of 05.11.2025.
+
+* Updated bundled version of Snappy library to 1.2.2. It fixes an ALUBSAN issue
+  found in ARM64.
+
+* Fix ES-2722 and COR-1: If an AQL query using ArangoSearch goes out of memory
+  due to the search node materializing a document, the server would crash.
+
+* Improved performance of INSERT operations in smart graph edge collections by
+  optimizing data distribution. The MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION
+  function now has a new option `projectOnlyId` which, when enabled, only sends
+  necessary identifiers (_key, _from, _to) to dbservers instead of sending full
+  documents, reducing network overhead during distributed operations.
+
+
+3.12.6 (2025-10-22)
+-------------------
+
+* Added automatic authentication via /_open/auth to client tools as well as
+  automatic JWT token renewals. Made the expiry time of the generated JWT token
+  configurable (within the boundaries of the new options
+  --auth.minimal-jwt-expiry-time and --auth.maximal-jwt-expiry-time).
+  This is needed for SSO on the platform to work with client tools.
+
+* FE-825: add new logo, update colors based on new branding.
+
+* FE-835: Escape HTML in notifications.
+
+* Improved performance of filtered vector index queries by batching document
+  fetches during index iteration.
+
+* Fix BTS-2226: Fix INSERT with overwriteMode: "ignore" failing when run
+  multiple times on smart graph edge collections in cluster mode. The issue
+  occurred when inserting edges that already existed, causing the operation to
+  fail instead of silently ignoring duplicates as expected.
+
+* Add option --server.jwt-token to arangosh and all other client tools.
+  This allows you to login with a JWT token that is valid for the system.
+  You can get this token from the _open/auth endpoint. You need to either pick
+  username and password, or the JWT token when starting a client tool. Please
+  note: You can write "--server.jwt-token -" to get prompted for the token, so
+  it is not visible in the process list.
+
+* Fix defaults for inverted indexes and views. Consolidations 5 times less
+  frequently, with minimum of 50(1 before) segments and 24M bytes (2M before),
+  maximum 200 (10 before) segments and 8G bytes (800M before).
+
+* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is
+  used in a collect query with a custom index.
+
+* Add API for deployment ID: /_admin/deployment/id.
+
+* Rename the `--experimental-vector-index` startup option to `--vector-index`
+  and remove the experimental flag. The old name can still be used to enable the
+  vector index feature.
+
+* Add vertex collections for graph queries using edge collection syntax from
+  named graphs. This means that if a query uses edge collection syntax and a
+  named graph defines the from and to vertex collections for that edge
+  collection, the WITH statement is no longer required.
+
+* Add filtering support for vector index queries. Filter conditions can now be
+  pushed down into vector similarity searches, enabling filtering with vector
+  index by evaluating filters during the index scan rather than as a
+  post-processing step.
+
+* Upgraded OpenSSL to 3.5.4.
+
+* Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT.
+
+* Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
+  instructions in query runtime.
+
+* Fix BTS-2130: Fix the endless wait in Coordinators during CreateDatabase and
+  CreateCollection.
+
+* Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
+  We should therefore check before accessing clusterInfo() whether we are in an
+  upgrade scenario. Added those checks in iresearch.
+
+* Reverted RocksDB defaults for maximum wal size, number of sub compactions and
+  compaction read ahead to stay close to established behaviour.
+
+* Fix BTS-2214: In a rare hash collision situation it can happen that a valid
+  edge in an enterprise graph fails to validate and is rejected.
+
+* Fix BTS-2216: Fix a possible use-after-free. It can occur when a query is
+  killed at the end of being prepared. Only non-streaming cursors in a cluster
+  are affected.
+
+* Fix BTS-2211: AQL queries using the async-prefetch rule, which result in a
+  failure due to a runtime exception or possibly a kill, had a possible race
+  during query destruction that could result in undefined behavior (e.g. memory
+  leaks or crashes).
+
+* Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in
+  certain situations (e.g. DB/Col create) until it succeeds instead of giving up
+  after some _rev conflicts.
+
+* Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and do not
+  expect the connection to stay open if we see this. This fixes BTS-2185.
+
+* Fix BTS-2220: Fix failing autoupgrade of databases in cluster mode.
+  This was caused by key generation now using the cluster key generator on
+  dbservers, which fails during upgrade with a message that the database was
+  shutting down.
+
+* Fix BTS-2219: Fix possible crashes with the log id [80e0e] and corresponding
+  message "thread '<thread name>' is not stopped but created. shutting down
+  hard".
+
+* Fix BTS-2217: If an error happens during startup, a disabled feature can lead
+  to a crash. Additionally signal that the server is stopping during the
+  unexpected shutdown so that in particular the RocksDBSyncThread does not crash
+  with an assertion failure.
+
+* Fix BTS-2212: Fix a hang on singleserver upgrades. Some of the Upgrade tasks
+  needed the UserManager to function properly.
+
+* Fix BTS-2178: If the URL in an HTTP request is bad, the server will now not
+  simply close the connection but give a proper response.
+
+* Fix unique _key generation in two cases: AQL INSERT operations in a loop
+  without user specified _key in collections with exactly one shard or with
+  multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
+
+* Fix BTS-1732 and BTS-2177: Possible crashes during shutdown, and maintainer
+  mode (i.e. non-production) assertions during tests.
+
+* Add a separate thread to the UserManager to handle the load of the user-cache
+  asynchronously.
+  This pre-loads the user-cache as fast as possible (as soon as the global
+  version changes).
+  Also, compared to the old version, this allows the read-only operation to work
+  on the user-cache for longer and not block each other while trying to load a
+  new version. On a high load environment this also means a more responsive
+  UserManager and to prevent the thread responsible for the HTTP server to not
+  getting blocked because of user-cache updates.
+
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
+* Add faiss and openmp versions in --version output of arangod.
+
+* Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
+  which might have reduced its throughput or delayed processing of other network
+  responses.
+
+* Updated ArangoDB Starter to v0.19.13.
+
+* Delete the Coordinator-V8 wrappers for the agency.
+
+* Deprecate rocksdb.transaction-lock-timeout option since we would internally
+  change this to a different value.
+
+* Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
+  dependencies.
+
+* Fix error message to use proper terminology order instead of mode.
+
+* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is
+  no longer included)
+
+* FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
+
+* FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version).
+
+* Fix BTS-2201: Make aggreate collect queries work again on an empty collection
+	that has an	index used in the query.
+
+* Fix BTS-2183: Fix restoring the dump from instance when vector index feature
+  is enabled to instance where it is disabled.
+
+* IResearch: Fix for address_table memory over-allocation.
+
+* Fix miscounting bug for number of SynchronizeShard jobs scheduled.
+  This fixes BTS-2202. The bug could show up as a dbserver not syncing its
+  follower shards with the leader.
+
+* Fix BTS-2051: Fix error message when creating vector index without data.
+
+* Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
+  GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions with
+  two or three components.
+
+* Fix BTS-2182: When a filter with inequality operator was used with traversals,
+  the Filter node was not pushed into the Traversal node. This fixes that
+  problem in the optimization rule remove-filter-covered-by-traversal.
+
+* Fix BTS-2184: Sparse vector index creation fails when with on documents which
+  don't have and embedding field defined.
+
+* Fix for null access for smallest range when no files on level (RocksDB).
+
+* Internal change: The common entry point for rest handlers is now a coroutine,
+  simplifying asynchronous rest handlers.
+
+* Fix BTS-2174: When a more complex query get's killed and the server (or
+  DBServer in the cluster) is under high query load, there was a race condition
+  in the asynchrounous query execution which would cause the kill process of the
+  query to get stuck. This race was one of the root causes for a stall which was
+  fixed in BTS-2135 previously.
+  This situation could only be reached if the async-prefetch optimizer rule is
+  active, which can only be applied on read-only queries.
+
+* Add option --database.auto-upgrade-full-compaction to run a full RocksDB
+  compaction on database upgrade.
+
+* Fix logging of the request body when compression is present.
+
+* Move crash handling to a separate thread, this is cleaner and does not violate
+  rules for signal and termination handlers.
+
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
+* Improved the endpoint used by the Graph visulaizer tool to run a better
+  performing query. This should help on larger graphs having more, not displayed
+  data.
+
+* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
+
+  FOR x IN largeCollection
+    FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+      LIMIT 10
+      RETURN v
+
+  Before this bugfix we would always enumerate largeCollection in full, even
+  though a small portion of the collection would have sufficed.
+  This is now handled better. We now enumerate only the necessary amount of
+  batches required to fulfill the limit.
+  This also improves cluster queries (replace the traversal with another FOR
+  loop) which had the same behaviour and are now enumerating less unused
+  intermediate results.
+
+* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect result
+  null for small percentiles. This fixes BTS-2169.
+
+* FE-636: remove axios (unused dependency).
+
+* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version).
+
+* Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
+
+* FE-664: Add support for the new innerProduct metric in the vector index
+  creation form in the collection Indexes view.
+
+* Fix BTS-2166: Fix a race during startup, where the async registry's metrics
+  might be created before the scheduler starts its first thread. This is
+  currently not known to cause any issues.
+
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and
+  3D coordinates for Point geometries.
+
+* FE-636: bump crypto-js from 3.3.0 to 4.2.0.
+
+* Add new API /_admin/server/aql-queries to show recently executed AQL queries.
+  This is per server and only available on coordinators and single servers.
+
+* Fix BTS-2158: The `/_api/import` endpoint does not throw an error on an
+  invalid type parameter value.
+
+* Fixes BTS-2155: Add startup options to control the grace periods after the
+  DiskUsage limit is reached.
+  - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines the
+    warning duration until the server enters read-only mode. The default and
+    maximum value is 2 days.
+  - `--server.license-disk-usage-grace-period-shutdown` (in seconds) defines the
+    read-only grade period until the server shuts down. The default and the
+    maximum value is 2 days.
+
+* FE-611: Add support for experimental vector index to the collection Indexes
+  view with "beta" label, shown only if --experimental-vector-index flag is
+  enabled.
+
+* Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT() AQL
+  function. The inner product metric is similar to cosine metric except vectors
+  are not normalized.
+
+  Example of creating a vector index with inner product:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value"],
+      params: {
+        "metric": "innerProduct",
+        "dimension": 300,
+        "nLists": 100
+      }
+    });
+  ``
+
+  Example of using the APPROX_NEAR_INNER_PRODUCT() function:
+  ```
+    FOR doc IN collection
+    SORT APPROX_NEAR_INNER_PRODUCT(doc.vector, @query_vector) DESC
+    LIMIT 10
+    RETURN doc
+  ```
+
+* Fix BTS-2151: Fix cosine similarity score in vector index returns score bigger
+  then one due to not being normalized. It is recommended to drop all vector
+  indexes that use cosine metric and create them again.
+
+* Fix BTS-2150: Make dropDatabase API work even if there are leftover entries in
+  /arango/Current/Databases/<dbname>.
+
+* Fix telemetry response, `n_vector` would be returned inconsistently. This
+  always returns the value, regardless if the vector index feature is enabled.
+
+* Improved performance of document-search query in graph settings UI (BTS-2149).
+
+* Upgraded bundled version of RocksDB to 9.5.
+
+  The default values for the following RocksDB-related startup options were
+  adjusted as well:
+
+  - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
+  - `--rocksdb.max-subcompactions` was changed from 2 to 4.
+  - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
+  - `--rocksdb.throttle-slots` was changed from 120 to 128.
+  - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to
+    1GB.
+  - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
+  - `--rocksdb.partition-files-for-documents` was changed from false to true.
+
+  The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
+  obsoleted.
+
+
+3.12.5 (2025-06-18)
+-------------------
+
+* Updated ArangoDB Starter to v0.19.12.
+
+* Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
+  dependencies.
+
+* Fix a possible crash when requesting the async registry:
+  Does now not request the thread name of a potentially destroyed thread.
+
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second on a
+  PrefetchTask (and does not see InProgress).
+
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
+* Fix arangorestore failing to restore the dump containing a
+  vector index.
+
+* FE-575: adds debounce and loading state for node start search.
+
+* Fix BTS-2086: Fixes missing reschedule of license checks on single-server
+  instances.
+
+* Improved the error message displayed when the APPROX_NEAR function fails to
+  apply a vector index.
+ 
+* Upgrade LZ4 to 1.10.0
+
+* Fix BTS-2135: A global lock on the query registry was in some cases
+  unnecessarily held for the full duration of query destruction.
+  This could lead to throughput reduction or stalls in some situations.
+
+* Stabilize a test concerning write concern.
+
+* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close the
+  connection, rather, return a proper HTTP 400 BAD response. This was found by
+  fuzzing.
+
+* Fix BTS-2106: A MoveShard operation could get stuck if a new collection with
+  `distributeShardsLike` was created at the wrong moment when the leader of a
+  shard group was currently being asked to resign.
+
+* Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased if a
+  new collection with `distributeShardsLike` was created at the wrong moment.
+
+* Updated ArangoDB Starter to v0.19.11.
+
+* Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
+  coordinator in two different threads) creates two collections with the same
+  name in the same database (different collection ID).
+
+* Fix a crash when bind parameters are not set and killing of a query is logged
+  (no version with this bug was ever released!).
+
+* Switched to customized (instead of official) forked rclone v1.65.2 built with
+  go1.23.8 to avoid CVEs.
+
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause crashes when
+  a query aborts early, e.g. due to a runtime error, the query being killed, or
+  the memory limit being reached. 
+
+* Upgraded OpenSSL to 3.5.0.
+
+* Set Node v20.14.0 for core UI production (CI) compilation.
+
+* Remove overeager assert, only relevant for testing.
+
+* Implement license changes: The Community Edition without a license now has a
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode
+  after a grace period, and shutdown after an additional grace period.
+
+* Add visibility for recent api calls via a new API /_admin/server/api-calls.
+
+* Fix TSAN issue in LogicalCollection.
+
+* FE-541: update disk usage message.
+
+* Simplify Maintenance by removing unused features.
+
+* Fix BTS-2100: Due to a priority inversion it was possible that a lot of
+  scheduled SynchronizeShard actions blocked higher priority
+  TakeoverShardLeadership actions in the cluster Maintenance. This could lead to
+  service interruption during upgrades and after failovers.
+
+* FE-538: fix frontend build warnings.
+
+* FE-482: fix multiple issues with search view UI.
+
+* FE-503: fix losing bind params when resizing query editor.
+
+* FE-535: fix set cached query when bind params are equal.
+
+* FE-528: adds disk usage license info to UI.
+
+* BTS-2090: Fixes double log-lines per log
+
+* Fix vector index comparison in maintenance, which causes loop with agency and
+  dbservers.
+
+* Added support for access tokens. Access token can be used instead of a
+  password. However, the recommended way is to generate a JWT token using
+  /_open/auth.
+
+* Fix a bug in the index API /_api/index?withHidden=true, which can lead to two
+  problems: (1) A newly created index is potentially not shown in the very
+  moment when it is finished. (2) A newly created index is shown twice in the
+  result, once with `isBuilding: true` and once without. This fixes BTS-2044.
+
+* Introduces first changes for the new disk usage-based license.
+
+* BTS-2089: Fix a crash when query logging and query cache were enabled.
+
+* Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
+  reference.
+
+* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL query to
+  hang and block a thread.
+
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished and Failed. They will be forthwith be kept for at least 1h.
+
+* Change default for --rocksdb.periodic-compaction-ttl from 30 days to 24 hours.
+  Note that certain deleted keys ranges in RocksDB might only be compacted away
+  through periodic background compactions. Note that this can potentially lead
+  to spikes in CPU, memory and I/O usage once every 24 hours, which might so far
+  only have happened once per month!
+
+* FE-497: fix query options input parsing (Query Editor UI > Options tab).
+
+* Disable creating a vector index with zero nLists.
+
+* FE-515: fix to ensure unique keys to prevent incorrect react reconciliation
+  (Query Editor UI > Query results).
+
+* Fixed some cmake warnings and output, added a gettid in case the library does
+  not define the function use the system call instead.
+
+* Disable cluster overwhelm protection on agents. This fixes a bug which happens
+  if the number of dbservers and coordinators grows beyond 4x the number of
+  threads in the agency leader.
+
+* Make an unstable test stable again for the NetworkConnectionPool.
+
+* BTS-2074: fix installing Foxx service from zip file upload using the web UI
+  with multi-coordinator load balancing.
+
+* Updated compiler to clang-19.
+
+
+3.12.4 (2025-01-23)
+-------------------
+
+* Update tzdata as of 23.01.2025.
+
+* FE-488: fix stale variables in execution hook (Keyboard Shortcut > useEffect
+  deps).
+
+* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules
+  and improve type safety.
+
+* Update iresearch 3rd party for clang-19 build.
+
+* Let `arangorestore` restore vector indexes **after** data import. This is
+  necessary, since a vector index can only be created if enough data for
+  learning is available.
+>>>>>>> a1db8f29d2045ef024f7daaa38bbfd8c2051b764
+
 * Make `RestImportHandler` asynchronous. This is to avoid some blockages
   observed in the context of BTS-2047.
 
 * Make `arangoimport` more stable. The default batch size is lowered to 4MB
   (from 8MB) and the default maximal streaming transaction size is increased
   from 128MB to 512MB. In examples we have seen that the overhead from input
-  data size to the memory usage in the actual RocksDB transaction can be up
-  to 80x, therefore `arangoimport` could run into resource limits with the
-  normal batch size. This is particularly acute for smart edge collections,
-  where `arangoimport` has to use streaming transactions and where small
-  edges have to be indexed multiple times. Fixes BTS-2047.
+  data size to the memory usage in the actual RocksDB transaction can be up to
+  80x, therefore `arangoimport` could run into resource limits with the normal
+  batch size. This is particularly acute for smart edge collections, where
+  `arangoimport` has to use streaming transactions and where small edges have to
+  be indexed multiple times. Fixes BTS-2047.
 
 * Add optional `factory` property to `params` in vector index definition. The
   index factory enables to create composite vector indexes supported by FAISS.
@@ -38,10 +653,11 @@ devel
         "factory": "IVF3800_HNSW32,PQ480x8"
       }
     });
+  ```
 
-* Improve geo index performance in the cluster with multiple shards. This
-  fixes BTS-2046. An unnecessary and bad SORT node is removed from the
-  query plan in the case that a geo index is used.
+* Improve geo index performance in the cluster with multiple shards. This fixes
+  BTS-2046. An unnecessary and bad SORT node is removed from the query plan in
+  the case that a geo index is used.
 
 * Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
@@ -53,10 +669,10 @@ devel
         COLLECT x = doc.x, y = doc.y
         RETURN [x, y]
   ```
-  can now employ a persistent index on `["x", "y"]` to drastically speed up
-  the query. The new optimizer rule is called `use-index-for-collect`. Whether the
-  rule is applied depends on the selectivity of the index. If the selectivity
-  is too high, i.e. there are a lot of distinct values, the rule is not applied
+  can now employ a persistent index on `["x", "y"]` to drastically speed up the
+  query. The new optimizer rule is called `use-index-for-collect`. Whether the
+  rule is applied depends on the selectivity of the index. If the selectivity is
+  too high, i.e. there are a lot of distinct values, the rule is not applied
   since scanning for distinct values in such a case would not be beneficial.
 
   This optimization can be disabled for specific collect statements, using the
@@ -65,8 +681,8 @@ devel
   Currently this only works if there is no `INTO` or `AGGREGATE` clause.
   Filtering is also not yet supported.
 
-* For collect a new PUSH aggregator was added. It aggregates all values into
-  an array. For example
+* For collect a new PUSH aggregator was added. It aggregates all values into an
+  array. For example:
   ```
     FOR doc IN col
         COLLECT x = doc.x AGGREGATE y = PUSH(doc.y)
@@ -89,38 +705,39 @@ devel
 * Introduce new level of index serialization `Maintenance` that excludes
   trainedData in vector index.
 
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR vector
+  functions. `nProbe` defines how many neighboring lists to look into, it is a
+  trade off between more correct results and time it takes to fetch results. The
+  syntax looks like this:
+  ```
   FOR doc IN col
   LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
   SORT distance LIMIT 5
   RETURN {key: doc._key, distance}
-  ````
+  ```
 
-* Test a collection before it is leased out from the ConnectionCache.
-  This helps to detect stale TCP/IP or TLS connections residing in the 
-  ConnectionCache and thus prevents network failures due to delays.
+* Test a collection before it is leased out from the ConnectionCache. This helps
+  to detect stale TCP/IP or TLS connections residing in the ConnectionCache and
+  thus prevents network failures due to delays.
 
-* [ES-2294] Fix computation of the arangodb_vocbase_shards_read_only_by_write_concern metric.
+* [ES-2294] Fix computation of the
+  arangodb_vocbase_shards_read_only_by_write_concern metric.
 
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR vector
+  functions. `nProbe` defines how many neighboring lists to look into, it is a
+  trade off between more correct results and time it takes to fetch results. The
+  syntax looks like this:
+  ```
   FOR doc IN col
   LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
   SORT distance LIMIT 5
   RETURN {key: doc._key, distance}
-  ````
+  ```
 
-* Add a vector index based on faiss implementation. The current vector index 
+* Add a vector index based on faiss implementation. The current vector index
   implementation supports the L2 and cosine metrics. To create a vector index,
-  the vector field(s) in the collection must already be populated with data. Here is an
-  example of a vector index creation:
+  the vector field(s) in the collection must already be populated with data.
+  Here is an example of a vector index creation:
   ```
     db.<collection>.ensureIndex({
       type: "vector",
@@ -131,65 +748,65 @@ devel
         "nLists": 100
       }
     });
-  ````
+  ```
   Where the parameters are:
-  - `metric`: defines how similarity/distance is calculated, can be
-    l2 or cosine,
+  - `metric`: defines how similarity/distance is calculated, can be l2 or
+    cosine,
   - `nLists`: number of lists to create,
-  - `dimension`: vector dimensions, ArangoDB will also check that all the vectors
-    have the correct number of components,
-  - `trainingIterations`: how many training iterations will be used, 
-  The current limitation is that a vector index can be created only on a single field.
-  The vector index creation has two phases, training in which the centroids are being determined
-  from the subset of data, and insertion phase in which the lists are being populated.
-  To trigger the vector index an appropriate `APPROX_NEAR` function must be used
-  along with `SORT` and `LIMIT` clauses e.g.:
+  - `dimension`: vector dimensions, ArangoDB will also check that all the
+    vectors have the correct number of components,
+  - `trainingIterations`: how many training iterations will be used,
+
+  The current limitation is that a vector index can be created only on a single
+  field. The vector index creation has two phases, training in which the
+  centroids are being determined from the subset of data, and insertion phase in
+  which the lists are being populated. To trigger the vector index an
+  appropriate `APPROX_NEAR` function must be used along with `SORT` and `LIMIT`
+  clauses e.g.:
   ```
     FOR d IN docs
     LET distance = APPROX_NEAR_L2(d.vector, @queryVector)
     SORT distance
     LIMIT 10
     RETURN {d, distance}
-  ````
+  ```
   This returns the top 10 nearest neighbors to `@queryVector`.
 
-* Introduce expiry time for idle TCP/IP connections in the ConnectionCache
-  (for `SimpleHttpClient`) with a default of 120s. This is to prevent
-  errors in replication caused by cloud environments terminating
-  connections. Also add retries in a few places. Also increase the
-  timeout in initial sync to transfer up to 5000 documents from 25s to
-  900s. This addresses BTS-2011, BTS-2035 and BTS-2042.
+* Introduce expiry time for idle TCP/IP connections in the ConnectionCache (for
+  `SimpleHttpClient`) with a default of 120s. This is to prevent errors in
+  replication caused by cloud environments terminating connections. Also add
+  retries in a few places. Also increase the timeout in initial sync to transfer
+  up to 5000 documents from 25s to 900s. This addresses BTS-2011, BTS-2035 and
+  BTS-2042.
 
-* Improve the use-index-for-sort optimizer rule: If there is a persistent
-  index which starts with the same fields as the sort fields, the index
-  can be used for sorting these first fields that are covered by the index.
-  Subsequent rows with the same value in these fields are then sorted by
-  the rest of the sorting fields using a new grouped sort executor.
+* Improve the use-index-for-sort optimizer rule: If there is a persistent index
+  which starts with the same fields as the sort fields, the index can be used
+  for sorting these first fields that are covered by the index.
+  Subsequent rows with the same value in these fields are then sorted by the
+  rest of the sorting fields using a new grouped sort executor.
 
 * If a coordinator cannot send a heartbeat to the agency, it will shut down
   itself after 30 mins (configurable by the startup option
   `--cluster.no-heartbeat-delay-before-shutdown` whose default is 1800.
-  This is to ensure that servers which are automatically cleaned up,
-  because they are away for too long cannot disturb hotbackups by running
-  transactions.
+  This is to ensure that servers which are automatically cleaned up, because
+  they are away for too long cannot disturb hotbackups by running transactions.
 
-* Reduce the time until an expired server is removed from the agency to 1h 
-  (from 24h). This helps with BTS-2039 and thus helps hotbackups to go
-  through in more cases when coordinators have crashed. The time is
-  configurable with the `--agency.supervision-expired-servers-grace-time`
-  command line option.
+* Reduce the time until an expired server is removed from the agency to 1h (from
+  24h). This helps with BTS-2039 and thus helps hotbackups to go through in more
+  cases when coordinators have crashed. The time is configurable with the
+  `--agency.supervision-expired-servers-grace-time` command line option.
 
-* Changed the priority of WebUI request to prevent endless loading if the
-  server is under load
+* Changed the priority of WebUI request to prevent endless loading if the server
+  is under load
 
-* Truncate error messages by rclone for TransferJobs to avoid excessive
-  memory use in the agency. Keep only 10 finished TransferJobs in agency.
-  This fixes BTS-2041.
+* Truncate error messages by rclone for TransferJobs to avoid excessive memory
+  use in the agency. Keep only 10 finished TransferJobs in agency. This fixes
+  BTS-2041.
 
 * Don't cleanup failed agency jobs if they are subjobs of pending jobs.
   This avoids a bug in CleanOutServer jobs, where such a job could complete
-  seemingly successfully despite the fact that some MoveShard jobs had 
-  actually failed. This fixes BTS-2022.
+  seemingly successfully despite the fact that some MoveShard jobs had actually
+  failed. This fixes BTS-2022.
 
 * Disallow the KEEP keyword in conjunction with INTO var = expr when doing
   COLLECT in an AQL query. The KEEP clause had no effect.
@@ -204,11 +821,11 @@ devel
 * Fix view usage in cached query plans.
 
 * Optimized COLLECT queries by pushing collection of INTO values onto database
-  servers and aggregate on the coordinator. This can be disabled by setting
-  the option `aggregateIntoExpressionOnDBServers` to false.
+  servers and aggregate on the coordinator. This can be disabled by setting the
+  option `aggregateIntoExpressionOnDBServers` to false.
 
-* Make it an error if usePlanCache is set to true but the query is not 
-  eligible for query plan caching. This is better for debugging.
+* Make it an error if usePlanCache is set to true but the query is not eligible
+  for query plan caching. This is better for debugging.
 
 * Upgraded OpenSSL to 3.4.0.
 
@@ -216,18 +833,18 @@ devel
 
 * BTS-2017: fix CleanOutServer for satellite collections.
 
-* Add metric that counts the total number of lost transaction subordinate
-  states on the database servers.
+* Add metric that counts the total number of lost transaction subordinate states
+  on the database servers.
 
 * FE-483: add support for usePlanCache in query editor UI.
 
 * ArangoDB now has an optional AQL query execution plan cache that can be used
-  to skip query planning and optimization when running the same queries 
+  to skip query planning and optimization when running the same queries
   repeatedly. This feature is currently experimental.
 
   The plan cache is fully optional and is only considered for AQL queries that
-  have the option `usePlanCache` set to `true`. If the option is not
-  set to `true`, the plan cache is bypassed. This is also the default.
+  have the option `usePlanCache` set to `true`. If the option is not set to
+  `true`, the plan cache is bypassed. This is also the default.
 
   If the option is set to `true`, the query's eligibility for being cached is
   checked first. Any queries that have any of the following query options set
@@ -238,33 +855,32 @@ devel
   - `optimizer.rules`
   - `shardIds`
 
-  Additionally, a query is not eligible for plan caching if it uses attribute 
+  Additionally, a query is not eligible for plan caching if it uses attribute
   name bind parameters, e.g. `FILTER doc.@attributeName == ...`.
   Furthermore, queries will not be eligible for plan caching when using value
   bind parameters in any of the following places:
-  - specifying the depths for traversals or path queries (e.g. 
+  - specifying the depths for traversals or path queries (e.g.
     `FOR v, e IN @min..@max OUTBOUND ...`)
   - referring to a named graph (e.g. `GRAPH @graphName`)
-  - referring to edge collections used in traversals or path queries 
-    (e.g. `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
+  - referring to edge collections used in traversals or path queries (e.g.
+    `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
   - specifying the lookup value for UPSERT operations, e.g. `UPSERT @value...`)
-  If a query produces any warnings during parsing or query plan optimization, 
-  it is also not eligible for plan caching.
+  If a query produces any warnings during parsing or query plan optimization, it
+  is also not eligible for plan caching.
   Query plans are also not eligible for caching if they contain one of the
   following execution node types:
   - SingleRemoteOperationNode (cluster only)
   - MultipleRemoteModificationNode (cluster only)
-  - UpsertNode, i.e. the AQL UPSERT functionality.
+  - UpsertNode, i.e. the AQL UPSERT functionality
 
   If a query is eligible for plan caching, the plan cache will be checked using
   the exact same query string and set of collection bind parameter values.
   A cached plan entry is only considered identical to the current query if the
-  query strings are bytewise identical and the set of collection bind 
-  parameters is exactly the same (bind parameter names and bind parameter 
-  values).
-  If no plan entry can be found in the plan cache, the query is planned and 
+  query strings are bytewise identical and the set of collection bind parameters
+  is exactly the same (bind parameter names and bind parameter values).
+  If no plan entry can be found in the plan cache, the query is planned and
   optimized as usual, and the cached plan will be inserted into the plan cache.
-  Repeated executions of the same query (same query string and using the same 
+  Repeated executions of the same query (same query string and using the same
   set of collection bind parameters) will then make use of the cached plan
   entry, potentially with different value bind parameters.
 
@@ -273,11 +889,11 @@ devel
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
 
-  Whenever a query uses a cached plan from the plan cache, the query
-  result will include an attribute `planCacheKey` on the top level when
-  executing, explaining or profiling a query. The explain and profiling
-  output will also display a "plan cache key: ..." indicator to show
-  that a cached query plan was used.
+  Whenever a query uses a cached plan from the plan cache, the query result will
+  include an attribute `planCacheKey` on the top level when executing,
+  explaining or profiling a query. The explain and profiling output will also
+  display a "plan cache key: ..." indicator to show that a cached query plan was
+  used.
 
   The query plan cache is organized per database. It gets invalidated at the
   following events:
@@ -294,81 +910,79 @@ devel
     cache in each database. The default value is 128.
   - `--query.plan-cache-max-memory-usage`: maximum total memory usage for the
     query plan cache in each database. The default value is 8MB.
-  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry
-    in the query plan cache in each database. The default value is 2MB.
+  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry in
+    the query plan cache in each database. The default value is 2MB.
   Note that each database has its own query plan cache, and that these options
   are used for each individual plan cache. Also note that in a cluster, each
   coordinator will have its own query plan cache.
 
   There are also new APIs to clear the contents of the query plan cache and to
   retrieve the current plan cache entries. The following HTTP REST APIs exist:
-  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query
-    plan cache for the current database. This requires write privileges for the
+  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query plan
+    cache for the current database. This requires write privileges for the
     current database.
-  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query
-    plan cache for the current database. This requires read privileges for the
+  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query plan
+    cache for the current database. This requires read privileges for the
     current database. In addition, only those query plans will be returned for
-    which the current user has at least read permissions on all collections
-    and views included in the query.
-  In a cluster, these APIs are specific to the coordinator that they are run 
-  on.
+    which the current user has at least read permissions on all collections and
+    views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run on.
 
   There is also a JavaScript module `@arangodb/query/plan-cache` that exposes
   the same functionality:
-  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in
-    the plan cache for the current database. This requires write privileges for
-    the current database.
-  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries
-    in the plan cache for the current database. This requires read privileges
-    for the current database. In addition, only those query plans will be 
-    returned for which the current user has at least read permissions on all
-    collections and views included in the query.
-  In a cluster, these APIs are specific to the coordinator that they are run 
-  on.
+  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in the
+    plan cache for the current database. This requires write privileges for the
+    current database.
+  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries in
+    the plan cache for the current database. This requires read privileges for
+    the current database. In addition, only those query plans will be returned
+    for which the current user has at least read permissions on all collections
+    and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run on.
 
   The following metrics are exposed on a single server and each coordinator to
   provide insights into how many query plans were served from the query plan
   cache:
-  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked
-    up and found in the query plan cache, across all database-specific plan
-    caches on the instance.
+  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked up
+    and found in the query plan cache, across all database-specific plan caches
+    on the instance.
   - `arangodb_aql_query_plan_cache_misses_total`: total number of plans looked
     up and not found in the query plan cache, across all database-specific plan
     caches on the instance.
-  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage
-    of all query plan caches across all databases on this instance in bytes.
+  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage of
+    all query plan caches across all databases on this instance in bytes.
 
-* In replication use vpack as transport format throughout, so that even
-  large and strangely encoded numbers are transported faithfully.
+* In replication use vpack as transport format throughout, so that even large
+  and strangely encoded numbers are transported faithfully.
 
 * BTS-2014: Fix delay if write hits early after a hotbackup restore.
 
-* Fix leader resignation race in coordinator, which lead to forgotten
-  collection read locks on dbservers, which in turn could lead to deadlocks
-  in the cluster.
+* Fix leader resignation race in coordinator, which lead to forgotten collection
+  read locks on dbservers, which in turn could lead to deadlocks in the cluster.
 
-* Fix shard synchronisation race where after a shard move the new
-  leader informs followers before it updates Current in the Agency. In
-  some cases the old leader fell subsequently out of sync.
+* Fix shard synchronisation race where after a shard move the new leader informs
+  followers before it updates Current in the Agency. In some cases the old
+  leader fell subsequently out of sync.
 
-* Fix a crash with async prefetch and user defined functions in AQL. This
-  fixes BTS-2003.
+* Fix a crash with async prefetch and user defined functions in AQL. This fixes
+  BTS-2003.
 
 * FE-466: use @arangodb/ui library.
 
-* Update tzdata as of 31.10.2024.
+* Bring unicode collation back to the exact 3.11 behaviour by shipping the
+  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption bugs
+  which could happen on upgrade to 3.12 because funny international strings are
+  indexed in VPack indexes.
 
-* Bring unicode collation back to the exact 3.11 behaviour by shipping the 
-  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
-  bugs which could happen on upgrade to 3.12 because funny international
-  strings are indexed in VPack indexes.
-
-* Implements a faster encoding of doubles to a memcmp format. Makes it a cmake option.
-  Makes sure that it does not produce different values as the old/slower implementation.
-  Removes unneeded db._explain in a test
+* Implements a faster encoding of doubles to a memcmp format. Makes it a cmake
+  option.
+  Makes sure that it does not produce different values as the old/slower
+  implementation.
+  Removes unneeded db._explain in a test.
 
 * Improve the observability of asynchronous operations by saving all ongoing
-  asynchronous operations (associated with async<T> and Future<T>) in a registry.
+  asynchronous operations (associated with async<T> and Future<T>) in a
+  registry.
   A REST call gives information about all these operations via a list of all
   ongoing stacktraces.
 
@@ -13206,7 +13820,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
+  Note: There is a [detailed description of all options](https://docs.arango.ai/arangodb/stable/operations/security/security-options/).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

@@ -34,6 +34,9 @@
 #include "Aql/QueryString.h"
 #include "Basics/Guarded.h"
 #include "Basics/ResourceUsage.h"
+#include "Futures/Future.h"
+#include "Futures/Try.h"
+#include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
@@ -61,6 +64,11 @@ class LogicalDataSource;
 #ifdef USE_V8
 class V8Executor;
 #endif
+
+template<typename>
+struct async;
+
+struct SuspensionCounter;
 
 namespace transaction {
 class Context;
@@ -106,8 +114,19 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
 
-  /// @brief factory method for creating a query. this must be used to
+  /// @brief factory function for creating a query. this must be used to
   /// ensure that Query objects are always created using shared_ptrs.
+  /// Actually, this should really be a method of the `AqlFeature`, but
+  /// we do not revisit all call sites and ensure that we have access
+  /// to the `AqlFeature` now. So this cleanup is for a later
+  /// day. Therefore, we use the `server()` functionality in the
+  /// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+  /// `AqlFeature` for now. Over time, one should have access to the
+  /// `AqlFeature` to create a new `Query` object, but we are not there
+  /// yet. If you use AQL queries from within C++ code in the future,
+  /// do not use this method, rather use `AqlFeature::createQuery`. Of
+  /// course, you need to make sure to have access to the AqlFeature
+  /// for this.
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
@@ -170,14 +189,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
-  /// @brief return the total execution time of the query (until
-  /// the start of finalize)
+  // return only the execution time of the query, can be 0
   double executionTime() const noexcept;
 
-  void prepareQuery();
+  /// @brief return the total execution time of the query (until
+  /// the start of finalize)
+  double queryTime() const noexcept;
+
+  async<void> prepareQuery();
 
   /// @brief execute an AQL query
-  ExecutionState execute(QueryResult& res);
+  futures::Future<futures::Unit> execute(QueryResult& res,
+                                         SuspensionCounter* suspensionCounter);
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.
@@ -203,13 +226,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  void prepareFromVelocyPack(velocypack::Slice querySlice,
-                             velocypack::Slice collections,
-                             velocypack::Slice views,
-                             velocypack::Slice variables,
-                             velocypack::Slice snippets);
+  void prepareFromVelocyPackWithoutInstantiate(velocypack::Slice querySlice,
+                                               velocypack::Slice collections,
+                                               velocypack::Slice views,
+                                               velocypack::Slice variables,
+                                               velocypack::Slice snippets);
 
-  void instantiatePlan(velocypack::Slice snippets);
+  async<void> instantiatePlan(velocypack::Slice snippets);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -307,11 +330,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
     return _planCacheKey;
   }
 
+  // set the isExecuting flag to true and change execution queries gauge
+  // this is public because the QueryStreamCursor circumvents the normal
+  // execution of query and needs to call tracking on a  query on its own
+  void trackExecutionStart() noexcept;
+
  protected:
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.
   /// every following call will be ignored.
-  void ensureExecutionTime() noexcept;
+  void ensureEndTime() noexcept;
 
   /// @brief initializes the query
   void init(bool createProfile);
@@ -368,6 +396,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // log the end of a query (warnings only)
   void logAtEnd() const;
 
+  // set the isExecuting flag to false and change execution queries gauge
+  void trackExecutionEnd() noexcept;
+
   struct CollectionSerializationFlags {
     bool includeNumericIds = true;
     bool includeViews = true;
@@ -377,6 +408,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
       CollectionSerializationFlags flags) const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+  friend auto toString(ExecutionPhase) -> std::string_view;
 
  protected:
   AqlItemBlockManager _itemBlockManager;
@@ -433,6 +465,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query end time (steady clock value), only set once finalize()
   /// is reached
   double _endTime;
+
+  /// @brief query execution phase start time (steady clock value)
+  std::atomic<double> _startExecutionTime{0};
+
+  /// @brief query execution end time (steady clock value), only
+  /// set once the execution phase ends
+  double _endExecutionTime;
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
@@ -502,6 +541,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
+
+  // If the query object was constructed from cache
+  // the consequence is that _ast is nullptr
+  bool _isCached{false};
+
+  std::atomic<bool> _isExecuting{false};
 };
 
 }  // namespace aql

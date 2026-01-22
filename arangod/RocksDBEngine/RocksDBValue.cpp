@@ -24,11 +24,13 @@
 
 #include "RocksDBValue.h"
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "Transaction/Helpers.h"
@@ -100,9 +102,20 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
 }
 
-RocksDBValue RocksDBValue::VectorIndexValue(const char* codeData,
-                                            std::size_t codeSize) {
-  return RocksDBValue(codeData, codeSize);
+RocksDBValue RocksDBValue::VectorIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, data);
+}
+
+RocksDBValue RocksDBValue::VectorIndexValue(uint8_t const* data, size_t size) {
+  // Store raw encoded vector data directly without VPack overhead
+  return RocksDBValue(reinterpret_cast<char const*>(data), size);
+}
+
+RocksDBValue RocksDBValue::VectorIndexValue(
+    RocksDBVectorIndexEntryValue const& entryValue) {
+  velocypack::Builder builder;
+  velocypack::serialize(builder, entryValue);
+  return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, builder.slice());
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
@@ -203,6 +216,25 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
       ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    RocksDBValue const& value) {
+  return vectorIndexEntryValue(std::string_view(value.string()));
+}
+
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    rocksdb::Slice const& slice) {
+  return vectorIndexEntryValue(std::string_view(slice.data(), slice.size()));
+}
+
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    std::string_view s) {
+  TRI_ASSERT(s.data() != nullptr);
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(s.data()));
+  RocksDBVectorIndexEntryValue result;
+  velocypack::deserialize(slice, result);
+  return result;
+}
+
 replication2::LogTerm RocksDBValue::logTerm(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(uint64_t));
   return replication2::LogTerm(uint64FromPersistent(slice.data()));
@@ -266,7 +298,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     case RocksDBEntryType::MdiIndexValue:
       TRI_ASSERT(data.isArray());
       [[fallthrough]];
-
+    // This can be both object or encoded values
+    case RocksDBEntryType::VectorVPackIndexValue:
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::ReplicatedState:

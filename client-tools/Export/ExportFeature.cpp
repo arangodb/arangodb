@@ -102,8 +102,10 @@ void ExportFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_collections));
 
   options->addOldOption("--query", "custom-query");
-  options->addOption("--custom-query", "An AQL query to run.",
-                     new StringParameter(&_customQuery));
+  options->addOption(
+      "--custom-query",
+      "An AQL query to run for computing the data you want to export.",
+      new StringParameter(&_customQuery));
   options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
   options
       ->addOption(

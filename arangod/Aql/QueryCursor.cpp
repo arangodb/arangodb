@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -154,17 +155,27 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // .............................................................................
 // QueryStreamCursor class
 // .............................................................................
+auto QueryStreamCursor::create(std::shared_ptr<Query> q, size_t batchSize,
+                               double ttl, bool isRetriable)
+    -> async<std::unique_ptr<QueryStreamCursor>> {
+  auto cursor = std::make_unique<QueryStreamCursor>(
+      PrivateToken{}, std::move(q), batchSize, ttl, isRetriable);
+  co_await cursor->finishConstruction();
+  co_return cursor;
+}
 
-QueryStreamCursor::QueryStreamCursor(
-    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
-    bool isRetriable, transaction::OperationOrigin operationOrigin)
+QueryStreamCursor::QueryStreamCursor(PrivateToken, std::shared_ptr<Query> q,
+                                     size_t batchSize, double ttl,
+                                     bool isRetriable)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
       _finalization(false),
-      _allowDirtyReads(false) {
-  _query->prepareQuery();
+      _allowDirtyReads(false) {}
+
+auto QueryStreamCursor::finishConstruction() -> async<void> {
+  co_await _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     QueryStreamCursor::debugKillQuery();
@@ -183,11 +194,12 @@ QueryStreamCursor::QueryStreamCursor(
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
     QueryStreamCursor::debugKillQuery();
   }
-  TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
+
+  _query->trackExecutionStart();
   // things break if the Query outlives a V8 transaction
   _stateChangeCb = [this](transaction::Methods& /*trx*/,
                           transaction::Status status) {
@@ -569,9 +581,13 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(_ctx);
-  if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
-    trx.removeStatusChangeCallback(&_stateChangeCb);
-    _stateChangeCb = nullptr;
+  if (_ctx != nullptr) {
+    transaction::Methods trx(_ctx);
+    if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
+      trx.removeStatusChangeCallback(&_stateChangeCb);
+      _stateChangeCb = nullptr;
+    }
+  } else {
+    TRI_ASSERT(_stateChangeCb == nullptr);
   }
 }

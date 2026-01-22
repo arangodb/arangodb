@@ -65,7 +65,7 @@ AqlValue callApplyBackend(
   auto& trx = expressionContext->trx();
 
   std::string ucInvokeFN;
-  transaction::StringLeaser buffer(&trx);
+  auto buffer = ThreadLocalStringLeaser::lease();
   velocypack::StringSink adapter(buffer.get());
 
   aql::functions::appendAsString(trx.vpackOptions(), adapter, invokeFN);

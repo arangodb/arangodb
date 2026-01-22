@@ -362,7 +362,7 @@ struct VectorIndexFactory : public DefaultIndexFactory {
     if (!_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "vector index feature is not enabled. Run ArangoDB with "
-              "`--experimental-vector-index` flag turned on."};
+              "`--vector-index` flag turned on."};
     }
 
     normalized.add(StaticStrings::IndexType,

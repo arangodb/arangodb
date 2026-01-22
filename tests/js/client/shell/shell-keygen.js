@@ -1138,31 +1138,17 @@ function KeyGenerationLocationSuite() {
       db._drop(cn);
     },
 
-    testThatFailurePointsWork1: function () {
-      if (!cluster) {
-        return;
-      }
-
-      let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 1});
-
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
-      try {
-        c.insert({});
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_DEBUG.code, err.errorNum);
-      }
-    },
-
-    testThatFailurePointsWork2: function () {
+    testThatFailurePointsWork: function () {
       if (!cluster) {
         return;
       }
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 2});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator");
       try {
         c.insert({});
+        fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_DEBUG.code, err.errorNum);
       }
@@ -1173,8 +1159,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
@@ -1209,8 +1195,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator:
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1, shardKeys: ["id"]});
@@ -1246,8 +1232,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator:
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       db._createDatabase(cn, {sharding: "single"});
       try {
@@ -1383,6 +1369,289 @@ function KeyGenerationLocationSuite() {
   };
 }
 
+function UpsertKeyGenerationSuite() {
+  'use strict';
+
+  let generators = function () {
+    return ["traditional", "padded"];
+  };
+
+  return {
+    setUp: function () {
+      db._drop(cn);
+      try {
+        graphs._drop(gn, true);
+      } catch (err) {
+      }
+    },
+
+    tearDown: function () {
+      IM.debugClearFailAt();
+      db._drop(cn);
+      try {
+        graphs._drop(gn, true);
+      } catch (err) {
+      }
+    },
+
+    testUpsertSingleShardCollection: function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      generators().forEach((generator) => {
+        let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
+        try {
+          // UPSERT should not fail because key generation happens with the
+          // coordinator key generator (potentially on the DBServer!)
+          let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1} UPDATE {value:1} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(1, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+    testUpsertMultiShardCollection: function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      generators().forEach((generator) => {
+        let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 2});
+        try {
+          // UPSERT should not fail because key generation happens with
+          // the coordinator key generator (potentially on the DBServer!)
+          let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1} UPDATE {value:1} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(1, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+    testUpsertSingleShardEdgeCollection: function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      generators().forEach((generator) => {
+        let c = db._createEdgeCollection(cn, {keyOptions: {type: generator}, numberOfShards: 1});
+        try {
+          // UPSERT should not fail because key generation happens on coordinator
+          let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, _from: "${vn}/test", _to: "${vn}/test"} UPDATE {value:1} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(1, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+    testUpsertMultiShardEdgeCollection: function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      generators().forEach((generator) => {
+        let c = db._createEdgeCollection(cn, {keyOptions: {type: generator}, numberOfShards: 2});
+        try {
+          // UPSERT should not fail because key generation happens with the
+          // coordinator key generator
+          let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, _from: "${vn}/test", _to: "${vn}/test"} UPDATE {value:1} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(1, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+    testUpsertNonStandardShardingCollection: function () {
+      if (!cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      generators().forEach((generator) => {
+        let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 2, shardKeys: ["id"]});
+        try {
+          // UPSERT should not fail because key generation happens on coordinator
+          let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, id: "test"} UPDATE {value:1} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          result = db._query(`UPSERT {value:2, id: "test"} INSERT {Hello:1, value:2, id: "test"} UPDATE {value:2} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(2, c.count());
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
+    testUpsertSmartVertexCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const smartGraphProperties = {
+        numberOfShards: 2,
+        smartGraphAttribute: "value"
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, smartGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper generator
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1"} UPDATE {value:"1"} INTO ${vn} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[vn].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+    testUpsertSmartEdgeCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const smartGraphProperties = {
+        numberOfShards: 2,
+        smartGraphAttribute: "value"
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, smartGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper generator
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1", _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:"1"} INTO ${en} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[en].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+    testUpsertEnterpriseVertexCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+      // fail if we generate a key on a DB server
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const enterpriseGraphProperties = {
+        numberOfShards: 2,
+        isSmart: true
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, enterpriseGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper location
+        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1} UPDATE {value:1} INTO ${vn} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[vn].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+    testUpsertEnterpriseEdgeCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const enterpriseGraphProperties = {
+        numberOfShards: 2,
+        isSmart: true
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, enterpriseGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper generator
+        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, _from: "${vn}/test", _to: "${vn}/test"} UPDATE {value:1} INTO ${en} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[en].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+    testUpsertDisjointSmartVertexCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const disjointSmartGraphProperties = {
+        numberOfShards: 2,
+        smartGraphAttribute: "value",
+        isDisjoint: true
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, disjointSmartGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper generator
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1"} UPDATE {value:"1"} INTO ${vn} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[vn].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+    testUpsertDisjointSmartEdgeCollection: function () {
+      if (!isEnterprise || !cluster) {
+        return;
+      }
+
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
+
+      const disjointSmartGraphProperties = {
+        numberOfShards: 2,
+        smartGraphAttribute: "value",
+        isDisjoint: true
+      };
+
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, disjointSmartGraphProperties);
+      try {
+        // UPSERT should not fail because key generation uses proper generator
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1", _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:"1"} INTO ${en} RETURN NEW`);
+        assertEqual(1, result.toArray().length);
+        assertEqual(1, db[en].count());
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+
+  };
+}
+
 function KeyGenerationLocationSmartGraphSuite() {
   'use strict';
 
@@ -1408,8 +1677,8 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testSingleShardSmartVertexInserts: function () {
       if (cluster) {
-        // fail if we generate a key on a coordinator
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+        // fail if we generate a key with the single server key generator
+        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
         IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
@@ -1525,6 +1794,7 @@ jsunity.run(PersistedLastValueSuite);
 
 if (IM.debugCanUseFailAt()) {
   jsunity.run(KeyGenerationLocationSuite);
+  jsunity.run(UpsertKeyGenerationSuite);
 }
 if (isEnterprise && IM.debugCanUseFailAt()) {
   jsunity.run(KeyGenerationLocationSmartGraphSuite);

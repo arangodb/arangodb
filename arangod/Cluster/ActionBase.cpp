@@ -117,52 +117,6 @@ VPackSlice const ActionBase::properties() const {
   return _description.properties()->slice();
 }
 
-/// @brief Initiate a new action that will start immediately, pausing this
-/// action
-void ActionBase::createPreAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  _preAction = description;
-  std::shared_ptr<Action> new_action = _feature.preAction(description);
-
-  // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
-  //  workers from picking it up
-  if (_preAction && new_action->ok()) {
-    setState(WAITINGPRE);
-  } else {
-    result(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
-  }  // else
-
-}  // ActionBase::createPreAction
-
-/// @brief Retrieve pointer to action that should run before this one
-std::shared_ptr<Action> ActionBase::getPreAction() {
-  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction)
-                                 : nullptr;
-}
-
-/// @brief Retrieve pointer to action that should run after this one
-std::shared_ptr<Action> ActionBase::getPostAction() {
-  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction)
-                                  : nullptr;
-}
-
-// FIXMEMAINTENANCE: Code path could corrupt registry object because
-//   this does not hold lock.
-
-/// @brief Create a new action that will start after this action successfully
-/// completes
-void ActionBase::createPostAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  // postAction() sets up what we need
-  _postAction = description;
-  if (_postAction) {
-    _feature.postAction(description);
-  } else {
-    result(TRI_ERROR_BAD_PARAMETER,
-           "postAction rejected parameters for _postAction.");
-  }
-}  // ActionBase::createPostAction
-
 void ActionBase::startStats() {
   _actionStarted = secs_since_epoch();
 

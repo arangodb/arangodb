@@ -50,10 +50,11 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _buffer(velocypack::SupervisedBuffer(infos.resourceMonitor())),
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(
-        Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
+    aggregators.emplace_back(Aggregator::fromTypeString(
+        infos.getVPackOptions(), aggName, infos.resourceMonitor()));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
@@ -88,10 +89,10 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
+      auto mem = it.memoryUsage();
       it.destroy();
+      infos.resourceUsageScope().decrease(mem);
     }
-    groupValues[0].erase();  // only need to erase [0], because we have
-    // only copies of references anyway
   }
 
   groupLength = 0;
@@ -107,7 +108,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     size_t i = 0;
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
-      this->groupValues[i] = input.getValue(it.second).clone();
+      auto& ref = input.getValue(it.second);
+      infos.resourceUsageScope().increase(ref.memoryUsage());
+      this->groupValues[i] = ref.clone();
       ++i;
     }
 
@@ -124,7 +127,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -132,7 +135,9 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _vpackOptions(opts) {}
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos) {
@@ -247,9 +252,13 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
 
+    auto memUsage = val.memoryUsage();
+
     output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
+
+    infos.resourceUsageScope().decrease(memUsage);
     ++i;
   }
 
@@ -267,12 +276,10 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
-
-    AqlValue val(std::move(_buffer));  // _buffer still usable after
+    AqlValue val(std::move(_buffer));
     AqlValueGuard guard{val, true};
     TRI_ASSERT(_buffer.size() == 0);
-    _builder.clear();  // necessary
-
+    _builder.clear();
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
   }
 

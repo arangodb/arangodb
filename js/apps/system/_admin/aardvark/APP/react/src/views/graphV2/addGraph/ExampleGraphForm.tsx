@@ -117,7 +117,7 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
           _hover={{
             color: "blue.800"
           }}
-          href={`https://docs.arangodb.com/${version}/graphs/example-graphs/`}
+          href={`https://docs.arango.ai/arangodb/${version}/graphs/example-graphs/`}
         >
           <Flex gap="1" alignItems="center">
             <Text>Graph Documentation</Text> <ExternalLinkIcon />

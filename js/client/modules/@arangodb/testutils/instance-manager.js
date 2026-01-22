@@ -30,6 +30,7 @@ const _ = require('lodash');
 const internal = require('internal');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const arangosh = require('@arangodb/arangosh');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
@@ -100,8 +101,9 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
+
     // be more sluggish with memory when running instrumented binaries
-    if (this.options.isInstrumented) {
+    if (this.options.isInstrumented && this.options.memory !== undefined) {
       this.options.memory *= 1.1;
     }
     this.cleanup = options.cleanup && options.server === undefined;
@@ -112,6 +114,9 @@ class instanceManager {
     }
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
+    } else if (options.hasOwnProperty('jwtSecret')) {
+      this.JWT = options.jwtSecret;
+      addArgs['server.jwt-secret'] = this.JWT;
     }
     if (this.options.encryptionAtRest) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
@@ -196,6 +201,19 @@ class instanceManager {
         arangod.setThisConnectionHandle();
       }
     });
+  }
+  setPassvoid() {
+    if (!arango.isConnected()) {
+      throw new Error('connecting the database failed');
+    }
+    try {
+      return require('org/arangodb/users').save(this.options.username, this.options.password);
+    } catch (ex) {
+      if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
+        return require('org/arangodb/users').update(this.options.username, this.options.password);
+      }
+      throw ex;
+    }
   }
   getTypeToUrlsMap() {
     let ret = new Map();
@@ -457,13 +475,11 @@ class instanceManager {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
     }
-    let subenv = [`INSTANCEINFO=${JSON.stringify(this.getStructure())}`];
-
     const startTime = time();
     try {
       let count = 0;
       this.arangods.forEach(arangod => {
-        arangod.startArango(_.cloneDeep(subenv));
+        arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
@@ -531,6 +547,16 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
+    if (this.options.skipServerJS) {
+      return {
+        status: true,
+        message: "skipped for servers without javascript"
+      };
+    }
+    let baseUrl = this.url;
+    if (instanceInfo !== undefined) {
+      baseUrl = instanceInfo.url;
+    }
     try {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
       const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
@@ -540,7 +566,7 @@ class instanceManager {
       requestOptions.returnBodyOnError = true;
 
       const reply = download(
-        instanceInfo.url + '/_admin/execute?returnAsJSON=true',
+        baseUrl + '/_admin/execute?returnAsJSON=true',
         remoteCommand,
         requestOptions);
 
@@ -688,7 +714,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      shutdownSuccess &= this._setMaintenance(true);
+      shutdownSuccess &&= this._setMaintenance(true);
     }
 
     this.stopClusterHealthMonitor();
@@ -821,7 +847,10 @@ class instanceManager {
     }
     this.setEndpoints();
     this.printProcessInfo(startTime);
-    sleep(this.options.sleepBeforeStart);
+    if (this.options.sleepBeforeStart > 0) {
+      console.log("sleeping for " + this.options.sleepBeforeStart);
+      sleep(this.options.sleepBeforeStart);
+    }
     this.spawnClusterHealthMonitor();
     if (this.options.cluster) {
       this.reconnect();
@@ -838,6 +867,13 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      this.arangods.forEach(arangod => {
+        if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
+          delete arangod.args['server.jwt-secret-keyfile'];
+        } else if (arangod.args.hasOwnProperty('server.jwt-secret-folder')) {
+          delete arangod.args['server.jwt-secret-folder'];
+        }
+      });
     }
 
     this.arangods.forEach(arangod => {
@@ -848,7 +884,7 @@ class instanceManager {
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
       this.arangods.forEach(arangod => {
-        arangod.restartIfType(instanceRole, moreArgs);
+        arangod.restartIfType(instanceRole, moreArgs, JSON.stringify(this.getStructure()));
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
     });
@@ -875,9 +911,9 @@ class instanceManager {
             sleep(1);
           }
           print(`${Date()} upgrading ${arangod.name}`);
-          arangod.runUpgrade();
+          arangod.runUpgrade(JSON.stringify(this.getStructure()));
           print(`${Date()} relaunching ${arangod.name}`);
-          arangod.restartOneInstance();
+          arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {
             haveMaintainance = false;
             this._setMaintenance(false);
@@ -938,14 +974,8 @@ class instanceManager {
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
-    let obj = this;
     try {
-      netstat({platform: process.platform}, function (data) {
-        // skip server ports, we know what we bound.
-        if (data.state !== 'LISTEN') {
-          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
-        }
-      });
+      this.gatherNetstat();
       if (!this.options.noStartStopLogs) {
         this.printNetstat();
       }
@@ -1037,7 +1067,7 @@ class instanceManager {
           print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.name);
         }
         let url = arangod.url;
-        if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
+        if (!this.options.skipServerJS && arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
           url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
@@ -1142,6 +1172,76 @@ class instanceManager {
         arangod.id = res['id'];
       }
     });
+  }
+
+  waitForAllShardsInSync() {
+    if (!this.isCluster) {
+      return true;
+    }
+    let count = 0;
+    let collections = [];
+    let dbs = db._databases();
+    while (count < 500) {
+      let dbsOk = 0;
+      dbs.forEach(oneDb => {
+        db._useDatabase(oneDb);
+        collections = [];
+        let found = 0;
+        let shardDist = arango.GET("/_admin/cluster/shardDistribution");
+        if (shardDist.code !== 200 || typeof shardDist.results !== "object") {
+          ++count;
+          return;
+        }
+        let cols = Object.keys(shardDist.results);
+        cols.forEach((c) => {
+          let col = shardDist.results[c];
+          let shards = Object.keys(col.Plan);
+          shards.forEach((s) => {
+            try {
+              if (col.Current.hasOwnProperty(s) && (col.Plan[s].leader !== col.Current[s].leader)) {
+                ++found;
+                collections.push([c, s]);
+              }
+            } catch (ex) {
+              print(`${Date()} 015: ${s}`);
+              print(`${Date()} 015: ${JSON.stringify(col)}`);
+              print(`${Date()} 015: ${ex}`);
+            }
+          });
+        });
+        if (found > 0) {
+          print(`${Date()} 015: ${found} found - Waiting - ${JSON.stringify(collections)}`);
+          internal.sleep(1);
+          count += 1;
+        } else {
+          dbsOk += 1;
+          return;
+        }
+      });
+      if (dbs.length === dbsOk) {
+        break;
+      }
+    }
+    return count < 500;
+  }
+
+  stopServerWaitFailed(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.suspend();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverFailed(urlIDOrShortName); });
+  }
+  continueServerWaitOk(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (urlIDOrShortName !== undefined && !arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.resume();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverHealthy(urlIDOrShortName); });
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
@@ -1249,6 +1349,18 @@ class instanceManager {
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
     }
+  }
+
+  setLeader(database, logId, newLeader) {
+    const res = arango.POST_RAW(`/_db/${database}/_api/log/${logId}/leader/${newLeader}`, '');
+    arangosh.checkRequestResult(res);
+    return res.result;
+  }
+
+  unsetLeader(database, logId) {
+    const res = arango.DELETE(`/_db/${database}/_api/log/${logId}/leader`);
+    arangosh.checkRequestResult(res);
+    return res.result;
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1425,6 +1537,15 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief check how many sockets the SUT uses
   // //////////////////////////////////////////////////////////////////////////////
+  gatherNetstat() {
+    let obj = this;
+    netstat({platform: process.platform}, function (data) {
+      // skip server ports, we know what we bound.
+      if (data.state !== 'LISTEN') {
+        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+      }
+    });
+  }
 
   getNetstat() {
     let ret = {};
@@ -1477,18 +1598,24 @@ class instanceManager {
       }
     }
   }
-
 }
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  let memory;
+  if (fs.exists("/proc/meminfo")) {
+    let f = fs.read("/proc/meminfo");
+    const search = 'MemTotal:';
+    let pos = f.search(search);
+    memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+  }
   tu.CopyIntoObject(optionsDefaults, {
-    'memory': undefined,
+    'memory': memory,
     'singles': 1, // internal only
     'coordinators': 1,
     'dbServers': 2,
     'disableClusterMonitor': true,
-    'encryptionAtRest': false,
+    'encryptionAtRest': true,
     'extraArgs': {},
     'cluster': false,
     'forceOneShard': false,
@@ -1515,6 +1642,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `dbServers`: number of DB-Servers to use',
     '   - `coordinators`: number coordinators to use',
     '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    '',
     ' SUT monitoring',
     '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',
     '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
@@ -1524,6 +1652,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `serverRoot`: directory where data/ points into the db server. Use in',
     '                   conjunction with "server".',
     '   - `memprof`: take snapshots (requries memprof enabled build)',
+    '',
     ' SUT packet capturing:',
     '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
     '              false / true / sudo',
@@ -1532,6 +1661,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
     '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
     '   - `sniffFilter`: only launch tcpdump for tests matching this string',
+    '',
     ' SUT & valgrind:',
     '   - `valgrind`: if set the programs are run with the valgrind',
     '     memory checker; should point to the valgrind executable',
@@ -1552,8 +1682,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
       process.env['MALLOC_CONF'] = 'prof:true';
     }
     options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
-    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
-      options.encryptionAtRest = false;
-    }
   });
 };

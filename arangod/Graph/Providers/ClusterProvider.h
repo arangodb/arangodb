@@ -28,14 +28,16 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Graph/Cursors/ClusterNeighbourCursor.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
-
 #include "Graph/Steps/ClusterProviderStep.h"
+#include "Network/Methods.h"
 
+#include <list>
 #include <vector>
 
 namespace arangodb {
@@ -68,6 +70,7 @@ class ClusterProvider {
  public:
   using Options = ClusterBaseProviderOptions;
   using Step = StepImpl;
+  using NeighbourProvider = ClusterNeighbourCursor<Step>;
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext,
@@ -90,8 +93,10 @@ class ClusterProvider {
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
+  auto createNeighbourCursor(Step const& step, size_t position)
+      -> ClusterNeighbourCursor<Step>&;
 
-  void addVertexToBuilder(typename Step::Vertex const& vertex,
+  void addVertexToBuilder(VertexRef const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
@@ -148,6 +153,8 @@ class ClusterProvider {
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;
+
+  std::list<ClusterNeighbourCursor<Step>> _neighbourCursors;
 };
 }  // namespace graph
 }  // namespace arangodb

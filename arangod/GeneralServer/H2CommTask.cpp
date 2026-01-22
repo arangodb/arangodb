@@ -736,7 +736,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   } catch (...) {
     retries = 0;
   }
-  if (--retries == 0) {
+  if (retries == 0) {
     LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
         << "was not able to queue response this=" << (void*)this;
     // we are overloaded close stream

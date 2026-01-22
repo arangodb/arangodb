@@ -811,7 +811,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
             meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
-  ASSERT_EQ(1000, meta._consolidationIntervalMsec);
+  ASSERT_EQ(5000, meta._consolidationIntervalMsec);
   ASSERT_EQ(0, meta._writebufferActive);
   ASSERT_EQ(64, meta._writebufferIdle);
   ASSERT_EQ(33554432, meta._writebufferSizeMax);
@@ -826,44 +826,35 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
     ASSERT_EQ("tier", type);
   }
   {
-    ASSERT_TRUE(propSlice.hasKey("segmentsBytesFloor"));
-    auto valueSlice = propSlice.get("segmentsBytesFloor");
-    ASSERT_TRUE(valueSlice.isNumber());
-    size_t segmentsBytesFloor;
-    ASSERT_TRUE(getNumber(segmentsBytesFloor, valueSlice));
-    ASSERT_EQ(2097152, segmentsBytesFloor);
-  }
-  {
     ASSERT_TRUE(propSlice.hasKey("segmentsBytesMax"));
     auto valueSlice = propSlice.get("segmentsBytesMax");
     ASSERT_TRUE(valueSlice.isNumber());
     size_t segmentsBytesMax;
     ASSERT_TRUE(getNumber(segmentsBytesMax, valueSlice));
-    ASSERT_EQ(5368709120, segmentsBytesMax);
+    ASSERT_EQ(8 * (1ul << 30), segmentsBytesMax);
   }
   {
-    ASSERT_TRUE(propSlice.hasKey("segmentsMax"));
-    auto typeSlice = propSlice.get("segmentsMax");
-    ASSERT_TRUE(typeSlice.isNumber());
-    size_t segmentsMax;
-    ASSERT_TRUE(getNumber(segmentsMax, typeSlice));
-    ASSERT_EQ(10, segmentsMax);
-  }
-  {
-    ASSERT_TRUE(propSlice.hasKey("segmentsMin"));
-    auto valueSlice = propSlice.get("segmentsMin");
+    ASSERT_TRUE(propSlice.hasKey("maxSkewThreshold"));
+    auto valueSlice = propSlice.get("maxSkewThreshold");
     ASSERT_TRUE(valueSlice.isNumber());
-    size_t segmentsMin;
-    ASSERT_TRUE(getNumber(segmentsMin, valueSlice));
-    ASSERT_EQ(1, segmentsMin);
+    double maxSkewThreshold;
+    ASSERT_TRUE(getNumber<double>(maxSkewThreshold, valueSlice));
+    ASSERT_EQ(0.4, maxSkewThreshold);
   }
   {
-    ASSERT_TRUE(propSlice.hasKey("minScore"));
-    auto valueSlice = propSlice.get("minScore");
+    ASSERT_TRUE(propSlice.hasKey("minDeletionRatio"));
+    auto valueSlice = propSlice.get("minDeletionRatio");
     ASSERT_TRUE(valueSlice.isNumber());
-    size_t minScore;
-    ASSERT_TRUE(getNumber(minScore, valueSlice));
-    ASSERT_EQ(0, minScore);
+    double minDeletionRatio;
+    ASSERT_TRUE(getNumber<double>(minDeletionRatio, valueSlice));
+    ASSERT_EQ(0.5, minDeletionRatio);
+  }
+  //  Old consolidationPolicy properties.
+  {
+    ASSERT_FALSE(propSlice.hasKey("segmentsBytesFloor"));
+    ASSERT_FALSE(propSlice.hasKey("segmentsMax"));
+    ASSERT_FALSE(propSlice.hasKey("segmentsMin"));
+    ASSERT_FALSE(propSlice.hasKey("minScore"));
   }
 }
 

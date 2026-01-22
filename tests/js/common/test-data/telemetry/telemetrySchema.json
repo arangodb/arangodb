@@ -1,0 +1,491 @@
+[
+    {
+        "fields":
+        [
+            {
+                "mode": "NULLABLE",
+                "name": "date",
+                "type": "TIMESTAMP"
+            },
+            {
+                "fields":
+                [
+                    {
+                        "mode": "NULLABLE",
+                        "name": "single_shard",
+                        "type": "BOOLEAN"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "n_views",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "fields":
+                        [
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rep_factor",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_unknown",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "type",
+                                "type": "STRING"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_ttl",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_primary",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "plan_id",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_persistent",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_hash",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "smart_graph",
+                                "type": "BOOLEAN"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_shards",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_inverted",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_geo2",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_geo",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_geo1",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_fulltext",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "fields":
+                                [
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "unique",
+                                        "type": "BOOLEAN"
+                                    },
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "sparse",
+                                        "type": "BOOLEAN"
+                                    },
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "type",
+                                        "type": "STRING"
+                                    },
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "cache_usage",
+                                        "type": "INTEGER"
+                                    },
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "cache_size",
+                                        "type": "INTEGER"
+                                    },
+                                    {
+                                        "mode": "NULLABLE",
+                                        "name": "mem",
+                                        "type": "INTEGER"
+                                    }
+                                ],
+                                "mode": "REPEATED",
+                                "name": "idxs",
+                                "type": "RECORD"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_edge",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_zkd",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_mdi",
+                                "type": "INTEGER"
+                            },
+{
+                                "mode": "NULLABLE",
+                                "name": "n_mdi-prefixed",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_docs",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_skiplist",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_iresearch",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "disjoint",
+                                "type": "BOOLEAN"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_fulltext",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_vector",
+                                "type": "INTEGER"
+                            }
+                        ],
+                        "mode": "REPEATED",
+                        "name": "colls",
+                        "type": "RECORD"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "n_edge_colls",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "n_disjoint_smart_colls",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "n_smart_colls",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "n_doc_colls",
+                        "type": "INTEGER"
+                    }
+                ],
+                "mode": "REPEATED",
+                "name": "databases",
+                "type": "RECORD"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "agents",
+                "type": "INTEGER"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "startup_mode",
+                "type": "STRING"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "type",
+                "type": "STRING"
+            },
+            {
+                "fields":
+                [
+                    {
+                        "mode": "NULLABLE",
+                        "name": "followers",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "realLeaders",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "servers",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "shards",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "collections",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "leaders",
+                        "type": "INTEGER"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "databases",
+                        "type": "INTEGER"
+                    }
+                ],
+                "mode": "NULLABLE",
+                "name": "shards_statistics",
+                "type": "RECORD"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "coordinators",
+                "type": "INTEGER"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "persisted_id",
+                "type": "STRING"
+            },
+            {
+                "fields":
+                [
+                    {
+                        "fields":
+                        [
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_block_cache_capacity",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_live_sst_files_size",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_free_disk_space",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_estimate_live_data_size",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_estimate_num_keys",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "cache_allocated",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_total_disk_space",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "rocksdb_block_cache_usage",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "cache_limit",
+                                "type": "INTEGER"
+                            }
+                        ],
+                        "mode": "NULLABLE",
+                        "name": "engine_stats",
+                        "type": "RECORD"
+                    },
+                    {
+                        "fields":
+                        [
+                            {
+                                "mode": "NULLABLE",
+                                "name": "resident_set_size",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "virtual_size",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "n_threads",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "process_uptime",
+                                "type": "FLOAT"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "fileDescrtors",
+                                "type": "INTEGER"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "fileDescrtorsLimit",
+                                "type": "INTEGER"
+                            }
+                        ],
+                        "mode": "NULLABLE",
+                        "name": "process_stats",
+                        "type": "RECORD"
+                    },
+                    {
+                        "fields":
+                        [
+                            {
+                                "mode": "NULLABLE",
+                                "name": "overridden",
+                                "type": "BOOLEAN"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "value",
+                                "type": "INTEGER"
+                            }
+                        ],
+                        "mode": "NULLABLE",
+                        "name": "n_cores",
+                        "type": "RECORD"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "maintenance",
+                        "type": "BOOLEAN"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "endpoint",
+                        "type": "STRING"
+                    },
+                    {
+                        "fields":
+                        [
+                            {
+                                "mode": "NULLABLE",
+                                "name": "overridden",
+                                "type": "BOOLEAN"
+                            },
+                            {
+                                "mode": "NULLABLE",
+                                "name": "value",
+                                "type": "INTEGER"
+                            }
+                        ],
+                        "mode": "NULLABLE",
+                        "name": "phys_mem",
+                        "type": "RECORD"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "os",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "platform",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "build",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "read_only",
+                        "type": "BOOLEAN"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "role",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "alias",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "version",
+                        "type": "STRING"
+                    },
+                    {
+                        "mode": "NULLABLE",
+                        "name": "id",
+                        "type": "STRING"
+                    }
+                ],
+                "mode": "REPEATED",
+                "name": "servers",
+                "type": "RECORD"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "db_servers",
+                "type": "INTEGER"
+            },
+            {
+                "mode": "NULLABLE",
+                "name": "license",
+                "type": "STRING"
+            },
+            {   "mode": "NULLABLE",
+                "name": "active_failover_leader",
+                "type": "BOOLEAN"
+            }
+        ],
+        "mode": "NULLABLE",
+        "name": "deployment",
+        "type": "RECORD"
+    }
+]

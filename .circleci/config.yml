@@ -6,33 +6,71 @@ orbs:
   continuation: circleci/continuation@0.4.0
 
 parameters:
+  dont-cancel-pipelines:
+    type: boolean
+    default: false
+    description: "If true, don't cancel redundant pipelines"
   enterprise-branch:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
-  arangosh_args:
-    type: string
-    default: ""
-  use-minimal-debug-info:
+    description: "The branch to use for the enterprise repository."
+  without-instrumentation:
     type: boolean
     default: true
+    description: "Whether to create workflows for non-instrumented builds"
+  with-tsan:
+    type: boolean
+    default: false
+    description: "Whether to create workflows for TSan builds"
+  with-alubsan:
+    type: boolean
+    default: false
+    description: "Whether to create workflows for ALUBSan builds"
+  full:
+    type: boolean
+    default: false
+    description: "Whether to run the full test set (e.g., for nightly builds) or reduced set (e.g., for normal PR builds)"
+  arangod-without-v8:
+    type: boolean
+    default: false
+    description: "Build arangod without serverside JS (also excludes frontend)"
+  config-definitions:
+    type: string
+    default: test-definitions.yml ui.yml
+    description: Space separated list of YAML files with test definitions. Available files
+      arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
+  config-definitions-branches:
+    type: string
+    default: ""
+    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers or RTA (=ui)."
   create-docker-images:
     type: boolean
     default: false
+    description: "Whether to create docker images with the build artifacts"
+  extra_args:
+    type: string
+    default: ""
+    description: "Additional arguments to pass to testing.js see scripts/unittests output"
+  arangosh_args:
+    type: string
+    default: ""
+    description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
   rebuild-test-docker-images:
     type: boolean
     default: false
-  dont-cancel-pipelines:
-    type: boolean
-    default: false
+    description: "Used to create new test docker images after changes to the test docker image build process."
+  test-docker-image:
+    type: string
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d76ea9cb
+    description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:10"
-  nightly:
-    type: boolean
-    default: false
+    default: "arangodb/ubuntubuildarangodb-devel:18"
+    description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
+  # Rarely used options
   replication-two:
     type: boolean
     default: false # We use replication1 as default.
@@ -42,21 +80,12 @@ parameters:
   cxx-compiler:
     type: string
     default: "clang++"
-  sanitizer:
-    type: string
-    default: "" # should be empty, "tsan" or "alubsan"
-  ui:
-    type: string
-    default: "on"
-  ui-deployment:
-    type: string
-    default: ""
-  ui-testsuites:
-    type: string
-    default: ""
-  rta-branch:
-    type: string
-    default: "main"
+  use-minimal-debug-info:
+    type: boolean
+    default: true
+    description: Whether to use minimal debug info.
+      This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
+
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
@@ -88,8 +117,6 @@ jobs:
           command: |
             if [ "<< pipeline.parameters.dont-cancel-pipelines >>" == "true" ]; then
               echo "Cancelling of redundant pipelines is disabled, not cancelling any pipelines"
-            elif [ "<< pipeline.parameters.nightly >>" == "true" ]; then
-              echo "Nightly build - not cancelling any pipelines"
             elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
               echo "Branch is a release branch or devel, not cancelling any pipelines"
             else
@@ -112,7 +139,7 @@ jobs:
               ## Cancel any currently running/on_hold workflow with the same name
               if [ -s WF_to_cancel.txt ]; then
                 echo "Cancelling the following workflow(s):"
-                cat WF_to_cancel.txt 
+                cat WF_to_cancel.txt
                 while read WF_ID;
                   do
                     curl --header "Circle-Token: $CIRCLECI_TOKEN" --request POST https://circleci.com/api/v2/workflow/$WF_ID/cancel
@@ -132,30 +159,40 @@ jobs:
       default-enterprise-branch:
         type: string
         default: "devel"
+      config-definitions-branches:
+        type: string
+        default: ""
     steps:
       - run:
           name: Print pipeline parameters
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
+            echo "without-instrumentation: << pipeline.parameters.without-instrumentation >>"
+            echo "with-tsan: << pipeline.parameters.with-tsan >>"
+            echo "with-alubsan: << pipeline.parameters.with-alubsan >>"
+            echo "full: << pipeline.parameters.full >>"
+            echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
+            echo "config-definitions: << pipeline.parameters.config-definitions >>"
+            echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
             echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
+            echo "extra_args: << pipeline.parameters.extra_args >>"
+            echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
             echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
+            echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
             echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
-            echo "nightly: << pipeline.parameters.nightly >>"
             echo "replication-two: << pipeline.parameters.replication-two >>"
             echo "c-compiler: << pipeline.parameters.c-compiler >>"
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
-            echo "sanitizer: << pipeline.parameters.sanitizer >>"
-            echo "ui: << pipeline.parameters.ui >>"
-            echo "ui-deployment: << pipeline.parameters.ui-deployment >>"
-            echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
+            echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
       - run:
           name: Checkout
           command: |
-            # We do not want to clone the whole repository since we only need a few files.
-            # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
-            (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/<< parameters.definitions >>)
-
+            git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
+            cd arangodb
+            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci
+            git checkout $CIRCLE_SHA1
+            mv tests ..
+            mv .circleci ..
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
@@ -182,20 +219,36 @@ jobs:
             cat parameters.json
 
       - run:
+          name: Install dependencies
+          command: pip install pyyaml click pytest mypy types-PyYAML
+      - run:
+          name: Run config script tests and type checks
+          command: |
+            cd .circleci
+            mypy generate_config.py src
+            python -m pytest tests_unit/ -v
+      - run:
           name: Generate config
           command: |
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
               cp .circleci/build_test_image.yml continuation_config.yml
             else
-              pip install pyyaml
-              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
-                --ui "<< pipeline.parameters.ui >>" \
-                --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
-                --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
-                <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
+              set -x
+              python3 ".circleci/generate_config.py" \
+                <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
+                <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
+                <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
+                --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
+                --extra-args "A<< pipeline.parameters.extra_args >>" \
+                --test-image "<< pipeline.parameters.test-docker-image >>" \
+                <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
+                <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+                --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
+                -o continuation_config.yml \
+                ./.circleci/base_config.yml \
+                << parameters.definitions >>
             fi
 
       - continuation/continue:
@@ -214,6 +267,7 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: "tests/test-definitions.txt"
+          definitions: << pipeline.parameters.config-definitions >>
+          config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
           requires:
             - cancel-redundant-pipelines

@@ -1,0 +1,19 @@
+name: arangodb_aql_recording_call_time
+type: histogram
+help: |
+  AQL recording runtime histogram.
+description: |
+  Execution time histogram for AQL recording calls in nanoseconds.
+  
+  This histogram tracks the time it takes to record AQL calls in the ApiRecordingFeature.
+  The histogram uses a logarithmic scale with base 2, starting at 0 and going up to 16000.0 nanoseconds,
+  with 9 buckets.
+unit: nanoseconds
+introducedIn: "3.12.6"
+category: Statistics
+complexity: high
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single

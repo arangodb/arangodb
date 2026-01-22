@@ -56,12 +56,6 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
-  fakeit::When(Method(trxCtxMock, leaseString)).AlwaysDo([&buffer]() {
-    buffer.clear();
-    return &buffer;
-  });
-  fakeit::When(Method(trxCtxMock, returnString))
-      .AlwaysDo([&buffer](std::string*) { buffer.clear(); });
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;

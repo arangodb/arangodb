@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -33,28 +33,26 @@ const ERRORS = arangodb.errors;
 const isEnterprise = internal.isEnterprise();
 const isCluster = internal.isCluster();
 const request = require('@arangodb/request');
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 const defaultReplicationFactor = db._properties().replicationFactor;
 const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
-let {
-  getMaxReplicationFactor,
-  getMinReplicationFactor,
-  agency,
-} = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
 
-const maxReplicationFactor = getMaxReplicationFactor();
-const minReplicationFactor = getMinReplicationFactor(); 
+const maxReplicationFactor = CI.getMaxReplicationFactor();
+const minReplicationFactor = CI.getMinReplicationFactor(); 
         
 function assertNoDatabasesInPlan () {
   if (!isCluster) {
     return;
   }
-  const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
+  const prefix ="arango";
   const paths = [
       "Plan/Databases/",
     ].map(p => `${prefix}/${p}`);
-  let result = agency.call("read", [ paths ]);
+  let result = AM.call("read", [ paths ]);
   assertTrue(Array.isArray(result), result);
   assertEqual(1, result.length);
   result = result[0];

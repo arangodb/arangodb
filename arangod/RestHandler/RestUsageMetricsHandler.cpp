@@ -31,12 +31,11 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/MetricsParts.h"
-#include "Metrics/Types.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
+
+#include <Async/async.h>
 
 namespace arangodb {
 
@@ -45,18 +44,18 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(ArangodServer& server,
                                                  GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestUsageMetricsHandler::execute() {
+auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_request->requestType() != RequestType::GET) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool foundServerId = false;
@@ -70,12 +69,13 @@ RestStatus RestUsageMetricsHandler::execute() {
     if (!ci.serverExists(serverId)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "Unknown value of serverId parameter.");
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
   if (foundServerId) {
-    return makeRedirection(serverId);
+    co_await makeRedirection(serverId);
+    co_return;
   }
 
   _response->setAllowCompression(
@@ -85,7 +85,7 @@ RestStatus RestUsageMetricsHandler::execute() {
   if (!metrics.exportAPI()) {
     // don't export metrics, if so desired
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   // only export dynamic metrics for shard usage
@@ -96,11 +96,11 @@ RestStatus RestUsageMetricsHandler::execute() {
   _response->setResponseCode(rest::ResponseCode::OK);
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(result);
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestUsageMetricsHandler::makeRedirection(
-    std::string const& serverId) {
+auto RestUsageMetricsHandler::makeRedirection(std::string const& serverId)
+    -> async<void> {
   auto* pool = server().getFeature<NetworkFeature>().pool();
   if (pool == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -111,33 +111,29 @@ RestStatus RestUsageMetricsHandler::makeRedirection(
   options.database = _request->databaseName();
   options.parameters = _request->parameters();
 
-  auto f = network::sendRequest(pool, "server:" + serverId,
-                                fuerte::RestVerb::Get, _request->requestPath(),
-                                VPackBuffer<uint8_t>{}, options);
+  auto r = co_await network::sendRequest(
+      pool, "server:" + serverId, fuerte::RestVerb::Get,
+      _request->requestPath(), VPackBuffer<uint8_t>{}, options);
 
-  return waitForFuture(std::move(f).thenValue([self = shared_from_this()](
-                                                  network::Response&& r) {
-    auto& me = basics::downCast<RestUsageMetricsHandler>(*self);
-    if (r.fail() || !r.hasResponse()) {
-      TRI_ASSERT(r.fail());
-      me.generateError(r.combinedResult());
-      return;
-    }
-    // the response will not contain any velocypack.
-    // we need to forward the request with content-type text/plain.
-    if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
-      // forward original Content-Encoding header
-      me._response->setHeaderNC(
-          StaticStrings::ContentEncoding,
-          r.response().header.metaByKey(StaticStrings::ContentEncoding));
-    }
+  if (r.fail() || !r.hasResponse()) {
+    TRI_ASSERT(r.fail());
+    generateError(r.combinedResult());
+    co_return;
+  }
+  // the response will not contain any velocypack.
+  // we need to forward the request with content-type text/plain.
+  if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
+    // forward original Content-Encoding header
+    _response->setHeaderNC(
+        StaticStrings::ContentEncoding,
+        r.response().header.metaByKey(StaticStrings::ContentEncoding));
+  }
 
-    me._response->setResponseCode(rest::ResponseCode::OK);
-    me._response->setContentType(rest::ContentType::TEXT);
-    auto payload = r.response().stealPayload();
-    me._response->addRawPayload(
-        {reinterpret_cast<char const*>(payload->data()), payload->size()});
-  }));
+  _response->setResponseCode(rest::ResponseCode::OK);
+  _response->setContentType(rest::ContentType::TEXT);
+  auto payload = r.response().stealPayload();
+  _response->addRawPayload(
+      {reinterpret_cast<char const*>(payload->data()), payload->size()});
 }
 
 }  // namespace arangodb

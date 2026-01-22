@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
+#include "Basics/CGroupDetection.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
@@ -226,8 +227,14 @@ DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
                 "Number of seconds elapsed since server start");
 DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
               "Physical memory in bytes");
+DECLARE_GAUGE(arangodb_server_statistics_effective_physical_memory, double,
+              "Effective physical memory in bytes");
 DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
               "Number of CPU cores visible to the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
+              "Number of effective CPU cores set for the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cgroup_version, uint64_t,
+              "CGroup version detected (0=none, 1=v1, 2=v2)");
 DECLARE_GAUGE(
     arangodb_server_statistics_user_percent, double,
     "Percentage of time that the system CPUs have spent in user mode");
@@ -398,9 +405,15 @@ auto const statStrings = std::map<std::string_view,
     {"physicalSize",
      {"arangodb_server_statistics_physical_memory", "gauge",
       "Physical memory in bytes"}},
+    {"effectivePhysicalSize",
+     {"arangodb_server_statistics_effective_physical_memory", "gauge",
+      "Effective physical memory in bytes"}},
     {"cores",
      {"arangodb_server_statistics_cpu_cores", "gauge",
       "Number of CPU cores visible to the arangod process"}},
+    {"cgroupVersion",
+     {"arangodb_server_statistics_cpu_cgroup_version", "gauge",
+      "CGroup version detected (0=none, 1=v1, 2=v2)"}},
     {"userPercent",
      {"arangodb_server_statistics_user_percent", "gauge",
       "Percentage of time that the system CPUs have spent in user mode"}},
@@ -431,6 +444,9 @@ auto const statStrings = std::map<std::string_view,
     {"v8ContextMin",
      {"arangodb_v8_context_min", "gauge",
       "Minimum number of concurrent V8 contexts"}},
+    {"effectiveCores",
+     {"arangodb_server_statistics_effective_cpu_cores", "gauge",
+      "Number of effective CPU cores set for the arangod process"}},
 };
 
 // Connect legacy statistics with metrics definitions for automatic checks
@@ -511,7 +527,11 @@ auto const statBuilder = makeStatBuilder({
      new arangodb_http_request_statistics_other_http_requests_total()},
     {"uptime", new arangodb_server_statistics_server_uptime_total()},
     {"physicalSize", new arangodb_server_statistics_physical_memory()},
+    {"effectivePhysicalSize",
+     new arangodb_server_statistics_effective_physical_memory()},
     {"cores", new arangodb_server_statistics_cpu_cores()},
+    {"effectiveCores", new arangodb_server_statistics_effective_cpu_cores()},
+    {"cgroupVersion", new arangodb_server_statistics_cpu_cgroup_version()},
     {"userPercent", new arangodb_server_statistics_user_percent()},
     {"systemPercent", new arangodb_server_statistics_system_percent()},
     {"idlePercent", new arangodb_server_statistics_idle_percent()},
@@ -881,6 +901,26 @@ void StatisticsFeature::appendMetric(std::string& result,
   absl::StrAppend(&result, ensureWhitespace ? " " : "", val, "\n");
 }
 
+void StatisticsFeature::appendMetricWithMachineId(std::string& result,
+                                                  std::string const& val,
+                                                  std::string const& label,
+                                                  std::string_view machineId,
+                                                  std::string_view globals,
+                                                  bool ensureWhitespace) {
+  auto const& stat = statStrings.at(label);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+
+  metrics::Metric::addInfo(result, name, help, type);
+  std::string labels = absl::StrCat("machine_id=\"", machineId, "\"");
+  if (!globals.empty()) {
+    labels = absl::StrCat(labels, ",", globals);
+  }
+  absl::StrAppend(&result, name, "{", labels, "}",
+                  (ensureWhitespace ? " " : ""), val, "\n");
+}
+
 void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
@@ -937,6 +977,28 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
+
+  // Add effectiveCores and effectivePhysicalSize with machine_id label
+  {
+    auto instance = ServerState::instance();
+    std::string machineId;
+    if (instance) {
+      machineId = instance->getHost();
+    }
+
+    appendMetricWithMachineId(
+        result, std::to_string(NumberOfCores::getEffectiveValue()),
+        "effectiveCores", machineId, globals, ensureWhitespace);
+
+    appendMetricWithMachineId(
+        result, std::to_string(PhysicalMemory::getEffectiveValue()),
+        "effectivePhysicalSize", machineId, globals, ensureWhitespace);
+  }
+  appendMetric(
+      result,
+      std::to_string(static_cast<std::underlying_type_t<cgroup::Version>>(
+          cgroup::getVersion())),
+      "cgroupVersion", globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {

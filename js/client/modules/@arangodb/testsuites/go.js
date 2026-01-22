@@ -30,7 +30,8 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
-  '   - `goOptions`: additional argumnets to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
+  '   - `goDriverVersion`: version [1,2] driver tests',
+  '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
 const internal = require('internal');
@@ -66,10 +67,38 @@ const testPaths = {
 function goDriver (options) {
   class runGoTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      super(options, testname, ...optionalArgs);
+      let opts = {};
+      if (options.cluster) {
+        // tests lean on JWT enabled components
+        opts = _.clone(tu.testClientJwtAuthInfo);
+      }
+      _.defaults(opts, options);
+      if (options.cluster) {
+        // go tests lean on 1 being the default replication factor
+        opts.extraArgs['cluster.default-replication-factor'] = 1;
+        if (opts.goDriverVersion >= 2) {
+          opts.coordinators = 2;
+        }
+      } else {
+        opts.extraArgs['server.authentication'] = true;
+      }
+      opts.extraArgs['vector-index'] = true;
+      opts['arangodConfig'] = 'arangod-auth.conf';
+      super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
+    checkSutCleannessBefore() {}
+    checkSutCleannessAfter() { return true; }
     runOneTest(file) {
+      const goVersionArgs = [
+        {
+          "path": "./test/",
+          "wd": ""
+        }, {
+          "path": "./tests",
+          "wd": "/v2/",
+        }][options.goDriverVersion -1];
+
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = this.instanceManager.JWT; 
@@ -89,24 +118,33 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
-      let args = ['test', '-json', '-tags', 'auth', './test/'];
-
+      process.env['ENABLE_VECTOR_INDEX'] = 'true';
+      if (this.instanceManager.JWT) {
+        process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
+      }
+      let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
+      if (options.goDriverVersion === 2 && (options.cluster || options.isInstrumented)) {
+        args.push('-parallel');
+        args.push('1');
+      }
       if (this.options.testCase) {
         args.push('-run');
         args.push(this.options.testCase);
       }
-      if (this.options.hasOwnProperty('goOptions')) {
+      if (this.options.goOptions !== '') {
         for (var key in this.options.goOptions) {
           args.push('-'+key);
           args.push(this.options.goOptions[key]);
         }
       }
+      args.push('-timeout');
+      args.push(`${options.oneTestTimeout/60}m`);
       if (this.options.extremeVerbosity) {
         print(process.env);
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], this.options.gosource);
+      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs['wd']}`);
       // let alljsonLines = []
       let b = '';
       let results = {};
@@ -136,7 +174,7 @@ function goDriver (options) {
                 let testcase = 'WARN';
                 if (item.hasOwnProperty('Test')) {
                   testcase = item.Test;
-                } else {
+                } else if (item.hasOwnProperty('Output')) {
                   if (item.Output === 'PASS\n') {
                     // this is the final PASS, ignore it.
                     print(item.Output);
@@ -159,10 +197,18 @@ function goDriver (options) {
                 }
                 let thiscase = results[testcase];
                 switch(item.Action) {
+                case 'start':
+                  break;
                 case 'fail':
                   status = false;
                   thiscase.status = false;
                   thiscase.duration = item.Elapsed;
+                  break;
+                case 'pause':
+                  thiscase.message += `${item.Time} => PAUSE\n`;
+                  break;
+                case 'cont':
+                  thiscase.message += `${item.Time} => Continue!\n`;
                   break;
                 case 'output':
                   thiscase.message += item.Output;
@@ -171,6 +217,10 @@ function goDriver (options) {
                 case 'pass':
                   thiscase.status = true;
                   thiscase.duration = item.Elapsed * 1000; // s -> ms
+                  break;
+                case 'build-output':
+                case 'build-fail':
+                  print(`ERROR: ${item.Output}`);
                   break;
                 case 'run':
                   // nothing interesting to see here...
@@ -184,6 +234,8 @@ function goDriver (options) {
                   break;
                 }
               } catch (x) {
+                print(x);
+                print(x.stack);
                 status = false;
                 print("Error while parsing line? - " + x);
                 print("offending Line: " + line);
@@ -225,5 +277,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['go_driver'] = goDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'goDriverVersion': 2,
+    'goOptions': '',
+    'gosource': '../go-driver',
+  });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

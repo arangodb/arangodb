@@ -170,6 +170,15 @@ class QueryContext {
   // counted up in the constructor and counted down in the destructor.
   constexpr static std::size_t baseMemoryUsage = 8192;
 
+  enum class QueryApiSynchronicity {
+    Asynchronous,
+    Synchronous,
+  };
+
+  // Whether the calling API is synchronous or asynchronous - e.g. the rest APIs
+  // are asynchronous, while V8 is synchronous.
+  QueryApiSynchronicity queryApiSynchronicity() const noexcept;
+
  protected:
   /// @brief current resources and limits used by query
   std::shared_ptr<ResourceMonitor> _resourceMonitor;
@@ -211,6 +220,24 @@ class QueryContext {
   /// In the future we might want to consider using an rwlock instead so that
   /// read-only snippets can actually run concurrently.
   std::mutex _mutex;
+
+  // Whether the caller executes the query synchronously or asynchronously -
+  // i.e. is calling Query::executeSync, Query::executeV8 for the former, or
+  // Query::execute for the latter.
+  // When the caller is waiting synchronously, we must avoid needing additional
+  // scheduler threads to continue to avoid possible deadlocks.
+  // This means, for example, that network request should set `skipScheduler`,
+  // and that we have to wait synchronously for the response immediately instead
+  // of suspending.
+  // More precisely: No coroutine (or future) called by a synchronous caller
+  // (possible callers are exactly executeSync or executeV8) may suspend, when
+  // called from there (i.e. when this is set to
+  // QueryApiSynchronicity::Synchronous). This includes Query::execute,
+  // Query::prepareQuery, and everything called by them (and being co_awaited)
+  // like instantiatePlan, instantiateFromPlan, instantiateEngines,
+  // buildEngines, cleanupEngines, etc. pp
+  QueryApiSynchronicity _queryApiSynchronicity =
+      QueryApiSynchronicity::Asynchronous;
 };
 
 }  // namespace aql

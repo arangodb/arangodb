@@ -4,17 +4,15 @@ import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 
 export const CancelQueryButton = ({
-  index,
   asyncJobId
 }: {
-  index: number;
   asyncJobId: string;
 }) => {
   const { onRemoveResult } = useQueryContext();
   const onCancel = async () => {
     try {
       await getCurrentDB().job(asyncJobId).cancel();
-      onRemoveResult(index);
+      onRemoveResult(asyncJobId);
       window.arangoHelper.arangoNotification("Query cancelled");
     } catch (e) {}
   };

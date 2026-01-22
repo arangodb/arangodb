@@ -29,53 +29,20 @@ const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
 const {waitForEstimatorSync } = require('@arangodb/test-helper');
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  joinFinishedBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 150 * 7 : 150;
+
 
 function backgroundIndexSuite() {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
-  const tasks = require("@arangodb/tasks");
-  const tasksCompleted = () => {
-    return tasks.get().filter((task) => {
-      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
-    }).length;
-  };
-  const waitForTasks = () => {
-    const time = internal.time;
-    const start = time();
-    let c = db[cn];
-    let oldCount = c.count();
-    let deadline = 300;
-    let count = 0;
-    // wait for 5 minutes + progress maximum
-    let noTasksCompleted = tasksCompleted();
-    while (true) {
-      let newTasksCompleted = tasksCompleted();
-      if (newTasksCompleted === 0) {
-        break;
-      }
-      if (time() - start > deadline) { 
-        fail(`Timeout after ${deadline / 60} minutes`);
-      }
-      internal.wait(0.5, false);
-      count += 1;
-      if (newTasksCompleted !== noTasksCompleted) {
-        // one more minute per completed task!
-        noTasksCompleted = newTasksCompleted;
-        deadline += 60;
-      }
-      if (count % 2 === 0) {
-        let newCount = c.count();
-        if (newCount > oldCount) {
-          // 10 more seconds for added documents
-          oldCount = newCount;
-          deadline += 10;
-        }
-      }
-    }
-    internal.wal.flush(true, true);
-    // wait an extra second for good measure
-    internal.wait(1.0, false);
-  };
+  let clients = [];
 
   return {
 
@@ -85,15 +52,6 @@ function backgroundIndexSuite() {
     },
 
     tearDown : function () {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          }
-          catch (err) {
-          }
-        }
-      });
       db._drop(cn);
     },
 
@@ -117,13 +75,13 @@ function backgroundIndexSuite() {
         // build the index in background
         let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-        tasks.register({ name: "UnitTestsIndexCreateIDX", command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateIDX")});
       }
 
       // We are aware of the fact that this is indeed a race. The index creation could be done before
       // the first transaction has begun. If this actually becomes the case, please consider
       // increasing the amount of documents.
-      while (tasksCompleted() > 0) {
+      while (joinFinishedBGShells(IM.options, clients) > 0) {
         const trx = db._createTransaction({collections: {write: [cn]}});
         const c = trx.collection(cn);
         c.insert({_key: "x", value: 1});
@@ -132,8 +90,8 @@ function backgroundIndexSuite() {
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
-      
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       // basic checks
       assertEqual(c.count(), numDocuments);
       // check for new entries via index
@@ -166,14 +124,15 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexInsert" + i) });
       }
 
       // create the index on the main thread
       c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
@@ -215,7 +174,7 @@ function backgroundIndexSuite() {
         if (i === 6) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateIDX" + i)});
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = 10;
@@ -226,11 +185,12 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexInsert" + i)});
       }
 
       // wait for tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // basic checks
       assertEqual(c.count(), 100000);
@@ -274,7 +234,7 @@ function backgroundIndexSuite() {
           let command = `const c = require("internal").db._collection("${cn}"); 
           let idx = c.ensureIndex(${JSON.stringify(idxDef)});
           c.save({_key: 'myindex', index: idx});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          clients.push({client: launchPlainSnippetInBG(command,"UnitTestsIndexCreateIDX" + i)});
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 5000; 
@@ -285,11 +245,12 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexInsert" + i)});
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // basic checks
       assertEqual(c.count(), 25001);
@@ -344,7 +305,7 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexInsert" + i)});
       }
 
       // now insert a document that will cause a conflict while indexing
@@ -359,7 +320,8 @@ function backgroundIndexSuite() {
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // basic checks
       assertEqual(c.count(), 50001);
@@ -385,7 +347,7 @@ function backgroundIndexSuite() {
         if (i === 3) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateIDX" + i)});
         }
 
         let command = `const c = require("internal").db._collection("${cn}"); 
@@ -404,11 +366,12 @@ function backgroundIndexSuite() {
                            removed = (res.filter(r => !r.error).length === 0);
                          }
                        }`;
-        tasks.register({ name: "UnitTestsIndexRemove" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexRemove" + i)});
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // basic checks
       assertEqual(c.count(), 50000);
@@ -467,7 +430,7 @@ function backgroundIndexSuite() {
         if (i === 5) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateIDX" + i)});
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        if (!c) {
@@ -486,11 +449,12 @@ function backgroundIndexSuite() {
                            } catch (err) {}
                          }
                        }`;
-        tasks.register({ name: "UnitTestsIndexUpdate" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexUpdate" + i)});
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // basic checks
       assertEqual(c.count(), 100000);

@@ -1,0 +1,24 @@
+jobProperties:
+    second_repo: git@github.com:arangodb/release-test-automation.git
+    branch: main
+tests:
+- ui:
+    job: run-rta-tests
+    options:
+      buckets: auto
+    requires:
+      arch: x64
+      v8: true
+    suites:
+      - UserPageTestSuite
+      - CollectionsTestSuite
+      - ViewsTestSuite
+      - GraphTestSuite
+      - QueryTestSuite
+      - AnalyzersTestSuite
+      - AnalyzersTestSuite2
+      - DatabaseTestSuite
+      - LogInTestSuite
+      - DashboardTestSuite
+      - SupportTestSuite
+      - ServiceTestSuite

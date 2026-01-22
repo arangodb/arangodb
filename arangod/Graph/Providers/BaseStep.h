@@ -32,7 +32,6 @@ namespace arangodb {
 
 namespace graph {
 
-template<class StepDetails>
 class BaseStep {
  public:
   enum class FetchedType {
@@ -53,28 +52,9 @@ class BaseStep {
     return _previous == std::numeric_limits<size_t>::max();
   }
 
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
-  }
-
   size_t getDepth() const { return _depth; }
 
   double getWeight() const { return _weight; }
-
-  [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
-      arangodb::velocypack::HashedStringRef const& idHashed) const {
-    size_t pos = idHashed.find('/');
-    if (pos == std::string::npos) {
-      // Invalid input. If we get here somehow we managed to store invalid
-      // _from/_to values or the traverser did a let an illegal start through
-      TRI_ASSERT(false);
-      return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
-                    "edge contains invalid value " + idHashed.toString()};
-    }
-
-    std::string colName = idHashed.substr(0, pos).toString();
-    return std::make_pair(std::move(colName), pos);
-  }
 
  private:
   size_t _previous;

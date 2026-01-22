@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -68,7 +69,7 @@ AqlValue functions::SchemaGet(ExpressionContext* expressionContext,
         absl::StrCat("could not find collection: ", collectionName));
   }
 
-  transaction::BuilderLeaser builder(trx);
+  auto builder = ThreadLocalBuilderLeaser::lease();
   logicalCollection->schemaToVelocyPack(*builder.get());
   VPackSlice slice = builder->slice();
 
@@ -112,9 +113,9 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
   if (schemaValue.isNull(false) ||
       (schemaValue.isObject() && schemaValue.length() == 0)) {
     // schema is null or {}
-    transaction::BuilderLeaser resultBuilder(trx);
+    auto resultBuilder = ThreadLocalBuilderLeaser::lease();
     {
-      VPackObjectBuilder guard(resultBuilder.builder());
+      VPackObjectBuilder guard(resultBuilder.get());
       resultBuilder->add("valid", VPackValue(true));
     }
     return AqlValue(resultBuilder->slice(), resultBuilder->size());
@@ -143,9 +144,9 @@ AqlValue functions::SchemaValidate(ExpressionContext* expressionContext,
     res = validator->validateOne(docValue.slice(), vopts);
   }
 
-  transaction::BuilderLeaser resultBuilder(trx);
+  auto resultBuilder = ThreadLocalBuilderLeaser::lease();
   {
-    VPackObjectBuilder guard(resultBuilder.builder());
+    VPackObjectBuilder guard(resultBuilder.get());
     resultBuilder->add("valid", VPackValue(res.ok()));
     if (res.fail()) {
       resultBuilder->add(StaticStrings::ErrorMessage,

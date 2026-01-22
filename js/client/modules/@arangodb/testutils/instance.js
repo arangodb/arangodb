@@ -151,6 +151,7 @@ class instance {
     this.dataDir = fs.join(this.rootDir, 'data');
     this.appDir = fs.join(this.rootDir, 'apps');
     this.tmpDir = fs.join(this.rootDir, 'tmp');
+    this.tmpRocksdbDir = fs.join(this.rootDir, 'temp-rocksdb-dir');
 
     fs.makeDirectoryRecursive(this.dataDir);
     fs.makeDirectoryRecursive(this.appDir);
@@ -322,18 +323,29 @@ class instance {
     }
 
     let config = 'arangod-' + this.instanceRole + '.conf';
-    this.args = _.defaults(this.args, {
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
+    let default_args = {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
-      'javascript.app-path': this.appDir,
-      'javascript.copy-installation': false,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
-      'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
+      'temp.intermediate-results-path': this.tmpRocksdbDir,
       'log.file': this.logFile
-    });
+    };
+    if (!this.options.skipServerJS) {
+      // the argparser barely ignores them and breaks others...
+      default_args['javascript.app-path'] = this.appDir;
+      default_args['javascript.copy-installation'] = false;
+    }
+    this.args = _.defaults(this.args, default_args);
+    if (this.options.extremeVerbosity) {
+      this.args['dump-env'] = true;
+    }
+
     if (this.options.forceOneShard) {
       this.args['cluster.force-one-shard'] = true;
     }
@@ -349,12 +361,16 @@ class instance {
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
       this.args['ssl.keyfile'] = fs.join('etc', 'testing', 'server.pem');
     }
-    if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
+    if (this.options.encryptionAtRest &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfile') &&
+        !this.args.hasOwnProperty('rocksdb.encryption-keyfolder')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
 
-    if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
-      this.args['server.jwt-secret'] = this.restKeyFile;
+    if (this.restKeyFile &&
+        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-folder')) {
+      this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
@@ -499,7 +515,7 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  _executeArangod (moreArgs) {
+  _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
     }
@@ -544,12 +560,16 @@ class instance {
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
     if ((this.useableMemory !== 0) && (this.options.memory !== undefined)) {
+      if (this.useableMemory !== parseInt(this.useableMemory, 10)) {
+        throw new Error(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory} not parseable: expected integer!`);
+      }
       if (this.options.extremeVerbosity) {
         print(`appointed ${this.name} memory: ${this.useableMemory}`);
       }
       subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
+    subEnv.push(`INSTANCEINFO=${instanceJson}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
@@ -558,10 +578,10 @@ class instance {
   // /
   // //////////////////////////////////////////////////////////////////////////////
 
-  startArango () {
+  startArango (instanceJson) {
     this._disconnect();
     try {
-      this.pid = this._executeArangod().pid;
+      this.pid = this._executeArangod({}, instanceJson).pid;
       if (this.options.enableAliveMonitor) {
         internal.addPidToMonitor(this.pid);
       }
@@ -571,7 +591,7 @@ class instance {
     }
   }
 
-  launchInstance(moreArgs) {
+  launchInstance(moreArgs, instanceJson) {
     if (this.pid !== null) {
       print(`${RED}can not re-launch when PID still there. {this.name} - ${this.pid}${RESET}`);
       throw new Error("kill the instance before relaunching it!");
@@ -580,7 +600,7 @@ class instance {
     this._disconnect();
     try {
       let args = {...this.args, ...moreArgs};
-      this.pid = this._executeArangod(args).pid;
+      this.pid = this._executeArangod(args, instanceJson).pid;
     } catch (x) {
       print(`${RED}${Date()} failed to run arangod - ${x.message} - ${JSON.stringify(this.getStructure())}`);
       throw x;
@@ -588,10 +608,7 @@ class instance {
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
   };
-  restartOneInstance(moreArgs, unAuthOK) {
-    if (unAuthOK === undefined) {
-      unAuthOK = false;
-    }
+  restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
@@ -603,16 +620,16 @@ class instance {
     this._disconnect();
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
-    this.launchInstance(moreArgs);
+    this.launchInstance(moreArgs, instanceJson);
     this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
-  restartIfType(instanceRoleFilter, moreArgs) {
+  restartIfType(instanceRoleFilter, moreArgs, instanceJson) {
     if (this.pid || this.instanceRole !==  instanceRoleFilter) {
       return true;
     }
-    this.restartOneInstance(moreArgs);
+    this.restartOneInstance(moreArgs, instanceJson);
   }
 
   status(waitForExit) {
@@ -633,7 +650,7 @@ class instance {
     return false;
   }
 
-  runUpgrade() {
+  runUpgrade(instanceJson) {
     let moreArgs = {
       '--database.auto-upgrade': 'true',
       '--log.foreground-tty': 'true'
@@ -642,7 +659,7 @@ class instance {
       moreArgs['--server.rest-server'] = 'false';
     }
     this.exitStatus = null;
-    this.pid = this._executeArangod(moreArgs).pid;
+    this.pid = this._executeArangod(moreArgs, instanceJson).pid;
     sleep(1);
     while (this.isRunning()) {
       print(".");
@@ -1548,6 +1565,7 @@ exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
+    'arangodConfig': undefined, // undocumented, internal use only. Override the automatic configuration choice
     'enableAliveMonitor': true,
     'maxLogFileSize': 500 * 1024,
     'skipLogAnalysis': true,

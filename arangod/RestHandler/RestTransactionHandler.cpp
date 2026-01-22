@@ -107,12 +107,13 @@ RequestLane RestTransactionHandler::lane() const {
   return RequestLane::CLIENT_V8;
 }
 
-RestStatus RestTransactionHandler::execute() {
+auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
           _request->suffixes()[0] == "begin") {
-        return waitForFuture(executeBegin());
+        co_await executeBegin();
+        co_return;
       } else if (_request->suffixes().empty()) {
         executeJSTransaction();
       } else {
@@ -121,10 +122,12 @@ RestStatus RestTransactionHandler::execute() {
       break;
 
     case rest::RequestType::PUT:
-      return waitForFuture(executeCommit());
+      co_await executeCommit();
+      co_return;
 
     case rest::RequestType::DELETE_REQ:
-      return waitForFuture(executeAbort());
+      co_await executeAbort();
+      co_return;
 
     case rest::RequestType::GET:
       executeGetState();
@@ -135,7 +138,7 @@ RestStatus RestTransactionHandler::execute() {
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestTransactionHandler::executeGetState() {

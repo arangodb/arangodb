@@ -25,17 +25,30 @@
 /// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+// We
+// - spawn a sub-shell
+// - wait for it to reach a certain part of the code by checking for a document
+// - release it from its breakpoint to continue processing
+// - continue our flow to test the operation that could/would conflict
+
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const db = arangodb.db;
-const tasks = require("@arangodb/tasks");
 const internal = require("internal");
+const sleep = internal.sleep;
 const { deriveTestSuite } = require('@arangodb/test-helper');
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+
+const db = arangodb.db;
 const ERRORS = arangodb.errors;
 let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
-const taskName = "UnitTestsTask";
-  
+const dn = "UnitTestsDB";
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
+
 let setupCollection = (type) => {
   let c;
   if (type === 'edge') {
@@ -52,32 +65,13 @@ let setupCollection = (type) => {
   }
   return c;
 };
-  
-let shutdownTask = (task) => {
-  db._useDatabase("_system");   // We need to switch to the _system database
-                                // such that we are not tripped off by a
-                                // "database not found" exception. This is
-                                // only necessary for the drop database test.
-  try {
-    if (task === undefined) {
-      tasks.unregister(taskName);
-    } else {
-      while (true) {
-        // will be left by exception here
-        tasks.get(task);
-        require("internal").wait(0.25, false);
-      }
-    }
-  } catch (err) {
-    // "task not found" means the task is finished
-  }
-};
 
 function BaseTestConfig (dropCb, expectedError) {
+  let clients = [];
   return {
     testIndexCreationAborts : function () {
       let c = setupCollection('document');
-      let task = dropCb();
+      dropCb("testIndexCreationAborts");
 
       try {
         c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
@@ -87,14 +81,12 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
-      } finally {
-        shutdownTask(task);
       }
     },
     
     testIndexCreationInBackgroundAborts : function () {
       let c = setupCollection('document');
-      let task = dropCb();
+      dropCb("testIndexCreationInBackgroundAborts");
 
       try {
         c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], inBackground: true });
@@ -104,8 +96,6 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
-      } finally {
-        shutdownTask(task);
       }
     },
     
@@ -117,7 +107,7 @@ function BaseTestConfig (dropCb, expectedError) {
       IM.debugSetFailAt("warmup::executeDirectly");
       
       let c = setupCollection('edge');
-      let task = dropCb();
+      dropCb("testWarmupAborts");
 
       try {
         c.loadIndexesIntoMemory();
@@ -127,8 +117,6 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
-      } finally {
-        shutdownTask(task);
       }
     },
 
@@ -137,13 +125,11 @@ function BaseTestConfig (dropCb, expectedError) {
 
 function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   'use strict';
-
-  let dropCb = () => {
-    let task = tasks.register({
-      name: taskName,
-      command: function() {
-        let db = require("internal").db;
-        let cn = "UnitTestsCollection";
+  let clients = [];
+  let dropCb = (name) => {
+    let cn = "UnitTestsCollection";
+    clients.push({client: launchPlainSnippetInBG(`
+        let cn = "${cn}";
         db[cn].insert({ _key: "runner1", _from: "v/test1", _to: "v/test2" });
 
         while (!db[cn].exists("runner2")) {
@@ -152,24 +138,20 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
         require("internal").sleep(0.02);
         db._drop(cn);
-      },
-    });
+      `, name)});
 
-    try {
-      while (!db[cn].exists("runner1")) {
-        require("internal").sleep(0.02);
-      }
-      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-      return task;
-    } catch (err) {
-      shutdownTask(task);
-      throw err;
+    while (!db[cn].exists("runner1")) {
+      sleep(0.02);
     }
+    db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
   };
 
   let suite = {
+    setup: function() {
+      clients = [];
+    },
     tearDown: function () {
-      shutdownTask();
+      joinBGShells(IM.options, clients, waitFor, cn);
       IM.debugClearFailAt();
       db._drop(cn);
     }
@@ -181,59 +163,54 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
 function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
   'use strict';
+  let clients = [];
 
-  let dropCb = () => {
+  let dropCb = (name) => {
+    let cn = "UnitTestsCollection";
     let old = db._name();
-    db._useDatabase('_system');
-    try {
-      let task = tasks.register({
-        name: taskName,
-        command: function(params) {
-          let db = require("internal").db;
-          db._useDatabase(params.old);
-          let cn = "UnitTestsCollection";
+    clients.push({client: launchPlainSnippetInBG(`
+          let cn = "${cn}";
+          let dn = "${old}";
+          db._useDatabase(dn);
           db[cn].insert({ _key: "runner1", _from: "v/test1", _to: "v/test2" });
 
           while (!db[cn].exists("runner2")) {
+            console.log(".");
             require("internal").sleep(0.02);
           }
 
           require("internal").sleep(0.02);
           db._useDatabase('_system');
-          db._dropDatabase(cn);
-        },
-        params: { old },
-        isSystem: true,
-      });
+          db._dropDatabase(dn);
+        `, name)});
 
-      try {
-        db._useDatabase(old);
-        while (!db[cn].exists("runner1")) {
-          require("internal").sleep(0.02);
-        }
-        db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-        return task;
-      } catch (err) {
-        db._useDatabase(old);
-        shutdownTask(task);
-        throw err;
+    sleep(0.02);
+    try {
+      while (!db[cn].exists("runner1")) {
+        console.log(",");
+        sleep(0.02);
       }
-    } finally {
+      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
       db._useDatabase(old);
+    } catch (err) {
+      db._useDatabase(old);
+      throw err;
     }
   };
 
   let suite = {
     setUp: function () {
-      db._createDatabase(cn);
-      db._useDatabase(cn);
+      clients = [];
+      db._createDatabase(dn);
+      db._useDatabase(dn);
     },
     tearDown: function () {
-      shutdownTask();
-      IM.debugClearFailAt();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      
       db._useDatabase('_system');
+      IM.debugClearFailAt();
       try {
-        db._dropDatabase(cn);
+        db._dropDatabase(dn);
       } catch (err) {
         // in most cases the DB will already have been deleted
       }

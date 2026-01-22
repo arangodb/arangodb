@@ -107,6 +107,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
   me->_messageDone = false;
+  me->_urlCorrupt = false;
+  me->_headerCorrupt = false;
 
   // acquire a new statistics entry for the request
   me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
@@ -249,18 +251,21 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->parseUrl(me->_url.data(), me->_url.size());
-
-  me->requestStatistics(1UL).SET_READ_END();
-  me->_messageDone = true;
-
+  try {
+    me->requestStatistics(1UL).SET_READ_END();
+    me->_messageDone = true;
+    me->_request->parseUrl(me->_url.data(), me->_url.size());
+    me->_urlCorrupt = false;
+    me->_headerCorrupt = false;
+  } catch (...) {
+    // the caller of this function is a C function, which doesn't know
+    // exceptions. we must not let an exception escape from here.
+    me->_urlCorrupt = true;
+    me->_headerCorrupt = false;
+  }
   return HPE_PAUSED;
-} catch (...) {
-  // the caller of this function is a C function, which doesn't know
-  // exceptions. we must not let an exception escape from here.
-  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -269,7 +274,9 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageDone(false) {
+      _messageDone(false),
+      _urlCorrupt(false),
+      _headerCorrupt(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -324,6 +331,10 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
         err = llhttp_execute(&_parser, data, datasize);
         if (err != HPE_OK) {
+          if (err == HPE_INVALID_HEADER_TOKEN || err == HPE_INVALID_URL ||
+              err == HPE_UNEXPECTED_CONTENT_LENGTH) {
+            _headerCorrupt = true;
+          }
           ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
           TRI_ASSERT(diff >= 0);
           nparsed += static_cast<size_t>(diff);
@@ -340,10 +351,33 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // And count it in the statistics:
     this->requestStatistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
+    if (_headerCorrupt) {
+      LOG_TOPIC("33324", WARN, Logger::REQUESTS)
+          << "request failed because of a corrupt header";
+      auto msgId = _request->messageId();
+      auto respContentType = _request->contentTypeResponse();
+      this->sendErrorResponse(rest::ResponseCode::BAD, respContentType, msgId,
+                              TRI_ERROR_HTTP_BAD_PARAMETER,
+                              "some header is corrupt");
+      _urlCorrupt = false;
+      _headerCorrupt = false;
+      return false;  // stop read loop
+    }
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
-      processRequest();
+      if (_urlCorrupt) {
+        LOG_TOPIC("33323", WARN, Logger::REQUESTS)
+            << "request failed because of a corrupt URL";
+        auto msgId = _request->messageId();
+        auto respContentType = _request->contentTypeResponse();
+        this->sendErrorResponse(rest::ResponseCode::BAD, respContentType, msgId,
+                                TRI_ERROR_HTTP_BAD_PARAMETER, "URL is corrupt");
+      } else {
+        processRequest();
+      }
+      _urlCorrupt = false;
+      _headerCorrupt = false;
       return false;  // stop read loop
     }
 
@@ -366,6 +400,28 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
           << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser)
           << "'";
+
+      // Try to send an error response before closing the connection
+      try {
+        if (_request != nullptr) {
+          // We have a request object, send a proper error response
+          auto msgId = _request->messageId();
+          auto respContentType = _request->contentTypeResponse();
+          this->sendErrorResponse(rest::ResponseCode::BAD, respContentType,
+                                  msgId, TRI_ERROR_HTTP_BAD_PARAMETER,
+                                  "HTTP parsing error");
+        } else {
+          // No request object yet, send a minimal error response
+          // Use default values similar to other early error cases
+          this->sendSimpleResponse(rest::ResponseCode::BAD,
+                                   rest::ContentType::UNSET, 1,
+                                   VPackBuffer<uint8_t>());
+        }
+      } catch (...) {
+        // If sending the error response fails, just continue to close
+        LOG_TOPIC("595ff", TRACE, Logger::REQUESTS)
+            << "Failed to send error response for HTTP parsing failure";
+      }
     }
     this->close(ec);
   }
@@ -516,27 +572,21 @@ void HttpCommTask<T>::doProcessRequest() {
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->appendNullTerminator();
-  // no need to increase memory usage here!
-  {
-    LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
-        << "\"http-request-begin\",\"" << (void*)this << "\",\""
-        << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << url() << "\"";
 
-    std::string_view body = _request->rawPayload();
-    this->_generalServerFeature.countHttp1Request(body.size());
+  LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
+      << "\"http-request-begin\",\"" << (void*)this << "\",\""
+      << this->_connectionInfo.clientAddress << "\",\""
+      << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+      << url() << "\"";
 
-    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
-        Logger::logRequestParameters()) {
-      // Log HTTP headers:
-      this->logRequestHeaders("http", _request->headers());
-
-      if (!body.empty()) {
-        this->logRequestBody("http", _request->contentType(), body);
-      }
-    }
+  bool isTraceLoggingEnabled =
+      Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters();
+  if (isTraceLoggingEnabled) {
+    // Log HTTP headers:
+    this->logRequestHeaders("http", _request->headers());
   }
+  this->_generalServerFeature.countHttp1Request(_request->rawPayload().size());
 
   // store origin header for later use
   _origin = _request->header(StaticStrings::Origin);
@@ -569,6 +619,15 @@ void HttpCommTask<T>::doProcessRequest() {
                             _request->contentTypeResponse(), 1,
                             TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
+  }
+
+  {
+    // no need to increase memory usage here!
+    std::string_view body = _request->rawPayload();
+
+    if (isTraceLoggingEnabled && !body.empty()) {
+      this->logRequestBody("http", _request->contentType(), body);
+    }
   }
 
   // create a handler and execute

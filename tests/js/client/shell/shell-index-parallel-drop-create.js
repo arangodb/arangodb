@@ -28,33 +28,25 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 function ParallelIndexCreateDropSuite() {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
-  const tasks = require("@arangodb/tasks");
-  const tasksCompleted = () => {
-    return 0 === tasks.get().filter((task) => {
-      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
-    }).length;
-  };
-  const waitForTasks = () => {
-    const time = internal.time;
-    const start = time();
-    while (!tasksCompleted()) {
-      if (time() - start > 300) { // wait for 5 minutes maximum
-        fail("Timeout after 5 minutes");
-      }
-      internal.sleep(0.5);
-    }
-  };
-      
   const threads = 6;
   const attrs = 5;
+  let clients = [];
 
   return {
 
     setUpAll : function () {
+      clients = [];
       db._drop(cn);
       let c = db._create(cn);
 
@@ -71,14 +63,7 @@ function ParallelIndexCreateDropSuite() {
     },
 
     tearDownAll : function () {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
-        }
-      });
+      joinBGShells(IM.options, clients, waitFor, cn);
       db._drop(cn);
     },
     
@@ -101,11 +86,12 @@ for (let iteration = 0; iteration < 15; ++iteration) {
 }
 c.insert({ _key: "done${i}", value: true });
 `;
-        tasks.register({ name: "UnitTestsIndexCreateDrop" + i, command: command });
+        clients.push({client: launchPlainSnippetInBG(command, "UnitTestsIndexCreateDrop" + i)});
       }
 
       // wait for insertion tasks to complete
-      waitForTasks();
+      joinBGShells(IM.options, clients, waitFor, cn);
+      clients = [];
       
       // check that all indexes except primary are gone
       assertEqual(1, c.indexes().length);

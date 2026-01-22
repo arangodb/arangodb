@@ -74,6 +74,10 @@ void ClusterUpgradeFeature::collectOptions(
 
 void ClusterUpgradeFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
   if (_upgradeMode == "force") {
     // always perform an upgrade, regardless of the value of
     // `--database.auto-upgrade`. after the upgrade, shut down the server

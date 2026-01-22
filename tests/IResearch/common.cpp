@@ -34,6 +34,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -438,6 +439,13 @@ namespace arangodb {
 
 namespace tests {
 
+void waitForAsync(async<void>&& as) {
+  [&]() -> futures::Future<futures::Unit> {
+    co_return co_await std::move(as);
+  }()
+               .waitAndGet();
+}
+
 void checkQuery(TRI_vocbase_t& vocbase,
                 std::span<const velocypack::Slice> expected,
                 std::string const& query) {
@@ -593,16 +601,7 @@ arangodb::aql::QueryResult executeQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
-  return result;
+  return query->executeSync();
 }
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
@@ -637,7 +636,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  query->prepareQuery();
+  waitForAsync(query->prepareQuery());
   return query;
 }
 
@@ -742,7 +741,7 @@ void assertFilterOptimized(
       std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery();
+  tests::waitForAsync(query->prepareQuery());
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
 

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include <sstream>
 
 #include "../Mocks/StorageEngineMock.h"
 
@@ -59,22 +60,31 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
   EXPECT_TRUE(true == metaState._collections.empty());
   EXPECT_TRUE(true == (2 == meta._cleanupIntervalStep));
   EXPECT_TRUE(true == (1000 == meta._commitIntervalMsec));
-  EXPECT_TRUE(true == (1000 == meta._consolidationIntervalMsec));
+  EXPECT_TRUE(true == (5000 == meta._consolidationIntervalMsec));
   EXPECT_TRUE(std::string("tier") ==
               meta._consolidationPolicy.properties().get("type").copyString());
+
   EXPECT_TRUE(false == !meta._consolidationPolicy.policy());
-  EXPECT_TRUE(1 == meta._consolidationPolicy.properties()
-                       .get("segmentsMin")
-                       .getNumber<size_t>());
-  EXPECT_TRUE(10 == meta._consolidationPolicy.properties()
-                        .get("segmentsMax")
-                        .getNumber<size_t>());
-  EXPECT_TRUE(size_t(2) * (1 << 20) == meta._consolidationPolicy.properties()
-                                           .get("segmentsBytesFloor")
-                                           .getNumber<size_t>());
-  EXPECT_TRUE(size_t(5) * (1 << 30) == meta._consolidationPolicy.properties()
+  EXPECT_TRUE(0.4 == meta._consolidationPolicy.properties()
+                         .get("maxSkewThreshold")
+                         .getNumber<double>());
+  EXPECT_TRUE(0.5 == meta._consolidationPolicy.properties()
+                         .get("minDeletionRatio")
+                         .getNumber<double>());
+  EXPECT_TRUE(size_t(8) * (1 << 30) == meta._consolidationPolicy.properties()
                                            .get("segmentsBytesMax")
                                            .getNumber<size_t>());
+
+  //  Old consolidationPolicy properties
+  EXPECT_TRUE(
+      meta._consolidationPolicy.properties().get("segmentsMin").isNone());
+  EXPECT_TRUE(
+      meta._consolidationPolicy.properties().get("segmentsMax").isNone());
+  EXPECT_TRUE(meta._consolidationPolicy.properties()
+                  .get("segmentsBytesFloor")
+                  .isNone());
+  EXPECT_TRUE(meta._consolidationPolicy.properties().get("minScore").isNone());
+
   EXPECT_TRUE(0 == meta._writebufferActive);
   EXPECT_TRUE(64 == meta._writebufferIdle);
   EXPECT_TRUE(32 * (size_t(1) << 20) == meta._writebufferSizeMax);
@@ -154,21 +164,18 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
     EXPECT_TRUE((true == metaState._collections.empty()));
     EXPECT_TRUE(2 == meta._cleanupIntervalStep);
     EXPECT_TRUE((1000 == meta._commitIntervalMsec));
-    EXPECT_TRUE(1000 == meta._consolidationIntervalMsec);
+    EXPECT_TRUE(5000 == meta._consolidationIntervalMsec);
     EXPECT_TRUE(
         (std::string("tier") ==
          meta._consolidationPolicy.properties().get("type").copyString()));
     EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
-    EXPECT_TRUE(1 == meta._consolidationPolicy.properties()
-                         .get("segmentsMin")
-                         .getNumber<size_t>());
-    EXPECT_TRUE(10 == meta._consolidationPolicy.properties()
-                          .get("segmentsMax")
-                          .getNumber<size_t>());
-    EXPECT_TRUE(size_t(2) * (1 << 20) == meta._consolidationPolicy.properties()
-                                             .get("segmentsBytesFloor")
-                                             .getNumber<size_t>());
-    EXPECT_TRUE(size_t(5) * (1 << 30) == meta._consolidationPolicy.properties()
+    EXPECT_TRUE(0.4 == meta._consolidationPolicy.properties()
+                           .get("maxSkewThreshold")
+                           .getNumber<double>());
+    EXPECT_TRUE(0.5 == meta._consolidationPolicy.properties()
+                           .get("minDeletionRatio")
+                           .getNumber<double>());
+    EXPECT_TRUE(size_t(8) * (1 << 30) == meta._consolidationPolicy.properties()
                                              .get("segmentsBytesMax")
                                              .getNumber<size_t>());
     EXPECT_TRUE((0 == meta._writebufferActive));
@@ -270,43 +277,39 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsMin\": -1  "
-        "} }");
-    EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
-    EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMin") == errorField));
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsMax\": -1  "
-        "} }");
-    EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
-    EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMax") == errorField));
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"consolidationPolicy\": { \"type\": \"tier\", "
-        "\"segmentsBytesFloor\": -1  } }");
-    EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
-    EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE(
-        (std::string("consolidationPolicy.segmentsBytesFloor") == errorField));
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"consolidationPolicy\": { \"type\": \"tier\", "
         "\"segmentsBytesMax\": -1  } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
     EXPECT_TRUE(
         (std::string("consolidationPolicy.segmentsBytesMax") == errorField));
+  }
+
+  //  maxSkewThreshold to be between 0. and 1.
+  {
+    std::string errorField;
+    std::vector<std::pair<std::string, bool>> testcases{{"-1.0", false},
+                                                        {"-0.00002", false},
+                                                        {"1.00000001", false},
+                                                        {"0.5", true}};
+
+    for (const auto& testcase : testcases) {
+      std::ostringstream oss;
+      auto [threshold, expectedResult] = testcase;
+
+      oss.str("");
+      oss << "{ \"consolidationPolicy\": { \"type\": \"tier\", "
+             "\"maxSkewThreshold\": "
+          << threshold << "  } }";
+      auto json = arangodb::velocypack::Parser::fromJson(oss.str());
+
+      EXPECT_TRUE(metaState.init(json->slice(), errorField));
+      EXPECT_EQ(expectedResult, meta.init(json->slice(), errorField));
+
+      if (!expectedResult)
+        EXPECT_TRUE((std::string("consolidationPolicy.maxSkewThreshold") ==
+                     errorField));
+    }
   }
 
   {
@@ -625,24 +628,32 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
                1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() &&
-               1000 == tmpSlice.getNumber<size_t>()));
+               5000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
-  EXPECT_TRUE((true == tmpSlice.isObject() && 6 == tmpSlice.length()));
+  EXPECT_TRUE((true == tmpSlice.isObject() && 4 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("type");
   EXPECT_TRUE(
       (tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString()));
-  tmpSlice2 = tmpSlice.get("segmentsMin");
-  EXPECT_TRUE((tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("segmentsMax");
-  EXPECT_TRUE((tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-  EXPECT_TRUE((tmpSlice2.isNumber() &&
-               (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>()));
+
+  //  Old consolidationPolicy properties
+  {
+    std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                        "minScore", "segmentsBytesFloor"};
+    for (const auto& prop : properties) {
+      tmpSlice2 = tmpSlice.get(prop);
+      ASSERT_TRUE(tmpSlice2.isNone());
+    }
+  }
+  tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+  EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+              (0.4 == tmpSlice2.getNumber<double>()));
+  tmpSlice2 = tmpSlice.get("minDeletionRatio");
+  EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+              (0.5 == tmpSlice2.getNumber<double>()));
   tmpSlice2 = tmpSlice.get("segmentsBytesMax");
   EXPECT_TRUE((tmpSlice2.isNumber() &&
-               (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("minScore");
-  EXPECT_TRUE((tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>())));
+               (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>()));
+
   tmpSlice = slice.get("version");
   EXPECT_TRUE((true == tmpSlice.isNumber<uint32_t>() &&
                1 == tmpSlice.getNumber<uint32_t>()));

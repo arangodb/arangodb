@@ -27,23 +27,6 @@ testCases["AgencyClusterInfoUniqid"] = function() {
   return result;
 };
 
-// ArangoAgency
-["agency", "read", "write", "transact", "transient", "cas", "get", "createDirectory",
- "increaseVersion", "remove", "endpoints", "set", "uniqid"].forEach((func) => {
-  testCases["ArangoAgency" + func] = function() {
-    let testee = global.ArangoAgency;
-    return agencyCall(testee[func]);
-  };
-});
-  
-// ArangoAgent
-["enabled", "leading", "read", "write", "state"].forEach((func) => {
-  testCases["ArangoAgent" + func] = function() {
-    let testee = global.ArangoAgent;
-    return agencyCall(testee[func]);
-  };
-});
-
 router.get('/runInsideFoxx', function (req, res) {
   let results = {};
   Object.keys(testCases).forEach((tc) => {

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango, print */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango, print, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,7 +37,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  let IM = global.instanceManager;
   var db = internal.db;
   const getNoShards = function (defaultNo) {
     if (db._properties().sharding === "single") {
@@ -47,7 +47,7 @@
   };
 
   const getDumpDir = () => {
-    let dumpDir = instanceInfo.rootDir;
+    let dumpDir = IM.rootDir;
     if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
       // when dumping multiple database the database name is one layer added:
       dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
@@ -74,7 +74,7 @@
     let collDistributionPlan = {};
     let collDistributionCurrent = {};
     const isCov = require("@arangodb/test-helper").versionHas('coverage');
-    const numSecsLimit = (isCov)? 80:16;
+    const numSecsLimit = (isCov)? 160:16;
     while (true) {
       const dbName = db._name();
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
@@ -794,16 +794,18 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionCommit: function () {
-        var c = getCollection("UnitTestsDumpTransactionCommit");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionCommit");
 
-        assertEqual(1000, c.count());
+          assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+          for (var i = 0; i < 1000; ++i) {
+            var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          assertEqual("test" + i, doc.value3);
+            assertEqual(i, doc.value1);
+            assertEqual("this is a test", doc.value2);
+            assertEqual("test" + i, doc.value3);
+          }
         }
       },
 
@@ -812,19 +814,21 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionUpdate: function () {
-        var c = getCollection("UnitTestsDumpTransactionUpdate");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionUpdate");
 
-        assertEqual(1000, c.count());
+          assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+          for (var i = 0; i < 1000; ++i) {
+            var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          if (i % 2 === 0) {
-            assertEqual(i, doc.value3);
-          } else {
-            assertEqual("test" + i, doc.value3);
+            assertEqual(i, doc.value1);
+            assertEqual("this is a test", doc.value2);
+            if (i % 2 === 0) {
+              assertEqual(i, doc.value3);
+            } else {
+              assertEqual("test" + i, doc.value3);
+            }
           }
         }
       },
@@ -834,11 +838,13 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionAbort: function () {
-        var c = getCollection("UnitTestsDumpTransactionAbort");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionAbort");
 
-        assertEqual(1, c.count());
+          assertEqual(1, c.count());
 
-        assertTrue(c.exists("foo"));
+          assertTrue(c.exists("foo"));
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -1551,7 +1557,8 @@
           // cluster wide unique ids. Here, we check that after the
           // hotbackup restore the number in /arango/Sync/LatestID
           // in the agency is lower again.
-          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
+          const IM = GLOBAL.instanceManager;
+          let next = IM.agencyMgr.uniqId(1);
           assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
         }
       },

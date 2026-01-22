@@ -51,7 +51,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   char const* name() const override final { return "RestGraphHandler"; }
 
-  RestStatus execute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
 
   RequestLane lane() const override;
 

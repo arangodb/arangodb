@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/GeneralServerOptions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Metrics/Counter.h"
 #include "Metrics/LogScale.h"
@@ -85,12 +86,18 @@ class GeneralServerFeature final : public ArangodFeature {
 
   void countHttp2Connection() { _http2Connections.count(); }
 
-  bool isTelemetricsEnabled() const noexcept { return _enableTelemetrics; }
+  bool isTelemetricsEnabled() const noexcept {
+    return _options.enableTelemetrics;
+  }
   uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
-    return _telemetricsMaxRequestsPerInterval;
+    return _options.telemetricsMaxRequestsPerInterval;
   }
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
+
+  [[nodiscard]] bool startedListening() const noexcept {
+    return _options.startedListening;
+  }
 
  private:
   // build HTTP server(s)
@@ -102,31 +109,10 @@ class GeneralServerFeature final : public ArangodFeature {
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
 
-  double _keepAliveTimeout = 300.0;
-  uint64_t _telemetricsMaxRequestsPerInterval;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _startedListening;
-#endif
-  bool _allowEarlyConnections;
-  bool _handleContentEncodingForUnauthenticatedRequests;
-  bool _enableTelemetrics;
-  bool _proxyCheck;
-  bool _returnQueueTimeHeader;
-  bool _permanentRootRedirect;
-  uint64_t _compressResponseThreshold;
-  std::vector<std::string> _trustedProxies;
-  std::vector<std::string> _accessControlAllowOrigins;
-  std::string _redirectRootTo;
-  std::string _supportInfoApiPolicy;
-  std::string _optionsApiPolicy;
+  GeneralServerOptions _options;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
-  uint64_t _numIoThreads;
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  std::vector<std::string> _failurePoints;
-#endif
 
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;

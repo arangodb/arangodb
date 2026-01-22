@@ -93,6 +93,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
+  /// @brief endpoint which we connect from
+  virtual std::string localEndpoint() = 0;
+
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
@@ -239,5 +242,9 @@ class ConnectionBuilder {
  private:
   detail::ConnectionConfiguration _conf;
 };
+
+// convert the boolean flag to a loggeable string
+std::string to_string(Connection::State state);
+
 }}}  // namespace arangodb::fuerte::v1
 #endif

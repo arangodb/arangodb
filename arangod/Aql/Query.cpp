@@ -46,6 +46,9 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
+#include "Assertions/Assert.h"
+#include "Async/async.h"
+#include "Async/SuspensionCounter.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -61,6 +64,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/ApiRecordingFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -204,6 +209,7 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
                                                scheduler)) {}
 
 Query::~Query() {
+  TRI_ASSERT(!_isExecuting);
   if (!_planSliceCopy.isNone()) {
     _resourceMonitor->decreaseMemoryUsage(_planSliceCopy.byteSize());
   }
@@ -267,31 +273,25 @@ void Query::destroy() {
 
 /// @brief factory function for creating a query. this must be used to
 /// ensure that Query objects are always created using shared_ptrs.
+/// Actually, this should really be a method of the `AqlFeature`, but
+/// we do not revisit all call sites and ensure that we have access
+/// to the `AqlFeature` now. So this cleanup is for a later
+/// day. Therefore, we use the `server()` functionality in the
+/// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+/// `AqlFeature` for now. Over time, one should have access to the
+/// `AqlFeature` to create a new `Query` object, but we are not there
+/// yet. If you use AQL queries from within C++ code in the future,
+/// do not use this method, rather use `AqlFeature::createQuery`. Of
+/// course, you need to make sure to have access to the AqlFeature
+/// for this.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
     Scheduler* scheduler) {
-  TRI_ASSERT(ctx != nullptr);
-  // workaround to enable make_shared on a class with a protected constructor
-  struct MakeSharedQuery final : Query {
-    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
-                    QueryString queryString,
-                    std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options, Scheduler* scheduler)
-        : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options), scheduler} {}
-
-    ~MakeSharedQuery() final {
-      // Destroy this query, otherwise it's still
-      // accessible while the query is being destructed,
-      // which can result in a data race on the vptr
-      destroy();
-    }
-  };
-  TRI_ASSERT(ctx != nullptr);
-  return std::make_shared<MakeSharedQuery>(
-      std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options), scheduler);
+  AqlFeature& aqlFeature = ctx->vocbase().server().getFeature<AqlFeature>();
+  return aqlFeature.createQuery(std::move(ctx), std::move(queryString),
+                                std::move(bindParameters), std::move(options),
+                                scheduler);
 }
 
 /// @brief return the user that started the query
@@ -314,14 +314,26 @@ bool Query::killed() const {
 /// @brief set the query to killed
 void Query::kill() {
   auto const wasKilled = _queryKilled.exchange(true, std::memory_order_acq_rel);
-  if (ServerState::instance()->isCoordinator() && !wasKilled) {
-    setResult({TRI_ERROR_QUERY_KILLED});
-    cleanupPlanAndEngine(/*sync*/ false);
+  TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+    _queryKilled.notify_one();
+  }
+  if (!wasKilled) {
+    if (ServerState::instance()->isCoordinator()) {
+      setResult({TRI_ERROR_QUERY_KILLED});
+      cleanupPlanAndEngine(/*sync*/ false);
+    } else {
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+      TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+        // this failure point makes the corresponding test work in single
+        // server, though the actual bug could only occur in a cluster setting.
+        _shutdownState.notify_one();
+      }
+    }
   }
 }
 
 void Query::setKillFlag() {
-  _queryKilled.store(true, std::memory_order_acq_rel);
+  _queryKilled.store(true, std::memory_order_release);
 }
 
 /// @brief the query's transaction id. returns 0 if no transaction
@@ -338,13 +350,19 @@ TransactionId Query::transactionId() const noexcept {
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
-double Query::executionTime() const noexcept {
+double Query::queryTime() const noexcept {
   // should only be called once _endTime has been set
   TRI_ASSERT(_endTime > 0.0);
   return _endTime - _startTime;
 }
 
-void Query::ensureExecutionTime() noexcept {
+double Query::executionTime() const noexcept {
+  // This can return 0 if the query never entered execution phase
+  TRI_ASSERT((_startExecutionTime == 0) == (_endExecutionTime == 0.0));
+  return _endExecutionTime - _startExecutionTime;
+}
+
+void Query::ensureEndTime() noexcept {
   if (_endTime == 0.0) {
     _endTime = currentSteadyClockValue();
     TRI_ASSERT(_endTime > 0.0);
@@ -390,6 +408,7 @@ bool Query::tryLoadPlanFromCache() {
       _resourceMonitor->increaseMemoryUsage(
           cacheEntry->serializedPlan.byteSize());
       _planSliceCopy = cacheEntry->serializedPlan;
+      _isCached = true;
 
       return true;
     }
@@ -397,7 +416,7 @@ bool Query::tryLoadPlanFromCache() {
   return false;
 }
 
-void Query::prepareQuery() {
+async<void> Query::prepareQuery() {
   try {
     if (tryLoadPlanFromCache()) {
       auto const querySlice = _planSliceCopy.slice();
@@ -405,9 +424,9 @@ void Query::prepareQuery() {
       auto const variables = querySlice.get("variables");
       auto const views = querySlice.get("views");
       auto const snippets = querySlice.get("nodes");
-      prepareFromVelocyPack(querySlice, collections, views, variables,
-                            snippets);
-      instantiatePlan(snippets);
+      prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
+                                              variables, snippets);
+      co_await instantiatePlan(snippets);
 
       TRI_ASSERT(!_plans.empty());
 
@@ -416,7 +435,7 @@ void Query::prepareQuery() {
       plan->findCollectionAccessVariables();
       plan->prepareTraversalOptions();
       enterState(QueryExecutionState::ValueType::EXECUTION);
-      return;
+      co_return;
     }
 
     std::unique_ptr<ExecutionPlan> plan;
@@ -472,7 +491,7 @@ void Query::prepareQuery() {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -490,6 +509,32 @@ void Query::prepareQuery() {
       _queryProfile->registerInQueryList();
     }
     registerQueryInTransactionState();
+
+    // suspend during prepare, but after register in query list: the latter is
+    // necessary so the query can be seen and killed by the test
+    TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+      // While the failure point is active, other background queries might be
+      // running that are not initiated by the test (e.g. loadFromDB in the
+      // user manager). If this happens, suspending the coroutine here (by
+      // awaiting scheduler->yield) will make that query run into an assertion:
+      // prepare query is not allowed to suspend when called synchronously.
+      if (_queryApiSynchronicity == QueryApiSynchronicity::Asynchronous) {
+        using namespace std::chrono_literals;
+        auto* const scheduler = SchedulerFeature::SCHEDULER;
+
+        // switch threads, let the original one suspend
+        co_await scheduler->yield();
+        // now wait for the query to be killed, and the cleanup to finally
+        // trigger a wakeup
+        _queryKilled.wait(false);                        // false -> true
+        _shutdownState.wait(ShutdownState::None);        // None -> InProgress
+        _shutdownState.wait(ShutdownState::InProgress);  // InProgress -> Done
+        TRI_ASSERT(_shutdownState == ShutdownState::Done);
+        // Right after the shutdown state is set to Done, the wakeup follows.
+        // Give it a while, then continue.
+        std::this_thread::sleep_for(1ms);
+      }
+    }
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
@@ -585,6 +630,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   _ast->injectBindParametersSecondStage(_bindParameters);
 
+  _ast->addGraphNodeImplicitVertexCollections(this->resolver());
+
   if (_ast->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
@@ -644,7 +691,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
   Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
-  opt.createPlans(std::move(plan), _queryOptions, false);
+  opt.createPlans(std::move(plan), _queryOptions);
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
 
@@ -683,8 +730,90 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   return plan;
 }
 
+namespace {
+// TODO With a few more changes i.a. to the streaming cursor, we should be able
+//      to move the WAITING/coro glue code into the engine instead.
+//      At some point we should be able to get rid of any connection between
+//      the RestHandler and the SharedQueryState, and move the SuspensionCounter
+//      from the RestHandler into the query.
+auto engineExecuteToCoro = [](SuspensionCounter& suspensionCounter,
+                              auto&& engineExecute) {
+  // Note that the function frame does not (generally) live as long as the
+  // coroutine returned by it, so it's not safe to refer to any local variables
+  // or parameters by reference, unless they are references (to something with
+  // an appropriate lifetime).
+  using ReturnType =
+      std::optional<std::tuple<ExecutorState, SharedAqlItemBlockPtr>>;
+
+  return waitingFunToCoro(suspensionCounter, [&]() -> ReturnType {
+    auto&& [state, skipped, block] = engineExecute();
+    // The default call asks for No skips.
+    TRI_ASSERT(skipped.nothingSkipped());
+    switch (state) {
+      case ExecutionState::WAITING:
+        return std::nullopt;
+      case ExecutionState::HASMORE:
+        return ReturnType{std::in_place, ExecutorState::HASMORE,
+                          std::move(block)};
+      case ExecutionState::DONE:
+        return ReturnType{std::in_place, ExecutorState::DONE, std::move(block)};
+      default:
+        ADB_PROD_CRASH() << "Invalid execution state " << state;
+    }
+  });
+};
+auto engineExecuteSync = [](std::shared_ptr<SharedQueryState> sharedState,
+                            auto&& engineExecute)
+    -> std::tuple<ExecutorState, SharedAqlItemBlockPtr> {
+  while (true) {
+    auto&& [state, skipped, block] = engineExecute();
+    // The default call asks for No skips.
+    TRI_ASSERT(skipped.nothingSkipped());
+    switch (state) {
+      case ExecutionState::WAITING: {
+        sharedState->waitForAsyncWakeup();
+        break;
+      }
+      case ExecutionState::HASMORE:
+        return {ExecutorState::HASMORE, std::move(block)};
+      case ExecutionState::DONE:
+        return {ExecutorState::DONE, std::move(block)};
+      default:
+        ADB_PROD_CRASH() << "Invalid execution state " << state;
+    }
+  }
+};
+
+auto finalizeToCoro = [](SuspensionCounter& suspensionCounter,
+                         auto&& finalize) {
+  return waitingFunToCoro(
+      suspensionCounter, [&]() -> std::optional<std::monostate> {
+        auto state = finalize();
+        switch (state) {
+          case ExecutionState::DONE:
+            return std::monostate{};
+          case ExecutionState::WAITING:
+            return std::nullopt;
+          default:
+            ADB_PROD_CRASH() << "invalid state returned by finalize: " << state;
+        }
+      });
+};
+
+auto finalizeSync = [](std::shared_ptr<SharedQueryState> sharedState,
+                       auto&& finalize) {
+  while (finalize() == ExecutionState::WAITING) {
+    sharedState->waitForAsyncWakeup();
+  }
+};
+
+};  // namespace
+
 /// @brief execute an AQL query
-ExecutionState Query::execute(QueryResult& queryResult) {
+futures::Future<futures::Unit> Query::execute(
+    QueryResult& queryResult, SuspensionCounter* suspensionCounter) {
+  TRI_ASSERT((suspensionCounter == nullptr) ==
+             (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous));
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -712,10 +841,11 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
+              _isCached = true;
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
-              return ExecutionState::DONE;
+              co_return;
             }
             // if no permissions, fall through to regular querying
           }
@@ -723,7 +853,17 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery();
+          auto prepareFut = prepareQuery();
+          if (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous) {
+            // make sure we don't suspend with a synchronous api; the caller
+            // will rely upon suspends happening only due to WAITING.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            // the ifdef is necessary, because we have is_ready only in
+            // maintainer mode.
+            TRI_ASSERT(prepareFut.is_ready());
+#endif
+          }
+          co_await std::move(prepareFut);
         }
 
         logAtStart();
@@ -739,12 +879,21 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         queryResult.data->openArray(/*unindexed*/ true);
 
         _executionPhase = ExecutionPhase::EXECUTE;
+        trackExecutionStart();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase")) {
+          std::this_thread::yield();
+        }
+#endif
       }
         [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
+        TRI_ASSERT(_trx != nullptr) << "id=" << id();
         TRI_ASSERT(_trx != nullptr);
+        // We should do this only once
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
                               !_ast->root()->isCacheable())) {
@@ -758,19 +907,30 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         RegisterId const resultRegister = engine->resultRegister();
 
         // We loop as long as we are having ExecState::DONE returned
-        // In case of WAITING we return, this function is repeatable!
+        // WAITING is handled inside the loop, and can't escape from this
+        // function; instead, we suspend the coroutine.
         // In case of HASMORE we loop
         while (true) {
-          auto const& [state, skipped, block] = engine->execute(::defaultStack);
-          // The default call asks for No skips.
-          TRI_ASSERT(skipped.nothingSkipped());
-          if (state == ExecutionState::WAITING) {
-            return state;
+          auto state = ExecutorState{};
+          auto block = SharedAqlItemBlockPtr{};
+          switch (_queryApiSynchronicity) {
+            case QueryApiSynchronicity::Asynchronous: {
+              std::tie(state, block) = co_await engineExecuteToCoro(
+                  *suspensionCounter,
+                  [&engine] { return engine->execute(::defaultStack); });
+              break;
+            }
+            case QueryApiSynchronicity::Synchronous: {
+              std::tie(state, block) = engineExecuteSync(
+                  sharedState(),
+                  [&engine] { return engine->execute(::defaultStack); });
+              break;
+            }
           }
 
           // block == nullptr => state == DONE
           if (block == nullptr) {
-            TRI_ASSERT(state == ExecutionState::DONE);
+            TRI_ASSERT(state == ExecutorState::DONE);
             break;
           }
 
@@ -800,7 +960,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             _resultMemoryUsage += diff;
           }
 
-          if (state == ExecutionState::DONE) {
+          if (state == ExecutorState::DONE) {
+            trackExecutionEnd();
             break;
           }
         }
@@ -843,17 +1004,35 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (!queryResult.extra) {
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
-        // will set warnings, stats, profile and cleanup plan and engine
-        auto state = finalize(*queryResult.extra);
+
+        // TODO Refactor finalize into a coroutine (that's aware of
+        //      _queryApiSynchronicity) to get rid of this glue code.
+        switch (_queryApiSynchronicity) {
+          case QueryApiSynchronicity::Asynchronous: {
+            co_await finalizeToCoro(*suspensionCounter, [this, &queryResult] {
+              // will set warnings, stats, profile and cleanup plan and
+              // engine
+              return finalize(*queryResult.extra);
+            });
+            break;
+          }
+          case QueryApiSynchronicity::Synchronous: {
+            finalizeSync(sharedState(), [this, &queryResult] {
+              // will set warnings, stats, profile and cleanup plan and
+              // engine
+              return finalize(*queryResult.extra);
+            });
+            break;
+          }
+        }
+
         bool isCachingAllowed = !_transactionContext->isStreaming() ||
                                 _trx->state()->isReadOnlyTransaction();
-        if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
-            isCachingAllowed) {
+        if (_cacheEntry != nullptr && isCachingAllowed) {
           _cacheEntry->_stats = queryResult.extra;
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
-
-        return state;
+        co_return;
       }
     }
     // We should not be able to get here
@@ -879,7 +1058,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     queryResult.reset(result());
   }
 
-  return ExecutionState::DONE;
+  co_return;
 }
 
 /**
@@ -892,34 +1071,29 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
-  std::shared_ptr<SharedQueryState> ss;
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
+  auto ss = sharedState();
+  TRI_ASSERT(ss != nullptr);
 
   QueryResult queryResult;
-  do {
-    auto state = execute(queryResult);
-    if (state != ExecutionState::WAITING) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return queryResult;
-    }
+  auto future = execute(queryResult, nullptr);
+  // Setting _queryApiSynchronizity to Synchronous promises a result that's
+  // already ready.
+  TRI_ASSERT(future.isReady());
+  future.waitAndGet();
 
-    if (!ss) {
-      ss = sharedState();
-    }
-
-    TRI_ASSERT(ss != nullptr);
-    ss->waitForAsyncWakeup();
-  } while (true);
+  return queryResult;
 }
 
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
 
   QueryResultV8 queryResult;
-
   try {
     bool useQueryCache = canUseResultsCache();
 
@@ -941,6 +1115,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           queryResult.v8Data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
+          _isCached = true;
           return queryResult;
         }
         // if no permissions, fall through to regular querying
@@ -948,7 +1123,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery();
+    [&]() -> futures::Future<futures::Unit> {
+      co_return co_await prepareQuery();
+    }()
+                 .waitAndGet();
 
     logAtStart();
 
@@ -986,6 +1164,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
+      trackExecutionStart();
       while (state != ExecutionState::DONE) {
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
@@ -1045,11 +1224,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
       }
 
+      trackExecutionEnd();
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
           << elapsedSince(_startTime) << " got an exception executing "
           << " this: " << (uintptr_t)this;
+      trackExecutionEnd();
       throw;
     }
 
@@ -1140,7 +1321,7 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
       executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
-      executionStats.setExecutionTime(executionTime());
+      executionStats.setExecutionTime(queryTime());
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());
       for (auto& engine : _snippets) {
@@ -1227,11 +1408,10 @@ QueryResult Query::explain() {
         b.add(VPackValue("stats"));
         {
           // optimizer statistics
-          ensureExecutionTime();
+          ensureEndTime();
           VPackObjectBuilder guard(&b, /*unindexed*/ true);
           Optimizer::Stats::toVelocyPackForCachedPlan(b);
           b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-          b.add("executionTime", VPackValue(executionTime()));
         }
         result.planCacheKey = _planCacheKey->hash();
       }
@@ -1263,6 +1443,8 @@ QueryResult Query::explain() {
     _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
+    _ast->addGraphNodeImplicitVertexCollections(this->resolver());
+
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
@@ -1291,7 +1473,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(std::move(plan), _queryOptions, true);
+    opt.createPlans(std::move(plan), _queryOptions);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1404,11 +1586,13 @@ QueryResult Query::explain() {
       b.add(VPackValue("stats"));
       {
         // optimizer statistics
-        ensureExecutionTime();
+        ensureEndTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-        b.add("executionTime", VPackValue(executionTime()));
+        // Even though there is a execution time this remains to be called
+        // executionTime for backwards compatibility reasons
+        b.add("executionTime", VPackValue(queryTime()));
       }
     }
   } catch (Exception const& ex) {
@@ -1694,8 +1878,7 @@ void Query::logAtEnd() const {
         << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " failed with exit code " << result().errorNumber() << ": "
-        << result().errorMessage()
-        << ", took: " << Logger::FIXED(executionTime());
+        << result().errorMessage() << ", took: " << Logger::FIXED(queryTime());
   } else {
     LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
         << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
@@ -1705,7 +1888,29 @@ void Query::logAtEnd() const {
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " used more memory than configured memory usage alerting threshold "
         << feature.peakMemoryUsageThreshold()
-        << ", took: " << Logger::FIXED(executionTime());
+        << ", took: " << Logger::FIXED(queryTime());
+  }
+}
+
+void Query::trackExecutionStart() noexcept {
+  // We should do this only once
+  double expectedTime{0};
+  if (_startExecutionTime.compare_exchange_strong(expectedTime,
+                                                  currentSteadyClockValue())) {
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryStart();
+    _isExecuting = true;
+  }
+}
+
+void Query::trackExecutionEnd() noexcept {
+  bool expected = true;
+  if (_isExecuting.compare_exchange_strong(expected, false)) {
+    _endExecutionTime = currentSteadyClockValue();
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryEnd(executionTime());
   }
 }
 
@@ -1848,7 +2053,15 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
-  ensureExecutionTime();
+  // Before transaction is destroyed we should wait for all async tasks to
+  // finish so they don't use trx object. We do this only if this is a sync
+  // operation otherwise we do not want to stall the caller
+  if (sync) {
+    for (auto const& snippet : _snippets) {
+      snippet->stopAsyncTasks();
+    }
+  }
+  trackExecutionEnd();
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
@@ -1918,7 +2131,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
                          : querylist.slowQueryThreshold();
 
   bool isSlowQuery = (querylist.trackSlowQueries() &&
-                      executionTime() >= threshold && threshold >= 0.0);
+                      queryTime() >= threshold && threshold >= 0.0);
   if (isSlowQuery) {
     // yes.
     try {
@@ -1928,7 +2141,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
 
       auto& queryRegistryFeature =
           vocbase().server().getFeature<QueryRegistryFeature>();
-      queryRegistryFeature.trackSlowQuery(executionTime());
+      queryRegistryFeature.trackSlowQuery(queryTime());
       logSlow(options);
 
       querylist.trackSlow(buildQuerySlice());
@@ -1948,11 +2161,11 @@ void Query::handlePostProcessing(QueryList& querylist) {
 }
 
 void Query::handlePostProcessing() {
+  // For queries which do not enter execution phase at all
+  // we need to ensure the existance of endTime because it is needed
+  // later on
+  ensureEndTime();
   // elapsed time since query start
-  auto& queryRegistryFeature =
-      vocbase().server().getFeature<QueryRegistryFeature>();
-  queryRegistryFeature.trackQueryEnd(executionTime());
-
   if (!queryOptions().skipAudit &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
@@ -1998,7 +2211,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
 }
 
 velocypack::Options const& Query::vpackOptions() const {
-  return *(_transactionContext->getVPackOptions());
+  return *_transactionContext->getVPackOptions();
 }
 
 transaction::Methods& Query::trxForOptimization() {
@@ -2074,13 +2287,14 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(120.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
-  // We definitely want to skip the scheduler here, because normally
-  // the thread that orders the query shutdown is blocked and waits
-  // synchronously until the shutdown requests have been responded to.
-  // we thus must guarantee progress here, even in case all
-  // scheduler threads are otherwise blocked.
-  options.skipScheduler = true;
+  switch (query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous:
+      options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+      break;
+    case QueryContext::QueryApiSynchronicity::Synchronous:
+      options.skipScheduler = true;
+      break;
+  }
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -2090,18 +2304,38 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
-  std::vector<futures::Future<Result>> futures;
-  futures.reserve(serverQueryIds.size());
-  auto ss = query.sharedState();
-  TRI_ASSERT(ss != nullptr);
-
+  auto futureResponses = std::vector<futures::Future<network::Response>>{};
+  futureResponses.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
 
+    auto f = network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Delete,
+        absl::StrCat("/_api/aql/finish/", queryId), body, options);
+
+    futureResponses.emplace_back(std::move(f));
+  }
+
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(serverQueryIds.size());
+  for (auto&& future : futureResponses) {
+    if (query.queryApiSynchronicity() ==
+        QueryContext::QueryApiSynchronicity::Synchronous) {
+      // The caller is waiting synchronously. Because of that, skipScheduler is
+      // set for the network requests sent here. Which means the network thread
+      // will resolve the promise(s) without going through the scheduler. We
+      // must avoid executing arbitrary code on the network thread, and
+      // therefore have to wait here before calling `.thenValue` or
+      // `co_await`ing the response-future. The caller will be waiting
+      // synchronously anyway.
+      future.wait();
+    }
+
+    auto ss = query.sharedState();
+    TRI_ASSERT(ss != nullptr);
+
     auto f =
-        network::sendRequestRetry(
-            pool, "server:" + server, fuerte::RestVerb::Delete,
-            absl::StrCat("/_api/aql/finish/", queryId), body, options)
+        std::move(future)
             .thenValue([ss, &query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
@@ -2149,7 +2383,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                             "unhandled query shutdown exception");
             });
 
-    futures.push_back(std::move(f));
+    futures.emplace_back(std::move(f));
   }
 
   return futures::collectAll(std::move(futures))
@@ -2238,19 +2472,23 @@ ExecutionState Query::cleanupTrxAndEngines() {
     TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    std::ignore =
-        ::finishDBServerParts(*this, result().errorNumber())
-            .thenValue([ss = _sharedState, this](Result r) {
-              LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
-                           r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-                  << "received error from DBServer on query finalization: "
-                  << r.errorNumber() << ", '" << r.errorMessage() << "'";
-              _sharedState->executeAndWakeup([&] {
-                _shutdownState.store(ShutdownState::Done,
-                                     std::memory_order_relaxed);
-                return true;
-              });
-            });
+    ::finishDBServerParts(*this, result().errorNumber())
+        .thenFinal([ss = _sharedState, this](futures::Try<Result>&& tryResult) {
+          auto&& r =
+              basics::catchToResult([&] { return std::move(tryResult).get(); });
+          LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
+                       r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+              << "received error from DBServer on query finalization: "
+              << r.errorNumber() << ", '" << r.errorMessage() << "'";
+          _sharedState->executeAndWakeup([&] {
+            _shutdownState.store(ShutdownState::Done,
+                                 std::memory_order_relaxed);
+            TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+              _shutdownState.notify_one();
+            }
+            return true;
+          });
+        });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();
@@ -2414,17 +2652,17 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
-                                  velocypack::Slice collections,
-                                  velocypack::Slice views,
-                                  velocypack::Slice variables,
-                                  velocypack::Slice snippets) {
+void Query::prepareFromVelocyPackWithoutInstantiate(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice views, velocypack::Slice variables,
+    velocypack::Slice snippets) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
-      << elapsedSince(_startTime) << " Query::prepareFromVelocyPack"
+      << elapsedSince(_startTime)
+      << " Query::prepareFromVelocyPackWithoutInstantiate"
       << " this: " << (uintptr_t)this;
 
   // track memory usage
@@ -2488,19 +2726,20 @@ void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
   enterState(QueryExecutionState::ValueType::PARSING);
 }
 
-void Query::instantiatePlan(velocypack::Slice snippets) {
+async<void> Query::instantiatePlan(velocypack::Slice snippets) {
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) {
+  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
     auto plan =
         ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet, true);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
+    co_return;
   };
 
   // a single snippet
-  instantiateSnippet(snippets);
+  co_await instantiateSnippet(snippets);
   TRI_ASSERT(!_snippets.empty());
   TRI_ASSERT(!_trx->state()->isDBServer() || _snippets.back()->engineId() != 0);
 
@@ -2518,11 +2757,21 @@ void Query::instantiatePlan(velocypack::Slice snippets) {
   }
 
   _queryProfile->registerInQueryList();
-
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryStart();
-
   enterState(QueryExecutionState::ValueType::EXECUTION);
+
+  co_return;
+}
+
+auto aql::toString(Query::ExecutionPhase phase) -> std::string_view {
+  switch (phase) {
+    case Query::ExecutionPhase::INITIALIZE:
+      return "INITIALIZE";
+    case Query::ExecutionPhase::EXECUTE:
+      return "EXECUTE";
+    case Query::ExecutionPhase::FINALIZE:
+      return "FINALIZE";
+  }
+  ADB_UNREACHABLE;
 }
 
 void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
@@ -2535,7 +2784,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
     return (isCurrent ? state() : QueryExecutionState::ValueType::FINISHED);
   });
 
-  double elapsed = (isCurrent ? elapsedSince(startTime()) : executionTime());
+  double elapsed = (isCurrent ? elapsedSince(startTime()) : queryTime());
 
   double now = TRI_microtime();
   // we calculate the query start timestamp as the current time minus
@@ -2600,7 +2849,10 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("stream", VPackValue(queryOptions().stream));
 
   // modification query yes/no?
-  builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  // if the query is cached there is no _ast
+  if (!_isCached) {
+    builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  }
 
 #if 0
   // TODO: currently does not work in cluster, as stats in cluster are only 
@@ -2660,7 +2912,7 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
       << ", id: " << id() << ", token: QRY" << id()
       << ", peak memory usage: " << resourceMonitor().peak()
       << ", exit code: " << result().errorNumber()
-      << ", took: " << Logger::FIXED(executionTime()) << " s";
+      << ", took: " << Logger::FIXED(queryTime()) << " s";
 }
 
 std::function<void(velocypack::Builder&)>

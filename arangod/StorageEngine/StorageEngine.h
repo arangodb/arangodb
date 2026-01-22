@@ -98,9 +98,10 @@ class StorageSnapshot {
   virtual TRI_voc_tick_t tick() const noexcept = 0;
 };
 
-class StorageEngine : public ArangodFeature {
+class StorageEngine : public ApplicationFeature {
  public:
   // create the storage engine
+  template<typename Server>
   StorageEngine(Server& server, std::string_view engineName,
                 std::string_view featureName, size_t registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
@@ -391,5 +392,25 @@ class StorageEngine : public ArangodFeature {
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
 };
+
+template<typename Server>
+StorageEngine::StorageEngine(Server& server, std::string_view engineName,
+                             std::string_view featureName, size_t registration,
+                             std::unique_ptr<IndexFactory>&& indexFactory)
+    : ApplicationFeature{server, registration, featureName},
+      _indexFactory(std::move(indexFactory)),
+      _typeName(engineName) {
+  // each specific storage engine feature is optional. the storage engine
+  // selection feature will make sure that exactly one engine is selected at
+  // startup
+  setOptional(true);
+  // storage engines must not use elevated privileges for files etc
+  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
+
+  startsAfter<CacheManagerFeature, Server>();
+  startsBefore<StorageEngineFeature, Server>();
+  startsAfter<transaction::ManagerFeature, Server>();
+  startsAfter<ViewTypesFeature, Server>();
+}
 
 }  // namespace arangodb

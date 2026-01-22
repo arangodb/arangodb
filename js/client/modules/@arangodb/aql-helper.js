@@ -1,6 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail, arango
-  AQL_EXECUTEJSON */
+/* global assertTrue, assertFalse, assertEqual, fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,6 +25,7 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangosh = require('@arangodb/arangosh');
 const isEqual = require("@arangodb/test-helper-common").isEqual;
 const db = require("@arangodb").db;
 
@@ -76,11 +76,39 @@ function normalizeRow (row, recursive) {
 function executeQuery(query, bindVars = null, options = {}) {
   let stmt = db._createStatement({query, bindVars, count: true});
   return stmt.execute();
-};
+}
 
 function executeJson (plan, options = {}) {
-  let command = `return AQL_EXECUTEJSON(${JSON.stringify(plan)}, ${JSON.stringify(options)});`;
-  return arango.POST("/_admin/execute", command);
+  let reply = arango.POST("/_api/cursor/json", {
+    'executionPlan': plan,
+    'options': options
+  });
+  arangosh.checkRequestResult(reply);
+  // bring the format to the ye olde reply format of executeJson (AQL_EXECUTEJSON):
+  let ret = {
+    "json": reply.result,
+    "stats": reply.extra.stats,
+    "warnings": reply.extra.warnings,
+    "cached": reply.cached
+  };
+  const cursorId = reply.id;
+  while (reply.hasMore) {
+    reply = arango.POST(`/_api/cursor/${cursorId}"`, {});
+    arangosh.checkRequestResult(reply);
+    ret.json.push(...reply.result);
+    for (const [key, value] of Object.entries(reply.extra.stats)) {
+      if (ret.stats.hasOwnProperty(key)) {
+        ret.stats[key] += value;
+      } else {
+        ret.stats[key] = value;
+      }
+    }
+    if (reply.extra.warnings.length !== 0) {
+      ret.warnings.push(...reply.extra.warnings);
+    }
+    ret.cached &&= reply.cached;
+  }
+  return ret;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -184,7 +212,7 @@ function assertQueryWarningAndNull (errorCode, query, bindVars) {
     found[result.extra.warnings[i].code] = true;
   }
 
-  assertTrue(found[errorCode]);
+  assertTrue(found[errorCode], 'error not found, found: [' + JSON.stringify(found) + ']');
   assertEqual([ null ], result.result);
 }
 

@@ -32,7 +32,6 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <typeindex>
 #include <utility>
 #include <vector>
 
@@ -425,6 +424,21 @@ class ApplicationServerT : public ApplicationServer {
     TRI_ASSERT(!hasFeature<Type>());
     auto& slot = _features[featureId];
     slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
+  }
+  template<typename Type, typename Impl = Type, typename... Args>
+  Impl& addFeature2(
+      std::function<std::unique_ptr<Type>(ApplicationServerT<Features>&)> const&
+          constructor) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
+    constexpr auto featureId = Features::template id<Type>();
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[featureId];
+    slot = constructor(*this);
 
     return static_cast<Impl&>(*slot);
   }

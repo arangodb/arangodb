@@ -14,8 +14,7 @@ export const commonFieldsMap = {
     label: "Name",
     name: "name",
     type: "text",
-    tooltip:
-      "Index name. If left blank, the name will be auto-generated. Example: byValue",
+    tooltip: "Index name. If left blank, the name will be auto-generated. Example: byValue",
     initialValue: ""
   },
   inBackground: {
@@ -23,7 +22,7 @@ export const commonFieldsMap = {
     name: "inBackground",
     type: "boolean",
     initialValue: true,
-    tooltip: "Create the index in background."
+    tooltip: "Enable this option to keep the collection/shards available for write operations by not using an exclusive write lock for the duration of the index creation."
   }
 };
 const traditionalNameSchema = Yup.string()

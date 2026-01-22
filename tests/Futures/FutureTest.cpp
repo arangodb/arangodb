@@ -845,7 +845,7 @@ auto foo() -> Future<int> {
 }
 auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
   uint promise_count = 0;
-  registry.for_promise([&](arangodb::async_registry::PromiseSnapshot promise) {
+  registry.for_node([&](arangodb::async_registry::PromiseSnapshot promise) {
     promise_count++;
   });
   return promise_count;
@@ -856,7 +856,7 @@ TEST(FutureTest, futures_are_registered_in_global_async_registry) {
   {
     auto x = foo();
     std::vector<std::string_view> names;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           names.push_back(promise.source_location.function_name);
         });
@@ -916,7 +916,7 @@ TEST(FutureTest,
     std::optional<arangodb::async_registry::PromiseSnapshot> awaited_promise;
     std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
     uint count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           if (std::string(promise.source_location.function_name)
@@ -933,7 +933,7 @@ TEST(FutureTest,
     EXPECT_TRUE(waiter_promise.has_value());
     EXPECT_EQ(awaited_promise->requester,
               arangodb::async_registry::Requester{waiter_promise->id});
-    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
         waiter_promise->requester));
   }
 }
@@ -962,7 +962,7 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
     std::vector<arangodb::async_registry::PromiseSnapshot> awaited_promises;
     std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
     uint count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           if (std::string(promise.source_location.function_name)
@@ -981,7 +981,7 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
               arangodb::async_registry::Requester{waiter_promise->id});
     EXPECT_EQ(awaited_promises[1].requester,
               arangodb::async_registry::Requester{waiter_promise->id});
-    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
         waiter_promise->requester));
   }
 }
@@ -990,7 +990,7 @@ namespace {
 auto expect_all_promises_in_state(arangodb::async_registry::State state,
                                   uint number_of_promises) {
   uint count = 0;
-  arangodb::async_registry::registry.for_promise(
+  arangodb::async_registry::registry.for_node(
       [&](arangodb::async_registry::PromiseSnapshot promise) {
         count++;
         EXPECT_EQ(promise.state, state);

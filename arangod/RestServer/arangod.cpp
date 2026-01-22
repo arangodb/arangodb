@@ -47,6 +47,9 @@ constexpr auto kNonServerFeatures =
 #endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+               ArangodServer::id<ProcessEnvironmentFeature>(),
+#endif
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
@@ -55,7 +58,9 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler::installCrashHandler();
+    CrashHandler crashHandler;  // initializes the crash handler and starts its
+                                // thread the destructor will stop it.
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
@@ -84,6 +89,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<async_registry::Feature>) {
           return std::make_unique<async_registry::Feature>(server);
         },
+        [](auto& server, TypeTag<activity_registry::Feature>) {
+          return std::make_unique<activity_registry::Feature>(server);
+        },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(
@@ -94,21 +102,25 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        [&name](auto& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(server, name);
+        },
+#endif
         [&ret](auto& server, TypeTag<CheckVersionFeature>) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
         [](auto& server, TypeTag<ClusterUpgradeFeature>) {
           return std::make_unique<ClusterUpgradeFeature>(
-              server, server.template getFeature<arangodb::DatabaseFeature>());
+              server, server.template getFeature<DatabaseFeature>());
         },
         [&name](auto& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, name);
         },
         [](auto& server, TypeTag<GeneralServerFeature>) {
           return std::make_unique<GeneralServerFeature>(
-              server,
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+              server, server.template getFeature<metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<InitDatabaseFeature>) {
           return std::make_unique<InitDatabaseFeature>(server,
@@ -128,34 +140,48 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               LazyApplicationFeatureReference<ClusterFeature>(server));
         },
         [](auto& server, TypeTag<NetworkFeature>) {
-          auto& metrics =
-              server.template getFeature<arangodb::metrics::MetricsFeature>();
+          auto& metrics = server.template getFeature<metrics::MetricsFeature>();
           return std::make_unique<NetworkFeature>(
               server, metrics, network::ConnectionPool::Config{});
         },
         [](auto& server, TypeTag<QueryRegistryFeature>) {
           return std::make_unique<QueryRegistryFeature>(
-              server,
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+              server, server.template getFeature<metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<ReplicationMetricsFeature>) {
           return std::make_unique<ReplicationMetricsFeature>(
-              server,
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+              server, server.template getFeature<metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<VectorIndexFeature>) {
           return std::make_unique<VectorIndexFeature>(server);
         },
+        [](auto& server, TypeTag<RocksDBOptionFeature>) {
+          return RocksDBOptionFeature::construct(
+              server, server.template hasFeature<AgencyFeature>()
+                          ? &server.template getFeature<AgencyFeature>()
+                          : nullptr);
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
-          return std::make_unique<RocksDBEngine>(
-              server,
-              server.template getFeature<arangodb::RocksDBOptionFeature>(),
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+          return RocksDBEngine::construct(
+              server, server.template getFeature<RocksDBOptionFeature>(),
+              server.template getFeature<metrics::MetricsFeature>(),
+              server.template getFeature<DatabasePathFeature>(),
+              server.template getFeature<VectorIndexFeature>(),
+              server.template getFeature<FlushFeature>(),
+              server.template getFeature<DumpLimitsFeature>(),
+              server.template getFeature<SchedulerFeature>(),
+              replication2::EnableReplication2
+                  ? &server.template getFeature<ReplicatedLogFeature>()
+                  : nullptr,
+              server.template getFeature<RocksDBRecoveryManager>(),
+              server.template getFeature<DatabaseFeature>(),
+              server.template getFeature<RocksDBIndexCacheRefillFeature>(),
+              server.template getFeature<CacheManagerFeature>(),
+              server.template getFeature<AgencyFeature>());
         },
         [](auto& server, TypeTag<SchedulerFeature>) {
           return std::make_unique<SchedulerFeature>(
-              server,
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+              server, server.template getFeature<metrics::MetricsFeature>());
         },
 #ifdef USE_V8
         [&ret](auto& server, TypeTag<ScriptFeature>) {
@@ -195,8 +221,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [&](auto& server, TypeTag<V8DealerFeature>) {
           return std::make_unique<V8DealerFeature>(
-              server,
-              server.template getFeature<arangodb::metrics::MetricsFeature>());
+              server, server.template getFeature<metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<HttpEndpointProvider>) {
           return std::make_unique<EndpointFeature>(server);
@@ -209,22 +234,24 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("5d508", ERR, Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("3c63a", ERR, Logger::FIXME)
           << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
     }
+
     Logger::flush();
+    // CrashHandler will be deactivated here automatically by its destructor
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("8afa8", ERR, Logger::FIXME)
         << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC("c444c", ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c444c", ERR, Logger::FIXME)
         << "arangod terminated because of an exception of "
            "unknown type";
   }
@@ -256,7 +283,7 @@ int main(int argc, char* argv[]) {
     f();
   }
 
-  std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
+  std::string workdir(basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);

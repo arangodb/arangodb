@@ -31,6 +31,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -47,6 +48,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/GaugeBuilder.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -85,6 +88,7 @@
 using namespace arangodb::options;
 
 namespace arangodb {
+
 namespace {
 
 template<typename T>
@@ -289,10 +293,14 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
-  auto static const allowedReplicationVersions = [] {
-    auto result = std::unordered_set<std::string>();
-    for (auto const& version : replication::allowedVersions) {
-      result.emplace(replication::versionToString(version));
+  auto static allowedReplicationVersions = [] {
+    using namespace arangodb::replication;
+    using namespace arangodb::replication2;
+
+    auto result = std::unordered_set<std::string>{};
+    result.emplace(versionToString(Version::ONE));
+    if (EnableReplication2) {
+      result.emplace(versionToString(Version::TWO));
     }
     return result;
   }();
@@ -434,6 +442,9 @@ void DatabaseFeature::start() {
         << "could not iterate over all databases: " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
 
   if (!lookupDatabase(StaticStrings::SystemDatabase)) {
     LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
@@ -627,6 +638,12 @@ void DatabaseFeature::prepare() {
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase(server());
+
+  // Initialize metadata metrics on single server
+  if (ServerState::instance()->isSingleServer()) {
+    auto& metrics = server().getFeature<metrics::MetricsFeature>();
+    _metadataMetrics.emplace(metrics);
+  }
 }
 
 void DatabaseFeature::recoveryDone() {
@@ -801,6 +818,11 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
   versionTracker().track("create database");
 
+  // Update metadata metrics on single server only after successful creation
+  if (res.ok() && ServerState::instance()->isSingleServer()) {
+    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
+  }
+
   return res;
 }
 
@@ -811,6 +833,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   }
 
   auto res = TRI_ERROR_NO_ERROR;
+  size_t numCollections = 0;
   {
     std::lock_guard lock{_databasesMutex};
 
@@ -855,6 +878,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     // mark all collections in this database as deleted, too.
     try {
       auto collections = vocbase->collections(/*includeDeleted*/ false);
+      numCollections = collections.size();
       for (auto& c : collections) {
         c->setDeleted();
         c->deferDropCollection(TRI_vocbase_t::dropCollectionCallback);
@@ -890,6 +914,16 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // deleted by the DatabaseManagerThread!
 
   versionTracker().track("drop database");
+
+  // Update metadata metrics on single server only after successful drop
+  if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
+    _metadataMetrics->numberOfDatabases.fetch_sub(1, std::memory_order_relaxed);
+    // Also decrement collection count for all collections in the dropped
+    // database
+    if (numCollections > 0) {
+      decrementCollectionCount(numCollections);
+    }
+  }
 
   return res;
 }
@@ -981,8 +1015,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       }
 
       if (af->isActive() && af->userManager() != nullptr) {
-        auto level =
-            af->userManager()->databaseAuthLevel(username, vocbase->name());
+        auto level = af->userManager()->databaseAuthLevel(
+            username, vocbase->name(), false);
         if (level == auth::Level::NONE) {  // hide dbs without access
           continue;
         }
@@ -1311,6 +1345,63 @@ void DatabaseFeature::closeDroppedDatabases() {
   for (auto p : dropped) {
     p->shutdown();
   }
+}
+
+DatabaseFeature::MetadataMetrics::MetadataMetrics(
+    metrics::MetricsFeature& metrics)
+    : numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer())
+      << "DatabaseFeature::MetadataMetrics should be exposed only on a single "
+         "server";
+}
+
+void DatabaseFeature::updateMetadataMetrics() {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t numDatabases = 0;
+  uint64_t numCollections = 0;
+
+  // Count databases and collections
+  auto databases = _databases.load();
+  for (auto& p : *databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    if (vocbase->isDropped()) {
+      continue;
+    }
+    numDatabases++;
+
+    // Count collections in this database
+    vocbase->processCollections(
+        [&numCollections](LogicalCollection* collection) { numCollections++; });
+  }
+
+  // Update the metrics
+  _metadataMetrics->numberOfDatabases.store(numDatabases,
+                                            std::memory_order_relaxed);
+  _metadataMetrics->numberOfCollections.store(numCollections,
+                                              std::memory_order_relaxed);
+}
+
+void DatabaseFeature::incrementCollectionCount(uint64_t count) {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+  _metadataMetrics->numberOfCollections += count;
+}
+
+void DatabaseFeature::decrementCollectionCount(uint64_t count) {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+  _metadataMetrics->numberOfCollections -= count;
 }
 
 }  // namespace arangodb

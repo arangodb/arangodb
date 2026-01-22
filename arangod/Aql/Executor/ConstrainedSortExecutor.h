@@ -51,7 +51,6 @@ class AqlItemBlockInputRange;
 class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
-class QueryContext;
 
 class ConstraintSortExecutorInfos {
  public:
@@ -59,7 +58,6 @@ class ConstraintSortExecutorInfos {
                               RegIdFlatSet const& registersToClear,
                               std::vector<SortRegister> sortRegisters,
                               std::size_t limit, AqlItemBlockManager& manager,
-                              QueryContext& query,
                               velocypack::Options const* options,
                               ResourceMonitor& resourceMonitor);
 
@@ -94,7 +92,6 @@ class ConstraintSortExecutorInfos {
   RegIdFlatSet _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
-  QueryContext& _query;
   velocypack::Options const* _vpackOptions;
   ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;

@@ -98,7 +98,7 @@ void ImportFeature::collectOptions(
 
   options->addOption("--backslash-escape",
                      "Use backslash as the escape character for quotes. Used "
-                     "for CSV and TSV imports.",
+                     "for CSV imports only.",
                      new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
@@ -117,34 +117,36 @@ void ImportFeature::collectOptions(
   options->addOption(
       "--from-collection-prefix",
       "The collection name prefix to prepend to all values in the "
-      "`_from` attribute.",
+      "`_from` attribute that only specify a document key.",
       new StringParameter(&_fromCollectionPrefix));
 
   options->addOption(
       "--to-collection-prefix",
       "The collection name prefix to prepend to all values in the "
-      "`_to` attribute.",
+      "`_to` attribute that only specify a document key.",
       new StringParameter(&_toCollectionPrefix));
 
-  options->addOption("--overwrite-collection-prefix",
-                     "If the collection name is already prefixed, overwrite "
-                     "the prefix. Only useful in combination with "
-                     "`--from-collection-prefix` / `--to-collection-prefix`.",
-                     new BooleanParameter(&_overwriteCollectionPrefix));
+  options->addOption(
+      "--overwrite-collection-prefix",
+      "Force the `--from-collection-prefix` and `--to-collection-prefix`, "
+      "possibly replacing existing collection name prefixes.",
+      new BooleanParameter(&_overwriteCollectionPrefix));
 
-  options->addOption("--create-collection",
-                     "create collection if it does not yet exist",
-                     new BooleanParameter(&_createCollection));
+  options->addOption(
+      "--create-collection",
+      "Create the target collection if it does not already exist.",
+      new BooleanParameter(&_createCollection));
 
   options->addOption("--create-database",
                      "Create the target database if it does not exist.",
                      new BooleanParameter(&_createDatabase));
 
   options
-      ->addOption("--headers-file",
-                  "The file to read the CSV or TSV header from. If specified, "
-                  "no header is expected in the regular input file.",
-                  new StringParameter(&_headersFile))
+      ->addOption(
+          "--headers-file",
+          "The file to read the CSV or TSV column headers from. "
+          "If specified, no header is expected in the regular input file.",
+          new StringParameter(&_headersFile))
       .setIntroducedIn(30800);
 
   options->addOption(
@@ -155,7 +157,7 @@ void ImportFeature::collectOptions(
   options
       ->addOption(
           "--max-errors",
-          "The maxium number of errors after which the import will stop.",
+          "The maximum number of errors after which the import will stop.",
           new UInt64Parameter(&_maxErrors))
       .setIntroducedIn(31200)
       .setLongDescription(R"(The maximum number of errors after which the
@@ -174,10 +176,12 @@ data once the server reported at least this many errors back.)");
       "only.",
       new BooleanParameter(&_convert));
 
-  options->addOption("--translate",
-                     "Translate an attribute name using the syntax "
-                     "\"from=to\". For CSV and TSV only.",
-                     new VectorParameter<StringParameter>(&_translations));
+  options->addOption(
+      "--translate",
+      "Define a mapping for a column header to an attribute name "
+      "using the syntax \"from=to\". You can specify this "
+      "startup option multiple times. For CSV and TSV only.",
+      new VectorParameter<StringParameter>(&_translations));
 
   options
       ->addOption(
@@ -216,8 +220,10 @@ data once the server reported at least this many errors back.)");
       "from the collection!",
       new BooleanParameter(&_overwrite));
 
-  options->addOption("--quote", "Quote character(s). Used for CSV and TSV.",
-                     new StringParameter(&_quote));
+  options->addOption(
+      "--quote",
+      "The character that encloses field values. Used for CSV imports only.",
+      new StringParameter(&_quote));
 
   options->addOption(
       "--separator",
@@ -247,9 +253,9 @@ data once the server reported at least this many errors back.)");
 
   options
       ->addOption("--merge-attributes",
-                  "Merge attributes into new document attribute (e.g. "
-                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\") "
-                  "(CSV and TSV only)",
+                  "Concatenate attributes into a new document attribute, like "
+                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\" "
+                  "(CSV and TSV only).",
                   new VectorParameter<StringParameter>(&_mergeAttributes))
       .setIntroducedIn(30901);
 
@@ -583,7 +589,7 @@ void ImportFeature::start() {
     ih.setSeparator(_separator);
   } else {
     LOG_TOPIC("59186", FATAL, arangodb::Logger::FIXME)
-        << "_separator must be exactly one character.";
+        << "The separator must be exactly one character.";
     FATAL_ERROR_EXIT();
   }
 

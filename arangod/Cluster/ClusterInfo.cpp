@@ -33,24 +33,19 @@
 #include "Aql/QueryPlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
-#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/GlobalSerialization.h"
-#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterTypes.h"
@@ -71,7 +66,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
-#include "Random/RandomGenerator.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -102,6 +96,9 @@
 #include <velocypack/Slice.h>
 
 #include <chrono>
+#include <iterator>
+#include <ranges>
+#include <algorithm>
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -384,8 +381,6 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-namespace StringUtils = basics::StringUtils;
-
 class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
  public:
@@ -437,6 +432,11 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
+// Shards metric is cluster-specific (databases and collections metrics are
+// declared in DatabaseFeature.h)
+DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
+              "Global number of shards");
+
 ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
@@ -451,6 +451,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
       _lcTimer(metrics.add(arangodb_load_current_runtime{})),
+      _metadataMetrics(std::nullopt),
       _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
@@ -471,6 +472,8 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
+      _collectionNameBlockers(_resourceMonitor),
+      _newCollectionNameBlockers(_resourceMonitor),
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
@@ -505,6 +508,10 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
 #else
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #endif
+
+  if (ServerState::instance()->isCoordinator()) {
+    _metadataMetrics.emplace(metrics);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -620,6 +627,11 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
+  TRI_IF_FAILURE("always-fetch-new-cluster-wide-uniqid") {
+    uint64_t result = _agency.uniqid(count, 0.0);
+    return result;
+  }
+
   std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -659,6 +671,21 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
 
   TRI_ASSERT(result != 0);
   return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get a number of cluster-wide unique IDs, returns the first
+/// one and guarantees that <number> are reserved for the caller.
+/// This variant uses _agency to directly get things from the agency.
+//////////////////////////////////////////////////////////////////////////////
+
+std::optional<uint64_t> ClusterInfo::uniqidFromAgency(uint64_t number) {
+  try {
+    uint64_t result = _agency.uniqid(number, 0.0);
+    return {result};
+  } catch (...) {
+    return {};
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -952,6 +979,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     // Create a copy, since we might not visit all databases
     _newPlannedViews = _plannedViews;
     _newPlannedCollections = _plannedCollections;
+    _newCollectionNameBlockers = _collectionNameBlockers;
     _currentCleanups.clear();
     // set plan loader
     _planLoader = std::this_thread::get_id();
@@ -962,6 +990,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planLoader = std::thread::id();
     _newPlannedViews.clear();
     _newPlannedCollections.clear();
+    _newCollectionNameBlockers.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
@@ -1474,6 +1503,11 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         }
         _newPlannedCollections.erase(it);
       }
+      if (auto it = _newCollectionNameBlockers.find(
+              pmr::DatabaseID(databaseName, _resourceMonitor));
+          it != _newCollectionNameBlockers.end()) {
+        _newCollectionNameBlockers.erase(it);
+      }
       continue;
     }
 
@@ -1506,6 +1540,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
 
     auto databaseCollections = allocateShared<DatabaseCollections>();
+    auto blockedCollectionNames = allocateShared<DatabaseBlockers>();
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1647,6 +1682,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           // register with name as well as with id:
           databaseCollections->try_emplace(collectionName, cwh);
           databaseCollections->try_emplace(collectionId, cwh);
+        } else {
+          blockedCollectionNames->emplace(collectionName);
         }
 
         auto shardIDs = newCollection->shardIds();
@@ -1774,6 +1811,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
     _newPlannedCollections.insert_or_assign(databaseName,
                                             std::move(databaseCollections));
+    _newCollectionNameBlockers.insert_or_assign(
+        databaseName, std::move(blockedCollectionNames));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -1891,6 +1930,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
 
   if (swapCollections) {
     _plannedCollections.swap(_newPlannedCollections);
+    _collectionNameBlockers.swap(_newCollectionNameBlockers);
     _shards.swap(newShards);
     _shardsToPlanServers.swap(newShardsToPlanServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
@@ -1914,6 +1954,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   if (planValid) {
     _planProt.isValid = true;
   }
+
+  updateMetadataMetrics();
 
   _clusterFeature.addDirty(changeSet.dbs);
 
@@ -2439,11 +2481,14 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
+  auto blockedCollList = _collectionNameBlockers.find(databaseName);
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
-        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
+        (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
+        (blockedCollList != _collectionNameBlockers.end() &&
+         blockedCollList->second->contains(name))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
@@ -2731,6 +2776,48 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
   return {};
 }
 
+/// @brief update metadata metrics (number of databases, collections, shards)
+/// This should only be called on coordinators, and should be called while
+/// holding the _planProt write lock (or after data has been swapped in
+/// loadPlan)
+void ClusterInfo::updateMetadataMetrics() {
+  // Only update on coordinators
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t numDatabases = _plannedDatabases.size();
+
+  uint64_t numCollections = 0;
+  uint64_t numShards = 0;
+  for (auto const& [dbName, collections] : _plannedCollections) {
+    if (collections) {
+      // This is necessary because the collections map contains
+      // both the collection name their the their eqivalent as shard name
+      std::unordered_set<uint64_t> collectionsHashes;
+      std::ranges::transform(
+          *collections | std::views::values,
+          std::inserter(collectionsHashes, collectionsHashes.begin()),
+          &CollectionWithHash::hash);
+
+      numCollections += collectionsHashes.size();
+    }
+
+    // _shards does not contain the correct information
+    for (const auto& c : *collections) {
+      if (_shards.contains(c.first)) {
+        numShards += _shards[c.first]->size();
+      }
+    }
+  }
+
+  _metadataMetrics->numberOfDatabases.store(numDatabases,
+                                            std::memory_order_relaxed);
+  _metadataMetrics->numberOfCollections.store(numCollections,
+                                              std::memory_order_relaxed);
+  _metadataMetrics->numberOfShards.store(numShards, std::memory_order_relaxed);
+}
+
 // Build the VPackSlice that contains the `isBuilding` entry
 void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                        VPackBuilder& builder) {
@@ -2875,6 +2962,20 @@ Result ClusterInfo::waitForDatabaseInCurrent(
         std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(
             getReloadServerListTimeout() / interval);
+      }
+
+      //  Between the starting of database creation process and its
+      //  completion, if the agency supervision momentarily marks the
+      //  coordinator as BAD (maybe because it is unreachable due to n/w
+      //  issues), the agency supervision will delete this database name
+      //  from Plan/Databases. When the coordinator comes back, it will
+      //  continue waiting endlessly for this database that will never
+      //  be created.
+      //
+      auto [query, index] = _agencyCache.get("Plan/Databases/");
+      auto qSlice = query->slice();
+      if (!qSlice.hasKey(database.getName())) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
       }
 
       if (_server.isStopping()) {
@@ -3093,15 +3194,59 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const interval = getPollInterval();
   auto collections = getCollections(name);
 
+  // Get the list of healthy DB servers before starting, if a dbserver is
+  // not GOOD, then it will not remove its own entry in
+  // `/arango/Current/Databases/<dbname>/<dbservername>`, therefore, we would
+  // wait here forever. Therefore, we first check the list of healthy servers
+  // and only wait until the entries for these are gone.
+  // If a dbserver fails after this during the dropping of the database,
+  // we want to wait for it to come back and then remove its entry.
+  // Finally, if a dbserver happens to be not-GOOD during the initial
+  // check for the list of healthy servers, we do not wait for it, but
+  // this is not a problem since the whole entry will be deleted at the
+  // end of the drop database operation.
+  auto healthyDBServers = std::make_shared<containers::FlatHashSet<ServerID>>();
+  {
+    auto dbServers = getCurrentDBServers();
+    READ_LOCKER(readLocker, _serversProt.lock);
+    for (auto const& serverId : dbServers) {
+      if (auto it = _serversKnown.find(serverId); it != _serversKnown.end()) {
+        if (it->second.status == ServerHealth::kGood) {
+          healthyDBServers->emplace(serverId);
+        }
+      }
+    }
+  }
+
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   // make capture explicit as callback might be called after the return
   // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [dbServerResult](VPackSlice result) {
+      [dbServerResult, healthyDBServers](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
+          return true;
         }
+
+        // Check if any of the healthy DB servers are still present in the
+        // result
+        if (result.isObject()) {
+          bool allHealthyServersGone = true;
+          for (auto const& entry : VPackObjectIterator(result)) {
+            ServerID serverId = entry.key.copyString();
+            if (healthyDBServers->contains(serverId)) {
+              allHealthyServersGone = false;
+              break;
+            }
+          }
+
+          if (allHealthyServersGone) {
+            dbServerResult->store(TRI_ERROR_NO_ERROR,
+                                  std::memory_order_release);
+          }
+        }
+
         return true;
       };
 
@@ -4796,13 +4941,13 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                   -> std::optional<std::tuple<Result, consensus::index_t>> {
                 if (servers.isNone()) {
                   return std::make_tuple(
-                      Result{
-                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                          fmt::format(
-                              "Database or collection ({}/{}) gone in Current "
-                              "while waiting for leader of shard {} (raft "
-                              "index {})",
-                              *database, collection, shardId, index)},
+                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                             fmt::format(
+                                 "Database or collection ({}/{}) gone in "
+                                 "Current "
+                                 "while waiting for leader of shard {} (raft "
+                                 "index {})",
+                                 *database, collection, shardId, index)},
                       index);
                 }
 
@@ -5370,7 +5515,6 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
-      {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}};
 
@@ -5421,7 +5565,7 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       // This means the above request was actually illegal
       return {TRI_ERROR_HOT_BACKUP_INTERNAL,
               "Failed to restore agency plan from Hotbackup. Please contact "
-              "ArangoDB support immediately."};
+              "Arango support immediately."};
     }
     rr = waitForPlan(raftIndex).waitAndGet();
   }
@@ -6164,6 +6308,17 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
 
   TRI_ASSERT(it->second != nullptr);
   return it->second;
+}
+
+ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
+    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+      numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+  // TODO We should expose these on a single server as well, but that can't
+  //      happen in the ClusterInfo.
+  TRI_ASSERT(ServerState::instance()->isCoordinator())
+      << "ClusterInfo::MetadataMetrics should be exposed only on a coordinator";
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(
