@@ -27,6 +27,7 @@
 #include "RestServer/arangod.h"
 
 #include "Endpoint/EndpointList.h"
+#include "RestServer/EndpointFeatureOptions.h"
 
 namespace arangodb {
 
@@ -47,9 +48,7 @@ class EndpointFeature final : public HttpEndpointProvider {
  private:
   void buildEndpointLists();
 
-  std::vector<std::string> _endpoints;
-  bool _reuseAddress;
-  uint64_t _backlogSize;
+  EndpointFeatureOptions _options;
 
   EndpointList _endpointList;
 };

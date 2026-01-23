@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
 #include "RestServer/arangod.h"
 
@@ -97,14 +98,7 @@ class TemporaryStorageFeature : public ArangodFeature {
  private:
   void cleanupDirectory();
 
-  // parameters that can be configured by the user
-  std::string _basePath;
-  bool _useEncryption;
-  bool _allowHWAcceleration;
-
-  std::uint64_t _maxDiskCapacity;
-  size_t _spillOverThresholdNumRows;
-  size_t _spillOverThresholdMemoryUsage;
+  TemporaryStorageFeatureOptions _options;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;

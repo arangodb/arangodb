@@ -50,7 +50,6 @@ namespace arangodb {
 CheckVersionFeature::CheckVersionFeature(
     Server& server, int* result, std::span<const size_t> nonServerFeatures)
     : ArangodFeature{server, *this},
-      _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -69,14 +68,14 @@ void CheckVersionFeature::collectOptions(
 
   options->addOption(
       "--database.check-version", "Check the version of the database and exit.",
-      new BooleanParameter(&_checkVersion),
+      new BooleanParameter(&_options.checkVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
 
 void CheckVersionFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_checkVersion) {
+  if (!_options.checkVersion) {
     return;
   }
 
@@ -102,7 +101,7 @@ void CheckVersionFeature::validateOptions(
 }
 
 void CheckVersionFeature::start() {
-  if (!_checkVersion) {
+  if (!_options.checkVersion) {
     return;
   }
 

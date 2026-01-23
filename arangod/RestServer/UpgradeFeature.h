@@ -27,6 +27,7 @@
 
 #include "VocBase/Methods/Upgrade.h"
 #include "RestServer/arangod.h"
+#include "RestServer/UpgradeFeatureOptions.h"
 
 namespace arangodb {
 
@@ -53,7 +54,7 @@ class UpgradeFeature final : public ArangodFeature {
   void start() override final;
 
   void addTask(methods::Upgrade::Task&& task);
-  bool upgrading() const noexcept { return _upgrade; }
+  bool upgrading() const noexcept { return _options.upgrade; }
 
  private:
   void upgradeLocalDatabase();
@@ -62,9 +63,7 @@ class UpgradeFeature final : public ArangodFeature {
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'
 
-  bool _upgrade;
-  bool _upgradeCheck;
-  bool _upgradeFullCompaction;
+  UpgradeFeatureOptions _options;
 
   int* _result;
   std::span<const size_t> _nonServerFeatures;
