@@ -88,17 +88,14 @@ function MaxNumberOfConditionsSuite () {
     },
 
     testComplexConditionNoThresholdExceedsMemory : function () {
-      // Create unique OR branches to prevent duplicate branch elimination.
-      // Each branch has a unique value1 condition, ensuring DNF expansion
-      // creates many distinct branches that can't be optimized away.
       let parts = [];
-      for (let i = 0; i < 10; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3', 'test4'])`);
+      for (let i = 0; i < 8; ++i) {
+        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
       try {
-        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 32 * 1000 * 1000 }});
+        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000 }});
         let plan = stmt.explain();
         fail();
       } catch (err) {
@@ -107,24 +104,23 @@ function MaxNumberOfConditionsSuite () {
     },
     
     testComplexConditionWithThresholdMemoryUsage : function () {
-      // Create unique OR branches to prevent duplicate branch elimination.
       let parts = [];
-      for (let i = 0; i < 10; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3', 'test4'])`);
+      for (let i = 0; i < 8; ++i) {
+        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
 
       // with this few condition nodes, we won't exceed memory
       [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxDNFConditionMembers) => {
-        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 32 * 1000 * 1000, maxDNFConditionMembers }});
+        let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
         let plan = stmt.explain();
       });
       
       // with this many condition nodes, we will exceed memory
       [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
         try {
-          let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 32 * 1000 * 1000, maxDNFConditionMembers }});
+          let stmt = db._createStatement({query, bindVars: null, options: { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers }});
           let plan = stmt.explain();
           fail();
         } catch (err) {
@@ -138,10 +134,9 @@ function MaxNumberOfConditionsSuite () {
         return;
       }
 
-      // Create unique OR branches to prevent duplicate branch elimination.
       let parts = [];
-      for (let i = 0; i < 10; ++i) {
-        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3', 'test4'])`);
+      for (let i = 0; i < 8; ++i) {
+        parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
       }
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;

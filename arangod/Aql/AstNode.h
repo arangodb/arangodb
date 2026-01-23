@@ -328,9 +328,6 @@ struct AstNode {
   /// @brief stringify the AstNode
   static std::string toString(AstNode const*);
 
-  /// @brief stringify with sorted operands for duplicate detection
-  std::string toNormalizedString() const;
-
   /// @brief checks whether we know a type of this kind; throws exception if not
   static void validateType(int type);
 

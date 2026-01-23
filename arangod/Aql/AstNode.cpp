@@ -387,9 +387,15 @@ int compareAstNodesComplexVPack(AstNode const* lhs, AstNode const* rhs,
     return (lhs->type < rhs->type ? -1 : 1);
   }
 
+  // Subqueries are compared by pointer identity only - we cannot safely
+  // compare their structure because they may contain side effects and
+  // comparing them structurally would be expensive. Two different subquery
+  // nodes are considered different even if they have identical structure.
   if (lhs->type == NODE_TYPE_SUBQUERY) {
-    TRI_ASSERT(false);
-    return 0;
+    if (lhs == rhs) {
+      return 0;
+    }
+    return (lhs < rhs ? -1 : 1);
   }
 
   size_t lhsMembers = lhs->numMembers();
@@ -593,6 +599,11 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
                rType == VPackValueType::Int) {
       return compareDoubleValues(lhs->getDoubleValue(),
                                  static_cast<double>(rhs->getIntValue()));
+    } else if ((lType == VPackValueType::String &&
+                rType == VPackValueType::Custom) ||
+               (lType == VPackValueType::Custom &&
+                rType == VPackValueType::String)) {
+      return (lType == VPackValueType::String) ? -1 : 1;
     }
 
     int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
@@ -2614,99 +2625,6 @@ std::string AstNode::toString() const {
   std::string buffer;
   stringify(buffer, false);
   return buffer;
-}
-
-std::string AstNode::toNormalizedString() const {
-  // binary operators that have the commutative property
-  bool isCommutative = (type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
-                        type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
-                        type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-                        type == NODE_TYPE_OPERATOR_BINARY_NE ||
-                        type == NODE_TYPE_OPERATOR_BINARY_AND ||
-                        type == NODE_TYPE_OPERATOR_BINARY_OR);
-
-  if (isCommutative && numMembers() == 2) {
-    std::string left = getMemberUnchecked(0)->toNormalizedString();
-    std::string right = getMemberUnchecked(1)->toNormalizedString();
-
-    if (left > right) {
-      std::swap(left, right);
-    }
-
-    std::string result;
-    result.reserve(left.size() + right.size() + 10);
-    result.append(left);
-    result.append(" ");
-    result.append(getTypeString());
-    result.append(" ");
-    result.append(right);
-    return result;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_NARY_AND ||
-      type == NODE_TYPE_OPERATOR_NARY_OR) {
-    std::vector<std::string> operands;
-    operands.reserve(numMembers());
-    for (size_t i = 0; i < numMembers(); ++i) {
-      operands.push_back(getMemberUnchecked(i)->toNormalizedString());
-    }
-    std::sort(operands.begin(), operands.end());
-
-    std::string result;
-    for (size_t i = 0; i < operands.size(); ++i) {
-      if (i > 0) {
-        result.append(" ");
-        result.append(getTypeString());
-        result.append(" ");
-      }
-      result.append(operands[i]);
-    }
-    return result;
-  }
-
-  if ((type == NODE_TYPE_OPERATOR_BINARY_IN ||
-       type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
-      numMembers() == 2) {
-    std::string lhs = getMemberUnchecked(0)->toNormalizedString();
-    AstNode const* rhs = getMemberUnchecked(1);
-
-    if (rhs->type == NODE_TYPE_ARRAY) {
-      std::vector<std::string> elements;
-      elements.reserve(rhs->numMembers());
-      for (size_t i = 0; i < rhs->numMembers(); ++i) {
-        elements.push_back(rhs->getMemberUnchecked(i)->toNormalizedString());
-      }
-      std::sort(elements.begin(), elements.end());
-
-      std::string result;
-      result.append(lhs);
-      result.append(type == NODE_TYPE_OPERATOR_BINARY_IN ? " IN ["
-                                                         : " NOT IN [");
-      for (size_t i = 0; i < elements.size(); ++i) {
-        if (i > 0) {
-          result.append(",");
-        }
-        result.append(elements[i]);
-      }
-      result.append("]");
-      return result;
-    }
-  }
-
-  if (type == NODE_TYPE_ARRAY) {
-    std::string result;
-    result.append("[");
-    for (size_t i = 0; i < numMembers(); ++i) {
-      if (i > 0) {
-        result.append(",");
-      }
-      result.append(getMemberUnchecked(i)->toNormalizedString());
-    }
-    result.append("]");
-    return result;
-  }
-
-  return toString();
 }
 
 /// @brief stringify the value of a node into a string buffer.

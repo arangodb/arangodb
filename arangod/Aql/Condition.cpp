@@ -120,7 +120,7 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
     return false;
   }
 
-  return compareAstNodes(lhs, rhs, true) == 0;
+  return compareAstNodes<false>(lhs, rhs, true) == 0;
 }
 
 int operationWeight(AstNode const* node) noexcept {
