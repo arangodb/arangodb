@@ -55,10 +55,9 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
         std::move(gid), std::move(log), std::move(lc), iter->second.metrics,
         std::move(scheduler));
   }
-  using namespace fmt::literals;
   throw basics::Exception::fmt(
       ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,
-      "type"_a = name);
+      name);
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
