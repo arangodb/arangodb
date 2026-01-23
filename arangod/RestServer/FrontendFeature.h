@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "RestServer/FrontendFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -37,7 +38,7 @@ class FrontendFeature final : public ArangodFeature {
   void prepare() override final;
 
  private:
-  bool _versionCheck;
+  FrontendFeatureOptions _options;
 };
 
 }  // namespace arangodb

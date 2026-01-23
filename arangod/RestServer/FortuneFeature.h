@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "RestServer/FortuneFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -37,6 +38,6 @@ class FortuneFeature final : public ArangodFeature {
   void start() override final;
 
  private:
-  bool _fortune;
+  FortuneFeatureOptions _options;
 };
 }  // namespace arangodb
