@@ -56,10 +56,8 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(Utils)
 include(PVS-Studio)
 
-if (NOT MSVC)
-  # put GCC version into GCC_VERSION variable
-  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-endif ()
+# put GCC version into GCC_VERSION variable
+execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
 
 ################################################################################
 ### compile options
@@ -103,41 +101,8 @@ if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
 endif ()
 
-if (MSVC)
-  # FIXME TODO find a workaround or do not use alignas(...)
-  # MSVC2017.1 - MSVC2018.7 does not correctly support alignas()
-  # MSVC2017.8 requires the following define
-  add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-
-  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  add_definitions(/bigobj)
-
-  # min/max macros interferes with our codebase
-  add_definitions(-DNOMINMAX)
-
-  add_definitions(-D_USE_MATH_DEFINES)
-
-  # we don't want obvious warning
-  add_compile_options(/wd4324)
-
-  if (MSVC_BUILD_THREADS)
-    set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
-  else ()
-    set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
-  endif ()
-
-  if (${MSVC_VERSION} STRGREATER_EQUAL 1930)
-    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
-    set(CMAKE_C_FLAGS "/Zc:static_assert- ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "/Zc:static_assert- ${CMAKE_CXX_FLAGS}")
-  endif ()
-else ()
-  # We want to force clang/gcc to use it, but only for C++ files
-  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>)
-endif ()
+# We want to force clang/gcc to use it, but only for C++ files
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>)
 
 # fix strange issue with utf_8_to_32_iterator failing
 # to follow std::bidirectional_iterator concept
@@ -200,7 +165,7 @@ include(OptimizeForArchitectureLocal)
 ################################################################################
 
 # find liburing
-if (USE_URING AND NOT MSVC)
+if (USE_URING)
   find_package(Uring)
 
   if (uring_FOUND)
@@ -220,9 +185,7 @@ set(IRESEARCH_EXTERNAL_INCLUDES
 include_directories(SYSTEM ${IRESEARCH_EXTERNAL_INCLUDES})
 
 # set pthread library
-if (NOT MSVC)
-  set(PTHREAD_LIBRARY pthread)
-endif ()
+set(PTHREAD_LIBRARY pthread)
 
 find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
