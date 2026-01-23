@@ -376,27 +376,18 @@ add_library(
 set_ipo(iresearch-ofst)
 
 # disable warnings for 3rd-party libs for a cleaner build
-if (MSVC)
+CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+if (SUPPORT_FPIC)
   target_compile_options(
     iresearch-ofst
-    # MSVC2015-2017 require "/bigobj" to compile debug build
-    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
-    PRIVATE "/W0"
-  )
-else ()
-  CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
-  if (SUPPORT_FPIC)
-    target_compile_options(
-      iresearch-ofst
-      PRIVATE "-fPIC"
-    )
-  endif ()
-  target_compile_options(
-    iresearch-ofst
-    PRIVATE "-Wno-sign-compare"
-    PRIVATE "-Wno-missing-field-initializers"
+    PRIVATE "-fPIC"
   )
 endif ()
+target_compile_options(
+  iresearch-ofst
+  PRIVATE "-Wno-sign-compare"
+  PRIVATE "-Wno-missing-field-initializers"
+)
 
 # force c++17 for ofst as transitional step
 set_target_properties(iresearch-ofst

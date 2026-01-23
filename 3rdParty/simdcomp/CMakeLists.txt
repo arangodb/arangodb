@@ -44,26 +44,24 @@ set(SIMDCOMP_SRCS
 
 # static library
 add_library(simdcomp-static STATIC "${SIMDCOMP_SRCS}")
-target_link_libraries(simdcomp-static ${BASE_FLAGS})
+target_link_libraries(simdcomp-static ${BASE_FLAGS} sse2neon)
 target_include_directories(
   simdcomp-static
   PUBLIC ${PROJECT_SOURCE_DIR}/include
-  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # shared library
 add_library(simdcomp-shared SHARED "${SIMDCOMP_SRCS}")
-target_link_libraries(simdcomp-shared ${BASE_FLAGS})
+target_link_libraries(simdcomp-shared ${BASE_FLAGS} sse2neon)
 target_include_directories(
   simdcomp-shared
   PUBLIC ${PROJECT_SOURCE_DIR}/include
-  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # object library
 add_library(simdcomp-obj OBJECT ${SIMDCOMP_SRCS})
+target_link_libraries(simdcomp-obj sse2neon)
 target_include_directories(
   simdcomp-obj
   PUBLIC ${PROJECT_SOURCE_DIR}/include
-  PUBLIC $<TARGET_PROPERTY:sse2neon,INTERFACE_INCLUDE_DIRECTORIES>
 )
