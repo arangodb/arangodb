@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,22 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#include "CrashHandler/DataSource.h"
 
-#include <CrashHandler/CrashHandler.h>
+namespace arangodb::crash_handler {
 
-TEST(CrashHandler, crashes) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::crash("BOOM"),
-              testing::KilledBySignal(SIGABRT), "BOOM");
+CrashHandlerDataSource::CrashHandlerDataSource(
+    std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
+    : _dataSourceRegistry(dataSourceRegistry) {
+  dataSourceRegistry->addDataSource(this);
 }
 
-TEST(CrashHandler, asserts) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::assertionFailure(
-                  __FILE__, __LINE__, "asserts", "no context", "zebras"),
-              testing::KilledBySignal(SIGABRT),
-              testing::MatchesRegex(
-                  "\\[LightCrashHandler\\] Assertion failed in file.*"));
+CrashHandlerDataSource::~CrashHandlerDataSource() {
+  _dataSourceRegistry->removeDataSource(this);
 }
+
+}  // namespace arangodb::crash_handler

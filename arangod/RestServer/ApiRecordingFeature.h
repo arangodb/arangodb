@@ -30,6 +30,7 @@
 #include <string_view>
 #include <thread>
 
+#include "CrashHandler/DataSource.h"
 #include "RestServer/arangod.h"
 #include "RestServer/ApiRecordingFeatureOptions.h"
 #include "Containers/BoundedList.h"
@@ -105,13 +106,16 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
       f.field("bindVars", record.bindVars));
 }
 
-class ApiRecordingFeature : public ArangodFeature {
+class ApiRecordingFeature : public ArangodFeature,
+                            public crash_handler::CrashHandlerDataSource {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(Server& server);
+  explicit ApiRecordingFeature(
+      Server& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -148,6 +152,11 @@ class ApiRecordingFeature : public ArangodFeature {
 
   bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
   bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
+
+  // CrashHandlerDataSource interface
+  velocypack::SharedSlice getCrashData() const override;
+
+  std::string_view getDataSourceName() const override;
 
  private:
   // Cleanup thread function

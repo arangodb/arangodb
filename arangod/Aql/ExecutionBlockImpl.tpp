@@ -309,7 +309,7 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
           << "ALERT: Double use of ExecutionBlock detected, "
           << " Blockinfo: " << printBlockInfo()
           << " Query ID: " << getQuery().id() << ", stacktrace:";
-      CrashHandler::logBacktrace();
+      crash_handler::CrashHandler::logBacktrace();
     }
     auto guard = scopeGuard([&]() noexcept {
       _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
@@ -318,7 +318,7 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
             << "ALERT: Found _logStacktrace:"
             << " Blockinfo: " << printBlockInfo()
             << " Query ID: " << getQuery().id() << ", stacktrace:";
-        CrashHandler::logBacktrace();
+        crash_handler::CrashHandler::logBacktrace();
       }
     });
     if (!_prefetchTask->isConsumed()) {
@@ -490,7 +490,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
         << "ALERT: Double use of ExecutionBlock detected, "
         << " Blockinfo: " << printBlockInfo()
         << " Query ID: " << getQuery().id() << ", stacktrace:";
-    CrashHandler::logBacktrace();
+    crash_handler::CrashHandler::logBacktrace();
   }
   auto waechter = scopeGuard([&]() noexcept {
     _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
@@ -499,7 +499,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
           << "ALERT: Found _logStacktrace:"
           << " Blockinfo: " << printBlockInfo()
           << " Query ID: " << getQuery().id() << ", stacktrace:";
-      CrashHandler::logBacktrace();
+      crash_handler::CrashHandler::logBacktrace();
     }
   });
 
@@ -2609,7 +2609,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
         << "ALERT: Detected " << count + 1 << " waiters for a PrefetchTask, "
         << " Blockinfo: " << _block.printBlockInfo()
         << " Query ID: " << _block.getQuery().id() << ", stacktrace:";
-    CrashHandler::logBacktrace();
+    crash_handler::CrashHandler::logBacktrace();
     _logStacktrace.store(true, std::memory_order_relaxed);
   }
   std::unique_lock<std::mutex> guard(_lock);
@@ -2633,7 +2633,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   count = _numberWaiters.fetch_sub(1, std::memory_order_relaxed);
   if (_logStacktrace.load(std::memory_order_relaxed) == true) {
     LOG_TOPIC("62516", WARN, Logger::AQL) << "ALERT: Found logStacktrace:";
-    CrashHandler::logBacktrace();
+    crash_handler::CrashHandler::logBacktrace();
     if (count == 0) {
       _logStacktrace.store(false, std::memory_order_relaxed);
     }
