@@ -213,6 +213,9 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
       // per second
       uint32_t const multiplier = 1u << std::min(tries, 20u);
       cv.wait_for(lock, 1us * multiplier);
+      if (_server.isStopping()) {
+        return;
+      }
     }
   }
 
