@@ -1056,6 +1056,8 @@ class instanceManager {
         crashUtils.aggregateDebugger(arangod, this.options);
         arangod.waitForExitAfterDebugKill();
       });
+    } else {
+      this.reconnect(false);
     }
     return rc;
   }
@@ -1295,7 +1297,7 @@ class instanceManager {
 
   reconnect(privileged)
   {
-    if (this.JWT !== null && privileged || this.forceJWT) {
+    if (this.JWT !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
