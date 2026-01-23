@@ -98,9 +98,6 @@ add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
 
-set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/frozen/include")
-set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/function2")
-
 add_library(arango_basic_errors STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         Basics/ErrorCode.cpp

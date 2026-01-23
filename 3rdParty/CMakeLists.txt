@@ -409,6 +409,13 @@ set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 
 ################################################################################
+### function2 library
+################################################################################
+
+set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2")
+set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2" PARENT_SCOPE)
+
+################################################################################
 ### Boost::Text library
 ################################################################################
 # Force C++17 for boost::text
