@@ -172,11 +172,11 @@ set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OF
 
 # Define set_ipo macro for use in this file
 if (IPO_ENABLED)
-  macro(SET_IPO _target)
+  macro(set_ipo _target)
     set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
   endmacro()
 else ()
-  macro(SET_IPO _target)
+  macro(set_ipo _target)
     # NOOP
   endmacro()
 endif ()
