@@ -444,12 +444,9 @@ add_subdirectory(fastText)
 ### tests only library
 ################################################################################
 
-# Note that this is currently enabled by default. This is because
-# lib/iresearch/CMakeLists.txt declares the option and this is then
-# a CACHE setting which resides in `CMakeCache.txt` and is thus visible
-# across the project. We currently do not run the tests in this subdirectory,
-# but we can fix this at a later stage. The include files are found
-# because of the library dependencies.
-if (USE_UTILS OR USE_TESTS OR USE_MICROBENCH OR USE_PYRESEARCH)
-  add_subdirectory(tests)
-endif ()
+# Some of the stuff here is needed in `lib/iresearch/CMakeLists.txt`.
+# It does depend on some switches there, but for now, we always
+# build the subdirectory tests here:
+# This is needed for clean builds, since `lib` with its switches
+# is only included later than this directory here.
+add_subdirectory(tests)
