@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
+#include "RestServer/ServerFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -57,7 +58,7 @@ class ServerFeature final : public ArangodFeature {
     return operationModeString(operationMode());
   }
 
-  std::vector<std::string> const& scripts() const { return _scripts; }
+  std::vector<std::string> const& scripts() const { return _options.scripts; }
 
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
@@ -66,11 +67,8 @@ class ServerFeature final : public ArangodFeature {
  private:
   void waitForHeartbeat();
 
-  bool _console = false;
-  bool _restServer = true;
-  bool _validateUtf8Strings = true;
+  ServerFeatureOptions _options;
   bool _isStopping = false;
-  std::vector<std::string> _scripts;
   int* _result;
   OperationMode _operationMode;
 };

@@ -27,6 +27,7 @@
 #include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/DaemonFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -45,7 +46,7 @@ class DaemonFeature final : public ArangodFeature {
   void daemonize() override final;
   void unprepare() override final;
 
-  void setDaemon(bool value) { _daemon = value; }
+  void setDaemon(bool value) { _options.daemon = value; }
   static void remapStandardFileDescriptors();
 
  private:
@@ -54,12 +55,7 @@ class DaemonFeature final : public ArangodFeature {
   void writePidFile(int);
   int waitForChildProcess(int);
 
- public:
-  bool _daemon = false;
-  std::string _pidFile = "";
-  std::string _workingDirectory = ".";
-
- private:
+  DaemonFeatureOptions _options;
   std::string _current;
 };
 
