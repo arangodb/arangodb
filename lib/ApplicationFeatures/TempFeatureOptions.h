@@ -23,34 +23,12 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/TempFeatureOptions.h"
+#include <string>
 
 namespace arangodb {
-namespace application_features {
-class GreetingsFeaturePhase;
-}
 
-class TempFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Temp"; }
-
-  template<typename Server>
-  TempFeature(Server& server, std::string const& appname)
-      : ApplicationFeature{server, *this}, _options(), _appname(appname) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
-  std::string path() const { return _options.path; }
-
- private:
-  TempFeatureOptions _options;
-  std::string _appname;
+struct TempFeatureOptions {
+  std::string path;
 };
 
 }  // namespace arangodb
