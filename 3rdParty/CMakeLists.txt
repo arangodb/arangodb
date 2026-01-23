@@ -316,7 +316,12 @@ else()
 endif()
 
 ### Suppressing all warnings from external libs
-add_compile_options(-Wno-all)
+add_compile_options(-w)
+
+### Note that this is also set on the top level CMakeLists.txt,
+### but only after the 3rdParty directory is added. Therefore,
+### we need to set it here as well.
+set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
 
 ################################################################################
 ### Highway library
