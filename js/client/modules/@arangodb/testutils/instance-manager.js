@@ -534,7 +534,7 @@ class instanceManager {
     /// todo
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
-      this.reconnect();
+      this.reconnect(false);
     }
     this.launchFinalize(startTime);
   }
