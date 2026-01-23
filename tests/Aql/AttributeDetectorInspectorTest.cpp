@@ -30,8 +30,9 @@ namespace arangodb::tests::aql {
 TEST_F(AttributeDetectorTest, InspectorFormat) {
   AttributeDetector::CollectionAccess access;
   access.collectionName = "testCollection";
-  access.readAttributes.insert("name");
-  access.readAttributes.insert("age");
+  // Attributes are now paths (vectors of strings)
+  access.readAttributes.insert({"name"});
+  access.readAttributes.insert({"age"});
   access.requiresAllAttributesRead = false;
   access.requiresAllAttributesWrite = true;
 
@@ -47,9 +48,12 @@ TEST_F(AttributeDetectorTest, InspectorFormat) {
   ASSERT_TRUE(read.isObject());
   EXPECT_FALSE(read["requiresAll"].getBool());
 
+  // Attributes are now arrays of arrays (each attribute is a path)
   velocypack::Slice readAttrs = read["attributes"];
   ASSERT_TRUE(readAttrs.isArray());
   EXPECT_EQ(readAttrs.length(), 2);
+  // Each attribute is itself an array (the path)
+  ASSERT_TRUE(readAttrs[0].isArray());
 
   velocypack::Slice write = slice["write"];
   ASSERT_TRUE(write.isObject());
@@ -61,14 +65,14 @@ TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
 
   AttributeDetector::CollectionAccess access1;
   access1.collectionName = "users";
-  access1.readAttributes.insert("name");
+  access1.readAttributes.insert({"name"});
   access1.requiresAllAttributesRead = false;
   access1.requiresAllAttributesWrite = false;
 
   AttributeDetector::CollectionAccess access2;
   access2.collectionName = "orders";
-  access2.readAttributes.insert("id");
-  access2.readAttributes.insert("total");
+  access2.readAttributes.insert({"id"});
+  access2.readAttributes.insert({"total"});
   access2.requiresAllAttributesRead = false;
   access2.requiresAllAttributesWrite = false;
 
@@ -92,16 +96,16 @@ TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
 }
 
 TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
-  AttributeDetector::CollectionAccess original;
-  original.collectionName = "products";
-  original.readAttributes.insert("price");
-  original.readAttributes.insert("stock");
-  original.writeAttributes.insert("lastModified");
-  original.requiresAllAttributesRead = false;
-  original.requiresAllAttributesWrite = false;
+  // Test read-only access (no write)
+  AttributeDetector::CollectionAccess readOnly;
+  readOnly.collectionName = "products";
+  readOnly.readAttributes.insert({"price"});
+  readOnly.readAttributes.insert({"stock"});
+  readOnly.requiresAllAttributesRead = false;
+  readOnly.requiresAllAttributesWrite = false;
 
   velocypack::Builder builder;
-  velocypack::serialize(builder, original);
+  velocypack::serialize(builder, readOnly);
   velocypack::Slice slice = builder.slice();
 
   EXPECT_EQ(slice["collection"].copyString(), "products");
@@ -111,10 +115,73 @@ TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
   ASSERT_TRUE(read["attributes"].isArray());
   EXPECT_EQ(read["attributes"].length(), 2);
 
+  // Write attributes array is always empty - write operations set
+  // requiresAllAttributesWrite=true instead of tracking individual attributes
   velocypack::Slice write = slice["write"];
   EXPECT_FALSE(write["requiresAll"].getBool());
   ASSERT_TRUE(write["attributes"].isArray());
-  EXPECT_EQ(write["attributes"].length(), 1);
+  EXPECT_EQ(write["attributes"].length(), 0);
+}
+
+TEST_F(AttributeDetectorTest, InspectorNestedAttributes) {
+  // Test nested attribute paths
+  AttributeDetector::CollectionAccess access;
+  access.collectionName = "documents";
+  // Top-level attribute
+  access.readAttributes.insert({"name"});
+  // Nested attribute: meta.lang
+  access.readAttributes.insert({"meta", "lang"});
+  // Deeply nested: item.value1.value2
+  access.readAttributes.insert({"item", "value1", "value2"});
+  access.requiresAllAttributesRead = false;
+  access.requiresAllAttributesWrite = false;
+
+  velocypack::Builder builder;
+  velocypack::serialize(builder, access);
+  velocypack::Slice slice = builder.slice();
+
+  EXPECT_EQ(slice["collection"].copyString(), "documents");
+
+  velocypack::Slice readAttrs = slice["read"]["attributes"];
+  ASSERT_TRUE(readAttrs.isArray());
+  EXPECT_EQ(readAttrs.length(), 3);
+
+  // Each attribute is an array representing the path
+  // Note: std::set orders paths lexicographically
+  // ["item", "value1", "value2"], ["meta", "lang"], ["name"]
+  bool foundNested = false;
+  for (size_t i = 0; i < readAttrs.length(); ++i) {
+    velocypack::Slice attr = readAttrs[i];
+    ASSERT_TRUE(attr.isArray());
+    if (attr.length() == 2 && attr[0].copyString() == "meta" &&
+        attr[1].copyString() == "lang") {
+      foundNested = true;
+    }
+  }
+  EXPECT_TRUE(foundNested) << "Expected to find nested path [\"meta\", \"lang\"]";
+}
+
+TEST_F(AttributeDetectorTest, InspectorWriteOperation) {
+  // Test write operation - always requires all attributes for both read/write
+  AttributeDetector::CollectionAccess writeOp;
+  writeOp.collectionName = "products";
+  writeOp.requiresAllAttributesRead = true;
+  writeOp.requiresAllAttributesWrite = true;
+
+  velocypack::Builder builder;
+  velocypack::serialize(builder, writeOp);
+  velocypack::Slice slice = builder.slice();
+
+  EXPECT_EQ(slice["collection"].copyString(), "products");
+
+  velocypack::Slice read = slice["read"];
+  EXPECT_TRUE(read["requiresAll"].getBool());
+
+  velocypack::Slice write = slice["write"];
+  EXPECT_TRUE(write["requiresAll"].getBool());
+  // Write attributes array is always empty
+  ASSERT_TRUE(write["attributes"].isArray());
+  EXPECT_EQ(write["attributes"].length(), 0);
 }
 
 }  // namespace arangodb::tests::aql

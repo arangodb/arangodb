@@ -39,8 +39,8 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
   for (auto& access : accesses) {
     seen.insert(access.collectionName);
     if (access.collectionName == "ordered") {
-      EXPECT_TRUE(access.readAttributes.contains("_from"));
-      EXPECT_TRUE(access.readAttributes.contains("_to"));
+      EXPECT_TRUE(access.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(access.readAttributes.contains({"_to"}));
       EXPECT_TRUE(access.requiresAllAttributesRead);
     } else {
       EXPECT_TRUE(access.requiresAllAttributesRead);
