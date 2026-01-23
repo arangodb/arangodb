@@ -93,7 +93,8 @@ std::ostream& operator<<(std::ostream& s,
 template<>
 struct std::formatter<::arangodb::basics::Identifier>
     : std::formatter<::arangodb::basics::Identifier::BaseType> {
-  auto format(::arangodb::basics::Identifier ident, std::format_context& fc) const {
+  auto format(::arangodb::basics::Identifier ident,
+              std::format_context& fc) const {
     return std::formatter<
         typename ::arangodb::basics::Identifier::BaseType>::format(ident.id(),
                                                                    fc);

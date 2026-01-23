@@ -33,7 +33,6 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Basics/VelocyPackHelper.h"
 
-
 #include <velocypack/Iterator.h>
 
 #include <type_traits>

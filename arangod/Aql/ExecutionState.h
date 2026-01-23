@@ -85,7 +85,8 @@ template<>
 struct std::formatter<::arangodb::aql::ExecutionState>
     : formatter<std::string_view> {
   // parse is inherited from formatter<string_view>.
-  auto format(::arangodb::aql::ExecutionState state, std::format_context& fc) const {
+  auto format(::arangodb::aql::ExecutionState state,
+              std::format_context& fc) const {
     auto view = toStringView(state);
 
     return formatter<std::string_view>::format(view, fc);
@@ -96,7 +97,8 @@ template<>
 struct std::formatter<::arangodb::aql::ExecutorState>
     : formatter<std::string_view> {
   // parse is inherited from formatter<string_view>.
-  auto format(::arangodb::aql::ExecutorState state, std::format_context& fc) const {
+  auto format(::arangodb::aql::ExecutorState state,
+              std::format_context& fc) const {
     auto view = toStringView(state);
 
     return formatter<std::string_view>::format(view, fc);

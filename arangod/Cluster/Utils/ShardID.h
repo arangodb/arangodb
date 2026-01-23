@@ -107,11 +107,10 @@ struct std::hash<arangodb::ShardID> {
 // Make ShardID std::formatable
 template<>
 struct std::formatter<arangodb::ShardID> {
-  constexpr auto parse(std::format_parse_context& ctx) {
-    return ctx.begin();
-  }
+  constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
 
-  auto format(arangodb::ShardID const& shardId, std::format_context& ctx) const {
+  auto format(arangodb::ShardID const& shardId,
+              std::format_context& ctx) const {
     return std::format_to(ctx.out(), "s{}", shardId.id());
   }
 };
