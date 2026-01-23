@@ -322,7 +322,6 @@ add_compile_options(-Wno-all)
 ### Highway library
 ################################################################################
 
-set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(highway)
 
 ################################################################################
