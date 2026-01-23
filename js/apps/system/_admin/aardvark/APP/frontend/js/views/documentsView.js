@@ -237,8 +237,8 @@
       var queryBody = this.collection.buildDownloadDocumentQuery();
 
       if (queryBody !== '' || queryBody !== undefined || queryBody !== null) {
-        var url = 'query/result/download';
-        arangoHelper.downloadQuery(url, queryBody);
+        var filename = 'documents-' + this.collection.collectionID;
+        arangoHelper.downloadQueryResults(queryBody, filename);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
       }
