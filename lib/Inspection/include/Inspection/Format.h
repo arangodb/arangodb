@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/os.h>
+
+#include <format>
+#include <sstream>
+
 
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackSaveInspector.h"
@@ -33,14 +34,14 @@
 #include "Inspection/detail/traits.h"
 
 template<>
-struct fmt::formatter<VPackSlice> {
+struct std::formatter<VPackSlice> {
   void set_debug_format() = delete;
 
   enum class Presentation { NotPretty, Pretty };
   // Presentation format: 'u' - use toJson, 'p' - use toString.
   Presentation presentation = Presentation::NotPretty;
 
-  constexpr auto parse(fmt::format_parse_context& ctx)
+  constexpr auto parse(std::format_parse_context& ctx)
       -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end) {
@@ -52,7 +53,7 @@ struct fmt::formatter<VPackSlice> {
         it++;
       }
     }
-    if (it != end && *it != '}') throw fmt::format_error("invalid format");
+    if (it != end && *it != '}') throw std::format_error("invalid format");
     return it;
   }
 
@@ -64,17 +65,17 @@ struct fmt::formatter<VPackSlice> {
     options.dumpAttributesInIndexOrder = false;
     switch (presentation) {
       case Presentation::Pretty:
-        return fmt::format_to(ctx.out(), "{}", slice.toString(&options));
+        return std::format_to(ctx.out(), "{}", slice.toString(&options));
       case Presentation::NotPretty:
       default:
-        return fmt::format_to(ctx.out(), "{}", slice.toJson(&options));
+        return std::format_to(ctx.out(), "{}", slice.toJson(&options));
     }
   }
 };
 
 namespace arangodb::inspection {
 // Formats an object of type T that has an overloaded inspector.
-struct inspection_formatter : fmt::formatter<VPackSlice> {
+struct inspection_formatter : std::formatter<VPackSlice> {
   template<typename T, typename FormatContext,
            typename Inspector = VPackSaveInspector<NoContext>>
   requires detail::HasInspectOverload<T, Inspector>::value auto format(
@@ -86,9 +87,9 @@ struct inspection_formatter : fmt::formatter<VPackSlice> {
         VPackObjectBuilder ob(&error);
         error.add("error", VPackValue(sharedSlice.error().error()));
       }
-      return fmt::formatter<VPackSlice>::format(error.slice(), ctx);
+      return std::formatter<VPackSlice>::format(error.slice(), ctx);
     }
-    return fmt::formatter<VPackSlice>::format(sharedSlice.get().slice(), ctx);
+    return std::formatter<VPackSlice>::format(sharedSlice.get().slice(), ctx);
   }
 };
 
@@ -110,11 +111,11 @@ auto json(T const& value, JsonPrintFormat format = JsonPrintFormat::kCompact,
 }  // namespace arangodb::inspection
 
 template<class T, class Char>
-struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
-    : formatter<basic_string_view<Char>, Char> {
+struct std::formatter<arangodb::inspection::JsonPrintable<T>, Char>
+    : std::formatter<std::basic_string_view<Char>, Char> {
   void set_debug_format() = delete;
 
-  constexpr auto parse(fmt::format_parse_context& ctx)
+  constexpr auto parse(std::format_parse_context& ctx)
       -> decltype(ctx.begin()) {
     auto it = ctx.begin(), end = ctx.end();
     if (it != end) {
@@ -134,39 +135,29 @@ struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
       ++it;
     }
 
-    if (it != end && *it != '}') throw fmt::format_error("invalid format");
+    if (it != end && *it != '}') throw std::format_error("invalid format");
     return it;
   }
 
   template<typename OutputIt>
   auto format(arangodb::inspection::JsonPrintable<T> const& v,
-              basic_format_context<OutputIt, Char>& ctx) const
+              std::basic_format_context<OutputIt, Char>& ctx) const
       -> decltype(ctx.out()) {
     auto format = _format.value_or(v.format);
 
-    auto buffer = fmt::basic_memory_buffer<Char>();
-    format_value(buffer, v.value, ctx.locale(), format,
-                 _quoteFieldNames && v.quoteFieldNames);
-    return formatter<basic_string_view<Char>, Char>::format(
-        {buffer.data(), buffer.size()}, ctx);
+    // Use stringstream to capture the JSON output
+    std::basic_ostringstream<Char> oss;
+    arangodb::inspection::JsonPrintInspector<> insp(oss, format,
+                                                     _quoteFieldNames && v.quoteFieldNames);
+    auto res = insp.apply(v.value);
+    TRI_ASSERT(res.ok());  // TODO - print error if failed?
+
+    auto str = oss.str();
+    return std::formatter<std::basic_string_view<Char>, Char>::format(
+        std::basic_string_view<Char>(str.data(), str.size()), ctx);
   }
 
  private:
-  static void format_value(detail::buffer<Char>& buf, const T& value,
-                           detail::locale_ref loc,
-                           arangodb::inspection::JsonPrintFormat format,
-                           bool quoteFieldNames) {
-    auto&& format_buf = detail::formatbuf<std::basic_streambuf<Char>>(buf);
-    auto&& output = std::basic_ostream<Char>(&format_buf);
-#if !defined(FMT_STATIC_THOUSANDS_SEPARATOR)
-    if (loc) output.imbue(loc.get<std::locale>());
-#endif
-    arangodb::inspection::JsonPrintInspector<> insp(output, format,
-                                                    quoteFieldNames);
-    auto res = insp.apply(value);
-    assert(res.ok());  // TODO - print error if failed?
-    output.exceptions(std::ios_base::failbit | std::ios_base::badbit);
-  }
 
   // format: 'm' - Minimal, 'c' - Compact, 'p' - Pretty.
   std::optional<arangodb::inspection::JsonPrintFormat> _format;
