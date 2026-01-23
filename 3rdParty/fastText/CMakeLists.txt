@@ -17,12 +17,10 @@ include_directories(src)
 
 set(CMAKE_CXX_STANDARD 11)
 
-if (NOT MSVC)
-  find_package(Threads REQUIRED)
-  link_libraries(Threads::Threads)
+find_package(Threads REQUIRED)
+link_libraries(Threads::Threads)
 
-  add_compile_options(-funroll-loops)
-endif()
+add_compile_options(-funroll-loops)
 
 set(HEADER_FILES
     src/args.h
@@ -57,26 +55,18 @@ set(SOURCE_FILES
     src/vector.cc)
 
 
-if (NOT MSVC)
-  include(GNUInstallDirs)
-  configure_file("fasttext.pc.in" "fasttext.pc" @ONLY)
-  install(FILES "${CMAKE_BINARY_DIR}/fasttext.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-endif()
+include(GNUInstallDirs)
+configure_file("fasttext.pc.in" "fasttext.pc" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/fasttext.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 add_library(fasttext-shared SHARED ${SOURCE_FILES} ${HEADER_FILES})
 add_library(fasttext-static STATIC ${SOURCE_FILES} ${HEADER_FILES})
 add_library(fasttext-static_pic STATIC ${SOURCE_FILES} ${HEADER_FILES})
 
 # Suppress warnings for external library
-if (MSVC)
-  target_compile_options(fasttext-static PRIVATE "/W0")
-  target_compile_options(fasttext-shared PRIVATE "/W0")
-  target_compile_options(fasttext-static_pic PRIVATE "/W0")
-else ()
-  target_compile_options(fasttext-static PRIVATE "-Wno-sign-compare")
-  target_compile_options(fasttext-shared PRIVATE "-Wno-sign-compare")
-  target_compile_options(fasttext-static_pic PRIVATE "-Wno-sign-compare")
-endif ()
+target_compile_options(fasttext-static PRIVATE "-Wno-sign-compare")
+target_compile_options(fasttext-shared PRIVATE "-Wno-sign-compare")
+target_compile_options(fasttext-static_pic PRIVATE "-Wno-sign-compare")
 
 set_target_properties(fasttext-shared PROPERTIES OUTPUT_NAME fasttext
   SOVERSION "${fasttext_VERSION_MAJOR}")
