@@ -2565,7 +2565,7 @@ void Supervision::checkBrokenCollections() {
             LOG_TOPIC("fe523", INFO, Logger::SUPERVISION)
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
-                << dbpair.first;
+                << dbpair.first << "/" << collectionPair.first;
             // account for smart edge collections and delete their
             // shadowCollections as well
             std::vector<std::string> shadowCollections;
@@ -2573,7 +2573,7 @@ void Supervision::checkBrokenCollections() {
                     collectionPair.second->get("shadowCollections")) {
               if (auto arr = shadowCols->getArray()) {
                 for (Node::VPackStringType const& colName : *arr) {
-                  shadowCollections.emplace_back(colName.copyString());
+                  shadowCollections.emplace_back(std::to_string(colName.getNumericValue<uint64_t>()));
                 }
               }
             }
