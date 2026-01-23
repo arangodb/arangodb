@@ -2345,21 +2345,20 @@ void Supervision::deleteBrokenDatabase(AgentInterface* agent,
   }
 }
 
-void Supervision::deleteBrokenCollection(AgentInterface* agent,
-                                         std::string const& database,
-                                         std::string const& collection,
-                                         std::string const& coordinatorID,
-                                         uint64_t rebootID,
-                                         bool coordinatorFound) {
+void Supervision::deleteBrokenCollection(
+    AgentInterface* agent, std::string const& database,
+    std::string const& collection, std::string const& coordinatorID,
+    std::vector<std::string> const& additionalCollections, uint64_t rebootID,
+    bool coordinatorFound) {
   velocypack::Builder envelope;
   {
     VPackArrayBuilder trxs(&envelope);
     {
-      std::string collection_path = plan()
-                                        ->collections()
-                                        ->database(database)
-                                        ->collection(collection)
-                                        ->str();
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
 
       VPackArrayBuilder trx(&envelope);
       {
@@ -2371,19 +2370,28 @@ void Supervision::deleteBrokenCollection(AgentInterface* agent,
         }
         // delete the collection from Plan/Collections/<db>
         {
-          VPackObjectBuilder o(&envelope, collection_path);
+          VPackObjectBuilder o(&envelope, collectionPath);
+          envelope.add("op", VPackValue("delete"));
+        }
+        for (auto const& additionalCollection : additionalCollections) {
+          std::string path = plan()
+                                 ->collections()
+                                 ->database(database)
+                                 ->collection(additionalCollection)
+                                 ->str();
+          VPackObjectBuilder o(&envelope, path);
           envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this collection is still in Plan and is building
         VPackObjectBuilder preconditions(&envelope);
-        envelope.add(collection_path + "/" + StaticStrings::AttrIsBuilding,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrIsBuilding,
                      VPackValue(true));
         envelope.add(
-            collection_path + "/" + StaticStrings::AttrCoordinatorRebootId,
+            collectionPath + "/" + StaticStrings::AttrCoordinatorRebootId,
             VPackValue(rebootID));
-        envelope.add(collection_path + "/" + StaticStrings::AttrCoordinator,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrCoordinator,
                      VPackValue(coordinatorID));
 
         {
@@ -2558,10 +2566,22 @@ void Supervision::checkBrokenCollections() {
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
                 << dbpair.first;
+            // account for smart edge collections and delete their
+            // shadowCollections as well
+            std::vector<std::string> shadowCollections;
+            if (auto shadowCols =
+                    collectionPair.second->get("shadowCollections")) {
+              if (auto arr = shadowCols->getArray()) {
+                for (Node::VPackStringType const& colName : *arr) {
+                  shadowCollections.emplace_back(colName.copyString());
+                }
+              }
+            }
+
             // delete this collection
             deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
-                                   ev.coordinatorId, ev.coordinatorRebootId,
-                                   ev.coordinatorFound);
+                                   ev.coordinatorId, shadowCollections,
+                                   ev.coordinatorRebootId, ev.coordinatorFound);
           });
 
       // also check all indexes of the collection to see if they are abandoned
