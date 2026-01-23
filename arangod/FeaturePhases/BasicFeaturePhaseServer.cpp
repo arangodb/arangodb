@@ -74,12 +74,14 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   if (server.hasFeature<FileDescriptorsFeature>()) {
     startsAfter<FileDescriptorsFeature>();
   }
+#ifdef USE_ENTERPRISE
   if (server.hasFeature<AuditFeature>()) {
     startsAfter<AuditFeature>();
   }
   if (server.hasFeature<EncryptionFeature>()) {
     startsAfter<EncryptionFeature>();
   }
+#endif
 }
 
 }  // namespace arangodb::application_features
