@@ -317,7 +317,7 @@ class testRunner {
         }
       };
     }
-    this.instanceManager.reconnect();
+    this.instanceManager.reconnect(false);
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
