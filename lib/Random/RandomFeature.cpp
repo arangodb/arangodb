@@ -35,8 +35,7 @@ namespace arangodb {
 
 RandomFeature::RandomFeature(application_features::ApplicationServer& server,
                              size_t registration)
-    : ApplicationFeature(server, registration, name()),
-      _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
+    : ApplicationFeature(server, registration, name()) {
   setOptional(false);
 }
 
@@ -51,8 +50,8 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "The random number generator to use (1 = MERSENNE, 2 = RANDOM, "
           "3 = URANDOM, 4 = COMBINED). The options 2, 3, and 4 are deprecated "
           "and will be removed in a future version.",
-          new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
-                                                       generators),
+          new DiscreteValuesParameter<UInt32Parameter>(
+              &_options.randomGenerator, generators),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(- `1`: a pseudo-random number generator using an
@@ -65,7 +64,8 @@ implication of the Mersenne Twister MT19937 algorithm
 }
 
 void RandomFeature::prepare() {
-  RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
+  RandomGenerator::initialize(
+      static_cast<RandomGenerator::RandomType>(_options.randomGenerator));
 }
 
 }  // namespace arangodb

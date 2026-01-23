@@ -23,31 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Random/RandomFeatureOptions.h"
+#include <cstdint>
+
+#include "Random/RandomGenerator.h"
 
 namespace arangodb {
 
-class LoggerFeature;
-
-class RandomFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Random"; }
-
-  template<typename Server>
-  explicit RandomFeature(Server& server)
-      : RandomFeature{server, Server::template id<RandomFeature>()} {
-    startsAfter<LoggerFeature, Server>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
- private:
-  RandomFeature(application_features::ApplicationServer& server,
-                size_t registration);
-
-  RandomFeatureOptions _options;
+struct RandomFeatureOptions {
+  uint32_t randomGenerator =
+      static_cast<uint32_t>(RandomGenerator::RandomType::MERSENNE);
 };
 
 }  // namespace arangodb
