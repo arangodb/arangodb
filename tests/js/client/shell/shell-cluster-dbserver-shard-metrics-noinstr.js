@@ -366,27 +366,22 @@ function ClusterDBServerShardMetricsTestSuite() {
         internal.wait(1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
         if (shardsNumMetricValue !== totalLeaderCount) {
-          print(`shardsNumMetricValue: ${shardsNumMetricValue} !== totalLeaderCount: ${totalLeaderCount}`);
           continue;
         }
         const shardsLeaderNumMetricValue = getDBServerMetricSum(onlineServers, shardsLeaderNumMetric);
         if (shardsLeaderNumMetricValue < 1) {
-          print(`shardsLeaderNumMetricValue: ${shardsLeaderNumMetricValue} < 1`);
           continue;
         }
         shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
         if (shardsOutOfSyncNumMetricValue < 1) {
-          print(`shardsOutOfSyncNumMetricValue: ${shardsOutOfSyncNumMetricValue} < 1`);
           continue;
         }
         shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
         if (shardsNotReplicatedNumMetricValue < 1) {
-          print(`shardsNotReplicatedNumMetricValue: ${shardsNotReplicatedNumMetricValue} < 1`);
           continue;
         }
         const followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
         if (followersOutOfSyncNumMetricValue < 1) {
-          print(`followersOutOfSyncNumMetricValue: ${followersOutOfSyncNumMetricValue} < 1`);
           continue;
         }
 
