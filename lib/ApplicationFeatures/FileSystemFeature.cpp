@@ -39,7 +39,7 @@ void FileSystemFeature::collectOptions(
       ->addOption("--use-splice-syscall",
                   "Use the splice() syscall for file copying (may not be "
                   "supported on all filesystems).",
-                  new BooleanParameter(&_useSplice), options::makeFlags())
+                  new BooleanParameter(&_options.useSplice), options::makeFlags())
       .setIntroducedIn(30904)
       .setLongDescription(R"(While the syscall is generally available since
 Linux 2.6.x, it is also required that the underlying filesystem supports the
@@ -51,6 +51,6 @@ efficient, but more portable file copying method instead, which should work on
 all filesystems.)");
 }
 
-void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_useSplice); }
+void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_options.useSplice); }
 
 }  // namespace arangodb

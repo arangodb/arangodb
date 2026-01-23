@@ -23,33 +23,11 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/FileSystemFeatureOptions.h"
-
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
-class LoggerFeature;
-
-class FileSystemFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "FileSystem"; }
-
-  template<typename Server>
-  explicit FileSystemFeature(Server& server)
-      : ApplicationFeature{server, *this} {
-    setOptional(false);
-    startsAfter<LoggerFeature, Server>();
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-
- private:
-  FileSystemFeatureOptions _options;
+struct FileSystemFeatureOptions {
+  // whether or not to use the splice() syscall on Linux
+  bool useSplice = true;
 };
 
 }  // namespace arangodb
