@@ -67,23 +67,22 @@ function attributeDetectorRemoteTestSuite() {
 
     testRemoteSingleRead: function () {
       const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
-      const explainResult = db._createStatement({query: query}).explain();
+      const explainResult = db._createStatement({query: query, options: {includeAbacAccesses: true}}).explain();
       const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Index", "REMOTE_SINGLE should be in INDEX mode for read operations");
+        assertEqual(remoteNode.mode, "IndexNode", "REMOTE_SINGLE should be in INDEX mode for read operations");
       }
 
-      if (explainResult.extra && explainResult.extra.abacAccesses) {
-        const accesses = explainResult.extra.abacAccesses;
-        assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
-        const collAccess = accesses.find(a => a.collection === cn);
-        if (collAccess) {
-          assertTrue(collAccess.read.requiresAll || collAccess.read.attributes.length > 0,
-                     "Should have read access information");
-          assertFalse(collAccess.write.requiresAll, "Read-only operation should not require all write attributes");
-        }
+      const accesses = explainResult.abacAccesses;
+      console.log(accesses);
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll || collAccess.read.attributes.length > 0,
+            "Should have read access information");
+        assertFalse(collAccess.write.requiresAll, "Read-only operation should not require all write attributes");
       }
     },
 
@@ -94,7 +93,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Insert", "REMOTE_SINGLE should be in INSERT mode for insert operations");
+        assertEqual(remoteNode.mode, "InsertNode", "REMOTE_SINGLE should be in INSERT mode for insert operations");
       }
 
       if (explainResult.extra && explainResult.extra.abacAccesses) {
@@ -113,7 +112,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Update", "REMOTE_SINGLE should be in UPDATE mode for update operations");
+        assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode for update operations");
       }
     },
 
@@ -123,7 +122,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Replace", "REMOTE_SINGLE should be in REPLACE mode for replace operations");
+        assertEqual(remoteNode.mode, "ReplaceNode", "REMOTE_SINGLE should be in REPLACE mode for replace operations");
       }
     },
 
@@ -133,7 +132,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Remove", "REMOTE_SINGLE should be in REMOVE mode for remove operations");
+        assertEqual(remoteNode.mode, "RemoveNode", "REMOTE_SINGLE should be in REMOVE mode for remove operations");
       }
     },
 
@@ -153,7 +152,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Update", "REMOTE_SINGLE should be in UPDATE mode");
+        assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode");
       }
     },
 
@@ -163,7 +162,7 @@ function attributeDetectorRemoteTestSuite() {
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
-        assertEqual(remoteNode.mode, "Update", "REMOTE_SINGLE should be in UPDATE mode");
+        assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode");
       }
     }
   };

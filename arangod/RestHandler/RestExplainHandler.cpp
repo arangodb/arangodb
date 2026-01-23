@@ -25,8 +25,9 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Logger/Logger.h"
 #include "Transaction/StandaloneContext.h"
+
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 
@@ -133,6 +134,10 @@ void RestExplainHandler::explainQuery() {
   }
   if (extras.hasKey("stats")) {
     result.add("stats", extras.get("stats"));
+  }
+  if (extras.hasKey("abacAccesses")) {
+    LOG_DEVEL << "explainQuery(): abacAccesses: " << extras.get("abacAccesses").toString();
+    result.add("abacAccesses", extras.get("abacAccesses"));
   }
   if (queryResult.planCacheKey.has_value()) {
     result.add("planCacheKey",

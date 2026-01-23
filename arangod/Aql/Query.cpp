@@ -89,6 +89,8 @@
 #include "V8Server/V8Executor.h"
 #endif
 
+#include "CollectionAccess.h"
+
 #include <absl/strings/str_cat.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -1399,6 +1401,8 @@ QueryResult Query::explain() {
   options.buildUnindexedArrays = true;
   result.data = std::make_shared<VPackBuilder>(&options);
 
+  std::vector<AttributeDetector::CollectionAccess> abacAccessesForExplain;
+
   try {
     if (tryLoadPlanFromCache()) {
       TRI_ASSERT(_planCacheKey.has_value());
@@ -1574,6 +1578,12 @@ QueryResult Query::explain() {
           _planCacheKey.reset();
         }
       }
+      // ABAC collection accesses
+      // explain() doesn't call preparePlan() that invokes AttributeDetector, so
+      // it needs to invoke AttributeDetector independently using bestPlan
+      AttributeDetector detector(bestPlan.get());
+      detector.detect();
+      abacAccessesForExplain = detector.getCollectionAccesses();
     }
 
     // the query object no owns the memory used by the plan(s)
@@ -1601,15 +1611,12 @@ QueryResult Query::explain() {
         // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
       }
-      // ABAC collection accesses
-      if (!_abacAccesses.empty()) {
-        b.add(VPackValue("abacAccesses"));
-        b.openArray();
-        for (auto const& access : _abacAccesses) {
-          velocypack::serialize(b, access);
-        }
-        b.close();
+
+      b.add("abacAccesses", velocypack::ValueType::Array);
+      for (auto const& access : abacAccessesForExplain) {
+        velocypack::serialize(b, access);
       }
+      b.close();
     }
   } catch (Exception const& ex) {
     result.reset(Result(
