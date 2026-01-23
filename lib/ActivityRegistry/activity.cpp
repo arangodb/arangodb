@@ -54,76 +54,33 @@ auto operator<<(
 }
 
 auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
-  return ActivityInRegistrySnapshot{
-      .name = name,
-      .state = state,
-      .id = id(),
-      .parent = std::visit(
-          overloaded{
-              [&](RootActivity const& root) { return ParentSnapshot{root}; },
-              [&](NodeReference const& parent) {
-                return ParentSnapshot{ActivityId{parent->data.id()}};
-              }},
-          parent),
-      .thread = running_thread,
-      .source_location = basics::SourceLocationSnapshot{
-          .file_name = source_location.file_name(),
-          .function_name = source_location.function_name(),
-          .line = source_location.line()}};
+  return ActivityInRegistrySnapshot{.name = name,
+                                    .state = state,
+                                    .id = id(),
+                                    .parent = parent,
+                                    .metadata = metadata};
 }
 
-namespace {
-/**
-   Marks incoming node for deletion and deletes the node's parent reference.
+Activity::Activity(std::string name, Metadata metadata)
+    : _node_in_registry{get_thread_registry().add([&]() {
+        return ActivityInRegistry{.name = std::move(name),
+                                  .state = State::Active,
+                                  .parent = {RootActivity{}},
+                                  .metadata = metadata};
+      })} {}
 
-   Deleting the parent reference makes sure that a parent can directly be marked
-   for deletion when all its children are marked. Otherwise, we need to wait for
-   the garbage collection to delete the references, possibly requiring several
-   garbage collection cycles to delete all hierarchy levels.
- */
-auto mark_finished_nodes_for_deletion(Node* node) {
-  auto specific_node =
-      reinterpret_cast<containers::ThreadOwnedList<ActivityInRegistry>::Node*>(
-          node);
-
-  // get rid of parent activity reference and delete a shared reference
-  specific_node->data.parent = {RootActivity{}};
-
-  // mark node for deletion needs to be last action on specific_node, because
-  // then a garbage collection run can destroy the node at any time
-  specific_node->list->mark_for_deletion(specific_node);
-}
-}  // namespace
-
-Activity::Activity(std::string name, std::source_location loc)
-    : _node_in_registry{NodeReference(
-          reinterpret_cast<Node*>(get_thread_registry().add([&]() {
-            if (auto current = *get_current_activity(); current != nullptr) {
-              return ActivityInRegistry::child(
-                  std::move(name), current->_node_in_registry, std::move(loc));
-            }
-            return ActivityInRegistry::root(std::move(name), std::move(loc));
-          })),
-          mark_finished_nodes_for_deletion)} {
-  // remember its parent activity to switch the current activity back to the
-  // parent activity when this activity is destroyed
-  parent = *get_current_activity();
-  *get_current_activity() = this;
-}
+Activity::Activity(std::string name, Metadata metadata, ActivityId parent)
+    : _node_in_registry{get_thread_registry().add([&]() {
+        return ActivityInRegistry{.name = std::move(name),
+                                  .state = State::Active,
+                                  .parent = {Parent{parent}},
+                                  .metadata = metadata};
+      })} {}
 
 Activity::~Activity() {
-  _node_in_registry->data.state.store(State::Finished,
-                                      std::memory_order_relaxed);
-  *get_current_activity() = parent;
+  if (_node_in_registry != nullptr) {
+    _node_in_registry->list->mark_for_deletion(_node_in_registry.get());
+  }
 }
 
 auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
-
-auto arangodb::activity_registry::get_current_activity() -> Activity** {
-  struct Guard {
-    Activity* activity = nullptr;
-  };
-  // make sure that this is only created once on a thread
-  static thread_local auto current = Guard{};
-  return &current.activity;
-}

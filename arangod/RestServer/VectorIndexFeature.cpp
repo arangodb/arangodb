@@ -41,7 +41,7 @@ void VectorIndexFeature::collectOptions(
           "--vector-index",
           "Enable the vector index feature. "
           "Once in use, this option cannot be turned off again.",
-          new options::BooleanParameter(&_useVectorIndex),
+          new options::BooleanParameter(&_options.useVectorIndex),
           options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                              arangodb::options::Flags::OnCoordinator,
                              arangodb::options::Flags::OnDBServer,
@@ -55,7 +55,7 @@ leave the option enabled.)");
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
-  return _useVectorIndex;
+  return _options.useVectorIndex;
 }
 
 }  // namespace arangodb

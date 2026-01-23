@@ -1165,7 +1165,7 @@ ClusterInfo& ClusterFeature::clusterInfo() {
       LOG_TOPIC("325b6", ERR, arangodb::Logger::CLUSTER)
           << "_clusterInfo is null, but server is not shutting down";
       //  log crash dump feature
-      CrashHandler::logBacktrace();
+      crash_handler::CrashHandler::logBacktrace();
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }

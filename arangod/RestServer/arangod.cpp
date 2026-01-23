@@ -23,11 +23,11 @@
 
 #include "RestServer/arangod.h"
 
-#include <string_view>
 #include <type_traits>
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
+#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/arangod_includes.h"
 
 using namespace arangodb;
@@ -55,7 +55,10 @@ static auto const kNonServerFeatures =
                std::type_index(typeid(SslServerFeature)),
                std::type_index(typeid(StatisticsFeature))};
 
-void ArangodServer::addFeatures(int* ret, std::string_view binaryName) {
+void ArangodServer::addFeatures(
+    int* ret, std::string_view binaryName,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   addFeature<CommunicationFeaturePhase>();
@@ -85,9 +88,9 @@ void ArangodServer::addFeatures(int* ret, std::string_view binaryName) {
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   auto& agency = addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>();
+  addFeature<ApiRecordingFeature>(dataSourceRegistry);
   addFeature<AqlFeature>();
-  addFeature<async_registry::Feature>();
+  addFeature<async_registry::Feature>(dataSourceRegistry);
   addFeature<activity_registry::Feature>();
   addFeature<AuthenticationFeature>();
   addFeature<BootstrapFeature>();
@@ -99,6 +102,7 @@ void ArangodServer::addFeatures(int* ret, std::string_view binaryName) {
   auto& cacheManager = addFeature<CacheManagerFeature>(cacheOptions);
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   addFeature<ClusterFeature>();
+  addFeature<CrashHandlerFeature>(dumpManager);
   auto& database = addFeature<DatabaseFeature>();
   addFeature<ClusterUpgradeFeature>(database);
   addFeature<ConfigFeature>(std::string{binaryName});
@@ -224,8 +228,12 @@ void ArangodServer::addFeatures(int* ret, std::string_view binaryName) {
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler crashHandler;  // initializes the crash handler and starts its
-                                // thread the destructor will stop it.
+    auto dataSourceRegistry =
+        std::make_shared<crash_handler::DataSourceRegistry>();
+    auto crashDumpManager =
+        std::make_shared<crash_handler::DumpManager>(dataSourceRegistry);
+    crash_handler::CrashHandler crashHandler(crashDumpManager);
+    // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
 
@@ -238,17 +246,18 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     ServerState state{server};
 
     server.addReporter(
-        {[&](ArangodServer::State state) {
-           CrashHandler::setState(ArangodServer::stringifyState(state));
+        {[&server](ArangodServer::State state) {
+           crash_handler::CrashHandler::setState(
+               ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
-             // drop priveleges before starting features
+             // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
            }
          },
          {}});
 
-    server.addFeatures(&ret, name);
+    server.addFeatures(&ret, name, crashDumpManager, dataSourceRegistry);
 
     try {
       server.run(argc, argv);

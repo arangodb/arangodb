@@ -47,7 +47,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(Server& server)
-    : ArangodFeature{server, *this}, _requiredDirectoryState("any") {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
@@ -62,7 +62,7 @@ void DatabasePathFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--database.directory", "The path to the database directory.",
-                  new StringParameter(&_directory))
+                  new StringParameter(&_options.directory))
       .setLongDescription(R"(This defines the location where all data of a
 server is stored.
 
@@ -80,7 +80,7 @@ arangod, e.g. `flock()`.)");
       "but be empty, populated: the database directory must exist and contain "
       "specific files already, any: any state is allowed)",
       new DiscreteValuesParameter<StringParameter>(
-          &_requiredDirectoryState,
+          &_options.requiredDirectoryState,
           std::unordered_set<std::string>{"any", "non-existing", "existing",
                                           "empty", "populated"}));
 }
@@ -90,7 +90,7 @@ void DatabasePathFeature::validateOptions(
   auto const& positionals = options->processingResult()._positionals;
 
   if (1 == positionals.size()) {
-    _directory = positionals[0];
+    _options.directory = positionals[0];
   } else if (1 < positionals.size()) {
     LOG_TOPIC("aeb40", FATAL, arangodb::Logger::FIXME)
         << "expected at most one database directory, got '"
@@ -98,7 +98,7 @@ void DatabasePathFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_directory.empty()) {
+  if (_options.directory.empty()) {
     LOG_TOPIC("9aba1", FATAL, arangodb::Logger::FIXME)
         << "no database path has been supplied, giving up, please use "
            "the '--database.directory' option";
@@ -106,7 +106,8 @@ void DatabasePathFeature::validateOptions(
   }
 
   // strip trailing separators
-  _directory = basics::StringUtils::rTrim(_directory, TRI_DIR_SEPARATOR_STR);
+  _options.directory =
+      basics::StringUtils::rTrim(_options.directory, TRI_DIR_SEPARATOR_STR);
 
   auto ctx = ArangoGlobalContext::CONTEXT;
 
@@ -116,13 +117,13 @@ void DatabasePathFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_directory, "database.directory", false);
+  ctx->normalizePath(_options.directory, "database.directory", false);
 }
 
 void DatabasePathFeature::prepare() {
   // check if temporary directory and database directory are identical
   {
-    std::string directoryCopy = _directory;
+    std::string directoryCopy = _options.directory;
     basics::FileUtils::makePathAbsolute(directoryCopy);
 
     if (server().hasFeature<TempFeature>()) {
@@ -145,15 +146,15 @@ void DatabasePathFeature::prepare() {
     }
   }
 
-  if (_requiredDirectoryState == "any") {
+  if (_options.requiredDirectoryState == "any") {
     // database directory can have any state. this is the default
     return;
   }
 
-  if (_requiredDirectoryState == "non-existing") {
-    if (basics::FileUtils::isDirectory(_directory)) {
+  if (_options.requiredDirectoryState == "non-existing") {
+    if (basics::FileUtils::isDirectory(_options.directory)) {
       LOG_TOPIC("25452", FATAL, arangodb::Logger::STARTUP)
-          << "database directory '" << _directory
+          << "database directory '" << _options.directory
           << "' already exists, but option "
              "'--database.required-directory-state' was set to 'non-existing'";
       FATAL_ERROR_EXIT();
@@ -162,22 +163,22 @@ void DatabasePathFeature::prepare() {
   }
 
   // existing, empty, populated when we get here
-  if (!basics::FileUtils::isDirectory(_directory)) {
+  if (!basics::FileUtils::isDirectory(_options.directory)) {
     LOG_TOPIC("3b1df", FATAL, arangodb::Logger::STARTUP)
-        << "database directory '" << _directory
+        << "database directory '" << _options.directory
         << "' does not exist, but option '--database.required-directory-state' "
            "was set to '"
-        << _requiredDirectoryState << "'";
+        << _options.requiredDirectoryState << "'";
     FATAL_ERROR_EXIT();
   }
 
-  if (_requiredDirectoryState == "existing") {
+  if (_options.requiredDirectoryState == "existing") {
     // directory exists. all good
     return;
   }
 
   std::vector<std::string> files;
-  for (auto const& it : basics::FileUtils::listFiles(_directory)) {
+  for (auto const& it : basics::FileUtils::listFiles(_options.directory)) {
     if (it.empty() || basics::FileUtils::isDirectory(it)) {
       continue;
     }
@@ -186,23 +187,23 @@ void DatabasePathFeature::prepare() {
     files.emplace_back(TRI_Basename(it.c_str()));
   }
 
-  if (_requiredDirectoryState == "empty" && !files.empty()) {
+  if (_options.requiredDirectoryState == "empty" && !files.empty()) {
     LOG_TOPIC("508c5", FATAL, arangodb::Logger::STARTUP)
-        << "database directory '" << _directory
+        << "database directory '" << _options.directory
         << "' is not empty, but option '--database.required-directory-state' "
            "was set to '"
-        << _requiredDirectoryState << "'";
+        << _options.requiredDirectoryState << "'";
     FATAL_ERROR_EXIT();
   }
 
-  if (_requiredDirectoryState == "populated" &&
+  if (_options.requiredDirectoryState == "populated" &&
       (std::find(files.begin(), files.end(), "ENGINE") == files.end() ||
        std::find(files.begin(), files.end(), "SERVER") == files.end())) {
     LOG_TOPIC("962c7", FATAL, arangodb::Logger::STARTUP)
-        << "database directory '" << _directory
+        << "database directory '" << _options.directory
         << "' is not properly populated, but option "
            "'--database.required-directory-state' was set to '"
-        << _requiredDirectoryState << "'";
+        << _options.requiredDirectoryState << "'";
     FATAL_ERROR_EXIT();
   }
 
@@ -211,19 +212,19 @@ void DatabasePathFeature::prepare() {
 
 void DatabasePathFeature::start() {
   // create base directory if it does not exist
-  if (!basics::FileUtils::isDirectory(_directory)) {
+  if (!basics::FileUtils::isDirectory(_options.directory)) {
     std::string systemErrorStr;
     long errorNo;
 
-    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                                  systemErrorStr);
+    auto const res = TRI_CreateRecursiveDirectory(_options.directory.c_str(),
+                                                  errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)
-          << "created database directory '" << _directory << "'";
+          << "created database directory '" << _options.directory << "'";
     } else {
       LOG_TOPIC("1e987", FATAL, arangodb::Logger::FIXME)
-          << "unable to create database directory '" << _directory
+          << "unable to create database directory '" << _options.directory
           << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
@@ -232,8 +233,8 @@ void DatabasePathFeature::start() {
 
 std::string DatabasePathFeature::subdirectoryName(
     std::string const& subDirectory) const {
-  TRI_ASSERT(!_directory.empty());
-  return basics::FileUtils::buildFilename(_directory, subDirectory);
+  TRI_ASSERT(!_options.directory.empty());
+  return basics::FileUtils::buildFilename(_options.directory, subDirectory);
 }
 
 }  // namespace arangodb

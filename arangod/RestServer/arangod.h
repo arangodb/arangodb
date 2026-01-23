@@ -71,6 +71,7 @@ class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
 class CacheOptionsFeature;
 class CheckVersionFeature;
+class CrashHandlerFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
 class ConfigFeature;
@@ -192,7 +193,10 @@ class ArangodServer : public application_features::ApplicationServer {
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)
   // @param binaryName name of the binary (used by some features)
-  void addFeatures(int* ret, std::string_view binaryName);
+  void addFeatures(
+      int* ret, std::string_view binaryName,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   // Override addFeature to pass the derived type to feature constructors
   template<typename Type, typename Impl = Type, typename... Args>

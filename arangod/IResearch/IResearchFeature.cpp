@@ -799,9 +799,9 @@ class AssertionCallbackSetter {
  private:
   [[noreturn]] static void assertCallback(irs::SourceLocation&& source,
                                           std::string_view message) noexcept {
-    CrashHandler::assertionFailure(source.file.data(),
-                                   static_cast<int>(source.line),
-                                   source.func.data(), message.data(), "");
+    crash_handler::CrashHandler::assertionFailure(
+        source.file.data(), static_cast<int>(source.line), source.func.data(),
+        message.data(), "");
   }
 };
 

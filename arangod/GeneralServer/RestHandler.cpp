@@ -45,6 +45,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
+#include "ActivityRegistry/activity.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
@@ -205,6 +206,14 @@ void RestHandler::trackTaskEnd() noexcept {
         << "request to " << _request->fullUrl() << " was queued for "
         << Logger::FIXED(queueTime) << "s";
   }
+}
+
+void RestHandler::startActivity() {
+  _activity = std::make_unique<activity_registry::Activity>(
+      name(), activity_registry::Metadata{
+                  {"url", _request->fullUrl()},
+                  {"method", std::string{GeneralRequest::translateMethod(
+                                 _request->requestType())}}});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {

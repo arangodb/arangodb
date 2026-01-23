@@ -104,7 +104,7 @@ static void HUPHandler(int) {
 }
 
 SupervisorFeature::SupervisorFeature(Server& server)
-    : ArangodFeature{server, *this}, _supervisor(false), _clientPid(0) {
+    : ArangodFeature{server, *this}, _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
@@ -116,7 +116,7 @@ void SupervisorFeature::collectOptions(
       ->addOption(
           "--supervisor",
           "Start the server in supervisor mode. Requires --pid-file to be set.",
-          new BooleanParameter(&_supervisor),
+          new BooleanParameter(&_options.supervisor),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Runs an arangod process as supervisor with another
@@ -128,7 +128,7 @@ daemon.)");
 
 void SupervisorFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_supervisor) {
+  if (_options.supervisor) {
     try {
       DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
@@ -148,7 +148,7 @@ void SupervisorFeature::validateOptions(
 void SupervisorFeature::daemonize() {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
-  if (!_supervisor) {
+  if (!_options.supervisor) {
     return;
   }
 

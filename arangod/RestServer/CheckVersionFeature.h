@@ -27,6 +27,7 @@
 #include <typeindex>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/CheckVersionFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
@@ -41,10 +42,6 @@ class CheckVersionFeature final : public ArangodFeature {
       Server& server, int* result,
       std::span<const std::type_index> nonServerFeatures);
 
- private:
-  bool _checkVersion;
-
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -52,6 +49,7 @@ class CheckVersionFeature final : public ArangodFeature {
  private:
   void checkVersion();
 
+  CheckVersionFeatureOptions _options;
   int* _result;
   std::span<const std::type_index> _nonServerFeatures;
 };
