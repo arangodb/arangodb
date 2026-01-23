@@ -397,18 +397,17 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
- private:
-  // TODO
  protected:
+  // application features
+  std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>
+      _features;
+
+ private:
   // the current state
   std::atomic<State> _state;
 
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
-
-  // application features
-  std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>
-      _features;
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
