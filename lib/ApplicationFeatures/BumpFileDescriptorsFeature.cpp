@@ -51,23 +51,23 @@ void BumpFileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   // we do this initialization here so we don't need to include
   // FileDescriptors.h in the header file.
-  _descriptorsMinimum = FileDescriptors::recommendedMinimum();
+  _options.descriptorsMinimum = FileDescriptors::recommendedMinimum();
 
   options
       ->addOption(
           _optionName,
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
-          new UInt64Parameter(&_descriptorsMinimum),
+          new UInt64Parameter(&_options.descriptorsMinimum),
           arangodb::options::makeFlags())
       .setIntroducedIn(31200);
 }
 
 void BumpFileDescriptorsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
-  if (_descriptorsMinimum > 0 &&
-      (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
-       _descriptorsMinimum > FileDescriptors::maximumValue)) {
+  if (_options.descriptorsMinimum > 0 &&
+      (_options.descriptorsMinimum < FileDescriptors::requiredMinimum ||
+       _options.descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
         << "invalid value for " << _optionName << ". must be between "
         << FileDescriptors::requiredMinimum << " and "
@@ -78,7 +78,7 @@ void BumpFileDescriptorsFeature::validateOptions(
 
 void BumpFileDescriptorsFeature::prepare() {
   if (Result res = FileDescriptors::adjustTo(
-          static_cast<FileDescriptors::ValueType>(_descriptorsMinimum));
+          static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum));
       res.fail()) {
     LOG_TOPIC("97831", FATAL, Logger::SYSCALL) << res;
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
@@ -97,7 +97,7 @@ void BumpFileDescriptorsFeature::prepare() {
       << FileDescriptors::stringify(current.soft);
 
   auto required =
-      std::max(static_cast<FileDescriptors::ValueType>(_descriptorsMinimum),
+      std::max(static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum),
                FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
@@ -106,7 +106,7 @@ void BumpFileDescriptorsFeature::prepare() {
         FileDescriptors::stringify(current.soft), ". please raise to at least ",
         required, " (e.g. via ulimit -n ", required,
         ") or adjust the value of the startup option ", _optionName);
-    if (_descriptorsMinimum == 0) {
+    if (_options.descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << message;
     } else {
       LOG_TOPIC("8c771", FATAL, Logger::SYSCALL) << message;
