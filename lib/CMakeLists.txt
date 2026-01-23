@@ -22,11 +22,6 @@ set(IRESEARCH_EXTERNAL_DEPENDENCIES "iculegacy_build")
 
 if(NOT PERL_FOUND)
   set(PERL_FOUND TRUE) # suppress error for Perl not-found
-
-  # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
-  if(MSVC)
-    set(PERL_EXECUTABLE echo)
-  endif()
 endif()
 
 set(IRESEARCH_ROOT "${PROJECT_SOURCE_DIR}/lib/iresearch")
