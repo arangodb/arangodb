@@ -23,8 +23,10 @@
 
 #pragma once
 
+#include "ActivityRegistry/activity.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBDumpContext.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 
 #include <cstdint>
 #include <memory>
@@ -35,7 +37,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-struct DumpLimits;
 class RocksDBEngine;
 
 namespace metrics {
@@ -50,7 +51,7 @@ class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
                               metrics::MetricsFeature& metricsFeature,
-                              DumpLimits const& limits);
+                              DumpLimitsFeatureOptions const& limits);
 
   ~RocksDBDumpManager();
 
@@ -60,7 +61,8 @@ class RocksDBDumpManager {
   // that were used when creating the context.
   std::shared_ptr<RocksDBDumpContext> createContext(
       RocksDBDumpContextOptions opts, std::string const& user,
-      std::string const& database, bool useVPack);
+      std::string const& database, bool useVPack,
+      activity_registry::ActivityId parent);
 
   // look up context by id. must provide the same database name and
   // user name as when creating the context. otherwise a "forbidden"
@@ -116,7 +118,7 @@ class RocksDBDumpManager {
   // destroyed once the last shared_ptr to it goes out of scope.
   MapType _contexts;
 
-  DumpLimits const& _limits;
+  DumpLimitsFeatureOptions const& _limits;
 
   metrics::Gauge<std::uint64_t>& _dumpsOngoing;
   metrics::Gauge<std::uint64_t>& _dumpsMemoryUsage;
