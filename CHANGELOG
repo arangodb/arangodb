@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
+  option on collections with computed values.
+
 * COR-22: Improved crash dumps with additional diagnostic data. Added
  `ApiRecordingFeature` as a data source to include recent API calls
  and AQL queries in crash dumps, as well as the async registry for
