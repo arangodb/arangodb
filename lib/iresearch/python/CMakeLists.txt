@@ -10,8 +10,6 @@ add_library(${IResearchPython_TARGET_NAME}
   pyresearch.cpp
   )
 
-set_ipo(${IResearchPython_TARGET_NAME})
-
 target_include_directories(${IResearchPython_TARGET_NAME}
   PRIVATE ${IResearch_INCLUDE_DIR}
   )

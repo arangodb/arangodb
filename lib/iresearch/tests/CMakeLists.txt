@@ -162,8 +162,6 @@ add_executable(iresearch-tests-static
   ./formats/formats_15_tests.cpp
   )
 
-set_ipo(iresearch-tests-static)
-
 add_dependencies(iresearch-tests-static
   iresearch-analyzer-delimiter-static
   iresearch-analyzer-multi-delimiter-static

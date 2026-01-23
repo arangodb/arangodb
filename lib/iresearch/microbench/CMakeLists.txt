@@ -28,8 +28,6 @@ add_executable(iresearch-microbench
   ./microbench_main.cpp
   )
 
-set_ipo(iresearch-microbench)
-
 add_dependencies(iresearch-microbench
   iresearch-static
   )
@@ -63,8 +61,6 @@ add_executable(iresearch-memory-file-bench
   memory_file_benchmark.cpp
   )
 
-set_ipo(iresearch-memory-file-bench)
-
 add_dependencies(iresearch-memory-file-bench
   iresearch-static
   )
@@ -80,8 +76,6 @@ target_link_libraries(iresearch-memory-file-bench
 add_executable(iresearch-column-writer
   column_writer_benchmark.cpp
   )
-
-set_ipo(iresearch-column-writer)
 
 add_dependencies(iresearch-column-writer
   iresearch-static

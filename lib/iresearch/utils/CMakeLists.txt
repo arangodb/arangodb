@@ -24,8 +24,6 @@ add_executable(iresearch-index-util
   ./main.cpp
   )
 
-set_ipo(iresearch-index-util)
-
 target_link_libraries(iresearch-index-util
   iresearch-static
   iresearch-cmdline
@@ -50,8 +48,6 @@ add_executable(iresearch-benchmarks
   ./index-benchmarks.cpp
   ./main.cpp
   )
-
-set_ipo(iresearch-benchmarks)
 
 add_dependencies(iresearch-benchmarks
   iresearch-static
@@ -79,8 +75,6 @@ add_executable(iresearch-pdd
   ./pdd.cpp
   ./main.cpp
   )
-
-set_ipo(iresearch-pdd)
 
 target_link_libraries(iresearch-pdd
   iresearch-static
