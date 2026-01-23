@@ -170,17 +170,6 @@ set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 
-# Define set_ipo macro for use in this file
-if (IPO_ENABLED)
-  macro(set_ipo _target)
-    set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-  endmacro()
-else ()
-  macro(set_ipo _target)
-    # NOOP
-  endmacro()
-endif ()
-
 add_subdirectory(velocypack)
 
 ################################################################################
@@ -377,8 +366,6 @@ add_library(
   OBJECT
   ${OpenFST_sources}
 )
-
-set_ipo(iresearch-ofst)
 
 # disable warnings for 3rd-party libs for a cleaner build
 CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)

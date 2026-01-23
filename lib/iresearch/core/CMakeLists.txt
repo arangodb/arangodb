@@ -15,7 +15,7 @@ endif ()
 set(SIMD_LIBRARY_STATIC "simdcomp-static")
 set(FASTTEXT_LIBRARY_STATIC "fasttext-static")
 
-# set libatomic library 
+# set libatomic library
 # (not available on Windows and Mac)
 if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
@@ -297,8 +297,6 @@ add_library(iresearch-static
   ${IResearch_core_sources} ${IResearch_core_headers}
   )
 
-set_ipo(iresearch-static)
-
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(
   OUTPUT ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
@@ -446,8 +444,6 @@ add_library(iresearch-analyzer-delimiter-static
   ./analysis/delimited_token_stream.cpp
 )
 
-set_ipo(iresearch-analyzer-delimiter-static)
-
 set_target_properties(iresearch-analyzer-delimiter-static
   PROPERTIES
   PREFIX lib
@@ -467,8 +463,6 @@ add_library(iresearch-analyzer-multi-delimiter-static
   STATIC
   ./analysis/multi_delimited_token_stream.cpp
 )
-
-set_ipo(iresearch-analyzer-multi-delimiter-static)
 
 set_target_properties(iresearch-analyzer-multi-delimiter-static
   PROPERTIES
@@ -491,8 +485,6 @@ add_library(iresearch-analyzer-text-static
   ./analysis/text_token_stream.cpp
   ./utils/snowball_stemmer.cpp
   )
-
-set_ipo(iresearch-analyzer-text-static)
 
 target_include_directories(iresearch-analyzer-text-static
   SYSTEM
@@ -525,8 +517,6 @@ add_library(iresearch-analyzer-collation-static
   ./analysis/collation_token_stream.cpp
   )
 
-set_ipo(iresearch-analyzer-collation-static)
-
 target_include_directories(iresearch-analyzer-collation-static
   SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
@@ -556,8 +546,6 @@ add_library(iresearch-analyzer-minhash-static
   ./analysis/minhash_token_stream.cpp
   )
 
-set_ipo(iresearch-analyzer-minhash-static)
-
 set_target_properties(iresearch-analyzer-minhash-static
   PROPERTIES
   PREFIX lib
@@ -577,8 +565,6 @@ add_library(iresearch-analyzer-norm-static
   STATIC
   ./analysis/text_token_normalizing_stream.cpp
   )
-
-set_ipo(iresearch-analyzer-norm-static)
 
 target_include_directories(iresearch-analyzer-norm-static
   SYSTEM
@@ -609,8 +595,6 @@ add_library(iresearch-analyzer-stem-static
   ./analysis/text_token_stemming_stream.cpp
   ./utils/snowball_stemmer.cpp
   )
-
-set_ipo(iresearch-analyzer-stem-static)
 
 target_include_directories(iresearch-analyzer-stem-static
   SYSTEM
@@ -643,8 +627,6 @@ add_library(iresearch-analyzer-stopwords-static
   ./analysis/token_stopwords_stream.cpp
   )
 
-set_ipo(iresearch-analyzer-stopwords-static)
-
 set_target_properties(iresearch-analyzer-stopwords-static
   PROPERTIES
   PREFIX lib
@@ -665,8 +647,6 @@ add_library(iresearch-analyzer-ngram-static
   ./analysis/ngram_token_stream.cpp
   )
 
-set_ipo(iresearch-analyzer-ngram-static)
-
 set_target_properties(iresearch-analyzer-ngram-static
   PROPERTIES
   PREFIX lib
@@ -686,9 +666,6 @@ add_library(iresearch-analyzer-pipeline-static
   STATIC
   ./analysis/pipeline_token_stream.cpp
   )
-
-set_ipo(iresearch-analyzer-pipeline-static)
-
 
 set_target_properties(iresearch-analyzer-pipeline-static
   PROPERTIES
@@ -715,8 +692,6 @@ target_link_libraries(
   text
 )
 
-set_ipo(iresearch-analyzer-segmentation-static)
-
 set_target_properties(iresearch-analyzer-segmentation-static
   PROPERTIES
   PREFIX lib
@@ -740,8 +715,6 @@ add_library(iresearch-analyzer-classification-static
   STATIC
   analysis/classification_stream.cpp
   )
-
-set_ipo(iresearch-analyzer-classification-static)
 
 set_target_properties(iresearch-analyzer-classification-static
   PROPERTIES
@@ -768,8 +741,6 @@ add_library(iresearch-analyzer-nearest-neighbors-static
   STATIC
   analysis/nearest_neighbors_stream.cpp
   )
-
-set_ipo(iresearch-analyzer-nearest-neighbors-static)
 
 set_target_properties(iresearch-analyzer-nearest-neighbors-static
   PROPERTIES
@@ -806,8 +777,6 @@ add_library(iresearch-format-1_0-static
   $<TARGET_OBJECTS:iresearch-ofst> # used by formats_burst_trie
   )
 
-set_ipo(iresearch-format-1_0-static)
-
 set_target_properties(iresearch-format-1_0-static
   PROPERTIES
   PREFIX lib
@@ -841,8 +810,6 @@ add_library(iresearch-scorer-tfidf-static
   ${IResearch_tfidf_source}
   )
 
-set_ipo(iresearch-scorer-tfidf-static)
-
 set_target_properties(iresearch-scorer-tfidf-static
   PROPERTIES
   PREFIX lib
@@ -866,8 +833,6 @@ add_library(iresearch-scorer-bm25-static
   STATIC
   ${IResearch_bm25_source}
   )
-
-set_ipo(iresearch-scorer-bm25-static)
 
 set_target_properties(iresearch-scorer-bm25-static
   PROPERTIES

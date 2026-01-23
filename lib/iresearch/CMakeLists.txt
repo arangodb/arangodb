@@ -45,16 +45,6 @@ else ()
   set(IPO_ENABLED False)
 endif ()
 
-if (IPO_ENABLED)
-  macro(SET_IPO _target)
-    set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-  endmacro()
-else ()
-  macro(SET_IPO _target)
-    # NOOP
-  endmacro()
-endif ()
-
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 
 project(iresearch)
@@ -100,7 +90,7 @@ if (CMAKE_BUILD_TYPE MATCHES "Coverage")
 elseif (CMAKE_BUILD_TYPE MATCHES "Profile")
   set(CMAKE_BUILD_TYPE "Release")
   add_compile_options(
-    -g 
+    -g
     -fno-omit-frame-pointer
   # -fno-inline
   # -fno-optimize-sibling-calls
