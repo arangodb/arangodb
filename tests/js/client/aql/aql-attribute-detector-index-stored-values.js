@@ -43,6 +43,16 @@ function attributeDetectorIndexStoredValuesTestSuite() {
     return explainRes.abacAccesses || [];
   };
 
+  const containsReadAttr = function (access, attrPath) {
+      const expected = Array.isArray(attrPath) ? attrPath : [attrPath];
+      const attrs = (access && access.read && access.read.attributes) || [];
+      return attrs.some(a =>
+          Array.isArray(a) &&
+          a.length === expected.length &&
+          a.every((seg, i) => seg === expected[i])
+      );
+  }
+
   return {
     setUp: function () {
       internal.db._drop(cn);
@@ -100,8 +110,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -118,9 +128,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
+    assertTrue(containsReadAttr(accesses[0], "value"));
+    assertTrue(containsReadAttr(accesses[0], "name"));
+    assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -138,9 +148,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("_id"));
-      assertTrue(accesses[0].read.attributes.includes("_key"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "_id"));
+      assertTrue(containsReadAttr(accesses[0], "_key"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -186,7 +196,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
+        assertTrue(containsReadAttr(accesses[0], "value"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -203,8 +213,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -223,8 +233,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -259,8 +269,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -278,8 +288,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -297,8 +307,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -316,8 +326,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -335,7 +345,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -352,8 +362,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -370,8 +380,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -388,8 +398,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -407,8 +417,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -425,9 +435,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -462,8 +472,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("attrNotExist"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "attrNotExist"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -480,9 +490,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cn, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
-      assertTrue(accesses[0].read.attributes.includes("attrNotExist"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "attrNotExist"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -518,9 +528,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -539,10 +549,10 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
-      assertTrue(accesses[0].read.attributes.includes("price")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
+      assertTrue(containsReadAttr(accesses[0], "price"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -560,10 +570,10 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("_id"));
-      assertTrue(accesses[0].read.attributes.includes("_key"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
+      assertTrue(containsReadAttr(accesses[0], "_id"));
+      assertTrue(containsReadAttr(accesses[0], "_key"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -610,15 +620,14 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("price")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "price"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_IndexFilterAndReturnDifferentAttributes1: function () {
-      // ###### Index: Condition: adding: value
       const query = `
     FOR doc IN ${cnStored}
       FILTER doc.value IN [1, 5, 7]
@@ -629,16 +638,14 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_IndexFilterAndReturnDifferentAttributes2_SelfJoin: function () {
-    //###### Index: Condition: adding: category
-    //###### Index: Condition: adding: value
       const query = `
     FOR p IN ${cnStored}
       FILTER p.value == 5 AND p.category == "cat1"
@@ -651,9 +658,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -689,9 +696,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category")); //failed
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -709,15 +716,14 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_IndexLimitDoesNotChangeProjection: function () {
-      // ###### Index: Condition: adding: value
       const query = `
     FOR p IN ${cnStored}
       FILTER p.value IN [1, 5, 7]
@@ -729,8 +735,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -749,8 +755,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -768,14 +774,13 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_IndexReturnDistinctAttribute: function () {
-      // ###### Index: Condition: adding: value
       const query = `
     FOR p IN ${cnStored}
       FILTER p.value IN [1, 5, 7]
@@ -786,8 +791,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -806,17 +811,15 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_DynamicAttributeAccessWithBindParameters1: function () {
-      //###### Index: Condition: adding: category
-      //###### Index: Condition: adding: value
       const query = `
     FOR p IN ${cnStored}
       FILTER p.value == 5 AND p.category == "cat1"
@@ -827,17 +830,15 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
 
     testAbac_Stored_DynamicAttributeAccessWithBindParameters2: function () {
-      //###### Index: Condition: adding: category
-      //###### Index: Condition: adding: value
       const query = `
     LET a = "price"
     FOR p IN ${cnStored}
@@ -849,9 +850,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("price")); // failed
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "price"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -869,9 +870,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("name")); // failed
-      assertTrue(accesses[0].read.attributes.includes("price"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "price"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
@@ -888,27 +889,13 @@ function attributeDetectorIndexStoredValuesTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnStored, accesses[0].collection);
 
-      assertTrue(accesses[0].read.attributes.includes("value"));
-      assertTrue(accesses[0].read.attributes.includes("category"));
-      assertTrue(accesses[0].read.attributes.includes("payload"));
+      assertTrue(containsReadAttr(accesses[0], "value"));
+      assertTrue(containsReadAttr(accesses[0], "payload"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
 
       assertFalse(accesses[0].read.requiresAll);
       assertFalse(accesses[0].write.requiresAll);
     },
-
-    // testPersistentIndexStoredValuesMultipleAttributes3: function () {
-    //   collection.ensureIndex({
-    //     type: "persistent",
-    //     fields: ["value", "category"],
-    //     storedValues: ["name"]
-    //   });
-    //
-    //   const query = `FOR doc IN ${cn} FILTER doc.value == 5 && doc.category == "cat1" RETURN doc.name`;
-    //   const explainRes = db._createStatement({query: query}).explain();
-    //
-    //   print("plan: ", JSON.stringify(explainRes.plan, null, 2));
-    //   print("abacAccesses: ", JSON.stringify(explainRes.abacAccesses, null, 2));
-    // }
   };
 }
 

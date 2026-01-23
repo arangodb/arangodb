@@ -173,8 +173,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       access->outVariable = idxNode->outVariable();
 
       Projections const& projs = idxNode->projections();
-      bool projsCoveredByIndex = projs.usesCoveringIndex();
-      if (!projs.empty() && !projsCoveredByIndex) {
+      if (!projs.empty()) {
         for (auto const& proj : projs.projections()) {
           if (!proj.path.empty()) {
             access->readAttributes.insert(proj.path.get());
@@ -183,8 +182,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       }
 
       Projections const& filterProjections = idxNode->filterProjections();
-      bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
-      if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
+      if (!filterProjections.empty()) {
         for (auto const& proj : filterProjections.projections()) {
           if (!proj.path.empty()) {
             access->readAttributes.insert(proj.path.get());
