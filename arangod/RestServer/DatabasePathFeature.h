@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/DatabasePathFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -39,18 +40,17 @@ class DatabasePathFeature final : public ArangodFeature {
   void prepare() override final;
   void start() override final;
 
-  std::string const& directory() const { return _directory; }
+  std::string const& directory() const { return _options.directory; }
   std::string subdirectoryName(std::string const& subDirectory) const;
   void setDirectory(std::string const& path) {
     // This is only needed in the catch tests, where we initialize the
     // feature but do not have options or run `validateOptions`. Please
     // do not use it from other code.
-    _directory = path;
+    _options.directory = path;
   }
 
  private:
-  std::string _directory;
-  std::string _requiredDirectoryState;
+  DatabasePathFeatureOptions _options;
 };
 
 }  // namespace arangodb

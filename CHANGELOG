@@ -4,6 +4,17 @@ devel
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
   option on collections with computed values.
 
+* COR-22: Improved crash dumps with additional diagnostic data. Added
+ `ApiRecordingFeature` as a data source to include recent API calls
+ and AQL queries in crash dumps, as well as the async registry for
+ currently existing async operations. New REST API endpoints for crash dump
+ management:
+  - `GET /_admin/crashes`: List all crash dumps
+  - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
+  - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
+
+* Fix runaway io_uring file descriptors.
+
 * Fixed changing writeConcern on a collection
   could cause subsequent writes to fail due to a stale internal write flag.
 
