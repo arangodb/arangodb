@@ -72,6 +72,7 @@ class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
 class CacheOptionsFeature;
 class CheckVersionFeature;
+class CrashHandlerFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
 class ConfigFeature;
@@ -223,6 +224,7 @@ using ArangodFeaturesList = TypeList<
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    CrashHandlerFeature,
     DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,22 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include <CrashHandler/CrashHandler.h>
+#include <mutex>
+#include <vector>
 
-TEST(CrashHandler, crashes) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::crash("BOOM"),
-              testing::KilledBySignal(SIGABRT), "BOOM");
-}
+namespace arangodb::crash_handler {
 
-TEST(CrashHandler, asserts) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::assertionFailure(
-                  __FILE__, __LINE__, "asserts", "no context", "zebras"),
-              testing::KilledBySignal(SIGABRT),
-              testing::MatchesRegex(
-                  "\\[LightCrashHandler\\] Assertion failed in file.*"));
-}
+class CrashHandlerDataSource;
+
+class DataSourceRegistry {
+ public:
+  void addDataSource(CrashHandlerDataSource const* dataSource);
+
+  std::vector<CrashHandlerDataSource const*> const& getDataSources() const;
+
+  void removeDataSource(CrashHandlerDataSource const* dataSource);
+
+ private:
+  std::mutex _dataSourceMtx;
+  std::vector<CrashHandlerDataSource const*> _dataSources;
+};
+
+}  // namespace arangodb::crash_handler

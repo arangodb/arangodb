@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,22 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include <CrashHandler/CrashHandler.h>
+#include <filesystem>
+#include <memory>
+#include <string_view>
 
-TEST(CrashHandler, crashes) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::crash("BOOM"),
-              testing::KilledBySignal(SIGABRT), "BOOM");
-}
+#include "CrashHandler/DataSourceRegistry.h"
 
-TEST(CrashHandler, asserts) {
-  EXPECT_EXIT(arangodb::crash_handler::CrashHandler::assertionFailure(
-                  __FILE__, __LINE__, "asserts", "no context", "zebras"),
-              testing::KilledBySignal(SIGABRT),
-              testing::MatchesRegex(
-                  "\\[LightCrashHandler\\] Assertion failed in file.*"));
-}
+namespace arangodb::crash_handler {
+
+/// Dumps the data of crash handler to the disk
+class DumpWriter {
+ public:
+  DumpWriter(std::filesystem::path crashDirectory,
+             std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
+
+  void dumpData(std::string_view backtrace) const;
+
+ private:
+  void dumpDataSources() const;
+
+  void dumpSystemInfo() const;
+
+  void dumpBacktraceInfo(std::string_view backtrace) const;
+
+  std::filesystem::path _crashDirectory;
+
+  std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
+};
+
+}  // namespace arangodb::crash_handler

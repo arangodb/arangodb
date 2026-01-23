@@ -122,6 +122,7 @@ add_library(arangoserver STATIC
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CrashHandlerFeature.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -203,6 +204,9 @@ if(USE_MAINTAINER_MODE)
   target_sources(arangoserver PRIVATE
     RestHandler/RestTestHandler.cpp)
 endif()
+
+target_sources(arangoserver PRIVATE
+RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
   arango_agency
