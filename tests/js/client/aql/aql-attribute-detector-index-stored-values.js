@@ -40,6 +40,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             bindVars: bindVars || {},
             options: options || {}
         }).explain();
+        print(JSON.stringify(explainRes, null, 2))
         return explainRes.abacAccesses || [];
     };
 
@@ -70,7 +71,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
 
             collection.ensureIndex({
                 type: "persistent",
-                fields: ["value"]
+                fields: ["value", "category"]
             });
 
             internal.db._drop(cnStored);
@@ -102,8 +103,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
         testAbac_IndexSimpleProjection: function () {
             const query = `
         FOR doc IN ${cn}
-          FILTER doc.value == 5
-          RETURN doc.name
+          FILTER doc.category == "cat1" OR doc.value > 5
+          RETURN doc.value
       `;
             const accesses = explainAbac(query);
 
@@ -111,7 +112,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertEqual(cn, accesses[0].collection);
 
             assertTrue(containsReadAttr(accesses[0], "value"));
-            assertTrue(containsReadAttr(accesses[0], "name"));
+            assertTrue(containsReadAttr(accesses[0], "category"));
 
             assertFalse(accesses[0].read.requiresAll);
             assertFalse(accesses[0].write.requiresAll);
@@ -536,12 +537,10 @@ function attributeDetectorIndexStoredValuesTestSuite() {
         ///* StoredValues tests *///
 
         testAbac_Stored_IndexSimpleProjection: function () {
-            //###### Index: Condition: adding: category
-            //###### Index: Condition: adding: value
             const query = `
     FOR doc IN ${cnStored}
-      FILTER doc.value == 5 AND doc.category == "cat1"
-      RETURN doc.name
+      FILTER doc.value == 5 OR doc.category == "cat1"
+      RETURN doc.category
   `;
             const accesses = explainAbac(query);
 
@@ -549,7 +548,6 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertEqual(cnStored, accesses[0].collection);
 
             assertTrue(containsReadAttr(accesses[0], "value"));
-            assertTrue(containsReadAttr(accesses[0], "name"));
             assertTrue(containsReadAttr(accesses[0], "category"));
 
             assertFalse(accesses[0].read.requiresAll);
@@ -557,8 +555,6 @@ function attributeDetectorIndexStoredValuesTestSuite() {
         },
 
         testAbac_Stored_IndexMultipleAttributes: function () {
-            //###### Index: Condition: adding: category
-            //###### Index: Condition: adding: value
             const query = `
     FOR doc IN ${cnStored}
       FILTER doc.value == 5 AND doc.category == "cat1"

@@ -75,4 +75,231 @@ TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs) {
   EXPECT_TRUE(seen.contains("ordered"));
 }
 
+TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument_StoreGraph) {
+  auto query = executeQuery(R"aql(
+    FOR v IN 1..1 OUTBOUND "stores/s1" GRAPH storeGraph
+      RETURN v
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 3);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+
+    if (a.collectionName == "sells") {
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.requiresAllAttributesRead);  // full edge docs (no edge projections)
+    } else {
+      // vertices: stores + products
+      EXPECT_TRUE(a.requiresAllAttributesRead);
+    }
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("stores"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("sells"));
+}
+
+TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs_StoreGraph) {
+  // storeGraph is OUTBOUND stores -> products via sells
+  auto query = executeQuery(R"aql(
+    FOR v, e IN OUTBOUND SHORTEST_PATH "stores/s1" TO "products/p3" sells
+      RETURN v
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 3);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+
+    if (a.collectionName == "sells") {
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+    }
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("stores"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("sells"));
+}
+
+TEST_F(AttributeDetectorTest, TwoTraversalsAcrossTwoGraphs_StoreThenTestGraph) {
+  // First traversal: stores -> products (storeGraph / sells)
+  // Second traversal: from product to users/products (testGraph / ordered)
+  auto query = executeQuery(R"aql(
+    FOR p IN 1..1 OUTBOUND "stores/s1" GRAPH storeGraph
+      FOR u IN 1..1 OUTBOUND p._id GRAPH testGraph
+        RETURN {p: p._key, u: u._key}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  // Expect: stores, products, sells, users, ordered  => 5 collections
+  ASSERT_EQ(accesses.size(), 5);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+
+    if (a.collectionName == "sells" || a.collectionName == "ordered") {
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      // no projections configured for edges in traversal options => full edge access
+      EXPECT_TRUE(a.requiresAllAttributesRead);
+    } else {
+      // vertices involved across both traversals
+      EXPECT_TRUE(a.requiresAllAttributesRead);
+    }
+
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("stores"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("sells"));
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("ordered"));
+}
+
+TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_TestGraph) {
+  auto query = executeQuery(R"aql(
+    FOR v, e IN 1..2 OUTBOUND "users/u1" GRAPH testGraph
+      RETURN e.qty
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  // If vertices are not produced, AttributeDetector::TRAVERSAL will only
+  // touch edge collections here.
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "ordered");
+
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"qty"}));
+
+  // With empty edge projections, traversal marks full edge read.
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// 2) Traversal where we return the edge document itself (still no vertices needed)
+// Expect: edge collection only
+TEST_F(AttributeDetectorTest, TraversalReturnEdgeDocsOnly_NoVertexProduction_TestGraph) {
+  auto query = executeQuery(R"aql(
+    FOR v, e IN 1..2 OUTBOUND "users/u1" GRAPH testGraph
+      RETURN e
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "ordered");
+
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// 3) Traversal where path is returned -> vertices ARE produced (p.vertices / p.edges)
+// Expect: users, products, ordered
+TEST_F(AttributeDetectorTest, TraversalReturnPath_ProducesVertices_TestGraph) {
+  auto query = executeQuery(R"aql(
+    FOR v, e, p IN 1..2 OUTBOUND "users/u1" GRAPH testGraph
+      RETURN p
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 3);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+
+    if (a.collectionName == "ordered") {
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.requiresAllAttributesRead);  // edges in path
+    } else {
+      EXPECT_TRUE(a.requiresAllAttributesRead);  // vertices in path
+    }
+
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("users"));
+  EXPECT_TRUE(seen.contains("products"));
+  EXPECT_TRUE(seen.contains("ordered"));
+}
+
+// 4) Same "edges only" test but for the NEW graph (storeGraph / sells)
+TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_StoreGraph) {
+  auto query = executeQuery(R"aql(
+    FOR v, e IN 1..2 OUTBOUND "stores/s1" GRAPH storeGraph
+      RETURN e.stock
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "sells");
+
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains({"stock"}));
+
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// 5) Two-graph, multi-hop, edges-only on both traversals
+// Expect: only edge collections sells + ordered (no vertex collections)
+TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
+  auto query = executeQuery(R"aql(
+    FOR p, se IN 1..2 OUTBOUND "stores/s1" GRAPH storeGraph
+      FOR v, oe IN 1..2 OUTBOUND p._id GRAPH testGraph
+        RETURN {stock: se.stock, qty: oe.qty}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+
+  // If both traversals don't require vertices, we should only see edge collections.
+  ASSERT_EQ(accesses.size(), 2);
+
+  bool seenSells = false;
+  bool seenOrdered = false;
+
+  for (auto const& a : accesses) {
+    if (a.collectionName == "sells") {
+      seenSells = true;
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.readAttributes.contains({"stock"}));
+      EXPECT_TRUE(a.requiresAllAttributesRead);
+      EXPECT_FALSE(a.requiresAllAttributesWrite);
+    } else if (a.collectionName == "ordered") {
+      seenOrdered = true;
+      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
+      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.readAttributes.contains({"qty"}));
+      EXPECT_TRUE(a.requiresAllAttributesRead);
+      EXPECT_FALSE(a.requiresAllAttributesWrite);
+    } else {
+      FAIL() << "Unexpected collection in accesses: " << a.collectionName;
+    }
+  }
+
+  EXPECT_TRUE(seenSells);
+  EXPECT_TRUE(seenOrdered);
+}
+
 }  // namespace arangodb::tests::aql

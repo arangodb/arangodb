@@ -89,12 +89,26 @@ class AttributeDetectorTest : public ::testing::Test {
     auto productsColl = mkColl("products");
     auto graphsColl = mkColl("_graphs", "\"isSystem\":true");
     auto orderedColl = mkColl("ordered", "\"type\":3");  // edge collection
+    auto storesColl = mkColl("stores");
+    auto sellsColl = mkColl("sells", "\"type\":3");  // edge collection
 
     // Edge index required for traversal
     {
       bool created = false;
       auto idx =
           orderedColl
+              ->createIndex(
+                  VPackParser::fromJson(R"({"type":"edge"})")->slice(), created)
+              .waitAndGet();
+      ASSERT_TRUE(idx);
+      ASSERT_TRUE(created);
+    }
+
+    // Edge index required for traversal (sells)
+    {
+      bool created = false;
+      auto idx =
+          sellsColl
               ->createIndex(
                   VPackParser::fromJson(R"({"type":"edge"})")->slice(), created)
               .waitAndGet();
@@ -124,6 +138,11 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"p4", name:"USB-C Hub", price:39.0,
                  category:"accessory", specs:{ brand:"ACME", color:"gray" } } INTO products)aql");
 
+    run(R"aql(INSERT {_key:"s1", name:"Downtown Store", city:"Cologne",
+                 meta:{ region:"EU", rating:4.6 } } INTO stores)aql");
+    run(R"aql(INSERT {_key:"s2", name:"Shibuya Store",  city:"Tokyo",
+                 meta:{ region:"APAC", rating:4.4 } } INTO stores)aql");
+
     ensureHashIndex("products", "name");
     ensureHashIndex("products", "price");
     ensureHashIndex("products", "brand");
@@ -136,6 +155,10 @@ class AttributeDetectorTest : public ::testing::Test {
     run(R"aql(INSERT {_key:"e5", _from:"users/u1", _to:"products/p3", qty:1, orderedAt:"2026-01-05"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e6", _from:"users/u1", _to:"products/p4", qty:1, orderedAt:"2026-01-06"} INTO ordered)aql");
     run(R"aql(INSERT {_key:"e7", _from:"products/p4", _to:"products/p3", qty:1, orderedAt:"2026-01-07"} INTO ordered)aql");
+    run(R"aql(INSERT {_key:"se1", _from:"stores/s1", _to:"products/p1", stock:15, price:49.99} INTO sells)aql");
+    run(R"aql(INSERT {_key:"se2", _from:"stores/s1", _to:"products/p3", stock:3,  price:199.0}  INTO sells)aql");
+    run(R"aql(INSERT {_key:"se3", _from:"stores/s2", _to:"products/p2", stock:25, price:19.99} INTO sells)aql");
+    run(R"aql(INSERT {_key:"se4", _from:"stores/s2", _to:"products/p4", stock:8,  price:39.0}   INTO sells)aql");
 
     run(R"aql(
       INSERT {
@@ -150,6 +173,20 @@ class AttributeDetectorTest : public ::testing::Test {
         ]
       } INTO _graphs
     )aql");
+
+    run(R"aql(
+  INSERT {
+    _key: "storeGraph",
+    name: "storeGraph",
+    edgeDefinitions: [
+      {
+        collection: "sells",
+        from: ["stores"],
+        to: ["products"]
+      }
+    ]
+  } INTO _graphs
+)aql");
 
     auto viewSimple = createArangoSearchView("usersViewSimple");
     auto viewComplicated = createArangoSearchView("usersViewComplicated");
@@ -263,8 +300,7 @@ class AttributeDetectorTest : public ::testing::Test {
     ASSERT_TRUE(er.result.ok()) << er.result.errorMessage();
 
     std::cout << "\n--- AQL EXPLAIN ---\n"
-              << er.data->slice().toJson()
-              << "\n-------------------\n";
+              << er.data->slice().toJson() << "\n-------------------\n";
   }
 
   // Helper to check if a top-level attribute is tracked
