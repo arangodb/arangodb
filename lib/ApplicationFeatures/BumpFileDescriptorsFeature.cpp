@@ -96,9 +96,9 @@ void BumpFileDescriptorsFeature::prepare() {
       << FileDescriptors::stringify(current.hard) << ", soft limit is "
       << FileDescriptors::stringify(current.soft);
 
-  auto required =
-      std::max(static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum),
-               FileDescriptors::requiredMinimum);
+  auto required = std::max(
+      static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum),
+      FileDescriptors::requiredMinimum);
 
   if (current.soft < required) {
     auto message = absl::StrCat(

@@ -262,7 +262,7 @@ void LanguageFeature::prepare() {
   }
 
   ::setCollator(_langType == LanguageType::ICU ? _options.icuLanguage
-                                                : _options.defaultLanguage,
+                                               : _options.defaultLanguage,
                 _langType);
   ::setLocale(_locale);
 }
