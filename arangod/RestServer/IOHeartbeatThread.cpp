@@ -53,8 +53,7 @@ IOHeartbeatThread::IOHeartbeatThread(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature,
     DatabasePathFeature& databasePathFeature)
-    : ServerThread<application_features::ApplicationServer>(server,
-                                                             "IOHeartbeat"),
+    : ServerThread(server, "IOHeartbeat"),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),

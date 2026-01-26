@@ -56,9 +56,7 @@ namespace arangodb::consensus {
 
 class Supervision;
 
-class Agent final
-    : public arangodb::ServerThread<application_features::ApplicationServer>,
-      public AgentInterface {
+class Agent final : public arangodb::ServerThread, public AgentInterface {
  public:
   /// @brief Construct with program options
   Agent(application_features::ApplicationServer& server,

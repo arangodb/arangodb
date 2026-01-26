@@ -49,7 +49,7 @@ using application_features::ApplicationServer;
 
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
     ApplicationServer& server, size_t maxCapacity)
-    : ServerThread<ApplicationServer>(server, "RocksDBCacheRefiller"),
+    : ServerThread(server, "RocksDBCacheRefiller"),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _maxCapacity(maxCapacity),
       _numQueued(0),

@@ -41,8 +41,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class ConsoleThread final : public ServerThread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 

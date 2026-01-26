@@ -41,8 +41,7 @@ namespace cluster::paths {
 class Path;
 }
 
-class AgencyCache final
-    : public ServerThread<application_features::ApplicationServer> {
+class AgencyCache final : public ServerThread {
  public:
   using databases_t = containers::FlatHashMap<std::string, consensus::query_t>;
 

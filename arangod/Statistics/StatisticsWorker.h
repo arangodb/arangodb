@@ -25,8 +25,6 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Statistics/figures.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -35,8 +33,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class StatisticsWorker final
-    : public ServerThread<application_features::ApplicationServer> {
+class StatisticsWorker final : public ServerThread {
  public:
   explicit StatisticsWorker(TRI_vocbase_t& vocbase);
   ~StatisticsWorker() { shutdown(); }

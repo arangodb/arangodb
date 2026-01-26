@@ -571,12 +571,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class StatisticsThread final : public ServerThread {
  public:
   explicit StatisticsThread(Server& server)
-      : ServerThread<application_features::ApplicationServer>(server,
-                                                              "Statistics") {}
+      : ServerThread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:

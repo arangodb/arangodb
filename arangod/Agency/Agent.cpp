@@ -97,8 +97,7 @@ std::string const NO_LEADER("");
 /// Agent configuration
 Agent::Agent(application_features::ApplicationServer& server,
              metrics::MetricsFeature& metrics, config_t const& config)
-    : arangodb::ServerThread<application_features::ApplicationServer>(server,
-                                                                      "Agent"),
+    : arangodb::ServerThread(server, "Agent"),
       _constituent(server),
       _supervision(std::make_unique<Supervision>(server, metrics)),
       _state(metrics),

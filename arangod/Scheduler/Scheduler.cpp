@@ -47,14 +47,12 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread
-    : public ServerThread<application_features::ApplicationServer> {
+class SchedulerThread : public ServerThread {
  public:
   explicit SchedulerThread(application_features::ApplicationServer& server,
                            Scheduler& scheduler,
                            std::string const& name = "Scheduler")
-      : ServerThread<application_features::ApplicationServer>(server, name),
-        _scheduler(scheduler) {}
+      : ServerThread(server, name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;

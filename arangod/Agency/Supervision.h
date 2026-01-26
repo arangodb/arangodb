@@ -88,8 +88,7 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
     Node const& snapshot, Node const& transient, std::string const& type,
     double gracePeriod);
 
-class Supervision
-    : public ServerThread<application_features::ApplicationServer> {
+class Supervision : public ServerThread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;

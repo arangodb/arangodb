@@ -122,8 +122,7 @@ std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 DatabaseManagerThread::DatabaseManagerThread(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, StorageEngine& engine)
-    : ServerThread<application_features::ApplicationServer>(server,
-                                                             "DatabaseManager"),
+    : ServerThread(server, "DatabaseManager"),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8

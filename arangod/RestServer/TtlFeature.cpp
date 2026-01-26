@@ -176,14 +176,11 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class TtlThread final : public ServerThread {
  public:
   explicit TtlThread(application_features::ApplicationServer& server,
                      TtlFeature& ttlFeature)
-      : ServerThread<application_features::ApplicationServer>(server, "TTL"),
-        _ttlFeature(ttlFeature),
-        _working(false) {}
+      : ServerThread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
 
   ~TtlThread() final { shutdown(); }
 

@@ -203,10 +203,9 @@ class Thread {
   std::atomic<ThreadState> _state;
 };
 
-template<typename ServerT>
 class ServerThread : public Thread {
  public:
-  using Server = ServerT;
+  using Server = application_features::ApplicationServer;
 
   ServerThread(Server& server, std::string const& name,
                bool deleteOnExit = false,

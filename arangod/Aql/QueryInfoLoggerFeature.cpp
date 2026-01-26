@@ -70,15 +70,13 @@ using namespace arangodb;
 
 namespace arangodb::aql {
 
-class QueryInfoLoggerThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class QueryInfoLoggerThread final : public ServerThread {
  public:
   explicit QueryInfoLoggerThread(
       application_features::ApplicationServer& server,
       size_t maxBufferedQueries, uint64_t pushInterval,
       uint64_t cleanupInterval, double retentionTime)
-      : ServerThread<application_features::ApplicationServer>(
-            server, "QueryInfoLogger"),
+      : ServerThread(server, "QueryInfoLogger"),
         _maxBufferedQueries(maxBufferedQueries),
         _pushInterval(pushInterval),
         _cleanupInterval(cleanupInterval),

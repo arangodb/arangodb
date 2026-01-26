@@ -64,14 +64,12 @@ namespace {
 // pushing retry operations to the scheduler needs to use the correct
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
-class RetryThread
-    : public ServerThread<application_features::ApplicationServer> {
+class RetryThread : public ServerThread {
   static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
   explicit RetryThread(application_features::ApplicationServer& server)
-      : ServerThread<application_features::ApplicationServer>(server,
-                                                              "NetworkRetry"),
+      : ServerThread(server, "NetworkRetry"),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {

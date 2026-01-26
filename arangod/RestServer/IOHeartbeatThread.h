@@ -35,8 +35,7 @@
 
 namespace arangodb {
 
-class IOHeartbeatThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class IOHeartbeatThread final : public ServerThread {
  public:
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;

@@ -380,8 +380,7 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<application_features::ApplicationServer> {
+class ClusterInfo::SyncerThread final : public arangodb::ServerThread {
  public:
   explicit SyncerThread(application_features::ApplicationServer&,
                         std::string const& section,
@@ -5953,11 +5952,9 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    application_features::ApplicationServer& server,
-    std::string const& section,
+    application_features::ApplicationServer& server, std::string const& section,
     std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread<application_features::ApplicationServer>(server,
-                                                             section + "Syncer"),
+    : ServerThread(server, section + "Syncer"),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

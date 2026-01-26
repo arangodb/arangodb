@@ -57,8 +57,7 @@ V8LineEditor* ConsoleThread::serverConsole = nullptr;
 std::mutex ConsoleThread::serverConsoleMutex;
 
 ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
-    : ServerThread<application_features::ApplicationServer>(applicationServer,
-                                                            "Console"),
+    : ServerThread(applicationServer, "Console"),
       _vocbase(vocbase),
       _userAborted(false) {}
 

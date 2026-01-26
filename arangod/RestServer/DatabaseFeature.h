@@ -70,8 +70,7 @@ DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
               "Global number of databases");
 
-class DatabaseManagerThread final
-    : public ServerThread<application_features::ApplicationServer> {
+class DatabaseManagerThread final : public ServerThread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;

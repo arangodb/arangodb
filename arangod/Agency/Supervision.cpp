@@ -202,8 +202,7 @@ std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server,
                          metrics::MetricsFeature& metrics)
-    : arangodb::ServerThread<application_features::ApplicationServer>(
-          server, "Supervision"),
+    : arangodb::ServerThread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),

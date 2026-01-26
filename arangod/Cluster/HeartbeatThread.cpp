@@ -213,8 +213,7 @@ HeartbeatThread::HeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry,
     std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
     double noHeartbeatDelayBeforeShutdown)
-    : arangodb::ServerThread<application_features::ApplicationServer>(
-          server, "Heartbeat"),
+    : arangodb::ServerThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
