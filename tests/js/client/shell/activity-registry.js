@@ -62,7 +62,7 @@ function activityRegistrySuite() {
     } else {
       internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?batchId=0`, {});
     }
-    const activities = activitiesModule.get_snapshot();
+    const activities = activitiesModule.get_snapshot(server);
     assertTrue(activities.length > 2);
     assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
     assertTrue(activities.filter(dumpContextFilter).length > 0);
@@ -74,7 +74,7 @@ function activityRegistrySuite() {
       db._create(c);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop(c);
     },
 
@@ -98,12 +98,7 @@ function activityRegistrySuite() {
 
       // activity: dump context
       const dumpId = createDump.headers["x-arango-dump-id"];
-      let activities;
-      if (internal.isCluster()) {
-        activities = activitiesModule.get_snapshot_from_server(server);
-      } else {
-        activities = activitiesModule.get_snapshot();
-      }
+      const activities = activitiesModule.get_snapshot(server);
       assertTrue(activities.length > 1);
       assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
       assertTrue(activities.filter(dumpContextFilter).length > 0);

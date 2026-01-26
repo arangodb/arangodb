@@ -28,11 +28,10 @@ const internal = require('internal');
 const ACTIVITY_REGISTRY_URL = '/_admin/activity-registry';
 
 // get snapshot from coordinator or single server
-exports.get_snapshot = function () {
-  return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
-};
-
-exports.get_snapshot_from_server = function (server) {
+exports.get_snapshot = function (server) {
+  if (server === undefined) {
+    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
+  }
   IM.rememberConnection();
   IM.arangods.filter((x) => x.id === server)[0].connect();
   const result = arangosh.checkRequestResult(internal.arango.GET_RAW(ACTIVITY_REGISTRY_URL)).parsedBody;
