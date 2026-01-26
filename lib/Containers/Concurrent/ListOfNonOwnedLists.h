@@ -24,6 +24,7 @@
 
 #include "Containers/Concurrent/snapshot.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -82,12 +83,12 @@ struct ListOfNonOwnedLists {
   template<typename F>
   requires IteratorOverSnapshots<List, F>
   auto for_node(F&& function) -> void {
-    auto lists = [&] {
+    auto lists = std::invoke([&] {
       auto guard = std::lock_guard(_mutex);
       return _lists;
-    }();
+    });
 
-    for (auto& weak_list : _lists) {
+    for (auto& weak_list : lists) {
       if (auto list = weak_list.lock()) {
         list->for_node(function);
       }
