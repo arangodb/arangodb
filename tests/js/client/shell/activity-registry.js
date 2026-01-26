@@ -104,9 +104,13 @@ function activityRegistrySuite() {
       assertTrue(activities.filter(dumpContextFilter).length > 0);
 
       // activity: fetch dump context
-      IM.debugSetFailAt("RestDumpHandler::fetch-delay");
-      checkDumpFetchIsAnActivity(dumpId, server);
-      IM.debugRemoveFailAt("RestDumpHandler::fetch-delay");
+      try {
+        IM.debugSetFailAt("RestDumpHandler::fetch-delay");
+        checkDumpFetchIsAnActivity(dumpId, server);
+      } finally {
+        IM.debugClearFailAt();
+      }
+        
 
       // cleanup
       if (internal.isCluster()) {
