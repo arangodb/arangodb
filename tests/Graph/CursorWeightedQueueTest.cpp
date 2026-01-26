@@ -26,7 +26,7 @@
 #include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Graph/Providers/BaseStep.h"
-#include "Graph/Queues/WeightedQueue.h"
+#include "Graph/Queues/CursorWeightedQueue.h"
 
 #include "gtest/gtest.h"
 
@@ -66,11 +66,11 @@ class Step : public arangodb::graph::BaseStep {
   }
 };
 
-class WeightedQueueTest : public ::testing::Test {
+class CursorWeightedQueueTest : public ::testing::Test {
   // protected:
  public:
-  WeightedQueueTest() {}
-  ~WeightedQueueTest() {}
+  CursorWeightedQueueTest() {}
+  ~CursorWeightedQueueTest() {}
 
  public:
   arangodb::GlobalResourceMonitor _global{};
@@ -82,22 +82,25 @@ struct MockNeighbourCursor {
   auto hasMore() -> bool { return false; };
   auto markForDeletion() -> void{};
 };
-TEST_F(WeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   ASSERT_EQ(queue.size(), 0U);
   ASSERT_TRUE(queue.isEmpty());
 }
 
-TEST_F(WeightedQueueTest, it_should_contain_element_after_insertion) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_contain_element_after_insertion) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   auto step = Step{1, 1, false};
   queue.append(step);
   ASSERT_EQ(queue.size(), 1U);
   ASSERT_FALSE(queue.isEmpty());
 }
 
-TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_contain_zero_elements_after_clear) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 1, false});
   queue.append(Step{2, 4, false});
   queue.append(Step{3, 2, false});
@@ -107,8 +110,9 @@ TEST_F(WeightedQueueTest, it_should_contain_zero_elements_after_clear) {
   ASSERT_TRUE(queue.isEmpty());
 }
 
-TEST_F(WeightedQueueTest, it_should_contain_processable_elements) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_contain_processable_elements) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 5, false});
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 2, true});
@@ -117,8 +121,9 @@ TEST_F(WeightedQueueTest, it_should_contain_processable_elements) {
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
-TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_not_contain_processable_elements) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 4, true});
   queue.append(Step{2, 1.6, true});
   queue.append(Step{3, 1.2, true});
@@ -128,10 +133,11 @@ TEST_F(WeightedQueueTest, it_should_not_contain_processable_elements) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
-TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
+TEST_F(CursorWeightedQueueTest, it_should_prioritize_processable_elements) {
   // 2 and 3 have identical and smallest weight.
   // 3 is processable, 2 not.
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{1, 8, true});
   queue.append(Step{2, 2, true});
   queue.append(Step{3, 2, false});
@@ -145,7 +151,7 @@ TEST_F(WeightedQueueTest, it_should_prioritize_processable_elements) {
   EXPECT_EQ(queue.size(), 3U);
 }
 
-TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
+TEST_F(CursorWeightedQueueTest, it_should_order_by_asc_weight) {
   // Random Input in random order. We shuffle it before each iteration, feel
   // free to modify this in any way you like
   std::vector<Step> input{
@@ -179,7 +185,8 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
   for (auto [name, o] : orderings) {
     SCOPED_TRACE("Input ordered by " + name);
     std::sort(input.begin(), input.end(), o);
-    auto queue = WeightedQueue<Step>(_resourceMonitor);
+    auto queue =
+        CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
     for (auto s : input) {
       queue.append(s);
     }
@@ -204,8 +211,9 @@ TEST_F(WeightedQueueTest, it_should_order_by_asc_weight) {
   }
 }
 
-TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_pop_all_loose_ends) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   queue.append(Step{2, 1.5, true});
   queue.append(Step{3, 5, true});
   queue.append(Step{1, 1, true});
@@ -220,8 +228,9 @@ TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
   EXPECT_FALSE(queue.hasProcessableElement());
 }
 
-TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+TEST_F(CursorWeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   std::vector<Step> input;
   input.emplace_back(Step{1, 1, false});
   input.emplace_back(Step{2, 2, false});
@@ -248,9 +257,10 @@ TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
   EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
 }
 
-TEST_F(WeightedQueueTest,
+TEST_F(CursorWeightedQueueTest,
        on_many_start_vertices_it_should_handle_appends_correctly) {
-  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
   std::vector<Step> input;
   input.emplace_back(Step{1, 1, false});
   input.emplace_back(Step{2, 2, false});

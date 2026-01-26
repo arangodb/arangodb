@@ -29,8 +29,9 @@
 #include "Graph/Enumerators/WeightedShortestPathEnumerator.h"
 #include "Graph/Enumerators/YenEnumerator.h"
 
-#include "Graph/Queues/BatchedLifoQueue.h"
-#include "Graph/Queues/BatchedFifoQueue.h"
+#include "Graph/Queues/CursorLifoQueue.h"
+#include "Graph/Queues/CursorFifoQueue.h"
+#include "Graph/Queues/CursorWeightedQueue.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/WeightedQueue.h"
@@ -117,7 +118,7 @@ struct BFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       FifoQueue<Step>,
-      BatchedFifoQueue<Step, typename ProviderType::NeighbourProvider>>::type;
+      CursorFifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -135,7 +136,7 @@ struct DFSConfiguration {
       std::is_same_v<ProviderType,
                      enterprise::SmartGraphProvider<ClusterProviderStep>>,
       LifoQueue<Step>,
-      BatchedLifoQueue<Step, typename ProviderType::NeighbourProvider>>::type;
+      CursorLifoQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;
@@ -146,7 +147,14 @@ template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
 struct WeightedConfiguration {
   using Provider = ProviderType;
   using Step = typename Provider::Step;
-  using Queue = WeightedQueue<Step>;
+  // smart traversal queue on coordinator needs to be non-batched
+  // for that, SmartGraphProvider fns addExpansionIterator and
+  // expandToNextBatch need to be implemented
+  using Queue = typename std::conditional<
+      std::is_same_v<ProviderType,
+                     enterprise::SmartGraphProvider<ClusterProviderStep>>,
+      WeightedQueue<Step>,
+      CursorWeightedQueue<Step, typename ProviderType::NeighbourCursor>>::type;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;

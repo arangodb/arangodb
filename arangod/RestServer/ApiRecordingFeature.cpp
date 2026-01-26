@@ -24,6 +24,7 @@
 #include "ApiRecordingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "CrashHandler/DataSource.h"
 #include "Inspection/VPack.h"
 #include "Logger/Logger.h"

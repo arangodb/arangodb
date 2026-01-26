@@ -60,8 +60,8 @@ class V8SecurityFeature final
         _allowProcessControl(false),
         _allowPortTesting(false) {
     setOptional(false);
-    startsAfter<TempFeature, Server>();
-    startsAfter<V8PlatformFeature, Server>();
+    startsAfter<TempFeature>();
+    startsAfter<V8PlatformFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

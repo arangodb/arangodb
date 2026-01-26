@@ -40,7 +40,7 @@ class GreetingsFeature final : public application_features::ApplicationFeature {
   explicit GreetingsFeature(Server& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<LoggerFeature>();
   }
 
  public:
