@@ -40,7 +40,7 @@ class ProcessEnvironmentFeature final
   ProcessEnvironmentFeature(Server& server, std::string const& appname)
       : ApplicationFeature{server, *this}, _dumpEnv(false) {
     setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

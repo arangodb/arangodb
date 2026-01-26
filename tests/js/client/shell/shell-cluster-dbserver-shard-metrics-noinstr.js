@@ -360,6 +360,8 @@ function ClusterDBServerShardMetricsTestSuite() {
       // - eventually the number of shards leaders must be 1 or greater
       // - eventually the number of out of sync should be at least 1
       // - eventually the number of not replicated shards should be at least 1
+      let shardsOutOfSyncNumMetricValue = 0;
+      let shardsNotReplicatedNumMetricValue = 0;
       for(let i = 0; i < 200 * waitFactor; i++) {
         internal.wait(0.1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
@@ -370,11 +372,11 @@ function ClusterDBServerShardMetricsTestSuite() {
         if (shardsLeaderNumMetricValue < 1) {
           continue;
         }
-        const shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
+        shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
         if (shardsOutOfSyncNumMetricValue < 1) {
           continue;
         }
-        const shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
+        shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
         if (shardsNotReplicatedNumMetricValue < 1) {
           continue;
         }
@@ -385,8 +387,6 @@ function ClusterDBServerShardMetricsTestSuite() {
 
         break;
       }
-      const shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
-      const shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
       assertEqual(shardsOutOfSyncNumMetricValue, shardsNotReplicatedNumMetricValue, `shardsOutOfSyncNumMetricValue: ${shardsOutOfSyncNumMetricValue} !== shardsNotReplicatedNumMetricValue: ${shardsNotReplicatedNumMetricValue}`);
 
       // Bring back the followers

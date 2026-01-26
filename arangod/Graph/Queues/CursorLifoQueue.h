@@ -40,18 +40,18 @@ namespace graph {
  (which correspond to vertex-edges) or neighbour cursors to get more steps.
 */
 template<class StepType, NeighbourCursor<StepType> Cursor>
-class BatchedLifoQueue {
+class CursorLifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
   using Step = StepType;
   // TODO: Add Sorting (Performance - will be implemented in the future -
   // cluster relevant) -> loose ends to the end
 
-  explicit BatchedLifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit CursorLifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
-  ~BatchedLifoQueue() { this->clear(); }
+  ~CursorLifoQueue() { this->clear(); }
 
-  bool isBatched() { return true; }
+  bool usesCursor() { return true; }
 
   void clear() {
     if (!_queue.empty()) {
@@ -179,7 +179,7 @@ class BatchedLifoQueue {
     }
   }
   template<class S, NeighbourCursor<S> C, typename Inspector>
-  friend auto inspect(Inspector& f, BatchedLifoQueue<S, C>& x);
+  friend auto inspect(Inspector& f, CursorLifoQueue<S, C>& x);
 
  private:
   using Entry = QueueEntry<Step, Cursor>;
@@ -190,7 +190,7 @@ class BatchedLifoQueue {
   arangodb::ResourceMonitor& _resourceMonitor;
 };
 template<class StepType, NeighbourCursor<StepType> C, typename Inspector>
-auto inspect(Inspector& f, BatchedLifoQueue<StepType, C>& x) {
+auto inspect(Inspector& f, CursorLifoQueue<StepType, C>& x) {
   return f.object(x).fields(f.field("queue", x._queue));
 }
 

@@ -22,23 +22,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#ifdef USE_V8
+#include "V8/V8PlatformFeature.h"
+#endif
 
 namespace arangodb::application_features {
 
 ClusterFeaturePhase::ClusterFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<DatabaseFeaturePhase, ArangodServer>();
+  startsAfter<DatabaseFeaturePhase>();
 
-  startsAfter<ClusterFeature, ArangodServer>();
-  startsAfter<MaintenanceFeature, ArangodServer>();
-  startsAfter<ReplicationTimeoutFeature, ArangodServer>();
-  startsAfter<ReplicatedLogFeature, ArangodServer>();
+  startsAfter<ClusterFeature>();
+  startsAfter<MaintenanceFeature>();
+  startsAfter<ReplicationTimeoutFeature>();
+  startsAfter<ReplicatedLogFeature>();
 
 #ifdef USE_V8
   // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature, ArangodServer>();
+  startsBefore<V8PlatformFeature>();
 #endif
 }
 
