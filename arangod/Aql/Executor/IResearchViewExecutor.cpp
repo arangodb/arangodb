@@ -105,6 +105,12 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     //   IRS_LOG_INFO(oss.str());
     // }
 
+    {
+      std::ostringstream oss;
+      oss << "KDOCITR: readSegment: reader.itr.value (before): ";
+      IRS_LOG_INFO(oss.str());
+    }
+
     bool const iteratorExhausted = !readPK(documentId, reader);
     {
       std::ostringstream oss;

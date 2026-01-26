@@ -4223,6 +4223,14 @@ Result FilterFactory::filter(irs::boolean_filter* filter,
 
   const auto res = makeFilter(filter, filterCtx, node);
 
+  {
+    std::ostringstream oss;
+    velocypack::Builder builder;
+    node.toVelocyPack(builder, false);
+    oss << "KDOCITR: IResearch AST node: " << builder.toJson();
+    IRS_LOG_INFO(oss.str());
+  }
+
   if (res.fail()) {
     if (filter) {
       LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
