@@ -1013,6 +1013,87 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertFalse(inner.read.requiresAll);
             assertFalse(inner.write.requiresAll);
         },
+
+        // Test covering index scenario - when index covers all projections
+        testAbac_CoveringIndex_AllAttributesFromIndex: function () {
+            const query = `
+    FOR doc IN ${cn}
+      FILTER doc.value == 5
+      RETURN {value: doc.value, category: doc.category}
+  `;
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cn, accesses[0].collection);
+
+            // Even if covered by index, we still track attributes for ABAC
+            assertTrue(containsReadAttr(accesses[0], "value"));
+            assertTrue(containsReadAttr(accesses[0], "category"));
+
+            assertFalse(accesses[0].read.requiresAll);
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test that covering index doesn't skip attribute tracking
+        testAbac_CoveringIndex_StillTracksAttributes: function () {
+            const query = `
+    FOR doc IN ${cnStored}
+      FILTER doc.value == 5 AND doc.category == "cat1"
+      RETURN {name: doc.name, price: doc.price}
+  `;
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnStored, accesses[0].collection);
+
+            // All attributes should be tracked even if covered by index
+            assertTrue(containsReadAttr(accesses[0], "value"));
+            assertTrue(containsReadAttr(accesses[0], "category"));
+            assertTrue(containsReadAttr(accesses[0], "name"));
+            assertTrue(containsReadAttr(accesses[0], "price"));
+
+            assertFalse(accesses[0].read.requiresAll);
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test nested attributes with stored values
+        testAbac_Stored_NestedAttributeInStoredValue: function () {
+            const query = `
+    FOR doc IN ${cnStored}
+      FILTER doc.value == 5
+      RETURN doc.payload.foo
+  `;
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnStored, accesses[0].collection);
+
+            assertTrue(containsReadAttr(accesses[0], "value"));
+            assertTrue(containsReadAttr(accesses[0], ["payload", "foo"]));
+            assertFalse(containsReadAttr(accesses[0], "payload"));
+            assertFalse(containsReadAttr(accesses[0], "foo"));
+
+            assertFalse(accesses[0].read.requiresAll);
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test that requiresAllAttributesRead can have empty attributes list
+        testAbac_RequiresAll_EmptyAttributesList: function () {
+            const query = `
+    FOR doc IN ${cn}
+      RETURN doc
+  `;
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cn, accesses[0].collection);
+
+            assertTrue(accesses[0].read.requiresAll);
+            // When requiresAll is true, attributes list can be empty
+            assertTrue(Array.isArray(accesses[0].read.attributes));
+            // Empty list is valid when requiresAll is true
+            assertFalse(accesses[0].write.requiresAll);
+        },
     };
 }
 

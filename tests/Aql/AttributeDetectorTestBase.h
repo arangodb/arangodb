@@ -63,17 +63,6 @@ inline AttributeNamePath makePath(std::string const& attr,
   return AttributeNamePath(attr, monitor);
 }
 
-// Helper to create AttributeNamePath using query's ResourceMonitor
-inline AttributeNamePath makePath(std::vector<std::string> const& path,
-                                  Query const& query) {
-  return AttributeNamePath(path, query.resourceMonitor());
-}
-
-// Helper to create AttributeNamePath from single string using query
-inline AttributeNamePath makePath(std::string const& attr, Query const& query) {
-  return AttributeNamePath(attr, query.resourceMonitor());
-}
-
 class AttributeDetectorTest : public ::testing::Test {
  protected:
   MockAqlServer server{false};
@@ -327,24 +316,6 @@ class AttributeDetectorTest : public ::testing::Test {
 
     std::cout << "\n--- AQL EXPLAIN ---\n"
               << er.data->slice().toJson() << "\n-------------------\n";
-  }
-
-  // Helper to check if a top-level attribute is tracked
-  static bool hasAttribute(
-      containers::FlatHashSet<AttributeDetector::AttributePath,
-                              AttributeDetector::AttributePathHash> const&
-          attrs,
-      std::string const& name) {
-    return attrs.contains({name});
-  }
-
-  // Helper to check if a nested attribute path is tracked
-  static bool hasAttributePath(
-      containers::FlatHashSet<AttributeDetector::AttributePath,
-                              AttributeDetector::AttributePathHash> const&
-          attrs,
-      std::initializer_list<std::string> path) {
-    return attrs.contains(AttributeDetector::AttributePath(path));
   }
 };
 

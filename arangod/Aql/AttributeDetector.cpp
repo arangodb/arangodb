@@ -212,16 +212,15 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        auto& monitor = _plan->getAst()->query().resourceMonitor();
-        access->readAttributes.insert(AttributeNamePath("_from", monitor));
-        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
+          // Projections already include _from and _to
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
               access->readAttributes.insert(proj.path);
             }
           }
         } else {
+          // No projections: full edge documents are read
           access->requiresAllAttributesRead = true;
         }
       }
@@ -266,16 +265,15 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        auto& monitor = _plan->getAst()->query().resourceMonitor();
-        access->readAttributes.insert(AttributeNamePath("_from", monitor));
-        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
+          // Projections should include _from and _to if they exist
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
               access->readAttributes.insert(proj.path);
             }
           }
         } else {
+          // No projections: full edge documents are read
           access->requiresAllAttributesRead = true;
         }
       }
@@ -320,16 +318,15 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        auto& monitor = _plan->getAst()->query().resourceMonitor();
-        access->readAttributes.insert(AttributeNamePath("_from", monitor));
-        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
+          // Projections should include _from and _to if they exist
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
               access->readAttributes.insert(proj.path);
             }
           }
         } else {
+          // No projections: full edge documents are read
           access->requiresAllAttributesRead = true;
         }
       }

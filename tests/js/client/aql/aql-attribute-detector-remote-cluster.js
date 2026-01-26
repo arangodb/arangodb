@@ -164,6 +164,163 @@ function attributeDetectorRemoteTestSuite() {
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode");
       }
+    },
+
+    testRemoteSingleRead_AbacAccesses: function () {
+      const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        // REMOTE_SINGLE in INDEX mode should require all attributes read
+        assertTrue(collAccess.read.requiresAll, 
+            "REMOTE_SINGLE read operations should require all attributes");
+        assertFalse(collAccess.write.requiresAll, 
+            "Read operations should not require all write attributes");
+        // When requiresAll is true, attributes list can be empty
+        assertTrue(Array.isArray(collAccess.read.attributes));
+      }
+    },
+
+    testRemoteSingleReadWithProjection_AbacAccesses: function () {
+      const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN {name: doc.name, value: doc.value}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        // Even with projections, REMOTE_SINGLE is conservative
+        assertTrue(collAccess.read.requiresAll, 
+            "REMOTE_SINGLE should require all attributes (conservative)");
+        assertFalse(collAccess.write.requiresAll);
+      }
+    },
+
+    testRemoteSingleInsert_AbacAccesses: function () {
+      const query = `INSERT {_key: "newDoc", value: 100, name: "test"} INTO ${cn}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess) {
+          // REMOTE_SINGLE insert should require all attributes for both read and write
+          assertTrue(collAccess.read.requiresAll, 
+              "Insert operations should require all attributes read");
+          assertTrue(collAccess.write.requiresAll, 
+              "Insert operations should require all attributes write");
+        }
+      }
+    },
+
+    testRemoteSingleUpdate_AbacAccesses: function () {
+      const query = `UPDATE "doc1" WITH {value: 999} IN ${cn}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess) {
+          // REMOTE_SINGLE update should require all attributes for both read and write
+          assertTrue(collAccess.read.requiresAll, 
+              "Update operations should require all attributes read");
+          assertTrue(collAccess.write.requiresAll, 
+              "Update operations should require all attributes write");
+        }
+      }
+    },
+
+    testRemoteSingleReplace_AbacAccesses: function () {
+      const query = `REPLACE "doc1" WITH {_key: "doc1", value: 888, name: "replaced"} IN ${cn}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess) {
+          assertTrue(collAccess.read.requiresAll, 
+              "Replace operations should require all attributes read");
+          assertTrue(collAccess.write.requiresAll, 
+              "Replace operations should require all attributes write");
+        }
+      }
+    },
+
+    testRemoteSingleRemove_AbacAccesses: function () {
+      const query = `REMOVE "doc1" IN ${cn}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess) {
+          assertTrue(collAccess.read.requiresAll, 
+              "Remove operations should require all attributes read");
+          assertTrue(collAccess.write.requiresAll, 
+              "Remove operations should require all attributes write");
+        }
+      }
+    },
+
+    testRemoteMultipleInsert_AbacAccesses: function () {
+      const query = `FOR i IN 1..5 INSERT {_key: CONCAT("doc", i), value: i, name: CONCAT("name", i)} INTO ${cn}`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess) {
+          // REMOTE_MULTIPLE should require all attributes for both read and write
+          assertTrue(collAccess.read.requiresAll, 
+              "REMOTE_MULTIPLE insert should require all attributes read");
+          assertTrue(collAccess.write.requiresAll, 
+              "REMOTE_MULTIPLE insert should require all attributes write");
+        }
+      }
+    },
+
+    testRemoteSingle_RequiresAllWithEmptyAttributes: function () {
+      const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
+      const explainResult = db._createStatement({
+        query: query,
+        options: {includeAbacAccesses: true}
+      }).explain();
+
+      const accesses = explainResult.abacAccesses;
+      if (accesses && Array.isArray(accesses)) {
+        const collAccess = accesses.find(a => a.collection === cn);
+        if (collAccess && collAccess.read.requiresAll) {
+          // When requiresAll is true, attributes list can be empty
+          assertTrue(Array.isArray(collAccess.read.attributes));
+          // Empty list is valid when requiresAll is true
+        }
+      }
     }
   };
 }

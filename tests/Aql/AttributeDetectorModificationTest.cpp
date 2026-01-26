@@ -53,7 +53,8 @@ TEST_F(AttributeDetectorTest, ReplaceOperation) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_key", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_key", query->resourceMonitor())));
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }
@@ -64,7 +65,8 @@ TEST_F(AttributeDetectorTest, RemoveOperation) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_key", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_key", query->resourceMonitor())));
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_TRUE(accesses[0].requiresAllAttributesWrite);
 }

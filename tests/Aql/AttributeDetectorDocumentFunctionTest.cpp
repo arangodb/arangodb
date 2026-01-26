@@ -49,7 +49,8 @@ TEST_F(AttributeDetectorTest, DocumentFunctionWithNOOPT) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", query->resourceMonitor())));
 }
 
 TEST_F(AttributeDetectorTest, MergeMultipleDocumentCalls) {

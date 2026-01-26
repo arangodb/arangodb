@@ -39,8 +39,10 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
   for (auto& access : accesses) {
     seen.insert(access.collectionName);
     if (access.collectionName == "ordered") {
-      EXPECT_TRUE(access.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(access.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(access.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(access.readAttributes.contains(
+          makePath("_to", query->resourceMonitor())));
       EXPECT_TRUE(access.requiresAllAttributesRead);
     } else {
       EXPECT_TRUE(access.requiresAllAttributesRead);
@@ -89,8 +91,10 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument_StoreGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells") {
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
       EXPECT_TRUE(
           a.requiresAllAttributesRead);  // full edge docs (no edge projections)
     } else {
@@ -120,8 +124,10 @@ TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs_StoreGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells") {
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
     }
     EXPECT_TRUE(a.requiresAllAttributesRead);
     EXPECT_FALSE(a.requiresAllAttributesWrite);
@@ -151,8 +157,10 @@ TEST_F(AttributeDetectorTest, TwoTraversalsAcrossTwoGraphs_StoreThenTestGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells" || a.collectionName == "ordered") {
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
       // no projections configured for edges in traversal options => full edge
       // access
       EXPECT_TRUE(a.requiresAllAttributesRead);
@@ -184,9 +192,12 @@ TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_TestGraph) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "ordered");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("qty", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_from", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_to", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("qty", query->resourceMonitor())));
 
   // With empty edge projections, traversal marks full edge read.
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
@@ -207,8 +218,10 @@ TEST_F(AttributeDetectorTest,
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "ordered");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_from", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_to", query->resourceMonitor())));
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -229,8 +242,10 @@ TEST_F(AttributeDetectorTest, TraversalReturnPath_ProducesVertices_TestGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "ordered") {
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
       EXPECT_TRUE(a.requiresAllAttributesRead);  // edges in path
     } else {
       EXPECT_TRUE(a.requiresAllAttributesRead);  // vertices in path
@@ -257,9 +272,12 @@ TEST_F(AttributeDetectorTest,
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "sells");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("stock", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_from", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("_to", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("stock", query->resourceMonitor())));
 
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
@@ -286,16 +304,22 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
   for (auto const& a : accesses) {
     if (a.collectionName == "sells") {
       seenSells = true;
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("stock", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("stock", query->resourceMonitor())));
       EXPECT_TRUE(a.requiresAllAttributesRead);
       EXPECT_FALSE(a.requiresAllAttributesWrite);
     } else if (a.collectionName == "ordered") {
       seenOrdered = true;
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
-      EXPECT_TRUE(a.readAttributes.contains(makePath("qty", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_from", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
+      EXPECT_TRUE(
+          a.readAttributes.contains(makePath("qty", query->resourceMonitor())));
       EXPECT_TRUE(a.requiresAllAttributesRead);
       EXPECT_FALSE(a.requiresAllAttributesWrite);
     } else {
