@@ -24,9 +24,8 @@
 #include "NonceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Nonce.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;

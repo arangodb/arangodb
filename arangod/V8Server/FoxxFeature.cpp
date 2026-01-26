@@ -29,6 +29,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
@@ -124,7 +125,7 @@ In previous versions, this option had a default value of `true`.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005)
-      .setLongDescription(R"(If set to `false`, access to any custom Foxx 
+      .setLongDescription(R"(If set to `false`, access to any custom Foxx
 services in the deployment will be forbidden. Access to ArangoDB's built-in
 web interface will still be possible though.
 

@@ -57,8 +57,8 @@ class V8SecurityFeature final
   explicit V8SecurityFeature(Server& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
-    startsAfter<TempFeature, Server>();
-    startsAfter<V8PlatformFeature, Server>();
+    startsAfter<TempFeature>();
+    startsAfter<V8PlatformFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

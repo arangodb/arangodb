@@ -49,8 +49,8 @@ class BumpFileDescriptorsFeature
       : application_features::ApplicationFeature{server, *this},
         _optionName(std::move(optionName)) {
     setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
+    startsAfter<LoggerFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

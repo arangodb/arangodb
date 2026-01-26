@@ -36,8 +36,8 @@ class RandomFeature final : public application_features::ApplicationFeature {
 
   template<typename Server>
   explicit RandomFeature(Server& server)
-      : RandomFeature{server, Server::template id<RandomFeature>()} {
-    startsAfter<LoggerFeature, Server>();
+      : RandomFeature{server, typeid(RandomFeature)} {
+    startsAfter<LoggerFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,7 +45,7 @@ class RandomFeature final : public application_features::ApplicationFeature {
 
  private:
   RandomFeature(application_features::ApplicationServer& server,
-                size_t registration);
+                std::type_index registration);
 
   RandomFeatureOptions _options;
 };

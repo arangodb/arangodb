@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileDescriptors.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
@@ -34,7 +35,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/EnvironmentFeature.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H

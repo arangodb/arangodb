@@ -24,6 +24,7 @@
 #pragma once
 
 #include <span>
+#include <typeindex>
 
 #include "VocBase/Methods/Upgrade.h"
 #include "RestServer/arangod.h"
@@ -46,7 +47,7 @@ class UpgradeFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Upgrade"; }
 
   UpgradeFeature(Server& server, int* result,
-                 std::span<const size_t> nonServerFeatures);
+                 std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -66,7 +67,7 @@ class UpgradeFeature final : public ArangodFeature {
   UpgradeFeatureOptions _options;
 
   int* _result;
-  std::span<const size_t> _nonServerFeatures;
+  std::span<const std::type_index> _nonServerFeatures;
   std::vector<methods::Upgrade::Task> _tasks;
 };
 

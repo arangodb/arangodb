@@ -24,10 +24,16 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -35,7 +41,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -188,21 +193,16 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   auto disableDeamonAndSupervisor = [&]() {
-    if constexpr (Server::contains<DaemonFeature>()) {
-      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
-    }
-    if constexpr (Server::contains<SupervisorFeature>()) {
-      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
-    }
+#ifdef ARANGODB_HAVE_FORK
+    server().disableFeatures<DaemonFeature>();
+    server().disableFeatures<SupervisorFeature>();
+#endif
   };
 
   if (!_options.restServer) {
-    server().disableFeatures(std::array{
-        Server::id<HttpEndpointProvider>(),
-        Server::id<GeneralServerFeature>(),
-        Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(),
-    });
+    server()
+        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
+                         SslServerFeature, StatisticsFeature>();
     disableDeamonAndSupervisor();
 
     if (!options->processingResult().touched("replication.auto-start")) {

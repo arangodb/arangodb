@@ -53,7 +53,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
         _locale(),
         _langType(basics::LanguageType::INVALID) {
     setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
   }
 
   ~LanguageFeature();

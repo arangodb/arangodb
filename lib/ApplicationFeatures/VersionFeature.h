@@ -39,7 +39,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
       : application_features::ApplicationFeature{server, *this}, _options() {
     setOptional(false);
 
-    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<ShellColorsFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

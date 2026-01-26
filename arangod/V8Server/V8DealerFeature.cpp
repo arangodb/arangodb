@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Actions/ActionFeature.h"
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
@@ -33,7 +34,7 @@
 #include "Actions/actions.h"
 #include "Agency/v8-agency.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -142,9 +143,6 @@ V8DealerFeature::V8DealerFeature(Server& server,
       _executorsExited(metrics.add(arangodb_v8_context_exited_total{})),
       _executorsEnterFailures(
           metrics.add(arangodb_v8_context_enter_failures_total{})) {
-  static_assert(
-      Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
-
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -350,10 +348,10 @@ or teardown commands for execution on the server.)");
       .setLongDescription(R"(By default, the V8 engine is enabled on single
 servers and Coordinators. It is disabled by default on Agents and DB-Servers.
 
-It is possible to turn the V8 engine off also on the latter instance types to 
+It is possible to turn the V8 engine off also on the latter instance types to
 reduce the footprint of ArangoDB. Turning the V8 engine off on single servers or
 Coordinators will automatically render certain functionality unavailable or
-dysfunctional. The affected functionality includes JavaScript transactions, Foxx, 
+dysfunctional. The affected functionality includes JavaScript transactions, Foxx,
 AQL user-defined functions, the built-in web interface and some server APIs.)");
 }
 
@@ -381,10 +379,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_options.enableJS) {
     disable();
 
-    server().disableFeatures(
-        std::array{Server::id<V8PlatformFeature>(), Server::id<ActionFeature>(),
-                   Server::id<ScriptFeature>(), Server::id<FoxxFeature>(),
-                   Server::id<FrontendFeature>()});
+    server()
+        .disableFeatures<V8PlatformFeature, ActionFeature, ScriptFeature,
+                         FoxxFeature, FrontendFeature>();
     return;
   }
 

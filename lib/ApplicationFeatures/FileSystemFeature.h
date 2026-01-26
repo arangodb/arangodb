@@ -42,7 +42,7 @@ class FileSystemFeature final
   explicit FileSystemFeature(Server& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<LoggerFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

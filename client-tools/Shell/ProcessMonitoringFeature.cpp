@@ -86,8 +86,9 @@ ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
   return std::optional<ExternalProcessStatus>{it->second};
 }
 
-ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
-    : ArangoshFeature{server, *this} {
+ProcessMonitoringFeature::ProcessMonitoringFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
 }
@@ -148,9 +149,7 @@ void ProcessMonitorThread::run() {  // override
 
 std::optional<ExternalProcessStatus> getHistoricStatus(
     TRI_pid_t pid, application_features::ApplicationServer& server) {
-  return static_cast<ArangoshServer&>(server)
-      .getFeature<ProcessMonitoringFeature>()
-      .getHistoricStatus(pid);
+  return server.getFeature<ProcessMonitoringFeature>().getHistoricStatus(pid);
 }
 
 }  // namespace arangodb

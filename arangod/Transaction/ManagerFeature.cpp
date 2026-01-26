@@ -24,9 +24,7 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FunctionUtils.h"
-#include "Basics/application-exit.h"
-#include "Basics/debugging.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -52,9 +50,6 @@ ManagerFeature::ManagerFeature(Server& server)
     : ArangodFeature{server, *this},
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_transactions_expired_total{})) {
-  static_assert(
-      Server::isCreatedAfter<ManagerFeature, metrics::MetricsFeature>());
-
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
