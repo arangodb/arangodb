@@ -199,13 +199,13 @@ of memory if the queue is filled up faster than the server can process
 requests.)");
 
   options
-      ->addOption(
-          "--server.unavailability-queue-fill-grade",
-          "The queue fill grade from which onwards the server is "
-          "considered unavailable because of an overload (ratio, "
-          "0 = disable)",
-          new DoubleParameter(&_options.unavailabilityQueueFillGrade, /*base*/ 1.0,
-                              /*minValue*/ 0.0, /*maxValue*/ 1.0))
+      ->addOption("--server.unavailability-queue-fill-grade",
+                  "The queue fill grade from which onwards the server is "
+                  "considered unavailable because of an overload (ratio, "
+                  "0 = disable)",
+                  new DoubleParameter(&_options.unavailabilityQueueFillGrade,
+                                      /*base*/ 1.0,
+                                      /*minValue*/ 0.0, /*maxValue*/ 1.0))
       .setLongDescription(R"(You can use this option to set a high-watermark
 for the scheduler's queue fill grade, from which onwards the server starts
 reporting unavailability via its availability API.
@@ -300,7 +300,8 @@ void SchedulerFeature::validateOptions(
   if (_options.nrMinimalThreads >= _options.nrMaximalThreads) {
     LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _options.nrMaximalThreads
-        << ") should be at least " << (_options.nrMinimalThreads + 1) << ", raising it";
+        << ") should be at least " << (_options.nrMinimalThreads + 1)
+        << ", raising it";
     _options.nrMaximalThreads = _options.nrMinimalThreads;
   }
 
@@ -340,13 +341,14 @@ void SchedulerFeature::prepare() {
               : static_cast<uint64_t>(_options.ongoingLowPriorityMultiplier *
                                       _options.nrMaximalThreads);
       return std::make_unique<SupervisedScheduler>(
-          server(), _options.nrMinimalThreads, _options.nrMaximalThreads, _options.queueSize,
-          _options.fifo1Size, _options.fifo2Size, _options.fifo3Size, ongoingLowPriorityLimit,
+          server(), _options.nrMinimalThreads, _options.nrMaximalThreads,
+          _options.queueSize, _options.fifo1Size, _options.fifo2Size,
+          _options.fifo3Size, ongoingLowPriorityLimit,
           _options.unavailabilityQueueFillGrade, metrics);
     } else {
       TRI_ASSERT(_options.schedulerType == "threadpools");
-      return std::make_unique<ThreadPoolScheduler>(server(), _options.nrMaximalThreads,
-                                                   std::move(metrics));
+      return std::make_unique<ThreadPoolScheduler>(
+          server(), _options.nrMaximalThreads, std::move(metrics));
     }
   });
 

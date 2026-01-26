@@ -142,9 +142,9 @@ void EngineSelectorFeature::prepare() {
 
   TRI_ASSERT(_options.engineName != "auto");
 
-  auto const selected =
-      std::find_if(std::begin(kEngines), std::end(kEngines),
-                   [this](auto& info) { return _options.engineName == info.first; });
+  auto const selected = std::find_if(
+      std::begin(kEngines), std::end(kEngines),
+      [this](auto& info) { return _options.engineName == info.first; });
   if (selected == std::end(kEngines)) {
     if (_options.engineName == "mmfiles") {
       LOG_TOPIC("10eb6", FATAL, Logger::STARTUP)
@@ -153,7 +153,8 @@ void EngineSelectorFeature::prepare() {
     } else {
       // should not happen
       LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
-          << "unable to determine storage engine '" << _options.engineName << "'";
+          << "unable to determine storage engine '" << _options.engineName
+          << "'";
     }
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_UNSUPPORTED_STORAGE_ENGINE);
   }
@@ -227,7 +228,8 @@ void EngineSelectorFeature::prepare() {
 
   if (_engine == nullptr) {
     LOG_TOPIC("9cb11", FATAL, Logger::STARTUP)
-        << "unable to figure out storage engine from selection '" << _options.engineName
+        << "unable to figure out storage engine from selection '"
+        << _options.engineName
         << "'. please use the '--server.storage-engine' option to select an "
            "existing storage engine";
     FATAL_ERROR_EXIT();

@@ -196,14 +196,15 @@ collection still work in periods with no or little numbers of requests.)");
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.module-directory",
-                     "Additional paths containing JavaScript modules.",
-                     new VectorParameter<StringParameter>(&_options.moduleDirectories),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
+  options->addOption(
+      "--javascript.module-directory",
+      "Additional paths containing JavaScript modules.",
+      new VectorParameter<StringParameter>(&_options.moduleDirectories),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle,
+          arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
@@ -401,8 +402,10 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_options.startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_options.moduleDirectories, "javascript.module-directory", false);
+  ctx->normalizePath(_options.startupDirectory, "javascript.startup-directory",
+                     true);
+  ctx->normalizePath(_options.moduleDirectories, "javascript.module-directory",
+                     false);
 
   // check whether app-path was specified
   if (_options.appPath.empty()) {
@@ -469,7 +472,8 @@ void V8DealerFeature::start() {
   // add all paths to allowlists
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
   TRI_ASSERT(!_options.startupDirectory.empty());
-  v8security.addToInternalAllowList(_options.startupDirectory, FSAccessType::READ);
+  v8security.addToInternalAllowList(_options.startupDirectory,
+                                    FSAccessType::READ);
 
   if (!_nodeModulesDirectory.empty()) {
     v8security.addToInternalAllowList(_nodeModulesDirectory,
@@ -496,7 +500,8 @@ void V8DealerFeature::start() {
 
     if (!_options.moduleDirectories.empty()) {
       paths.push_back(std::string(
-          "module '" + StringUtils::join(_options.moduleDirectories, ";") + "'"));
+          "module '" + StringUtils::join(_options.moduleDirectories, ";") +
+          "'"));
     }
 
     if (!_options.appPath.empty()) {
@@ -507,16 +512,17 @@ void V8DealerFeature::start() {
         std::string systemErrorStr;
         long errorNo;
 
-        auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(), errorNo,
-                                                systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(),
+                                                errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)
-              << "created javascript.app-path directory '" << _options.appPath << "'";
+              << "created javascript.app-path directory '" << _options.appPath
+              << "'";
         } else {
           LOG_TOPIC("2d23f", FATAL, arangodb::Logger::FIXME)
-              << "unable to create javascript.app-path directory '" << _options.appPath
-              << "': " << systemErrorStr;
+              << "unable to create javascript.app-path directory '"
+              << _options.appPath << "': " << systemErrorStr;
           FATAL_ERROR_EXIT();
         }
       }
@@ -540,7 +546,8 @@ void V8DealerFeature::start() {
     // startup to properly run through with all its parallel requests
     // and the potential need for multiple V8 executors.
     auto& sf = server().getFeature<SchedulerFeature>();
-    _options.nrMaxExecutors = std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
+    _options.nrMaxExecutors =
+        std::max(sf.maximalThreads() * 7 / 8, uint64_t(8));
   }
 
   if (_options.nrMinExecutors > _options.nrMaxExecutors) {
@@ -597,7 +604,7 @@ void V8DealerFeature::start() {
 
 void V8DealerFeature::copyInstallationFiles() {
   if (!_options.enableJS && (ServerState::instance()->isAgent() ||
-                     ServerState::instance()->isDBServer())) {
+                             ServerState::instance()->isDBServer())) {
     // skip expensive file-copying in case we are an agency or db server
     // these do not need JavaScript support
     return;
@@ -797,16 +804,17 @@ void V8DealerFeature::verifyAppPaths() {
   if (!_options.appPath.empty() && !TRI_IsDirectory(_options.appPath.c_str())) {
     long systemError;
     std::string errorMessage;
-    auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(), systemError,
-                                            errorMessage);
+    auto res = TRI_CreateRecursiveDirectory(_options.appPath.c_str(),
+                                            systemError, errorMessage);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("1bf74", INFO, Logger::FIXME)
-          << "created --javascript.app-path directory '" << _options.appPath << "'";
+          << "created --javascript.app-path directory '" << _options.appPath
+          << "'";
     } else {
       LOG_TOPIC("52bd5", ERR, Logger::FIXME)
-          << "unable to create --javascript.app-path directory '" << _options.appPath
-          << "': " << errorMessage;
+          << "unable to create --javascript.app-path directory '"
+          << _options.appPath << "': " << errorMessage;
       THROW_ARANGO_EXCEPTION(res);
     }
   }
@@ -1048,7 +1056,8 @@ void V8DealerFeature::collectGarbage() {
         {
           std::unique_lock guard{_executorsCondition.mutex};
 
-          if (_executors.size() > _options.nrMinExecutors && !executor->isDefault() &&
+          if (_executors.size() > _options.nrMinExecutors &&
+              !executor->isDefault() &&
               executor->shouldBeRemoved(_options.maxExecutorAge,
                                         _options.maxExecutorInvocations) &&
               _dynamicExecutorCreationBlockers == 0) {
@@ -1315,8 +1324,8 @@ V8Executor* V8DealerFeature::enterExecutor(
             << "giving up waiting for unused V8 executors for '"
             << securityContext.typeName() << "' operation after "
             << Logger::FIXED(maxWaitTime) << " s - "
-            << "executors: " << _executors.size() << "/" << _options.nrMaxExecutors
-            << ", idle: " << _idleExecutors.size()
+            << "executors: " << _executors.size() << "/"
+            << _options.nrMaxExecutors << ", idle: " << _idleExecutors.size()
             << ", busy: " << _busyExecutors.size()
             << ", dirty: " << _dirtyExecutors.size()
             << ", in flight: " << _nrInflightExecutors
@@ -1716,7 +1725,8 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
                 TRI_InitV8UserFunctions(isolate, context);
                 TRI_InitV8UserStructures(isolate, context);
                 TRI_InitV8Buffer(isolate);
-                TRI_InitV8Utils(isolate, context, _options.startupDirectory, modules);
+                TRI_InitV8Utils(isolate, context, _options.startupDirectory,
+                                modules);
                 TRI_InitV8ServerUtils(isolate);
                 TRI_InitV8Shell(isolate);
                 TRI_InitV8Ttl(isolate);
@@ -1800,8 +1810,9 @@ std::unique_ptr<V8Executor> V8DealerFeature::buildExecutor(
 V8DealerFeature::Statistics V8DealerFeature::getCurrentExecutorStatistics() {
   std::lock_guard guard{_executorsCondition.mutex};
 
-  return {_executors.size(),     _busyExecutors.size(), _dirtyExecutors.size(),
-          _idleExecutors.size(), _options.nrMaxExecutors,       _options.nrMinExecutors};
+  return {_executors.size(),       _busyExecutors.size(),
+          _dirtyExecutors.size(),  _idleExecutors.size(),
+          _options.nrMaxExecutors, _options.nrMinExecutors};
 }
 
 std::vector<V8DealerFeature::DetailedExecutorStatistics>

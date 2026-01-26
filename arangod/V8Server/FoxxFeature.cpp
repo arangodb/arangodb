@@ -41,9 +41,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _queueVersion(0),
-      _localQueueInserts(0) {
+    : ArangodFeature{server, *this}, _queueVersion(0), _localQueueInserts(0) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }
