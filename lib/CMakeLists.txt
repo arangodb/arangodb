@@ -11,11 +11,6 @@
 
 add_subdirectory(iresearch)
 
-# Set compile definition after target is created
-if(TARGET iresearch-static)
-  target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
-endif()
-
 ################################################################################
 ## global definitions
 ################################################################################
