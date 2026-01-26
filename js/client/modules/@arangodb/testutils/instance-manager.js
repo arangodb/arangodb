@@ -132,7 +132,7 @@ class instanceManager {
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
     this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
-
+    this.hasSetPassvoid = false;
   }
 
   destructor(cleanup) {
@@ -222,9 +222,11 @@ class instanceManager {
       throw new Error('connecting the database failed');
     }
     try {
+      this.hasSetPassvoid = true;
       return require('org/arangodb/users').save(this.options.username, this.options.password);
     } catch (ex) {
       if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
+        this.hasSetPassvoid = true;
         return require('org/arangodb/users').update(this.options.username, this.options.password);
       }
       throw ex;
@@ -486,6 +488,10 @@ class instanceManager {
         this.endpoint = null;
         this.endpointPort = -1;
       };
+      if (this.arangods[0].args.hasOwnProperty('database.password')) {
+        this.hasSetPassvoid = true;
+        this.options.password = this.arangods[0].args['database.password'];
+      }
     } catch (e) {
       print(e, e.stack);
       return false;
@@ -1297,6 +1303,7 @@ class instanceManager {
 
   reconnect(privileged)
   {
+    let passvoid = this.hasSetPassvoid ? this.options.password:'';
     if (this.JWT !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
@@ -1308,16 +1315,12 @@ class instanceManager {
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
-      arango.reconnect(this.endpoint, '_system', 'root', '');
+      arango.reconnect(this.endpoint, '_system', 'root', passvoid);
       return true;
     }
 
     try {
       if (this.endpoint !== null) {
-        let passvoid = '';
-        if (this.arangods[0].args.hasOwnProperty('database.password')) {
-          passvoid = this.arangods[0].args['database.password'];
-        }
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
       } else {
         print("Don't have a frontend instance to connect to");

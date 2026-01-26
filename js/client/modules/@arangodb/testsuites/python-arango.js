@@ -87,8 +87,7 @@ class runInPythonTest extends runWithAllureReport {
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
-    print(this.instanceManager.setPassvoid('pythonarango'));
-    let topology;
+    print(this.instanceManager.setPassvoid(this.options.password));
     let testResultsDir = fs.join(this.instanceManager.rootDir, 'pythonresults');
 
     let args = [
@@ -133,7 +132,6 @@ class runInPythonTest extends runWithAllureReport {
     if (this.options.extremeVerbosity) {
       print(args);
     }
-    let start = Date();
     let status = true;
     const cwd = fs.normalize(fs.makeAbsolute(this.options.pythonsource));
     const rc = executeExternalAndWait('pytest', args, false, 0, [], cwd);
@@ -144,7 +142,7 @@ class runInPythonTest extends runWithAllureReport {
       status: status,
       failed: (status)?0:1,
     };
-    this.getAllureResults(testResultsDir, results, status);
+    this.getAllureResults(testResultsDir, results, status, "python-arango");
     return results;
   }
 }
