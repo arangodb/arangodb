@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "ProgramOptions/ProgramOptions.h"

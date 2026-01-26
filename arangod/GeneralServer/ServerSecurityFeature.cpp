@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

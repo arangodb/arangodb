@@ -32,6 +32,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -686,13 +687,12 @@ arangodb::Result executeTransfer(
 
 namespace arangodb {
 
-BackupFeature::BackupFeature(Server& server, int& exitCode)
-    : ArangoBackupFeature{server, *this},
+BackupFeature::BackupFeature(application_features::ApplicationServer& server,
+                             int& exitCode)
+    : ApplicationFeature{server, *this},
       _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
                      Logger::BACKUP},
       _exitCode{exitCode} {
-  static_assert(Server::isCreatedAfter<BackupFeature, HttpEndpointProvider>());
-
   setOptional(false);
   startsAfter<HttpEndpointProvider>();
 }
