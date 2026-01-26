@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/FunctionUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Thread.h"
@@ -34,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
@@ -41,8 +41,9 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <fuerte/connection.h>
 

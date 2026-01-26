@@ -24,6 +24,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManagerImpl.h"

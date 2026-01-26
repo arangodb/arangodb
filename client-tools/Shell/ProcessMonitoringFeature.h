@@ -29,9 +29,9 @@
 #include <vector>
 #include <mutex>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
-#include "Shell/arangosh.h"
 #include <absl/cleanup/cleanup.h>
 
 namespace arangodb {
@@ -51,9 +51,11 @@ class ProcessMonitorThread final : public arangodb::Thread {
   ProcessMonitoringFeature& _processMonitorFeature;
 };
 
-class ProcessMonitoringFeature final : public ArangoshFeature {
+class ProcessMonitoringFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ProcessMonitoringFeature(Server& server);
+  explicit ProcessMonitoringFeature(
+      application_features::ApplicationServer& server);
   ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
   void validateOptions(

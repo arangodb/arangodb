@@ -24,6 +24,9 @@
 
 #include "gtest/gtest.h"
 
+#include <typeindex>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Exceptions.h"
@@ -31,13 +34,12 @@
 #include "RestServer/arangod.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 class TestFeatureA;
 class TestFeatureB;
 
-using TestFeaturesList = TypeList<TestFeatureA, TestFeatureB>;
-struct TestFeatures : TestFeaturesList {};
-using TestApplicationServer = ApplicationServerT<TestFeatures>;
+using TestApplicationServer = ApplicationServer;
 using TestApplicationFeature = ApplicationFeatureT<TestApplicationServer>;
 
 class TestFeatureA : public TestApplicationFeature {
@@ -48,13 +50,13 @@ class TestFeatureA : public TestApplicationFeature {
   using ApplicationFeature::startsBefore;
 
   TestFeatureA(TestApplicationServer& server,
-               std::vector<size_t> const& startsAfter,
-               std::vector<size_t> const& startsBefore)
+               std::vector<std::type_index> const& startsAfter,
+               std::vector<std::type_index> const& startsBefore)
       : TestApplicationFeature(server, *this) {
-    for (auto const type : startsAfter) {
+    for (auto const& type : startsAfter) {
       this->startsAfter(type);
     }
-    for (auto const type : startsBefore) {
+    for (auto const& type : startsBefore) {
       this->startsBefore(type);
     }
   }
@@ -68,13 +70,13 @@ class TestFeatureB : public TestApplicationFeature {
   using ApplicationFeature::startsBefore;
 
   TestFeatureB(TestApplicationServer& server,
-               std::vector<size_t> const& startsAfter,
-               std::vector<size_t> const& startsBefore)
+               std::vector<std::type_index> const& startsAfter,
+               std::vector<std::type_index> const& startsBefore)
       : TestApplicationFeature(server, *this) {
-    for (auto const type : startsAfter) {
+    for (auto const& type : startsAfter) {
       this->startsAfter(type);
     }
-    for (auto const type : startsBefore) {
+    for (auto const& type : startsBefore) {
       this->startsBefore(type);
     }
   }
@@ -90,12 +92,12 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
   TestApplicationServer server(options, "path");
   server.registerFailCallback(callback);
 
-  auto& feature1 = server.addFeature<TestFeatureA>(std::vector<size_t>{},
-                                                   std::vector<size_t>{});
+  auto& feature1 = server.addFeature<TestFeatureA>(
+      std::vector<std::type_index>{}, std::vector<std::type_index>{});
 
   auto& feature2 = server.addFeature<TestFeatureB>(
-      std::vector<size_t>{TestApplicationServer::id<TestFeatureA>()},
-      std::vector<size_t>{});
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{});
 
   server.setupDependencies(true);
 
@@ -121,11 +123,11 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
   server.registerFailCallback(callback);
 
   server.addFeature<TestFeatureA>(
-      std::vector<size_t>{TestApplicationServer::id<TestFeatureB>()},
-      std::vector<size_t>{});
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))},
+      std::vector<std::type_index>{});
   server.addFeature<TestFeatureB>(
-      std::vector<size_t>{TestApplicationServer::id<TestFeatureA>()},
-      std::vector<size_t>{});
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))},
+      std::vector<std::type_index>{});
 
   try {
     server.setupDependencies(true);
@@ -147,11 +149,11 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   server.registerFailCallback(callback);
 
   server.addFeature<TestFeatureA>(
-      std::vector<size_t>{},
-      std::vector<size_t>{TestApplicationServer::id<TestFeatureB>()});
+      std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureB))});
   server.addFeature<TestFeatureB>(
-      std::vector<size_t>{},
-      std::vector<size_t>{TestApplicationServer::id<TestFeatureA>()});
+      std::vector<std::type_index>{},
+      std::vector<std::type_index>{std::type_index(typeid(TestFeatureA))});
 
   try {
     server.setupDependencies(true);

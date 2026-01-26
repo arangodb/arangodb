@@ -175,9 +175,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
-  static_assert(
-      Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
-
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
