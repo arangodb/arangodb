@@ -137,8 +137,10 @@ TEST_F(AttributeDetectorTest, InspectorNestedAttributes) {
   AttributeDetector::CollectionAccess access;
   access.collectionName = "documents";
   access.readAttributes.insert(makePath("name", monitor));
-  access.readAttributes.insert(makePath({"meta", "lang"}, monitor));
-  access.readAttributes.insert(makePath({"item", "value1", "value2"}, monitor));
+  access.readAttributes.insert(
+      makePath(std::vector<std::string>{"meta", "lang"}, monitor));
+  access.readAttributes.insert(
+      makePath(std::vector<std::string>{"item", "value1", "value2"}, monitor));
   access.requiresAllAttributesRead = false;
   access.requiresAllAttributesWrite = false;
 

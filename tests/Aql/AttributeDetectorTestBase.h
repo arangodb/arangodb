@@ -31,7 +31,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Async/async.h"
 #include "Basics/GlobalResourceMonitor.h"
-#include "Basics/ResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchView.h"

@@ -471,10 +471,10 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess2) {
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
   EXPECT_TRUE(accesses[0].readAttributes.contains(
       makePath("title", query->resourceMonitor())));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath({"meta", "lang"}, query->resourceMonitor())));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath({"meta", "likes"}, query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"meta", "lang"}, query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"meta", "likes"}, query->resourceMonitor())));
   // "meta" alone should not be present
   EXPECT_FALSE(accesses[0].readAttributes.contains(
       makePath("meta", query->resourceMonitor())));
@@ -671,9 +671,10 @@ TEST_F(AttributeDetectorTest, AttributeNameWithDot) {
   ASSERT_EQ(accesses1.size(), 1);
   EXPECT_EQ(accesses1[0].collectionName, "dotattrs");
   // Should contain the literal attribute "meta.en", not "meta"
-  EXPECT_TRUE(
-      accesses1[0].readAttributes.contains(makePath("meta.en", *query1)));
-  EXPECT_FALSE(accesses1[0].readAttributes.contains(makePath("meta", *query1)));
+  EXPECT_TRUE(accesses1[0].readAttributes.contains(
+      makePath("meta.en", query1->resourceMonitor())));
+  EXPECT_FALSE(accesses1[0].readAttributes.contains(
+      makePath("meta", query1->resourceMonitor())));
   EXPECT_FALSE(accesses1[0].requiresAllAttributesRead);
 
   // Test 2: Access nested attribute meta.en (without backticks)
@@ -683,13 +684,15 @@ TEST_F(AttributeDetectorTest, AttributeNameWithDot) {
   ASSERT_EQ(accesses2.size(), 1);
   EXPECT_EQ(accesses2[0].collectionName, "dotattrs");
   // Should contain full path ["meta", "en"], not just "meta" or "en" alone
-  EXPECT_TRUE(
-      accesses2[0].readAttributes.contains(makePath({"meta", "en"}, *query2)));
-  EXPECT_FALSE(accesses2[0].readAttributes.contains(makePath("meta", *query2)));
-  EXPECT_FALSE(accesses2[0].readAttributes.contains(makePath("en", *query2)));
+  EXPECT_TRUE(accesses2[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"meta", "en"}, query2->resourceMonitor())));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains(
+      makePath("meta", query2->resourceMonitor())));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains(
+      makePath("en", query2->resourceMonitor())));
   // Should NOT contain literal "meta.en" (that's a different attribute)
-  EXPECT_FALSE(
-      accesses2[0].readAttributes.contains(makePath("meta.en", *query2)));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains(
+      makePath("meta.en", query2->resourceMonitor())));
   EXPECT_FALSE(accesses2[0].requiresAllAttributesRead);
 }
 
@@ -704,8 +707,8 @@ TEST_F(AttributeDetectorTest, DeeplyNestedAttributeAccess) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   // Full path ["profile", "tags"] should be tracked
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath({"profile", "tags"}, query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"profile", "tags"}, query->resourceMonitor())));
   // Individual components should NOT be present as separate entries
   EXPECT_FALSE(accesses[0].readAttributes.contains(
       makePath("profile", query->resourceMonitor())));
@@ -730,10 +733,10 @@ TEST_F(AttributeDetectorTest, MultipleNestedPathsSameTopLevel) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   // Full paths are tracked: ["profile", "bio"], ["profile", "tags"], ["name"]
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath({"profile", "bio"}, query->resourceMonitor())));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath({"profile", "tags"}, query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"profile", "bio"}, query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath(
+      std::vector<std::string>{"profile", "tags"}, query->resourceMonitor())));
   EXPECT_TRUE(accesses[0].readAttributes.contains(
       makePath("name", query->resourceMonitor())));
   // Individual components should NOT be present as separate entries
