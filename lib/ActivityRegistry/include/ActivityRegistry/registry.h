@@ -39,8 +39,11 @@ struct Registry : containers::Registry<ActivityInRegistry> {
 
   struct ScopedDefaultParent;
 
-  static auto currentParent() noexcept -> Parent {
+  static auto currentDefaultParent() noexcept -> Parent {
     return _currentDefaultParent;
+  }
+  static auto setDefaultParent(Parent parent) noexcept -> void {
+    _currentDefaultParent = std::move(parent);
   }
 
  private:
@@ -56,12 +59,12 @@ struct Registry::ScopedDefaultParent {
 };
 
 template<typename Func>
-auto withParent(Func&& func) {
-  return [func = std::forward<Func>(func), ctx = Registry::defaultParent()]<
+auto withDefaultParent(Func&& func) {
+  return [func = std::forward<Func>(func), parent = Registry::defaultParent()]<
              typename... Args,
              typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
              Args&&... args) mutable {
-    Registry::ScopedDefaultParent guard(ctx);
+    Registry::ScopedDefaultParent guard(parent);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
 }
