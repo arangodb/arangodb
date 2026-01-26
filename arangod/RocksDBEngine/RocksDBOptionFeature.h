@@ -45,8 +45,9 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public ApplicationFeature,
-                                   public RocksDBOptionsProvider {
+class RocksDBOptionFeature final
+    : public application_features::ApplicationFeature,
+      public RocksDBOptionsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 

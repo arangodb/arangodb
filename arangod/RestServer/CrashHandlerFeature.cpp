@@ -23,6 +23,7 @@
 
 #include "RestServer/CrashHandlerFeature.h"
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -33,8 +34,10 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CrashHandlerFeature::CrashHandlerFeature(
-    Server& server, std::shared_ptr<crash_handler::DumpManager> dumpManager)
-    : ArangodFeature{server, *this}, _dumpManager(std::move(dumpManager)) {
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager)
+    : application_features::ApplicationFeature{server, *this},
+      _dumpManager(std::move(dumpManager)) {
   setOptional(false);
   // Feature must start after DatabasePathFeature
   // otherwise it won't be able to set the crashes directory

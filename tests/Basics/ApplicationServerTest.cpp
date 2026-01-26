@@ -40,7 +40,7 @@ class TestFeatureA;
 class TestFeatureB;
 
 using TestApplicationServer = ApplicationServer;
-using TestApplicationFeature = ApplicationFeatureT<TestApplicationServer>;
+using TestApplicationFeature = ApplicationFeature;
 
 class TestFeatureA : public TestApplicationFeature {
  public:

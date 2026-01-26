@@ -100,7 +100,7 @@ class StorageSnapshot {
   virtual TRI_voc_tick_t tick() const noexcept = 0;
 };
 
-class StorageEngine : public ApplicationFeature {
+class StorageEngine : public application_features::ApplicationFeature {
  public:
   // create the storage engine
   template<typename Server>

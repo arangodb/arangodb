@@ -33,12 +33,14 @@ namespace arangodb {
 /// @brief Feature to control crash dump logging to the database directory.
 /// The CrashHandler itself always runs for crash handling, but this feature
 /// controls whether additional crash information is written to disk.
-class CrashHandlerFeature final : public ArangodFeature {
+class CrashHandlerFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "CrashHandler"; }
 
   explicit CrashHandlerFeature(
-      Server& server, std::shared_ptr<crash_handler::DumpManager> dumpManager);
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 

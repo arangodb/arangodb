@@ -47,7 +47,8 @@ DECLARE_COUNTER(arangodb_activity_thread_registries_total,
 DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
               "Number of currently existing activity thread registries");
 
-Feature::Feature(Server& server) : ArangodFeature{server, *this} {
+Feature::Feature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }

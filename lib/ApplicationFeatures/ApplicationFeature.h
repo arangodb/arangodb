@@ -261,57 +261,5 @@ class ApplicationFeature {
   bool _ancestorsDetermined;
 };
 
-template<typename ServerT>
-class ApplicationFeatureT : public ApplicationFeature {
- public:
-  using Server = ServerT;
-
-  Server& server() const noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* p = dynamic_cast<Server*>(&ApplicationFeature::server());
-    TRI_ASSERT(p);
-    return *p;
-#else
-    return static_cast<Server&>(ApplicationFeature::server());
-#endif
-  }
-
-  // register a start dependency upon another feature
-  template<typename T>
-  void startsAfter() {
-    ApplicationFeature::startsAfter<T>();
-  }
-
-  // register a start dependency upon another feature
-  template<typename T>
-  void startsBefore() {
-    ApplicationFeature::startsBefore<T>();
-  }
-
-  template<typename T>
-  void onlyEnabledWith() {
-    ApplicationFeature::onlyEnabledWith<T>();
-  }
-
-  template<typename T>
-  bool doesStartBefore() const {
-    return ApplicationFeature::doesStartBefore<T>();
-  }
-
-  template<typename T>
-  bool doesStartAfter() const {
-    return ApplicationFeature::doesStartAfter<T>();
-  }
-
- protected:
-  template<typename Impl>
-  ApplicationFeatureT(Server& server, const Impl&)
-      : ApplicationFeatureT(server, typeid(Impl), Impl::name()) {}
-
-  ApplicationFeatureT(Server& server, std::type_index registration,
-                      std::string_view name)
-      : ApplicationFeature{server, registration, name} {}
-};
-
 }  // namespace application_features
 }  // namespace arangodb

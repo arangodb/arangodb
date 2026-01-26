@@ -29,7 +29,7 @@
 
 namespace arangodb::activity_registry {
 
-class Feature final : public ArangodFeature {
+class Feature final : public application_features::ApplicationFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
@@ -40,7 +40,7 @@ class Feature final : public ArangodFeature {
     return _asyncLock.lock();
   };
 
-  Feature(Server& server);
+  Feature(application_features::ApplicationServer& server);
 
   void prepare() override final;
   void start() override final;

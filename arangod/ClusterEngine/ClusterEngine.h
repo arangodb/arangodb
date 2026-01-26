@@ -38,7 +38,7 @@ class ClusterEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  explicit ClusterEngine(ArangodServer& server);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);

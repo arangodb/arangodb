@@ -197,37 +197,7 @@ class ArangodServer : public application_features::ApplicationServer {
       int* ret, std::string_view binaryName,
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
-
-  // Override addFeature to pass the derived type to feature constructors
-  template<typename Type, typename Impl = Type, typename... Args>
-  Impl& addFeature(Args&&... args) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
-    static_assert(std::is_base_of_v<Type, Impl>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
-
-    return static_cast<Impl&>(*slot);
-  }
-
-  // Adds a feature using a factory function. Useful for features with template
-  // constructors that provide a static `construct` factory method.
-  template<typename Type, typename Factory>
-  Type& addFeatureFactory(Factory&& factory) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = std::forward<Factory>(factory)();
-
-    return static_cast<Type&>(*slot);
-  }
 };
-
-// ArangodFeature - base class for all arangod features
-using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
 
 // Type alias for backward compatibility
 using Server = ArangodServer;
