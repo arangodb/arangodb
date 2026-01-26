@@ -50,10 +50,9 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
 IOHeartbeatThread::IOHeartbeatThread(
-    application_features::ApplicationServer& server,
     metrics::MetricsFeature& metricsFeature,
     DatabasePathFeature& databasePathFeature)
-    : ServerThread(server, "IOHeartbeat"),
+    : Thread( "IOHeartbeat"),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),

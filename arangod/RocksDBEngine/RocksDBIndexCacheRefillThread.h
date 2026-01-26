@@ -42,7 +42,7 @@ namespace arangodb {
 class DatabaseFeature;
 class LogicalCollection;
 
-class RocksDBIndexCacheRefillThread final : public ServerThread {
+class RocksDBIndexCacheRefillThread final : public Thread {
  public:
   explicit RocksDBIndexCacheRefillThread(
       application_features::ApplicationServer& server, size_t maxCapacity);

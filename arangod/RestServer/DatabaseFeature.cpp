@@ -468,7 +468,7 @@ void DatabaseFeature::start() {
        ServerState::instance()->isAgent()) &&
       _options.performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
-        server(), server().getFeature<metrics::MetricsFeature>(),
+        server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());
     if (!_ioHeartbeatThread->start()) {
       LOG_TOPIC("7eb07", FATAL, Logger::FIXME)

@@ -26,33 +26,25 @@
 
 #include <velocypack/Builder.h>
 
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
-#include "Rest/GeneralResponse.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : public ServerThread {
+class SchedulerThread : public Thread {
  public:
-  explicit SchedulerThread(application_features::ApplicationServer& server,
-                           Scheduler& scheduler,
+  explicit SchedulerThread(Scheduler& scheduler,
                            std::string const& name = "Scheduler")
-      : ServerThread(server, name), _scheduler(scheduler) {}
+      : Thread(name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
   ~SchedulerThread() = default;
@@ -63,9 +55,8 @@ class SchedulerThread : public ServerThread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(application_features::ApplicationServer& server,
-                               Scheduler& scheduler)
-      : SchedulerThread(server, scheduler, "SchedCron") {}
+  explicit SchedulerCronThread(Scheduler& scheduler)
+      : SchedulerThread(scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -83,7 +74,7 @@ Scheduler::Scheduler(application_features::ApplicationServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
+  _cronThread = std::make_unique<SchedulerCronThread>(*this);
   return _cronThread->start();
 }
 

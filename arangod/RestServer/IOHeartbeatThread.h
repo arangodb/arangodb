@@ -35,13 +35,12 @@
 
 namespace arangodb {
 
-class IOHeartbeatThread final : public ServerThread {
+class IOHeartbeatThread final : public Thread {
  public:
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(application_features::ApplicationServer&,
-                             metrics::MetricsFeature& metricsFeature,
+  explicit IOHeartbeatThread(metrics::MetricsFeature& metricsFeature,
                              DatabasePathFeature& databasePathFeature);
   ~IOHeartbeatThread();
 

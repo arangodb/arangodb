@@ -64,12 +64,12 @@ namespace {
 // pushing retry operations to the scheduler needs to use the correct
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
-class RetryThread : public ServerThread {
+class RetryThread : public Thread {
   static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
-  explicit RetryThread(application_features::ApplicationServer& server)
-      : ServerThread(server, "NetworkRetry"),
+  explicit RetryThread()
+      : Thread("NetworkRetry"),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {
@@ -543,7 +543,7 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
-  _retryThread = std::make_unique<RetryThread>(server());
+  _retryThread = std::make_unique<RetryThread>();
   if (!_retryThread->start()) {
     LOG_TOPIC("9b1a2", FATAL, arangodb::Logger::COMMUNICATION)
         << "unable to start network request retry thread";

@@ -29,8 +29,6 @@
 #include <string_view>
 
 #include "Basics/threads-posix.h"
-#include "Basics/threads.h"
-#include "Basics/DownCast.h"
 
 namespace arangodb {
 namespace application_features {

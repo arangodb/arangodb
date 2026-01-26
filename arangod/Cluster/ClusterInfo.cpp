@@ -380,10 +380,9 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-class ClusterInfo::SyncerThread final : public arangodb::ServerThread {
+class ClusterInfo::SyncerThread final : public Thread {
  public:
-  explicit SyncerThread(application_features::ApplicationServer&,
-                        std::string const& section,
+  explicit SyncerThread(std::string const& section,
                         std::function<consensus::index_t()> const&,
                         AgencyCache&);
   ~SyncerThread() override;
@@ -5876,9 +5875,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
-      _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
+      "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current",
+      "Current",
       [this] {
         TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
           using namespace std::chrono_literals;
@@ -5952,9 +5951,9 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    application_features::ApplicationServer& server, std::string const& section,
-    std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread(server, section + "Syncer"),
+    std::string const& section, std::function<consensus::index_t()> const& f,
+    AgencyCache& agencyCache)
+    : Thread(section + "Syncer"),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}
