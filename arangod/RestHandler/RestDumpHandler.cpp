@@ -23,6 +23,7 @@
 
 #include "RestDumpHandler.h"
 
+#include "ActivityRegistry/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -167,8 +168,11 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard = _dumpManager->createContext(std::move(opts), user, database,
-                                           useVPack, {_activity->id()});
+  activity_registry::Registry::setDefaultParent({_activity->id()});
+  auto guard = std::invoke(activity_registry::withDefaultParent([&]() {
+    return _dumpManager->createContext(std::move(opts), user, database,
+                                       useVPack);
+  }));
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());

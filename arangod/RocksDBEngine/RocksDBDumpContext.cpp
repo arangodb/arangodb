@@ -198,11 +198,13 @@ void RocksDBDumpContext::WorkItems::stop() {
   _cv.notify_all();
 }
 
-RocksDBDumpContext::RocksDBDumpContext(
-    RocksDBEngine& engine, RocksDBDumpManager& manager,
-    DatabaseFeature& databaseFeature, std::string id,
-    RocksDBDumpContextOptions options, std::string user, std::string database,
-    bool useVPack, activity_registry::ActivityId parentActivity)
+RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
+                                       RocksDBDumpManager& manager,
+                                       DatabaseFeature& databaseFeature,
+                                       std::string id,
+                                       RocksDBDumpContextOptions options,
+                                       std::string user, std::string database,
+                                       bool useVPack)
     : _engine(engine),
       _manager(manager),
       _id(std::move(id)),
