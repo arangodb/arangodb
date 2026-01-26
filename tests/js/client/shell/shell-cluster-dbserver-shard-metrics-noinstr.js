@@ -363,7 +363,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       let shardsOutOfSyncNumMetricValue = 0;
       let shardsNotReplicatedNumMetricValue = 0;
       for(let i = 0; i < 200 * waitFactor; i++) {
-        internal.wait(1);
+        internal.wait(0.1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
         if (shardsNumMetricValue !== totalLeaderCount) {
           continue;
