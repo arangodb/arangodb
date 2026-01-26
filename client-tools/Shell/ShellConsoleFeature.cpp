@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
@@ -51,8 +52,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ShellConsoleFeature::ShellConsoleFeature(Server& server)
-    : ArangoshFeature(server, *this),
+ShellConsoleFeature::ShellConsoleFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature(server, *this),
       _quiet(false),
       _colors(true),
       _useHistory(true),

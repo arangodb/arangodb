@@ -30,9 +30,8 @@
 #include "SupervisorFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
-#include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"

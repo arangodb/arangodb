@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangosh.h"
-
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -84,8 +82,9 @@ std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
 namespace arangodb {
 
-V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
-    : ArangoshFeature(server, *this),
+V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
+                               std::string const& name)
+    : ApplicationFeature(server, *this),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
@@ -994,7 +993,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
   ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));

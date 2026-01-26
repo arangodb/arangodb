@@ -24,11 +24,16 @@
 #include "ApiRecordingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Parameters.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "CrashHandler/DataSource.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
+
+#include <velocypack/Builder.h>
 
 using namespace arangodb::options;
 
@@ -43,8 +48,11 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
          bindVars.byteSize();
 }
 
-ApiRecordingFeature::ApiRecordingFeature(Server& server)
+ApiRecordingFeature::ApiRecordingFeature(
+    Server& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
     : ArangodFeature{server, *this},
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_api_recording_call_time{})),
       _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(
@@ -260,6 +268,34 @@ void ApiRecordingFeature::cleanupLoop() {
     // Sleep using the calculated delay
     std::this_thread::sleep_for(currentDelay);
   }
+}
+
+velocypack::SharedSlice ApiRecordingFeature::getCrashData() const {
+  velocypack::Builder body;
+
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    {
+      body.add(VPackValue("apiCalls"));
+      VPackArrayBuilder apiCallsGuard{&body};
+      doForApiCallRecords([&body](ApiCallRecord const& record) {
+        velocypack::serialize(body, record);
+      });
+    }
+    {
+      body.add(VPackValue("aqlQueries"));
+      VPackArrayBuilder aqlQueriesGuard{&body};
+      doForAqlQueryRecords([&body](AqlQueryRecord const& record) {
+        velocypack::serialize(body, record);
+      });
+    }
+  }
+
+  return std::move(body).sharedSlice();
+}
+
+std::string_view ApiRecordingFeature::getDataSourceName() const {
+  return name();
 }
 
 }  // namespace arangodb

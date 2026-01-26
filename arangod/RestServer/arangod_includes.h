@@ -107,6 +107,7 @@
 #ifdef USE_V8
 #include "RestServer/ConsoleFeature.h"
 #endif
+#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"

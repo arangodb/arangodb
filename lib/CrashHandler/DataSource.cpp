@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,24 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "CrashHandler/DataSource.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+namespace arangodb::crash_handler {
 
-namespace arangodb {
+CrashHandlerDataSource::CrashHandlerDataSource(
+    std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
+    : _dataSourceRegistry(dataSourceRegistry) {
+  dataSourceRegistry->addDataSource(this);
+}
 
-class TempFeature;
-class BenchFeature;
+CrashHandlerDataSource::~CrashHandlerDataSource() {
+  _dataSourceRegistry->removeDataSource(this);
+}
 
-using ArangoBenchFeaturesList =
-    ArangoClientFeaturesList<BasicFeaturePhaseClient, TempFeature,
-                             BenchFeature>;
-struct ArangoBenchFeatures : ArangoBenchFeaturesList {};
-using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
-using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
-
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

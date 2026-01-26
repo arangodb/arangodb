@@ -76,7 +76,12 @@ class WeightedQueueTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 };
-
+template<typename Step>
+struct MockNeighbourCursor {
+  auto next() -> std::vector<Step> { return {}; };
+  auto hasMore() -> bool { return false; };
+  auto markForDeletion() -> void{};
+};
 TEST_F(WeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue = WeightedQueue<Step>(_resourceMonitor);
   ASSERT_EQ(queue.size(), 0U);

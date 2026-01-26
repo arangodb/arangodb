@@ -24,7 +24,9 @@
 #include "ReplicatedLogFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "ProgramOptions/Parameters.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
@@ -44,9 +46,6 @@ using namespace arangodb::replication2::replicated_log;
 ReplicatedLogFeature::ReplicatedLogFeature(Server& server)
     : ArangodFeature{server, *this},
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
-  static_assert(
-      Server::isCreatedAfter<ReplicatedLogFeature, metrics::MetricsFeature>());
-
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();

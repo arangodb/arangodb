@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,22 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+#include <string_view>
 
-namespace arangodb {
+#include <velocypack/SharedSlice.h>
+#include "CrashHandler/DataSourceRegistry.h"
 
-class BackupFeature;
+namespace arangodb::crash_handler {
 
-using ArangoBackupFeaturesList =
-    ArangoClientFeaturesList<BasicFeaturePhaseClient, BackupFeature>;
-struct ArangoBackupFeatures : ArangoBackupFeaturesList {};
-using ArangoBackupServer = ApplicationServerT<ArangoBackupFeatures>;
-using ArangoBackupFeature = ApplicationFeatureT<ArangoBackupServer>;
+class CrashHandlerDataSource {
+ public:
+  CrashHandlerDataSource(
+      std::shared_ptr<DataSourceRegistry> dataSourceRegistry);
 
-}  // namespace arangodb
+  virtual ~CrashHandlerDataSource();
+
+  virtual velocypack::SharedSlice getCrashData() const = 0;
+
+  virtual std::string_view getDataSourceName() const = 0;
+
+ private:
+  std::shared_ptr<DataSourceRegistry> _dataSourceRegistry;
+};
+
+}  // namespace arangodb::crash_handler

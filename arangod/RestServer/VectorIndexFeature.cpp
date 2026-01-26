@@ -22,6 +22,7 @@
 #include "VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
 

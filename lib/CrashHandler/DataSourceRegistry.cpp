@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,31 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "CrashHandler/DataSourceRegistry.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
-#include "Utils/ArangoClient.h"
+#include <algorithm>
 
-namespace arangodb {
+namespace arangodb::crash_handler {
 
-class BumpFileDescriptorsFeature;
-class DumpFeature;
-class EncryptionFeature;
+void DataSourceRegistry::addDataSource(
+    CrashHandlerDataSource const* dataSource) {
+  std::lock_guard guard(_dataSourceMtx);
+  _dataSources.push_back(dataSource);
+}
 
-using ArangoDumpFeaturesList = ArangoClientFeaturesList<
-#ifdef TRI_HAVE_GETRLIMIT
-    BumpFileDescriptorsFeature,
-#endif
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    BasicFeaturePhaseClient, DumpFeature>;
-struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
-using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
-using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;
+std::vector<CrashHandlerDataSource const*> const&
+DataSourceRegistry::getDataSources() const {
+  return _dataSources;
+}
 
-}  // namespace arangodb
+void DataSourceRegistry::removeDataSource(
+    CrashHandlerDataSource const* dataSource) {
+  std::lock_guard guard(_dataSourceMtx);
+  std::ranges::remove(_dataSources, dataSource);
+}
+
+}  // namespace arangodb::crash_handler

@@ -26,6 +26,10 @@
 #include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "Logger/LoggerFeature.h"
+
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgencyPaths.h"
@@ -531,16 +535,14 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& roOptions = as.addFeature2(
-        std::function<std::unique_ptr<RocksDBOptionFeature>(ArangodServer&)>(
-            [](ArangodServer& server) {
-              TRI_ASSERT(!server.hasFeature<AgencyFeature>());
-              return RocksDBOptionFeature::construct(
-                  server, server.hasFeature<AgencyFeature>()
-                              ? &server.getFeature<AgencyFeature>()
-                              : nullptr);
-            }));
-    as.addFeature<GreetingsFeaturePhase>(std::false_type{});
+    auto& roOptions = as.addFeatureFactory<RocksDBOptionFeature>([this]() {
+      TRI_ASSERT(!as.hasFeature<AgencyFeature>());
+      return RocksDBOptionFeature::construct(
+          as, as.hasFeature<AgencyFeature>() ? &as.getFeature<AgencyFeature>()
+                                             : nullptr);
+    });
+    as.addFeature<application_features::GreetingsFeaturePhase>(
+        std::false_type{});
     auto& selector = as.addFeature<EngineSelectorFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
