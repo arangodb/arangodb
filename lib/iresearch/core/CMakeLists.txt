@@ -370,6 +370,8 @@ target_include_directories(iresearch-static
   PUBLIC $<TARGET_PROPERTY:${FASTTEXT_LIBRARY_STATIC},INTERFACE_INCLUDE_DIRECTORIES>
   )
 
+target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
+
 # setup MSVC specific compiler flags
 if (MSVC)
   target_compile_options(iresearch-static
