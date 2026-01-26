@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/BootstrapFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -47,8 +48,8 @@ class BootstrapFeature final : public ArangodFeature {
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
 
+  BootstrapFeatureOptions _options;
   bool _isReady;
-  bool _bark;
 };
 
 }  // namespace arangodb

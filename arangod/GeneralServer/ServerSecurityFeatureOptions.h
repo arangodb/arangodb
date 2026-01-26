@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,27 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
-
 namespace arangodb {
 
-class TempFeature;
-class ImportFeature;
-class EncryptionFeature;
-
-using ArangoImportFeaturesList = ArangoClientFeaturesList<
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    BasicFeaturePhaseClient, TempFeature, ImportFeature>;
-struct ArangoImportFeatures : ArangoImportFeaturesList {};
-using ArangoImportServer = ApplicationServerT<ArangoImportFeatures>;
-using ArangoImportFeature = ApplicationFeatureT<ArangoImportServer>;
+struct ServerSecurityFeatureOptions {
+  bool enableFoxxApi = true;
+  bool enableFoxxStore = true;
+  bool hardenedRestApi = false;
+  bool foxxAllowInstallFromRemote = false;
+};
 
 }  // namespace arangodb

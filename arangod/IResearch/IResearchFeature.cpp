@@ -25,14 +25,12 @@
 #include "IResearchFeature.h"
 
 #include "Basics/DownCast.h"
-#include "Basics/StaticStrings.h"
-#include <utils/source_location.hpp>
-
 #include "search/scorers.hpp"
 #include "utils/assert.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/source_location.hpp"
 
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -52,11 +50,10 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "CrashHandler/CrashHandler.h"
-#include "Containers/SmallVector.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -802,9 +799,9 @@ class AssertionCallbackSetter {
  private:
   [[noreturn]] static void assertCallback(irs::SourceLocation&& source,
                                           std::string_view message) noexcept {
-    CrashHandler::assertionFailure(source.file.data(),
-                                   static_cast<int>(source.line),
-                                   source.func.data(), message.data(), "");
+    crash_handler::CrashHandler::assertionFailure(
+        source.file.data(), static_cast<int>(source.line), source.func.data(),
+        message.data(), "");
   }
 };
 

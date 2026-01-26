@@ -24,9 +24,11 @@
 #pragma once
 
 #include <span>
+#include <typeindex>
 
 #include "VocBase/Methods/Upgrade.h"
 #include "RestServer/arangod.h"
+#include "RestServer/UpgradeFeatureOptions.h"
 
 namespace arangodb {
 
@@ -45,7 +47,7 @@ class UpgradeFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Upgrade"; }
 
   UpgradeFeature(Server& server, int* result,
-                 std::span<const size_t> nonServerFeatures);
+                 std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -53,7 +55,7 @@ class UpgradeFeature final : public ArangodFeature {
   void start() override final;
 
   void addTask(methods::Upgrade::Task&& task);
-  bool upgrading() const noexcept { return _upgrade; }
+  bool upgrading() const noexcept { return _options.upgrade; }
 
  private:
   void upgradeLocalDatabase();
@@ -62,12 +64,10 @@ class UpgradeFeature final : public ArangodFeature {
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'
 
-  bool _upgrade;
-  bool _upgradeCheck;
-  bool _upgradeFullCompaction;
+  UpgradeFeatureOptions _options;
 
   int* _result;
-  std::span<const size_t> _nonServerFeatures;
+  std::span<const std::type_index> _nonServerFeatures;
   std::vector<methods::Upgrade::Task> _tasks;
 };
 

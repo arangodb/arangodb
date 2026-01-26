@@ -228,7 +228,7 @@ class ClusterFeature : public ArangodFeature {
 
  private:
   ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
-                 DatabaseFeature& database, size_t registration);
+                 DatabaseFeature& database, std::type_index registration);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();

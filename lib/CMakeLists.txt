@@ -161,6 +161,7 @@ target_link_libraries(arango_basic_utils
          linenoise-ng
          zlib_interface
          snappy
+         arango_activity_registry_global
 )
 
 # Enterprise
@@ -202,6 +203,7 @@ target_link_libraries(arango_basic_features
          arango_inspection
          arango_basic_errors
          arango_futures
+         arango_basic_http_client
          absl::flat_hash_set
          fuerte
          s2
