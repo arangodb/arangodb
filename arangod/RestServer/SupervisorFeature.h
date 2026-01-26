@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "Basics/threads.h"
+#include "RestServer/SupervisorFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -47,7 +48,7 @@ class SupervisorFeature final : public ArangodFeature {
   void daemonize() override final;
 
  private:
-  bool _supervisor;
+  SupervisorFeatureOptions _options;
   TRI_pid_t _clientPid;
 };
 

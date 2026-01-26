@@ -25,8 +25,11 @@
 
 #include <atomic>
 #include <string_view>
+#include <memory>
 
-namespace arangodb {
+#include "CrashHandler/DumpManager.h"
+
+namespace arangodb::crash_handler {
 
 /// @brief States for the crash handler thread coordination.
 /// The state of the dedicated crash handler starts with IDLE
@@ -44,27 +47,20 @@ enum class CrashHandlerState : int {
 
 class CrashHandler {
   std::atomic<bool> _threadRunning{false};
-  static std::atomic<CrashHandler*> _theCrashHandler;
   // This needs to be static for the signal handlers to reach!
+  static std::atomic<CrashHandler*> _theCrashHandler;
+
+  /// @brief Dumper instance for dumping crash data
+  std::shared_ptr<DumpManager const> _dumpManager;
 
  public:
-  CrashHandler() {
-    // starts global background thread if not already done
-    bool threadRunning = _threadRunning.exchange(true);
-    if (!threadRunning) {
-      _theCrashHandler.store(this);
-      installCrashHandler();
-    }
-  }
+  CrashHandler(std::shared_ptr<DumpManager const> dumper);
 
-  ~CrashHandler() {
-    // joins global background thread if running
-    bool threadRunning = _threadRunning.exchange(false);
-    if (threadRunning) {
-      shutdownCrashHandler();
-    }
-    _theCrashHandler.store(nullptr);
-  }
+  ~CrashHandler();
+
+  static CrashHandler* getCrashHandler() { return _theCrashHandler; }
+
+  void dumpCrashData(std::string_view backtrace) const;
 
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
@@ -109,4 +105,4 @@ class CrashHandler {
   static void shutdownCrashHandler();
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

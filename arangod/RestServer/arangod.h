@@ -24,12 +24,18 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/TypeList.h"
-#include "Basics/operating-system.h"
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
-namespace application_features {
 
+// Forward declaration of ArangodServer
+class ArangodServer;
+
+// Forward declarations of all features (needed by ArangodFeature and other
+// headers)
+namespace application_features {
 class AgencyFeaturePhase;
 class CommunicationFeaturePhase;
 class AqlFeaturePhase;
@@ -41,16 +47,11 @@ class FoxxFeaturePhase;
 class GreetingsFeaturePhase;
 class ServerFeaturePhase;
 class V8FeaturePhase;
-
-template<typename Features>
-class ApplicationServerT;
-
 }  // namespace application_features
-namespace metrics {
 
+namespace metrics {
 class MetricsFeature;
 class ClusterMetricsFeature;
-
 }  // namespace metrics
 
 class AqlFeature;
@@ -58,9 +59,7 @@ class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
 namespace async_registry {
-
 class Feature;
-
 }
 namespace activity_registry {
 
@@ -72,6 +71,7 @@ class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
 class CacheOptionsFeature;
 class CheckVersionFeature;
+class CrashHandlerFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
 class ConfigFeature;
@@ -151,180 +151,85 @@ class VectorIndexFeature;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ProcessEnvironmentFeature;
 #endif
+
 namespace transaction {
-
 class ManagerFeature;
-
 }  // namespace transaction
-namespace aql {
 
+namespace aql {
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
 class QueryInfoLoggerFeature;
-
 }  // namespace aql
-namespace iresearch {
 
+namespace iresearch {
 class IResearchAnalyzerFeature;
 class IResearchFeature;
-
 }  // namespace iresearch
+
 namespace replication2::replicated_state {
-
 struct ReplicatedStateAppFeature;
-
 namespace black_hole {
-
 struct BlackHoleStateMachineFeature;
-
 }  // namespace black_hole
-
 namespace document {
 struct DocumentStateMachineFeature;
-}
+}  // namespace document
 }  // namespace replication2::replicated_state
 
-using namespace application_features;
+// Bring application_features types into arangodb namespace for backward
+// compatibility with existing code that uses unqualified names
+using application_features::ApplicationFeature;
+using application_features::ApplicationFeaturePhase;
+using application_features::ApplicationServer;
 
-// clang-format off
-using ArangodFeaturesList = TypeList<
-    // Adding the Phases
-    AgencyFeaturePhase,
-    CommunicationFeaturePhase,
-    AqlFeaturePhase,
-    BasicFeaturePhaseServer,
-    ClusterFeaturePhase,
-    DatabaseFeaturePhase,
-    FinalFeaturePhase,
-#ifdef USE_V8
-    FoxxFeaturePhase,
-#endif
-    GreetingsFeaturePhase,
-    ServerFeaturePhase,
-#ifdef USE_V8
-    V8FeaturePhase,
-#endif
-    // Adding the features
-    metrics::MetricsFeature, // metrics::MetricsFeature must go first
-    metrics::ClusterMetricsFeature,
-    VersionFeature,
-    ActionFeature,
-    AgencyFeature,
-    ApiRecordingFeature,
-    AqlFeature,
-    async_registry::Feature,
-    activity_registry::Feature,
-    AuthenticationFeature,
-    BootstrapFeature,
-#ifdef TRI_HAVE_GETRLIMIT
-    BumpFileDescriptorsFeature,
-#endif
-    CacheOptionsFeature,
-    CacheManagerFeature,
-    CheckVersionFeature,
-    ClusterFeature,
-    DatabaseFeature,
-    ClusterUpgradeFeature,
-    ConfigFeature,
-#ifdef USE_V8
-    ConsoleFeature,
-#endif
-    CpuUsageFeature,
-    DatabasePathFeature,
-    DumpLimitsFeature,
-    HttpEndpointProvider,
-    EngineSelectorFeature,
-    EnvironmentFeature,
-    FileSystemFeature,
-    FlushFeature,
-    FortuneFeature,
-#ifdef USE_V8
-    FoxxFeature,
-    FrontendFeature,
-#endif
-    GeneralServerFeature,
-    GreetingsFeature,
-    InitDatabaseFeature,
-    LanguageCheckFeature,
-    LanguageFeature,
-    TimeZoneFeature,
-    LockfileFeature,
-    LogBufferFeature,
-    LoggerFeature,
-    MaintenanceFeature,
-    MaxMapCountFeature,
-    NetworkFeature,
-    NonceFeature,
-    OptionsCheckFeature,
-    PrivilegeFeature,
-    QueryRegistryFeature,
-    RandomFeature,
-    ReplicationFeature,
-    ReplicatedLogFeature,
-    ReplicationMetricsFeature,
-    ReplicationTimeoutFeature,
-    SchedulerFeature,
-    VectorIndexFeature,
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    ProcessEnvironmentFeature,
-#endif
-#ifdef USE_V8
-    ScriptFeature,
-#endif
-    ServerFeature,
-    ServerIdFeature,
-    ServerSecurityFeature,
-    ShardingFeature,
-    SharedPRNGFeature,
-    ShellColorsFeature,
-    ShutdownFeature,
-    SoftShutdownFeature,
-    SslFeature,
-    StatisticsFeature,
-    StorageEngineFeature,
-    SystemDatabaseFeature,
-    TempFeature,
-    TemporaryStorageFeature,
-    TtlFeature,
-    UpgradeFeature,
-#ifdef USE_V8
-    V8DealerFeature,
-    V8PlatformFeature,
-    V8SecurityFeature,
-#endif
-    transaction::ManagerFeature,
-    ViewTypesFeature,
-    aql::AqlFunctionFeature,
-    aql::OptimizerRulesFeature,
-    aql::QueryInfoLoggerFeature,
-    RocksDBIndexCacheRefillFeature,
-    RocksDBOptionFeature,
-    RocksDBRecoveryManager,
-#ifdef TRI_HAVE_GETRLIMIT
-    FileDescriptorsFeature,
-#endif
-#ifdef ARANGODB_HAVE_FORK
-    DaemonFeature,
-    SupervisorFeature,
-#endif
-#ifdef USE_ENTERPRISE
-    AuditFeature,
-    LicenseFeature,
-    RCloneFeature,
-    HotBackupFeature,
-    EncryptionFeature,
-#endif
-    SslServerFeature,
-    iresearch::IResearchAnalyzerFeature,
-    iresearch::IResearchFeature,
-    ClusterEngine,
-    RocksDBEngine,
-    replication2::replicated_state::ReplicatedStateAppFeature,
-    replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::document::DocumentStateMachineFeature
->;  // clang-format on
-struct ArangodFeatures : ArangodFeaturesList {};
-using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
+// ArangodServer - the main server class for arangod
+class ArangodServer : public application_features::ApplicationServer {
+ public:
+  ArangodServer(std::shared_ptr<options::ProgramOptions> options,
+                char const* binaryPath)
+      : ApplicationServer(std::move(options), binaryPath) {}
+
+  // Adds all features to the server. Must be called before run().
+  // @param ret pointer to return value (used by some features)
+  // @param binaryName name of the binary (used by some features)
+  void addFeatures(
+      int* ret, std::string_view binaryName,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
+
+  // Override addFeature to pass the derived type to feature constructors
+  template<typename Type, typename Impl = Type, typename... Args>
+  Impl& addFeature(Args&&... args) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[typeid(Type)];
+    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
+  }
+
+  // Adds a feature using a factory function. Useful for features with template
+  // constructors that provide a static `construct` factory method.
+  template<typename Type, typename Factory>
+  Type& addFeatureFactory(Factory&& factory) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[typeid(Type)];
+    slot = std::forward<Factory>(factory)();
+
+    return static_cast<Type&>(*slot);
+  }
+};
+
+// ArangodFeature - base class for all arangod features
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
+
+// Type alias for backward compatibility
+using Server = ArangodServer;
 
 }  // namespace arangodb

@@ -27,9 +27,11 @@
 #include <iostream>
 #include <thread>
 
+#include "RestServer/InitDatabaseFeatureOptions.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/ScopeGuard.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
@@ -41,7 +43,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
 
@@ -52,7 +53,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(
-    Server& server, std::span<const size_t> nonServerFeatures)
+    Server& server, std::span<const std::type_index> nonServerFeatures)
     : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -62,20 +63,20 @@ void InitDatabaseFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--database.init-database", "Initialize an empty database.",
-      new BooleanParameter(&_initDatabase),
+      new BooleanParameter(&_options.initDatabase),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--database.restore-admin",
       "Reset the admin users and set a new password.",
-      new BooleanParameter(&_restoreAdmin),
+      new BooleanParameter(&_options.restoreAdmin),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--database.password", "The initial password of the root user.",
-      new StringParameter(&_password),
+      new StringParameter(&_options.password),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
@@ -84,29 +85,28 @@ void InitDatabaseFeature::validateOptions(
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
 
-  if (_initDatabase || _restoreAdmin) {
+  if (_options.initDatabase || _options.restoreAdmin) {
     server().forceDisableFeatures(_nonServerFeatures);
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    server().disableFeatures(
-        std::array{ArangodServer::id<EnvironmentFeature>()});
+    server().disableFeatures<EnvironmentFeature>();
   }
 }
 
 void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
-    if (TRI_GETENV("ARANGODB_DEFAULT_ROOT_PASSWORD", _password)) {
+    if (TRI_GETENV("ARANGODB_DEFAULT_ROOT_PASSWORD", _options.password)) {
       _seenPassword = true;
     }
   }
 
-  if (!_initDatabase && !_restoreAdmin) {
+  if (!_options.initDatabase && !_options.restoreAdmin) {
     return;
   }
 
-  if (_initDatabase) {
+  if (_options.initDatabase) {
     checkEmptyDatabase();
   }
 
@@ -119,7 +119,7 @@ void InitDatabaseFeature::prepare() {
         std::string password2 = readPassword("Repeat password");
 
         if (password1 == password2) {
-          _password = password1;
+          _options.password = password1;
           break;
         }
         LOG_TOPIC("2a01c", ERR, arangodb::Logger::FIXME)

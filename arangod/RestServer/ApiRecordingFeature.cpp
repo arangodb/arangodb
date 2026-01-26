@@ -24,11 +24,16 @@
 #include "ApiRecordingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Parameters.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "CrashHandler/DataSource.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
+
+#include <velocypack/Builder.h>
 
 using namespace arangodb::options;
 
@@ -43,8 +48,11 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
          bindVars.byteSize();
 }
 
-ApiRecordingFeature::ApiRecordingFeature(Server& server)
+ApiRecordingFeature::ApiRecordingFeature(
+    Server& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
     : ArangodFeature{server, *this},
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_api_recording_call_time{})),
       _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(
@@ -66,13 +74,13 @@ void ApiRecordingFeature::collectOptions(
   options->addOption(
       "--server.api-call-recording",
       "Whether to record recent API calls for debugging purposes.",
-      new BooleanParameter(&_enabledCalls),
+      new BooleanParameter(&_options.enabledCalls),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.api-recording-memory-limit",
       "Size limit for the list of API call records.",
-      new UInt64Parameter(&_totalMemoryLimitCalls, 1,
+      new UInt64Parameter(&_options.totalMemoryLimitCalls, 1,
                           256 * (std::size_t{1} << 10),  // Min: 256 KiB
                           256 * (std::size_t{1} << 30)   // Max: 256 GiB
                           ),
@@ -81,13 +89,13 @@ void ApiRecordingFeature::collectOptions(
   options->addOption(
       "--server.aql-query-recording",
       "Whether to record recent AQL queries for debugging purposes.",
-      new BooleanParameter(&_enabledQueries),
+      new BooleanParameter(&_options.enabledQueries),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.aql-recording-memory-limit",
       "Size limit for the list of AQL query records.",
-      new UInt64Parameter(&_totalMemoryLimitQueries, 1,
+      new UInt64Parameter(&_options.totalMemoryLimitQueries, 1,
                           256 * (std::size_t{1} << 10),  // Min: 256 KiB
                           256 * (std::size_t{1} << 30)   // Max: 256 GiB
                           ),
@@ -98,7 +106,7 @@ void ApiRecordingFeature::collectOptions(
           "--log.recording-api-enabled",
           "Whether the recording API is enabled (true) or not (false), or "
           "only enabled for the superuser (jwt).",
-          new StringParameter(&_apiSwitch))
+          new StringParameter(&_options.apiSwitch))
       .setLongDescription(R"(The `/_admin/server/api-calls` and
 `/_admin/server/aql-queries` endpoints provide access to recorded API calls
 and AQL queries respectively. They are referred to as the recording API.
@@ -121,29 +129,31 @@ It is controlled by the `--server.api-call-recording` and
 
 void ApiRecordingFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_apiSwitch == "true" || _apiSwitch == "on" || _apiSwitch == "On") {
-    _apiEnabled = true;
-    _apiSwitch = "true";
-  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
-    _apiEnabled = true;
-    _apiSwitch = "jwt";
+  if (_options.apiSwitch == "true" || _options.apiSwitch == "on" ||
+      _options.apiSwitch == "On") {
+    _options.apiEnabled = true;
+    _options.apiSwitch = "true";
+  } else if (_options.apiSwitch == "jwt" || _options.apiSwitch == "JWT") {
+    _options.apiEnabled = true;
+    _options.apiSwitch = "jwt";
   } else {
-    _apiEnabled = false;
-    _apiSwitch = "false";
+    _options.apiEnabled = false;
+    _options.apiSwitch = "false";
   }
 }
 
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
-  _memoryPerApiRecordList = _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerApiRecordList =
+      _options.totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
   _memoryPerAqlRecordList =
-      _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
+      _options.totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
 
-  if (_enabledCalls) {
+  if (_options.enabledCalls) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
         _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
   }
-  if (_enabledQueries) {
+  if (_options.enabledQueries) {
     _aqlQueryRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
         _memoryPerAqlRecordList, NUMBER_OF_AQL_RECORD_LISTS);
   }
@@ -151,7 +161,7 @@ void ApiRecordingFeature::prepare() {
 
 void ApiRecordingFeature::start() {
   // Start the cleanup thread if enabled
-  if (_enabledCalls || _enabledQueries) {
+  if (_options.enabledCalls || _options.enabledQueries) {
     _stopCleanupThread.store(false, std::memory_order_relaxed);
     _cleanupThread = std::jthread([this] { cleanupLoop(); });
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -171,7 +181,7 @@ void ApiRecordingFeature::stop() {
 void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
                                         std::string_view path,
                                         std::string_view database) {
-  if (!_enabledCalls || !_apiCallRecord) {
+  if (!_options.enabledCalls || !_apiCallRecord) {
     return;
   }
 
@@ -193,7 +203,7 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
 void ApiRecordingFeature::recordAQLQuery(
     std::string_view queryString, std::string_view database,
     velocypack::SharedSlice bindParameters) {
-  if (!_enabledQueries || !_aqlQueryRecord) {
+  if (!_options.enabledQueries || !_aqlQueryRecord) {
     return;
   }
 
@@ -258,6 +268,34 @@ void ApiRecordingFeature::cleanupLoop() {
     // Sleep using the calculated delay
     std::this_thread::sleep_for(currentDelay);
   }
+}
+
+velocypack::SharedSlice ApiRecordingFeature::getCrashData() const {
+  velocypack::Builder body;
+
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    {
+      body.add(VPackValue("apiCalls"));
+      VPackArrayBuilder apiCallsGuard{&body};
+      doForApiCallRecords([&body](ApiCallRecord const& record) {
+        velocypack::serialize(body, record);
+      });
+    }
+    {
+      body.add(VPackValue("aqlQueries"));
+      VPackArrayBuilder aqlQueriesGuard{&body};
+      doForAqlQueryRecords([&body](AqlQueryRecord const& record) {
+        velocypack::serialize(body, record);
+      });
+    }
+  }
+
+  return std::move(body).sharedSlice();
+}
+
+std::string_view ApiRecordingFeature::getDataSourceName() const {
+  return name();
 }
 
 }  // namespace arangodb

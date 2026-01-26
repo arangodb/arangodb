@@ -28,6 +28,7 @@
 #endif
 
 #include "RestServer/arangod.h"
+#include "RestServer/ScriptFeatureOptions.h"
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
@@ -42,7 +43,7 @@ class ScriptFeature final : public ArangodFeature {
   void start() override final;
 
  private:
-  std::vector<std::string> _scriptParameters;
+  ScriptFeatureOptions _options;
 
   int runScript(std::vector<std::string> const& scripts);
 

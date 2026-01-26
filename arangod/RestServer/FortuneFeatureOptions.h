@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,31 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
-
 namespace arangodb {
 
-class VPackFeature;
-
-using namespace application_features;
-
-using ArangoVPackFeaturesList =
-    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, OptionsCheckFeature,
-             FileSystemFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature,
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-             ProcessEnvironmentFeature,
-#endif
-             VPackFeature>;
-struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
-using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
-using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
+struct FortuneFeatureOptions {
+  bool fortune = false;
+};
 
 }  // namespace arangodb

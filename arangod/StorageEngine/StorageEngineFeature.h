@@ -25,6 +25,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -36,7 +37,7 @@ class StorageEngineFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "StorageEngine"; }
 
   explicit StorageEngineFeature(Server& server)
-      : ArangodFeature(server, Server::id<StorageEngineFeature>(), name()) {
+      : ArangodFeature(server, typeid(StorageEngineFeature), name()) {
     setOptional(false);
     startsAfter<application_features::BasicFeaturePhaseServer>();
   }

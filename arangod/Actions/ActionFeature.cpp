@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -33,8 +34,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ActionFeature::ActionFeature(Server& server)
-    : ArangodFeature{server, *this}, _allowUseDatabase(false) {
+ActionFeature::ActionFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
 }
@@ -44,12 +44,14 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.allow-use-database",
       "Allow to change the database in REST actions. Only needed internally "
       "for unit tests.",
-      new BooleanParameter(&_allowUseDatabase),
+      new BooleanParameter(&_options.allowUseDatabase),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void ActionFeature::unprepare() { TRI_CleanupActions(); }
 
-bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
+bool ActionFeature::allowUseDatabase() const {
+  return _options.allowUseDatabase;
+}
 
 }  // namespace arangodb
