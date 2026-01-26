@@ -71,7 +71,7 @@ TEST_F(ActivityRegistryTest,
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity) {
   auto parent_activity = Activity{"parent activity", {}};
-  auto child_activity = Activity{"child activity", {}, parent_activity.id()};
+  auto child_activity = Activity{"child activity", {}, {parent_activity.id()}};
 
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
@@ -79,7 +79,8 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
                     .name = "child activity",
                     .state = State::Active,
                     .id = child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = {ActivityId{parent_activity.id()}},
+                    .metadata = {}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
@@ -89,11 +90,11 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
 TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
   auto parent_activity = Activity{"parent activity", {}};
   auto first_child_activity =
-      Activity{"first child activity", {}, parent_activity.id()};
+      Activity{"first child activity", {}, {parent_activity.id()}};
   auto second_child_activity =
-      Activity{"second child activity", {}, parent_activity.id()};
+      Activity{"second child activity", {}, {parent_activity.id()}};
   auto child_of_first_child_activity =
-      Activity{"child of child activity", {}, first_child_activity.id()};
+      Activity{"child of child activity", {}, {first_child_activity.id()}};
 
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
