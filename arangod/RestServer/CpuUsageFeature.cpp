@@ -23,10 +23,8 @@
 
 #include "CpuUsageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/debugging.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
-#include <algorithm>
 #include <cstdio>
 #include <cstring>
 

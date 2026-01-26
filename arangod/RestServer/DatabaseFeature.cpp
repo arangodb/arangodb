@@ -42,16 +42,15 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
-#include "Metrics/GaugeBuilder.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/Version.h"
@@ -67,13 +66,10 @@
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/Events.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/VocbaseMetrics.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <atomic>
@@ -277,7 +273,7 @@ void DatabaseManagerThread::run() {
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
-  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();

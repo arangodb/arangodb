@@ -34,7 +34,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 RandomFeature::RandomFeature(application_features::ApplicationServer& server,
-                             size_t registration)
+                             std::type_index registration)
     : ApplicationFeature(server, registration, name()),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);

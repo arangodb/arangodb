@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
-#include "Shell/arangosh.h"
 
 #include <condition_variable>
 #include <memory>
@@ -46,7 +45,8 @@ class Builder;
 
 class TelemetricsHandler {
  public:
-  TelemetricsHandler(ArangoshServer& server, bool sendToEndpoint);
+  TelemetricsHandler(application_features::ApplicationServer& server,
+                     bool sendToEndpoint);
 
   ~TelemetricsHandler();
 
@@ -73,7 +73,7 @@ class TelemetricsHandler {
 
   std::string getFetchedInfo() const;
 
-  ArangoshServer& _server;
+  application_features::ApplicationServer& _server;
 
   std::mutex mutable _mtx;
   // the following members are all protected by _mtx

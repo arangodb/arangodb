@@ -27,12 +27,15 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -115,9 +118,6 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
           metrics.add(arangodb_aql_query_plan_cache_misses_total{})),
       _queryPlanCacheMemoryUsage(
           metrics.add(arangodb_aql_query_plan_cache_memory_usage{})) {
-  static_assert(
-      Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
-
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();

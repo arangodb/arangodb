@@ -23,7 +23,7 @@
 
 #include "ShardingFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -36,8 +36,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
-
-#include <array>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

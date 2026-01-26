@@ -24,8 +24,9 @@
 #include "TtlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
