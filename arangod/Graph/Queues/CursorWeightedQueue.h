@@ -25,7 +25,6 @@
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
-#include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Graph/Queues/QueueEntry.h"
 
@@ -40,9 +39,6 @@ class CursorWeightedQueue {
  public:
   static constexpr bool RequiresWeight = true;
   using Step = StepType;
-  // TODO: Add Sorting (Performance - will be implemented in the future -
-  // cluster relevant)
-  // -> loose ends to the end
 
   explicit CursorWeightedQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
@@ -73,12 +69,9 @@ class CursorWeightedQueue {
   }
 
   void append(Cursor& cursor) {
-    LOG_DEVEL << "weighted cursor append";
     // exhaust the full cursor
     while (cursor.hasMore()) {
-      LOG_DEVEL << "cursor has more";
       for (auto const& step : cursor.next()) {
-        LOG_DEVEL << "append " << inspection::json(step);
         append(step);
       }
     }
@@ -184,11 +177,7 @@ class CursorWeightedQueue {
   };
 
   WeightedComparator _cmpHeap{};
-
-  /// @brief queue datastore
-  /// Note: Mutable is a required for hasProcessableElement right now which is
-  /// const. We can easily make it non const here.
-  mutable std::vector<Step> _queue;
+  std::vector<Step> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
