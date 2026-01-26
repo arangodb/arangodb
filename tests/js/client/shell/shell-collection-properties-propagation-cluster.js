@@ -310,88 +310,82 @@ function CollectionPropertiesPropagationSuite() {
         assertEqual(1, p[s].writeConcern, {s, p});
       });
     },
+  };
+}
 
-    // BTS-2279: Changing writeConcern should properly invalidate the
-    // _canWrite flag in FollowerInfo, allowing writes to continue. since we
-    // waitForSyncReplication is true, we can wait for the followers to sync.
-    testWritesAfterChangingWriteConcern : function () {
-      const dbName = "UnitTestsWriteConcernDb1";
+// BTS-2279: Test suite for writeConcern validation and _canWrite flag behavior
+function WriteConcernValidationSuite() {
+  const dbName = "UnitTestsWriteConcernDb";
+  const cn = "col";
+
+  return {
+    setUp : function () {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-
-      const cn = "col";
-      try {
-        const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: true});
-
-        // Insert with initial writeConcern of 1
-        coll.insert({_key: "test1"});
-
-        // Change writeConcern to 2
-        coll.properties({writeConcern: 2});
-
-        // Insert should still work after writeConcern change
-        coll.insert({_key: "test2"});
-
-        // Verify both documents are inserted
-        assertEqual(2, coll.count());
-        assertTrue(coll.document("test1") !== null);
-        assertTrue(coll.document("test2") !== null);
-      } finally {
-        db._useDatabase("_system");
-        db._dropDatabase(dbName);
-      }
     },
 
-    // BTS-2279: When waitForSyncReplication is false and writeConcern is
-    // increased before followers sync, inserts should fail because the
-    // required write concern cannot be satisfied.
+    tearDown : function () {
+      global.instanceManager.debugClearFailAt();
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    // BTS-2279: Changing writeConcern should properly invalidate the
+    // _canWrite flag in FollowerInfo, allowing writes to continue.
+    testWritesAfterChangingWriteConcern : function () {
+      const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: true});
+
+      coll.insert({_key: "test1"});
+
+      coll.properties({writeConcern: 2});
+
+      coll.insert({_key: "test2"});
+
+      assertEqual(2, coll.count());
+      assertTrue(coll.document("test1") !== null);
+      assertTrue(coll.document("test2") !== null);
+    },
+
+    // BTS-2279: When followers are down and writeConcern cannot be satisfied,
+    // inserts should fail because the shard becomes read-only.
     testWritesFailWhenWriteConcernNotSatisfied : function () {
-      const dbName = "UnitTestsWriteConcernDb2";
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+      const coll = db._create(cn, {replicationFactor: 2, writeConcern: 2, numberOfShards: 1}, {waitForSyncReplication: true});
 
-      const cn = "col";
+      coll.insert({_key: "test1"});
+      assertEqual(1, coll.count());
+
+      const [_, [__, follower]] = Object.entries(coll.shards(true))[0];
+
       try {
-        const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: false});
+        // Use fail points to block inserts on the follower and prevent re-sync
+        // This is more reliable than suspending the server (which triggers supervision)
+        global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+        global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
 
-        // Insert with initial writeConcern of 1 should work
-        coll.insert({_key: "test1"});
+        // First insert after fail points: drops the follower but succeeds
+        coll.insert({_key: "test2"});
 
-        // Immediately change writeConcern to 2 before followers have a chance to sync
-        coll.properties({writeConcern: 2});
-
-        // Try to insert - this should fail because writeConcern: 2 cannot be
-        // satisfied when followers haven't synced yet
-        let insertFailed = false;
-        for (let i = 0; i < 10; i++) {
-          try {
-            coll.insert({});
-          } catch(e) {
-            // Expected: ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED (1480)
-            assertEqual(internal.errors.ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED.code, e.errorNum);
-            insertFailed = true;
-            break;
-          }
-          // If insert succeeded, followers might have synced - try again quickly
-          // In a race condition, this test might not catch the error
-        }
-
-        // Note: This test may occasionally pass all inserts if followers sync
-        // quickly enough. The important thing is that if an error occurs,
-        // it should be ERROR_ARANGO_WRITE_CONCERN_NOT_FULFILLED.
-        if (!insertFailed) {
-          // Followers synced fast enough, test is inconclusive but not failed
-          // Just verify the collection is functional
-          assertTrue(coll.count() >= 1);
+        // Second insert should fail because writeConcern: 2 cannot be satisfied
+        // with only the leader (follower was dropped from in-sync list).
+        // The shard becomes read-only when there are fewer in-sync replicas than writeConcern.
+        try {
+          coll.insert({_key: "test3"});
+          fail("Expected insert to fail because shard is read-only");
+        } catch(e) {
+          // Expected: ERROR_ARANGO_READ_ONLY (1004) - "collection is read-only"
+          // This happens when the shard has fewer in-sync replicas than writeConcern
+          assertEqual(internal.errors.ERROR_ARANGO_READ_ONLY.code, e.errorNum,
+            "Expected ERROR_ARANGO_READ_ONLY but got: " + JSON.stringify(e));
         }
       } finally {
-        db._useDatabase("_system");
-        db._dropDatabase(dbName);
+        // Always clear fail points, even if the test fails
+        global.instanceManager.debugClearFailAt();
       }
     },
   };
 }
 
 jsunity.run(CollectionPropertiesPropagationSuite);
+jsunity.run(WriteConcernValidationSuite);
 
 return jsunity.done();
