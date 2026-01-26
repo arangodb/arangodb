@@ -26,15 +26,16 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/debugging.h"
 
 namespace arangodb {
 
 // Forward declaration of ArangodServer
 class ArangodServer;
 
-// Forward declarations of all features (needed by ArangodFeature and other
-// headers)
+// Forward declarations of feature phases (for type references only)
+// NOTE: When using startsAfter<T>(), the complete type is required for
+// typeid(). Include the full header in .cpp files that use
+// startsAfter<FeaturePhase>().
 namespace application_features {
 class AgencyFeaturePhase;
 class CommunicationFeaturePhase;
@@ -138,48 +139,9 @@ class ClusterEngine;
 class DaemonFeature;
 class SupervisorFeature;
 class AuditFeature;
-class LicenseFeature;
-class RCloneFeature;
-class HotBackupFeature;
-class EncryptionFeature;
-class SslServerFeature;
-class RocksDBEngine;
-class RocksDBIndexCacheRefillFeature;
-class RocksDBOptionFeature;
-class RocksDBRecoveryManager;
-class VectorIndexFeature;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-class ProcessEnvironmentFeature;
-#endif
-
-namespace transaction {
-class ManagerFeature;
-}  // namespace transaction
-
-namespace aql {
-class AqlFunctionFeature;
-class OptimizerRulesFeature;
-class QueryInfoLoggerFeature;
-}  // namespace aql
-
-namespace iresearch {
-class IResearchAnalyzerFeature;
-class IResearchFeature;
-}  // namespace iresearch
-
-namespace replication2::replicated_state {
-struct ReplicatedStateAppFeature;
-namespace black_hole {
-struct BlackHoleStateMachineFeature;
-}  // namespace black_hole
-namespace document {
-struct DocumentStateMachineFeature;
-}  // namespace document
-}  // namespace replication2::replicated_state
 
 // Bring application_features types into arangodb namespace for backward
 // compatibility with existing code that uses unqualified names
-using application_features::ApplicationFeature;
 using application_features::ApplicationFeaturePhase;
 using application_features::ApplicationServer;
 

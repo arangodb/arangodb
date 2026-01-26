@@ -79,9 +79,11 @@ class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
+class RocksDBIndexCacheRefillFeature;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
+class RocksDBRecoveryManager;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
@@ -89,6 +91,7 @@ class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
 class TransactionCollection;
 class TransactionState;
+class VectorIndexFeature;
 
 namespace rest {
 class RestHandlerFactory;
