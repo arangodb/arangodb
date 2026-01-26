@@ -26,6 +26,7 @@
 namespace arangodb::activity_registry {
 
 Registry registry;
+thread_local Parent Registry::_currentDefaultParent;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {

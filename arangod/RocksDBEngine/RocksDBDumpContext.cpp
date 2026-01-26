@@ -24,6 +24,7 @@
 #include "RocksDBDumpContext.h"
 
 #include "ActivityRegistry/activity.h"
+#include "ActivityRegistry/registry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -214,7 +215,7 @@ RocksDBDumpContext::RocksDBDumpContext(
       _channel(_options.prefetchCount),
       _activity{"dump context",
                 {{"id", _id}, {"user", _user}, {"database", _database}},
-                parentActivity} {
+                activity_registry::Registry::defaultParent()} {
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be

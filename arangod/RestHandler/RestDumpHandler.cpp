@@ -168,7 +168,7 @@ void RestDumpHandler::handleCommandDumpStart() {
                                    ServerState::instance()->isSingleServer());
 
   auto guard = _dumpManager->createContext(std::move(opts), user, database,
-                                           useVPack, _activity->id());
+                                           useVPack, {_activity->id()});
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -200,7 +200,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   // while we are using it.
 
   activity_registry::Activity fetch{
-      "dump context fetching", {{"id", id}}, _activity->id()};
+      "dump context fetching", {{"id", id}}, {_activity->id()}};
 
   context->extendLifetime();
 

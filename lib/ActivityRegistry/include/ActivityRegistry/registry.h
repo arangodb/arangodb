@@ -21,23 +21,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/Concurrent/Registry.h"
 #include "ActivityRegistry/activity.h"
+#include "Containers/Concurrent/Registry.h"
 namespace arangodb::activity_registry {
+using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
 
-struct Registry {
+struct Registry : containers::Registry<ActivityInRegistry> {
+  explicit Registry() = default;
   Registry(Registry const&) = delete;
   Registry(Registry&&) = delete;
   auto operator=(Registry const&) = delete;
   auto operator=(Registry&&) = delete;
 
-  static Parent& defaultParent() noexcept { return _currentDefaultParent; }
+  static Parent& defaultParent() noexcept {
+    return Registry::_currentDefaultParent;
+  }
 
   struct ScopedDefaultParent;
 
- private:
-  containers::Registry<ActivityInRegistry> _activities;
+  static auto currentParent() noexcept -> Parent {
+    return _currentDefaultParent;
+  }
 
+ private:
   static thread_local Parent _currentDefaultParent;
 };
 

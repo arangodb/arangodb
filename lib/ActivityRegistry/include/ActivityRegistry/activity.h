@@ -129,7 +129,7 @@ struct Activity {
   Activity& operator=(Activity const&) = delete;
 
   Activity(std::string name, Metadata metadata);
-  Activity(std::string name, Metadata metadata, ActivityId parent);
+  Activity(std::string name, Metadata metadata, Parent parent);
   ~Activity();
 
   auto id() -> ActivityId;
