@@ -37,7 +37,7 @@ TEST_F(AttributeDetectorTest, IndexSimpleProjection) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -52,8 +52,8 @@ TEST_F(AttributeDetectorTest, IndexMultipleAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
@@ -70,9 +70,10 @@ TEST_F(AttributeDetectorTest, IndexReturnIdAndKey) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));  // index condition
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_id"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_key"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", *query)));  // index condition
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_id", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_key", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -116,8 +117,8 @@ TEST_F(AttributeDetectorTest, IndexFilterWithComputation) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -142,13 +143,14 @@ TEST_F(AttributeDetectorTest, IndexMultipleCollections1) {
       foundProducts = true;
       EXPECT_FALSE(access.requiresAllAttributesRead);
       EXPECT_FALSE(access.requiresAllAttributesWrite);
-      EXPECT_TRUE(access.readAttributes.contains({"name"}));  // index + return
+      EXPECT_TRUE(access.readAttributes.contains(
+          makePath("name", *query)));  // index + return
     } else if (access.collectionName == "users") {
       foundUsers = true;
       EXPECT_FALSE(access.requiresAllAttributesRead);
       EXPECT_FALSE(access.requiresAllAttributesWrite);
-      EXPECT_TRUE(access.readAttributes.contains({"_key"}));
-      EXPECT_TRUE(access.readAttributes.contains({"name"}));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("_key", *query)));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("name", *query)));
     }
   }
 
@@ -191,8 +193,8 @@ TEST_F(AttributeDetectorTest, IndexFilterAndReturnDifferentAttributes1) {
   EXPECT_EQ(accesses[0].collectionName, "products");
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
 }
 
 TEST_F(AttributeDetectorTest, IndexFilterAndReturnDifferentAttributes2) {
@@ -210,8 +212,10 @@ TEST_F(AttributeDetectorTest, IndexFilterAndReturnDifferentAttributes2) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));   // outer index
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));  // join + inner index
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", *query)));  // outer index
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", *query)));  // join + inner index
 }
 
 TEST_F(AttributeDetectorTest, IndexFilterAndReturnDifferentAttributes3) {
@@ -241,8 +245,8 @@ TEST_F(AttributeDetectorTest, IndexCalculationWithAttributeAccess1) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
 }
 
 TEST_F(AttributeDetectorTest, IndexCalculationWithAttributeAccess2) {
@@ -256,8 +260,8 @@ TEST_F(AttributeDetectorTest, IndexCalculationWithAttributeAccess2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -273,8 +277,8 @@ TEST_F(AttributeDetectorTest, IndexSortWithAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -290,7 +294,7 @@ TEST_F(AttributeDetectorTest, IndexLimitDoesNotChangeProjection) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -306,8 +310,10 @@ TEST_F(AttributeDetectorTest, IndexCollectByAttribute) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));      // index
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"category"}));  // collect
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("name", *query)));  // index
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", *query)));  // collect
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -323,8 +329,10 @@ TEST_F(AttributeDetectorTest, IndexCollectAggregateUsesAttribute) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));   // index
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));  // aggregate
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("name", *query)));  // index
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", *query)));  // aggregate
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -339,8 +347,10 @@ TEST_F(AttributeDetectorTest, IndexReturnDistinctAttribute) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));      // index
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"category"}));  // distinct
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("name", *query)));  // index
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", *query)));  // distinct
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -351,14 +361,15 @@ TEST_F(AttributeDetectorTest, IndexDynamicCollectionAccessWithBindParameters1) {
     FOR p IN @@coll
       FILTER p.name == "Keyboard"
       RETURN p.price
-  )aql", bind);
+  )aql",
+                            bind);
 
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -382,8 +393,8 @@ TEST_F(AttributeDetectorTest, JoinTwoCollections) {
       std::find_if(accesses.begin(), accesses.end(),
                    [](auto const& a) { return a.collectionName == "users"; });
   ASSERT_NE(usersAccess, accesses.end());
-  EXPECT_TRUE(usersAccess->readAttributes.contains({"name"}));
-  EXPECT_TRUE(usersAccess->readAttributes.contains({"_key"}));
+  EXPECT_TRUE(usersAccess->readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(usersAccess->readAttributes.contains(makePath("_key", *query)));
   EXPECT_FALSE(usersAccess->requiresAllAttributesRead);
   EXPECT_FALSE(usersAccess->requiresAllAttributesWrite);
 
@@ -391,8 +402,8 @@ TEST_F(AttributeDetectorTest, JoinTwoCollections) {
       std::find_if(accesses.begin(), accesses.end(),
                    [](auto const& a) { return a.collectionName == "posts"; });
   ASSERT_NE(postsAccess, accesses.end());
-  EXPECT_TRUE(postsAccess->readAttributes.contains({"title"}));
-  EXPECT_TRUE(postsAccess->readAttributes.contains({"userId"}));
+  EXPECT_TRUE(postsAccess->readAttributes.contains(makePath("title", *query)));
+  EXPECT_TRUE(postsAccess->readAttributes.contains(makePath("userId", *query)));
   EXPECT_FALSE(postsAccess->requiresAllAttributesRead);
   EXPECT_FALSE(postsAccess->requiresAllAttributesWrite);
 }
@@ -448,16 +459,16 @@ TEST_F(AttributeDetectorTest, JoinWithFilterCondition) {
       std::find_if(accesses.begin(), accesses.end(),
                    [](auto const& a) { return a.collectionName == "users"; });
   ASSERT_NE(usersAccess, accesses.end());
-  EXPECT_TRUE(usersAccess->readAttributes.contains({"name"}));
-  EXPECT_TRUE(usersAccess->readAttributes.contains({"age"}));
-  EXPECT_TRUE(usersAccess->readAttributes.contains({"_key"}));
+  EXPECT_TRUE(usersAccess->readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(usersAccess->readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(usersAccess->readAttributes.contains(makePath("_key", *query)));
 
   auto postsAccess =
       std::find_if(accesses.begin(), accesses.end(),
                    [](auto const& a) { return a.collectionName == "posts"; });
   ASSERT_NE(postsAccess, accesses.end());
-  EXPECT_TRUE(postsAccess->readAttributes.contains({"title"}));
-  EXPECT_TRUE(postsAccess->readAttributes.contains({"userId"}));
+  EXPECT_TRUE(postsAccess->readAttributes.contains(makePath("title", *query)));
+  EXPECT_TRUE(postsAccess->readAttributes.contains(makePath("userId", *query)));
 }
 
 TEST_F(AttributeDetectorTest, IndexDynamicAttributeAccessWithBindParameters1) {
@@ -466,14 +477,17 @@ TEST_F(AttributeDetectorTest, IndexDynamicAttributeAccessWithBindParameters1) {
     FOR p IN products
       FILTER p.name == "Keyboard"
       RETURN p[@attr]
-  )aql", bind);
+  )aql",
+                            bind);
 
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));   // index condition
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));  // projection
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", *query)));  // index condition
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", *query)));  // projection
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -489,8 +503,8 @@ TEST_F(AttributeDetectorTest, IndexDynamicAttributeAccessWithBindParameters2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -501,19 +515,24 @@ TEST_F(AttributeDetectorTest, IndexDynamicAttributeAccessWithBindParameters3) {
     FOR p IN products
       FILTER p[@attr] >= 20
       RETURN { name: p.name, category: p.category }
-  )aql", bind);
+  )aql",
+                            bind);
   auto const& accesses = query->abacAccesses();
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));     // dynamic filter
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));      // return
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"category"}));  // return
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", *query)));  // dynamic filter
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("name", *query)));  // return
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", *query)));  // return
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, IndexMissingCollectionThrowsWithCorrectErrorCode) {
+TEST_F(AttributeDetectorTest,
+       IndexMissingCollectionThrowsWithCorrectErrorCode) {
   try {
     auto q = executeQuery(R"aql(
       FOR p IN missingProducts
@@ -537,8 +556,9 @@ TEST_F(AttributeDetectorTest, IndexMissingAttributeStillRecorded1) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"attrNotExist"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("attrNotExist", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -553,9 +573,10 @@ TEST_F(AttributeDetectorTest, IndexMissingAttributeStillRecorded2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"attrNotExist"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"price"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("attrNotExist", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("price", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }

@@ -39,8 +39,8 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
   for (auto& access : accesses) {
     seen.insert(access.collectionName);
     if (access.collectionName == "ordered") {
-      EXPECT_TRUE(access.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(access.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("_to", *query)));
       EXPECT_TRUE(access.requiresAllAttributesRead);
     } else {
       EXPECT_TRUE(access.requiresAllAttributesRead);
@@ -89,9 +89,10 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument_StoreGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells") {
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
-      EXPECT_TRUE(a.requiresAllAttributesRead);  // full edge docs (no edge projections)
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(
+          a.requiresAllAttributesRead);  // full edge docs (no edge projections)
     } else {
       // vertices: stores + products
       EXPECT_TRUE(a.requiresAllAttributesRead);
@@ -119,8 +120,8 @@ TEST_F(AttributeDetectorTest, ShortestPathReturnVertexDocs_StoreGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells") {
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
     }
     EXPECT_TRUE(a.requiresAllAttributesRead);
     EXPECT_FALSE(a.requiresAllAttributesWrite);
@@ -150,9 +151,10 @@ TEST_F(AttributeDetectorTest, TwoTraversalsAcrossTwoGraphs_StoreThenTestGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "sells" || a.collectionName == "ordered") {
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
-      // no projections configured for edges in traversal options => full edge access
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      // no projections configured for edges in traversal options => full edge
+      // access
       EXPECT_TRUE(a.requiresAllAttributesRead);
     } else {
       // vertices involved across both traversals
@@ -182,18 +184,19 @@ TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_TestGraph) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "ordered");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"qty"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("qty", *query)));
 
   // With empty edge projections, traversal marks full edge read.
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-// 2) Traversal where we return the edge document itself (still no vertices needed)
-// Expect: edge collection only
-TEST_F(AttributeDetectorTest, TraversalReturnEdgeDocsOnly_NoVertexProduction_TestGraph) {
+// 2) Traversal where we return the edge document itself (still no vertices
+// needed) Expect: edge collection only
+TEST_F(AttributeDetectorTest,
+       TraversalReturnEdgeDocsOnly_NoVertexProduction_TestGraph) {
   auto query = executeQuery(R"aql(
     FOR v, e IN 1..2 OUTBOUND "users/u1" GRAPH testGraph
       RETURN e
@@ -204,14 +207,14 @@ TEST_F(AttributeDetectorTest, TraversalReturnEdgeDocsOnly_NoVertexProduction_Tes
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "ordered");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-// 3) Traversal where path is returned -> vertices ARE produced (p.vertices / p.edges)
-// Expect: users, products, ordered
+// 3) Traversal where path is returned -> vertices ARE produced (p.vertices /
+// p.edges) Expect: users, products, ordered
 TEST_F(AttributeDetectorTest, TraversalReturnPath_ProducesVertices_TestGraph) {
   auto query = executeQuery(R"aql(
     FOR v, e, p IN 1..2 OUTBOUND "users/u1" GRAPH testGraph
@@ -226,8 +229,8 @@ TEST_F(AttributeDetectorTest, TraversalReturnPath_ProducesVertices_TestGraph) {
     seen.insert(a.collectionName);
 
     if (a.collectionName == "ordered") {
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
       EXPECT_TRUE(a.requiresAllAttributesRead);  // edges in path
     } else {
       EXPECT_TRUE(a.requiresAllAttributesRead);  // vertices in path
@@ -242,7 +245,8 @@ TEST_F(AttributeDetectorTest, TraversalReturnPath_ProducesVertices_TestGraph) {
 }
 
 // 4) Same "edges only" test but for the NEW graph (storeGraph / sells)
-TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_StoreGraph) {
+TEST_F(AttributeDetectorTest,
+       TraversalEdgesOnly_NoVertexProduction_StoreGraph) {
   auto query = executeQuery(R"aql(
     FOR v, e IN 1..2 OUTBOUND "stores/s1" GRAPH storeGraph
       RETURN e.stock
@@ -253,9 +257,9 @@ TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_StoreGraph) 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "sells");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_from"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_to"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"stock"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_from", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_to", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("stock", *query)));
 
   EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
@@ -272,7 +276,8 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
 
   auto const& accesses = query->abacAccesses();
 
-  // If both traversals don't require vertices, we should only see edge collections.
+  // If both traversals don't require vertices, we should only see edge
+  // collections.
   ASSERT_EQ(accesses.size(), 2);
 
   bool seenSells = false;
@@ -281,16 +286,16 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
   for (auto const& a : accesses) {
     if (a.collectionName == "sells") {
       seenSells = true;
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
-      EXPECT_TRUE(a.readAttributes.contains({"stock"}));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("stock", *query)));
       EXPECT_TRUE(a.requiresAllAttributesRead);
       EXPECT_FALSE(a.requiresAllAttributesWrite);
     } else if (a.collectionName == "ordered") {
       seenOrdered = true;
-      EXPECT_TRUE(a.readAttributes.contains({"_from"}));
-      EXPECT_TRUE(a.readAttributes.contains({"_to"}));
-      EXPECT_TRUE(a.readAttributes.contains({"qty"}));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_from", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_to", *query)));
+      EXPECT_TRUE(a.readAttributes.contains(makePath("qty", *query)));
       EXPECT_TRUE(a.requiresAllAttributesRead);
       EXPECT_FALSE(a.requiresAllAttributesWrite);
     } else {

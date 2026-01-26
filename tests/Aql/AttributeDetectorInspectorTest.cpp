@@ -28,11 +28,13 @@
 namespace arangodb::tests::aql {
 
 TEST_F(AttributeDetectorTest, InspectorFormat) {
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor(global);
+
   AttributeDetector::CollectionAccess access;
   access.collectionName = "testCollection";
-  // Attributes are now paths (vectors of strings)
-  access.readAttributes.insert({"name"});
-  access.readAttributes.insert({"age"});
+  access.readAttributes.insert(makePath("name", monitor));
+  access.readAttributes.insert(makePath("age", monitor));
   access.requiresAllAttributesRead = false;
   access.requiresAllAttributesWrite = true;
 
@@ -63,16 +65,19 @@ TEST_F(AttributeDetectorTest, InspectorFormat) {
 TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
   std::vector<AttributeDetector::CollectionAccess> accesses;
 
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor(global);
+
   AttributeDetector::CollectionAccess access1;
   access1.collectionName = "users";
-  access1.readAttributes.insert({"name"});
+  access1.readAttributes.insert(makePath("name", monitor));
   access1.requiresAllAttributesRead = false;
   access1.requiresAllAttributesWrite = false;
 
   AttributeDetector::CollectionAccess access2;
   access2.collectionName = "orders";
-  access2.readAttributes.insert({"id"});
-  access2.readAttributes.insert({"total"});
+  access2.readAttributes.insert(makePath("id", monitor));
+  access2.readAttributes.insert(makePath("total", monitor));
   access2.requiresAllAttributesRead = false;
   access2.requiresAllAttributesWrite = false;
 
@@ -96,11 +101,13 @@ TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
 }
 
 TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
-  // Test read-only access (no write)
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor(global);
+
   AttributeDetector::CollectionAccess readOnly;
   readOnly.collectionName = "products";
-  readOnly.readAttributes.insert({"price"});
-  readOnly.readAttributes.insert({"stock"});
+  readOnly.readAttributes.insert(makePath("price", monitor));
+  readOnly.readAttributes.insert(makePath("stock", monitor));
   readOnly.requiresAllAttributesRead = false;
   readOnly.requiresAllAttributesWrite = false;
 
@@ -124,15 +131,14 @@ TEST_F(AttributeDetectorTest, InspectorRoundTrip) {
 }
 
 TEST_F(AttributeDetectorTest, InspectorNestedAttributes) {
-  // Test nested attribute paths
+  GlobalResourceMonitor global;
+  ResourceMonitor monitor(global);
+
   AttributeDetector::CollectionAccess access;
   access.collectionName = "documents";
-  // Top-level attribute
-  access.readAttributes.insert({"name"});
-  // Nested attribute: meta.lang
-  access.readAttributes.insert({"meta", "lang"});
-  // Deeply nested: item.value1.value2
-  access.readAttributes.insert({"item", "value1", "value2"});
+  access.readAttributes.insert(makePath("name", monitor));
+  access.readAttributes.insert(makePath({"meta", "lang"}, monitor));
+  access.readAttributes.insert(makePath({"item", "value1", "value2"}, monitor));
   access.requiresAllAttributesRead = false;
   access.requiresAllAttributesWrite = false;
 
@@ -158,7 +164,8 @@ TEST_F(AttributeDetectorTest, InspectorNestedAttributes) {
       foundNested = true;
     }
   }
-  EXPECT_TRUE(foundNested) << "Expected to find nested path [\"meta\", \"lang\"]";
+  EXPECT_TRUE(foundNested)
+      << "Expected to find nested path [\"meta\", \"lang\"]";
 }
 
 TEST_F(AttributeDetectorTest, InspectorWriteOperation) {

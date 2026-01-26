@@ -26,9 +26,12 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AttributeDetector.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/Query.h"
 #include "Containers/FlatHashSet.h"
 #include "Async/async.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceMonitor.h"
 #include "Basics/Result.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchView.h"
@@ -47,6 +50,29 @@ using namespace arangodb::aql;
 using namespace arangodb::tests::mocks;
 
 namespace arangodb::tests::aql {
+
+// Helper to create AttributeNamePath for tests
+inline AttributeNamePath makePath(std::vector<std::string> const& path,
+                                  ResourceMonitor& monitor) {
+  return AttributeNamePath(path, monitor);
+}
+
+// Helper to create AttributeNamePath from single string
+inline AttributeNamePath makePath(std::string const& attr,
+                                  ResourceMonitor& monitor) {
+  return AttributeNamePath(attr, monitor);
+}
+
+// Helper to create AttributeNamePath using query's ResourceMonitor
+inline AttributeNamePath makePath(std::vector<std::string> const& path,
+                                  Query const& query) {
+  return AttributeNamePath(path, query.resourceMonitor());
+}
+
+// Helper to create AttributeNamePath from single string using query
+inline AttributeNamePath makePath(std::string const& attr, Query const& query) {
+  return AttributeNamePath(attr, query.resourceMonitor());
+}
 
 class AttributeDetectorTest : public ::testing::Test {
  protected:

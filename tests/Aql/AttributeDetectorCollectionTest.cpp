@@ -41,7 +41,7 @@ TEST_F(AttributeDetectorTest, SimpleProjection) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -53,8 +53,8 @@ TEST_F(AttributeDetectorTest, MultipleAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
@@ -70,8 +70,8 @@ TEST_F(AttributeDetectorTest, ReturnIdAndKey) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_id"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"_key"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_id", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("_key", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -107,9 +107,9 @@ TEST_F(AttributeDetectorTest, FilterWithComputation) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"address"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("address", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -130,14 +130,14 @@ TEST_F(AttributeDetectorTest, MultipleCollections1) {
       foundUsers = true;
       EXPECT_FALSE(access.requiresAllAttributesRead);
       EXPECT_FALSE(access.requiresAllAttributesWrite);
-      EXPECT_TRUE(access.readAttributes.contains({"name"}));
-      EXPECT_TRUE(access.readAttributes.contains({"_key"}));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("name", *query)));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("_key", *query)));
     } else if (access.collectionName == "posts") {
       foundPosts = true;
       EXPECT_FALSE(access.requiresAllAttributesRead);
       EXPECT_FALSE(access.requiresAllAttributesWrite);
-      EXPECT_TRUE(access.readAttributes.contains({"title"}));
-      EXPECT_TRUE(access.readAttributes.contains({"userId"}));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("title", *query)));
+      EXPECT_TRUE(access.readAttributes.contains(makePath("userId", *query)));
     }
   }
 
@@ -177,8 +177,8 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes1) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
 }
 
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes2) {
@@ -191,9 +191,9 @@ TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes2) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"address"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("address", *query)));
 }
 
 TEST_F(AttributeDetectorTest, FilterAndReturnDifferentAttributes3) {
@@ -216,8 +216,8 @@ TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess1) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
 }
 
 TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess2) {
@@ -230,8 +230,8 @@ TEST_F(AttributeDetectorTest, CalculationNodeWithAttributeAccess2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -246,8 +246,8 @@ TEST_F(AttributeDetectorTest, SortWithAttributes) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -262,7 +262,7 @@ TEST_F(AttributeDetectorTest, LimitDoesNotChangeProjection) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -278,7 +278,7 @@ TEST_F(AttributeDetectorTest, CollectByAttribute) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"address"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("address", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -294,7 +294,7 @@ TEST_F(AttributeDetectorTest, CollectAggregateUsesAttribute) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -309,7 +309,7 @@ TEST_F(AttributeDetectorTest, ReturnDistinctAttribute) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"address"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("address", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -327,7 +327,7 @@ TEST_F(AttributeDetectorTest, DynamicCollectionAccessWithBindParameters1) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -345,7 +345,7 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters1) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -361,7 +361,7 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters2) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -379,9 +379,9 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithBindParameters3) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"address"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"age"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("address", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("age", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -397,8 +397,8 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessWithConcat) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "posts");
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"userId"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"title"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("userId", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("title", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -414,8 +414,8 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess1) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "posts");
   EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"meta"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"title"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("meta", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("title", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -432,11 +432,13 @@ TEST_F(AttributeDetectorTest, NestedAttributeAccess2) {
   EXPECT_EQ(accesses[0].collectionName, "posts");
   // Full paths: ["title"], ["meta", "lang"], ["meta", "likes"]
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"title"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"meta", "lang"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"meta", "likes"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("title", *query)));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath({"meta", "lang"}, *query)));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath({"meta", "likes"}, *query)));
   // "meta" alone should not be present
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"meta"}));
+  EXPECT_FALSE(accesses[0].readAttributes.contains(makePath("meta", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -452,9 +454,9 @@ TEST_F(AttributeDetectorTest, HasAttribute) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"profile"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("profile", *query)));
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -531,7 +533,8 @@ TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded1) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"attrNotExist"}));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("attrNotExist", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -543,8 +546,9 @@ TEST_F(AttributeDetectorTest, MissingAttributeStillRecorded2) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"attrNotExist"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(
+      accesses[0].readAttributes.contains(makePath("attrNotExist", *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -588,7 +592,7 @@ TEST_F(AttributeDetectorTest, UTF16CollectionName) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "💩");
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"🍌"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("🍌", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -624,8 +628,9 @@ TEST_F(AttributeDetectorTest, AttributeNameWithDot) {
   ASSERT_EQ(accesses1.size(), 1);
   EXPECT_EQ(accesses1[0].collectionName, "dotattrs");
   // Should contain the literal attribute "meta.en", not "meta"
-  EXPECT_TRUE(accesses1[0].readAttributes.contains({"meta.en"}));
-  EXPECT_FALSE(accesses1[0].readAttributes.contains({"meta"}));
+  EXPECT_TRUE(
+      accesses1[0].readAttributes.contains(makePath("meta.en", *query1)));
+  EXPECT_FALSE(accesses1[0].readAttributes.contains(makePath("meta", *query1)));
   EXPECT_FALSE(accesses1[0].requiresAllAttributesRead);
 
   // Test 2: Access nested attribute meta.en (without backticks)
@@ -635,11 +640,13 @@ TEST_F(AttributeDetectorTest, AttributeNameWithDot) {
   ASSERT_EQ(accesses2.size(), 1);
   EXPECT_EQ(accesses2[0].collectionName, "dotattrs");
   // Should contain full path ["meta", "en"], not just "meta" or "en" alone
-  EXPECT_TRUE(accesses2[0].readAttributes.contains({"meta", "en"}));
-  EXPECT_FALSE(accesses2[0].readAttributes.contains({"meta"}));
-  EXPECT_FALSE(accesses2[0].readAttributes.contains({"en"}));
+  EXPECT_TRUE(
+      accesses2[0].readAttributes.contains(makePath({"meta", "en"}, *query2)));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains(makePath("meta", *query2)));
+  EXPECT_FALSE(accesses2[0].readAttributes.contains(makePath("en", *query2)));
   // Should NOT contain literal "meta.en" (that's a different attribute)
-  EXPECT_FALSE(accesses2[0].readAttributes.contains({"meta.en"}));
+  EXPECT_FALSE(
+      accesses2[0].readAttributes.contains(makePath("meta.en", *query2)));
   EXPECT_FALSE(accesses2[0].requiresAllAttributesRead);
 }
 
@@ -654,10 +661,12 @@ TEST_F(AttributeDetectorTest, DeeplyNestedAttributeAccess) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   // Full path ["profile", "tags"] should be tracked
   EXPECT_EQ(accesses[0].readAttributes.size(), 1);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"profile", "tags"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath({"profile", "tags"}, *query)));
   // Individual components should NOT be present as separate entries
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"profile"}));
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"tags"}));
+  EXPECT_FALSE(
+      accesses[0].readAttributes.contains(makePath("profile", *query)));
+  EXPECT_FALSE(accesses[0].readAttributes.contains(makePath("tags", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -677,13 +686,16 @@ TEST_F(AttributeDetectorTest, MultipleNestedPathsSameTopLevel) {
   EXPECT_EQ(accesses[0].collectionName, "users");
   // Full paths are tracked: ["profile", "bio"], ["profile", "tags"], ["name"]
   EXPECT_EQ(accesses[0].readAttributes.size(), 3);
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"profile", "bio"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"profile", "tags"}));
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath({"profile", "bio"}, *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath({"profile", "tags"}, *query)));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   // Individual components should NOT be present as separate entries
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"profile"}));
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"bio"}));
-  EXPECT_FALSE(accesses[0].readAttributes.contains({"tags"}));
+  EXPECT_FALSE(
+      accesses[0].readAttributes.contains(makePath("profile", *query)));
+  EXPECT_FALSE(accesses[0].readAttributes.contains(makePath("bio", *query)));
+  EXPECT_FALSE(accesses[0].readAttributes.contains(makePath("tags", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
@@ -699,7 +711,7 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccess) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
   // Dynamic access with literal string should still track the attribute
-  EXPECT_TRUE(accesses[0].readAttributes.contains({"name"}));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(makePath("name", *query)));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }

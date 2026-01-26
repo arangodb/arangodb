@@ -20,30 +20,6 @@
 ///
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
-//
-// DESIGN NOTE: Full Attribute Path Tracking
-// ==========================================
-//
-// This implementation tracks the FULL PATH of attributes accessed from
-// collections. Attribute paths are stored as vectors of strings, where
-// each element represents one level of nesting.
-//
-// Examples:
-// - `doc.name` -> tracked as ["name"]
-// - `doc.meta.lang` -> tracked as ["meta", "lang"]
-// - `doc.item.value1.value2` -> tracked as ["item", "value1", "value2"]
-// - `doc.`meta.en`` (backtick-quoted) -> tracked as ["meta.en"] (single
-//   element - this is a top-level attribute name containing a dot)
-//
-// Special cases handled:
-// - UTF-16 attribute/collection names (emojis, etc.) are fully supported
-// - Attribute names containing dots (e.g., `meta.en`) are distinguished
-//   from nested access (meta.en) by the AQL parser
-// - Dynamic attribute access with variables (e.g., doc[variable]) results
-//   in requiresAllAttributesRead=true since it cannot be determined
-//   statically
-//
-////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeDetector.h"
 
@@ -140,7 +116,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!projs.empty()) {
         for (auto const& proj : projs.projections()) {
           if (!proj.path.empty()) {
-            access->readAttributes.insert(proj.path.get());
+            access->readAttributes.insert(proj.path);
           }
         }
       }
@@ -149,7 +125,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!filterProjections.empty()) {
         for (auto const& proj : filterProjections.projections()) {
           if (!proj.path.empty()) {
-            access->readAttributes.insert(proj.path.get());
+            access->readAttributes.insert(proj.path);
           }
         }
       }
@@ -176,7 +152,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!projs.empty()) {
         for (auto const& proj : projs.projections()) {
           if (!proj.path.empty()) {
-            access->readAttributes.insert(proj.path.get());
+            access->readAttributes.insert(proj.path);
           }
         }
       }
@@ -185,7 +161,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       if (!filterProjections.empty()) {
         for (auto const& proj : filterProjections.projections()) {
           if (!proj.path.empty()) {
-            access->readAttributes.insert(proj.path.get());
+            access->readAttributes.insert(proj.path);
           }
         }
       }
@@ -202,7 +178,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
                 _plan->getAst()->query().resourceMonitor())) {
           for (auto const& attr : attributes) {
             if (!attr.empty()) {
-              access->readAttributes.insert(attr.get());
+              access->readAttributes.insert(attr);
             }
           }
         } else {
@@ -236,12 +212,13 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        access->readAttributes.insert(AttributePath{"_from"});
-        access->readAttributes.insert(AttributePath{"_to"});
+        auto& monitor = _plan->getAst()->query().resourceMonitor();
+        access->readAttributes.insert(AttributeNamePath("_from", monitor));
+        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
-              access->readAttributes.insert(proj.path.get());
+              access->readAttributes.insert(proj.path);
             }
           }
         } else {
@@ -261,7 +238,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
             }
             for (auto const& proj : vertexProjs.projections()) {
               if (!proj.path.empty()) {
-                access->readAttributes.insert(proj.path.get());
+                access->readAttributes.insert(proj.path);
               }
             }
           }
@@ -289,12 +266,13 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        access->readAttributes.insert(AttributePath{"_from"});
-        access->readAttributes.insert(AttributePath{"_to"});
+        auto& monitor = _plan->getAst()->query().resourceMonitor();
+        access->readAttributes.insert(AttributeNamePath("_from", monitor));
+        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
-              access->readAttributes.insert(proj.path.get());
+              access->readAttributes.insert(proj.path);
             }
           }
         } else {
@@ -314,7 +292,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
             }
             for (auto const& proj : vertexProjs.projections()) {
               if (!proj.path.empty()) {
-                access->readAttributes.insert(proj.path.get());
+                access->readAttributes.insert(proj.path);
               }
             }
           }
@@ -342,12 +320,13 @@ bool AttributeDetector::before(ExecutionNode* node) {
           access = std::make_unique<CollectionAccess>();
           access->collectionName = edgeColl->name();
         }
-        access->readAttributes.insert(AttributePath{"_from"});
-        access->readAttributes.insert(AttributePath{"_to"});
+        auto& monitor = _plan->getAst()->query().resourceMonitor();
+        access->readAttributes.insert(AttributeNamePath("_from", monitor));
+        access->readAttributes.insert(AttributeNamePath("_to", monitor));
         if (!edgeProjs.empty()) {
           for (auto const& proj : edgeProjs.projections()) {
             if (!proj.path.empty()) {
-              access->readAttributes.insert(proj.path.get());
+              access->readAttributes.insert(proj.path);
             }
           }
         } else {
@@ -367,7 +346,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
             }
             for (auto const& proj : vertexProjs.projections()) {
               if (!proj.path.empty()) {
-                access->readAttributes.insert(proj.path.get());
+                access->readAttributes.insert(proj.path);
               }
             }
           }
@@ -422,7 +401,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      access->readAttributes.insert(AttributePath{"_key"});
+      auto& monitor = _plan->getAst()->query().resourceMonitor();
+      access->readAttributes.insert(AttributeNamePath("_key", monitor));
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
@@ -451,7 +431,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      access->readAttributes.insert(AttributePath{"_key"});
+      auto& monitor = _plan->getAst()->query().resourceMonitor();
+      access->readAttributes.insert(AttributeNamePath("_key", monitor));
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
@@ -497,21 +478,19 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->outVariable = idxInfo.outVariable;
 
         Projections const& projs = idxInfo.projections;
-        bool projsCoveredByIndex = projs.usesCoveringIndex();
-        if (!projs.empty() && !projsCoveredByIndex) {
+        if (!projs.empty()) {
           for (auto const& proj : projs.projections()) {
             if (!proj.path.empty()) {
-              access->readAttributes.insert(proj.path.get());
+              access->readAttributes.insert(proj.path);
             }
           }
         }
 
         Projections const& filterProjections = idxInfo.filterProjections;
-        bool filterProjsCoveredByIndex = filterProjections.usesCoveringIndex();
-        if (!filterProjections.empty() && !filterProjsCoveredByIndex) {
+        if (!filterProjections.empty()) {
           for (auto const& proj : filterProjections.projections()) {
             if (!proj.path.empty()) {
-              access->readAttributes.insert(proj.path.get());
+              access->readAttributes.insert(proj.path);
             }
           }
         }
@@ -528,7 +507,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
                   _plan->getAst()->query().resourceMonitor())) {
             for (auto const& attr : attributes) {
               if (!attr.empty()) {
-                access->readAttributes.insert(attr.get());
+                access->readAttributes.insert(attr);
               }
             }
           } else {

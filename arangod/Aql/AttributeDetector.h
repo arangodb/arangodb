@@ -23,12 +23,12 @@
 
 #pragma once
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/WalkerWorker.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/AccessMode.h"
 
-#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,33 +47,12 @@ struct Variable;
 /// @brief AttributeDetector analyzes AQL execution plans to determine which
 /// attributes are accessed from collections. This information is used for
 /// Attribute-Based Access Control (ABAC).
-///
-/// Attributes are stored as paths (vectors of strings) to support nested
-/// attribute access. For example, doc.meta.lang is stored as ["meta", "lang"].
-/// See AttributeDetector.cpp for detailed examples.
 class AttributeDetector final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  /// @brief Attribute path represented as a vector of strings.
-  /// For example, doc.meta.lang is ["meta", "lang"].
-  using AttributePath = std::vector<std::string>;
-
-  /// @brief Hash function for AttributePath to enable use in FlatHashSet
-  struct AttributePathHash {
-    std::size_t operator()(AttributePath const& path) const noexcept {
-      std::size_t seed = 0;
-      std::hash<std::string> hasher;
-      for (auto const& segment : path) {
-        // Combine hashes using a common technique
-        seed ^= hasher(segment) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-      }
-      return seed;
-    }
-  };
-
   struct AttributeAccessInfo {
     bool requiresAll{false};
-    std::vector<AttributePath> attributes;
+    std::vector<std::vector<std::string>> attributes;
 
     template<class Inspector>
     friend auto inspect(Inspector& f, AttributeAccessInfo& x) {
@@ -84,19 +63,21 @@ class AttributeDetector final
 
   struct CollectionAccess {
     std::string collectionName;
-    containers::FlatHashSet<AttributePath, AttributePathHash> readAttributes;
+    containers::FlatHashSet<AttributeNamePath> readAttributes;
     bool requiresAllAttributesRead{false};
     bool requiresAllAttributesWrite{false};
     Variable const* outVariable{nullptr};
 
     template<class Inspector>
     friend auto inspect(Inspector& f, CollectionAccess& x) {
-      AttributeAccessInfo read{
-          x.requiresAllAttributesRead,
-          std::vector<AttributePath>(x.readAttributes.begin(),
-                                     x.readAttributes.end())};
-      // Write operations always require all attributes (both for read and
-      // write), so writeAttributes is always empty - we only need the bool
+      std::vector<std::vector<std::string>> readAttrs;
+      readAttrs.reserve(x.readAttributes.size());
+      for (auto const& path : x.readAttributes) {
+        readAttrs.push_back(path.get());
+      }
+
+      AttributeAccessInfo read{x.requiresAllAttributesRead,
+                               std::move(readAttrs)};
       AttributeAccessInfo write{x.requiresAllAttributesWrite, {}};
       return f.object(x).fields(f.field("collection", x.collectionName),
                                 f.field("read", read), f.field("write", write));
