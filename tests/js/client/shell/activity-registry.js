@@ -98,7 +98,12 @@ function activityRegistrySuite() {
 
       // activity: dump context
       const dumpId = createDump.headers["x-arango-dump-id"];
-      let activities = activitiesModule.get_snapshot_from_server(server);
+      let activities;
+      if (internal.isCluster()) {
+        activities = activitiesModule.get_snapshot_from_server(server);
+      } else {
+        activities = activitiesModule.get_snapshot();
+      }
       assertTrue(activities.length > 1);
       assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
       assertTrue(activities.filter(dumpContextFilter).length > 0);
