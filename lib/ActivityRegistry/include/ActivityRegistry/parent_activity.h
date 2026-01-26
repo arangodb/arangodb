@@ -18,32 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/Concurrent/Registry.h"
 #include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
 
 namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
+struct ThreadControlBlock {
+  ThreadControlBlock() = default;
+  ThreadControlBlock(ThreadControlBlock const&) = delete;
+  ThreadControlBlock(ThreadControlBlock&&) = delete;
+  ThreadControlBlock& operator=(ThreadControlBlock const&) = delete;
+  ThreadControlBlock& operator=(ThreadControlBlock&&) = delete;
 
-/**
-   Global variable that holds all active activities.
+  ~ThreadControlBlock() noexcept;
 
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
+  auto currentParent() -> Parent { return _currentParent; }
 
-/**
-   Get thread registry of all active activities on current thread.
+ private:
+  Parent _currentParent{RootActivity{}};
+};
 
-   Creates the thread registry when called for the first time and adds it to
-   the global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+thread_local ThreadControlBlock _threadControlBlock;
+
+auto currentParent() -> Parent { return _threadControlBlock.currentParent(); }
 
 }  // namespace arangodb::activity_registry

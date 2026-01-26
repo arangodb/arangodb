@@ -18,32 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "Containers/Concurrent/Registry.h"
-#include "ActivityRegistry/activity.h"
 #include "ActivityRegistry/registry.h"
+#include "ActivityRegistry/activity.h"
 
 namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
+Registry::ScopedDefaultParent::ScopedDefaultParent(Parent parent) noexcept {
+  auto& local = Registry::defaultParent();
+  _oldParent = std::move(local);
+  local = std::move(parent);
+}
 
-/**
-   Global variable that holds all active activities.
-
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
-
-/**
-   Get thread registry of all active activities on current thread.
-
-   Creates the thread registry when called for the first time and adds it to
-   the global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+Registry::ScopedDefaultParent::~ScopedDefaultParent() {
+  auto& local = Registry::defaultParent();
+  local = std::move(_oldParent);
+}
 
 }  // namespace arangodb::activity_registry

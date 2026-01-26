@@ -18,32 +18,46 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include "Containers/Concurrent/Registry.h"
 #include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
-
 namespace arangodb::activity_registry {
 
-using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
+struct Registry {
+  Registry(Registry const&) = delete;
+  Registry(Registry&&) = delete;
+  auto operator=(Registry const&) = delete;
+  auto operator=(Registry&&) = delete;
 
-/**
-   Global variable that holds all active activities.
+  static Parent& defaultParent() noexcept { return _currentDefaultParent; }
 
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
+  struct ScopedDefaultParent;
 
-/**
-   Get thread registry of all active activities on current thread.
+ private:
+  containers::Registry<ActivityInRegistry> _activities;
 
-   Creates the thread registry when called for the first time and adds it to
-   the global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+  static thread_local Parent _currentDefaultParent;
+};
+
+struct Registry::ScopedDefaultParent {
+  explicit ScopedDefaultParent(Parent parent) noexcept;
+  ~ScopedDefaultParent();
+
+ private:
+  Parent _oldParent;
+};
+
+template<typename Func>
+auto withParent(Func&& func) {
+  return [func = std::forward<Func>(func), ctx = Registry::defaultParent()]<
+             typename... Args,
+             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
+    Registry::ScopedDefaultParent guard(ctx);
+    return std::forward<Func>(func)(std::forward<Args>(args)...);
+  };
+}
 
 }  // namespace arangodb::activity_registry
