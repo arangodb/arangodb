@@ -169,6 +169,11 @@ class FollowerInfo {
 
   WriteState allowedToWrite();
 
+  /// @brief Invalidate the _canWrite flag. This should be called when
+  ///        writeConcern or replicationFactor is updated externally,
+  ///        to ensure the write condition is re-evaluated.
+  void invalidateCanWrite();
+
   /// @brief Inject the information about followers into the builder.
   ///        Builder needs to be an open object and is not allowed to contain
   ///        the keys "servers" and "failoverCandidates".

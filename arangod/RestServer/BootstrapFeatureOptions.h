@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,24 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
-
 namespace arangodb {
 
-class TempFeature;
-class BenchFeature;
-
-using ArangoBenchFeaturesList =
-    ArangoClientFeaturesList<BasicFeaturePhaseClient, TempFeature,
-                             BenchFeature>;
-struct ArangoBenchFeatures : ArangoBenchFeaturesList {};
-using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
-using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
+struct BootstrapFeatureOptions {
+  bool bark = false;
+};
 
 }  // namespace arangodb

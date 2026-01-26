@@ -24,10 +24,16 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -35,7 +41,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -63,7 +68,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--console",
                   "Start the server with a JavaScript emergency console.",
-                  new BooleanParameter(&_console))
+                  new BooleanParameter(&_options.console))
       .setLongDescription(R"(In this exclusive emergency mode, all networking
 and HTTP interfaces of the server are disabled. No requests can be made to the
 server in this mode, and the only way to work with the server in this mode is by
@@ -76,18 +81,18 @@ another mode.)");
 
   options->addOption(
       "--server.rest-server", "Start a REST server.",
-      new BooleanParameter(&_restServer),
+      new BooleanParameter(&_options.restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.validate-utf8-strings",
       "Perform UTF-8 string validation for incoming JSON and VelocyPack "
       "data.",
-      new BooleanParameter(&_validateUtf8Strings),
+      new BooleanParameter(&_options.validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.script", "Run the script and exit.",
-                     new VectorParameter<StringParameter>(&_scripts));
+                     new VectorParameter<StringParameter>(&_options.scripts));
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
@@ -139,12 +144,12 @@ another mode.)");
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   int count = 0;
 
-  if (_console) {
+  if (_options.console) {
     _operationMode = OperationMode::MODE_CONSOLE;
     ++count;
   }
 
-  if (!_scripts.empty()) {
+  if (!_options.scripts.empty()) {
     _operationMode = OperationMode::MODE_SCRIPT;
     ++count;
   }
@@ -158,7 +163,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
+  if (_operationMode == OperationMode::MODE_SERVER && !_options.restServer &&
       !db.upgrade() &&
       !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
@@ -188,21 +193,16 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   auto disableDeamonAndSupervisor = [&]() {
-    if constexpr (Server::contains<DaemonFeature>()) {
-      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
-    }
-    if constexpr (Server::contains<SupervisorFeature>()) {
-      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
-    }
+#ifdef ARANGODB_HAVE_FORK
+    server().disableFeatures<DaemonFeature>();
+    server().disableFeatures<SupervisorFeature>();
+#endif
   };
 
-  if (!_restServer) {
-    server().disableFeatures(std::array{
-        Server::id<HttpEndpointProvider>(),
-        Server::id<GeneralServerFeature>(),
-        Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(),
-    });
+  if (!_options.restServer) {
+    server()
+        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
+                         SslServerFeature, StatisticsFeature>();
     disableDeamonAndSupervisor();
 
     if (!options->processingResult().touched("replication.auto-start")) {
@@ -231,7 +231,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
-      _validateUtf8Strings;
+      _options.validateUtf8Strings;
 }
 
 void ServerFeature::start() {

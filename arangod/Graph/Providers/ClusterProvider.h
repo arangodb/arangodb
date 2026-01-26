@@ -70,7 +70,7 @@ class ClusterProvider {
  public:
   using Options = ClusterBaseProviderOptions;
   using Step = StepImpl;
-  using NeighbourProvider = ClusterNeighbourCursor<Step>;
+  using NeighbourCursor = ClusterNeighbourCursor<Step>;
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext,

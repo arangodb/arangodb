@@ -23,6 +23,7 @@
 
 #include "ReplicationMetricsFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
 
@@ -152,9 +153,6 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(
           arangodb_replication_synchronous_requests_total_time_total{})),
       _syncOpsTotal(metrics.add(
           arangodb_replication_synchronous_requests_total_number_total{})) {
-  static_assert(Server::isCreatedAfter<ReplicationMetricsFeature,
-                                       metrics::MetricsFeature>());
-
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }

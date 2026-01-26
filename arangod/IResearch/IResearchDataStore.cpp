@@ -1784,7 +1784,7 @@ void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
   };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
-    CrashHandler::setHardKill();
+    crash_handler::CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

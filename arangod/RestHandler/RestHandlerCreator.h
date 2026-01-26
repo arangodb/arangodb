@@ -41,13 +41,17 @@ class RestHandlerCreator : public H {
   static std::shared_ptr<rest::RestHandler> createData(
       ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
       void* data) {
-    return std::make_shared<H>(server, request, response, (D)data);
+    auto h = std::make_shared<H>(server, request, response, (D)data);
+    h->startActivity();
+    return h;
   }
 
   static std::shared_ptr<rest::RestHandler> createNoData(
       ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
       void*) {
-    return std::make_shared<H>(server, request, response);
+    auto h = std::make_shared<H>(server, request, response);
+    h->startActivity();
+    return h;
   }
 
   // TODO consolidate methods using variadic templates

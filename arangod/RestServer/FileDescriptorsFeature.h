@@ -27,6 +27,7 @@
 #include "Basics/operating-system.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
+#include "RestServer/FileDescriptorsFeatureOptions.h"
 
 #include <chrono>
 #include <mutex>
@@ -59,7 +60,7 @@ class FileDescriptorsFeature : public ArangodFeature {
   void countOpenFilesIfNeeded();
 
  private:
-  uint64_t _countDescriptorsInterval;
+  FileDescriptorsFeatureOptions _options;
 
   metrics::Gauge<uint64_t>& _fileDescriptorsCurrent;
   metrics::Gauge<uint64_t>& _fileDescriptorsLimit;
