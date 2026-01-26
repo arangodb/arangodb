@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
+#include "Assertions/ProdAssert.h"
 
 namespace arangodb {
 namespace options {
@@ -46,14 +47,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
                 std::string const& configFilename = "")
       : application_features::ApplicationFeature{server, *this},
         _version{[&server]() {
-          return server.template hasFeature<VersionFeature>()
-                     ? &server.template getFeature<VersionFeature>()
-                     : nullptr;
+          return &server.template getFeature<VersionFeature>();
         }()} {
+    ADB_PROD_ASSERT(_version != nullptr);
     _options.file = configFilename;
     _options.progname = progname;
-    static_assert(
-        Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
 
     setOptional(false);
     startsAfter<LoggerFeature>();
