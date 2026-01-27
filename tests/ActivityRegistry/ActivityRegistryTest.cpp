@@ -21,6 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ActivityRegistry/registry.h"
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
 #include "ActivityRegistry/activity.h"
@@ -58,7 +59,7 @@ TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
   EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
 }
 
-TEST_F(ActivityRegistryTest, set_current_activity) {
+TEST_F(ActivityRegistryTest, creates_activity) {
   EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
 
@@ -68,6 +69,15 @@ TEST_F(ActivityRegistryTest, set_current_activity) {
 
   EXPECT_NE(s, std::end(all_activities));
   EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityId{nullptr});
+}
+
+TEST_F(ActivityRegistryTest, sets_current_activity) {
+  auto a = Activity("test activity", {{"test", "bla"}});
+  activity_registry::Registry::setCurrentActivity(a.id());
+
+  auto current = activity_registry::Registry::currentActivity();
+
+  ASSERT_EQ(a.id(), current);
 }
 
 TEST_F(ActivityRegistryTest,
