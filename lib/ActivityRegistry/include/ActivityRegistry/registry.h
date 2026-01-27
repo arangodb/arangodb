@@ -23,6 +23,7 @@
 
 #include "ActivityRegistry/activity.h"
 #include "Containers/Concurrent/Registry.h"
+
 namespace arangodb::activity_registry {
 using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
 
