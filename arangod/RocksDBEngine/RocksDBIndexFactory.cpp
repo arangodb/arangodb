@@ -280,7 +280,8 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
-// Deprecated hash index factory - rejects creation but supports existing indexes
+// Deprecated hash index factory - rejects creation but supports existing
+// indexes
 template<typename F, Index::IndexType type>
 struct DeprecatedSecondaryIndexFactory : public DefaultIndexFactory {
   std::string_view const _deprecatedName;
