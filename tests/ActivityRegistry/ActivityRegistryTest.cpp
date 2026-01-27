@@ -46,14 +46,15 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 
 }  // namespace
 
+constexpr auto ActivityRoot = ActivityId{nullptr};
+
 struct ActivityRegistryTest : ::testing::Test {
+  ActivityRegistryTest() { Registry::setCurrentActivity(ActivityRoot); }
   void TearDown() override {
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_activities().size(), 0);
   }
 };
-
-constexpr auto ActivityRoot = ActivityId{nullptr};
 
 TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
   EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
@@ -73,9 +74,9 @@ TEST_F(ActivityRegistryTest, creates_activity) {
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
   auto a = Activity("test activity", {{"test", "bla"}});
-  activity_registry::Registry::setCurrentActivity(a.id());
+  Registry::setCurrentActivity(a.id());
 
-  auto current = activity_registry::Registry::currentActivity();
+  auto current = Registry::currentActivity();
 
   ASSERT_EQ(a.id(), current);
 }
@@ -94,7 +95,8 @@ TEST_F(ActivityRegistryTest,
                     .id = activity.id(),
                     .parent = {ActivityRoot},
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
-  EXPECT_NE(specific, std::end(all_activities));
+  EXPECT_NE(specific, std::end(all_activities))
+      << inspection::json(all_activities);
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity) {
@@ -145,4 +147,20 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                                             .state = State::Active,
                                             .id = parent_activity.id(),
                                             .parent = {ActivityRoot}})}));
+}
+
+TEST_F(ActivityRegistryTest, scope_sets_activity) {
+  auto a = Activity("activity to be in scope", {});
+
+  auto scoped = withCurrentActivity(
+      a.id(), [id = a.id()]() { EXPECT_EQ(Registry::currentActivity(), id); });
+
+  auto b = Activity("activity to be current", {});
+  Registry::setCurrentActivity(b.id());
+
+  EXPECT_EQ(Registry::currentActivity(), b.id());
+
+  scoped();
+
+  EXPECT_EQ(Registry::currentActivity(), b.id());
 }
