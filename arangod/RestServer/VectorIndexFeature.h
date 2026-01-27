@@ -25,6 +25,7 @@
 #include <string_view>
 
 #include "RestServer/arangod.h"
+#include "RestServer/VectorIndexFeatureOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
@@ -40,7 +41,7 @@ class VectorIndexFeature final : public ArangodFeature {
   bool isVectorIndexEnabled() const;
 
  private:
-  bool _useVectorIndex{true};
+  VectorIndexFeatureOptions _options;
 };
 
 }  // namespace arangodb

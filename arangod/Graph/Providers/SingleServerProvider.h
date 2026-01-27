@@ -72,7 +72,7 @@ class SingleServerProvider {
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
-  using NeighbourProvider = SingleServerNeighbourCursor<Step>;
+  using NeighbourCursor = SingleServerNeighbourCursor<Step>;
 
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);

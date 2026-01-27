@@ -73,7 +73,7 @@
 #include "utils/string.hpp"
 #include <filesystem>
 
-#include "../3rdParty/iresearch/tests/tests_config.hpp"
+#include "iresearch/tests/tests_config.hpp"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -465,8 +465,8 @@ std::string const AnalyzerCollectionName("_analyzers");
 std::string testResourceDir;
 
 static void findIResearchTestResources() {
-  std::string toBeFound = basics::FileUtils::buildFilename(
-      "3rdParty", "iresearch", "tests", "resources");
+  std::string toBeFound =
+      basics::FileUtils::buildFilename("iresearch", "tests", "resources");
 
   // peek into environment variable first
   char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");

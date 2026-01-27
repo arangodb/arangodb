@@ -29,6 +29,8 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "RestHandler/RestCrashHandler.h"
+#include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -159,9 +161,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
-  static_assert(
-      Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
-
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -795,6 +794,11 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/cluster",
       RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/crashes",
+      RestHandlerCreator<
+          arangodb::crash_handler::RestCrashHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/deployment",

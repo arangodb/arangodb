@@ -50,6 +50,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -284,8 +285,7 @@ RocksDBEngine::RocksDBEngine(
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
     CacheManagerFeature& cacheManagerFeature,
     AgencyFeature const& agencyFeature)
-    : StorageEngine(server, kEngineName, name(),
-                    Server::template id<RocksDBEngine>(),
+    : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathFeature(databasePathFeature),
       _vectorIndexFeature(vectorIndexFeature),
@@ -369,13 +369,13 @@ RocksDBEngine::RocksDBEngine(
       _forceLegacySortingMethod(false),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
-  startsAfter<BasicFeaturePhaseServer, Server>();
-  startsAfter<VectorIndexFeature, Server>();
+  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
-  startsAfter<RocksDBOptionFeature, Server>();
-  startsAfter<LanguageFeature, Server>();
-  startsAfter<LanguageCheckFeature, Server>();
+  startsAfter<RocksDBOptionFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<LanguageCheckFeature>();
 }
 
 RocksDBEngine::~RocksDBEngine() {
@@ -772,7 +772,7 @@ archive to about the specified value and trigger WAL archive file deletion once
 the threshold is reached. You can use this to get rid of archived WAL files in
 a disk size-constrained environment.
 
-**Note**: The value is only a threshold, so the archive may get bigger than 
+**Note**: The value is only a threshold, so the archive may get bigger than
 the configured value until the background thread actually deletes files from
 the archive. Also note that deletion from the archive only kicks in after
 `--rocksdb.wal-file-timeout-initial` seconds have elapsed after server start.

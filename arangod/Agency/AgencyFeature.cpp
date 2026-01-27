@@ -32,6 +32,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
@@ -324,11 +325,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // turn off the following features, as they are not needed in an agency:
   // - ArangoSearch: not needed by agency
-  // - IResearchAnalyzer: analyzers are not needed by agency
-  // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-  server().disableFeatures(
-      std::array{ArangodServer::id<iresearch::IResearchFeature>(),
-                 ArangodServer::id<iresearch::IResearchAnalyzerFeature>()});
+  // - IResearchAnalyzer: analyzers are not needed by agency  server()
+  server()
+      .disableFeatures<iresearch::IResearchFeature,
+                       iresearch::IResearchAnalyzerFeature>();
 }
 
 void AgencyFeature::prepare() {

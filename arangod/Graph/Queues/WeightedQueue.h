@@ -47,7 +47,7 @@ class WeightedQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~WeightedQueue() { this->clear(); }
 
-  bool isBatched() { return false; }
+  bool usesCursor() { return false; }
 
   void clear() {
     if (!_queue.empty()) {
@@ -72,7 +72,7 @@ class WeightedQueue {
   }
 
   template<NeighbourCursor<Step> Cursor>
-  void append(Cursor& expansion) {
+  void append(Cursor& cursor) {
     TRI_ASSERT(false);
   }
 

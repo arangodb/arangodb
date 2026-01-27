@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -57,7 +58,6 @@ SoftShutdownFeature::SoftShutdownFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
-  startsAfter<AgencyFeaturePhase>();
 
   // We do not yet know if we are a coordinator, so just in case,
   // create a SoftShutdownTracker, it will not hurt if it is not used:
