@@ -24,13 +24,13 @@
 #pragma once
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "ApplicationFeatures/ConfigFeatureOptions.h"
+#include "Assertions/ProdAssert.h"
 
 namespace arangodb {
 namespace options {
@@ -53,11 +53,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
           return server.hasFeature<VersionFeature>()
                      ? &server.getFeature<VersionFeature>()
                      : nullptr;
-        }()},
-        _file(configFilename),
-        _progname(progname),
-        _checkConfiguration(false),
-        _honorNsswitch(false) {
+        }()} {
+    ADB_PROD_ASSERT(_version != nullptr);
+    _options.file = configFilename;
+    _options.progname = progname;
+
     setOptional(false);
     startsAfter<LoggerFeature>();
     startsAfter<ShellColorsFeature>();
@@ -74,12 +74,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
                       std::string const& progname, char const* binaryPath);
 
   VersionFeature* _version;
-  std::string _file;
-  std::string _progname;
-  std::vector<std::string> _defines;
-  bool _checkConfiguration;
-  bool _honorNsswitch;  // If this is set to true, the internal override is
-                        // deactivated.
+  ConfigFeatureOptions _options;
 };
 
 }  // namespace arangodb

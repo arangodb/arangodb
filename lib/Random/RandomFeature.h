@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Random/RandomFeatureOptions.h"
 
 namespace arangodb {
 
@@ -46,7 +47,7 @@ class RandomFeature final : public application_features::ApplicationFeature {
   RandomFeature(application_features::ApplicationServer& server,
                 std::type_index registration);
 
-  uint32_t _randomGenerator;
+  RandomFeatureOptions _options;
 };
 
 }  // namespace arangodb

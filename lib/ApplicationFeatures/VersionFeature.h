@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/VersionFeatureOptions.h"
 
 namespace arangodb {
 
@@ -34,9 +35,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Version"; }
 
   explicit VersionFeature(application_features::ApplicationServer& server)
-      : application_features::ApplicationFeature{server, *this},
-        _printVersion(false),
-        _printVersionJson(false) {
+      : application_features::ApplicationFeature{server, *this}, _options() {
     setOptional(false);
 
     startsAfter<ShellColorsFeature>();
@@ -45,11 +44,10 @@ class VersionFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  bool printVersion() const { return _printVersion; }
+  bool printVersion() const { return _options.printVersion; }
 
  private:
-  bool _printVersion;
-  bool _printVersionJson;
+  VersionFeatureOptions _options;
 };
 
 }  // namespace arangodb

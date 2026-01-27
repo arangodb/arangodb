@@ -28,6 +28,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "V8Server/FoxxFeatureOptions.h"
 
 #include <shared_mutex>
 
@@ -73,14 +74,11 @@ class FoxxFeature final : public application_features::ApplicationFeature {
   void trackLocalQueueInsert() noexcept;
 
  private:
+  FoxxFeatureOptions _options;
+
   mutable std::shared_mutex _queueLock;
   uint64_t _queueVersion;
   uint64_t _localQueueInserts;
-
-  double _queuesPollInterval;
-  bool _queuesEnabled;
-  bool _startupWaitForSelfHeal;
-  bool _foxxEnabled;
 };
 
 }  // namespace arangodb

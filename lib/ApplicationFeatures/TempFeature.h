@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/TempFeatureOptions.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,7 +38,7 @@ class TempFeature final : public application_features::ApplicationFeature {
 
   TempFeature(application_features::ApplicationServer& server,
               std::string const& appname)
-      : ApplicationFeature{server, *this}, _path(), _appname(appname) {
+      : ApplicationFeature{server, *this}, _options(), _appname(appname) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase>();
   }
@@ -46,10 +47,10 @@ class TempFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
-  std::string path() const { return _path; }
+  std::string path() const { return _options.path; }
 
  private:
-  std::string _path;
+  TempFeatureOptions _options;
   std::string _appname;
 };
 
