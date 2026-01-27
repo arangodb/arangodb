@@ -27,19 +27,16 @@
 namespace arangodb::transaction {
 
 struct ManagerFeatureOptions {
-  static constexpr size_t defaultStreamingMaxTransactionSize =
-      512 * 1024 * 1024;  // 512 MiB
-  static constexpr double defaultStreamingIdleTimeout = 60.0;
   static constexpr double maxStreamingIdleTimeout = 120.0;
 
   // max size (in bytes) of streaming transactions
-  size_t streamingMaxTransactionSize = defaultStreamingMaxTransactionSize;
+  size_t streamingMaxTransactionSize = 512 * 1024 * 1024;  // 512 MiB
 
   // lock time in seconds
   double streamingLockTimeout = 8.0;
 
   // idle timeout for streaming transactions, in seconds
-  double streamingIdleTimeout = defaultStreamingIdleTimeout;
+  double streamingIdleTimeout = 60.0;
 };
 
 }  // namespace arangodb::transaction
