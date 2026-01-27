@@ -271,7 +271,8 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(ApplicationServer& server)
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();

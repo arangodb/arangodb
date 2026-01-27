@@ -41,6 +41,12 @@
 #include <map>
 #include <shared_mutex>
 
+namespace arangodb {
+class QueryRegistryFeature;
+class StatisticsFeature;
+class EngineSelectorFeature;
+class ClusterFeature;
+}  // namespace arangodb
 namespace arangodb::metrics {
 
 class ClusterMetricsFeature;

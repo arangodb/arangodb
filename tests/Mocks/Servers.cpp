@@ -282,7 +282,8 @@ void MockServer::init() {
   _oldApplicationServerState = _server.state();
   _oldRebootId = ServerState::instance()->getRebootId();
 
-  _server.setStateUnsafe(ApplicationServer::State::IN_WAIT);
+  _server.setStateUnsafe(
+      application_features::ApplicationServer::State::IN_WAIT);
   transaction::Methods::clearDataSourceRegistrationCallbacks();
 
   // many other places rely on the reboot id being initialized,
