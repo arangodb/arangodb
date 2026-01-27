@@ -30,9 +30,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminRoutingHandler::RestAdminRoutingHandler(application_features::ApplicationServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestAdminRoutingHandler::RestAdminRoutingHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminRoutingHandler::execute() {

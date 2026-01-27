@@ -221,9 +221,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   ///                       nullptr == do not normalize
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::application_features::ApplicationServer& server,
-            VPackSlice const& slice,
-            bool readAnalyzerDefinition, std::string& errorField,
-            std::string_view const defaultVocbase);
+            VPackSlice const& slice, bool readAnalyzerDefinition,
+            std::string& errorField, std::string_view const defaultVocbase);
 
   bool dense() const noexcept { return !_sort.empty(); }
 

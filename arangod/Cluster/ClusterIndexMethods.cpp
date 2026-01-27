@@ -784,8 +784,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  */
 auto ensureIndexCoordinatorReplication2Inner(
     LogicalCollection const& collection, IndexId iid, VPackSlice index,
-    bool create, double timeout, application_features::ApplicationServer& server)
-    -> ResultT<VPackBuilder> {
+    bool create, double timeout,
+    application_features::ApplicationServer& server) -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
   if (!collectionFromTarget.state().ok()) {
@@ -975,10 +975,10 @@ auto ensureIndexCoordinatorReplication2Inner(
 // coordinator crash and failover operations.
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
-Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
-                                   IndexId iid, VPackSlice slice, bool create,
-                                   VPackBuilder& resultBuilder, double timeout,
-                                   application_features::ApplicationServer& server) {
+Result ensureIndexCoordinatorInner(
+    LogicalCollection const& collection, IndexId iid, VPackSlice slice,
+    bool create, VPackBuilder& resultBuilder, double timeout,
+    application_features::ApplicationServer& server) {
   using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);

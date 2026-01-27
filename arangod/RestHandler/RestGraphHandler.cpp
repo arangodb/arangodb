@@ -44,9 +44,9 @@ constexpr std::string_view moduleName("graph management");
 using namespace arangodb;
 using namespace arangodb::graph;
 
-RestGraphHandler::RestGraphHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestGraphHandler::RestGraphHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 

@@ -33,8 +33,8 @@ namespace arangodb {
 
 class RestAqlFunctionsHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestAqlFunctionsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                                   GeneralResponse*);
+  explicit RestAqlFunctionsHandler(application_features::ApplicationServer&,
+                                   GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;

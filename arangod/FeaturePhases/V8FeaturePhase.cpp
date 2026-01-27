@@ -32,8 +32,7 @@
 
 namespace arangodb::application_features {
 
-V8FeaturePhase::V8FeaturePhase(
-    application_features::ApplicationServer& server)
+V8FeaturePhase::V8FeaturePhase(application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<ClusterFeaturePhase>();

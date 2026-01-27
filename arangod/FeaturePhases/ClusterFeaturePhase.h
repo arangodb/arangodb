@@ -33,8 +33,7 @@ class ClusterFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterPhase"; }
 
-  explicit ClusterFeaturePhase(
-      application_features::ApplicationServer& server);
+  explicit ClusterFeaturePhase(application_features::ApplicationServer& server);
 };
 
 }  // namespace application_features

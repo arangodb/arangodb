@@ -49,9 +49,9 @@ using namespace arangodb::velocypack;
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response, Agent* agent)
+RestAgencyHandler::RestAgencyHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 void RestAgencyHandler::reportErrorEmptyRequest() {

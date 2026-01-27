@@ -29,8 +29,8 @@ namespace arangodb {
 
 class ClusterRestCollectionHandler : public RestCollectionHandler {
  public:
-  ClusterRestCollectionHandler(application_features::ApplicationServer&, GeneralRequest*,
-                               GeneralResponse*);
+  ClusterRestCollectionHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  protected:
   futures::Future<Result> handleExtraCommandPut(

@@ -32,8 +32,8 @@ class QueryRegistry;
 
 class RestSimpleHandler : public RestCursorHandler {
  public:
-  RestSimpleHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*,
-                    aql::QueryRegistry*);
+  RestSimpleHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, aql::QueryRegistry*);
 
  public:
   auto executeAsync() -> futures::Future<futures::Unit> override final;

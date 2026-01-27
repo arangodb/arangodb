@@ -28,7 +28,8 @@
 
 namespace arangodb {
 
-VectorIndexFeature::VectorIndexFeature(application_features::ApplicationServer& server)
+VectorIndexFeature::VectorIndexFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();

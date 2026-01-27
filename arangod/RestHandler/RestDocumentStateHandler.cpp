@@ -59,9 +59,9 @@ struct SnapshotTypeHandler final : public VPackCustomTypeHandler {
 };
 }  // namespace
 
-RestDocumentStateHandler::RestDocumentStateHandler(application_features::ApplicationServer& server,
-                                                   GeneralRequest* request,
-                                                   GeneralResponse* response)
+RestDocumentStateHandler::RestDocumentStateHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _customTypeHandler{std::make_unique<SnapshotTypeHandler>(_vocbase)},
       _options{VPackOptions::Defaults} {

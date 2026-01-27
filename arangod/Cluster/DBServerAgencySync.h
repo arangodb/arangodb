@@ -33,7 +33,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-
 namespace replication2 {
 namespace maintenance {
 struct LogStatus;

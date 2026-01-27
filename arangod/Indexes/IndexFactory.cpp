@@ -118,7 +118,8 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
-IndexTypeFactory::IndexTypeFactory(application_features::ApplicationServer& server)
+IndexTypeFactory::IndexTypeFactory(
+    application_features::ApplicationServer& server)
     : _server(server) {}
 
 bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,

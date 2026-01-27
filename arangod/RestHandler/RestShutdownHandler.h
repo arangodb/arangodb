@@ -28,8 +28,8 @@
 namespace arangodb {
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  explicit RestShutdownHandler(application_features::ApplicationServer&, GeneralRequest*,
-                               GeneralResponse*);
+  explicit RestShutdownHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestShutdownHandler"; }

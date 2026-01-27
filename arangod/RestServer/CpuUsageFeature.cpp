@@ -101,7 +101,8 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   return offset;
 }
 
-CpuUsageFeature::CpuUsageFeature(application_features::ApplicationServer& server)
+CpuUsageFeature::CpuUsageFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this},
       _snapshotProvider(),
       _updateInProgress(false) {

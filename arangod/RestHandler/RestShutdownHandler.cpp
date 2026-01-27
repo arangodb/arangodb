@@ -40,9 +40,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer& server,
-                                         GeneralRequest* request,
-                                         GeneralResponse* response)
+RestShutdownHandler::RestShutdownHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestShutdownHandler::execute() {

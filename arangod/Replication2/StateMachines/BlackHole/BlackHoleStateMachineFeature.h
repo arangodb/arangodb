@@ -26,7 +26,8 @@
 
 namespace arangodb::replication2::replicated_state::black_hole {
 
-struct BlackHoleStateMachineFeature : public application_features::ApplicationFeature {
+struct BlackHoleStateMachineFeature
+    : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept {
     return "BlackHoleStateMachine";
   }

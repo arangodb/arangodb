@@ -323,9 +323,9 @@ void buildHealthResult(
 
 }  // namespace
 
-RestAdminClusterHandler::RestAdminClusterHandler(application_features::ApplicationServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestAdminClusterHandler::RestAdminClusterHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 std::string const RestAdminClusterHandler::Health = "health";

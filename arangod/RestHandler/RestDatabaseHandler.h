@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestDatabaseHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestDatabaseHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestDatabaseHandler(application_features::ApplicationServer&, GeneralRequest*,
+                      GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestDatabaseHandler"; }

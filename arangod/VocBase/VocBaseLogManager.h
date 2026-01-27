@@ -123,8 +123,8 @@ struct VocBaseLogManager {
     auto buildReplicatedStateWithMethods(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, application_features::ApplicationServer& server,
-        TRI_vocbase_t& vocbase,
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase,
         std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
             storage)
         -> ResultT<std::shared_ptr<
@@ -133,8 +133,8 @@ struct VocBaseLogManager {
     auto buildReplicatedState(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, application_features::ApplicationServer& server,
-        TRI_vocbase_t& vocbase)
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
 

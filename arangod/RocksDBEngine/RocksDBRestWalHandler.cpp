@@ -42,9 +42,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(
-    application_features::ApplicationServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {

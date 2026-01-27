@@ -44,7 +44,8 @@ class AuthenticationFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
-  explicit AuthenticationFeature(application_features::ApplicationServer& server);
+  explicit AuthenticationFeature(
+      application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -952,12 +952,12 @@ bool IResearchLinkMeta::init(
                          mask);
 }
 
-bool IResearchLinkMeta::json(
-    application_features::ApplicationServer& server,
-    velocypack::Builder& builder, bool writeAnalyzerDefinition,
-    IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
-    Mask const* mask /*= nullptr*/) const {
+bool IResearchLinkMeta::json(application_features::ApplicationServer& server,
+                             velocypack::Builder& builder,
+                             bool writeAnalyzerDefinition,
+                             IResearchLinkMeta const* ignoreEqual /*= nullptr*/,
+                             TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
+                             Mask const* mask /*= nullptr*/) const {
   if (!builder.isOpenObject()) {
     return false;
   }

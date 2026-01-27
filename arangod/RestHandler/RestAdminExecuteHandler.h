@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestAdminExecuteHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestAdminExecuteHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestAdminExecuteHandler(application_features::ApplicationServer&,
+                          GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminExecuteHandler"; }

@@ -30,8 +30,8 @@ namespace arangodb {
 /// @brief key generators inventory handler
 class RestKeyGeneratorsHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestKeyGeneratorsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                                    GeneralResponse*);
+  explicit RestKeyGeneratorsHandler(application_features::ApplicationServer&,
+                                    GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;

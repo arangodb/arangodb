@@ -75,8 +75,8 @@ struct IResearchLinkHelper {
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(application_features::ApplicationServer& server,
-                    velocypack::Slice lhs,
-                    velocypack::Slice rhs, std::string_view dbname);
+                    velocypack::Slice lhs, velocypack::Slice rhs,
+                    std::string_view dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id

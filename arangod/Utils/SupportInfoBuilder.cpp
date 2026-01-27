@@ -217,8 +217,7 @@ void SupportInfoBuilder::normalizeKeyForTelemetrics(std::string& key) {
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                                           std::string const& dbName,
                                           ApplicationServer& server,
-                                          bool isLocal,
-                                          bool isTelemetricsReq) {
+                                          bool isLocal, bool isTelemetricsReq) {
   bool isSingleServer = ServerState::instance()->isSingleServer();
   auto const serverId = ServerIdFeature::getId().id();
   // used for all types of responses

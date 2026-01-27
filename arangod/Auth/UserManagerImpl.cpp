@@ -80,7 +80,8 @@ using namespace arangodb::rest;
 
 namespace arangodb::auth {
 
-UserManagerImpl::UserManagerImpl(application_features::ApplicationServer& server)
+UserManagerImpl::UserManagerImpl(
+    application_features::ApplicationServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 
 UserManagerImpl::~UserManagerImpl() { shutdown(); }
@@ -470,7 +471,8 @@ void UserManagerImpl::triggerGlobalReload() const {
 }
 
 /// Trigger eventual reload, user facing API call
-void UserManagerImpl::triggerGlobalReload(application_features::ApplicationServer& server) {
+void UserManagerImpl::triggerGlobalReload(
+    application_features::ApplicationServer& server) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }

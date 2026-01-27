@@ -29,8 +29,8 @@ namespace arangodb {
 
 class RestOptionsDescriptionHandler : public RestOptionsBaseHandler {
  public:
-  RestOptionsDescriptionHandler(application_features::ApplicationServer&, GeneralRequest*,
-                                GeneralResponse*);
+  RestOptionsDescriptionHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
 
   char const* name() const override final {
     return "RestOptionsDescriptionHandler";

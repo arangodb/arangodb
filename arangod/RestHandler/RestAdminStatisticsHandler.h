@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestAdminStatisticsHandler : public RestBaseHandler {
  public:
-  RestAdminStatisticsHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestAdminStatisticsHandler(application_features::ApplicationServer&,
+                             GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final {

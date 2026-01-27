@@ -46,8 +46,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestDumpHandler::RestDumpHandler(application_features::ApplicationServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestDumpHandler::RestDumpHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
   if (ServerState::instance()->isDBServer() ||

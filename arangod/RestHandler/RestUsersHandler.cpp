@@ -78,9 +78,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestUsersHandler::RestUsersHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestUsersHandler::execute() {

@@ -36,9 +36,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestCompactHandler::RestCompactHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+RestCompactHandler::RestCompactHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestCompactHandler::execute() {

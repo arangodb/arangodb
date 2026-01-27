@@ -32,7 +32,8 @@ class Builder;
 
 class RestTelemetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestTelemetricsHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestTelemetricsHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
   char const* name() const override final { return "RestTelemetricsHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }

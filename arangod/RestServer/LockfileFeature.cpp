@@ -37,7 +37,8 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-LockfileFeature::LockfileFeature(application_features::ApplicationServer& server)
+LockfileFeature::LockfileFeature(
+    application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();

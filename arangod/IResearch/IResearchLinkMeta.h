@@ -167,7 +167,8 @@ struct FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool json(application_features::ApplicationServer& server,
-            velocypack::Builder& builder, FieldMeta const* ignoreEqual = nullptr,
+            velocypack::Builder& builder,
+            FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
 

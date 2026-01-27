@@ -83,7 +83,8 @@ class ClusterMetricsFeature final
     LeaderResponse packed;
     Metrics metrics;
   };
-  explicit ClusterMetricsFeature(application_features::ApplicationServer& server);
+  explicit ClusterMetricsFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
