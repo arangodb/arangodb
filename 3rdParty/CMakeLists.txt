@@ -8,6 +8,18 @@ include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Should define it in addition without PARENT_SCOPE
+set(LZ4_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/lz4)
+set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/lib)
+set(SNOWBALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/snowball)
+set(UNWIND_ROOT "invalid")
+
+# Export only what the parent needs
+set(LZ4_ROOT ${LZ4_ROOT} PARENT_SCOPE)
+set(LZ4_INCLUDE_DIR ${LZ4_INCLUDE_DIR} PARENT_SCOPE)
+set(SNOWBALL_ROOT ${SNOWBALL_ROOT} PARENT_SCOPE)
+set(UNWIND_ROOT ${UNWIND_ROOT} PARENT_SCOPE)
+
 ################################################################################
 ## gtest
 ################################################################################
@@ -110,6 +122,7 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 add_subdirectory(icu-legacy)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
+set(ICU64_LIBRARY_DIR "${ICU64_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_DT_LEGACY "${ICU_DT_LEGACY}" PARENT_SCOPE)
 set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}" PARENT_SCOPE)
 
@@ -136,6 +149,16 @@ add_subdirectory(s2geometry)
 add_subdirectory(boost)
 set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
+add_library(boost-static IMPORTED STATIC)
+set_target_properties(boost-static PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
+  IMPORTED_LOCATION "boost_system;boost_thread"
+)
+
+# explicitly set since suppressing Boost search
+set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
+set(Boost_INCLUDE_DIRS "${Boost_INCLUDE_DIRS}" PARENT_SCOPE)
+
 ################################################################################
 ## Velocypack
 ################################################################################
@@ -148,81 +171,6 @@ set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 set(UseIPO ${IPO_ENABLED} CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
 
 add_subdirectory(velocypack)
-
-################################################################################
-## IResearch
-################################################################################
-
-## Make IResearch use ICU V 64.2 for index backwards compatibility
-set(ICU_FOUND TRUE)
-set(ICU_INCLUDE_DIR ${ICU64_INCLUDE_DIR})
-set(ICU_LIBRARY_DIR ${ICU64_LIBRARY_DIR})
-set(ICU_STATIC_LIBS ${ICU64_LIBS})
-# add necessary defines for ICU. this will suffix all included ICU functions
-# and the ICU namespace with _64_64
-add_definitions("-DU_HAVE_LIB_SUFFIX=1")
-add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
-add_definitions("-DIRESEARCH_ICU_NAMESPACE=icu_64_64")
-set(IRESEARCH_EXTERNAL_DEPENDENCIES "iculegacy_build")
-
-add_library(boost-static IMPORTED STATIC)
-set_target_properties(boost-static PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
-  IMPORTED_LOCATION "boost_system;boost_thread"
-)
-
-# explicitly set since suppressing Boost search
-set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
-
-if(NOT PERL_FOUND)
-  set(PERL_FOUND TRUE) # suppress error for Perl not-found
-
-  # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
-  if(MSVC)
-    set(PERL_EXECUTABLE echo)
-  endif()
-endif()
-
-set(USE_IPO ${IPO_ENABLED})
-set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
-set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib")
-set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
-set(UNWIND_ROOT "invalid")
-set(BFD_ROOT "invalid")
-set(IRESEARCH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/iresearch")
-set(IRESEARCH_BUILD_DIR "${CMAKE_BINARY_DIR}/3rdParty/iresearch")
-
-unset(IRESEARCH_INCLUDE)
-list(APPEND IRESEARCH_INCLUDE
-  "${IRESEARCH_ROOT}/core"
-  "${IRESEARCH_ROOT}/external"
-  "${IRESEARCH_BUILD_DIR}/core"
-)
-
-UpdateModule(${GIT_EXECUTABLE} "iresearch" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-
-mark_as_advanced(
-  IRESEARCH_BUILD_DIR
-  IRESEARCH_INCLUDE
-  IRESEARCH_ROOT
-)
-
-set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
-list(APPEND CMAKE_MODULE_PATH
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
-  "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
-)
-
-# copy pre-built files over to the build directory
-# this is required to avoid triggering file generation via bison and perl during the build procedure
-file(GLOB_RECURSE IRESEARCH_PREBUILT RELATIVE "${IRESEARCH_ROOT}.build" FOLLOW_SYMLINKS "${IRESEARCH_ROOT}.build/*")
-foreach(ELEMENT ${IRESEARCH_PREBUILT})
-  configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
-endforeach()
-
-add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
-
-target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
 
 ################################################################################
 ## ROCKSDB
@@ -355,3 +303,146 @@ else()
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/tzdata)
 endif()
+
+### Suppressing all warnings from external libs
+add_compile_options(-w)
+
+### Note that this is also set on the top level CMakeLists.txt,
+### but only after the 3rdParty directory is added. Therefore,
+### we need to set it here as well.
+set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
+
+################################################################################
+### Highway library
+################################################################################
+
+add_subdirectory(highway)
+
+################################################################################
+### sse2neon
+### need this after highway and before simdcomp
+################################################################################
+
+add_library(sse2neon INTERFACE)
+
+if (ARCH_AARCH64)
+  set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
+
+  target_include_directories(
+    sse2neon
+    SYSTEM
+    INTERFACE ${SSE2NEON_ROOT}
+  )
+endif ()
+
+################################################################################
+### SIMDCOMP library
+################################################################################
+
+add_subdirectory(simdcomp)
+
+
+################################################################################
+### OpenFST + Kaldi library
+################################################################################
+
+# We build OpenFST extensions provided by Kaldi as a part of OpenFST
+set(Kaldi_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/io-funcs.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-error.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-utils.cc
+  )
+
+set(OpenFST_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/compat.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/encode.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/flags.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/fst.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/fst-types.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/mapped-file.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/properties.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table-ops.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/util.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/weight.cc
+  ${Kaldi_sources}
+  )
+
+add_library(
+  iresearch-ofst
+  OBJECT
+  ${OpenFST_sources}
+)
+
+# disable warnings for 3rd-party libs for a cleaner build
+CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+if (SUPPORT_FPIC)
+  target_compile_options(
+    iresearch-ofst
+    PRIVATE "-fPIC"
+  )
+endif ()
+target_compile_options(
+  iresearch-ofst
+  PRIVATE "-Wno-sign-compare"
+  PRIVATE "-Wno-missing-field-initializers"
+)
+
+# force c++17 for ofst as transitional step
+set_target_properties(iresearch-ofst
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  )
+
+target_include_directories(
+  iresearch-ofst
+  SYSTEM
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
+)
+
+
+################################################################################
+### frozen library
+################################################################################
+
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include)
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+
+################################################################################
+### function2 library
+################################################################################
+
+set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2")
+set(FUNCTION2_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/function2" PARENT_SCOPE)
+
+################################################################################
+### Boost::Text library
+################################################################################
+# Force C++17 for boost::text
+set(CXX_STD 17 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." FORCE)
+add_subdirectory(text)
+# force c++17
+set_target_properties(text
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  )
+
+################################################################################
+### fastText library
+################################################################################
+
+add_subdirectory(fastText)
+
+################################################################################
+### tests only library
+################################################################################
+
+# Some of the stuff here is needed in `lib/iresearch/CMakeLists.txt`.
+# It does depend on some switches there, but for now, we always
+# build the subdirectory tests here:
+# This is needed for clean builds, since `lib` with its switches
+# is only included later than this directory here.
+add_subdirectory(tests)
