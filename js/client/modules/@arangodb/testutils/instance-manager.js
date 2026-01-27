@@ -121,10 +121,12 @@ class instanceManager {
       addArgs['server.jwt-secret'] = this.JWT;
     }
     if (this.options.encryptionAtRest) {
-      this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
-      fs.makeDirectoryRecursive(this.rootDir);
-      fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
-      if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+      if (this.options.hasOwnProperty('jwtFiles')) {
+        this.JWT = fs.read(this.options.jwtFiles[0]);
+      } else if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+        this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
+        fs.makeDirectoryRecursive(this.rootDir);
+        fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
         this.JWT = fs.read(this.restKeyFile);
       }
     }
