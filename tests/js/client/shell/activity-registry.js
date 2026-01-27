@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
-// /
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -55,18 +53,19 @@ function activityRegistrySuite() {
       return name.includes("dump") && name.includes("context") && name.includes("fetch") && a.state === "Active";
     };
   }
+  function assertArrayLengthLargerThan(array, length) {
+    assertTrue(array.length > length, `Failed: ${array.length} > ${length}, ${JSON.stringify(array)}`);
+  }
 
-  async function checkDumpFetchIsAnActivity(dumpId, server) {
+  function fetchDumpAsynchronously(dumpId, server) {
+    let res;
     if (internal.isCluster()) {
-      internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?dbserver=${server}&batchId=0`, {});
+      res = internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?dbserver=${server}&batchId=0`, {}, {"x-arango-async": "store"});
     } else {
-      internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?batchId=0`, {});
+      res = internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?batchId=0`, {}, {"x-arango-async": "store"});
     }
-    const activities = activitiesModule.get_snapshot(server);
-    assertTrue(activities.length > 2);
-    assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
-    assertTrue(activities.filter(dumpContextFilter).length > 0);
-    assertTrue(activities.filter(dumpContextFetchFilter).length > 0);
+    assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
+    return res.headers["x-arango-async-id"];
   }
 
   return {
@@ -80,8 +79,8 @@ function activityRegistrySuite() {
 
     testRegistryIncludesAtLeastRestRequestActivity: function () {
       const activities = activitiesModule.get_snapshot(); // is one REST request
-      assertTrue(activities.length > 0);
-      assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
+      assertArrayLengthLargerThan(activities, 0);
+      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
     },
 
     testDumpContextIsAnActivity: function () {
@@ -99,18 +98,26 @@ function activityRegistrySuite() {
       // activity: dump context
       const dumpId = createDump.headers["x-arango-dump-id"];
       const activities = activitiesModule.get_snapshot(server);
-      assertTrue(activities.length > 1);
-      assertTrue(activities.filter(activityRestHandlerFilter).length > 0);
-      assertTrue(activities.filter(dumpContextFilter).length > 0);
+      assertArrayLengthLargerThan(activities, 1);
+      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
+      assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
 
       // activity: fetch dump context
       try {
         IM.debugSetFailAt("RestDumpHandler::fetch-delay");
-        checkDumpFetchIsAnActivity(dumpId, server);
+        
+        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call sleeps
+        const activities = activitiesModule.get_snapshot(server);
+        internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
+
+        assertArrayLengthLargerThan(activities, 3); // includes sleeping dump-fetch Rest call
+        assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 2); // same here
+        assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
+        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter), 0);
+
       } finally {
         IM.debugClearFailAt();
       }
-        
 
       // cleanup
       if (internal.isCluster()) {
