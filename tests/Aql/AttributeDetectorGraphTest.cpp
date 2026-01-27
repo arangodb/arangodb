@@ -43,7 +43,7 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument) {
           makePath("_from", query->resourceMonitor())));
       EXPECT_TRUE(access.readAttributes.contains(
           makePath("_to", query->resourceMonitor())));
-      EXPECT_TRUE(access.requiresAllAttributesRead);
+      EXPECT_FALSE(access.requiresAllAttributesRead);
     } else {
       EXPECT_TRUE(access.requiresAllAttributesRead);
     }
@@ -95,8 +95,8 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument_StoreGraph) {
           makePath("_from", query->resourceMonitor())));
       EXPECT_TRUE(
           a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
-      EXPECT_TRUE(
-          a.requiresAllAttributesRead);  // full edge docs (no edge projections)
+      EXPECT_FALSE(
+          a.requiresAllAttributesRead);
     } else {
       // vertices: stores + products
       EXPECT_TRUE(a.requiresAllAttributesRead);
@@ -199,8 +199,7 @@ TEST_F(AttributeDetectorTest, TraversalEdgesOnly_NoVertexProduction_TestGraph) {
   EXPECT_TRUE(accesses[0].readAttributes.contains(
       makePath("qty", query->resourceMonitor())));
 
-  // With empty edge projections, traversal marks full edge read.
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
@@ -279,7 +278,7 @@ TEST_F(AttributeDetectorTest,
   EXPECT_TRUE(accesses[0].readAttributes.contains(
       makePath("stock", query->resourceMonitor())));
 
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 

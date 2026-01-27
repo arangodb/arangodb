@@ -63,10 +63,9 @@ TEST_F(AttributeDetectorTest, InspectorFormat) {
 }
 
 TEST_F(AttributeDetectorTest, InspectorFormatMultipleCollections) {
-  std::vector<AttributeDetector::CollectionAccess> accesses;
-
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
+  std::vector<AttributeDetector::CollectionAccess> accesses;
 
   AttributeDetector::CollectionAccess access1;
   access1.collectionName = "users";
