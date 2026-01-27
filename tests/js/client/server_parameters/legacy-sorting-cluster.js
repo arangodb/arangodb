@@ -70,13 +70,13 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                  name:"persistent_non_unique"});
   c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"persistent_unique"});
-  c.ensureIndex({type:"hash", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: false,
                  name:"hash_non_unique"});
-  c.ensureIndex({type:"hash", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"hash_unique"});
-  c.ensureIndex({type:"skiplist", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: false,
                  name:"skiplist_non_unique"});
-  c.ensureIndex({type:"skiplist", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"skiplist_unique"});
   let nr = 6;
   try {

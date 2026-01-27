@@ -67,12 +67,12 @@ function indexHintCollectionSuite () {
       db._drop(cn);
       collection = db._create(cn);
 
-      collection.ensureIndex({type: 'hash', name: 'hash_a', fields: ['a']});
-      collection.ensureIndex({type: 'hash', name: 'hash_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'hash', name: 'hash_b_a', fields: ['b', 'a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a', fields: ['a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
+      collection.ensureIndex({type: 'persistent', name: 'hash_a', fields: ['a']});
+      collection.ensureIndex({type: 'persistent', name: 'hash_a_b', fields: ['a', 'b']});
+      collection.ensureIndex({type: 'persistent', name: 'hash_b_a', fields: ['b', 'a']});
+      collection.ensureIndex({type: 'persistent', name: 'skip_a', fields: ['a']});
+      collection.ensureIndex({type: 'persistent', name: 'skip_a_b', fields: ['a', 'b']});
+      collection.ensureIndex({type: 'persistent', name: 'skip_b_a', fields: ['b', 'a']});
 
       defaultEqualityIndex = 'hash_a';
       alternateEqualityIndex = 'skip_a';

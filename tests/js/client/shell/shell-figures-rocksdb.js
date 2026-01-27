@@ -135,7 +135,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1"] }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"] }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
@@ -159,7 +159,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i < 50 ? null : i, value2: "test" + i });
         }
@@ -183,7 +183,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1", "_key"], unique: true }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1", "_key"], unique: true }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         } 
@@ -207,7 +207,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1", "value2"] }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }
@@ -231,7 +231,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1[*]"] }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1[*]"] }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: [1, 2, 3], value2: "test" + i });
         }
@@ -255,7 +255,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1[*]"], deduplicate: true }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1[*]"], deduplicate: true }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: [1, 2, 1], value2: "test" + i });
         }
@@ -279,7 +279,7 @@ function FiguresSuite () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "skiplist", fields: ["value1"] }));
+        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"] }));
         for (let i = 0; i < 100; ++i) {
           c.insert({ value1: i, value2: "test" + i });
         }

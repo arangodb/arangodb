@@ -373,7 +373,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveDocumentDuplicateSecondary : function () {
-      collection.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
 
       let d1, d2;
       try {

@@ -62,7 +62,7 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -87,7 +87,7 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -112,7 +112,7 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -137,7 +137,7 @@ function creating_skip_list_index_dealing_with_unique_constraints_violationSuite
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -162,11 +162,11 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
 
     test_rolls_back_in_case_of_violation: function() {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
+      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
-      assertEqual(doc.parsedBody['type'], "skiplist");
+      assertEqual(doc.parsedBody['type'], "persistent");
       assertTrue(doc.parsedBody['unique']);
 
       // create a document;
@@ -225,11 +225,11 @@ function creating_documents_dealing_with_unique_constraintsSuite () {
 
     test_rolls_back_in_case_of_violation__sparse_index: function() {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
-      assertEqual(doc.parsedBody['type'], "skiplist");
+      assertEqual(doc.parsedBody['type'], "persistent");
       assertTrue(doc.parsedBody['unique']);
 
       // create a document;
@@ -304,11 +304,11 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
 
     test_rolls_back_in_case_of_violation_update: function() {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ] };
+      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
-      assertEqual(doc.parsedBody['type'], "skiplist");
+      assertEqual(doc.parsedBody['type'], "persistent");
       assertTrue(doc.parsedBody['unique']);
 
       // create a document;
@@ -393,11 +393,11 @@ function updating_documents_dealing_with_unique_constraintsSuite () {
 
     test_rolls_back_in_case_of_violation__sparse_index_update: function() {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
-      assertEqual(doc.parsedBody['type'], "skiplist");
+      assertEqual(doc.parsedBody['type'], "persistent");
       assertTrue(doc.parsedBody['unique']);
 
       // create a document;

@@ -124,9 +124,9 @@ function optimizerRuleTestSuite() {
       }
       skiplist.insert(docs);
 
-      skiplist.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
-      skiplist.ensureIndex({ type: "skiplist", fields: ["d"] });
-      skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
+      skiplist.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      skiplist.ensureIndex({ type: "persistent", fields: ["d"] });
+      skiplist.ensureIndex({ type: "persistent", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
       skiplist2 = internal.db._create(colNameOther, {numberOfShards: 1});
@@ -140,9 +140,9 @@ function optimizerRuleTestSuite() {
       }
       skiplist2.insert(docs);
  
-      skiplist2.ensureIndex({ type: "skiplist", fields: ["f", "g"] });
-      skiplist2.ensureIndex({ type: "skiplist", fields: ["i"] });
-      skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
+      skiplist2.ensureIndex({ type: "persistent", fields: ["f", "g"] });
+      skiplist2.ensureIndex({ type: "persistent", fields: ["i"] });
+      skiplist2.ensureIndex({ type: "persistent", fields: [ "h" ], unique: false });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +160,7 @@ function optimizerRuleTestSuite() {
       // skiplist: d
       // hash: c
       // hash: y,z
-      skiplist.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      skiplist.ensureIndex({ type: "persistent", fields: [ "y", "z" ], unique: false });
       
       var queries = [ 
         [ "FOR v IN " + colName + " FILTER v.u == 1 SORT v.u RETURN 1", false, true ],
@@ -1141,7 +1141,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortOnSubAttributeAsc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      skiplist.ensureIndex({ type: "persistent", fields: [ "foo.bar" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
@@ -1161,7 +1161,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortOnSubAttributeDesc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar" ], unique: false });
+      skiplist.ensureIndex({ type: "persistent", fields: [ "foo.bar" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar DESC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
@@ -1181,7 +1181,7 @@ function optimizerRuleTestSuite() {
     },
 
     testSortOnNestedSubAttributeAsc : function () {
-      skiplist.ensureIndex({ type: "skiplist", fields: [ "foo.bar.baz" ], unique: false });
+      skiplist.ensureIndex({ type: "persistent", fields: [ "foo.bar.baz" ], unique: false });
       var query = "FOR v IN " + colName + " SORT v.foo.bar.baz ASC RETURN v";
       var rules = db._createStatement(query).explain().plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));

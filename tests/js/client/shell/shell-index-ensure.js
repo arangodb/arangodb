@@ -577,7 +577,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "persistent");
           found = true;
         }
       });
@@ -824,7 +824,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue([ "skiplist", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'skiplist', 'primary' ]");
+          assertTrue([ "persistent", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'persistent', 'primary' ]");
           found = true;
         }
       });
@@ -871,7 +871,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "skiplist");
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "persistent");
           found = true;
         }
       });
@@ -921,7 +921,7 @@ function ensureIndexSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "hash" && node.indexes[0].fields[0] === "value[*]");
+          assertTrue(node.indexes[0].type === "persistent" && node.indexes[0].fields[0] === "value[*]");
           found = true;
         }
       });
@@ -1305,7 +1305,7 @@ function ensureIndexEdgesSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "hash");
+          assertTrue(node.indexes[0].type === "persistent");
           found = true;
         }
       });
@@ -1344,7 +1344,7 @@ function ensureIndexEdgesSuite() {
       var found = false;
       st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.indexes[0].type === "skiplist");
+          assertTrue(node.indexes[0].type === "persistent");
           found = true;
         }
       });

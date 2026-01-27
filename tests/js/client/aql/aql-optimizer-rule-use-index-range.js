@@ -72,12 +72,12 @@ function optimizerRuleUseIndexRangeTester () {
       }
       collNoInd = colls[0];
       collSkipInd = colls[1];
-      collSkipInd.ensureIndex({ type: "skiplist", fields: ["a"] });
+      collSkipInd.ensureIndex({ type: "persistent", fields: ["a"] });
       collHashInd = colls[2];
-      collHashInd.ensureIndex({ type: "hash", fields: ["a"] });
+      collHashInd.ensureIndex({ type: "persistent", fields: ["a"] });
       collBothInd = colls[3];
-      collBothInd.ensureIndex({ type: "hash", fields: ["a"] });
-      collBothInd.ensureIndex({ type: "skiplist", fields: ["a"] });
+      collBothInd.ensureIndex({ type: "persistent", fields: ["a"] });
+      collBothInd.ensureIndex({ type: "persistent", fields: ["a"] });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

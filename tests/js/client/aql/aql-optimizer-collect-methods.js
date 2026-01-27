@@ -196,8 +196,8 @@ function optimizerCollectMethodsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testHashedWithNonSortedIndex : function () {
-      c.ensureIndex({ type: "hash", fields: [ "group" ] });
-      c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "group" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] });
       
       const queries = [
                      [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],

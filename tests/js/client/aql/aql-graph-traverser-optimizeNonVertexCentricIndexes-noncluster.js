@@ -92,7 +92,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
@@ -116,7 +116,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
@@ -140,7 +140,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
@@ -163,7 +163,7 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'

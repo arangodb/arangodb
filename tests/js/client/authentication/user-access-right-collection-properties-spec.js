@@ -102,7 +102,7 @@ describe('User Rights Management', () => {
                   let col = db._collection(colName);
                   let origIdxCount = col.indexes().length;
                   expect(origIdxCount).to.equal(1); // Only primary index
-                  let idx = col.ensureIndex({ type: "hash", fields: ["foo"] });
+                  let idx = col.ensureIndex({ type: "persistent", fields: ["foo"] });
                   expect(col.indexes().length).to.equal(origIdxCount + 1, 'Ensure Index reported success, but collection does not show it.');
                   col.dropIndex(idx);
                   expect(col.indexes().length).to.equal(origIdxCount, 'Drop Index reported success, but collection does still show it.');
@@ -111,7 +111,7 @@ describe('User Rights Management', () => {
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                   try {
                     let col = db._collection(colName);
-                    col.ensureIndex({ type: "hash", fields: ["foo"] });
+                    col.ensureIndex({ type: "persistent", fields: ["foo"] });
                   } catch (e) {
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }

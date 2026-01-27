@@ -100,12 +100,12 @@ function lateDocumentMaterializationRuleTestSuite () {
           expCollections[i * numOfCollectionIndexes + j].ensureIndex({type: type, fields: fields});
         }
       }
-      severalIndexesCollection.ensureIndex({type: "hash", fields: ["a"]});
-      severalIndexesCollection.ensureIndex({type: "hash", fields: ["b"]});
+      severalIndexesCollection.ensureIndex({type: "persistent", fields: ["a"]});
+      severalIndexesCollection.ensureIndex({type: "persistent", fields: ["b"]});
 
-      projectionsCoveredByIndexCollection.ensureIndex({type: "hash", fields: ["a", "b", "c"]});
+      projectionsCoveredByIndexCollection.ensureIndex({type: "persistent", fields: ["a", "b", "c"]});
 
-      prefixIndexCollection.ensureIndex({type: "hash", fields: ["obj.a", "obj.b"]});
+      prefixIndexCollection.ensureIndex({type: "persistent", fields: ["obj.a", "obj.b"]});
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         collections[i].save({_key: 'c0',  "obj": {"a": "a_val", "b": "b_val", "c": "c_val", "d": "d_val"}});

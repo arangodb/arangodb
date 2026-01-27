@@ -206,9 +206,9 @@ function aqlSkippingIndexTestsuite () {
 
     setUpAll : function () {
       const col = db._createDocumentCollection(skipCollection, { numberOfShards: 5 });
-      col.ensureIndex({ type: "hash", fields: [ "a" ]});
-      col.ensureIndex({ type: "hash", fields: [ "b" ]});
-      col.ensureIndex({ type: "hash", fields: [ "c" ]});
+      col.ensureIndex({ type: "persistent", fields: [ "a" ]});
+      col.ensureIndex({ type: "persistent", fields: [ "b" ]});
+      col.ensureIndex({ type: "persistent", fields: [ "c" ]});
 
       const values = _.range(7); // 0..6
 

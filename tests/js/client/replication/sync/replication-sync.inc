@@ -242,7 +242,7 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'skiplist', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'persistent', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
@@ -267,14 +267,14 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'persistent', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the follower
           const c = db._create(cn);
-          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          const def = {type: 'persistent', id: '1234567', fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -294,14 +294,14 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
-          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'persistent', id: '1234567', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
-          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          const def = {type: 'persistent', id: '1234567', fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -321,7 +321,7 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
+          state.indexDef = {type: 'persistent', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
@@ -346,14 +346,14 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
+          state.indexDef = {type: 'persistent', name: 'foo', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the collection and index on the follower
           const c = db._create(cn);
-          const def = {type: 'skiplist', name: 'foo', fields: ['value2']};
+          const def = {type: 'persistent', name: 'foo', fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -371,14 +371,14 @@ exports.BaseTestConfig = function () {
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
-          state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
+          state.indexDef = {type: 'persistent', name: 'foo', fields: ['value3']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
-          const def  = {type: 'skiplist', name: 'foo', fields: ['value4']};
+          const def  = {type: 'persistent', name: 'foo', fields: ['value4']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -1250,11 +1250,11 @@ exports.BaseTestConfig = function () {
           c.insert(docs);
 
           c.ensureIndex({
-            type: 'hash',
+            type: 'persistent',
             fields: ['value1', 'value2']
           });
           c.ensureIndex({
-            type: 'skiplist',
+            type: 'persistent',
             fields: ['value1']
           });
 
@@ -1290,16 +1290,14 @@ exports.BaseTestConfig = function () {
           assertEqual(state.checksum, collectionChecksum(cn));
 
           var idx = db._collection(cn).indexes();
-          assertEqual(3, idx.length); // primary + hash + skiplist
+          assertEqual(3, idx.length); // primary + 2 persistent
           for (var i = 1; i < idx.length; ++i) {
             assertFalse(idx[i].unique);
             assertFalse(idx[i].sparse);
-
-            if (idx[i].type === 'hash') {
-              assertEqual('hash', idx[i].type);
+            assertEqual('persistent', idx[i].type);
+            if (idx[i].fields.length === 2) {
               assertEqual(['value1', 'value2'], idx[i].fields);
             } else {
-              assertEqual('skiplist', idx[i].type);
               assertEqual(['value1'], idx[i].fields);
             }
           }

@@ -60,14 +60,14 @@ function vertexCentricIndexSuite() {
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -76,20 +76,20 @@ function vertexCentricIndexSuite() {
 
     testCreateHash : () => {
       let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
 
       // creation
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -98,20 +98,20 @@ function vertexCentricIndexSuite() {
 
     testCreateSkiplist : () => {
       let before = collection.indexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "skiplist", direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
 
       // creation
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("skiplist", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to skiplist [_from, label]
-      let idx2 = collection.ensureIndex({ type: "skiplist", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -148,14 +148,14 @@ function vertexCentricIndexSuite() {
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label", "type"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -170,14 +170,14 @@ function vertexCentricIndexSuite() {
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label", "type"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -192,14 +192,14 @@ function vertexCentricIndexSuite() {
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_to", "label"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_to, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_to", "label"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_to", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();
@@ -214,14 +214,14 @@ function vertexCentricIndexSuite() {
       let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
-      assertEqual("hash", idx.type);
+      assertEqual("persistent", idx.type);
       assertEqual(["_from", "label"], idx.fields);
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "persistent", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.indexes();

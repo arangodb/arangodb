@@ -148,7 +148,7 @@ describe('Index figures', function () {
     before('create collection',function(){
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "hash", fields: ["name"]});
+      col.ensureIndex({type: "persistent", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }
@@ -187,7 +187,7 @@ describe('Index figures', function () {
     before('create collection',function(){
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "skiplist", fields: ["name"]});
+      col.ensureIndex({type: "persistent", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }

@@ -56,12 +56,12 @@ function optimizerIndexesTestSuite () {
       }
       c.insert(docs);
       
-      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
+      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
     },
     
     setUp: function() {
       if (idx === null) {
-        idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
+        idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
       }
     },
 
@@ -992,7 +992,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSubqueriesMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
@@ -1019,7 +1019,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          assertEqual("persistent", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1042,7 +1042,7 @@ function optimizerIndexesTestSuite () {
 
     testMultipleSubqueriesHashIndexes : function () {
       deleteDefaultIdx(); // drop skiplist index
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
@@ -1068,7 +1068,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1090,7 +1090,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value < 10 FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1102,7 +1102,7 @@ function optimizerIndexesTestSuite () {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            assertEqual("persistent", node.indexes[0].type);
             assertEqual("i", node.outVariable.name);
           }
           else {
@@ -1129,7 +1129,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinRangesMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value < 5 FOR j IN " + c.name() + " FILTER j.value < i.value RETURN j._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1140,7 +1140,7 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           // skiplist must be used for both FORs
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           if (indexNodes === 1) {
             assertEqual("i", node.outVariable.name);
           }
@@ -1168,7 +1168,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTripleJoin : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value == 4 FOR j IN " + c.name() + " FILTER j.value == i.value FOR k IN " + c.name() + " FILTER k.value < j.value RETURN k._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1179,15 +1179,15 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            assertEqual("persistent", node.indexes[0].type);
             assertEqual("i", node.outVariable.name);
           }
           else if (indexNodes === 2) {
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+            assertEqual("persistent", node.indexes[0].type);
             assertEqual("j", node.outVariable.name);
           }
           else {
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertEqual("k", node.outVariable.name);
           }
         }
@@ -1211,7 +1211,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryMadness : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
@@ -1238,7 +1238,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          assertEqual("persistent", node.indexes[0].type);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1279,14 +1279,14 @@ function optimizerIndexesTestSuite () {
     },
 
     testIndexOrHashNoDocuments : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertFalse(node.producesResult);
-          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1344,14 +1344,14 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHash : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.producesResult);
-          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1370,13 +1370,13 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrUniqueHash : function () {
-      idx1 = c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertTrue(node.indexes[0].unique);
         }
         return node.type;
@@ -1401,7 +1401,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertFalse(node.producesResult);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1427,7 +1427,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.producesResult);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1446,13 +1446,13 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrUniqueSkiplist : function () {
-      idx1 = c.ensureIndex({ type: "skiplist", fields: ["value"], unique: true });
+      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertTrue(node.indexes[0].unique);
         }
         return node.type;
@@ -1877,7 +1877,7 @@ function optimizerIndexesModifyTestSuite () {
       }
       c.insert(docs);
       
-      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
+      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
     },
     
     tearDown: function() {
@@ -1941,7 +1941,7 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -1976,7 +1976,7 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -2012,7 +2012,7 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -2048,7 +2048,7 @@ function optimizerIndexesModifyTestSuite () {
       assertEqual(0, results.getExtra().stats.scannedIndex);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -2086,7 +2086,7 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "skiplist", fields: [ "value" ] });
+       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -2107,14 +2107,14 @@ function optimizerIndexesModifyTestSuite () {
         docs.push({ value1: i, value2: i });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "skiplist", fields: [ "value1", "value2" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "value1", "value2" ] });
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 > 1 && i.value2 < 9) && (i.value1 == 3) RETURN i.value1";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -2140,14 +2140,14 @@ function optimizerIndexesModifyTestSuite () {
         docs.push({ value1: i, value2: i });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "skiplist", fields: [ "value1", "value2" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "value1", "value2" ] });
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 > 1 && i.value2 < 9) && (i.value1 == 2 || i.value1 == 3) RETURN i.value1";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -2168,7 +2168,7 @@ function optimizerIndexesModifyTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertFalse(node.producesResult);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -2188,7 +2188,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value2 == 1 RETURN i.value2";
@@ -2211,7 +2211,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionEq : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || [ i.value ] == i.value2 RETURN i.value2";
@@ -2234,7 +2234,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionIn : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value IN i.value2 RETURN i.value2";
@@ -2257,7 +2257,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionLt1 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < i.value RETURN i.value2";
@@ -2280,7 +2280,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionLt2 : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < NOOPT(i.value) RETURN i.value2";
@@ -2303,7 +2303,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionGt : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value + 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 > i.value RETURN i.value2";
@@ -2326,7 +2326,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRanges : function () {
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 2 && i.value3 == 2) || (i.value2 == 3 && i.value3 == 3) RETURN i.value2";
@@ -2334,7 +2334,7 @@ function optimizerIndexesModifyTestSuite () {
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
@@ -2354,7 +2354,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRanges : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 2 && i.value3 == 2) || (i.value2 == 3 && i.value3 == 3) RETURN i.value2";
@@ -2362,7 +2362,7 @@ function optimizerIndexesModifyTestSuite () {
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
@@ -2382,7 +2382,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRangesPartialNoIndex1 : function () {
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value2 == 2) RETURN i.value2";
@@ -2403,7 +2403,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRangesPartialNoIndex2 : function () {
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value3 == 2) RETURN i.value2";
@@ -2425,7 +2425,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRangesPartialIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value2 == 2) RETURN i.value2";
@@ -2433,7 +2433,7 @@ function optimizerIndexesModifyTestSuite () {
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertEqual([ "value2", "value3" ], node.indexes[0].fields);
         }
@@ -2452,7 +2452,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRangesPartialNoIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value3 == 2) RETURN i.value2";
@@ -2474,7 +2474,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexAndUseIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value2 == 1 RETURN i.value2";
@@ -2606,7 +2606,7 @@ function optimizerIndexesModifyTestSuite () {
     testIndexAndHashIndexedNonIndexed : function () {
       // drop the skiplist index
       c.dropIndex(c.indexes()[1]);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
       // value2 is not indexed
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
@@ -2643,7 +2643,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndAlternativeHashAndSkiplistIndexedNonIndexed : function () {
       // create a competitor index
-      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
 
       // value2 is not indexed
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2684,7 +2684,7 @@ function optimizerIndexesModifyTestSuite () {
       c.dropIndex(c.indexes()[1]);
 
       // create an alternative index
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value3"] });
 
       // value2 is not indexed
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2722,7 +2722,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndAlternativeSkiplistPartialIndexedNonIndexed : function () {
       // create a competitor index
-      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value", "value3"] });
 
       // value2 is not indexed
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2759,7 +2759,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexNotNoIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var queries = [
@@ -2787,7 +2787,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexNotUseIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var queries = [
@@ -2821,8 +2821,8 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexUsageIn : function () {
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value3"] });
 
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
@@ -2899,8 +2899,8 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexUsageInNoIndex : function () {
-      c.ensureIndex({ type: "hash", fields: ["value2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value3"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value3"] });
 
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
@@ -2933,14 +2933,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHash : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -2962,14 +2962,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseUniqueHash : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true, sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertTrue(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -2991,14 +2991,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashCollisions : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3020,14 +3020,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashCollisionsOr : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3049,7 +3049,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashDynamic : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var queries = [
         "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
@@ -3079,7 +3079,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3103,15 +3103,15 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashesNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
-      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: false });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: false });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertFalse(node.indexes[0].sparse);
         }
@@ -3133,7 +3133,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMulti : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
@@ -3145,7 +3145,7 @@ function optimizerIndexesModifyTestSuite () {
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
             assertEqual(1, node.indexes.length);
-            assertEqual("hash", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertFalse(node.indexes[0].unique);
             assertTrue(node.indexes[0].sparse);
           }
@@ -3168,7 +3168,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMultiMissing : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
@@ -3197,7 +3197,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMultiNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
@@ -3227,8 +3227,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashesMultiNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
-      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: false });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: false });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
 
@@ -3236,7 +3236,7 @@ function optimizerIndexesModifyTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("hash", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertFalse(node.indexes[0].sparse);
         }
@@ -3258,14 +3258,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplist : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3287,14 +3287,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseUniqueSkiplist : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true, sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertTrue(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3316,14 +3316,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistCollisions : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3345,14 +3345,14 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistCollisionsOr : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertTrue(node.indexes[0].sparse);
         }
@@ -3374,7 +3374,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistDynamic : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var queries = [
         "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
@@ -3404,7 +3404,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3428,15 +3428,15 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistsNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: false });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: false });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertFalse(node.indexes[0].sparse);
         }
@@ -3458,7 +3458,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMulti : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
@@ -3470,7 +3470,7 @@ function optimizerIndexesModifyTestSuite () {
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
             assertEqual(1, node.indexes.length);
-            assertEqual("skiplist", node.indexes[0].type);
+            assertEqual("persistent", node.indexes[0].type);
             assertFalse(node.indexes[0].unique);
             assertTrue(node.indexes[0].sparse);
           }
@@ -3493,7 +3493,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMultiMissing : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
@@ -3522,7 +3522,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMultiNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
@@ -3552,8 +3552,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistsMultiNull : function () {
       db._query("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: false });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2", "value3"], sparse: false });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
 
@@ -3561,7 +3561,7 @@ function optimizerIndexesModifyTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertEqual(1, node.indexes.length);
-          assertEqual("skiplist", node.indexes[0].type);
+          assertEqual("persistent", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
           assertFalse(node.indexes[0].sparse);
         }
@@ -3583,7 +3583,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeNoIndex : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 SORT i.value2 RETURN i.value2";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3606,7 +3606,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithNullNoIndex : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= null SORT i.value2 RETURN i.value2";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3629,7 +3629,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithIndex : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 > null SORT i.value2 RETURN i.value2";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3653,7 +3653,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithIndexValue : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= 2 SORT i.value2 RETURN i.value2";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3711,7 +3711,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseIndexAndSortInInner : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3746,7 +3746,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       var sub = nodeTypes.indexOf("SubqueryStartNode");
       assertNotEqual(-1, sub);
       assertNotEqual(-1, idx, query); // index used for inner query
-      assertEqual("hash", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertNotEqual(-1, subqueryTypes.indexOf("SortNode"), query); // must have sort node for inner query
     },
 
@@ -3755,7 +3755,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseIndexAndNoSortInInner : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3790,7 +3790,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertNotEqual(-1, sub);
 
       assertNotEqual(-1, subqueryTypes.indexOf("IndexNode"), query); // index used for inner query
-      assertEqual("hash", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertEqual(-1, subqueryTypes.indexOf("SortNode"), query); // must not have sort node for inner query
     },
 
@@ -3799,8 +3799,8 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseRightIndexAndSortInInner : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3836,7 +3836,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertNotEqual(-1, sub);
       assertNotEqual(-1, idx);
       assertNotEqual(-1, subqueryTypes.indexOf("IndexNode"), query); // index used for inner query
-      assertEqual("hash", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertNotEqual(-1, subqueryTypes.indexOf("SortNode"), query); // must have sort node for inner query
     },
 
@@ -3845,8 +3845,8 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseRightIndexAndSortInInner2 : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3882,7 +3882,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
 
       assertNotEqual(-1, subqueryTypes.indexOf("IndexNode"), query);
       assertNotEqual(-1, idx, query); // index used for inner query
-      assertEqual("hash", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertEqual(-1, subqueryTypes.indexOf("SortNode"), query); // we're filtering on a constant, must not have sort node for inner query
     },
 
@@ -3891,8 +3891,8 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseRightIndexAndSortInInnerInner : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR z IN 1..2 FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3928,7 +3928,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertNotEqual(-1, sub, query);
       assertNotEqual(-1, subqueryTypes.indexOf("IndexNode"), query);
       assertNotEqual(-1, idx, query); // index used for inner query
-      assertEqual("hash", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertNotEqual(-1, subqueryTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
     },
 
@@ -3937,8 +3937,8 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseRightIndexNoSortInInner : function () {
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.ref == i.ref SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -3973,7 +3973,7 @@ function optimizerIndexesMultiCollectionTestSuite () {
 
       assertNotEqual(-1, subqueryTypes.indexOf("IndexNode"), query);
       assertNotEqual(-1, idx, query); // index used for inner query
-      assertEqual("skiplist", idx.indexes[0].type);
+      assertEqual("persistent", idx.indexes[0].type);
       assertEqual(-1, subqueryTypes.indexOf("SortNode"), query); // must not have sort node for inner query
     },
 
@@ -3982,9 +3982,9 @@ function optimizerIndexesMultiCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPreventMoveFilterPastModify1 : function () {
-      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c1.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = `
         FOR i IN ${c1.name()}
           FOR j IN ${c2.name()}
@@ -4004,9 +4004,9 @@ function optimizerIndexesMultiCollectionTestSuite () {
     },
 
     testPreventMoveFilterPastModify2 : function () {
-      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c1.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = `
         FOR i IN ${c1.name()}
           FOR j IN ${c2.name()}
@@ -4026,9 +4026,9 @@ function optimizerIndexesMultiCollectionTestSuite () {
     },
 
     testPreventMoveSortPastModify1 : function () {
-      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c1.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = `
         FOR i IN ${c1.name()}
           FOR j IN ${c2.name()}
@@ -4048,9 +4048,9 @@ function optimizerIndexesMultiCollectionTestSuite () {
     },
 
     testPreventMoveSortPastModify2 : function () {
-      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
-      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      c1.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      c2.ensureIndex({ type: "persistent", fields: [ "ref" ] });
       var query = `
         FOR i IN ${c1.name()}
           FOR j IN ${c2.name()}

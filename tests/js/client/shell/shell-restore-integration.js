@@ -871,7 +871,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-            {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+            {id: "295", fields: ["value"], type: "persistent", sparse: true},
           ],
           name: cn,
           numberOfShards: 3,
@@ -890,7 +890,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1006,7 +1006,7 @@ function restoreIntegrationSuite() {
       fs.write(fn, JSON.stringify({
         indexes: [
           {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-          {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+          {id: "295", fields: ["value"], type: "persistent", sparse: true},
         ],
         parameters: {
           name: cn,
@@ -1026,7 +1026,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1052,7 +1052,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "1", fields: ["_from", "_to"], type: "edge"},
-            {id: "95", fields: ["value"], type: "hash"},
+            {id: "95", fields: ["value"], type: "persistent"},
           ],
           name: cn,
           numberOfShards: 3,
@@ -1070,7 +1070,7 @@ function restoreIntegrationSuite() {
       assertEqual(["_key"], indexes[0].fields);
       assertEqual("edge", indexes[1].type);
       assertEqual(["_from", "_to"], indexes[1].fields);
-      assertEqual("hash", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work

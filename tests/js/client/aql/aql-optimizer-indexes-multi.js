@@ -103,9 +103,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseTwoHashIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -212,9 +212,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseTwoSkiplistIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -321,9 +321,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkipAndHashIndexForOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -438,7 +438,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b", "c"] } );
 
       var queries = [];
@@ -492,7 +492,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
 
       var queries = [];
@@ -546,7 +546,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF3 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -600,9 +600,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF4: function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -656,7 +656,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c", "b"] } );
 
       var queries = [];
@@ -710,7 +710,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b", "c"] } );
 
       var queries = [];
@@ -764,7 +764,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
 
       var queries = [];
@@ -818,7 +818,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -872,9 +872,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF4 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -928,7 +928,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c", "b"] } );
 
       var queries = [];
@@ -982,7 +982,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1040,7 +1040,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1114,7 +1114,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1199,7 +1199,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1252,7 +1252,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1309,7 +1309,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1362,9 +1362,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -1460,9 +1460,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -1558,9 +1558,9 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistRespHashIndexesForInOrEq : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
+      idx1 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["c"] } );
 
       var queries = [];
@@ -1652,7 +1652,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistForOverlappingRanges : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];
@@ -1730,7 +1730,7 @@ function optimizerIndexesMultiTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistForMultipleRangesWithOr: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
+      idx0 = c.ensureIndex( { type: "persistent", sparse: false, unique: false,
                               fields: ["a"] } );
 
       var queries = [];

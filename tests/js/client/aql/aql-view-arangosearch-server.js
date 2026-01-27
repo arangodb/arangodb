@@ -174,7 +174,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       // add another index (to make it fail after arangosearch insert passed) 
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
       
       // single operation insert (will fail on unique index)
       try {
@@ -332,7 +332,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       }
       // add another index (to make it fail after arangosearch update passed) 
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
 
       let docsUpdateIds = [];
       let docsUpdateData = [];
@@ -451,7 +451,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       // add another index (to make it fail after arangosearch remove passed)
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      docsCollection.ensureIndex({type: "persistent", unique: true, fields:["indexField"]});
       let docsRemoveIds = [];
       docsRemoveIds.push(docs[2]._id);
       docsRemoveIds.push(docs[3]._id);
