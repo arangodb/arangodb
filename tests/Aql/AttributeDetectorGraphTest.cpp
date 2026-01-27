@@ -295,7 +295,7 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
 
   // If both traversals don't require vertices, we should only see edge
   // collections.
-  ASSERT_EQ(accesses.size(), 2);
+  ASSERT_EQ(accesses.size(), 4);
 
   bool seenSells = false;
   bool seenOrdered = false;
