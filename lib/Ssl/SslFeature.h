@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
 #include <openssl/ssl.h>
 
@@ -38,8 +39,7 @@ class SslFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Ssl"; }
 
-  template<typename Server>
-  explicit SslFeature(Server& server)
+  explicit SslFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature(server, *this) {
     setOptional(true);
     startsAfter<application_features::GreetingsFeaturePhase>();

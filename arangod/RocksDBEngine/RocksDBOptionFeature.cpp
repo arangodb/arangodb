@@ -218,9 +218,9 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 }  // namespace
 
-template<typename Server>
-RocksDBOptionFeature::RocksDBOptionFeature(Server& server,
-                                           AgencyFeature const* agencyFeature)
+RocksDBOptionFeature::RocksDBOptionFeature(
+    application_features::ApplicationServer& server,
+    AgencyFeature const* agencyFeature)
     : ApplicationFeature{server, *this},
       _agencyFeature(agencyFeature),
       // number of lock stripes for the transaction lock manager. we bump this
@@ -2210,16 +2210,3 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
 
   return result;
 }
-
-template<typename Server>
-auto RocksDBOptionFeature::construct(Server& server,
-                                     const AgencyFeature* agencyFeature)
-    -> std::unique_ptr<RocksDBOptionFeature> {
-  return std::make_unique<RocksDBOptionFeature>(server, agencyFeature);
-}
-
-// a named constructor is necessary, because a template constructor can't be
-// explicitly instantiated.
-template auto RocksDBOptionFeature::construct<ArangodServer>(
-    ArangodServer& server, const AgencyFeature* agencyFeature)
-    -> std::unique_ptr<RocksDBOptionFeature>;

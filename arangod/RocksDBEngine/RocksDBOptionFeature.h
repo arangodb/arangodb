@@ -51,12 +51,8 @@ class RocksDBOptionFeature final
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
-  template<typename Server>
-  explicit RocksDBOptionFeature(Server& server,
+  explicit RocksDBOptionFeature(application_features::ApplicationServer& server,
                                 AgencyFeature const* agencyFeature);
-  template<typename Server>
-  static auto construct(Server& server, AgencyFeature const* agencyFeature)
-      -> std::unique_ptr<RocksDBOptionFeature>;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

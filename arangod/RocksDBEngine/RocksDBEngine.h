@@ -37,6 +37,7 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -74,6 +75,7 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class AgencyFeature;
+class CacheManagerFeature;
 class DatabasePathFeature;
 class DumpLimitsFeature;
 class FlushFeature;
@@ -169,8 +171,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  template<typename Server>
-  RocksDBEngine(Server& server, RocksDBOptionsProvider& optionsProvider,
+  RocksDBEngine(application_features::ApplicationServer& server,
+                RocksDBOptionsProvider& optionsProvider,
                 metrics::MetricsFeature& metrics,
                 DatabasePathFeature const& databasePathFeature,
                 VectorIndexFeature const& vectorIndexFeature,
@@ -184,21 +186,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 CacheManagerFeature& cacheManagerFeature,
                 AgencyFeature const& agencyFeature);
   ~RocksDBEngine();
-
-  template<typename Server>
-  static auto construct(
-      Server& server, RocksDBOptionsProvider& optionsProvider,
-      metrics::MetricsFeature& metrics,
-      DatabasePathFeature const& databasePathFeature,
-      VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-      DumpLimitsFeature const& dumpLimitsFeature,
-      SchedulerFeature& schedulerFeature,
-      ReplicatedLogFeature* replicatedLogFeature,
-      RocksDBRecoveryManager const& rocksDbRecoveryManager,
-      DatabaseFeature& databaseFeature,
-      RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-      CacheManagerFeature& cacheManagerFeature,
-      AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine>;
 
   // Temporary, for easier refactoring:
   template<typename Type>

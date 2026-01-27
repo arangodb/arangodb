@@ -88,8 +88,8 @@ struct Feature::CleanupThread {
 };
 
 void Feature::prepare() {
-  _metrics = create_metrics(
-      server().template getFeature<arangodb::metrics::MetricsFeature>());
+  _metrics =
+      create_metrics(server().getFeature<arangodb::metrics::MetricsFeature>());
   registry.set_metrics(_metrics);
 }
 

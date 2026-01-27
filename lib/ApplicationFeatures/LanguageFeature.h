@@ -24,6 +24,8 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Utf8Helper.h"
 
 #include <unicode/locid.h>
@@ -45,8 +47,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
 
-  template<typename Server>
-  explicit LanguageFeature(Server& server)
+  explicit LanguageFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature{server, *this},
         _binaryPath(server.getBinaryPath()),
         _locale(),

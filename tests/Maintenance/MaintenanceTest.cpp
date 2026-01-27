@@ -68,6 +68,7 @@
 
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <random>
 
 using namespace arangodb;
@@ -534,12 +535,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& roOptions = as.addFeatureFactory<RocksDBOptionFeature>([this]() {
-      TRI_ASSERT(!as.hasFeature<AgencyFeature>());
-      return RocksDBOptionFeature::construct(
-          as, as.hasFeature<AgencyFeature>() ? &as.getFeature<AgencyFeature>()
-                                             : nullptr);
-    });
+    auto& roOptions =
+        as.addFeature<RocksDBOptionFeature>(&as.getFeature<AgencyFeature>());
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<EngineSelectorFeature>();
@@ -570,7 +567,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                                      : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = RocksDBEngine::construct(
+    engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
         schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
         databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,

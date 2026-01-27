@@ -25,16 +25,16 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/StorageEngineFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

@@ -77,7 +77,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
   features.emplace_back(
       server.addFeature<arangodb::QueryRegistryFeature>(
-          server.template getFeature<arangodb::metrics::MetricsFeature>()),
+          server.getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
       systemDBInfo(server),

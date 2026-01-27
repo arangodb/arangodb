@@ -33,8 +33,7 @@ class VersionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Version"; }
 
-  template<typename Server>
-  explicit VersionFeature(Server& server)
+  explicit VersionFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature{server, *this},
         _printVersion(false),
         _printVersionJson(false) {

@@ -221,7 +221,7 @@ static void SetupV8Phase(MockServer& server) {
 #ifdef USE_V8
   server.addFeature<application_features::V8FeaturePhase>(false);
   server.addFeature<V8DealerFeature>(
-      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+      false, server.getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
 #endif
 }
@@ -230,7 +230,7 @@ static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(
-      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+      false, server.getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);

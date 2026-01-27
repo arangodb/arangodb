@@ -318,21 +318,6 @@ class ApplicationServer {
     return static_cast<Impl&>(*slot);
   }
 
-  // Adds a feature to the application server using a factory function.
-  // This is useful for features with template constructors that cannot
-  // be explicitly instantiated - they can provide a static `construct`
-  // factory method instead.
-  template<typename Type, typename Factory>
-  Type& addFeatureFactory(Factory&& factory) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = std::forward<Factory>(factory)();
-
-    return static_cast<Type&>(*slot);
-  }
-
  protected:
   friend class ApplicationFeature;
 

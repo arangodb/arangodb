@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 
 namespace arangodb {
 namespace application_features {
@@ -36,8 +37,8 @@ class ProcessEnvironmentFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Temp"; }
 
-  template<typename Server>
-  ProcessEnvironmentFeature(Server& server, std::string const& appname)
+  ProcessEnvironmentFeature(application_features::ApplicationServer& server,
+                            std::string const& appname)
       : ApplicationFeature{server, *this}, _dumpEnv(false) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase>();

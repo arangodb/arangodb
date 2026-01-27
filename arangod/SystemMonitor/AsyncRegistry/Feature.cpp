@@ -167,8 +167,7 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  _metrics =
-      create_metrics(server().template getFeature<metrics::MetricsFeature>());
+  _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
   registry.set_metrics(_metrics);
 }
 

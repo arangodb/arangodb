@@ -258,12 +258,9 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill =
       _server.addFeature<RocksDBIndexCacheRefillFeature>();
-  _server.addFeatureFactory<RocksDBOptionFeature>([this]() {
-    return RocksDBOptionFeature::construct(
-        _server, _server.hasFeature<AgencyFeature>()
-                     ? &_server.getFeature<AgencyFeature>()
-                     : nullptr);
-  });
+  _server.addFeature<RocksDBOptionFeature>(
+      _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
+                                          : nullptr);
   auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>();
@@ -288,15 +285,13 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<iresearch::IResearchFeature>();
   _server.addFeature<ClusterEngine>();
 
-  _server.addFeatureFactory<RocksDBEngine>([&, this]() {
-    return RocksDBEngine::construct(
-        _server, _optionsProvider, metrics, databasePath, vectorIndex, flush,
-        dumpLimits, scheduler,
-        replication2::EnableReplication2
-            ? &_server.getFeature<ReplicatedLogFeature>()
-            : nullptr,
-        rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
-  });
+  _server.addFeature<RocksDBEngine>(
+      _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
+      scheduler,
+      replication2::EnableReplication2
+          ? &_server.getFeature<ReplicatedLogFeature>()
+          : nullptr,
+      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
