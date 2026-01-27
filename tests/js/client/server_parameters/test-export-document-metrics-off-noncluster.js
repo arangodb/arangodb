@@ -36,7 +36,7 @@ const jsunity = require('jsunity');
 function testSuite() {
   return {
     testMetricsUnavailable : function() {
-      let res = arango.GET_RAW(`/_admin/metrics/v2`);
+      let res = arango.GET_RAW(`/_admin/metrics`);
 
       let lines = res.body.split(/\n/);
       assertEqual(0, lines.filter((line) => line.match(/^arangodb_document_read_time/) ).length);

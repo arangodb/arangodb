@@ -94,7 +94,7 @@ void MetricsFeature::collectOptions(
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Enabling this option exposes the following
-additional metrics via the `GET /_admin/metrics/v2` endpoint:
+additional metrics via the `GET /_admin/metrics` endpoint:
 
 - `arangodb_document_writes_total`
 - `arangodb_document_writes_replication_total`
