@@ -474,7 +474,7 @@ TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
     auto steps = futures.waitAndGet();
   }
 
-  std::thread abortThread([this]() {
+  std::jthread abortThread([this]() {
     this->query->kill();
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
   });
@@ -487,8 +487,6 @@ TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
         }
       },
       arangodb::basics::Exception);
-
-  abortThread.join();
 }
 
 }  // namespace generic_graph_provider_test

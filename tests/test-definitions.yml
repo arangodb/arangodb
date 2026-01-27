@@ -465,15 +465,6 @@
     args:
       dumpAgencyOnError: true
 
-- shell_client_aql_generic_graph:
-    options:
-      priority: 1000
-      size: medium+
-      type: cluster
-      buckets: 1
-    args:
-      dumpAgencyOnError: true
-
 # Common Tests
 - import_export:
     options:
