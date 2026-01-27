@@ -44,7 +44,7 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--temp.path", "The path for temporary files.",
-                  new StringParameter(&_path))
+                  new StringParameter(&_options.path))
       .setLongDescription(R"(ArangoDB uses the path for storing temporary
 files, for extracting data from uploaded zip files (e.g. for Foxx services),
 and other things.
@@ -59,19 +59,19 @@ directory, a startup error is logged and the startup is aborted.)");
 }
 
 void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_path.empty()) {
+  if (!_options.path.empty()) {
     // replace $PID in basepath with current process id
-    _path = basics::StringUtils::replace(
-        _path, "$PID", std::to_string(Thread::currentProcessId()));
+    _options.path = basics::StringUtils::replace(
+        _options.path, "$PID", std::to_string(Thread::currentProcessId()));
 
-    basics::FileUtils::makePathAbsolute(_path);
+    basics::FileUtils::makePathAbsolute(_options.path);
   }
 }
 
 void TempFeature::prepare() {
   TRI_SetApplicationName(_appname);
-  if (!_path.empty()) {
-    TRI_SetTempPath(_path);
+  if (!_options.path.empty()) {
+    TRI_SetTempPath(_options.path);
   }
 }
 

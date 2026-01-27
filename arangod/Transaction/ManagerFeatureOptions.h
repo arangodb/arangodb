@@ -18,37 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeatureOptions.h"
+#include <cstddef>
 
-namespace arangodb {
-namespace application_features {
-class GreetingsFeaturePhase;
-}
+namespace arangodb::transaction {
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-class ProcessEnvironmentFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Temp"; }
+struct ManagerFeatureOptions {
+  static constexpr double maxStreamingIdleTimeout = 120.0;
 
-  template<typename Server>
-  ProcessEnvironmentFeature(Server& server, std::string const& appname)
-      : ApplicationFeature{server, *this} {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase>();
-  }
+  // max size (in bytes) of streaming transactions
+  size_t streamingMaxTransactionSize = 512 * 1024 * 1024;  // 512 MiB
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
+  // lock time in seconds
+  double streamingLockTimeout = 8.0;
 
- private:
-  ProcessEnvironmentFeatureOptions _options;
+  // idle timeout for streaming transactions, in seconds
+  double streamingIdleTimeout = 60.0;
 };
-#endif
-}  // namespace arangodb
+
+}  // namespace arangodb::transaction
