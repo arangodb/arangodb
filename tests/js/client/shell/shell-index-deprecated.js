@@ -90,51 +90,6 @@ function deprecatedIndexesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: fulltext index is deprecated
-////////////////////////////////////////////////////////////////////////////////
-
-    testFulltextIndexDeprecated : function () {
-      try {
-        collection.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 3 });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("deprecated"));
-        assertTrue(err.errorMessage.includes("inverted"));
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo1 index is deprecated
-////////////////////////////////////////////////////////////////////////////////
-
-    testGeo1IndexDeprecated : function () {
-      try {
-        collection.ensureIndex({ type: "geo1", fields: ["pos"] });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("deprecated"));
-        assertTrue(err.errorMessage.includes("geo"));
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo2 index is deprecated
-////////////////////////////////////////////////////////////////////////////////
-
-    testGeo2IndexDeprecated : function () {
-      try {
-        collection.ensureIndex({ type: "geo2", fields: ["lat", "lon"] });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("deprecated"));
-        assertTrue(err.errorMessage.includes("geo"));
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: persistent index still works
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -152,6 +107,36 @@ function deprecatedIndexesSuite() {
       var idx = collection.ensureIndex({ type: "geo", fields: ["pos"], geoJson: true });
       assertEqual("geo", idx.type);
       assertEqual(["pos"], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: fulltext index still works
+////////////////////////////////////////////////////////////////////////////////
+
+    testFulltextIndexWorks : function () {
+      var idx = collection.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 3 });
+      assertEqual("fulltext", idx.type);
+      assertEqual(["text"], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo1 index still works
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeo1IndexWorks : function () {
+      var idx = collection.ensureIndex({ type: "geo1", fields: ["pos"] });
+      assertEqual("geo", idx.type);
+      assertEqual(["pos"], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo2 index still works
+////////////////////////////////////////////////////////////////////////////////
+
+    testGeo2IndexWorks : function () {
+      var idx = collection.ensureIndex({ type: "geo2", fields: ["lat", "lon"] });
+      assertEqual("geo", idx.type);
+      assertEqual(["lat", "lon"], idx.fields);
     },
 
   };

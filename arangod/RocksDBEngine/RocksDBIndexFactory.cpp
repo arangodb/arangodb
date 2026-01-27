@@ -119,20 +119,12 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
-    if (isCreation) {
-      // fulltext indexes are deprecated and cannot be created anymore
-      return Result(
-          TRI_ERROR_BAD_PARAMETER,
-          "fulltext index type is deprecated and cannot be created anymore. "
-          "Please use 'inverted' index type or ArangoSearch instead.");
-    }
-
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(StaticStrings::IndexType,
                    velocypack::Value(
                        Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
 
-    if (!ServerState::instance()->isCoordinator() &&
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
       normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
@@ -186,19 +178,12 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
-    if (isCreation) {
-      // geo1 indexes are deprecated and cannot be created anymore
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "geo1 index type is deprecated and cannot be created "
-                    "anymore. Please use 'geo' index type instead.");
-    }
-
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
         velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
-    if (!ServerState::instance()->isCoordinator() &&
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
       normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
@@ -223,19 +208,12 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
-    if (isCreation) {
-      // geo2 indexes are deprecated and cannot be created anymore
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "geo2 index type is deprecated and cannot be created "
-                    "anymore. Please use 'geo' index type instead.");
-    }
-
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
         velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
-    if (!ServerState::instance()->isCoordinator() &&
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
       normalized.add(StaticStrings::ObjectId,
                      velocypack::Value(std::to_string(TRI_NewTickServer())));
