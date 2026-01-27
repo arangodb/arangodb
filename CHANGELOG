@@ -6,9 +6,6 @@
 
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
-  - `fulltext`: Use `inverted` index type or ArangoSearch instead.
-  - `geo1`: Use `geo` index type instead.
-  - `geo2`: Use `geo` index type instead.
 
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
