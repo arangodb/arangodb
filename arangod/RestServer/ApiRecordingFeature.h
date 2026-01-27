@@ -30,7 +30,9 @@
 #include <string_view>
 #include <thread>
 
+#include "CrashHandler/DataSource.h"
 #include "RestServer/arangod.h"
+#include "RestServer/ApiRecordingFeatureOptions.h"
 #include "Containers/BoundedList.h"
 #include "Rest/CommonDefines.h"
 #include "Inspection/Transformers.h"
@@ -104,13 +106,16 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
       f.field("bindVars", record.bindVars));
 }
 
-class ApiRecordingFeature : public ArangodFeature {
+class ApiRecordingFeature : public ArangodFeature,
+                            public crash_handler::CrashHandlerDataSource {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(Server& server);
+  explicit ApiRecordingFeature(
+      Server& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -145,32 +150,26 @@ class ApiRecordingFeature : public ArangodFeature {
   void recordAQLQuery(std::string_view queryString, std::string_view database,
                       velocypack::SharedSlice bindParameters);
 
-  bool isAPIEnabled() const noexcept { return _apiEnabled; }
-  bool onlySuperUser() const noexcept { return _apiSwitch == "jwt"; }
+  bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
+  bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
+
+  // CrashHandlerDataSource interface
+  velocypack::SharedSlice getCrashData() const override;
+
+  std::string_view getDataSourceName() const override;
 
  private:
   // Cleanup thread function
   void cleanupLoop();
 
-  // Whether or not to record recent API calls
-  bool _enabledCalls{true};
-
-  // Whether or not to record recent AQL queries
-  bool _enabledQueries{true};
-
-  // Total memory limit for all ApiCallRecord lists combined
-  size_t _totalMemoryLimitCalls{25 * (std::size_t{1} << 20)};  // Default: 25MiB
-
-  // Total memory limit for all AqlCallRecord lists combined
-  size_t _totalMemoryLimitQueries{25 *
-                                  (std::size_t{1} << 20)};  // Default: 25MiB
+  ApiRecordingFeatureOptions _options;
 
   // Memory limit for one list of ApiCallRecords (calculated as
-  // _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS)
+  // _options.totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS)
   size_t _memoryPerApiRecordList{100000};
 
   // Memory limit for one list of AqlQueryRecords (calculated as
-  // _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS)
+  // _options.totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS)
   size_t _memoryPerAqlRecordList{100000};
 
   /// record of recent api calls:
@@ -190,10 +189,6 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // Metrics for measuring recordAAqlQuery performance
   metrics::Histogram<metrics::LogScale<double>>& _recordAqlCallTimes;
-
-  // API permission control
-  std::string _apiSwitch = "true";
-  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb

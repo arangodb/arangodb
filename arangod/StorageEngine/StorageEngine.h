@@ -25,17 +25,19 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "RestServer/arangod.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/OperationOrigin.h"
-#include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -103,7 +105,7 @@ class StorageEngine : public ApplicationFeature {
   // create the storage engine
   template<typename Server>
   StorageEngine(Server& server, std::string_view engineName,
-                std::string_view featureName, size_t registration,
+                std::string_view featureName, std::type_index registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
   virtual HealthData healthCheck() = 0;
@@ -390,7 +392,8 @@ class StorageEngine : public ApplicationFeature {
 
 template<typename Server>
 StorageEngine::StorageEngine(Server& server, std::string_view engineName,
-                             std::string_view featureName, size_t registration,
+                             std::string_view featureName,
+                             std::type_index registration,
                              std::unique_ptr<IndexFactory>&& indexFactory)
     : ApplicationFeature{server, registration, featureName},
       _indexFactory(std::move(indexFactory)),
@@ -400,12 +403,12 @@ StorageEngine::StorageEngine(Server& server, std::string_view engineName,
   // startup
   setOptional(true);
   // storage engines must not use elevated privileges for files etc
-  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
-  startsAfter<CacheManagerFeature, Server>();
-  startsBefore<StorageEngineFeature, Server>();
-  startsAfter<transaction::ManagerFeature, Server>();
-  startsAfter<ViewTypesFeature, Server>();
+  startsAfter<CacheManagerFeature>();
+  startsBefore<StorageEngineFeature>();
+  startsAfter<transaction::ManagerFeature>();
+  startsAfter<ViewTypesFeature>();
 }
 
 }  // namespace arangodb

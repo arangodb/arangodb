@@ -1,0 +1,181 @@
+highway (1.0.4-1) UNRELEASED; urgency=medium
+
+* Add PPC8..10, SSE2, AVX3_ZEN4, NEON_WITHOUT_AES targets
+* Add Expand, LoadExpand, integer AbsDiff, SumsOf8AbsDiff
+* Improved Half/Twice support, codegen for Shift*Same
+* Support Wasm in Godbolt
+* Faster KV128 sorting
+* Fix armv7 build config, CMake config mode
+* Update RVV intrinsics for 1.0-draft
+
+ -- Jan Wassenberg <janwas@google.com>  Fri, 17 Mar 2023 15:00:00 +0200
+
+highway (1.0.3-1) UNRELEASED; urgency=medium
+
+* Add RearrangeToOddPlusEven, Xor3, 8-bit CompressStore, HWY_ASSUME
+* Add contrib/bit_pack for 8/16-bit lanes
+* Add WASM_EMU256 target
+* Documentation improvements
+* Allow opting out of C++ stdlib usage for Compiler Explorer
+* Update for new RVV intrinsics; faster WASM min/max and extmul/q15mul
+* Fix UB, GCC atomic
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 19 Jan 2023 13:00:00 +0200
+
+highway (1.0.2-1) UNRELEASED; urgency=medium
+
+* Add ExclusiveNeither, FindKnownFirstTrue, Ne128
+* Add 16-bit SumOfLanes/ReorderWidenMulAccumulate/ReorderDemote2To
+* Faster sort for low-entropy input, improved pivot selection
+* Add GN build system, Highway FAQ, k32v32 type to vqsort
+* CMake: Support find_package(GTest), add rvv-inl.h, add HWY_ENABLE_TESTS
+* Fix MIPS and C++20 build, Apple LLVM 10.3 detection, EMU128 AllTrue on RVV
+* Fix missing exec_prefix, RVV build, warnings, libatomic linking
+* Work around GCC 10.4 issue, disabled RDCYCLE, arm7 with vfpv3
+* Documentation/example improvements
+* Support static dispatch to SVE2_128 and SVE_256
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 27 Oct 2022 17:00:00 +0200
+
+highway (1.0.1-1) UNRELEASED; urgency=medium
+
+* Add Eq128, i64 Mul, unsigned->float ConvertTo
+* Faster sort for few unique keys, more robust pivot selection
+* Fix: floating-point generator for sort tests, Min/MaxOfLanes for i16
+* Fix: avoid always_inline in debug, link atomic
+* GCC warnings: string.h, maybe-uninitialized, ignored-attributes
+* GCC warnings: preprocessor int overflow, spurious use-after-free/overflow
+* Doc: <=HWY_AVX3, Full32/64/128, how to use generic-inl
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 23 Aug 2022 10:00:00 +0200
+
+highway (1.0.0-1) UNRELEASED; urgency=medium
+
+* ABI change: 64-bit target values, more room for expansion
+* Add CompressBlocksNot, CompressNot, Lt128Upper, Min/Max128Upper, TruncateTo
+* Add HWY_SVE2_128 target
+* Sort speedups especially for 128-bit
+* Documentation clarifications
+* Faster NEON CountTrue/FindFirstTrue/AllFalse/AllTrue
+* Improved SVE codegen
+* Fix u16x8 ConcatEven/Odd, SSSE3 i64 Lt
+* MSVC 2017 workarounds
+* Support for runtime dispatch on Arm/GCC/Linux
+
+ -- Jan Wassenberg <janwas@google.com>  Wed, 27 Jul 2022 10:00:00 +0200
+
+highway (0.17.0-1) UNRELEASED; urgency=medium
+
+* Add ExtractLane, InsertLane, IsInf, IsFinite, IsNaN
+* Add StoreInterleaved2, LoadInterleaved2/3/4, BlendedStore, SafeFillN
+* Add MulFixedPoint15, Or3
+* Add Copy[If], Find[If], Generate, Replace[If] algos
+* Add HWY_EMU128 target (replaces HWY_SCALAR)
+* HWY_RVV is feature-complete
+* Add HWY_ENABLE_CONTRIB build flag, HWY_NATIVE_FMA, HWY_WANT_SSSE3/SSE4 macros
+* Extend ConcatOdd/Even and StoreInterleaved* to all types
+* Allow CappedTag<T, nonPowerOfTwo>
+* Sort speedups: 2x for AVX2, 1.09x for AVX3; avoid x86 malloc
+* Expand documentation
+* Fix RDTSCP crash in nanobenchmark
+* Fix XCR0 check (was ignoring AVX3 on ICL)
+* Support Arm/RISC-V timers
+
+ -- Jan Wassenberg <janwas@google.com>  Fri, 20 May 2022 10:00:00 +0200
+
+highway (0.16.0-1) UNRELEASED; urgency=medium
+
+  * Add contrib/sort (vectorized quicksort)
+  * Add IfNegativeThenElse, IfVecThenElse
+  * Add Reverse2,4,8, ReverseBlocks, DupEven/Odd, AESLastRound
+  * Add OrAnd, Min128, Max128, Lt128, SumsOf8
+  * Support capped/partial vectors on RVV/SVE, int64 in WASM
+  * Support SVE2, shared library build
+  * Remove deprecated overloads without the required d arg (UpperHalf etc.)
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 03 Feb 2022 11:00:00 +0100
+
+highway (0.15.0-1) UNRELEASED; urgency=medium
+
+  * New ops: CompressBlendedStore, ConcatOdd/Even, IndicesFromVec
+  * New ops: OddEvenBlocks, SwapAdjacentBlocks, Reverse, RotateRight
+  * Add bf16, unsigned comparisons, more lane types for Reverse/TableLookupLanes
+  * Contrib: add sort(ing network) and dot(product)
+  * Targets: update RVV for LLVM, add experimental WASM2
+  * Separate library hwy_test for test utils
+  * Add non-macro Simd<> aliases
+  * Fixes: const V& for GCC, AVX3 BZHI, POPCNT with AVX on MSVC, avoid %zu
+
+ -- Jan Wassenberg <janwas@google.com>  Wed, 10 Nov 2021 10:00:00 +0100
+
+highway (0.14.2-1) UNRELEASED; urgency=medium
+
+  * Add MaskedLoad
+  * Fix non-glibc PPC, Windows GCC, MSVC 19.14
+  * Opt-in for -Werror; separate design_philosophy.md
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 24 Aug 2021 15:00:00 +0200
+
+highway (0.14.1-1) UNRELEASED; urgency=medium
+
+  * Add LoadMaskBits, CompressBits[Store]
+  * Fix CPU feature check (AES/F16C) and warnings
+  * Improved DASSERT - disabled in optimized builds
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 17 Aug 2021 14:00:00 +0200
+
+highway (0.14.0-1) UNRELEASED; urgency=medium
+
+  * Add SVE, S-SSE3, AVX3_DL targets
+  * Support partial vectors in all ops
+  * Add PopulationCount, FindFirstTrue, Ne, TableLookupBytesOr0
+  * Add AESRound, CLMul, MulOdd, HWY_CAP_FLOAT16
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 29 Jul 2021 15:00:00 +0200
+
+highway (0.12.2-1) UNRELEASED; urgency=medium
+
+  * fix scalar-only test and Windows macro conflict with Load/StoreFence
+  * replace deprecated wasm intrinsics
+
+ -- Jan Wassenberg <janwas@google.com>  Mon, 31 May 2021 16:00:00 +0200
+
+highway (0.12.1-1) UNRELEASED; urgency=medium
+
+  * doc updates, ARM GCC support, fix s390/ppc, complete partial vectors
+  * fix warnings, faster ARM div/sqrt, separate hwy_contrib library
+  * add Abs(i64)/FirstN/Pause, enable AVX2 on MSVC
+
+ -- Jan Wassenberg <janwas@google.com>  Wed, 19 May 2021 15:00:00 +0200
+
+highway (0.12.0-1) UNRELEASED; urgency=medium
+
+  * Add Shift*8, Compress16, emulated Scatter/Gather, StoreInterleaved3/4
+  * Remove deprecated HWY_*_LANES, deprecate HWY_GATHER_LANES
+  * Proper IEEE rounding, reduce libstdc++ usage, inlined math
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 15 Apr 2021 20:00:00 +0200
+
+highway (0.11.1-1) UNRELEASED; urgency=medium
+
+  * Fix clang7 asan error, finish f16 conversions and add test
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 25 Feb 2021 16:00:00 +0200
+
+highway (0.11.0-1) UNRELEASED; urgency=medium
+
+  * Add RVV+mask logical ops, allow Shl/ShiftLeftSame on all targets, more math
+
+ -- Jan Wassenberg <janwas@google.com>  Thu, 18 Feb 2021 20:00:00 +0200
+
+highway (0.7.0-1) UNRELEASED; urgency=medium
+
+  * Added API stability notice, Compress[Store], contrib/, SignBit, CopySign
+
+ -- Jan Wassenberg <janwas@google.com>  Tue, 5 Jan 2021 17:00:00 +0200
+
+highway (0.1-1) UNRELEASED; urgency=medium
+
+  * Initial debian package.
+
+ -- Alex Deymo <deymo@google.com>  Mon, 19 Oct 2020 16:48:07 +0200

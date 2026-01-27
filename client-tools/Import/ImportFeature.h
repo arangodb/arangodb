@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Import/arangoimport.h"
 #include "Shell/ClientFeature.h"
 
 #include <memory>
@@ -36,11 +35,11 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 }  // namespace httpclient
 
-class ImportFeature final : public ArangoImportFeature {
+class ImportFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Import"; }
 
-  ImportFeature(Server& server, int* result);
+  ImportFeature(application_features::ApplicationServer& server, int* result);
   ~ImportFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;

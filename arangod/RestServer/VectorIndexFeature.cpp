@@ -22,6 +22,7 @@
 #include "VectorIndexFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Parameters.h"
 
@@ -45,7 +46,7 @@ void VectorIndexFeature::collectOptions(
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
-  return _useVectorIndex;
+  return _options.useVectorIndex;
 }
 
 }  // namespace arangodb

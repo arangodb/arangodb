@@ -22,18 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FinalFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "RestServer/SoftShutdownFeature.h"
 
 namespace arangodb::application_features {
 
 FinalFeaturePhase::FinalFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<AgencyFeaturePhase, ArangodServer>();
+  startsAfter<AgencyFeaturePhase>();
 
-  startsAfter<AgencyFeaturePhase, ArangodServer>();
-  startsAfter<ShutdownFeature, ArangodServer>();
-  startsAfter<SoftShutdownFeature, ArangodServer>();
+  startsAfter<AgencyFeaturePhase>();
+  startsAfter<ShutdownFeature>();
+  startsAfter<SoftShutdownFeature>();
 }
 
 }  // namespace arangodb::application_features
