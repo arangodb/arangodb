@@ -1,0 +1,168 @@
+
+!IFNDEF MACHINE
+!IF "$(PROCESSOR_ARCHITECTURE)"=="AMD64"
+MACHINE=x64
+!ELSE
+MACHINE=x86
+!ENDIF
+!ENDIF
+
+!IFNDEF VC
+VC=vc%VisualStudioVersion:~0,-2%
+!ENDIF
+
+# catch up when there's a stronger versioning
+!IFNDEF PKG_VERSION
+PKG_VERSION=latest
+!ENDIF
+
+!IFNDEF DEBUG
+DEBUG=no
+!ENDIF
+
+!IFNDEF CC
+CC=cl.exe
+!ENDIF
+
+!IFNDEF AR
+AR=lib.exe
+!ENDIF
+
+!IFNDEF LINK
+LINK=link.exe
+!ENDIF
+
+!IFNDEF PGO
+PGO=no
+!ENDIF
+
+!IFNDEF PGI
+PGI=no
+!ENDIF
+
+INC = /Iinclude
+
+!IF "$(DEBUG)"=="yes"
+CFLAGS = /nologo /MDd /LDd /Od /Zi /D_DEBUG /RTC1 /W3 /GS /Gm /D __SSE4_1__=1
+ARFLAGS = /nologo
+LDFLAGS = /nologo /debug /nodefaultlib:msvcrt
+!ELSE
+CFLAGS = /nologo /MD /O2 /Zi /DNDEBUG /W3 /Gm- /GS /Gy /Oi /GL /MP /D __SSE4_1__=1
+ARFLAGS = /nologo /LTCG
+LDFLAGS = /nologo /LTCG /DYNAMICBASE /incremental:no /debug /opt:ref,icf
+!ENDIF
+
+!IF "$(PGI)"=="yes"
+LDFLAGS = $(LDFLAGS) /ltcg:pgi
+!ENDIF
+
+!IF "$(PGO)"=="yes"
+LDFLAGS = $(LDFLAGS) /ltcg:pgo
+!ENDIF
+
+# SSE4.1 is required
+# VC++15.3 supports AVX512
+!IF "$(AVX512)"=="yes"
+CFLAGS = $(CFLAGS) /arch:AVX2 /D __AVX2__=1 /D __AVX512F__=1
+AVX2=yes
+!ELSEIF "$(AVX2)"=="yes"
+CFLAGS = $(CFLAGS) /arch:AVX2 /D __AVX2__=1
+!ENDIF
+
+LIB_OBJS = simdbitpacking.obj simdintegratedbitpacking.obj simdcomputil.obj \
+	simdpackedsearch.obj simdpackedselect.obj simdfor.obj
+
+LIB_SRCS = src/simdbitpacking.c src/simdintegratedbitpacking.c src/simdcomputil.c \
+	src/simdpackedsearch.c src/simdpackedselect.c src/simdfor.c
+
+PKG_FEATURES=sse4.1
+
+!IF "$(AVX2)"=="yes"
+LIB_OBJS = $(LIB_OBJS) avxbitpacking.obj
+LIB_SRCS = $(LIB_SRCS) src/avxbitpacking.c
+PKG_FEATURES=avx2
+!ENDIF
+
+!IF "$(AVX512)"=="yes"
+LIB_OBJS = $(LIB_OBJS) avx512bitpacking.obj
+LIB_SRCS = $(LIB_SRCS) src/avx512bitpacking.c
+PKG_FEATURES=avx512
+!ENDIF
+
+
+all: lib dll dynunit unit_chars example benchmarks
+# need some good use case scenario to train the instrumented build
+	@if "$(PGI)"=="yes" echo Running PGO training
+	@if "$(PGI)"=="yes" benchmark.exe >nul 2>&1
+#	@if "$(PGI)"=="yes" bitpackingbenchmark.exe >nul 2>&1
+	@if "$(PGI)"=="yes" example.exe >nul 2>&1
+
+
+$(LIB_OBJS):
+	$(CC) $(INC) $(CFLAGS) /c $(LIB_SRCS) 
+
+lib: $(LIB_OBJS)
+	@copy simdcomp.def.tpl simdcomp.def
+	@if "$(AVX2)"=="yes" echo avxunpack >> simdcomp.def
+	@if "$(AVX2)"=="yes" echo avxpackwithoutmask >> simdcomp.def
+	@if "$(AVX2)"=="yes" echo avxpack >> simdcomp.def
+	@if "$(AVX2)"=="yes" echo avxmaxbits >> simdcomp.def
+	@if "$(AVX512)"=="yes" echo avx512unpack >> simdcomp.def
+	@if "$(AVX512)"=="yes" echo avx512packwithoutmask >> simdcomp.def
+	@if "$(AVX512)"=="yes" echo avx512pack >> simdcomp.def
+	@if "$(AVX512)"=="yes" echo avx512maxbits >> simdcomp.def
+	$(AR) $(ARFLAGS) /OUT:simdcomp_a.lib $(LIB_OBJS)
+
+dll: $(LIB_OBJS)
+	$(LINK) /DLL $(LDFLAGS) /OUT:simdcomp.dll /IMPLIB:simdcomp.lib /DEF:simdcomp.def $(LIB_OBJS)
+
+unit: lib
+	$(CC) $(INC) $(CFLAGS) /c tests/unit.c 
+	$(LINK) $(LDFLAGS) /OUT:unit.exe unit.obj simdcomp_a.lib
+
+dynunit: dll
+	$(CC) $(INC) $(CFLAGS) /c tests/unit.c 
+	$(LINK) $(LDFLAGS) /OUT:unit.exe unit.obj simdcomp.lib
+
+unit_chars: lib
+	$(CC) $(INC) $(CFLAGS) /c tests/unit_chars.c
+	$(LINK) $(LDFLAGS) /OUT:unit_chars.exe unit_chars.obj simdcomp.lib
+
+
+example: lib
+	$(CC) $(INC) $(CFLAGS) /c example.c
+	$(LINK) $(LDFLAGS) /OUT:example.exe example.obj simdcomp.lib
+
+benchmarks: lib
+	$(CC) $(INC) $(CFLAGS) /c benchmarks/benchmark.c
+	$(LINK) $(LDFLAGS) /OUT:benchmark.exe benchmark.obj simdcomp.lib
+#	$(CC) $(INC) $(CFLAGS) /c benchmarks/bitpackingbenchmark.c
+#	$(LINK) $(LDFLAGS) /OUT:bitpackingbenchmark.exe bitpackingbenchmark.obj simdcomp.lib
+
+pack:
+	mkdir .\package
+	cd .\package
+	mkdir .\include
+	mkdir .\bin
+	mkdir .\lib
+	copy ..\include\*.h .\include
+	copy ..\simdcomp.dll .\bin
+	copy ..\simdcomp.pdb .\bin
+	copy ..\simdcomp.lib .\lib
+	copy ..\simdcomp_a.lib .\lib
+	copy ..\LICENSE .
+	copy ..\README.md .
+	7z a ..\simdcomp-$(PKG_VERSION)-$(PKG_FEATURES)-$(VC)-$(MACHINE).zip .
+	cd ..
+	powershell -Command "Remove-Item -Recurse -Force .\package"
+
+clean:
+	powershell -Command "Remove-Item -Force *.obj"
+	powershell -Command "Remove-Item -Force *.lib"
+	powershell -Command "Remove-Item -Force *.exe"
+	powershell -Command "Remove-Item -Force *.dll"
+	powershell -Command "Remove-Item -Force *.pgc"
+	powershell -Command "Remove-Item -Force *.pgd"
+	powershell -Command "Remove-Item -Force *.pdb"
+	powershell -Command "Remove-Item -Force *.def"
+
