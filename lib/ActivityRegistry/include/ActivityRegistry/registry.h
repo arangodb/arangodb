@@ -39,12 +39,11 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   static auto currentActivity() noexcept -> ActivityId {
     return _currentActivity;
   }
-
- private:
   static auto setCurrentActivity(ActivityId activity) noexcept -> void {
     _currentActivity = std::move(activity);
   }
 
+ private:
   static thread_local ActivityId _currentActivity;
 };
 

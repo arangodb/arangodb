@@ -1,3 +1,8 @@
+add_library(arango_activity_registry_interface INTERFACE)
+target_include_directories(arango_activity_registry_interface INTERFACE
+  ${PROJECT_SOURCE_DIR}/lib
+  include)
+
 add_library(arango_activity_registry STATIC
   activity.cpp
   registry.cpp)

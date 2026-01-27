@@ -32,6 +32,7 @@
 #include <string_view>
 #include <utility>
 
+#include "ActivityRegistry/registry.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
@@ -157,6 +158,8 @@ class Scheduler {
       // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
         LogContext::ScopedContext ctxGuard(_logContext);
+        activity_registry::Registry::ScopedCurrentActivity activityGuard(
+            _currentActivity);
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
@@ -176,6 +179,7 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
     LogContext _logContext;
+    activity_registry::ActivityId _currentActivity;
   };
 
  protected:
@@ -193,11 +197,14 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
+      activity_registry::Registry::ScopedCurrentActivity activityGuard(
+          currentActivity);
       this->operator()();
     }
 
    private:
     LogContext logContext;
+    activity_registry::ActivityId currentActivity;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler
