@@ -52,6 +52,24 @@ struct ActivityRegistryTest : ::testing::Test {
   }
 };
 
+constexpr auto ActivityRoot = ActivityId{nullptr};
+
+TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, set_current_activity) {
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  auto a = Activity("test activity", {{"test", "bla"}});
+
+  auto all_activities = get_all_activities();
+  auto s = std::find_if(std::begin(all_activities), std::end(all_activities),
+                        [id = a.id()](auto i) { return i.id == id; });
+
+  EXPECT_NE(s, std::end(all_activities));
+  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityId{nullptr});
+}
+
 TEST_F(ActivityRegistryTest,
        a_base_activity_creates_a_root_activity_with_additional_information) {
   auto activity =
@@ -64,7 +82,7 @@ TEST_F(ActivityRegistryTest,
                     .name = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
-                    .parent = {RootActivity{}},
+                    .parent = {ActivityRoot},
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
   EXPECT_NE(specific, std::end(all_activities));
 }
@@ -84,7 +102,7 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {RootActivity{}}})}));
+                                            .parent = {ActivityRoot}})}));
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
@@ -116,5 +134,5 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {RootActivity{}}})}));
+                                            .parent = {ActivityRoot}})}));
 }
