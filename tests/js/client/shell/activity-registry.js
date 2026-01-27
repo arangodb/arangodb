@@ -106,14 +106,18 @@ function activityRegistrySuite() {
       try {
         IM.debugSetFailAt("RestDumpHandler::fetch-delay");
         
-        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call sleeps
+        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call is keps busy with failure point
         const activities = activitiesModule.get_snapshot(server);
         internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
 
-        assertArrayLengthLargerThan(activities, 3); // includes sleeping dump-fetch Rest call
+        assertArrayLengthLargerThan(activities, 3); // includes busy dump-fetch Rest call
         assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 2); // same here
         assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
         assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter), 0);
+
+        // stop first dump-fetch Rest call with a second call
+        const cursorId2 = fetchDumpAsynchronously(dumpId, server);
+        internal.arango.DELETE_RAW(`/_api/job/${cursorId2}`);
 
       } finally {
         IM.debugClearFailAt();
