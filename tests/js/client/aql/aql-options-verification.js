@@ -175,8 +175,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
     testTraversal: function () {
       const prefix = "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/test' " + cn + "Edge OPTIONS ";
       const queries = [
-        [prefix + "{ bfs: false } RETURN 1"],
-        [prefix + "{ bfs: true } RETURN 1"],
         [prefix + "{ order: 'bfs' } RETURN 1"],
         [prefix + "{ order: 'dfs' } RETURN 1"],
         [prefix + "{ order: 'weighted' } RETURN 1"],
@@ -193,7 +191,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ weightAttribute: ['testi'] } RETURN 1", "weightAttribute"],
         [prefix + "{ uniqueVertices: true } RETURN 1", "uniqueVertices"],
         [prefix + "{ uniqueEdges: true } RETURN 1", "uniqueEdges"],
-        [prefix + "{ bfs: true, order: 'bfs' } RETURN 1", "order"],
         [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
