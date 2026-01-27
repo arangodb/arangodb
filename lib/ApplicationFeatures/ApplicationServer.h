@@ -326,20 +326,9 @@ class ApplicationServer {
 
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
-  bool hasFeature(std::type_index type) const noexcept {
-    return _features.contains(type);
-  }
+  bool hasFeature(std::type_index type) const noexcept;
 
-  ApplicationFeature& getFeature(std::type_index type) const {
-    auto it = _features.find(type);
-    if (ADB_LIKELY(it != _features.end())) {
-      return *it->second;
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("unknown feature '") + type.name() + "'");
-  }
+  ApplicationFeature& getFeature(std::type_index type) const;
 
   void disableFeatures(std::span<const std::type_index> types, bool force);
 
