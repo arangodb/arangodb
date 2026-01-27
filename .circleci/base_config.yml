@@ -585,7 +585,7 @@ jobs:
                   - install.tar.gz
                   - build/bin
                   - build/etc
-                  - build/3rdParty/iresearch/external/snowball/libstemmer/
+                  - build/3rdParty/snowball/libstemmer/ # required for cppcheck
                   - build/build_version.cc
                   - scripts/
                   - js/
@@ -594,7 +594,7 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - 3rdParty/iresearch/tests/resources
+                  - lib/iresearch/tests/resources
                   - 3rdParty/rta-makedata
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt

@@ -35,6 +35,7 @@ cppcheck \
   --suppress="*:*lib/Basics/fpconv.cpp" \
   --suppress="*:*lib/Basics/short_alloc.h" \
   --suppress="*:*lib/Geo/karney/*" \
+  --suppress="*:*lib/iresearch/core/shared.hpp" \
   --suppress="*:*lib/Zip/*" \
   --suppress="preprocessorErrorDirective:*lib/SimpleHttpClient/SslClientConnection.cpp" \
   --suppress="constStatement" \
