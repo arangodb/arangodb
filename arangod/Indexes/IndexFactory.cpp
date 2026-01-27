@@ -372,8 +372,16 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
   // cannot be created anymore. Existing indexes of these types are still
   // supported for upgrades.
   std::vector<std::string_view> enabledFeatures{
-      "primary",  "edge",  "fulltext", "ttl",   "persistent",
-      "geo",      "geo1",  "geo2",     "mdi",   "mdi-prefixed",
+      "primary",
+      "edge",
+      "fulltext",
+      "ttl",
+      "persistent",
+      "geo",
+      "geo1",
+      "geo2",
+      "mdi",
+      "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
   if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
     enabledFeatures.push_back("vector");
