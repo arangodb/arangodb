@@ -25,15 +25,14 @@
 
 namespace arangodb::activity_registry {
 
-Registry::ScopedDefaultParent::ScopedDefaultParent(Parent parent) noexcept {
-  auto& local = Registry::defaultParent();
-  _oldParent = std::move(local);
-  local = std::move(parent);
+Registry::ScopedCurrentActivity::ScopedCurrentActivity(
+    ActivityId activity) noexcept {
+  _oldActivity = Registry::currentActivity();
+  Registry::setCurrentActivity(activity);
 }
 
-Registry::ScopedDefaultParent::~ScopedDefaultParent() {
-  auto& local = Registry::defaultParent();
-  local = std::move(_oldParent);
+Registry::ScopedCurrentActivity::~ScopedCurrentActivity() {
+  Registry::setCurrentActivity(_oldActivity);
 }
 
 }  // namespace arangodb::activity_registry

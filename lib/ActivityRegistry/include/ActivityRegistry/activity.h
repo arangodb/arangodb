@@ -47,7 +47,7 @@ auto inspect(Inspector& f, RootActivity& x) {
 }
 
 struct ActivityId {
-  void* id;
+  void* id{nullptr};
   bool operator==(ActivityId const&) const = default;
 };
 template<typename Inspector>

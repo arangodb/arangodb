@@ -168,11 +168,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  activity_registry::Registry::setDefaultParent({_activity->id()});
-  auto guard = std::invoke(activity_registry::withDefaultParent([&]() {
-    return _dumpManager->createContext(std::move(opts), user, database,
-                                       useVPack);
-  }));
+  auto guard =
+      _dumpManager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());

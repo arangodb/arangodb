@@ -34,38 +34,47 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   auto operator=(Registry const&) = delete;
   auto operator=(Registry&&) = delete;
 
-  static Parent& defaultParent() noexcept {
-    return Registry::_currentDefaultParent;
-  }
+  struct ScopedCurrentActivity;
 
-  struct ScopedDefaultParent;
-
-  static auto currentDefaultParent() noexcept -> Parent {
-    return _currentDefaultParent;
-  }
-  static auto setDefaultParent(Parent parent) noexcept -> void {
-    _currentDefaultParent = std::move(parent);
+  static auto currentActivity() noexcept -> ActivityId {
+    return _currentActivity;
   }
 
  private:
-  static thread_local Parent _currentDefaultParent;
+  static auto setCurrentActivity(ActivityId activity) noexcept -> void {
+    _currentActivity = std::move(activity);
+  }
+
+  static thread_local ActivityId _currentActivity;
 };
 
-struct Registry::ScopedDefaultParent {
-  explicit ScopedDefaultParent(Parent parent) noexcept;
-  ~ScopedDefaultParent();
+struct Registry::ScopedCurrentActivity {
+  explicit ScopedCurrentActivity(ActivityId activity) noexcept;
+  ~ScopedCurrentActivity();
 
  private:
-  Parent _oldParent;
+  ActivityId _oldActivity;
 };
 
 template<typename Func>
-auto withDefaultParent(Func&& func) {
-  return [func = std::forward<Func>(func), parent = Registry::defaultParent()]<
+auto withCurrentActivity(ActivityId activity, Func&& func) {
+  return [func = std::forward<Func>(func), currentActivity = activity]<
              typename... Args,
              typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
              Args&&... args) mutable {
-    Registry::ScopedDefaultParent guard(parent);
+    Registry::ScopedCurrentActivity guard(currentActivity);
+    return std::forward<Func>(func)(std::forward<Args>(args)...);
+  };
+}
+
+template<typename Func>
+auto withCurrentActivity(Func&& func) {
+  return [func = std::forward<Func>(func),
+          currentActivity = Registry::currentActivity()]<
+             typename... Args,
+             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
+    Registry::ScopedCurrentActivity guard(currentActivity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
 }
