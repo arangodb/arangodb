@@ -136,6 +136,8 @@ add_subdirectory(Executor)
 add_subdirectory(Function)
 add_subdirectory(Optimizer)
 
+add_subdirectory(EnumerateNeighbours)
+
 target_link_libraries(arango_aql
   arango_geo
   arango_graph
