@@ -22,7 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "Network/NetworkFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Statistics/StatisticsFeature.h"
 
 namespace arangodb {
 class SslServerFeature;
@@ -33,14 +41,14 @@ namespace arangodb::application_features {
 ServerFeaturePhase::ServerFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<AqlFeaturePhase, ArangodServer>();
+  startsAfter<AqlFeaturePhase>();
 
-  startsAfter<HttpEndpointProvider, ArangodServer>();
-  startsAfter<GeneralServerFeature, ArangodServer>();
-  startsAfter<NetworkFeature, ArangodServer>();
-  startsAfter<ServerFeature, ArangodServer>();
-  startsAfter<SslServerFeature, ArangodServer>();
-  startsAfter<StatisticsFeature, ArangodServer>();
-  startsAfter<UpgradeFeature, ArangodServer>();
+  startsAfter<HttpEndpointProvider>();
+  startsAfter<GeneralServerFeature>();
+  startsAfter<NetworkFeature>();
+  startsAfter<ServerFeature>();
+  startsAfter<SslServerFeature>();
+  startsAfter<StatisticsFeature>();
+  startsAfter<UpgradeFeature>();
 }
 }  // namespace arangodb::application_features

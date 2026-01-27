@@ -24,10 +24,7 @@
 #include <optional>
 #include <variant>
 
-#include "Containers/Forest/depth_first.h"
-#include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ActivityRegistry/activity.h"
 #include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
@@ -39,80 +36,6 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
                          GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
-
-namespace {
-struct Entry {
-  TreeHierarchy hierarchy;
-  ActivityInRegistrySnapshot data;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Entry& x) {
-  return f.object(x).fields(f.field("hierarchy", x.hierarchy),
-                            f.field("data", x.data));
-}
-/**
-   Creates a forest of all current activities
-
-   An edge between two activities means that the lower hierarchy activity
- started the larger hierarchy activity.
- **/
-auto all_undeleted_activities() -> ForestWithRoots<ActivityInRegistrySnapshot> {
-  auto forest = Forest<ActivityInRegistrySnapshot>{};
-  std::vector<Id> roots;
-  registry.for_node([&](ActivityInRegistrySnapshot activity) {
-    if (activity.state != State::Deleted) {
-      std::visit(overloaded{
-                     [&](ActivityId parent) {
-                       forest.insert(activity.id.id, parent.id, activity);
-                     },
-                     [&](RootActivity root) {
-                       forest.insert(activity.id.id, nullptr, activity);
-                       roots.emplace_back(activity.id.id);
-                     },
-                 },
-                 activity.parent);
-    }
-  });
-  return ForestWithRoots{forest, roots};
-}
-
-/**
-   Serializes an activity dependency-forest into a list of trees.
-
-   Each tree is given as a list of activities, where its hierachy number and
- position inside the list defines its location in the tree. To create one tree,
- it uses a depth first search to traverse the forest in post order, such that
- activities with the highest hierarchy in a tree are given first and the root
- activity with hierarchy zero is given last.
- **/
-auto serialize(IndexedForestWithRoots<ActivityInRegistrySnapshot> const& forest)
-    -> VPackBuilder {
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(VPackValue("activity_dependencies"));
-  builder.openArray();
-  for (auto const& root : forest.roots()) {
-    builder.openArray();
-    auto dfs = DFS_PostOrder{forest, root};
-    do {
-      auto next = dfs.next();
-      if (next == std::nullopt) {
-        break;
-      }
-      auto [id, hierarchy] = next.value();
-      auto data = forest.node(id);
-      if (data != std::nullopt) {
-        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
-        velocypack::serialize(builder, entry);
-      }
-    } while (true);
-    builder.close();
-  }
-  builder.close();
-  builder.close();
-  return builder;
-}
-}  // namespace
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {
@@ -135,7 +58,14 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
 
   auto lock_guard = co_await _feature.asyncLock();
 
-  auto activities = all_undeleted_activities().index_by_parent();
-  generateResult(rest::ResponseCode::OK, serialize(activities).slice());
+  VPackBuilder builder;
+  builder.openArray();
+  registry.for_node([&](ActivityInRegistrySnapshot activity) {
+    if (activity.state != State::Deleted) {
+      velocypack::serialize(builder, activity);
+    }
+  });
+  builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }

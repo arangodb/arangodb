@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,27 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
-
 namespace arangodb {
 
-class ExportFeature;
-class TempFeature;
-class EncryptionFeature;
-
-using ArangoExportFeaturesList = ArangoClientFeaturesList<
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    BasicFeaturePhaseClient, TempFeature, ExportFeature>;
-struct ArangoExportFeatures : ArangoExportFeaturesList {};
-using ArangoExportServer = ApplicationServerT<ArangoExportFeatures>;
-using ArangoExportFeature = ApplicationFeatureT<ArangoExportServer>;
+struct CheckVersionFeatureOptions {
+  bool checkVersion = false;
+};
 
 }  // namespace arangodb

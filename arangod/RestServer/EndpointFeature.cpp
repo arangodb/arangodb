@@ -25,12 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "RestServer/ServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -38,19 +39,11 @@ using namespace arangodb::options;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(ArangodServer& server)
-    : HttpEndpointProvider{server, *this},
-      _reuseAddress(true),
-      _backlogSize(64) {
+    : HttpEndpointProvider{server, *this} {
   setOptional(true);
-  startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
+  startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter<ServerFeature, ArangodServer>();
-
-  // if our default value is too high, we'll use half of the max value provided
-  // by the system
-  if (_backlogSize > SOMAXCONN) {
-    _backlogSize = SOMAXCONN / 2;
-  }
+  startsAfter<ServerFeature>();
 }
 
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -62,7 +55,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   "Endpoint for client requests (e.g. "
                   "`http://127.0.0.1:8529`, or "
                   "`https://192.168.1.1:8529`)",
-                  new VectorParameter<StringParameter>(&_endpoints))
+                  new VectorParameter<StringParameter>(&_options.endpoints))
       .setLongDescription(R"(You can specify this option multiple times to let
 the ArangoDB server listen for incoming requests on multiple endpoints.
 
@@ -133,7 +126,7 @@ You can use `telnet` to test the connection.)");
 
   options
       ->addOption("--tcp.reuse-address", "Try to reuse TCP port(s).",
-                  new BooleanParameter(&_reuseAddress),
+                  new BooleanParameter(&_options.reuseAddress),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(If you set this option to `true`, the socket
@@ -150,7 +143,7 @@ traffic.)");
       ->addOption("--tcp.backlog-size",
                   "Specify the size of the backlog for the `listen` "
                   "system call.",
-                  new UInt64Parameter(&_backlogSize),
+                  new UInt64Parameter(&_options.backlogSize),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(The maximum value is platform-dependent.
@@ -161,7 +154,7 @@ may also be silently truncated on some platforms (this happens inside the
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_backlogSize > SOMAXCONN) {
+  if (_options.backlogSize > SOMAXCONN) {
     LOG_TOPIC("b4d44", WARN, arangodb::Logger::FIXME)
         << "value for --tcp.backlog-size exceeds default system "
            "header SOMAXCONN value "
@@ -196,9 +189,9 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 }
 
 void EndpointFeature::buildEndpointLists() {
-  for (auto const& it : _endpoints) {
-    bool ok =
-        _endpointList.add(it, static_cast<int>(_backlogSize), _reuseAddress);
+  for (auto const& it : _options.endpoints) {
+    bool ok = _endpointList.add(it, static_cast<int>(_options.backlogSize),
+                                _options.reuseAddress);
 
     if (!ok) {
       LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)

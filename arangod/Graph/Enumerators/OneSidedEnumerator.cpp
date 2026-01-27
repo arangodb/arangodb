@@ -165,7 +165,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      if (_queue.isBatched()) {
+      if (_queue.usesCursor()) {
         auto& cursor = _provider.createNeighbourCursor(step, posPrevious);
         _queue.append(cursor);
         LOG_TRAVERSAL << "Pushed   " << inspection::json(step) << " | "

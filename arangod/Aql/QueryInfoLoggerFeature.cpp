@@ -36,12 +36,14 @@
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
@@ -486,9 +488,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
-  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }

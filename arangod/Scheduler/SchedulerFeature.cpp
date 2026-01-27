@@ -30,19 +30,18 @@
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/asio_ns.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
-#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/ServerFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/ThreadPoolScheduler.h"
@@ -94,7 +93,7 @@ SchedulerFeature::SchedulerFeature(Server& server,
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
-  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+  if (server.hasFeature<FileDescriptorsFeature>()) {
     startsAfter<FileDescriptorsFeature>();
   }
 }

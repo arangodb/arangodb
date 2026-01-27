@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,31 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
-#include "Utils/ArangoClient.h"
-
 namespace arangodb {
 
-class BumpFileDescriptorsFeature;
-class DumpFeature;
-class EncryptionFeature;
-
-using ArangoDumpFeaturesList = ArangoClientFeaturesList<
-#ifdef TRI_HAVE_GETRLIMIT
-    BumpFileDescriptorsFeature,
-#endif
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    BasicFeaturePhaseClient, DumpFeature>;
-struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
-using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
-using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;
+struct FrontendFeatureOptions {
+  bool versionCheck = true;
+};
 
 }  // namespace arangodb

@@ -28,6 +28,9 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const { getMetric, getDBServers, moveShard } = require("@arangodb/test-helper");
+let IM = global.instanceManager;
+
+const waitFactor = IM.options.isInstrumented ? 5 : 1;
 
 function ClusterDBServerShardMetricsTestSuite() {
   'use strict';
@@ -152,7 +155,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   };
 
   const getMetricsAndEventuallyAssert = function(servers, expectedShardsNum, expectedShardsLeaderNum, expectedShardsOutOfSync, expectedShardsNotReplicated, expectedFollowersOutOfSync = 0) {
-    for(let i = 0; i < 200; i++) {
+    for(let i = 0; i < 200 * waitFactor; i++) {
       internal.wait(0.1);
       const shardsNumMetricValue = getDBServerMetricSum(servers, shardsNumMetric);
       if (shardsNumMetricValue !== expectedShardsNum && expectedShardsNum !== null) {
@@ -189,7 +192,7 @@ function ClusterDBServerShardMetricsTestSuite() {
   // compareFn takes the metric value and returns true if the assertion should pass
   const eventuallyAssertMetric = function(servers, metricName, compareFn, errorMessage) {
     let metricValue;
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < 2000 * waitFactor; i++) {
       internal.wait(0.1);
       metricValue = getDBServerMetricSum(servers, metricName);
       if (compareFn(metricValue)) {
@@ -357,7 +360,9 @@ function ClusterDBServerShardMetricsTestSuite() {
       // - eventually the number of shards leaders must be 1 or greater
       // - eventually the number of out of sync should be at least 1
       // - eventually the number of not replicated shards should be at least 1
-      for(let i = 0; i < 200; i++) {
+      let shardsOutOfSyncNumMetricValue = 0;
+      let shardsNotReplicatedNumMetricValue = 0;
+      for(let i = 0; i < 200 * waitFactor; i++) {
         internal.wait(0.1);
         const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
         if (shardsNumMetricValue !== totalLeaderCount) {
@@ -367,11 +372,11 @@ function ClusterDBServerShardMetricsTestSuite() {
         if (shardsLeaderNumMetricValue < 1) {
           continue;
         }
-        const shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
+        shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
         if (shardsOutOfSyncNumMetricValue < 1) {
           continue;
         }
-        const shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
+        shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
         if (shardsNotReplicatedNumMetricValue < 1) {
           continue;
         }
@@ -382,8 +387,6 @@ function ClusterDBServerShardMetricsTestSuite() {
 
         break;
       }
-      const shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
-      const shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
       assertEqual(shardsOutOfSyncNumMetricValue, shardsNotReplicatedNumMetricValue, `shardsOutOfSyncNumMetricValue: ${shardsOutOfSyncNumMetricValue} !== shardsNotReplicatedNumMetricValue: ${shardsNotReplicatedNumMetricValue}`);
 
       // Bring back the followers

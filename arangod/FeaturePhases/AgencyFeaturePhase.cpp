@@ -22,15 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "Agency/AgencyFeature.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 
 namespace arangodb::application_features {
 
 AgencyFeaturePhase::AgencyFeaturePhase(ArangodServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<application_features::ServerFeaturePhase, ArangodServer>();
-  startsAfter<AgencyFeature, ArangodServer>();
+  startsAfter<application_features::ServerFeaturePhase>();
+  startsAfter<AgencyFeature>();
 }
 
 }  // namespace arangodb::application_features
