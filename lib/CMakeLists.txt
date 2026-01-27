@@ -1,5 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+# IResearch currently won't run with [-Werror,-Wtautological-constant-out-of-range-compare] as errors.
+# Hence we moved this block here.
+# Need to be included in future builds.
+
+################################################################################
+## IResearch
+################################################################################
+
+
+add_subdirectory(iresearch)
+
 ################################################################################
 ## global definitions
 ################################################################################
@@ -34,9 +45,6 @@ include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
-
-set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 add_library(arango_basic_errors STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
@@ -161,6 +169,7 @@ target_link_libraries(arango_basic_utils
          linenoise-ng
          zlib_interface
          snappy
+         lz4_static
          arango_activity_registry_global
 )
 
