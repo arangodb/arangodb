@@ -1,0 +1,40 @@
+environment:
+  matrix:
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+     GENERATOR: "Visual Studio 16 2019"
+     CONFIG: Debug
+
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+     GENERATOR: "Visual Studio 16 2019"
+     CONFIG: Release
+
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+     GENERATOR: "Visual Studio 15 2017 Win64"
+     CONFIG: Debug
+  
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+     GENERATOR: "Visual Studio 15 2017 Win64"
+     CONFIG: Release
+  
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+     GENERATOR: "Visual Studio 15 2017"
+     CONFIG: Debug
+  
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+     GENERATOR: "Visual Studio 15 2017"
+     CONFIG: Release
+
+matrix:
+  fast_finish: true
+
+build_script:
+ - cmd: set PATH=C:\Program Files (x86)\CMake\bin;%PATH%
+ #- cmd: set PATH=C:\Program Files (x86)\MSBuild\14.0\Bin;%PATH%
+ #- cmd: call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\VsDevCmd.bat"
+ - cmd: set CTEST_OUTPUT_ON_FAILURE=1
+ - cmd: cmake --version
+ - cmd: mkdir build
+ - cmd: cd build
+ - cmd: cmake .. -DBOOST_ROOT=C:\Libraries\boost_1_66_0 -DLIMIT_TESTING_FOR_CI=true -DLIMIT_TESTING_FOR_APPVEYOR=true -G"%GENERATOR%"
+ - cmd: cmake --build . --config %CONFIG%
+ - cmd: cmake --build . --config %CONFIG% --target check
