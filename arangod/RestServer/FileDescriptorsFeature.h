@@ -24,9 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "RestServer/FileDescriptorsFeatureOptions.h"
 
 #include <chrono>
@@ -41,7 +39,8 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(application_features::ApplicationServer& server);
+  explicit FileDescriptorsFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

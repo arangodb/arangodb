@@ -24,6 +24,7 @@
 #include "Cluster/ClusterUpgradeFeature.h"
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,8 +45,9 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(ApplicationServer& server,
-                                             DatabaseFeature& databaseFeature)
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();

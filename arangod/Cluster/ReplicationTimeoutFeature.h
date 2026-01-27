@@ -23,14 +23,15 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ReplicationTimeoutFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 #include <string_view>
 
 namespace arangodb {
 
-class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
+class ReplicationTimeoutFeature
+    : public application_features::ApplicationFeature {
  public:
   static const std::string_view name() noexcept { return "ReplicationTimeout"; }
 

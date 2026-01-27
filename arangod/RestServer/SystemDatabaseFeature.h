@@ -27,7 +27,6 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;  // forward declaration
 
@@ -37,7 +36,8 @@ namespace arangodb {
 /// @brief a flexible way to get at the system vocbase
 ///        can be used for persisting configuration
 ////////////////////////////////////////////////////////////////////////////////
-class SystemDatabaseFeature final : public application_features::ApplicationFeature {
+class SystemDatabaseFeature final
+    : public application_features::ApplicationFeature {
  public:
   struct VocbaseReleaser {
     void operator()(TRI_vocbase_t* ptr);
@@ -47,8 +47,9 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
 
   static constexpr std::string_view name() noexcept { return "SystemDatabase"; }
 
-  explicit SystemDatabaseFeature(application_features::ApplicationServer& server,
-                                 TRI_vocbase_t* vocbase = nullptr);
+  explicit SystemDatabaseFeature(
+      application_features::ApplicationServer& server,
+      TRI_vocbase_t* vocbase = nullptr);
 
   void start() override;
   void unprepare() override;

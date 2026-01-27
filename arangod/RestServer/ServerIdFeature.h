@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {

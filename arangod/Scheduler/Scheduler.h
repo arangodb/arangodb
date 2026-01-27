@@ -27,7 +27,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <functional>
 #include <mutex>
 #include <queue>
 #include <string_view>
@@ -37,10 +36,7 @@
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
 
 namespace arangodb {

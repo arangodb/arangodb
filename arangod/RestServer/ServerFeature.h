@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
 #include "RestServer/ServerFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 

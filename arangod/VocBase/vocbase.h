@@ -25,7 +25,6 @@
 
 #include <atomic>
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -37,14 +36,11 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Basics/voc-errors.h"
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
-#include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 

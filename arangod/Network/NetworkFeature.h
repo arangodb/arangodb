@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 #include <fuerte/requests.h>

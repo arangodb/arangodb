@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Sharding/ShardingStrategy.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Slice.h>
 

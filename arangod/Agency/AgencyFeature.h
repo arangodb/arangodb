@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Agency/AgencyOptions.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 namespace consensus {

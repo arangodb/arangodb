@@ -33,11 +33,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
 #include "V8Server/GlobalExecutorMethods.h"

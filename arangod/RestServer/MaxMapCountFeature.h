@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class MaxMapCountFeature final : public application_features::ApplicationFeature {
+class MaxMapCountFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "MaxMapCount"; }
 

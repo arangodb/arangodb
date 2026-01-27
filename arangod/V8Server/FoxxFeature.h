@@ -27,7 +27,7 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <shared_mutex>
 

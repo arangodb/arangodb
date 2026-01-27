@@ -37,7 +37,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <chrono>

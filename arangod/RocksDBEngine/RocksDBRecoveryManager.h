@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "RestServer/arangod.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <rocksdb/types.h>
@@ -39,11 +38,13 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
-  explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
+  explicit RocksDBRecoveryManager(
+      application_features::ApplicationServer& server);
 
   void start() override;
 

@@ -486,7 +486,8 @@ class QueryInfoLoggerThread final : public Thread {
   Scheduler::WorkHandle _workItem;
 };
 
-QueryInfoLoggerFeature::QueryInfoLoggerFeature(ApplicationServer& server)
+QueryInfoLoggerFeature::QueryInfoLoggerFeature(
+    application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();

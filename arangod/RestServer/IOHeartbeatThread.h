@@ -26,7 +26,7 @@
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
 #include "Metrics/LogScale.h"
-#include "RestServer/arangod.h"
+#include "RestServer/DatabasePathFeature.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -34,6 +34,8 @@
 #include <mutex>
 
 namespace arangodb {
+
+class DatabasePathFeature;
 
 class IOHeartbeatThread final : public Thread {
  public:

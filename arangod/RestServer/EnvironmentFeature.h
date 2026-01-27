@@ -24,14 +24,14 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-class EnvironmentFeature final : public application_features::ApplicationFeature {
+class EnvironmentFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Environment"; }
 

@@ -23,11 +23,9 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace options {

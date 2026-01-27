@@ -34,8 +34,8 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
+#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -45,9 +45,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestTasksHandler::RestTasksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {

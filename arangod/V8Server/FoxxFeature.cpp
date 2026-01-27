@@ -29,7 +29,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/arangod.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"

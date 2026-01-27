@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
-#include "RestServer/arangod.h"
 
 #include <cstdint>
 #include <functional>

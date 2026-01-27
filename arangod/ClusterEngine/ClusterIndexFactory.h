@@ -27,6 +27,8 @@
 
 namespace arangodb {
 
+class ClusterEngine;
+
 class ClusterIndexFactory final : public IndexFactory {
  public:
   static void linkIndexFactories(

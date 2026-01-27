@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "SystemMonitor/ActivityRegistry/Metrics.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
 namespace arangodb::activity_registry {

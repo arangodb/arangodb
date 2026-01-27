@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+
 #include <mutex>
 
 namespace arangodb {

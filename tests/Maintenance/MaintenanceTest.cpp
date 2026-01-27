@@ -23,7 +23,6 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"

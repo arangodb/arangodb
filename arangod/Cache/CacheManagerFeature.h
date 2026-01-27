@@ -25,7 +25,6 @@
 
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsProvider.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 struct CacheOptionsProvider;
@@ -35,7 +34,8 @@ namespace cache {
 class Manager;
 }
 
-class CacheManagerFeature final : public application_features::ApplicationFeature {
+class CacheManagerFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 

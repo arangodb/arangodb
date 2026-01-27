@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SupportInfoBuilder.h"
 
@@ -36,9 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestSupportInfoHandler::RestSupportInfoHandler(application_features::ApplicationServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestSupportInfoHandler::RestSupportInfoHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestSupportInfoHandler::execute() {

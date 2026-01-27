@@ -40,7 +40,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

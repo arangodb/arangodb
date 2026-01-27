@@ -27,7 +27,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
-#include "RestServer/arangod.h"
 #include "Transaction/Context.h"
 
 namespace arangodb {

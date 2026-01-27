@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "SystemMonitor/AsyncRegistry/Metrics.h"
-#include "RestServer/arangod.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Async/Registry/promise.h"
-#include "Containers/Forest/forest.h"
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
+#include "Containers/Forest/forest.h"
+#include "Scheduler/AsyncLockWithScheduler.h"
+#include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
 

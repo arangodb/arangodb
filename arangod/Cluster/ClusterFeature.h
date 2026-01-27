@@ -227,8 +227,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
  private:
-  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
-                 DatabaseFeature& database, std::type_index registration);
+  ClusterFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics, DatabaseFeature& database,
+                 std::type_index registration);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();

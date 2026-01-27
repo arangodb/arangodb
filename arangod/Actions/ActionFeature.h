@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Actions/ActionFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {

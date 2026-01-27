@@ -25,16 +25,15 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestOptionsHandler::RestOptionsHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request,
-                                       GeneralResponse* response)
+RestOptionsHandler::RestOptionsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestOptionsBaseHandler(server, request, response) {}
 
 RestStatus RestOptionsHandler::execute() {

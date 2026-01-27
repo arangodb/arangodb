@@ -25,11 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DatabasePathFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class DatabasePathFeature final : public application_features::ApplicationFeature {
+class DatabasePathFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 

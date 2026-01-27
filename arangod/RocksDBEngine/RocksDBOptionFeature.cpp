@@ -34,8 +34,6 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
-#include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,8 +41,8 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>

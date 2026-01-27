@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <cstdint>
 

@@ -58,9 +58,8 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-}  // namespace arangodb
+class DatabaseFeature;
 
-namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////

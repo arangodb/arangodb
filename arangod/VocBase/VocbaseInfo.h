@@ -25,7 +25,6 @@
 
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
-#include "RestServer/arangod.h"
 #include "Replication2/Version.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"

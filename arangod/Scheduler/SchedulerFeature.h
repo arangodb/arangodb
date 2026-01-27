@@ -23,14 +23,16 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <functional>
 #include <memory>
 
 namespace arangodb {
 
 class Scheduler;
+namespace metrics {
+class MetricsFeature;
+}
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:

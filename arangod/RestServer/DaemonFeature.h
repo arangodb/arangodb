@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DaemonFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace options {

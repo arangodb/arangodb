@@ -2861,7 +2861,8 @@ auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
     -> arangodb::agency::envelope try {
   if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
     auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-    return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+    return replication2::agency::methods::deleteReplicatedLogTrx(
+        std::move(envelope), dbName, logId);
   }
 
   std::optional<replication2::agency::Log> maybeLog;
@@ -3194,8 +3195,8 @@ void Supervision::cleanupReplicatedLogs() {
 
       // delete plan and target
       auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
-      envelope =
-          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+      envelope = replication2::agency::methods::deleteReplicatedLogTrx(
+          std::move(envelope), dbName, logId);
     }
   }
 

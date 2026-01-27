@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 

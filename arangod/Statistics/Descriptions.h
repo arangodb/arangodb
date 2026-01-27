@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
-
 #include <velocypack/Builder.h>
 #include <string>
 

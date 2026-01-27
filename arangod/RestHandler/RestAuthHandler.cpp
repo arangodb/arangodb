@@ -23,11 +23,10 @@
 
 #include "RestAuthHandler.h"
 
-#include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,8 +42,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestAuthHandler::RestAuthHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAuthHandler::execute() {

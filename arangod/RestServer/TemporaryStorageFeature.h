@@ -26,12 +26,10 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -69,13 +67,15 @@ class StorageUsageTracker {
   std::atomic<std::uint64_t> _currentUsage;
 };
 
-class TemporaryStorageFeature : public application_features::ApplicationFeature {
+class TemporaryStorageFeature
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TemporaryStorage";
   }
 
-  explicit TemporaryStorageFeature(application_features::ApplicationServer& server);
+  explicit TemporaryStorageFeature(
+      application_features::ApplicationServer& server);
   ~TemporaryStorageFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

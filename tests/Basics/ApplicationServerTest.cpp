@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Exceptions.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

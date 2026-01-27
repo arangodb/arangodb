@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/ServerState.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Transaction/Status.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 namespace arangodb {
 
@@ -37,7 +37,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
   char const* name() const override final { return "RestTransactionHandler"; }
   RequestLane lane() const override final;

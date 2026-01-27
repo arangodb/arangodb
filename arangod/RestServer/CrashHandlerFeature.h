@@ -25,8 +25,8 @@
 
 #include <string_view>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DumpManager.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 

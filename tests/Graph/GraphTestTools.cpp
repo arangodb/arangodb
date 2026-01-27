@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // test setup
-#include "RestServer/arangod.h"
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 

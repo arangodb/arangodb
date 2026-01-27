@@ -24,8 +24,6 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "V8Server/V8Executor.h"
-#include "RestServer/arangod.h"
 
 #include <mutex>
 

@@ -29,7 +29,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <list>
 #include <mutex>

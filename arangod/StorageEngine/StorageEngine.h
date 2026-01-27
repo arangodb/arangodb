@@ -27,7 +27,6 @@
 #include "Basics/Result.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Indexes/IndexFactory.h"
-#include "RestServer/arangod.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngineFeature.h"
@@ -35,6 +34,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

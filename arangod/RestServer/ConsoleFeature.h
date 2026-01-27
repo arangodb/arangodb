@@ -29,7 +29,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
-#include "RestServer/arangod.h"
 #include "RestServer/ConsoleThread.h"
 
 #include <memory>

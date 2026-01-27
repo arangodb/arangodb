@@ -145,7 +145,8 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
     return "HttpEndpointProviderMock";
   }
 
-  explicit HttpEndpointProviderMock(ArangodServer& server)
+  explicit HttpEndpointProviderMock(
+      application_features::ApplicationServer& server)
       : HttpEndpointProvider{server, *this} {}
 
   virtual std::vector<std::string> httpEndpoints() final { return {}; }

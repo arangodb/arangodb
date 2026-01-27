@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 

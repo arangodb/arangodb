@@ -36,13 +36,14 @@
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
 
 #include <map>
 #include <shared_mutex>
 
 namespace arangodb::metrics {
+
+class ClusterMetricsFeature;
 
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:

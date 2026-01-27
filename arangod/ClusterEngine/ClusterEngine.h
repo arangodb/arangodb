@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/AccessMode.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
+
+class ClusterFeature;
 
 class ClusterEngine final : public StorageEngine {
  public:

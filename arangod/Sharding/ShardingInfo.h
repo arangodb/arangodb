@@ -26,7 +26,6 @@
 #include "Basics/Result.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -34,7 +33,6 @@
 #include <atomic>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 

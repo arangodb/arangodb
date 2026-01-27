@@ -40,9 +40,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -75,7 +73,12 @@ struct WalManager;
 }
 }  // namespace replication2::storage
 
+class AgencyFeature;
+class DatabasePathFeature;
+class DumpLimitsFeature;
+class FlushFeature;
 class PhysicalCollection;
+class ReplicatedLogFeature;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -89,8 +92,10 @@ class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
+class SchedulerFeature;
 class TransactionCollection;
 class TransactionState;
+class VectorIndexFeature;
 class VectorIndexFeature;
 
 namespace rest {

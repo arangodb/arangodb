@@ -23,11 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
-#include "Basics/system-functions.h"
 #include "Metrics/Fwd.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
 
@@ -86,7 +85,8 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final : public application_features::ApplicationFeature {
+class StatisticsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 

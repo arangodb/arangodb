@@ -27,10 +27,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLog;

@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/CheckVersionFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 struct TRI_vocbase_t;
 

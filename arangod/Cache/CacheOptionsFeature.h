@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheOptionsProvider.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class CacheOptionsFeature final : public application_features::ApplicationFeature,
-                                  public CacheOptionsProvider {
+class CacheOptionsFeature final
+    : public application_features::ApplicationFeature,
+      public CacheOptionsProvider {
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
