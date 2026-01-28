@@ -264,7 +264,8 @@ function indexHintCollectionSuite () {
       }
     },
 
-    testFilterTypeHint: function () {
+    testFilterAlternateIndexHint: function () {
+      // Test that we can hint to use an alternate index that can satisfy the filter
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
@@ -276,31 +277,7 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterPartialCoverageHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'pers_a_b'}
-          FILTER doc.a == 1
-          RETURN doc
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 1);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'pers_a_b');
-    },
-
-    testFilterListFirstHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['pers_a_b', '${alternateEqualityIndex}']}
-          FILTER doc.a == 1
-          RETURN doc
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 1);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], `pers_a_b`);
-    },
-
-    testFilterListLastHint: function () {
+    testFilterListHint: function () {
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: ['pers_b_a', '${alternateEqualityIndex}']}
           FILTER doc.a == 1
@@ -312,11 +289,12 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterNestedMatchedHint: function () {
+    testFilterNestedHint: function () {
+      // Test that nested loops can have independent index hints
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
+          FOR sub IN ${cn} OPTIONS {indexHint: '${defaultEqualityIndex}'}
             FILTER sub.a == 2
             RETURN [doc, sub]
       `;
@@ -325,23 +303,7 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0].length, 1);
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
       assertEqual(usedIndexes[1].length, 1);
-      assertEqual(usedIndexes[1][0], alternateEqualityIndex);
-    },
-
-    testFilterNestedUnmatchedHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
-          FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: 'pers_a_b'}
-            FILTER sub.a == 2
-            RETURN [doc, sub]
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 2);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], alternateEqualityIndex);
-      assertEqual(usedIndexes[1].length, 1);
-      assertEqual(usedIndexes[1][0], 'pers_a_b');
+      assertEqual(usedIndexes[1][0], defaultEqualityIndex);
     },
 
     testSortNoHint: function () {

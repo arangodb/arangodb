@@ -527,7 +527,8 @@ ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
   }
   options.fields = fields;
   if (!options.hasOwnProperty('type')) {
-    options.type = 'hash';
+    // Default to persistent (hash is deprecated)
+    options.type = 'persistent';
   }
   return this.ensureIndex(options);
 };
