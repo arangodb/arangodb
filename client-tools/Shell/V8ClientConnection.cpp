@@ -720,26 +720,28 @@ void V8ClientConnection::getConnectionHandleTable(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::Object> table = v8::Object::New(isolate);
+  bool foundCurrConnection = false;
+  bool active = false;
+  std::string id;
 
-  for (auto &it: _connectionCache) {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  auto conn = _connection;
+  auto cb = _builder;
+
+  auto addColumn = [&context, &isolate, &table, &id, &conn, &cb, &active] () {
     v8::Local<v8::Object> column = v8::Object::New(isolate);
-    std::string ep;
-    auto conn = _connection;
-    auto cb = _builder;
-    if (it.second != nullptr) {
-      column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
-              v8::False(isolate))
-        .FromMaybe(false);
-      conn = it.second;
-      cb = _connectionBuilderCache.find(it.first)->second;
-    } else {
-      // the object was taken from the cache and lives in the current context instead:
+    if (active) {
       column
         ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
               v8::True(isolate))
+        .FromMaybe(false);
+    } else {
+      column
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+              v8::False(isolate))
         .FromMaybe(true);
     }
+    std::string ep;
     ep = conn->endpoint();
     column
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
@@ -751,25 +753,49 @@ void V8ClientConnection::getConnectionHandleTable(
             TRI_V8_STD_STRING(isolate, ep))
       .FromMaybe(false);
 
-    ep = cb.getUsername();
+    ep = cb.user();
     column
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "username"),
             TRI_V8_STD_STRING(isolate, ep))
       .FromMaybe(false);
-    ep = cb.getPassword();
+    ep = cb.password();
     column
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "password"),
             TRI_V8_STD_STRING(isolate, ep))
       .FromMaybe(false);
-    ep = cb.getJwToken();
+    ep = cb.jwtToken();
     column
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "jwToken"),
             TRI_V8_STD_STRING(isolate, ep))
       .FromMaybe(false);
     table
-      ->Set(context, TRI_V8_STRING(isolate, it.first),
+      ->Set(context, TRI_V8_STRING(isolate, id),
             column)
       .FromMaybe(false);
+  };
+  for (auto &it: _connectionCache) {
+    id = it.first;
+    if (it.second != nullptr) {
+      active = false;
+      conn = it.second;
+      cb = _connectionBuilderCache.find(it.first)->second;
+    } else {
+      // the object was taken from the cache and lives in the current context instead:
+      active = true;
+      conn = _connection;
+      cb = _builder;
+      foundCurrConnection = true;
+    }
+    addColumn();
+  }
+  if (!foundCurrConnection) {
+    conn = _connection;
+    cb = _builder;
+    active = true;
+    id = _currentConnectionId;
+    if (conn != nullptr) {
+      addColumn();
+    }
   }
   TRI_V8_RETURN(table);
 }

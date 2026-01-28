@@ -301,8 +301,6 @@ class instance {
   dumpConnectionTable() {
     if (this.options.extremeVerbosity) {
       let currentHandle = arango.getConnectionHandle();
-      print('aaa')
-      print(currentHandle)
       const tableColumnHeaders = [
         "selected", "handle", "endpoint", "localport", "username", "password", "JWT"
       ];
