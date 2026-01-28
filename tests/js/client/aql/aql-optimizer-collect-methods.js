@@ -191,47 +191,11 @@ function optimizerCollectMethodsTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief expect hash COLLECT
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    testHashedWithNonSortedIndex : function () {
-      c.ensureIndex({ type: "persistent", fields: [ "group" ] });
-      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] });
-      
-      const queries = [
-                     [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500, false],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10, true],
-                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500, true ],
-                     [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10, true ],
-                     [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500, true ]
-                     ];
-      
-      queries.forEach(function(query) {
-          let plan = db._createStatement(query[0]).explain().plan;
-          let aggregateNodes = 0;
-          let sortNodes = 0;
-          plan.nodes.map(function(node) {
-            if (node.type === "CollectNode") {
-              ++aggregateNodes;
-              assertFalse(query[2] && node.collectOptions.method !== "sorted");
-              assertEqual(query[2] ? "sorted" : "hash",
-                         node.collectOptions.method, query[0]);
-            }
-            if (node.type === "SortNode") {
-              ++sortNodes;
-            }
-          });
-
-          assertEqual(isCluster ? 2 : 1, aggregateNodes);
-          assertEqual(query[2] ? 0 : 1, sortNodes);
-          
-          let results = db._query(query[0]);
-          let res = results.toArray();
-          assertEqual(query[1], res.length);
-       });
-    },
+    // NOTE: testHashedWithNonSortedIndex was removed because hash indexes are
+    // deprecated in ArangoDB 4.0 and cannot be created anymore. The test was
+    // specifically testing optimizer behavior with non-sorted (hash) indexes,
+    // which is no longer a valid scenario. The testSortedIndex test covers
+    // COLLECT optimization with persistent (sorted) indexes.
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expect sorted COLLECT
