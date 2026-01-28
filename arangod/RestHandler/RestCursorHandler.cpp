@@ -96,9 +96,6 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
     // POST /_api/cursor/cursor-id/batch-id
     co_await showLatestBatch();
     co_return;
-  } else if (type == rest::RequestType::PUT) {
-    co_await modifyQueryCursor();
-    co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {
     // TODO if this does not wait, it does not need to return RestStatus -
     //      and otherwise should be a coroutine.
@@ -491,11 +488,9 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   rest::RequestType type = _request->requestType();
-  if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
-      type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST && type != rest::RequestType::DELETE_REQ) {
     // request forwarding only exists for
     // POST /_api/cursor/cursor-id
-    // PUT /_api/cursor/cursor-id
     // DELETE /_api/cursor/cursor-id
     return {std::make_pair(StaticStrings::Empty, false)};
   }
