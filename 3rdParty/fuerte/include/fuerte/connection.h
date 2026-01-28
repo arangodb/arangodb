@@ -123,9 +123,6 @@ class ConnectionBuilder {
  public:
   std::string host() const { return _conf._host; }
   std::string port() const { return _conf._port; }
-  std::string getUsername() const { return _conf._user; }
-  std::string getPassword() const { return _conf._password; }
-  std::string getJwToken() const { return _conf._jwtToken; }
 
   /// @brief takes url in the form (http)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
