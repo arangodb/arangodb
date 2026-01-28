@@ -2573,7 +2573,8 @@ void Supervision::checkBrokenCollections() {
                     collectionPair.second->get("shadowCollections")) {
               if (auto arr = shadowCols->getArray()) {
                 for (Node::VPackStringType const& colName : *arr) {
-                  shadowCollections.emplace_back(std::to_string(colName.getNumericValue<uint64_t>()));
+                  shadowCollections.emplace_back(
+                      std::to_string(colName.getNumericValue<uint64_t>()));
                 }
               }
             }
