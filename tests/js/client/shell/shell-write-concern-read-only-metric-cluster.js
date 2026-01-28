@@ -30,10 +30,11 @@ let internal = require("internal");
 let db = arangodb.db;
 
 const {
-  waitForShardsInSync, getMetric, getUrlById, getAllMetric
+  waitForShardsInSync, getMetric, getUrlById, getAllMetric, eventuallyAssertEqual
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
+const metricName = "arangodb_vocbase_shards_read_only_by_write_concern";
 
 function WriteConcernReadOnlyMetricSuite() {
 
@@ -53,6 +54,35 @@ function WriteConcernReadOnlyMetricSuite() {
       }
     },
 
+    testLadidaMetric: function () {
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
+      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+
+      // this should work
+      c.insert({});
+      waitForShardsInSync(c.name());
+
+      // query metric, it should be zero
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+
+      // suspend the follower
+      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+
+      // trigger a follower drop
+      c.insert({});
+
+      // one shard does not have enough in sync follower
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+
+      // Lets drop the collection and see if the metric changes
+      db._drop(c.name());
+
+      global.instanceManager.debugClearFailAt();
+
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+    },
+
     testCheckMetric: function () {
 
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
@@ -63,8 +93,7 @@ function WriteConcernReadOnlyMetricSuite() {
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      let metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
       // suspend the follower
       global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
@@ -73,28 +102,19 @@ function WriteConcernReadOnlyMetricSuite() {
       // trigger a follower drop
       c.insert({});
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 1); // one shard does not have enough in sync follower
+      // one shard does not have enough in sync follower
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
 
       global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      let k = 0;
-      for (; k < 100; k++) {
-        const metrics = getAllMetric(getUrlById(leader), '');
-        if (metrics.indexOf(database) === -1) {
-          break;
-        }
-        internal.sleep(0.5);
-      }
-      assertNotEqual(k, 100);
+      eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
     },
 
     testCheckMetricChangeWriteConcern: function () {
@@ -107,8 +127,7 @@ function WriteConcernReadOnlyMetricSuite() {
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      let metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
       // suspend the follower
       global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
@@ -117,8 +136,8 @@ function WriteConcernReadOnlyMetricSuite() {
       // trigger a follower drop
       c.insert({});
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 1); // one shard does not have enough in sync follower
+      // one shard does not have enough in sync follower
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
 
       // change write concern
       c.properties({writeConcern: 1});
@@ -142,8 +161,7 @@ function WriteConcernReadOnlyMetricSuite() {
         internal.wait(0.5);
       }
 
-      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
-      assertEqual(metricValue, 0);
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
       global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
@@ -152,15 +170,7 @@ function WriteConcernReadOnlyMetricSuite() {
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      let k = 0;
-      for (; k < 100; k++) {
-        const metrics = getAllMetric(getUrlById(leader), '');
-        if (metrics.indexOf(database) === -1) {
-          break;
-        }
-        internal.sleep(0.5);
-      }
-      assertNotEqual(k, 100);
+      eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
     },
   };
 }
