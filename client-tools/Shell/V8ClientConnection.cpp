@@ -95,7 +95,8 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-      << "Connection identifier " << std::string(hex, 32) << " calculated from: " << raw;
+      << "Connection identifier " << std::string(hex, 32)
+      << " calculated from: " << raw;
 #endif
   // and return
   return std::string(hex, 32);
