@@ -112,6 +112,9 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     -> void {
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
   if (not tmp.has_value()) {
