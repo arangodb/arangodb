@@ -535,8 +535,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& roOptions =
-        as.addFeature<RocksDBOptionFeature>(&as.getFeature<AgencyFeature>());
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
+    auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<EngineSelectorFeature>();
@@ -561,7 +561,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
     auto& cacheManagerFeature =
         as.addFeature<CacheManagerFeature>(cacheOptions);
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
