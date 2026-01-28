@@ -238,8 +238,13 @@ if(USE_V8)
   target_link_libraries(arangoserver arango_v8server)
 endif()
 
+
+if(USE_JEMALLOC)
 target_include_directories(arangoserver PRIVATE
-  "${JEMALLOC_HOME}/include"
+  "${JEMALLOC_HOME}/include")
+endif()
+
+target_include_directories(arangoserver PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
