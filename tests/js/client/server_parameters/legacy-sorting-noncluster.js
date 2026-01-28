@@ -63,9 +63,6 @@ function poisonCollection(databasename, collname, attrA, attrB) {
   assertEqual(202, r.code);
 }
 
-// NOTE: Hash and skiplist index types are deprecated in 4.0 and map to persistent.
-// We now create persistent indexes with different field combinations to ensure
-// they are distinct (same type + fields + unique would be deduplicated).
 function createVPackIndexes(databasename, collname, attrA, attrB) {
   db._useDatabase(databasename);
   let c = db._collection(collname);
