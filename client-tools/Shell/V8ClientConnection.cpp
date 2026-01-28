@@ -715,6 +715,65 @@ void V8ClientConnection::reconnect() {
 
 std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 
+void V8ClientConnection::getConnectionHandleTable(
+    v8::Isolate* isolate,
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Local<v8::Object> table = v8::Object::New(isolate);
+
+  for (auto &it: _connectionCache) {
+    v8::Local<v8::Object> column = v8::Object::New(isolate);
+    std::string ep;
+    auto conn = _connection;
+    auto cb = _builder;
+    if (it.second != nullptr) {
+      column
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+              v8::False(isolate))
+        .FromMaybe(false);
+      conn = it.second;
+      cb = _connectionBuilderCache.find(it.first)->second;
+    } else {
+      // the object was taken from the cache and lives in the current context instead:
+      column
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+              v8::True(isolate))
+        .FromMaybe(true);
+    }
+    ep = conn->endpoint();
+    column
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
+            TRI_V8_STD_STRING(isolate, ep))
+      .FromMaybe(false);
+    ep = conn->localEndpoint();
+    column
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "localPort"),
+            TRI_V8_STD_STRING(isolate, ep))
+      .FromMaybe(false);
+
+    ep = cb.getUsername();
+    column
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "username"),
+            TRI_V8_STD_STRING(isolate, ep))
+      .FromMaybe(false);
+    ep = cb.getPassword();
+    column
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "password"),
+            TRI_V8_STD_STRING(isolate, ep))
+      .FromMaybe(false);
+    ep = cb.getJwToken();
+    column
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "jwToken"),
+            TRI_V8_STD_STRING(isolate, ep))
+      .FromMaybe(false);
+    table
+      ->Set(context, TRI_V8_STRING(isolate, it.first),
+            column)
+      .FromMaybe(false);
+  }
+  TRI_V8_RETURN(table);
+}
+
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
@@ -1105,6 +1164,25 @@ static void ClientConnection_getHandle(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->getHandle());
+  TRI_V8_TRY_CATCH_END
+}
+
+static void ClientConnection_getHandleTable(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getHandleTable() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  v8connection->getConnectionHandleTable(isolate, args);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3504,6 +3582,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "getConnectionHandle",
       v8::FunctionTemplate::New(isolate, ClientConnection_getHandle, v8client));
+
+  connection_proto->Set(
+      isolate, "getConnectionHandleTable",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getHandleTable, v8client));
 
   connection_proto->Set(isolate, "connectHandle",
                         v8::FunctionTemplate::New(
