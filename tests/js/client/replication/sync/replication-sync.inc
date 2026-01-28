@@ -261,20 +261,24 @@ exports.BaseTestConfig = function () {
       );
     },
 
+    // NOTE: This test was originally designed to test type conflicts (hash vs skiplist
+    // with same ID). Since hash/skiplist are deprecated and now map to persistent,
+    // we test that indexes with the same ID but different fields are properly synced.
+    // Using explicit names to ensure deterministic behavior.
     testExistingIndexIdConflict: function () {
       connectToLeader();
 
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'persistent', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'persistent', id: '1234567', name: 'testidx', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the follower
           const c = db._create(cn);
-          const def = {type: 'persistent', id: '1234567', fields: ['value2']};
+          const def = {type: 'persistent', id: '1234567', name: 'testidx', fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -288,20 +292,24 @@ exports.BaseTestConfig = function () {
       );
     },
 
+    // NOTE: This test was originally designed to test type conflicts (hash vs skiplist
+    // with same ID). Since hash/skiplist are deprecated and now map to persistent,
+    // we test that indexes with the same ID but different fields are properly synced.
+    // Using explicit names to ensure deterministic behavior.
     testExistingSystemIndexIdConflict: function () {
       connectToLeader();
       
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
-          state.indexDef = {type: 'persistent', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'persistent', id: '1234567', name: 'testidx', fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
-          const def = {type: 'persistent', id: '1234567', fields: ['value2']};
+          const def = {type: 'persistent', id: '1234567', name: 'testidx', fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
