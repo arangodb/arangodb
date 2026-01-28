@@ -167,8 +167,8 @@ class Supervision : public ServerThread<ArangodServer> {
   static void deleteBrokenCollection(
       AgentInterface* agent, std::string const& database,
       std::string const& collection, std::string const& coordinatorID,
-      std::vector<std::string> const& additionalCollections,
-      uint64_t rebootID, bool coordinatorFound);
+      std::vector<std::string> const& additionalCollections, uint64_t rebootID,
+      bool coordinatorFound);
 
   // public only for unit testing:
   static void deleteBrokenIndex(AgentInterface* agent,
