@@ -1,16 +1,14 @@
 4.0
 ---
 
-<<<<<<< HEAD
 * Remove support for creating deprecated index types. The following index types
   can no longer be created but existing indexes are still supported for upgrades:
 
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
-=======
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
->>>>>>> 4.0
 
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
