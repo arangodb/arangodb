@@ -1028,4 +1028,3 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                  "httpReqsUser", globals, ensureWhitespace);
   }
 }
-

@@ -105,7 +105,6 @@ class StatisticsFeature final : public ArangodFeature {
   static arangodb::velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-
   bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:

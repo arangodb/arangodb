@@ -300,7 +300,6 @@ Result createSystemCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
-
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
@@ -322,7 +321,6 @@ Result createIndex(
                                        false /*estimates*/)
       .waitAndGet();
 }
-
 
 Result createSystemCollectionsIndices(
     TRI_vocbase_t& vocbase,
@@ -406,7 +404,6 @@ Result UpgradeTasks::createSystemCollectionsAndIndices(
 
   return {};
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_iresearch_analyzers' collection
