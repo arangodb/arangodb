@@ -275,7 +275,7 @@ function FiguresSuite () {
       }
     },
     
-    testDetailedPersistent2: function () {
+    testDetailedPersistentSkiplist: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
@@ -299,7 +299,7 @@ function FiguresSuite () {
       }
     },
     
-    testDetailedPersistent: function () {
+    testDetailedPersistentSparse2: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
