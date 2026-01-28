@@ -119,6 +119,7 @@ add_library(arangoserver STATIC
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CrashHandlerFeature.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -139,6 +140,7 @@ add_library(arangoserver STATIC
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
@@ -185,6 +187,9 @@ if(USE_MAINTAINER_MODE)
     RestHandler/RestTestHandler.cpp)
 endif()
 
+target_sources(arangoserver PRIVATE
+  RestHandler/RestCrashHandler.cpp)
+
 target_link_libraries(arangoserver
   arango_agency
   arango_aql
@@ -206,14 +211,6 @@ target_link_libraries(arangoserver
   arango_scheduler
   boost_boost
   ${MSVC_LIBS})
-
-if(MSVC)
-  target_link_libraries(arangoserver Bcrypt.lib)
-endif()
-
-if(USE_V8)
-  target_link_libraries(arangoserver arango_v8server)
-endif()
 
 target_include_directories(arangoserver PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

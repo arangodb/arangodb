@@ -59,7 +59,7 @@ constexpr auto kNonServerFeatures =
 namespace arangodb::sepp {
 
 struct Server::Impl {
-  Impl(arangodb::RocksDBOptionsProvider const& optionsProvider,
+  Impl(arangodb::RocksDBOptionsProvider& optionsProvider,
        arangodb::CacheOptionsProvider const& cacheOptionsProvider,
        std::string databaseDirectory);
   ~Impl();
@@ -73,7 +73,7 @@ struct Server::Impl {
   void runServer(char const* exectuable);
 
   std::shared_ptr<arangodb::options::ProgramOptions> _options;
-  RocksDBOptionsProvider const& _optionsProvider;
+  RocksDBOptionsProvider& _optionsProvider;
   CacheOptionsProvider const& _cacheOptionsProvider;
   std::string _databaseDirectory;
   ::ArangodServer _server;
@@ -81,7 +81,7 @@ struct Server::Impl {
   VocbasePtr _vocbase;
 };
 
-Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
+Server::Impl::Impl(RocksDBOptionsProvider& optionsProvider,
                    CacheOptionsProvider const& cacheOptionsProvider,
                    std::string databaseDirectory)
     : _options(std::make_shared<arangodb::options::ProgramOptions>("sepp", "",
@@ -131,68 +131,151 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
        },
        {}});
 
-  _server.addFeatures(Visitor{
-      []<typename T>(auto& server, TypeTag<T>) {
-        return std::make_unique<T>(server);
-      },
-      [](auto& server, TypeTag<GreetingsFeaturePhase>) {
-        return std::make_unique<GreetingsFeaturePhase>(server,
-                                                       std::false_type{});
-      },
-      [&result](auto& server, TypeTag<CheckVersionFeature>) {
-        return std::make_unique<CheckVersionFeature>(server, &result,
-                                                     kNonServerFeatures);
-      },
-      [&name](auto& server, TypeTag<ConfigFeature>) {
-        return std::make_unique<ConfigFeature>(server, name);
-      },
-      [](auto& server, TypeTag<InitDatabaseFeature>) {
-        return std::make_unique<InitDatabaseFeature>(server,
-                                                     kNonServerFeatures);
-      },
+  // Adding features explicitly (converted from Visitor pattern)
+  // Phases first
+  _server.addFeature<AgencyFeaturePhase>();
+  _server.addFeature<CommunicationFeaturePhase>();
+  _server.addFeature<AqlFeaturePhase>();
+  _server.addFeature<BasicFeaturePhaseServer>();
+  _server.addFeature<ClusterFeaturePhase>();
+  _server.addFeature<DatabaseFeaturePhase>();
+  _server.addFeature<FinalFeaturePhase>();
+  _server.addFeature<GreetingsFeaturePhase>(std::false_type{});
+  _server.addFeature<ServerFeaturePhase>();
+
+  // Features
+  auto& metrics = _server.addFeature<metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
+      LazyApplicationFeatureReference<StatisticsFeature>(_server),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(_server),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
+      LazyApplicationFeatureReference<ClusterFeature>(_server));
+  _server.addFeature<metrics::ClusterMetricsFeature>();
+  _server.addFeature<VersionFeature>();
+  auto& agency = _server.addFeature<AgencyFeature>();
+  _server.addFeature<ApiRecordingFeature>();
+  _server.addFeature<AqlFeature>();
+  _server.addFeature<async_registry::Feature>();
+  _server.addFeature<AuthenticationFeature>();
+  _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
-      [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
-        return std::make_unique<BumpFileDescriptorsFeature>(
-            server, "--server.descriptors-minimum");
-      },
+  _server.addFeature<BumpFileDescriptorsFeature>(
+      "--server.descriptors-minimum");
 #endif
-      [](auto& server, TypeTag<LoggerFeature>) {
-        return std::make_unique<LoggerFeature>(server, true);
-      },
-      [this](auto& server, TypeTag<RocksDBEngine>) {
-        return std::make_unique<RocksDBEngine>(server, _optionsProvider);
-      },
-      [this](auto& server, TypeTag<CacheManagerFeature>) {
-        return std::make_unique<CacheManagerFeature>(server,
-                                                     _cacheOptionsProvider);
-      },
-      [&result](auto& server, TypeTag<ScriptFeature>) {
-        return std::make_unique<ScriptFeature>(server, &result);
-      },
-      [&result](auto& server, TypeTag<ServerFeature>) {
-        return std::make_unique<ServerFeature>(server, &result);
-      },
-      [](auto& server, TypeTag<ShutdownFeature>) {
-        return std::make_unique<ShutdownFeature>(
-            server, std::array{ArangodServer::id<ScriptFeature>()});
-      },
-      [&name](auto& server, TypeTag<TempFeature>) {
-        return std::make_unique<TempFeature>(server, name);
-      },
-      [](auto& server, TypeTag<SslServerFeature>) {
+  _server.addFeature<CacheOptionsFeature>();
+  auto& cacheManager =
+      _server.addFeature<CacheManagerFeature>(_cacheOptionsProvider);
+  _server.addFeature<CheckVersionFeature>(&result, kNonServerFeatures);
+  _server.addFeature<ClusterFeature>();
+  auto& database = _server.addFeature<DatabaseFeature>();
+  _server.addFeature<ClusterUpgradeFeature>(database);
+  _server.addFeature<ConfigFeature>(name);
+  _server.addFeature<CpuUsageFeature>();
+  auto& databasePath = _server.addFeature<DatabasePathFeature>();
+  auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
+  _server.addFeature<HttpEndpointProvider, EndpointFeature>();
+  _server.addFeature<EngineSelectorFeature>();
+  _server.addFeature<EnvironmentFeature>();
+  _server.addFeature<FileSystemFeature>();
+  auto& flush = _server.addFeature<FlushFeature>();
+  _server.addFeature<FortuneFeature>();
+  _server.addFeature<GeneralServerFeature>(metrics);
+  _server.addFeature<GreetingsFeature>();
+  _server.addFeature<InitDatabaseFeature>(kNonServerFeatures);
+  _server.addFeature<LanguageCheckFeature>();
+  _server.addFeature<LanguageFeature>();
+  _server.addFeature<TimeZoneFeature>();
+  _server.addFeature<LockfileFeature>();
+  _server.addFeature<LogBufferFeature>();
+  _server.addFeature<LoggerFeature>(true);
+  _server.addFeature<MaintenanceFeature>();
+  _server.addFeature<MaxMapCountFeature>();
+  _server.addFeature<NetworkFeature>(metrics,
+                                     network::ConnectionPool::Config{});
+  _server.addFeature<NonceFeature>();
+  _server.addFeature<OptionsCheckFeature>();
+  _server.addFeature<PrivilegeFeature>();
+  _server.addFeature<QueryRegistryFeature>(metrics);
+  _server.addFeature<RandomFeature>();
+  _server.addFeature<ReplicationFeature>(metrics);
+  _server.addFeature<ReplicatedLogFeature>();
+  _server.addFeature<ReplicationMetricsFeature>(metrics);
+  _server.addFeature<ReplicationTimeoutFeature>();
+  auto& scheduler = _server.addFeature<SchedulerFeature>(metrics);
+  auto& vectorIndex = _server.addFeature<VectorIndexFeature>();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _server.addFeature<ProcessEnvironmentFeature>(name);
+#endif
+  _server.addFeature<ServerFeature>(&result);
+  _server.addFeature<ServerIdFeature>();
+  _server.addFeature<ServerSecurityFeature>();
+  _server.addFeature<ShardingFeature>();
+  _server.addFeature<SharedPRNGFeature>();
+  _server.addFeature<ShellColorsFeature>();
+  _server.addFeature<ShutdownFeature>(
+      std::array{std::type_index(typeid(AgencyFeaturePhase))});
+  _server.addFeature<SoftShutdownFeature>();
+  _server.addFeature<SslFeature>();
+  _server.addFeature<StatisticsFeature>();
+  _server.addFeature<StorageEngineFeature>();
+  _server.addFeature<SystemDatabaseFeature>();
+  _server.addFeature<TempFeature>(name);
+  _server.addFeature<TemporaryStorageFeature>();
+  _server.addFeature<TtlFeature>();
+  _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
+  _server.addFeature<transaction::ManagerFeature>();
+  _server.addFeature<ViewTypesFeature>();
+  _server.addFeature<aql::AqlFunctionFeature>();
+  _server.addFeature<aql::OptimizerRulesFeature>();
+  _server.addFeature<aql::QueryInfoLoggerFeature>();
+  auto& rocksdbCacheRefill =
+      _server.addFeature<RocksDBIndexCacheRefillFeature>();
+  _server.addFeatureFactory<RocksDBOptionFeature>([this]() {
+    return RocksDBOptionFeature::construct(
+        _server, _server.hasFeature<AgencyFeature>()
+                     ? &_server.getFeature<AgencyFeature>()
+                     : nullptr);
+  });
+  auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
+#ifdef TRI_HAVE_GETRLIMIT
+  _server.addFeature<FileDescriptorsFeature>();
+#endif
+#ifdef ARANGODB_HAVE_FORK
+  _server.addFeature<DaemonFeature>();
+  _server.addFeature<SupervisorFeature>();
+#endif
 #ifdef USE_ENTERPRISE
-        return std::make_unique<SslServerFeatureEE>(server);
-#else
-        return std::make_unique<SslServerFeature>(server);
+  _server.addFeature<AuditFeature>();
+  _server.addFeature<LicenseFeature>();
+  _server.addFeature<RCloneFeature>();
+  _server.addFeature<HotBackupFeature>();
+  _server.addFeature<EncryptionFeature>();
 #endif
-      },
-      [&result](auto& server, TypeTag<UpgradeFeature>) {
-        return std::make_unique<UpgradeFeature>(server, &result,
-                                                kNonServerFeatures);
-      },
-      [](auto& server, TypeTag<HttpEndpointProvider>) {
-        return std::make_unique<EndpointFeature>(server);
-      }});
+#ifdef USE_ENTERPRISE
+  _server.addFeature<SslServerFeature, SslServerFeatureEE>();
+#else
+  _server.addFeature<SslServerFeature>();
+#endif
+  _server.addFeature<iresearch::IResearchAnalyzerFeature>();
+  _server.addFeature<iresearch::IResearchFeature>();
+  _server.addFeature<ClusterEngine>();
+
+  _server.addFeatureFactory<RocksDBEngine>([&, this]() {
+    return RocksDBEngine::construct(
+        _server, _optionsProvider, metrics, databasePath, vectorIndex, flush,
+        dumpLimits, scheduler,
+        replication2::EnableReplication2
+            ? &_server.getFeature<ReplicatedLogFeature>()
+            : nullptr,
+        rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+  });
+
+  _server
+      .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
+  _server.addFeature<replication2::replicated_state::black_hole::
+                         BlackHoleStateMachineFeature>();
+  _server.addFeature<
+      replication2::replicated_state::document::DocumentStateMachineFeature>();
 }
 
 void Server::Impl::runServer(char const* exectuable) {

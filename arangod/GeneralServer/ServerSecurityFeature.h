@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -45,10 +46,7 @@ class ServerSecurityFeature final : public ArangodFeature {
   bool foxxAllowInstallFromRemote() const noexcept;
 
  private:
-  bool _enableFoxxApi;
-  bool _enableFoxxStore;
-  bool _hardenedRestApi;
-  bool _foxxAllowInstallFromRemote;
+  ServerSecurityFeatureOptions _options;
 };
 
 }  // namespace arangodb

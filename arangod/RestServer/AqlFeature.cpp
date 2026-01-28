@@ -26,7 +26,6 @@
 
 #include "RestServer/AqlFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Cluster/ServerState.h"

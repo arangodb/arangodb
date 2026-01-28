@@ -1097,8 +1097,13 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       }
       if (previousVersion.has_value() && currentVersion.has_value() &&
           *currentVersion <= *previousVersion) {
-        // attempt to update a document with an older version
-        isNoOp = true;
+        // attempt to update a document with an older version.
+        // only mark as no-op if there are no computed values to process,
+        // otherwise we still need to go through the update path to handle
+        // computed values correctly.
+        if (_batchOptions.computedValues == nullptr) {
+          isNoOp = true;
+        }
         value = previousDocument;
       }
     }

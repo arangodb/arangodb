@@ -1339,7 +1339,7 @@ class instance {
     }
 
     let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
-    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
+    let metricsReply = download(this.url + '/_admin/metrics', opts);
     if (metricsReply.code === 200) {
       fs.write(fnMetrics, metricsReply.body);
       print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
@@ -1521,7 +1521,7 @@ class instance {
     }
     return false;
   }
-  debugTerminate() {
+  debugTerminate(msg) {
     if (this.pid === null) {
       return;
     }
@@ -1529,7 +1529,10 @@ class instance {
       let reply;
       try {
         this.connect();
-        reply = arango.PUT_RAW('/_admin/debug/crash', '');
+        const body = {
+          message: msg
+        };
+        reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
