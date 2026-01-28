@@ -216,8 +216,10 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
       _activity{"dump context",
-                {{"id", _id}, {"user", _user}, {"database", _database}},
-                {activity_registry::Registry::currentActivity()}} {
+                {{"id", _id}, {"user", _user}, {"database", _database}}} {
+  auto guard =
+      activity_registry::Registry::ScopedCurrentActivity(_activity.id());
+
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
