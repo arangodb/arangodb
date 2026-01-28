@@ -112,9 +112,9 @@ function ensureIndexSuite() {
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
-      // expect duplicate id with different definition to fail and error out
+      // expect duplicate id with different index type to fail and error out
       try {
-        collection.ensureIndex({ type: "persistent", fields: [ "a", "c" ], id: id });
+        collection.ensureIndex({ type: "geo", fields: [ "a" ], id: id });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
@@ -1133,33 +1133,59 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo1 indexes are deprecated and cannot be created
+/// @brief test: geo1 indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureGeo1Deprecated : function() {
-      // geo1 index type is deprecated and cannot be created anymore
-      try {
-        collection.ensureIndex({ type: "geo1", fields: ["pos"] });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("deprecated"));
-      }
+    testEnsureGeo1 : function() {
+      let check = function(r, expected) {
+        assertEqual("object", typeof r);
+        assertTrue(r.hasOwnProperty("legacyPolygons"));
+        assertEqual(expected, r.legacyPolygons);
+        let i = collection.indexes();
+        let found = false;
+        for (let j = 0; j < i.length; ++j) {
+          if (i[j].id === r.id) {
+            found = true;
+            assertEqual(expected, r.legacyPolygons);
+          }
+        }
+        assertTrue(found);
+        assertTrue(collection.dropIndex(r.id));
+      };
+
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"] }), false);
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
+                                     legacyPolygons: true }), true);
+      check(collection.ensureIndex({ type: "geo1", fields: ["pos"],
+                                     legacyPolygons: false }), false);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo2 indexes are deprecated and cannot be created
+/// @brief test: geo2 indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureGeo2Deprecated : function() {
-      // geo2 index type is deprecated and cannot be created anymore
-      try {
-        collection.ensureIndex({ type: "geo2", fields: ["pos"] });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("deprecated"));
-      }
+    testEnsureGeo2 : function() {
+      let check = function(r, expected) {
+        assertEqual("object", typeof r);
+        assertTrue(r.hasOwnProperty("legacyPolygons"));
+        assertEqual(expected, r.legacyPolygons);
+        let i = collection.indexes();
+        let found = false;
+        for (let j = 0; j < i.length; ++j) {
+          if (i[j].id === r.id) {
+            found = true;
+            assertEqual(expected, r.legacyPolygons);
+          }
+        }
+        assertTrue(found);
+        assertTrue(collection.dropIndex(r.id));
+      };
+
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"] }), false);
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
+                                     legacyPolygons: true }), true);
+      check(collection.ensureIndex({ type: "geo2", fields: ["pos"],
+                                     legacyPolygons: false }), false);
     },
 
   };
