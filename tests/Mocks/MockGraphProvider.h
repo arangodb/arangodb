@@ -37,6 +37,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/QueryContext.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Types/VertexRef.h"
 
@@ -268,8 +269,8 @@ class MockGraphProvider {
     std::unordered_map<std::string, std::vector<MockGraph::EdgeDef>>& _toIndex;
     // Optional callback to compute the weight of an edge.
     std::optional<WeightCallback>& _weightCallback;
-    bool _processable;  // looseEnds == NEVER: true, looseEnds == ALWAYS: false,
-                        // otherwise: true
+    bool _processable;  // looseEnds == NEVER: true, looseEnds == ALWAYS:
+                        // false, otherwise: true
     bool _reverse;
     arangodb::aql::TraversalStats& _stats;
     bool _hasMore = true;
@@ -287,7 +288,7 @@ class MockGraphProvider {
   ~MockGraphProvider();
 
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
-  MockGraphProvider& operator=(MockGraphProvider&&) = default;
+  MockGraphProvider& operator=(MockGraphProvider&&) = delete;
 
   void destroyEngines(){};
   auto startVertex(arangodb::graph::VertexRef vertex, size_t depth = 0,
@@ -352,6 +353,8 @@ class MockGraphProvider {
     _weightCallback = std::move(callback);
   }
 
+  bool isKilled() const { return _queryContext.killed(); }
+
  private:
   auto decideProcessable() const -> bool;
 
@@ -364,6 +367,7 @@ class MockGraphProvider {
   arangodb::aql::TraversalStats _stats;
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+  arangodb::aql::QueryContext& _queryContext;
   std::list<MockGraphNeighbourCursor<Step>> _neighbourCursors;
 };
 template<typename Inspector>

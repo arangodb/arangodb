@@ -219,6 +219,10 @@ template<class ProviderType>
 auto WeightedTwoSidedEnumerator<ProviderType>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
         -> void {
+  if (_graphOptions.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
   TRI_ASSERT(tmp.has_value());
@@ -781,6 +785,9 @@ WeightedTwoSidedEnumerator<ProviderType>::getBallToContinueSearch() const {
 
 template<class ProviderType>
 auto WeightedTwoSidedEnumerator<ProviderType>::searchDone() const -> bool {
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
     return true;
   }
