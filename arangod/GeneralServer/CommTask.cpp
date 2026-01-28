@@ -25,6 +25,7 @@
 
 #include "CommTask.h"
 
+#include "ActivityRegistry/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -452,6 +453,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));
+
+  auto activityGuard = activity_registry::Registry::ScopedCurrentActivity(
+      handler->_activity->id());
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
