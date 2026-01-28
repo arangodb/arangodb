@@ -134,7 +134,7 @@ class ApplicationServer {
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
                     char const* binaryPath);
 
-  virtual ~ApplicationServer() = default;
+  virtual ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -314,6 +314,7 @@ class ApplicationServer {
     TRI_ASSERT(!hasFeature<Type>());
     auto& slot = _features[typeid(Type)];
     slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+    _featureInitOrder.push_back(typeid(Type));
 
     return static_cast<Impl&>(*slot);
   }
@@ -385,6 +386,10 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
+
+  // order in which the features are were added to the server.
+  // required to make sure features are destroyed in inverse order
+  std::vector<std::type_index> _featureInitOrder;
 
   // will be signaled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
