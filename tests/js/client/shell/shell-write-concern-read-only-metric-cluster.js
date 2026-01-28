@@ -130,6 +130,10 @@ function WriteConcernReadOnlyMetricSuite() {
         // query metric, it should be zero
         eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
+        // suspend the follower
+        global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+        global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+
         // trigger a follower drop
         c.insert({});
 
@@ -142,6 +146,7 @@ function WriteConcernReadOnlyMetricSuite() {
         eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
       } finally {
         db._drop(c.name());
+        global.instanceManager.debugClearFailAt();
       }
     },
 
