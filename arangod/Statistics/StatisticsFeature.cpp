@@ -626,10 +626,6 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 
 StatisticsFeature::StatisticsFeature(Server& server)
     : ArangodFeature{server, *this},
-      _statistics(true),
-      _statisticsHistory(true),
-      _statisticsHistoryTouched(false),
-      _statisticsAllDatabases(true),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
           server.getFeature<metrics::MetricsFeature>().add(
@@ -697,7 +693,7 @@ void StatisticsFeature::collectOptions(
   options
       ->addOption("--server.statistics",
                   "Whether to enable statistics gathering and statistics APIs.",
-                  new BooleanParameter(&_statistics))
+                  new BooleanParameter(&_options.statistics))
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
@@ -711,7 +707,7 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
   options
       ->addOption("--server.statistics-history",
                   "Whether to store statistics in the database.",
-                  new BooleanParameter(&_statisticsHistory),
+                  new BooleanParameter(&_options.statisticsHistory),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
@@ -730,7 +726,7 @@ This is less intrusive than setting the `--server.statistics` option to
       ->addOption(
           "--server.statistics-all-databases",
           "Provide cluster statistics in the web interface for all databases.",
-          new BooleanParameter(&_statisticsAllDatabases),
+          new BooleanParameter(&_options.statisticsAllDatabases),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
@@ -739,7 +735,7 @@ This is less intrusive than setting the `--server.statistics` option to
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_statistics) {
+  if (_options.statistics) {
     // initialize counters for all HTTP request types
     ConnectionStatistics::initialize();
     RequestStatistics::initialize();
@@ -785,16 +781,16 @@ void StatisticsFeature::start() {
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() &&
       !_statisticsHistoryTouched) {
-    _statisticsHistory = false;
+    _options.statisticsHistory = false;
   }
 
   if (ServerState::instance()->isDBServer()) {
     // the StatisticsWorker runs queries against the _statistics
     // collections, so it does not work on DB servers
-    _statisticsHistory = false;
+    _options.statisticsHistory = false;
   }
 
-  if (_statisticsHistory) {
+  if (_options.statisticsHistory) {
     _statisticsWorker = std::make_unique<StatisticsWorker>(*vocbase);
 
     if (!_statisticsWorker->start()) {
@@ -1154,7 +1150,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     return {TRI_ERROR_DISABLED, "statistics are disabled"};
   }
 
-  if (!vocbase.isSystem() && !_statisticsAllDatabases) {
+  if (!vocbase.isSystem() && !_options.statisticsAllDatabases) {
     return {TRI_ERROR_FORBIDDEN,
             "statistics only available for system database"};
   }

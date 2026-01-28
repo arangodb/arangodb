@@ -1114,7 +1114,7 @@ class ClusterInfo final {
   /// overridden during testing
   ErrorCode const _syncerShutdownCode;
 
-  metrics::Gauge<std::uint64_t>& _memoryUsage;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> _memoryUsage;
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
   /// @brief histogram for loadCurrent runtime
