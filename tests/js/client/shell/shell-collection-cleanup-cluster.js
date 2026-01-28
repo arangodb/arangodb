@@ -47,7 +47,7 @@ function collectionCleanupSuite() {
     let coords = getServersByType("coordinator");
     coordinatorId = coords[0].id;
     let res = AM.call("read", [["/arango/Current/ServersKnown"]]);
-    coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId];
+    coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId].rebootId;
   };
 
   let waitForCollectionRemoval = function(collId) {
