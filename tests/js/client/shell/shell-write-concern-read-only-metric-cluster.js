@@ -84,7 +84,6 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     testCheckMetric: function () {
-
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
 
@@ -115,6 +114,35 @@ function WriteConcernReadOnlyMetricSuite() {
       db._dropDatabase(database);
 
       eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
+    },
+
+    // This is evident in _system database, where the metric is not reset after collection drop.
+    testMetricAfterCollectionDrop: function () {
+      db._useDatabase("_system");
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
+      try {
+        const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+
+        // this should work
+        c.insert({});
+        waitForShardsInSync(c.name());
+
+        // query metric, it should be zero
+        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+
+        // trigger a follower drop
+        c.insert({});
+
+        // one shard does not have enough in sync follower
+        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+
+        // Lets drop the collection and see if the metric changes
+        db._drop(c.name());
+
+        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      } finally {
+        db._drop(c.name());
+      }
     },
 
     testCheckMetricChangeWriteConcern: function () {
