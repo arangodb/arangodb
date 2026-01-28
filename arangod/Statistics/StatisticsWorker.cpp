@@ -24,6 +24,7 @@
 #include "StatisticsWorker.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/PhysicalMemory.h"

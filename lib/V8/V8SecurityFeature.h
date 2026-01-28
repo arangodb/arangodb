@@ -27,9 +27,9 @@
 #include <regex>
 #include <string>
 #include <unordered_set>
-#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "V8/V8SecurityFeatureOptions.h"
 
 namespace v8 {
 class Isolate;
@@ -55,10 +55,7 @@ class V8SecurityFeature final
 
   template<typename Server>
   explicit V8SecurityFeature(Server& server)
-      : ApplicationFeature{server, *this},
-        _hardenInternalModule(false),
-        _allowProcessControl(false),
-        _allowPortTesting(false) {
+      : ApplicationFeature{server, *this} {
     setOptional(false);
     startsAfter<TempFeature>();
     startsAfter<V8PlatformFeature>();
@@ -115,9 +112,7 @@ class V8SecurityFeature final
   void addToInternalAllowList(std::string const& item, FSAccessType);
 
  private:
-  bool _hardenInternalModule;
-  bool _allowProcessControl;
-  bool _allowPortTesting;
+  V8SecurityFeatureOptions _options;
 
   std::string _readAllowList;
   std::unordered_set<std::string> _readAllowListSet;
@@ -134,32 +129,25 @@ class V8SecurityFeature final
   // will be compiled into an std::regex.
 
   std::string _startupOptionsAllowList;
-  std::vector<std::string> _startupOptionsAllowListVec;
   std::regex _startupOptionsAllowListRegex;
   std::string _startupOptionsDenyList;
-  std::vector<std::string> _startupOptionsDenyListVec;
   std::regex _startupOptionsDenyListRegex;
 
   /// @brief regular expression string for forbidden IP address/host names
   /// to connect to via JS_Download/internal.download
   std::string _endpointsAllowList;
-  std::vector<std::string> _endpointsAllowListVec;
   std::regex _endpointsAllowListRegex;
   std::string _endpointsDenyList;
-  std::vector<std::string> _endpointsDenyListVec;
   std::regex _endpointsDenyListRegex;
 
   /// @brief regular expression string for environment variables filtering
   std::string _environmentVariablesAllowList;
-  std::vector<std::string> _environmentVariablesAllowListVec;
   std::regex _environmentVariablesAllowListRegex;
   std::string _environmentVariablesDenyList;
-  std::vector<std::string> _environmentVariablesDenyListVec;
   std::regex _environmentVariablesDenyListRegex;
 
   /// @brief variables for file access
   std::string _filesAllowList;
-  std::vector<std::string> _filesAllowListVec;
   std::regex _filesAllowListRegex;
 };
 
