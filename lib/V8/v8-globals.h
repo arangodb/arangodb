@@ -33,6 +33,7 @@
 
 #include <v8.h>
 
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"

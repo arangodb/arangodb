@@ -25,6 +25,7 @@
 
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/EngineSelectorFeatureOptions.h"
 
 namespace arangodb {
 
@@ -67,8 +68,9 @@ class EngineSelectorFeature final : public ArangodFeature {
 #endif
 
  private:
+  EngineSelectorFeatureOptions _options;
+
   StorageEngine* _engine;
-  std::string _engineName;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
   bool _allowDeprecatedDeployments;
