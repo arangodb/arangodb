@@ -63,6 +63,9 @@ function poisonCollection(databasename, collname, attrA, attrB) {
   assertEqual(202, r.code);
 }
 
+// NOTE: Hash and skiplist index types are deprecated in 4.0 and map to persistent.
+// We now create persistent indexes with different field combinations to ensure
+// they are distinct (same type + fields + unique would be deduplicated).
 function createVPackIndexes(databasename, collname, attrA, attrB) {
   db._useDatabase(databasename);
   let c = db._collection(collname);
@@ -70,13 +73,13 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                  name:"persistent_non_unique"});
   c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"persistent_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: false,
                  name:"hash_non_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: true,
                  name:"hash_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: false,
+  c.ensureIndex({type:"persistent", fields: [attrA], unique: false,
                  name:"skiplist_non_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
+  c.ensureIndex({type:"persistent", fields: [attrB], unique: false,
                  name:"skiplist_unique"});
   let nr = 6;
   try {
