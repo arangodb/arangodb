@@ -76,8 +76,8 @@ function useIndexesTestSuite() {
           collection1.insert(insertArray);
           collection2.insert(insertArray);
       }
-      collection1.ensureIndex({'type':'skiplist', 'fields' : ['value']});
-      collection2.ensureIndex({'type':'hash', 'fields' : ['value']});
+      collection1.ensureIndex({'type':'persistent', 'fields' : ['value']});
+      collection2.ensureIndex({'type':'persistent', 'fields' : ['value']});
     },
 
     ////////////////////////////////////////////////////////////////////////////////

@@ -358,8 +358,9 @@ ArangoCollection.prototype.updateByExample = function (example,
 ArangoCollection.prototype.lookupUniqueConstraint = function () {
   'use strict';
 
+  // hash indexes are deprecated, look for persistent instead
   return this.lookupIndex({
-    type: 'hash',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments),
     unique: true
   });
@@ -372,8 +373,9 @@ ArangoCollection.prototype.lookupUniqueConstraint = function () {
 ArangoCollection.prototype.lookupHashIndex = function () {
   'use strict';
 
+  // hash indexes are deprecated, look for persistent instead
   return this.lookupIndex({
-    type: 'hash',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments)
   });
 };
@@ -385,8 +387,9 @@ ArangoCollection.prototype.lookupHashIndex = function () {
 ArangoCollection.prototype.lookupUniqueSkiplist = function () {
   'use strict';
 
+  // skiplist indexes are deprecated, look for persistent instead
   return this.lookupIndex({
-    type: 'skiplist',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments),
     unique: true
   });
@@ -399,8 +402,9 @@ ArangoCollection.prototype.lookupUniqueSkiplist = function () {
 ArangoCollection.prototype.lookupSkiplist = function () {
   'use strict';
 
+  // skiplist indexes are deprecated, look for persistent instead
   return this.lookupIndex({
-    type: 'skiplist',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments)
   });
 };

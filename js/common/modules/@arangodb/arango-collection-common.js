@@ -377,8 +377,9 @@ function addIndexOptions (body, parameters) {
 ArangoCollection.prototype.ensureHashIndex = function () {
   'use strict';
 
+  // hash indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'persistent',
   }, arguments));
 };
 
@@ -389,8 +390,9 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
   'use strict';
 
+  // hash indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'persistent',
     unique: true
   }, arguments));
 };
@@ -402,8 +404,9 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
   'use strict';
 
+  // skiplist indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
+    type: 'persistent',
     unique: true
   }, arguments));
 };
@@ -415,8 +418,9 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ArangoCollection.prototype.ensureSkiplist = function () {
   'use strict';
 
+  // skiplist indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
+    type: 'persistent',
     unique: false
   }, arguments));
 };
