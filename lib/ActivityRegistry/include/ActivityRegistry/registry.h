@@ -51,6 +51,11 @@ struct Registry::ScopedCurrentActivity {
   explicit ScopedCurrentActivity(ActivityId activity) noexcept;
   ~ScopedCurrentActivity();
 
+  ScopedCurrentActivity(ScopedCurrentActivity const&) = delete;
+  ScopedCurrentActivity(ScopedCurrentActivity&&) = delete;
+  auto operator=(ScopedCurrentActivity const&) = delete;
+  auto operator=(ScopedCurrentActivity&&) = delete;
+
  private:
   ActivityId _oldActivity;
 };
