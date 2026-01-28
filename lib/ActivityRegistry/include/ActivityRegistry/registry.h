@@ -57,11 +57,12 @@ struct Registry::ScopedCurrentActivity {
 
 template<typename Func>
 auto withCurrentActivity(ActivityId activity, Func&& func) {
-  return [func = std::forward<Func>(func), currentActivity = activity]<
-             typename... Args,
-             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+  return [func = std::forward<Func>(func),
+          activity]<typename... Args,
+                    typename =
+                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
              Args&&... args) mutable {
-    Registry::ScopedCurrentActivity guard(currentActivity);
+    Registry::ScopedCurrentActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
 }
