@@ -539,7 +539,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
   // deadlocks. At least release the mutex before, otherwise deadlocks are at
   // least in our tests guaranteed.
   for (auto& pp : promisesToResolve) {
-    pp.setValue(Result(resolveResult));
+    pp.setValue(resolveResult);
   }
 }
 
