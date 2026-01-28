@@ -801,14 +801,21 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle === arango.getConnectionHandle()) {
-        return true;
+      if (this.connectionHandle === arango.getConnectionHandle()){
+        if (this.endpoint === arango.getEndpoint()) {
+          return true;
+        } else {
+          print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.connectionHandle = undefined;
+        }
       }
-      try {
-        return arango.connectHandle(this.connectionHandle);
-      } catch (ex) {
-        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
-        this.connectionHandle = undefined;
+      if (this.connectionHandle !== undefined) {
+        try {
+          return arango.connectHandle(this.connectionHandle);
+        } catch (ex) {
+          print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.connectionHandle = undefined;
+        }
       }
     }
     if (this.JWT) {
