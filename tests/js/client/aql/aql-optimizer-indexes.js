@@ -988,11 +988,14 @@ function optimizerIndexesTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
+/// @brief test index usage with persistent index (previously tested hash/skiplist)
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMultipleSubqueriesMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
+    testMultipleSubqueriesPersistentIndex : function () {
+      // NOTE: testMultipleSubqueriesMultipleIndexes and testMultipleSubqueriesHashIndexes
+      // were merged into this single test since hash/skiplist are deprecated and all
+      // indexes are now persistent. Testing multiple persistent indexes on the same
+      // field is not meaningful as they would be deduplicated.
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
@@ -1005,55 +1008,6 @@ function optimizerIndexesTestSuite () {
                   "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
-
-      var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
-      var plan = explain.plan;
-
-      var walker = function (nodes, func) {
-        nodes.forEach(function(node) {
-          func(node);
-        });
-      };
-
-      var indexNodes = 0, collectionNodes = 0;
-      walker(plan.nodes, function (node) {
-        if (node.type === "IndexNode") {
-          ++indexNodes;
-          assertEqual("persistent", node.indexes[0].type);
-        }
-        else if (node.type === "EnumerateCollectionNode") {
-          ++collectionNodes;
-        }
-      });
-
-      assertEqual(0, collectionNodes);
-      assertEqual(10, indexNodes);
-      assertEqual(1, explain.stats.plansCreated);
-
-      var results = db._query(query, {}, opt);
-      assertEqual(0, results.getExtra().stats.scannedFull);
-      assertNotEqual(0, results.getExtra().stats.scannedIndex);
-      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.toArray());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultipleSubqueriesHashIndexes : function () {
-      deleteDefaultIdx(); // drop skiplist index
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
-                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
-                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
-                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " +
-                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " +
-                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " +
-                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " +
-                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " +
-                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " +
-                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
-                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
       var plan = explain.plan;
@@ -1090,7 +1044,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "FOR i IN " + c.name() + " FILTER i.value < 10 FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1129,7 +1083,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinRangesMultipleIndexes : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "FOR i IN " + c.name() + " FILTER i.value < 5 FOR j IN " + c.name() + " FILTER j.value < i.value RETURN j._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1168,7 +1122,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTripleJoin : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "FOR i IN " + c.name() + " FILTER i.value == 4 FOR j IN " + c.name() + " FILTER j.value == i.value FOR k IN " + c.name() + " FILTER k.value < j.value RETURN k._key";
 
       var explain = db._createStatement({query: query, bindVars: {}, options: opt}).explain();
@@ -1211,7 +1165,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryMadness : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] }); // now we have a hash and a skiplist index
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
@@ -1279,7 +1233,7 @@ function optimizerIndexesTestSuite () {
     },
 
     testIndexOrHashNoDocuments : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
@@ -1344,7 +1298,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHash : function () {
-      idx1 = c.ensureIndex({ type: "persistent", fields: ["value"] });
+      // idx already exists as persistent on ["value"], no need to create a duplicate
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
