@@ -141,7 +141,8 @@ class Scheduler {
           _lane(lane),
           _disable(false),
           _scheduler(scheduler),
-          _logContext(LogContext::current()) {}
+          _logContext(LogContext::current()),
+          _currentActivity(activity_registry::Registry::currentActivity()) {}
 
     // This is not copyable or movable
     DelayedWorkItem(DelayedWorkItem const&) = delete;
@@ -188,7 +189,9 @@ class Scheduler {
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {
+        : F(std::move(f)),
+          logContext(LogContext::current()),
+          currentActivity(activity_registry::Registry::currentActivity()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() {
