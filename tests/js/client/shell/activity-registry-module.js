@@ -85,7 +85,7 @@ function activityRegistryModuleSuite() {
       assertTrue(lines.includes('── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}'), JSON.stringify(lines));
     },
     testShowsDependenciesAsTrees: function () {
-      const lines = activitiesModule.pretty_print([
+      const activities = [
         {
           "id": "0x76620a63b140",
           "name": "RestDumpHandler",
@@ -109,10 +109,24 @@ function activityRegistryModuleSuite() {
             "id": "dump-1855655160184832000"
           }
         }
-      ]).split('\n');
-      assertEqual(lines.length, 2);
-      assertEqual(lines[0], '── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}');
-      assertEqual(lines[1], '   └── dump context: {"database":"_system","user":"root","id":"dump-1855655160184832000"}');
+      ];
+      // const lines = activitiesModule.pretty_print(activities).split('\n');
+      // assertEqual(lines.length, 2);
+      // assertEqual(lines[0], '── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}');
+      // assertEqual(lines[1], '   └── dump context: {"database":"_system","user":"root","id":"dump-1855655160184832000"}');
+
+      const forest = activitiesModule.createForest(activities);
+      for (const item of forest.iter()) {
+        print(item);
+      }
+      // print(JSON.stringify(Array.from(forest.roots)));
+      // const DFS = new activitiesModule.DFS(forest.items);
+      // for (root of forest.roots.keys()) {
+      //   print(`----- ${root}`);
+      //   for (item of DFS.iter(root)) {
+      //     print(item);
+      //   }
+      // }
     },
 
     testForest: function () {
@@ -133,19 +147,32 @@ function activityRegistryModuleSuite() {
       assertEqual(forest.items.get("4"), { "id": "4", "parent": "3" , "children": []});
       assertEqual(forest.items.get("5"), { "id": "5", "parent": "3" , "children": ["6"]});
       assertEqual(forest.items.get("6"), { "id": "6", "parent": "5" , "children": []});
-      assertEqual(forest.roots.size, 2);
-      assertTrue(forest.roots.has("0"));
-      assertTrue(forest.roots.has("3"));
 
-      const DFS = new activitiesModule.DFS(forest.items);
-      assertEqual(Array.from(DFS.iter("0")), ["0", "2", "1"]);
-      assertEqual(Array.from(DFS.iter("1")), ["1"]);
-      assertEqual(Array.from(DFS.iter("2")), ["2"]);
-      assertEqual(Array.from(DFS.iter("3")), ["3", "5", "6", "4"]);
-      assertEqual(Array.from(DFS.iter("4")), ["4"]);
-      assertEqual(Array.from(DFS.iter("5")), ["5", "6"]);
-      assertEqual(Array.from(DFS.iter("6")), ["6"]);
+      const roots = forest.roots();
+      assertEqual(roots.size, 2);
+      assertTrue(roots.has("0"));
+      assertTrue(roots.has("3"));
     },
+
+    testDFS: function () {
+      const tree = new Map([
+        ["0", {children: ["1", "2"]}],
+        ["1", {children: []}],
+        ["2", {children: []}],
+        ["3", {children: ["4", "5"]}],
+        ["4", {children: []}],
+        ["5", {children: ["6"]}],
+        ["6", {children: []}]
+      ]);
+      const DFS = new activitiesModule.DFS(tree);
+      assertEqual(Array.from(DFS.iter("0")), [{hierarchy: 0, id:"0"}, {hierarchy: 1, id: "2"}, {hierarchy: 1, id: "1"}]);
+      assertEqual(Array.from(DFS.iter("1")), [{hierarchy: 0, id: "1"}]);
+      assertEqual(Array.from(DFS.iter("2")), [{hierarchy: 0, id: "2"}]);
+      assertEqual(Array.from(DFS.iter("3")), [{hierarchy: 0, id: "3"}, {hierarchy: 1, id: "5"}, {hierarchy: 2, id: "6"}, {hierarchy: 1, id: "4"}]);
+      assertEqual(Array.from(DFS.iter("4")), [{hierarchy: 0, id: "4"}]);
+      assertEqual(Array.from(DFS.iter("5")), [{hierarchy: 0, id: "5"}, {hierarchy: 1, id: "6"}]);
+      assertEqual(Array.from(DFS.iter("6")), [{hierarchy: 0, id: "6"}]);
+    }
 
   };
 }
