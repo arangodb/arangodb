@@ -476,16 +476,6 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
 arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  // mmfiles failure compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   arangodb::containers::FlatHashMap<size_t,
                                     std::vector<arangodb::aql::AstNode const*>>
       found;

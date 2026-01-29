@@ -454,75 +454,33 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
     },
 
-    testIndexNodeSkiplist2 : function () {
+    testIndexNodePersistentIndex1 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SkiplistIndex::noIterator");
+      IM.debugSetFailAt("PersistentIndex::noIterator");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
-    testIndexNodeSkiplist3 : function () {
+    testIndexNodePersistentIndex2 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SkiplistIndex::permutationEQ");
+      IM.debugSetFailAt("PersistentIndex::permutationEQ");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
-    testIndexNodeSkiplist4 : function () {
+    testIndexNodePersistentIndex3 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
       IM.debugSetFailAt("Index::permutationIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 
-    testIndexNodeSkiplist5 : function () {
+    testIndexNodePersistentIndex4 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value[*]"] });
-      IM.debugSetFailAt("SkiplistIndex::permutationArrayIN");
+      IM.debugSetFailAt("PersistentIndex::permutationArrayIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
     },
 
-    testIndexNodeSkiplist6 : function () {
+    testIndexNodePersistentIndex5 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SkiplistIndex::accessFitsIndex");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    },
-
-    testIndexNodeHashIndex1 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("HashIndex::noIterator");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    },
-
-    testIndexNodeHashIndex2 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("HashIndex::permutationEQ");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    },
-
-    testIndexNodeHashIndex3 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("Index::permutationIN");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
-    },
-
-    testIndexNodeHashIndex4 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value[*]"] });
-      IM.debugSetFailAt("HashIndex::permutationArrayIN");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
-    },
-
-    testSimpleAttributeMatcher2 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenEQ");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
-    },
-
-    testSimpleAttributeMatcher3 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenIN");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
-    },
-
-    testSimpleAttributeMatcher4 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
-      IM.debugSetFailAt("SimpleAttributeMatcher::accessFitsIndex");
+      IM.debugSetFailAt("PersistentIndex::accessFitsIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
