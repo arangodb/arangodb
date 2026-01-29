@@ -309,8 +309,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::ENUMERATE_PATHS: { // TODO: Test this
-      LOG_DEVEL << "Visiting ENUMERATE_PATHS node";
+    case ExecutionNode::ENUMERATE_PATHS: {
       auto* pathNode = ExecutionNode::castTo<EnumeratePathsNode*>(node);
 
       Projections const& edgeProjs = pathNode->options()->getEdgeProjections();
@@ -437,8 +436,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::ENUMERATE_NEAR_VECTORS: { // TODO: Test this
-      LOG_DEVEL << "Visiting ENUMERATE_NEAR_VECTORS node";
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
       auto* vectorNode = ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
       std::string collName = vectorNode->collection()->name();
 
@@ -451,8 +449,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::INDEX_COLLECT: { // TODO: Test this
-      LOG_DEVEL << "Visiting INDEX_COLLECT node";
+    case ExecutionNode::INDEX_COLLECT: {
       auto* collectNode = ExecutionNode::castTo<IndexCollectNode*>(node);
       std::string collName = collectNode->collection()->name();
 
@@ -465,8 +462,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::JOIN: { // TODO: Test this
-      LOG_DEVEL << "Visiting JOIN node";
+    case ExecutionNode::JOIN: {
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(node);
       for (auto const& idxInfo : joinNode->getIndexInfos()) {
         std::string collName = idxInfo.collection->name();
@@ -521,7 +517,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
     }
 
     case ExecutionNode::REMOTE_SINGLE: {
-      LOG_DEVEL << "Visiting REMOTE_SINGLE node";
       TRI_IF_FAILURE("AttributeDetector::REMOTE_SINGLE") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -547,8 +542,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::REMOTE_MULTIPLE: { // TODO: Test this
-      LOG_DEVEL << "Visiting REMOTE_MULTIPLE node";
+    case ExecutionNode::REMOTE_MULTIPLE: {
       TRI_IF_FAILURE("AttributeDetector::REMOTE_MULTIPLE") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -567,8 +561,7 @@ bool AttributeDetector::before(ExecutionNode* node) {
       break;
     }
 
-    case ExecutionNode::MATERIALIZE: { // TODO: Test this
-      LOG_DEVEL << "Visiting MATERIALIZE node";
+    case ExecutionNode::MATERIALIZE: {
       // Late materialization moves projections from IndexNode to MaterializeNode
       auto* matNode =
           dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
