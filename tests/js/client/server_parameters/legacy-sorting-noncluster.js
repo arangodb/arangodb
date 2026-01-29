@@ -70,14 +70,6 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                  name:"persistent_non_unique"});
   c.ensureIndex({type:"persistent", fields: [attrA, attrB], unique: true,
                  name:"persistent_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: false,
-                 name:"hash_non_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrB, attrA], unique: true,
-                 name:"hash_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrA], unique: false,
-                 name:"skiplist_non_unique"});
-  c.ensureIndex({type:"persistent", fields: [attrB], unique: false,
-                 name:"skiplist_unique"});
   try {
     c.ensureIndex({type:"mdi-prefixed", fields: ["x", "y"], prefixFields:[attrA, attrB],
                    name:"mdi_non_unique", fieldValueTypes: "double", unique: false});
