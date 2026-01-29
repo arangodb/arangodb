@@ -98,7 +98,6 @@ class SchedulerFeature;
 class TransactionCollection;
 class TransactionState;
 class VectorIndexFeature;
-class VectorIndexFeature;
 
 namespace rest {
 class RestHandlerFactory;
