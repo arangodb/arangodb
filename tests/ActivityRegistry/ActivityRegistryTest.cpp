@@ -69,7 +69,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
                         [id = a.id()](auto i) { return i.id == id; });
 
   EXPECT_NE(s, std::end(all_activities));
-  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityId{nullptr});
+  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
