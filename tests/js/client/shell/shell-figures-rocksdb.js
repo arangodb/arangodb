@@ -275,53 +275,6 @@ function FiguresSuite () {
       }
     },
     
-    testDetailedPersistentSkiplist: function () {
-      let c = db._create(cn, { numberOfShards: 4 });
-      try {
-        let idxs = [];
-        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"] }));
-        for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
-        }
-        let figures = c.figures(true).engine;
-        assertEqual(100, figures.documents);
-
-        let indexes = figures.indexes;
-        assertEqual(2, indexes.length);
-        assertEqual("primary", indexes[0].type);
-        assertEqual(0, indexes[0].id);
-        assertEqual(100, indexes[0].count);
-        assertEqual("rocksdb-persistent", indexes[1].type);
-        assertEqual(idxs[0].id, cn + '/' + indexes[1].id);
-        assertEqual(100, indexes[1].count);
-      } finally {
-        db._drop(cn);
-      }
-    },
-    
-    testDetailedPersistentSparse2: function () {
-      let c = db._create(cn, { numberOfShards: 4 });
-      try {
-        let idxs = [];
-        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"] }));
-        for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
-        }
-        let figures = c.figures(true).engine;
-        assertEqual(100, figures.documents);
-
-        let indexes = figures.indexes;
-        assertEqual(2, indexes.length);
-        assertEqual("primary", indexes[0].type);
-        assertEqual(0, indexes[0].id);
-        assertEqual(100, indexes[0].count);
-        assertEqual("rocksdb-persistent", indexes[1].type);
-        assertEqual(idxs[0].id, cn + '/' + indexes[1].id);
-        assertEqual(100, indexes[1].count);
-      } finally {
-        db._drop(cn);
-      }
-    },
     
     testDetailedTtlInvalid: function () {
       let c = db._create(cn, { numberOfShards: 4 });
