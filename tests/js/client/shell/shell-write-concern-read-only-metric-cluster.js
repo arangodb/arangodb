@@ -54,35 +54,6 @@ function WriteConcernReadOnlyMetricSuite() {
       }
     },
 
-    testLadidaMetric: function () {
-      const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
-
-      // this should work
-      c.insert({});
-      waitForShardsInSync(c.name());
-
-      // query metric, it should be zero
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
-
-      // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
-
-      // trigger a follower drop
-      c.insert({});
-
-      // one shard does not have enough in sync follower
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
-
-      // Lets drop the collection and see if the metric changes
-      db._drop(c.name());
-
-      global.instanceManager.debugClearFailAt();
-
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
-    },
-
     testCheckMetric: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
@@ -120,34 +91,29 @@ function WriteConcernReadOnlyMetricSuite() {
     testMetricAfterCollectionDrop: function () {
       db._useDatabase("_system");
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      try {
-        const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
 
-        // this should work
-        c.insert({});
-        waitForShardsInSync(c.name());
+      // this should work
+      c.insert({});
+      waitForShardsInSync(c.name());
 
-        // query metric, it should be zero
-        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      // query metric, it should be zero
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
 
-        // suspend the follower
-        global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-        global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      // suspend the follower
+      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
 
-        // trigger a follower drop
-        c.insert({});
+      // trigger a follower drop
+      c.insert({});
 
-        // one shard does not have enough in sync follower
-        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+      // one shard does not have enough in sync follower
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
 
-        // Lets drop the collection and see if the metric changes
-        db._drop(c.name());
+      // Lets drop the collection and see if the metric changes
+      db._drop(c.name());
 
-        eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
-      } finally {
-        db._drop(c.name());
-        global.instanceManager.debugClearFailAt();
-      }
+      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
     },
 
     testCheckMetricChangeWriteConcern: function () {
