@@ -34,6 +34,9 @@
 #include <utility>
 
 namespace arangodb {
+class ClusterFeature;
+class NetworkFeature;
+
 namespace cluster::rebalance {
 struct AutoRebalanceProblem;
 }
@@ -227,6 +230,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   };
 
   MoveShardCount countAllMoveShardJobs();
+
+  ClusterFeature& _clusterFeature;
+  NetworkFeature& _networkFeature;
 };
 
 template<class Inspector>

@@ -35,10 +35,14 @@
 #include <unordered_set>
 
 namespace arangodb {
+class ClusterFeature;
 class ClusterInfo;
 class CollectionNameResolver;
+class DatabaseFeature;
+class EngineSelectorFeature;
 class LogicalCollection;
 class ReplicationApplier;
+class ReplicationFeature;
 class SingleCollectionTransaction;
 
 namespace transaction {
@@ -416,6 +420,15 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                          VPackBuilder& documentToInsert);
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief cached feature references
+  //////////////////////////////////////////////////////////////////////////////
+
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  ReplicationFeature& _replicationFeature;
+  DatabaseFeature& _databaseFeature;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
   //////////////////////////////////////////////////////////////////////////////
