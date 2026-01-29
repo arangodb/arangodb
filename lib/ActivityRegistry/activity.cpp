@@ -83,4 +83,6 @@ Activity::~Activity() {
   }
 }
 
-auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
+auto Activity::id() const noexcept -> ActivityId {
+  return _node_in_registry->data.id();
+}

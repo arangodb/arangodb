@@ -164,6 +164,9 @@ class RocksDBDumpContext {
   // dump
   bool applyFilter(velocypack::Slice const& documentSlice) const;
 
+  // get the activityId of this dump context
+  activity_registry::ActivityId activityId() const noexcept;
+
   // Contains the data for a batch
   struct Batch {
     Batch(Batch const&) = delete;

@@ -132,7 +132,7 @@ struct Activity {
   Activity(std::string name, Metadata metadata, Parent parent);
   ~Activity();
 
-  auto id() -> ActivityId;
+  auto id() const noexcept -> ActivityId;
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by

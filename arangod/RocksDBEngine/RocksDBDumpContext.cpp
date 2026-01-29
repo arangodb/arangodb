@@ -363,6 +363,10 @@ bool RocksDBDumpContext::applyFilter(
   });
 }
 
+activity_registry::ActivityId RocksDBDumpContext::activityId() const noexcept {
+  return _activity.id();
+}
+
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(
     std::uint64_t batchId, std::optional<std::uint64_t> lastBatch) {
   std::unique_lock guard(_batchesMutex);

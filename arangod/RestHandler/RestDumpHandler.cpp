@@ -201,7 +201,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   // while we are using it.
 
   activity_registry::Activity fetch{
-      "dump context fetching", {{"id", id}}, {_activity->id()}};
+      "dump context fetching", {{"id", id}}, {context->activityId()}};
 
   context->extendLifetime();
 
