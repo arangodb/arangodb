@@ -358,7 +358,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 ArangoCollection.prototype.lookupUniqueConstraint = function () {
   'use strict';
 
-  // hash indexes are deprecated, look for persistent instead
   return this.lookupIndex({
     type: 'persistent',
     fields: Array.prototype.slice.call(arguments),
@@ -367,42 +366,12 @@ ArangoCollection.prototype.lookupUniqueConstraint = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a hash index
+// / @brief looks up a persistent index
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupHashIndex = function () {
   'use strict';
 
-  // hash indexes are deprecated, look for persistent instead
-  return this.lookupIndex({
-    type: 'persistent',
-    fields: Array.prototype.slice.call(arguments)
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a unique skiplist index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.lookupUniqueSkiplist = function () {
-  'use strict';
-
-  // skiplist indexes are deprecated, look for persistent instead
-  return this.lookupIndex({
-    type: 'persistent',
-    fields: Array.prototype.slice.call(arguments),
-    unique: true
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a skiplist index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.lookupSkiplist = function () {
-  'use strict';
-
-  // skiplist indexes are deprecated, look for persistent instead
   return this.lookupIndex({
     type: 'persistent',
     fields: Array.prototype.slice.call(arguments)

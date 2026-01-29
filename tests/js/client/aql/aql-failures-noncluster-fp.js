@@ -417,17 +417,7 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
     testIndexBlock5 : function () {
-      idx = c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
-      IM.debugSetFailAt("IndexBlock::readIndex");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
-    },
-
-    testIndexBlock6 : function () {
       idx = c.ensureIndex({ type: "persistent", fields: ["value"] });
       IM.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced

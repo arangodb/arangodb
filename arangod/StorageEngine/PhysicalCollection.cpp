@@ -397,9 +397,8 @@ bool PhysicalCollection::IndexOrder::operator()(
   // of index operations. Persistent index placed always AFTER reversible
   // indexes could be broken by unique constraint violation or by intentional
   // failpoint. And this will make possible to deterministically trigger index
-  // reversals. NOTE: Originally this was for hash indexes, but since hash
-  // indexes are deprecated in ArangoDB 4.0, this now uses persistent indexes.
-  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+  // reversals.
+  TRI_IF_FAILURE("PersistentIndexAlwaysLast") {
     if (left->type() != right->type()) {
       if (left->type() == Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
         return false;

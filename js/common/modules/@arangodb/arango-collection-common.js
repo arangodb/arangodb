@@ -371,7 +371,7 @@ function addIndexOptions (body, parameters) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a hash index
+// / @brief ensures a persistent index
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
@@ -390,38 +390,9 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
   'use strict';
 
-  // hash indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
     type: 'persistent',
     unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  'use strict';
-
-  // skiplist indexes are deprecated, use persistent instead
-  return this.ensureIndex(addIndexOptions({
-    type: 'persistent',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  'use strict';
-
-  // skiplist indexes are deprecated, use persistent instead
-  return this.ensureIndex(addIndexOptions({
-    type: 'persistent',
-    unique: false
   }, arguments));
 };
 
@@ -527,7 +498,7 @@ ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
   }
   options.fields = fields;
   if (!options.hasOwnProperty('type')) {
-    // Default to persistent (hash is deprecated)
+    // Default to persistent
     options.type = 'persistent';
   }
   return this.ensureIndex(options);
