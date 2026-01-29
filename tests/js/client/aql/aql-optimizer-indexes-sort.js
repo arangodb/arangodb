@@ -98,7 +98,6 @@ function optimizerIndexesSortTestSuite () {
       // create multiple indexes
       c.ensureIndex({ type: "persistent", fields: ["value"] });
       c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
 
@@ -135,7 +134,6 @@ function optimizerIndexesSortTestSuite () {
       // create multiple indexes
       c.ensureIndex({ type: "persistent", fields: ["value"] });
       c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
-      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
       waitForEstimatorSync();
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
@@ -171,7 +169,6 @@ function optimizerIndexesSortTestSuite () {
 
       // create multiple indexes
       c.ensureIndex({ type: "persistent", fields: ["value"] });
-      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
       c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
       waitForEstimatorSync();
 
@@ -268,7 +265,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // The HashIndex does not yet guarantee sorting, but we're filtering on a constant condition
+        // We're filtering on a constant condition, so the sort can be optimized away
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
       });
     },
@@ -324,7 +321,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // The HashIndex does not yet guarantee sorting, but we can optimize it away anyway
+        // We can optimize away the sort when filtering on constant conditions
         if (query[1]) {
           assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
         }
@@ -365,7 +362,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseHashIndexForSortIfConstRanges : function () {
+    testCannotUsePersistentIndexForSortIfConstRanges : function () {
       c.ensureIndex({ type: "persistent", fields: [ "value2", "value3" ] });
 
       var queries = [
@@ -386,7 +383,7 @@ function optimizerIndexesSortTestSuite () {
         });
 
         assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        // stil can optimize away the sort node as we're filtering on constant values
+        // still can optimize away the sort node as we're filtering on constant values
         if (query[1]) {
           assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
         }
@@ -400,7 +397,7 @@ function optimizerIndexesSortTestSuite () {
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseHashIndexForSortIfConstRangesMoreRocksDB : function () {
+    testCannotUsePersistentIndexForSortIfConstRangesMore : function () {
       c.ensureIndex({ type: "persistent", fields: [ "value2", "value3", "value4" ] });
 
       var queries = [
@@ -442,7 +439,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoHashIndexForSort : function () {
+    testNoPersistentIndexForSort : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
@@ -468,7 +465,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoHashIndexForSortDifferentVariable : function () {
+    testNoPersistentIndexForSortDifferentVariable : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
@@ -493,7 +490,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForSortIfConstRanges : function () {
+    testUsePersistentIndexForSortIfConstRanges : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
@@ -536,7 +533,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCanUseSkiplistIndexForSortIfConstRanges : function () {
+    testCanUsePersistentIndexForSortIfConstRanges : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
@@ -582,7 +579,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseSkiplistIndexForSortIfConstRanges : function () {
+    testCannotUsePersistentIndexForSortIfConstRanges2 : function () {
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3", "value4"] });
 
       var queries = [
@@ -606,7 +603,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoSkiplistIndexForSort : function () {
+    testNoPersistentIndexForSort2 : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });
@@ -633,7 +630,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNoSkiplistIndexForSortDifferentVariable : function () {
+    testNoPersistentIndexForSortDifferentVariable2 : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       c.ensureIndex({ type: "persistent", fields: ["value2", "value3"] });

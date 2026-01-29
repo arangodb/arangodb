@@ -91,7 +91,7 @@ function optimizeNonVertexCentricIndexesSuite() {
       }
     },
 
-    testUniqueHashIndex: () => {
+    testUniquePersistentIndex: () => {
       var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
@@ -103,7 +103,7 @@ function optimizeNonVertexCentricIndexesSuite() {
         return node.type === 'TraversalNode';
       });
       assertEqual(1, exp.length);
-      // Check if we did use the hash index on level 0
+      // Check if we did use the persistent index on level 0
       let indexes = exp[0].indexes;
       let found = indexes.levels['0'];
       assertEqual(1, found.length);
@@ -115,31 +115,7 @@ function optimizeNonVertexCentricIndexesSuite() {
       assertEqual(result[0], vertices.B);
     },
 
-    testUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
-      // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
-      FILTER p.edges[0].foo == 'A'
-      RETURN v._id`;
-      waitForEstimatorSync();
-
-      let exp = explain(q, {}).plan.nodes.filter(node => {
-        return node.type === 'TraversalNode';
-      });
-      assertEqual(1, exp.length);
-      // Check if we did use the hash index on level 0
-      let indexes = exp[0].indexes;
-      let found = indexes.levels['0'];
-      assertEqual(1, found.length);
-      found = found[0];
-      assertEqual(idx.type, found.type);
-      assertEqual(idx.fields, found.fields);
-
-      let result = db._query(q).toArray();
-      assertEqual(result[0], vertices.B);
-    },
-
-    testAllUniqueHashIndex: () => {
+    testAllUniquePersistentIndex: () => {
       var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
@@ -150,30 +126,7 @@ function optimizeNonVertexCentricIndexesSuite() {
         return node.type === 'TraversalNode';
       });
       assertEqual(1, exp.length);
-      // Check if we did use the hash index on level 0
-      let indexes = exp[0].indexes;
-      let found = indexes.base;
-      assertEqual(1, found.length);
-      found = found[0];
-      assertEqual(idx.type, found.type);
-      assertEqual(idx.fields, found.fields);
-
-      let result = db._query(q).toArray();
-      assertEqual(result[0], vertices.B);
-    },
-
-    testAllUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'persistent', fields: ['foo'], unique: true, sparse: false});
-      // This index is assumed to be better than edge-index, but does not contain _from/_to
-      let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
-      FILTER p.edges[*].foo ALL == 'A'
-      RETURN v._id`;
-
-      let exp = explain(q, {}).plan.nodes.filter(node => {
-        return node.type === 'TraversalNode';
-      });
-      assertEqual(1, exp.length);
-      // Check if we did use the hash index on level 0
+      // Check if we did use the persistent index on level 0
       let indexes = exp[0].indexes;
       let found = indexes.base;
       assertEqual(1, found.length);
