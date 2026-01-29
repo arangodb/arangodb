@@ -2496,12 +2496,6 @@ void RocksDBVPackIndex::buildSearchValues(
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("HashIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
 
   if (format == RocksDBVPackIndexSearchValueFormat::kDetect) {
     // if we haven't seen any complex condition, we can go with the
