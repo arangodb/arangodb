@@ -61,7 +61,7 @@ struct Registry::ScopedCurrentActivity {
 };
 
 template<typename Func>
-auto withCurrentActivity(ActivityId activity, Func&& func) {
+auto withSetCurrentActivity(ActivityId activity, Func&& func) {
   return [func = std::forward<Func>(func),
           activity]<typename... Args,
                     typename =
@@ -74,7 +74,7 @@ auto withCurrentActivity(ActivityId activity, Func&& func) {
 
 template<typename Func>
 auto withCurrentActivity(Func&& func) {
-  return withCurrentActivity(Registry::currentActivity(), std::move(func));
+  return withSetCurrentActivity(Registry::currentActivity(), std::move(func));
 }
 
 }  // namespace arangodb::activity_registry

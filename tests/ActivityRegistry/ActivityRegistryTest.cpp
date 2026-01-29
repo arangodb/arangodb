@@ -149,18 +149,63 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                                             .parent = {ActivityRoot}})}));
 }
 
-TEST_F(ActivityRegistryTest, scope_sets_activity) {
+TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {
+  auto a = Activity("activity", {});
+
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  {
+    auto scopeGuard = Registry::ScopedCurrentActivity(a.id());
+    EXPECT_EQ(Registry::currentActivity(), a.id());
+  }
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
+  auto a = Activity("activity1", {});
+  auto b = Activity("activity2", {});
+
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  {
+    auto outerScopeGuard = Registry::ScopedCurrentActivity(a.id());
+    EXPECT_EQ(Registry::currentActivity(), a.id());
+
+    {
+      auto innerScopeGuard = Registry::ScopedCurrentActivity(b.id());
+      EXPECT_EQ(Registry::currentActivity(), b.id());
+    }
+
+    EXPECT_EQ(Registry::currentActivity(), a.id());
+  }
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, with_set_current_activity) {
   auto a = Activity("activity to be in scope", {});
 
-  auto scoped = withCurrentActivity(
+  auto scoped = withSetCurrentActivity(
       a.id(), [id = a.id()]() { EXPECT_EQ(Registry::currentActivity(), id); });
 
   auto b = Activity("activity to be current", {});
-  Registry::setCurrentActivity(b.id());
+  auto scopeGuard = Registry::ScopedCurrentActivity(b.id());
 
   EXPECT_EQ(Registry::currentActivity(), b.id());
 
   scoped();
 
   EXPECT_EQ(Registry::currentActivity(), b.id());
+}
+
+TEST_F(ActivityRegistryTest, with_current_activity) {
+  auto outer = Activity("outer activity", {});
+  auto inner = Activity("inner activity", {});
+
+  auto outerGuard = Registry::ScopedCurrentActivity(outer.id());
+  auto testee = withCurrentActivity([id = Registry::currentActivity()]() {
+    EXPECT_EQ(Registry::currentActivity(), id);
+  });
+
+  {
+    auto innerGuard = Registry::ScopedCurrentActivity(inner.id());
+    testee();
+  }
 }
