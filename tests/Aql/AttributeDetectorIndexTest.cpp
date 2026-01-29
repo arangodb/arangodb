@@ -626,4 +626,110 @@ TEST_F(AttributeDetectorTest, IndexMissingAttributeStillRecorded3) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
+// Sorted join pattern with index lookup
+TEST_F(AttributeDetectorTest, SortedJoinPattern) {
+  ensureHashIndex("users", "_key");
+  ensureHashIndex("posts", "userId");
+
+  auto query = executeQuery(R"aql(
+    FOR u IN users
+      SORT u._key
+      FOR p IN posts
+        FILTER u._key == p.userId
+        RETURN {userName: u.name, postTitle: p.title}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 2);
+
+  for (auto const& a : accesses) {
+    if (a.collectionName == "users") {
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("_key", query->resourceMonitor())));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("name", query->resourceMonitor())));
+    } else if (a.collectionName == "posts") {
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("userId", query->resourceMonitor())));
+      EXPECT_TRUE(a.readAttributes.contains(
+          makePath("title", query->resourceMonitor())));
+    }
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+}
+
+// COLLECT with multiple grouping fields
+TEST_F(AttributeDetectorTest, CollectMultipleGroupFields) {
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      COLLECT cat = p.category, n = p.name
+      RETURN {category: cat, name: n}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", query->resourceMonitor())));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// COLLECT with aggregation function
+TEST_F(AttributeDetectorTest, CollectWithAggregateMax) {
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      COLLECT cat = p.category
+      AGGREGATE maxPrice = MAX(p.price)
+      RETURN {category: cat, maxPrice}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", query->resourceMonitor())));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// Index filter returning non-indexed attributes
+TEST_F(AttributeDetectorTest, IndexFilterWithNonIndexedReturn) {
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      FILTER p.name == "Keyboard"
+      RETURN {cat: p.category, price: p.price}
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("category", query->resourceMonitor())));
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("price", query->resourceMonitor())));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
+// Index filter returning full document
+TEST_F(AttributeDetectorTest, IndexFilterFullDocumentReturn) {
+  auto query = executeQuery(R"aql(
+    FOR p IN products
+      FILTER p.price > 20
+      RETURN p
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_EQ(accesses.size(), 1);
+  EXPECT_EQ(accesses[0].collectionName, "products");
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
+}
+
 }  // namespace arangodb::tests::aql
