@@ -95,8 +95,7 @@ TEST_F(AttributeDetectorTest, TraversalReturnVertexDocument_StoreGraph) {
           makePath("_from", query->resourceMonitor())));
       EXPECT_TRUE(
           a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
-      EXPECT_FALSE(
-          a.requiresAllAttributesRead);
+      EXPECT_FALSE(a.requiresAllAttributesRead);
     } else {
       // vertices: stores + products
       EXPECT_TRUE(a.requiresAllAttributesRead);
@@ -304,6 +303,66 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
 
   EXPECT_TRUE(seenSells);
   EXPECT_TRUE(seenOrdered);
+}
+
+// ENUMERATE_PATHS node: K_SHORTEST_PATHS
+TEST_F(AttributeDetectorTest, KShortestPathsReturnPath) {
+  auto query = executeQuery(R"aql(
+    FOR p IN OUTBOUND K_SHORTEST_PATHS "users/u1" TO "products/p3" ordered
+      RETURN p
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_GE(accesses.size(), 1);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("ordered"));
+}
+
+// ENUMERATE_PATHS node: K_PATHS with depth
+TEST_F(AttributeDetectorTest, KPathsReturnPath) {
+  auto query = executeQuery(R"aql(
+    FOR p IN 1..3 OUTBOUND K_PATHS "users/u1" TO "products/p3" ordered
+      RETURN p
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_GE(accesses.size(), 1);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("ordered"));
+}
+
+// ENUMERATE_PATHS node: ALL_SHORTEST_PATHS
+TEST_F(AttributeDetectorTest, AllShortestPathsReturnPath) {
+  auto query = executeQuery(R"aql(
+    FOR p IN OUTBOUND ALL_SHORTEST_PATHS "users/u1" TO "products/p3" ordered
+      RETURN p
+  )aql");
+
+  auto const& accesses = query->abacAccesses();
+  ASSERT_GE(accesses.size(), 1);
+
+  std::set<std::string> seen;
+  for (auto const& a : accesses) {
+    seen.insert(a.collectionName);
+    EXPECT_TRUE(a.requiresAllAttributesRead);
+    EXPECT_FALSE(a.requiresAllAttributesWrite);
+  }
+
+  EXPECT_TRUE(seen.contains("ordered"));
 }
 
 }  // namespace arangodb::tests::aql
