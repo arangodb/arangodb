@@ -451,6 +451,7 @@ void FollowerInfo::clear() {
 
 void FollowerInfo::clearWriteConcernMetric() {
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(writeLocker, _dataLock);
   _writeConcernReached.clear();
 }
 
