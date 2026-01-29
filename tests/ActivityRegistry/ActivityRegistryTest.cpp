@@ -73,6 +73,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
   Registry::setCurrentActivity(a.id());
 
@@ -83,6 +84,7 @@ TEST_F(ActivityRegistryTest, sets_current_activity) {
 
 TEST_F(ActivityRegistryTest,
        a_base_activity_creates_a_root_activity_with_additional_information) {
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
   auto activity =
       Activity{"test activity", {{"id", "1234"}, {"some_other_key", "value"}}};
 
@@ -181,9 +183,12 @@ TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
 
 TEST_F(ActivityRegistryTest, with_set_current_activity) {
   auto a = Activity("activity to be in scope", {});
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
 
   auto scoped = withSetCurrentActivity(
       a.id(), [id = a.id()]() { EXPECT_EQ(Registry::currentActivity(), id); });
+
+  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
 
   auto b = Activity("activity to be current", {});
   auto scopeGuard = Registry::ScopedCurrentActivity(b.id());
