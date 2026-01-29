@@ -84,6 +84,7 @@ function activityRegistryModuleSuite() {
       assertTrue(lines.includes('── ActivityRegistryRestHandler: {"method":"GET","url":"/_admin/activity-registry"}'), JSON.stringify(lines));
       assertTrue(lines.includes('── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}'), JSON.stringify(lines));
     },
+
     testShowsDependenciesAsTrees: function () {
       const activities = [
         {
@@ -100,9 +101,7 @@ function activityRegistryModuleSuite() {
           "id": "0x766238412000",
           "name": "dump context",
           "state": "Active",
-          "parent": {
-            "id": "0x76620a63b140"
-          },
+          "parent": "0x76620a63b140",
           "metadata": {
             "database": "_system",
             "user": "root",
@@ -110,28 +109,15 @@ function activityRegistryModuleSuite() {
           }
         }
       ];
-      // const lines = activitiesModule.pretty_print(activities).split('\n');
-      // assertEqual(lines.length, 2);
-      // assertEqual(lines[0], '── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}');
-      // assertEqual(lines[1], '   └── dump context: {"database":"_system","user":"root","id":"dump-1855655160184832000"}');
-
-      const forest = activitiesModule.createForest(activities);
-      for (const item of forest.iter()) {
-        print(item);
-      }
-      // print(JSON.stringify(Array.from(forest.roots)));
-      // const DFS = new activitiesModule.DFS(forest.items);
-      // for (root of forest.roots.keys()) {
-      //   print(`----- ${root}`);
-      //   for (item of DFS.iter(root)) {
-      //     print(item);
-      //   }
-      // }
+      const lines = activitiesModule.pretty_print(activities).split('\n');
+      assertEqual(lines.length, 2);
+      assertEqual(lines[0], '── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}');
+      assertEqual(lines[1], '   └── dump context: {"database":"_system","user":"root","id":"dump-1855655160184832000"}');
     },
 
     testForest: function () {
       const forest = activitiesModule.createForest([
-        { "id": "0", "parent": null },
+        { "id": "0"},
         { "id": "1", "parent": "0" },
         { "id": "2", "parent": "0" },
         { "id": "3", "parent": "9" },
@@ -140,7 +126,7 @@ function activityRegistryModuleSuite() {
         { "id": "6", "parent": "5" },
       ]);
       assertEqual(forest.items.size, 7);
-      assertEqual(forest.items.get("0"), { "id": "0", "parent": null, "children": ["1","2"] });
+      assertEqual(forest.items.get("0"), { "id": "0", "children": ["1","2"] });
       assertEqual(forest.items.get("1"), { "id": "1", "parent": "0" , "children": []});
       assertEqual(forest.items.get("2"), { "id": "2", "parent": "0" , "children": []});
       assertEqual(forest.items.get("3"), { "id": "3", "parent": "9" , "children": ["4", "5"]});
@@ -152,28 +138,58 @@ function activityRegistryModuleSuite() {
       assertEqual(roots.size, 2);
       assertTrue(roots.has("0"));
       assertTrue(roots.has("3"));
+
+      assertEqual(Array.from(forest.iter()), [
+        {hierarchy: 0, item: {id: "0", children: ["1", "2"]}},
+        {hierarchy: 1, item: {id: "2", parent: "0", children: []}},
+        {hierarchy: 1, item: {id: "1", parent: "0", children: []}},
+        {hierarchy: 0, item: {id: "3", parent: "9", children: ["4", "5"]}},
+        {hierarchy: 1, item: {id: "5", parent: "3", children: ["6"]}},
+        {hierarchy: 2, item: {id: "6", parent: "5", children: []}},
+        {hierarchy: 1, item: {id: "4", parent: "3", children: []}}
+      ]);
     },
 
     testDFS: function () {
       const tree = new Map([
-        ["0", {children: ["1", "2"]}],
-        ["1", {children: []}],
-        ["2", {children: []}],
-        ["3", {children: ["4", "5"]}],
-        ["4", {children: []}],
-        ["5", {children: ["6"]}],
-        ["6", {children: []}]
+        ["0", {"id": "0", children: ["1", "2"]}],
+        ["1", {"id": "1", children: []}],
+        ["2", {"id": "2", children: []}],
+        ["3", {"id": "3", children: ["4", "5"]}],
+        ["4", {"id": "4", children: []}],
+        ["5", {"id": "5", children: ["6"]}],
+        ["6", {"id": "6", children: []}]
       ]);
       const DFS = new activitiesModule.DFS(tree);
-      assertEqual(Array.from(DFS.iter("0")), [{hierarchy: 0, id:"0"}, {hierarchy: 1, id: "2"}, {hierarchy: 1, id: "1"}]);
-      assertEqual(Array.from(DFS.iter("1")), [{hierarchy: 0, id: "1"}]);
-      assertEqual(Array.from(DFS.iter("2")), [{hierarchy: 0, id: "2"}]);
-      assertEqual(Array.from(DFS.iter("3")), [{hierarchy: 0, id: "3"}, {hierarchy: 1, id: "5"}, {hierarchy: 2, id: "6"}, {hierarchy: 1, id: "4"}]);
-      assertEqual(Array.from(DFS.iter("4")), [{hierarchy: 0, id: "4"}]);
-      assertEqual(Array.from(DFS.iter("5")), [{hierarchy: 0, id: "5"}, {hierarchy: 1, id: "6"}]);
-      assertEqual(Array.from(DFS.iter("6")), [{hierarchy: 0, id: "6"}]);
+      assertEqual(Array.from(DFS.iter("0")), [
+        {hierarchy: 0, item: {"id": "0", children: ["1", "2"]}},
+        {hierarchy: 1, item: {"id": "2", children: []}},
+        {hierarchy: 1, item: {"id": "1", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("1")), [
+        {hierarchy: 0, item: {"id": "1", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("2")), [
+        {hierarchy: 0, item: {"id": "2", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("3")), [
+        {hierarchy: 0, item: {"id": "3", children: ["4", "5"]}},
+        {hierarchy: 1, item: {"id": "5", children: ["6"]}},
+        {hierarchy: 2, item: {"id": "6", children: []}},
+        {hierarchy: 1, item: {"id": "4", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("4")), [
+        {hierarchy: 0, item: {"id": "4", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("5")), [
+        {hierarchy: 0, item: {"id": "5", children: ["6"]}},
+        {hierarchy: 1, item: {"id": "6", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("6")), [
+        {hierarchy: 0, item: {"id": "6", children: []}}
+      ]);
+      assertEqual(Array.from(DFS.iter("100")), []);
     }
-
   };
 }
 

@@ -38,15 +38,32 @@ exports.get_snapshot = function (server) {
   return result;
 };
 
-exports.pretty_print = function (activities) {
-  // TODO put them in a forest structure
-  
-  // TODO traverse each tree in pre-order
-  // TODO how to be able to print items with stale parents (have no root)
-  return activities
-    .map((a) => `── ${a.name}: ${JSON.stringify(a.metadata)}`)
-    .join("\n");
+// TODO add also stuff like ├ and │ for continuations
+function branch_symbol(hierarchy) {
+  if (hierarchy === 0) {
+    return "──";
+  }
+  return `${Array(3*hierarchy+1).join(" ")}└──`; 
 }
+
+// TODO: parent needs to be null or directly id instead of object
+exports.pretty_print = function (activities) {
+  const forest = exports.createForest(activities);
+  return Array.from(forest.iter())
+    .map(({hierarchy, item}) => `${branch_symbol(hierarchy)} ${item.name}: ${JSON.stringify(item.metadata)}`)
+    .join('\n');
+}
+
+exports.createForest = function (activities) {
+  const groupedByParent = Map.groupBy(activities, (a) => a.parent); // parent_id -> [child activity, child activity]
+  const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
+  const leaves = new Map(activities.map((a) => {
+    return [a.id, {...a, children: children.get(a.id) ?? []}];
+  }));
+  return new exports.Forest(leaves);
+}
+
+// general structs
 
 exports.DFS = class DFS {
   constructor(items) {
@@ -57,8 +74,12 @@ exports.DFS = class DFS {
   
     while (stack.length > 0) {
       let {hierarchy, id} = stack.pop();
-      this.items.get(id).children.forEach((c) => stack.push({hierarchy: hierarchy+1, id:c}));
-      yield {hierarchy, id}
+      const item = this.items.get(id);
+      if (item === undefined) {
+        return;
+      }
+      item.children.forEach((c) => stack.push({hierarchy: hierarchy+1, id:c}));
+      yield {hierarchy, item}
     }
   }
 };
@@ -68,7 +89,6 @@ exports.Forest = class Forest {
     this.items = items;
   }
   * iter() {
-
     let dfs = new exports.DFS(this.items);
     for (const root of this.roots()) {
       for (const item of dfs.iter(root)) {
@@ -82,11 +102,3 @@ exports.Forest = class Forest {
   }
 };
 
-exports.createForest = function (activities) {
-  const groupedByParent = Map.groupBy(activities, (a) => a.parent); // parent_id -> [child activity, child activity]
-  const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
-  const leaves = new Map(activities.map((a) => {
-    return [a.id, {...a, children: children.get(a.id) ?? []}];
-  }));
-  return new exports.Forest(leaves);
-}
