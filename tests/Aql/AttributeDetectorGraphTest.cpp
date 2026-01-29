@@ -150,6 +150,21 @@ TEST_F(AttributeDetectorTest, TwoTraversalsAcrossTwoGraphs_StoreThenTestGraph) {
   for (auto const& a : accesses) {
     seen.insert(a.collectionName);
     EXPECT_FALSE(a.requiresAllAttributesWrite);
+    if (a.collectionName == "ordered" || a.collectionName == "sells") {
+      EXPECT_TRUE(a.readAttributes.contains(
+        makePath("_from", query->resourceMonitor())));
+    EXPECT_TRUE(
+        a.readAttributes.contains(makePath("_to", query->resourceMonitor())));
+    EXPECT_FALSE(
+        a.requiresAllAttributesRead);
+    } else {
+      EXPECT_EQ(a.readAttributes.size(), 1);
+      LOG_DEVEL << "Collection: " << a.collectionName;
+      for (auto const& attr : a.readAttributes) {
+        LOG_DEVEL << attr;
+      }
+      EXPECT_TRUE(a.readAttributes.contains(makePath("_key", query->resourceMonitor())));
+    }
   }
 
   EXPECT_TRUE(seen.contains("stores"));
@@ -264,7 +279,7 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
   // Graph traversal touches vertex collections for navigation
   // Edge collections: sells, ordered
   // Vertex collections may also appear due to graph structure
-  ASSERT_GE(accesses.size(), 2);
+  ASSERT_EQ(accesses.size(), 2);
 
   bool seenSells = false;
   bool seenOrdered = false;
@@ -275,11 +290,13 @@ TEST_F(AttributeDetectorTest, TwoGraphs_MultiHop_EdgesOnly_NoVertexProduction) {
       EXPECT_TRUE(a.readAttributes.contains(
           makePath("stock", query->resourceMonitor())));
       EXPECT_FALSE(a.requiresAllAttributesWrite);
+      EXPECT_FALSE(a.requiresAllAttributesRead);
     } else if (a.collectionName == "ordered") {
       seenOrdered = true;
       EXPECT_TRUE(
           a.readAttributes.contains(makePath("qty", query->resourceMonitor())));
       EXPECT_FALSE(a.requiresAllAttributesWrite);
+      EXPECT_FALSE(a.requiresAllAttributesRead);
     }
     // Vertex collections may also appear - that's expected for graph traversal
   }
