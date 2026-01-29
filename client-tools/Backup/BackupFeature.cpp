@@ -157,7 +157,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now - start;
     return (static_cast<double>(duration.count()) /
-            decltype(duration)::period::den* decltype(duration)::period::num);
+            decltype(duration)::period::den * decltype(duration)::period::num);
   };
 
   LOG_TOPIC("0dfda", INFO, arangodb::Logger::BACKUP)
@@ -688,10 +688,9 @@ arangodb::Result executeTransfer(
 namespace arangodb {
 
 BackupFeature::BackupFeature(application_features::ApplicationServer& server,
-                             int& exitCode)
+                             ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::BACKUP},
+      _clientManager{client, Logger::BACKUP},
       _exitCode{exitCode} {
   setOptional(false);
   startsAfter<HttpEndpointProvider>();

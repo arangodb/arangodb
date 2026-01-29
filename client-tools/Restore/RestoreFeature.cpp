@@ -1903,10 +1903,9 @@ Result RestoreFeature::RestoreSendJob::run(
 }
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
-                               int& exitCode)
+                               ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::RESTORE},
+      _clientManager{client, Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);

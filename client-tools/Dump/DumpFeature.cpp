@@ -770,10 +770,9 @@ Result DumpFeature::DumpShardJob::run(
 }
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server,
-                         int& exitCode)
+                         ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::DUMP},
+      _clientManager{client, Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);

@@ -38,6 +38,9 @@
 #include <vector>
 
 namespace arangodb {
+
+class ClientFeature;
+
 namespace httpclient {
 class SimpleHttpClient;
 }
@@ -46,7 +49,8 @@ class DumpFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Dump"; }
 
-  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer& server,
+              ClientFeature& client, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(

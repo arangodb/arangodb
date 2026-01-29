@@ -29,11 +29,14 @@
 
 namespace arangodb {
 
+class ClientFeature;
+
 class BackupFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Backup"; }
 
-  BackupFeature(application_features::ApplicationServer& server, int& exitCode);
+  BackupFeature(application_features::ApplicationServer& server,
+                ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(
