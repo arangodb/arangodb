@@ -463,6 +463,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
     case ExecutionNode::ENUMERATE_NEAR_VECTORS:
+    case ExecutionNode::ENUMERATE_NEIGHBOURS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -512,6 +513,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
     case ExecutionNode::ENUMERATE_NEAR_VECTORS:
+    case ExecutionNode::ENUMERATE_NEIGHBOURS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -534,6 +536,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::COLLECT:
+    case ExecutionNode::ENUMERATE_NEIGHBOURS:
       return true;
     case ExecutionNode::SINGLETON:
     case ExecutionNode::SUBQUERY_START:

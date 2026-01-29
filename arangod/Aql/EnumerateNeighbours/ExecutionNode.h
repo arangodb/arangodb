@@ -34,7 +34,9 @@ struct ExecutionNode : public ::arangodb::aql::ExecutionNode {
   ~ExecutionNode();
 
   /// @brief return the type of the node
-  NodeType getType() const override final;
+  NodeType getType() const override final {
+    return ::arangodb::aql::ExecutionNode::NodeType::ENUMERATE_NEIGHBOURS;
+  };
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -43,6 +45,10 @@ struct ExecutionNode : public ::arangodb::aql::ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ::arangodb::aql::ExecutionNode* clone(
       ExecutionPlan* plan, bool withDependencies) const override final;
+
+  size_t getMemoryUsedBytes() const override { return 0; }
+  void doToVelocyPack(velocypack::Builder&, unsigned flags) const override {}
+  CostEstimate estimateCost() const override { return CostEstimate(0.0, 1000); }
 };
 
 }  // namespace arangodb::aql::enumerate_neighbours

@@ -83,7 +83,7 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-frozen::unordered_map<int, std::string_view, 38> const kTypeNames{
+frozen::unordered_map<int, std::string_view, 40> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
@@ -129,6 +129,8 @@ frozen::unordered_map<int, std::string_view, 38> const kTypeNames{
     {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_NEAR_VECTORS),
      "EnumerateNearVectorNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_NEIGHBOURS),
+     "EnumerateNeighbours"},
 };
 
 }  // namespace
@@ -204,8 +206,9 @@ std::string_view ExecutionNode::getTypeString(NodeType type) {
     return (*it).second;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing type in TypeNames");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      std::format("missing type {} in TypeNames", static_cast<int>(type)));
 }
 
 /// @brief returns the type name of the node
@@ -1617,6 +1620,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case MATERIALIZE:
     case OFFSET_INFO_MATERIALIZE:
     case RETURN:
+    case ENUMERATE_NEIGHBOURS:
       return true;
     case CALCULATION:
     case SUBQUERY:

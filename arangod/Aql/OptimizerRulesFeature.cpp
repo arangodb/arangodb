@@ -434,6 +434,14 @@ loading the vertex documents if they are not accessed in the query.)");
                R"(Replace or remove `FilterNode` if the filter conditions are
 already covered by `TraversalNode`.)");
 
+  // rewrite 1-step traversal to enumerate neighbours
+  registerRule("one-step-traversal", enumerateNeighboursRule,
+               OptimizerRule::enumerateNeighboursRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden),
+               R"(Execute 1-step traversals more efficiently)");
+
   // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,

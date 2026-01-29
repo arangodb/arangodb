@@ -5061,6 +5061,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::WINDOW:
         case EN::MATERIALIZE:
         case EN::OFFSET_INFO_MATERIALIZE:
+        case EN::ENUMERATE_NEIGHBOURS:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -7640,6 +7641,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::ENUMERATE_NEAR_VECTORS:
+    case ExecutionNode::ENUMERATE_NEIGHBOURS:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SORT:

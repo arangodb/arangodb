@@ -101,6 +101,8 @@ struct OptimizerRule {
     // ========================================================
     replaceNearWithinFulltext,
 
+    enumerateNeighboursRule,
+
     inlineSubqueriesRule,
 
     replaceLikeWithRange,

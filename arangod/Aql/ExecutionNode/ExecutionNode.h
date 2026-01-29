@@ -159,7 +159,7 @@ class ExecutionNode {
     JOIN = 37,
     ENUMERATE_NEAR_VECTORS = 38,
     INDEX_COLLECT = 39,
-
+    ENUMERATE_NEIGHBOURS = 40,
     MAX_NODE_TYPE_VALUE
   };
 

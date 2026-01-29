@@ -1092,6 +1092,10 @@ std::vector<aql::Collection*> const& GraphNode::edgeColls() const {
   return _edgeColls;
 }
 
+std::vector<TRI_edge_direction_e> const& GraphNode::edgeDirections() const {
+  return _directions;
+}
+
 std::vector<aql::Collection*> const& GraphNode::vertexColls() const {
   return _vertexColls;
 }

@@ -1,2 +1,4 @@
 target_sources(arango_aql PRIVATE
-  ExecutionNode.cpp) 
+  ExecutionNode.cpp
+  Executor.cpp
+  OptimizerRule.cpp) 

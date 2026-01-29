@@ -33,4 +33,14 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
 ExecutionNode::~ExecutionNode() {}
 
+std::unique_ptr<ExecutionBlock> ExecutionNode::createBlock(
+    ExecutionEngine& engine) const {
+  ADB_PROD_CRASH() << "implement ExecutionNode::createBlock";
+}
+
+::arangodb::aql::ExecutionNode* ExecutionNode::clone(
+    ExecutionPlan* plan, bool withDependencies) const {
+  ADB_PROD_CRASH() << "implement ExecutionNode::clone";
+}
+
 }  // namespace arangodb::aql::enumerate_neighbours
