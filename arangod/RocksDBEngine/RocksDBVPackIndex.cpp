@@ -2580,12 +2580,6 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       TRI_IF_FAILURE("PersistentIndex::permutationEQ") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("SkiplistIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("HashIndex::permutationEQ") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
     } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // complex condition. adjust format!
       format = RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues;
@@ -2594,12 +2588,6 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       if (isAttributeExpanded(usedFields)) {
         searchValues.add(VPackValue(StaticStrings::IndexEq));
         TRI_IF_FAILURE("PersistentIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("SkiplistIndex::permutationArrayIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("HashIndex::permutationArrayIN") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       } else {

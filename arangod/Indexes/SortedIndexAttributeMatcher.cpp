@@ -202,12 +202,6 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
       TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      TRI_IF_FAILURE("HashIndex::accessFitsIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
 
       return true;
     }
