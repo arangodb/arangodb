@@ -255,7 +255,6 @@ class instance {
 
   setThisConnectionHandle() {
     this.connectionHandle = arango.getConnectionHandle();
-    print(this.connectionHandle, arango.getEndpoint(), this.endpoint)
   }
   isRole(compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
@@ -310,7 +309,6 @@ class instance {
       try {
         Object.keys(table).forEach(handle => {
           let active = table[handle]['active'] || handle === currentHandle;
-          print(handle)
           resultTable.addRow([
             (active)? "*": "",
             handle,
@@ -322,7 +320,7 @@ class instance {
           ]);
         });
       } catch (ex) {
-        print(ex)
+        print(ex);
       }
       print(CYAN + resultTable.toString() + RESET);
     }
@@ -792,7 +790,6 @@ class instance {
                                  true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
-              print(this.connectionHandle, arango.getEndpoint(), this.endpoint)
               this.dumpConnectionTable();
             }
           } else {
@@ -803,7 +800,6 @@ class instance {
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
-              print(this.connectionHandle, arango.getEndpoint(), this.endpoint)
               this.dumpConnectionTable();
             }
           }
@@ -858,17 +854,13 @@ class instance {
     if (this.JWT) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
-      print(ret)
       this.connectionHandle = arango.getConnectionHandle();
-      print(this.connectionHandle, arango.getEndpoint(), this.endpoint)
       this.dumpConnectionTable();
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
-      print(ret)
       this.connectionHandle = arango.getConnectionHandle();
-      print(this.connectionHandle, arango.getEndpoint(), this.endpoint)
       this.dumpConnectionTable();
       return ret;
     }
