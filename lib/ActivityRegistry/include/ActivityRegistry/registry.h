@@ -74,14 +74,7 @@ auto withCurrentActivity(ActivityId activity, Func&& func) {
 
 template<typename Func>
 auto withCurrentActivity(Func&& func) {
-  return [func = std::forward<Func>(func),
-          currentActivity = Registry::currentActivity()]<
-             typename... Args,
-             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-             Args&&... args) mutable {
-    Registry::ScopedCurrentActivity guard(currentActivity);
-    return std::forward<Func>(func)(std::forward<Args>(args)...);
-  };
+  return withCurrentActivity(Registry::currentActivity(), std::move(func));
 }
 
 }  // namespace arangodb::activity_registry
