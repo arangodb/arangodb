@@ -50,15 +50,26 @@ exports.pretty_print = function (activities) {
 
 exports.createForest = function (activities) {
   const groupedByParent = Map.groupBy(activities, (a) => a.parent); // parent_id -> [child activity, child activity]
-  // print(`children: ${JSON.stringify(Array.from(children))}`);
-  // const children = Array.from(items.keys()).map((a) => {;
-                                        // return new Object({id: a, children: c == undefined ? undefined: c.map((c) => c.id)})});
-  // not needed
   const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
-  const leaves = new Map(activities.map((a) => [a.id, {...a, children: children.get(a.id)}]));
+  const leaves = new Map(activities.map((a) => {
+    return [a.id, {...a, children: children.get(a.id) ?? []}];
+  }));
   const non_roots = new Set(Array.from(leaves.values()).filter((a) => a.children !== undefined).map((a) => a.children).flat(1));
   const roots = new Set(Array.from(leaves.keys()).filter((a) => !non_roots.has(a)));
   return {items: leaves, roots};
-  
-  // each item is first a root (also if it has a parent) and is only removed from roots if its parent is really found
 }
+
+exports.DFS = class DFS {
+  constructor(items) {
+    this.items = items;
+  }
+  * iter(start) {
+    let stack = [start];
+  
+    while (stack.length > 0) {
+      let id = stack.pop();
+      this.items.get(id).children.forEach((c) => stack.push(c));
+      yield id;
+    }
+  }
+};

@@ -125,16 +125,28 @@ function activityRegistryModuleSuite() {
         { "id": "5", "parent": "3" },
         { "id": "6", "parent": "5" },
       ]);
-      assertEqual(forest.items, new Map([["0", { "id": "0", "parent": null, "children": [] }] , ["1", { "id": "1", "parent": "0" }], ["2", { "id": "2", "parent": "0" }], ["3", { "id": "3", "parent": "9" }], ["4", { "id": "4", "parent": "3" }], ["5", { "id": "5", "parent": "3" }], ["6", { "id": "6", "parent": "5" }]]));
-      assertEqual(forest.roots, new Set(["0", "3"]));
-      // assertEqual(forest.children, new Map([["0", ["1","2"]], 
-      // print(JSON.stringify(forest));
-      // items:
-      // children: null:[0], 0:[1,2], 3:[4,5], 5:[6], 9:[3]
+      assertEqual(forest.items.size, 7);
+      assertEqual(forest.items.get("0"), { "id": "0", "parent": null, "children": ["1","2"] });
+      assertEqual(forest.items.get("1"), { "id": "1", "parent": "0" , "children": []});
+      assertEqual(forest.items.get("2"), { "id": "2", "parent": "0" , "children": []});
+      assertEqual(forest.items.get("3"), { "id": "3", "parent": "9" , "children": ["4", "5"]});
+      assertEqual(forest.items.get("4"), { "id": "4", "parent": "3" , "children": []});
+      assertEqual(forest.items.get("5"), { "id": "5", "parent": "3" , "children": ["6"]});
+      assertEqual(forest.items.get("6"), { "id": "6", "parent": "5" , "children": []});
+      assertEqual(forest.roots.size, 2);
+      assertTrue(forest.roots.has("0"));
+      assertTrue(forest.roots.has("3"));
 
-      // leaves: 0:[1,2], 1:[], 2:[], 3:[4,5], 4:[], 5:[6], 6:[] - items with children
-      // roots: 0, 3 - all ids that are not children
-    }
+      const DFS = new activitiesModule.DFS(forest.items);
+      assertEqual(Array.from(DFS.iter("0")), ["0", "2", "1"]);
+      assertEqual(Array.from(DFS.iter("1")), ["1"]);
+      assertEqual(Array.from(DFS.iter("2")), ["2"]);
+      assertEqual(Array.from(DFS.iter("3")), ["3", "5", "6", "4"]);
+      assertEqual(Array.from(DFS.iter("4")), ["4"]);
+      assertEqual(Array.from(DFS.iter("5")), ["5", "6"]);
+      assertEqual(Array.from(DFS.iter("6")), ["6"]);
+    },
+
   };
 }
 
