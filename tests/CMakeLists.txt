@@ -373,7 +373,7 @@ endif ()
 add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
-  target_link_libraries(arangodbtests ${JEMALLOC_LIB})
+  target_link_libraries(arangodbtests jemalloc)
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
     target_link_libraries(arangodbtests ${LIBUNWIND_LIB})
   endif ()
@@ -403,10 +403,6 @@ endif ()
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangodbtests v8_build)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests jemalloc_build)
 endif ()
 
 find_package(OpenSSL REQUIRED)
