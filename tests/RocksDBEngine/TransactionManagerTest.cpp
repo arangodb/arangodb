@@ -49,13 +49,13 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>(
+  auto& metrics = server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
       LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  transaction::ManagerFeature feature(server);
+  transaction::ManagerFeature feature(server, metrics);
   transaction::Manager tm(feature);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
@@ -76,13 +76,13 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>(
+  auto& metrics = server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
       LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  transaction::ManagerFeature feature(server);
+  transaction::ManagerFeature feature(server, metrics);
   transaction::Manager tm(feature);
 
   std::chrono::milliseconds five(5);

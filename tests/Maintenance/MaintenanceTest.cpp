@@ -550,14 +550,14 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     as.addFeature<MaintenanceFeature>();
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& vectorIndex = as.addFeature<VectorIndexFeature>();
-    auto& flush = as.addFeature<FlushFeature>();
+    auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
 
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
     auto& rocksDbIndexCacheRefillFeature =
-        as.addFeature<RocksDBIndexCacheRefillFeature>();
+        as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
     auto& cacheManagerFeature =
         as.addFeature<CacheManagerFeature>(cacheOptions);

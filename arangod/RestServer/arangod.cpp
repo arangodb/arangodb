@@ -61,7 +61,7 @@ void ArangodServer::addFeatures(
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
-  addFeature<CommunicationFeaturePhase>();
+  auto& commFeature = addFeature<CommunicationFeaturePhase>();
   addFeature<AqlFeaturePhase>();
   addFeature<BasicFeaturePhaseServer>();
   addFeature<ClusterFeaturePhase>();
@@ -88,7 +88,7 @@ void ArangodServer::addFeatures(
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   auto& agency = addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(dataSourceRegistry);
+  addFeature<ApiRecordingFeature>(metrics, dataSourceRegistry);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
   addFeature<activity_registry::Feature>();
@@ -116,7 +116,7 @@ void ArangodServer::addFeatures(
   addFeature<EngineSelectorFeature>();
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
-  auto& flush = addFeature<FlushFeature>();
+  auto& flush = addFeature<FlushFeature>(metrics);
   addFeature<FortuneFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
@@ -129,7 +129,7 @@ void ArangodServer::addFeatures(
   addFeature<LanguageFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<LogBufferFeature>();
+  addFeature<LogBufferFeature>(metrics);
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>();
   addFeature<MaxMapCountFeature>();
@@ -139,7 +139,7 @@ void ArangodServer::addFeatures(
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
   addFeature<RandomFeature>();
-  addFeature<ReplicationFeature>(metrics);
+  addFeature<ReplicationFeature>(commFeature, metrics);
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
@@ -178,16 +178,17 @@ void ArangodServer::addFeatures(
   addFeature<V8PlatformFeature>();
   addFeature<V8SecurityFeature>();
 #endif
-  addFeature<transaction::ManagerFeature>();
+  addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
-  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>();
+  auto& rocksdbCacheRefill =
+      addFeature<RocksDBIndexCacheRefillFeature>(database, metrics);
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
   auto& rocksdbRecovery = addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>();
+  addFeature<FileDescriptorsFeature>(metrics);
 #endif
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>();

@@ -179,7 +179,8 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<application_features::DatabaseFeaturePhase>(
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
-  server.addFeature<transaction::ManagerFeature>(false);
+  server.addFeature<transaction::ManagerFeature>(
+      false, server.getFeature<metrics::MetricsFeature>());
   server.addFeature<DatabaseFeature>(false);
   server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
@@ -870,12 +871,15 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
 MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER,
                         serverId) {
-  addFeature<FlushFeature>(false);        // do not start the thread
-  addFeature<MaintenanceFeature>(false);  // do not start the thread
+  addFeature<FlushFeature>(
+      false, getFeature<metrics::MetricsFeature>());  // do not start the thread
+  addFeature<MaintenanceFeature>(false);              // do not start the thread
 
   // turn off auto-repairing of revision trees for unit tests
   auto& rf = addFeature<arangodb::ReplicationFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>());  // do not start
+      false,
+      _server.getFeature<application_features::CommunicationFeaturePhase>(),
+      _server.getFeature<metrics::MetricsFeature>());  // do not start
   rf.autoRepairRevisionTrees(false);
 
   if (start) {

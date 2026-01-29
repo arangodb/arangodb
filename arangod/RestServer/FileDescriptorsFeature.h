@@ -39,8 +39,8 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(
-      application_features::ApplicationServer& server);
+  FileDescriptorsFeature(application_features::ApplicationServer& server,
+                         metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

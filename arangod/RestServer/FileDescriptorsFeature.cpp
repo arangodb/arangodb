@@ -61,12 +61,12 @@ DECLARE_GAUGE(
 
 namespace arangodb {
 
-FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server)
+FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server,
+                                               metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_file_descriptors_current{})),
-      _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_file_descriptors_limit{})) {
+      _fileDescriptorsCurrent(
+          metrics.add(arangodb_file_descriptors_current{})),
+      _fileDescriptorsLimit(metrics.add(arangodb_file_descriptors_limit{})) {
   setOptional(false);
   startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<GreetingsFeaturePhase>();
