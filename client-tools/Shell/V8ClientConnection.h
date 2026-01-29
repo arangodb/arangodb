@@ -153,8 +153,7 @@ class V8ClientConnection {
   std::string getHandle();
 
   void getConnectionHandleTable(
-      v8::Isolate* isolate,
-      v8::FunctionCallbackInfo<v8::Value> const& args);
+      v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args);
 
   void connectHandle(v8::Isolate* isolate,
                      v8::FunctionCallbackInfo<v8::Value> const& args,

@@ -716,8 +716,7 @@ void V8ClientConnection::reconnect() {
 std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 
 void V8ClientConnection::getConnectionHandleTable(
-    v8::Isolate* isolate,
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::Object> table = v8::Object::New(isolate);
   bool foundCurrConnection = false;
@@ -728,59 +727,57 @@ void V8ClientConnection::getConnectionHandleTable(
   auto conn = _connection;
   auto cb = _builder;
 
-  auto addColumn = [&context, &isolate, &table, &id, &conn, &cb, &active] () {
+  auto addColumn = [&context, &isolate, &table, &id, &conn, &cb, &active]() {
     v8::Local<v8::Object> column = v8::Object::New(isolate);
     if (active) {
       column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
-              v8::True(isolate))
-        .FromMaybe(false);
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+                v8::True(isolate))
+          .FromMaybe(false);
     } else {
       column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
-              v8::False(isolate))
-        .FromMaybe(true);
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+                v8::False(isolate))
+          .FromMaybe(true);
     }
     std::string ep;
     ep = conn->endpoint();
     column
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
-            TRI_V8_STD_STRING(isolate, ep))
-      .FromMaybe(false);
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
+              TRI_V8_STD_STRING(isolate, ep))
+        .FromMaybe(false);
     ep = conn->localEndpoint();
     column
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "localPort"),
-            TRI_V8_STD_STRING(isolate, ep))
-      .FromMaybe(false);
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "localPort"),
+              TRI_V8_STD_STRING(isolate, ep))
+        .FromMaybe(false);
 
     ep = cb.user();
     column
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "username"),
-            TRI_V8_STD_STRING(isolate, ep))
-      .FromMaybe(false);
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "username"),
+              TRI_V8_STD_STRING(isolate, ep))
+        .FromMaybe(false);
     ep = cb.password();
     column
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "password"),
-            TRI_V8_STD_STRING(isolate, ep))
-      .FromMaybe(false);
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "password"),
+              TRI_V8_STD_STRING(isolate, ep))
+        .FromMaybe(false);
     ep = cb.jwtToken();
     column
-      ->Set(context, TRI_V8_ASCII_STRING(isolate, "jwToken"),
-            TRI_V8_STD_STRING(isolate, ep))
-      .FromMaybe(false);
-    table
-      ->Set(context, TRI_V8_STRING(isolate, id),
-            column)
-      .FromMaybe(false);
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "jwToken"),
+              TRI_V8_STD_STRING(isolate, ep))
+        .FromMaybe(false);
+    table->Set(context, TRI_V8_STRING(isolate, id), column).FromMaybe(false);
   };
-  for (auto &it: _connectionCache) {
+  for (auto& it : _connectionCache) {
     id = it.first;
     if (it.second != nullptr) {
       active = false;
       conn = it.second;
       cb = _connectionBuilderCache.find(it.first)->second;
     } else {
-      // the object was taken from the cache and lives in the current context instead:
+      // the object was taken from the cache and lives in the current context
+      // instead:
       active = true;
       conn = _connection;
       cb = _builder;
@@ -3611,7 +3608,8 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
   connection_proto->Set(
       isolate, "getConnectionHandleTable",
-      v8::FunctionTemplate::New(isolate, ClientConnection_getHandleTable, v8client));
+      v8::FunctionTemplate::New(isolate, ClientConnection_getHandleTable,
+                                v8client));
 
   connection_proto->Set(isolate, "connectHandle",
                         v8::FunctionTemplate::New(
