@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useSWRConfig } from "swr";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
@@ -10,6 +11,14 @@ export const useDeleteIndex = ({
 }) => {
   const { encoded: encodedCollectionName } = encodeHelper(collectionName);
   const { mutate } = useSWRConfig();
+  const timeoutIds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear all pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutIds.current.forEach(clearTimeout);
+    };
+  }, []);
 
   const onDeleteIndex = ({
     id,
@@ -36,10 +45,11 @@ export const useDeleteIndex = ({
           // The async job may take time to complete, so poll a few times
           const pollForDeletion = (attempts: number) => {
             if (attempts > 0) {
-              setTimeout(() => {
+              const id = setTimeout(() => {
                 mutate(`/collection/${encodedCollectionName}/indices`);
                 pollForDeletion(attempts - 1);
               }, 1000);
+              timeoutIds.current.push(id);
             }
           };
           pollForDeletion(5); // Poll 5 times over 5 seconds
