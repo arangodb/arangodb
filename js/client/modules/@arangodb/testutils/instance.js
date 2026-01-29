@@ -297,8 +297,8 @@ class instance {
     this.JWT = JWT;
   }
 
-  dumpConnectionTable() {
-    if (this.options.extremeVerbosity) {
+  dumpConnectionTable(force) {
+    if (this.options.extremeVerbosity || force === true) {
       let currentHandle = arango.getConnectionHandle();
       const tableColumnHeaders = [
         "selected", "handle", "endpoint", "localport", "username", "password", "JWT"

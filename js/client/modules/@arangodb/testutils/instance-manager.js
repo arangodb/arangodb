@@ -39,6 +39,7 @@ const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
+const AsciiTable = require('ascii-table');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
 /* Functions: */
@@ -218,6 +219,28 @@ class instanceManager {
         this.endpointPort = arangod.port;
       }
     });
+  }
+  dumpSUT(moreText) {
+    const tableColumnHeaders = [
+        "role", "port", "pid", "serverID", "handle", "data directory"
+    ];
+    let resultTable = new AsciiTable("");
+    resultTable.setHeading(tableColumnHeaders);
+    this.arangods.forEach(arangod => {
+      resultTable.addRow([
+        arangod.instanceRole,
+        arangod.port,
+        arangod.pid,
+        arangod.id,
+        arangod.connectionHandle,
+        arangod.dataDir
+      ]);
+    });
+    print(CYAN + resultTable.toString() + RESET);
+    this.arangods[0].dumpConnectionTable(true);
+    this.gatherNetstat();
+    this.printNetstat();
+    print(CYAN + moreText + RESET);
   }
   setPassvoid() {
     if (!arango.isConnected()) {
