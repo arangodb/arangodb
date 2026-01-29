@@ -129,10 +129,7 @@ function CollectionSuite () {
             case 'primary':
               assertEqual(i.selectivityEstimate, 1);
               break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'skiplist':
+            case 'persistent':
               assertEqual(i.selectivityEstimate, 1);
               break;
             default:

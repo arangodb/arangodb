@@ -74,9 +74,6 @@ function vertexCentricIndexSuite() {
       assertEqual(after.length, after2.length);
     },
 
-    // NOTE: testCreateHash and testCreateSkiplist were removed as redundant
-    // since hash/skiplist are deprecated and now map to persistent.
-
     testCreatePersistent : () => {
       let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
