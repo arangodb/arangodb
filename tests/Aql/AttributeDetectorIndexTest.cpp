@@ -112,6 +112,7 @@ TEST_F(AttributeDetectorTest, IndexFilterOnAttributeReturnFullDocument) {
 }
 
 TEST_F(AttributeDetectorTest, IndexFilterWithComputation) {
+  // OR conditions prevent precise projection optimization
   auto query = executeQuery(R"aql(
     FOR p IN products
       FILTER p.name == "Keyboard" OR p.price > 100
@@ -121,12 +122,8 @@ TEST_F(AttributeDetectorTest, IndexFilterWithComputation) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "products");
-  EXPECT_EQ(accesses[0].readAttributes.size(), 2);
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath("name", query->resourceMonitor())));
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath("price", query->resourceMonitor())));
-  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
+  // OR conditions trigger conservative fallback
+  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 

@@ -27,19 +27,9 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
-const helper = require("@arangodb/aql-helper");
-
 function attributeDetectorRemoteTestSuite() {
   const cn = "UnitTestsAttributeDetectorRemote";
   let collection;
-
-  const explain = function (query, bindVars, options) {
-    return helper.removeClusterNodes(
-      helper.getCompactPlan(
-        db._createStatement({query: query, bindVars: bindVars || {}, options: options || {}}).explain()
-      ).map(function(node) { return node.type; })
-    );
-  };
 
   const findNodeInPlan = function (plan, nodeType) {
     const nodes = plan.nodes || [];
@@ -67,7 +57,7 @@ function attributeDetectorRemoteTestSuite() {
 
     testRemoteSingleRead: function () {
       const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
-      const explainResult = db._createStatement({query: query, options: {includeAbacAccesses: true}}).explain();
+      const explainResult = db._createStatement({query: query}).explain();
       const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
@@ -76,7 +66,6 @@ function attributeDetectorRemoteTestSuite() {
       }
 
       const accesses = explainResult.abacAccesses;
-      console.log(accesses);
       assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
       const collAccess = accesses.find(a => a.collection === cn);
       if (collAccess) {
@@ -96,73 +85,126 @@ function attributeDetectorRemoteTestSuite() {
         assertEqual(remoteNode.mode, "InsertNode", "REMOTE_SINGLE should be in INSERT mode for insert operations");
       }
 
-      if (explainResult.extra && explainResult.extra.abacAccesses) {
-        const accesses = explainResult.extra.abacAccesses;
-        const collAccess = accesses.find(a => a.collection === cn);
-        if (collAccess) {
-          assertTrue(collAccess.read.requiresAll, "Write operations should require all attributes read");
-          assertTrue(collAccess.write.requiresAll, "Write operations should require all attributes write");
-        }
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Insert operations should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Insert operations should require all attributes write");
       }
     },
 
     testRemoteSingleUpdate: function () {
       const query = `UPDATE "doc1" WITH {value: 999} IN ${cn}`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode for update operations");
       }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Update operations should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Update operations should require all attributes write");
+      }
     },
 
     testRemoteSingleReplace: function () {
       const query = `REPLACE "doc1" WITH {_key: "doc1", value: 888} IN ${cn}`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "ReplaceNode", "REMOTE_SINGLE should be in REPLACE mode for replace operations");
       }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Replace operations should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Replace operations should require all attributes write");
+      }
     },
 
     testRemoteSingleRemove: function () {
       const query = `REMOVE "doc1" IN ${cn}`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "RemoveNode", "REMOTE_SINGLE should be in REMOVE mode for remove operations");
       }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Remove operations should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Remove operations should require all attributes write");
+      }
     },
 
     testRemoteMultipleInsert: function () {
-      const query = `FOR i IN 1..5 INSERT {_key: CONCAT("doc", i), value: i} INTO ${cn}`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const query = `FOR i IN 1..5 INSERT {_key: CONCAT("batch", i), value: i} INTO ${cn}`;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "MultipleRemoteModificationNode");
       if (remoteNode !== null) {
         assertTrue(remoteNode !== null, "REMOTE_MULTIPLE node should exist for batch insert operations");
       }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "REMOTE_MULTIPLE insert should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "REMOTE_MULTIPLE insert should require all attributes write");
+      }
     },
 
     testRemoteSingleWithReturnOld: function () {
       const query = `UPDATE "doc1" WITH {value: 777} IN ${cn} RETURN OLD`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode");
       }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Update with RETURN OLD should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Update with RETURN OLD should require all attributes write");
+      }
     },
 
     testRemoteSingleWithReturnNew: function () {
       const query = `UPDATE "doc1" WITH {value: 666} IN ${cn} RETURN NEW`;
-      const plan = db._createStatement({query: query}).explain().plan;
+      const explainResult = db._createStatement({query: query}).explain();
+      const plan = explainResult.plan;
 
       const remoteNode = findNodeInPlan(plan, "SingleRemoteOperationNode");
       if (remoteNode !== null) {
         assertEqual(remoteNode.mode, "UpdateNode", "REMOTE_SINGLE should be in UPDATE mode");
+      }
+
+      const accesses = explainResult.abacAccesses;
+      assertTrue(Array.isArray(accesses), "abacAccesses should be an array");
+      const collAccess = accesses.find(a => a.collection === cn);
+      if (collAccess) {
+        assertTrue(collAccess.read.requiresAll, "Update with RETURN NEW should require all attributes read");
+        assertTrue(collAccess.write.requiresAll, "Update with RETURN NEW should require all attributes write");
       }
     },
 
@@ -170,7 +212,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -192,7 +234,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN {name: doc.name, value: doc.value}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -211,7 +253,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `INSERT {_key: "newDoc", value: 100, name: "test"} INTO ${cn}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -231,7 +273,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `UPDATE "doc1" WITH {value: 999} IN ${cn}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -251,7 +293,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `REPLACE "doc1" WITH {_key: "doc1", value: 888, name: "replaced"} IN ${cn}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -270,7 +312,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `REMOVE "doc1" IN ${cn}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -289,7 +331,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `FOR i IN 1..5 INSERT {_key: CONCAT("doc", i), value: i, name: CONCAT("name", i)} INTO ${cn}`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;
@@ -309,7 +351,7 @@ function attributeDetectorRemoteTestSuite() {
       const query = `FOR doc IN ${cn} FILTER doc._key == "doc1" RETURN doc`;
       const explainResult = db._createStatement({
         query: query,
-        options: {includeAbacAccesses: true}
+        options: {}
       }).explain();
 
       const accesses = explainResult.abacAccesses;

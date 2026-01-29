@@ -40,7 +40,6 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             bindVars: bindVars || {},
             options: options || {}
         }).explain();
-        print(JSON.stringify(explainRes, null, 2))
         return explainRes.abacAccesses || [];
     };
 

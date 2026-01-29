@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/ModificationNode.h"
 #include "Aql/ExecutionNode/MultipleRemoteModificationNode.h"
 #include "Aql/ExecutionNode/ShortestPathNode.h"
@@ -557,6 +558,37 @@ bool AttributeDetector::before(ExecutionNode* node) {
       }
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
+      break;
+    }
+
+    case ExecutionNode::MATERIALIZE: {
+      // Late materialization moves projections from IndexNode to MaterializeNode
+      auto* matNode =
+          dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      if (matNode != nullptr) {
+        std::string collName = matNode->collection()->name();
+
+        auto& access = _collectionAccessMap[collName];
+        if (!access) {
+          access = std::make_unique<CollectionAccess>();
+          access->collectionName = collName;
+        }
+
+        access->outVariable = &matNode->outVariable();
+
+        Projections const& projs = matNode->projections();
+        if (!projs.empty()) {
+          for (auto const& proj : projs.projections()) {
+            if (!proj.path.empty()) {
+              access->readAttributes.insert(proj.path);
+            }
+          }
+        }
+
+        if (projs.empty() && matNode->isVarUsedLater(&matNode->outVariable())) {
+          access->requiresAllAttributesRead = true;
+        }
+      }
       break;
     }
 

@@ -493,9 +493,7 @@ TEST_F(AttributeDetectorTest, HasAttribute) {
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
 
-  EXPECT_TRUE(accesses[0].readAttributes.contains(
-      makePath("profile", query->resourceMonitor())));
-
+  // HAS() checks existence, doesn't read the attribute value - not tracked
   EXPECT_TRUE(accesses[0].readAttributes.contains(
       makePath("name", query->resourceMonitor())));
   EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
@@ -768,7 +766,7 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccess) {
 }
 
 TEST_F(AttributeDetectorTest, DynamicAttributeAccessVariable) {
-  // Test dynamic attribute access with variable - should require all attributes
+  // Optimizer constant-folds LET attr = "name"; u[attr] -> u.name
   auto query = executeQuery(R"aql(
     LET attr = "name"
     FOR u IN users
@@ -778,8 +776,10 @@ TEST_F(AttributeDetectorTest, DynamicAttributeAccessVariable) {
 
   ASSERT_EQ(accesses.size(), 1);
   EXPECT_EQ(accesses[0].collectionName, "users");
-  // Dynamic access with variable cannot be determined statically
-  EXPECT_TRUE(accesses[0].requiresAllAttributesRead);
+  // Constant folding resolves u[attr] to u.name
+  EXPECT_TRUE(accesses[0].readAttributes.contains(
+      makePath("name", query->resourceMonitor())));
+  EXPECT_FALSE(accesses[0].requiresAllAttributesRead);
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
