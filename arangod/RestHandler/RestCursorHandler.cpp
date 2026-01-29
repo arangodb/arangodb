@@ -488,7 +488,8 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   rest::RequestType type = _request->requestType();
-  if (type != rest::RequestType::POST && type != rest::RequestType::DELETE_REQ) {
+  if (type != rest::RequestType::POST && 
+      type != rest::RequestType::DELETE_REQ) {
     // request forwarding only exists for
     // POST /_api/cursor/cursor-id
     // DELETE /_api/cursor/cursor-id
