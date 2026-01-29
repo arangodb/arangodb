@@ -274,6 +274,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   std::vector<DatabaseInfo> determineDatabaseList(
       std::string const& databaseName);
 
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

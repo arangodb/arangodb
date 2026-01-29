@@ -218,6 +218,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
   ClientTaskQueue<DumpJob>& taskQueue();
 
  private:
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<DumpJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

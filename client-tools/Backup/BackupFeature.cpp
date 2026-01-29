@@ -690,6 +690,7 @@ namespace arangodb {
 BackupFeature::BackupFeature(application_features::ApplicationServer& server,
                              ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
+      _client(client),
       _clientManager{client, Logger::BACKUP},
       _exitCode{exitCode} {
   setOptional(false);
@@ -828,9 +829,7 @@ void BackupFeature::validateOptions(
     return;
   }
 
-  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-
-  if (client.databaseName() != StaticStrings::SystemDatabase) {
+  if (_client.databaseName() != StaticStrings::SystemDatabase) {
     LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
         << "hot backups are global and must be performed on the _system "
            "database with super user privileges";

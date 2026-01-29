@@ -348,9 +348,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
 
 Result RocksDBIndexCacheRefillFeature::warmupIndex(
     std::string const& database, std::string const& collection, IndexId iid) {
-  auto& df = server().getFeature<DatabaseFeature>();
-
-  DatabaseGuard guard(df, database);
+  DatabaseGuard guard(_databaseFeature, database);
 
   auto c =
       guard.database().useCollection(collection, /*checkPermissions*/ false);

@@ -75,6 +75,7 @@ class BackupFeature : public application_features::ApplicationFeature {
   };
 
  private:
+  ClientFeature& _client;
   ClientManager _clientManager;
   int& _exitCode;
   Options _options;
