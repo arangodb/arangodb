@@ -722,9 +722,6 @@ std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 void V8ClientConnection::getConnectionHandleTable(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
-void V8ClientConnection::getConnectionHandleTable(
-    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::Object> table = v8::Object::New(isolate);
 
   std::lock_guard<std::recursive_mutex> guard(_lock);
