@@ -329,11 +329,11 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
-    case TRI_IDX_TYPE_VECTOR_INDEX: {
+    case TRI_IDX_TYPE_VECTOR_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(trx, allIndexes, node, reference,
                                             itemsInIndex);
@@ -366,11 +366,11 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX: {
+    case TRI_IDX_TYPE_EDGE_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED: {
       return Index::supportsSortCondition(sortCondition, reference,
                                           itemsInIndex);
     }
@@ -416,10 +416,10 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED: {
       return Index::specializeCondition(trx, node, reference);  // unsupported
     }
     case TRI_IDX_TYPE_HASH_INDEX:
@@ -470,13 +470,13 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED: {
       return Index::emptyCoveredFields;
     }
     default:

@@ -36,7 +36,7 @@ std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
         "default",    "Documents",   "PrimaryIndex",  "EdgeIndex",
-        "VPackIndex", "GeoIndex",    "FulltextIndex", "ReplicatedLogs",
+        "VPackIndex", "GeoIndex",    "FulltextIndex", "ReplicatedLogs",  // Keep "FulltextIndex" name for RocksDB compatibility
         "ZkdIndex",   "MdiPrefixed", "VectorIndex"};  // We have to keep
                                                       // `ZkdIndex` cf name for
                                                       // backwards

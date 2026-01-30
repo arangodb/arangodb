@@ -69,7 +69,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
 
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
-    case RocksDBColumnFamilyManager::Family::FulltextIndex:
+    case RocksDBColumnFamilyManager::Family::FulltextIndexRemoved:
     case RocksDBColumnFamilyManager::Family::MdiIndex:
     case RocksDBColumnFamilyManager::Family::VectorIndex: {
       // fixed 8 byte object id prefix

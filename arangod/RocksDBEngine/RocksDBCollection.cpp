@@ -1431,7 +1431,7 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), snapshot,
                 false);
             break;
-          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
                 true);

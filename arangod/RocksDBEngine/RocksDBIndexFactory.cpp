@@ -31,7 +31,6 @@
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
@@ -102,35 +101,6 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
         velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
 
     return TRI_ERROR_INTERNAL;
-  }
-};
-
-struct FulltextIndexFactory : public DefaultIndexFactory {
-  explicit FulltextIndexFactory(ArangodServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBFulltextIndex>(id, collection, definition);
-  }
-
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation,
-                           TRI_vocbase_t const& /*vocbase*/) const override {
-    TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(StaticStrings::IndexType,
-                   velocypack::Value(
-                       Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
-
-    if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey(StaticStrings::ObjectId)) {
-      normalized.add(StaticStrings::ObjectId,
-                     velocypack::Value(std::to_string(TRI_NewTickServer())));
-    }
-
-    return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
-                                                  isCreation);
   }
 };
 
@@ -452,7 +422,6 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
-  static const FulltextIndexFactory fulltextIndexFactory(server);
   static const GeoIndexFactory geoIndexFactory(server);
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
@@ -479,7 +448,6 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
-  emplace("fulltext", fulltextIndexFactory);
   emplace("geo", geoIndexFactory);
   emplace("geo1", geo1IndexFactory);
   emplace("geo2", geo2IndexFactory);

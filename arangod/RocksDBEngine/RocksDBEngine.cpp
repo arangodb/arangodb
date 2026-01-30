@@ -1198,7 +1198,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::FulltextIndexRemoved);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
@@ -1266,7 +1266,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::GeoIndex,
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
+      RocksDBColumnFamilyManager::Family::FulltextIndexRemoved, cfHandles[6]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
@@ -3760,7 +3760,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::FulltextIndexRemoved);
   addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);

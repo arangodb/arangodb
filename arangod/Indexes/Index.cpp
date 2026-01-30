@@ -413,7 +413,9 @@ Index::IndexType Index::type(std::string_view type) {
     return TRI_IDX_TYPE_PERSISTENT_INDEX;
   }
   if (type == "fulltext") {
-    return TRI_IDX_TYPE_FULLTEXT_INDEX;
+    // Fulltext indexes are no longer supported but we still need to recognize
+    // them for upgrade purposes (to drop existing fulltext indexes).
+    return TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED;
   }
   if (type == "geo") {
     return TRI_IDX_TYPE_GEO_INDEX;
@@ -469,7 +471,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "ttl";
     case TRI_IDX_TYPE_PERSISTENT_INDEX:
       return "persistent";
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED:
       return "fulltext";
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";

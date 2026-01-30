@@ -392,7 +392,7 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
         return RocksDBKeyBounds::UniqueVPackIndex(objectId, false);
       }
       return RocksDBKeyBounds::VPackIndex(objectId, false);
-    case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case RocksDBIndex::TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED:
       return RocksDBKeyBounds::FulltextIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:

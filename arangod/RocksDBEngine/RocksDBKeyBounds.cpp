@@ -250,7 +250,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
           RocksDBColumnFamilyManager::Family::VPackIndex);
     case RocksDBEntryType::FulltextIndexValue:
       return RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::FulltextIndex);
+          RocksDBColumnFamilyManager::Family::FulltextIndexRemoved);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
       return RocksDBColumnFamilyManager::get(

@@ -179,8 +179,6 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
                                              IndexFactory& factory,
                                              ClusterEngine& engine) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge", engine);
-  static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext",
-                                                        engine);
   static const DefaultIndexFactory geoIndexFactory(server, "geo", engine);
   static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine);
   static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine);
@@ -201,7 +199,6 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   static const DefaultIndexFactory vectorIndexFactory(server, "vector", engine);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
-  factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
   factory.emplace(geoIndexFactory._type, geoIndexFactory);
   factory.emplace(geo1IndexFactory._type, geo1IndexFactory);
   factory.emplace(geo2IndexFactory._type, geo2IndexFactory);

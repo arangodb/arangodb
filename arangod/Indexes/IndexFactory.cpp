@@ -134,8 +134,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   // sparse must be identical if present
   if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
       Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX != type) {
+      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type) {
     bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
         lhs, StaticStrings::IndexSparse, false);
     bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
@@ -154,14 +153,6 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
 
     if (value.isBoolean() &&
         !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
-      return false;
-    }
-  } else if (Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
-    // minLength
-    value = lhs.get("minLength");
-
-    if (value.isNumber() &&
-        !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
@@ -376,7 +367,6 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "ttl",
       "persistent",
       "geo",
-      "fulltext",
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
@@ -757,41 +747,6 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     IndexFactory::processIndexGeoJsonFlag(definition, builder);
     IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
-    processIndexInBackground(definition, builder);
-  }
-
-  return res;
-}
-
-/// @brief enhances the json of a fulltext index
-Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
-                                              VPackBuilder& builder,
-                                              bool create) {
-  Result res =
-      processIndexFields(definition, builder, 1, 1, create,
-                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
-                         /*allowIdAttribute*/ false);
-
-  if (res.ok()) {
-    // hard-coded defaults
-    builder.add(StaticStrings::IndexSparse, velocypack::Value(true));
-    builder.add(StaticStrings::IndexUnique, velocypack::Value(false));
-
-    // handle "minLength" attribute
-    int minWordLength = FulltextIndexLimits::minWordLengthDefault;
-    VPackSlice minLength = definition.get("minLength");
-
-    if (minLength.isNumber()) {
-      minWordLength = minLength.getNumericValue<int>();
-    } else if (!minLength.isNull() && !minLength.isNone()) {
-      return Result(TRI_ERROR_BAD_PARAMETER);
-    }
-
-    if (minWordLength <= 0) {
-      minWordLength = 1;
-    }
-
-    builder.add("minLength", VPackValue(minWordLength));
     processIndexInBackground(definition, builder);
   }
 

@@ -1107,7 +1107,7 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
   if (!cname.empty()) {
     coll = query.collections().add(cname, AccessMode::Type::READ,
                                    aql::Collection::Hint::Collection);
-    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
+    // simon: code below is used for WITHIN(), NEAR(), ..
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
@@ -3591,9 +3591,9 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   // in the plan, at least not the expected ones that come from
   // substituing a full collection scan with an index etc.
   // we may find indexes in the plan when this rule runs, but
-  // only some geo/fulltext indexes which are inserted into the
+  // only some geo indexes which are inserted into the
   // plan by an optimizer rule that replaces old AQL functions
-  // FULLTEXT/WITHIN with actual FOR loop-index lookups
+  // WITHIN/NEAR with actual FOR loop-index lookups
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes,
                         true);
 

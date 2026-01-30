@@ -68,16 +68,6 @@ namespace transaction {
 class Methods;
 }
 
-/// @brief static limits for fulltext index
-struct FulltextIndexLimits {
-  /// @brief maximum length of an indexed word in characters
-  static constexpr int maxWordLength = 40;
-  /// @brief default minimum word length for a fulltext index
-  static constexpr int minWordLengthDefault = 2;
-  /// @brief maximum number of search words in a query
-  static constexpr int maxSearchWords = 32;
-};
-
 class Index {
  public:
   Index() = delete;
@@ -104,7 +94,9 @@ class Index {
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
     TRI_IDX_TYPE_EDGE_INDEX,
-    TRI_IDX_TYPE_FULLTEXT_INDEX,
+    // Note: TRI_IDX_TYPE_FULLTEXT_INDEX was removed in 3.12. Fulltext indexes
+    // are no longer supported. Keeping the enum value for compatibility.
+    TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,

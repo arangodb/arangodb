@@ -269,6 +269,15 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropPregelQueriesCollection);
 
+  // Fulltext indexes are no longer supported since 3.12
+  addTask(upgradeFeature, "dropFulltextIndexes",
+          "drop obsolete fulltext indexes",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropFulltextIndexes);
+
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators

@@ -664,3 +664,33 @@ Result UpgradeTasks::dropPregelQueriesCollection(
   }
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all fulltext indexes (no longer supported since 3.12)
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice /*upgradeParams*/) {
+  auto collections = vocbase.collections(false);
+
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED) {
+        LOG_TOPIC("d4e3f", INFO, Logger::STARTUP)
+            << "Dropping obsolete fulltext index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - fulltext indexes are no longer supported";
+
+        auto res = collection->dropIndex(index->id());
+
+        if (res.fail()) {
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping fulltext index: " << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+  return {};
+}

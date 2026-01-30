@@ -142,8 +142,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("replace-function-with-index", replaceNearWithinFulltextRule,
                OptimizerRule::replaceNearWithinFulltext,
                OptimizerRule::makeFlags(),
-               R"(Replace deprecated index functions such as `FULLTEXT()`,
-`NEAR()`, `WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
+               R"(Replace deprecated geo index functions such as `NEAR()`,
+`WITHIN()`, or `WITHIN_RECTANGLE()` with a regular subquery.)");
 
   registerRule("replace-like-with-range", replaceLikeWithRangeRule,
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
@@ -709,7 +709,7 @@ data modification node) only affects a single shard.
 
 This optimization can be applied for queries that access a collection only once
 in the query, and that do not use traversals, shortest path queries, and that
-do not access collection data dynamically using the `DOCUMENT()`, `FULLTEXT()`,
+do not access collection data dynamically using the `DOCUMENT()`,
 `NEAR()` or `WITHIN()` AQL functions. Additionally, the optimizer can only
 apply this optimization if it can safely determine the values of all the
 collection's shard keys from the query, and when the shard keys are covered by

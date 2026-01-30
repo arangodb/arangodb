@@ -2024,24 +2024,13 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       idxDef = rebuilder.slice();
     }
 
+    // Fulltext indexes are no longer supported (removed in 3.12).
+    // Skip them during replication.
     if (type.isEqualString("fulltext")) {
-      VPackSlice minLength = idxDef.get("minLength");
-      if (minLength.isNumber()) {
-        int length = minLength.getNumericValue<int>();
-        if (length <= 0) {
-          rebuilder.clear();
-          rebuilder.openObject();
-          rebuilder.add("minLength", VPackValue(1));
-          for (auto const& it : VPackObjectIterator(idxDef)) {
-            if (!it.key.isEqualString("minLength")) {
-              rebuilder.add(it.key);
-              rebuilder.add(it.value);
-            }
-          }
-          rebuilder.close();
-          idxDef = rebuilder.slice();
-        }
-      }
+      LOG_TOPIC("43c17", WARN, Logger::REPLICATION)
+          << "Skipping fulltext index during replication - fulltext indexes "
+             "are no longer supported";
+      continue;
     }
 
     if (type.isEqualString(StaticStrings::IndexNameVector) &&
