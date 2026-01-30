@@ -27,15 +27,16 @@
 #include <typeindex>
 
 #include "RestServer/InitDatabaseFeatureOptions.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class InitDatabaseFeature final : public ArangodFeature {
+class InitDatabaseFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "InitDatabase"; }
 
-  InitDatabaseFeature(Server& server,
+  InitDatabaseFeature(application_features::ApplicationServer& server,
                       std::span<const std::type_index> nonServerFeatures);
 
   std::string const& defaultPassword() const { return _options.password; }

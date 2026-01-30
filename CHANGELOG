@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-937: fix distribution tab getting stuck on loading.
+
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
   option on collections with computed values.
 

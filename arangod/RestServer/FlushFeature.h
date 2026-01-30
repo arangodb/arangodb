@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
@@ -52,11 +51,11 @@ struct FlushSubscription {
   virtual std::string const& name() const = 0;
 };
 
-class FlushFeature final : public ArangodFeature {
+class FlushFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
-  explicit FlushFeature(Server& server);
+  explicit FlushFeature(application_features::ApplicationServer& server);
 
   ~FlushFeature();
 

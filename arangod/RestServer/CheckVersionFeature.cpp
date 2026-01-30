@@ -51,9 +51,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(
-    Server& server, int* result,
+    ApplicationServer& server, int* result,
     std::span<const std::type_index> nonServerFeatures)
-    : ArangodFeature{server, *this},
+    : ApplicationFeature{server, *this},
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);

@@ -26,8 +26,8 @@
 #include <span>
 #include <typeindex>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/Methods/Upgrade.h"
-#include "RestServer/arangod.h"
 #include "RestServer/UpgradeFeatureOptions.h"
 
 namespace arangodb {
@@ -42,11 +42,11 @@ namespace arangodb {
 // after this feature has executed the upgrade, it will shut down the server.
 // in the coordinator case, this feature will not shut down the server.
 // instead, the shutdown is performed by the ClusterUpgradeFeature.
-class UpgradeFeature final : public ArangodFeature {
+class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Upgrade"; }
 
-  UpgradeFeature(Server& server, int* result,
+  UpgradeFeature(application_features::ApplicationServer& server, int* result,
                  std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

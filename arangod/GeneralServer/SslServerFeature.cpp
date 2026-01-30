@@ -62,8 +62,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-SslServerFeature::SslServerFeature(Server& server)
-    : ArangodFeature{server, *this} {
+SslServerFeature::SslServerFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
 }
 

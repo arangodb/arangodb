@@ -56,8 +56,9 @@ static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
   return data;
 }
 
-ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
-    : ArangodFeature{server, *this}, _data{createEmptyData()} {
+ClusterMetricsFeature::ClusterMetricsFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _data{createEmptyData()} {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();

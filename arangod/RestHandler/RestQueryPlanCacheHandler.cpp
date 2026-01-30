@@ -26,9 +26,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestQueryPlanCacheHandler::RestQueryPlanCacheHandler(ArangodServer& server,
-                                                     GeneralRequest* request,
-                                                     GeneralResponse* response)
+RestQueryPlanCacheHandler::RestQueryPlanCacheHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryPlanCacheHandler::execute() {

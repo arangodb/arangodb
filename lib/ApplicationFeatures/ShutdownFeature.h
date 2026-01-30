@@ -26,6 +26,7 @@
 #include <span>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/LoggerFeature.h"
 
 namespace arangodb {
@@ -37,8 +38,8 @@ class ShutdownFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Shutdown"; }
 
-  template<typename Server>
-  ShutdownFeature(Server& server, std::span<const std::type_index> features)
+  ShutdownFeature(application_features::ApplicationServer& server,
+                  std::span<const std::type_index> features)
       : ApplicationFeature{server, *this} {
     setOptional(true);
     startsAfter<application_features::GreetingsFeaturePhase>();

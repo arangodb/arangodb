@@ -26,6 +26,7 @@
 
 #include "TimeZoneFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -43,8 +44,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TimeZoneFeature::TimeZoneFeature(Server& server)
-    : ArangodFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
+TimeZoneFeature::TimeZoneFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

@@ -61,8 +61,8 @@ DECLARE_GAUGE(
 
 namespace arangodb {
 
-FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
-    : ArangodFeature{server, *this},
+FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(

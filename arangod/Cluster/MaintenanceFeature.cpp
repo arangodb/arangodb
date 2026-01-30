@@ -162,8 +162,8 @@ arangodb::Result arangodb::maintenance::collectionCount(
   return opResult.result;
 }
 
-MaintenanceFeature::MaintenanceFeature(Server& server)
-    : ArangodFeature{server, *this},
+MaintenanceFeature::MaintenanceFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       // in the unit tests we can have cases where we have no ClusterFeature
       _clusterFeature(server.hasFeature<ClusterFeature>()
                           ? &server.getFeature<ClusterFeature>()

@@ -645,7 +645,8 @@ void ConsolidationTask::operator()() {
 }
 
 IResearchDataStore::IResearchDataStore(
-    ArangodServer& server, [[maybe_unused]] LogicalCollection& collection)
+    application_features::ApplicationServer& server,
+    [[maybe_unused]] LogicalCollection& collection)
     : _asyncFeature(&server.getFeature<IResearchFeature>()),
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),

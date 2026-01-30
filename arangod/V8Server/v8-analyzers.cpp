@@ -30,18 +30,13 @@
 
 #include <velocypack/Parser.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
-#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Transaction/Hints.h"
 #include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
