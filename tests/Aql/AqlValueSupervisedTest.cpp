@@ -421,7 +421,8 @@ TEST(AqlValueSupervisedTest, SlicePointerAddressSemantics) {
 }
 
 // Managed slice vs supervised slice: different types => NOT equal
-TEST(AqlValueSupervisedTest, ManagedSliceNotEqualsSupervisedSliceDifferentType) {
+TEST(AqlValueSupervisedTest,
+     ManagedSliceNotEqualsSupervisedSliceDifferentType) {
   auto& g = GlobalResourceMonitor::instance();
   ResourceMonitor rm(g);
 
@@ -443,8 +444,10 @@ TEST(AqlValueSupervisedTest, ManagedSliceNotEqualsSupervisedSliceDifferentType) 
   EXPECT_EQ(rm.current(), 0U);
 }
 
-// Managed string (DocumentData) vs supervised slice: different types => NOT equal
-TEST(AqlValueSupervisedTest, ManagedStringNotEqualsSupervisedSliceDifferentType) {
+// Managed string (DocumentData) vs supervised slice: different types => NOT
+// equal
+TEST(AqlValueSupervisedTest,
+     ManagedStringNotEqualsSupervisedSliceDifferentType) {
   auto& g = GlobalResourceMonitor::instance();
   ResourceMonitor rm(g);
 
@@ -536,7 +539,7 @@ TEST(AqlValueSupervisedTest, PointerBasedEqualitySemantics) {
   ASSERT_EQ(supervisedB2.type(), AqlValue::VPACK_SUPERVISED_SLICE);
 
   std::equal_to<AqlValue> eq;
-  
+
   EXPECT_FALSE(eq(managedA1, supervisedA1));
   EXPECT_FALSE(eq(managedA1, supervisedA2));
   EXPECT_FALSE(eq(managedA2, supervisedA1));
@@ -658,7 +661,7 @@ TEST(AqlValueSupervisedTest, FuncDocAttributeExtractionWithDoCopy) {
   arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& vocbase = server.getSystemDatabase();
   arangodb::CollectionNameResolver resolver(vocbase);
-  
+
   auto& g = GlobalResourceMonitor::instance();
   ResourceMonitor rm(g);
 
@@ -755,7 +758,7 @@ TEST(AqlValueSupervisedTest, FuncDocAttributeExtractionWithDoCopy) {
     vEdge.getFromAttribute(mustDestroy, false);
     EXPECT_FALSE(mustDestroy);
     EXPECT_EQ(rm.current(), base);
-    
+
     AqlValue out2 = vEdge.getFromAttribute(mustDestroy, true);
     EXPECT_TRUE(mustDestroy);
     EXPECT_EQ(rm.current(), base + out2.memoryUsage());
@@ -767,7 +770,7 @@ TEST(AqlValueSupervisedTest, FuncDocAttributeExtractionWithDoCopy) {
     vEdge.getToAttribute(mustDestroy, false);
     EXPECT_FALSE(mustDestroy);
     EXPECT_EQ(rm.current(), base);
-    
+
     AqlValue out2 = vEdge.getToAttribute(mustDestroy, true);
     EXPECT_TRUE(mustDestroy);
     EXPECT_EQ(rm.current(), base + out2.memoryUsage());
@@ -1217,9 +1220,8 @@ TEST(AqlValueSupervisedTest, AllocationFailureThrowsOOM) {
   b.add(Value(huge));
   Slice s = b.slice();
 
-  EXPECT_THROW({
-    AqlValue v(s, s.byteSize(), &rm);
-  }, arangodb::basics::Exception);
+  EXPECT_THROW({ AqlValue v(s, s.byteSize(), &rm); },
+               arangodb::basics::Exception);
 
   EXPECT_EQ(rm.current(), 0U);
 }
@@ -1232,7 +1234,7 @@ TEST(AqlValueSupervisedTest, EdgeCaseEmptyAndMinimalData) {
     Builder b;
     b.add(Value(""));
     Slice s = b.slice();
-    
+
     AqlValue v(s, &rm);
     EXPECT_NE(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
     EXPECT_EQ(v.memoryUsage(), 0U);
@@ -1244,7 +1246,7 @@ TEST(AqlValueSupervisedTest, EdgeCaseEmptyAndMinimalData) {
     Builder b;
     b.add(Value("x"));
     Slice s = b.slice();
-    
+
     AqlValue v(s, &rm);
     EXPECT_NE(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
     EXPECT_EQ(v.memoryUsage(), 0U);
@@ -1256,7 +1258,7 @@ TEST(AqlValueSupervisedTest, EdgeCaseEmptyAndMinimalData) {
     Builder b;
     b.add(Value(minimal));
     Slice s = b.slice();
-    
+
     AqlValue v(s, &rm);
     EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
     EXPECT_GT(v.memoryUsage(), 0U);
@@ -1310,9 +1312,9 @@ TEST(AqlValueSupervisedTest, ThreadSafetyConcurrentAllocations) {
 
           AqlValue v(s, s.byteSize(), &rm);
           EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-          
+
           EXPECT_EQ(v.slice().getStringLength(), 1024 + i);
-          
+
           v.destroy();
           successCount++;
         } catch (...) {
@@ -1326,27 +1328,29 @@ TEST(AqlValueSupervisedTest, ThreadSafetyConcurrentAllocations) {
   }
 
   EXPECT_EQ(rm.current(), 0U);
-  
+
   EXPECT_GT(successCount.load(), numThreads * allocationsPerThread * 0.9);
 }
 
-TEST(AqlValueSupervisedTest, SupervisedBufferConstructorCreatesManaged) {
+TEST(AqlValueSupervisedTest,
+     BufferConstructorWithResourceMonitorCreatesSupervisedSlice) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor rm(global);
 
-  SupervisedBuffer supervised(rm);
-  Builder builder(supervised);
+  velocypack::Buffer<uint8_t> buffer;
+  Builder builder(buffer);
   builder.openArray();
   builder.add(Value(std::string(4096, 'x')));
   builder.close();
 
-  size_t bufferMemory = rm.current();
-  EXPECT_GT(bufferMemory, 0U);
+  EXPECT_GT(buffer.size(), 0U);
+  EXPECT_EQ(rm.current(), 0U);
 
-  AqlValue v(std::move(supervised), &rm);
-  
-  EXPECT_EQ(v.type(), AqlValue::VPACK_MANAGED_SLICE);
+  AqlValue v(std::move(buffer), &rm);
+
+  EXPECT_EQ(v.type(), AqlValue::VPACK_SUPERVISED_SLICE);
   EXPECT_GT(v.memoryUsage(), 0U);
+  EXPECT_EQ(rm.current(), v.memoryUsage());
 
   v.destroy();
   EXPECT_EQ(rm.current(), 0U);
@@ -1399,30 +1403,31 @@ TEST(AqlValueSupervisedTest, ClonePreservesResourceMonitor) {
 
   cloned.destroy();
   EXPECT_EQ(rm.current(), baseMem);
-  
+
   original.destroy();
   EXPECT_EQ(rm.current(), 0U);
 }
 
-TEST(AqlValueSupervisedTest, DestroyMovedFromValueIsNoOp) {
+TEST(AqlValueSupervisedTest, MoveSemanticsFinalOwnerDestroysMemory) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor rm(global);
 
   Builder b;
   b.openArray();
-  b.add(Value(999));
+  b.add(Value(std::string(100, 'x')));
   b.close();
 
   AqlValue original(b.slice(), &rm);
   ASSERT_EQ(original.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-  
+
   size_t initialMem = rm.current();
   EXPECT_GT(initialMem, 0U);
 
   AqlValue moved(std::move(original));
   EXPECT_EQ(rm.current(), initialMem);
+  EXPECT_EQ(moved.type(), AqlValue::VPACK_SUPERVISED_SLICE);
 
-  original.destroy();
+  original.erase();
   EXPECT_EQ(rm.current(), initialMem);
 
   moved.destroy();
@@ -1432,9 +1437,9 @@ TEST(AqlValueSupervisedTest, DestroyMovedFromValueIsNoOp) {
 TEST(AqlValueSupervisedTest, AllocatedMemoryIsProperlyAligned) {
   auto& global = GlobalResourceMonitor::instance();
   ResourceMonitor rm(global);
-  
+
   std::vector<size_t> testSizes = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
-  
+
   for (size_t size : testSizes) {
     Builder b;
     b.openArray();
@@ -1442,20 +1447,15 @@ TEST(AqlValueSupervisedTest, AllocatedMemoryIsProperlyAligned) {
       b.add(Value(static_cast<int64_t>(i)));
     }
     b.close();
-    
+
     AqlValue v(b.slice(), &rm);
     if (v.type() == AqlValue::VPACK_SUPERVISED_SLICE) {
-      // Verify memory was allocated and is being tracked
-      EXPECT_GT(rm.current(), 0U)
-          << "Memory should be tracked for supervised slice of size " << size;
-      
-      // Verify memoryUsage returns expected value
-      EXPECT_GT(v.memoryUsage(), 0U)
-          << "memoryUsage() should return non-zero for size " << size;
+      EXPECT_GT(rm.current(), 0U);
+      EXPECT_GT(v.memoryUsage(), 0U);
     }
     v.destroy();
   }
-  
+
   EXPECT_EQ(rm.current(), 0U);
 }
 
@@ -1471,34 +1471,28 @@ TEST(AqlValueSupervisedTest, AqlItemBlockDoesNotDoubleCountSupervisedMemory) {
 
   AqlValue supervisedValue(b.slice(), &rm);
   ASSERT_EQ(supervisedValue.type(), AqlValue::VPACK_SUPERVISED_SLICE);
-  
+
   size_t memAfterAqlValue = rm.current();
   EXPECT_GT(memAfterAqlValue, 0U);
 
   auto block = mgr.requestBlock(3, 2);
   size_t memAfterBlock = rm.current();
 
+  // setValue should not double-count supervised slices
   block->setValue(0, 0, supervisedValue);
-  size_t memAfterFirstSet = rm.current();
-  EXPECT_EQ(memAfterFirstSet, memAfterBlock)
-      << "setValue should not increase memory for supervised slices";
+  EXPECT_EQ(rm.current(), memAfterBlock);
 
   block->setValue(1, 0, supervisedValue);
-  size_t memAfterSecondSet = rm.current();
-  EXPECT_EQ(memAfterSecondSet, memAfterBlock)
-      << "Setting same supervised value again should not increase memory";
+  EXPECT_EQ(rm.current(), memAfterBlock);
 
   AqlValue copy = supervisedValue;
   block->setValue(2, 1, copy);
-  size_t memAfterThirdSet = rm.current();
-  EXPECT_EQ(memAfterThirdSet, memAfterBlock)
-      << "Setting copied supervised value should not increase memory";
+  EXPECT_EQ(rm.current(), memAfterBlock);
 
-  block.reset();
-  size_t memAfterBlockDestroyed = rm.current();
-  EXPECT_EQ(memAfterBlockDestroyed, memAfterAqlValue)
-      << "Block destruction should not affect supervised value memory";
-
-  supervisedValue.destroy();
+  // Block destroys value when refCount reaches 0
+  block.reset(nullptr);
   EXPECT_EQ(rm.current(), 0U);
+
+  // Local var is now dangling, just erase it
+  supervisedValue.erase();
 }

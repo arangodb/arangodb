@@ -59,7 +59,11 @@ Variable::Variable(velocypack::Slice slice,
 
 /// @brief destroy the variable
 Variable::~Variable() {
-  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  // Only decrease memory for non-supervised slices, as supervised slices
+  // track their own memory and will decrease it in deallocateSupervised()
+  if (_constantValue.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+    _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  }
   _constantValue.destroy();
 }
 
@@ -157,11 +161,20 @@ Variable::Type Variable::type() const noexcept {
 }
 
 void Variable::setConstantValue(AqlValue value) {
-  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  // Decrease memory for old value (but not for supervised slices, as they track
+  // themselves)
+  if (_constantValue.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+    _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  }
   _constantValue.destroy();
 
   try {
-    _resourceMonitor.increaseMemoryUsage(value.memoryUsage());
+    // IMPORTANT: Supervised slices already track their own memory in the
+    // ResourceMonitor during allocateSupervised(). We must NOT double-count.
+    // Only track memory for non-supervised types.
+    if (value.type() != AqlValue::VPACK_SUPERVISED_SLICE) {
+      _resourceMonitor.increaseMemoryUsage(value.memoryUsage());
+    }
     _constantValue = value;
   } catch (...) {
     throw;

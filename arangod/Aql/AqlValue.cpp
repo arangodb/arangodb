@@ -1431,11 +1431,8 @@ bool AqlValue::requiresDestruction() const noexcept {
 }
 
 bool AqlValue::isEmpty() const noexcept {
-  if (_data.aqlValueType == VPACK_INLINE &&
-      _data.inlineSliceMeta.slice[0] == '\x00') {
-    return true;
-  }
-  return false;
+  return _data.aqlValueType == VPACK_INLINE &&
+         _data.inlineSliceMeta.slice[0] == '\x00';
 }
 
 bool AqlValue::isPointer() const noexcept {
