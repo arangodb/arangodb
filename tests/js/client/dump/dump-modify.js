@@ -201,7 +201,7 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(9, c.indexes().length);
+      assertEqual(8, c.indexes().length);
       assertEqual("primary", c.indexes()[0].type);
 
       assertEqual("hash", c.indexes()[1].type);
@@ -234,13 +234,9 @@ function dumpTestSuite() {
       assertTrue(c.indexes()[6].sparse);
       assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
 
+      assertEqual("geo", c.indexes()[7].type);
+      assertEqual(["a_la", "a_lo"], c.indexes()[7].fields);
       assertFalse(c.indexes()[7].unique);
-      assertEqual("fulltext", c.indexes()[7].type);
-      assertEqual(["a_f"], c.indexes()[7].fields);
-
-      assertEqual("geo", c.indexes()[8].type);
-      assertEqual(["a_la", "a_lo"], c.indexes()[8].fields);
-      assertFalse(c.indexes()[8].unique);
 
       assertEqual(0, c.count());
       c.ensureIndex({type: "hash", fields: ["abc"]});

@@ -967,37 +967,6 @@ function restoreIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
 
-    testRestoreIndexesFulltextLengthZero: function () {
-      let path = fs.getTempFile();
-      fs.makeDirectory(path);
-      let fn = fs.join(path, cn + ".structure.json");
-
-      fs.write(fn, JSON.stringify({
-        indexes: [],
-        parameters: {
-          indexes: [
-            {id: "95", fields: ["text"], type: "fulltext", minLength: 0},
-          ],
-          name: cn,
-          numberOfShards: 3,
-          type: 2
-        }
-      }));
-
-      let args = ['--collection', cn, '--import-data', 'false'];
-      runRestore(path, args, 0);
-
-      let c = db._collection(cn);
-      let indexes = c.indexes();
-      assertEqual(2, indexes.length);
-      assertEqual("primary", indexes[0].type);
-      assertEqual(["_key"], indexes[0].fields);
-      assertEqual("fulltext", indexes[1].type);
-      assertEqual(["text"], indexes[1].fields);
-      assertEqual(indexes[1].minLength, 1);
-      fs.removeDirectoryRecursive(path, true);
-    },
-
     testRestoreIndexesNewFormat: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);

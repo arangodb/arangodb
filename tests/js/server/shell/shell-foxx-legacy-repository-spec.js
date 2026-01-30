@@ -130,16 +130,6 @@ describe('Repository Indexes', function () {
     expect(TestRepository.prototype.near).to.be.a('function');
     expect(TestRepository.prototype.within).to.be.a('function');
   });
-
-  it('should add fulltext methods to the prototype', function () {
-    expect(FoxxRepository.prototype).not.to.have.a.property('fulltext');
-    const TestRepository = FoxxRepository.extend({
-      indexes: [
-        {type: 'fulltext'}
-      ]
-    });
-    expect(TestRepository.prototype.fulltext).to.be.a('function');
-  });
 });
 
 describe('Repository Methods', function () {

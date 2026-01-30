@@ -2015,10 +2015,6 @@ function dealing_with_the_initial_dumSuite () {
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "fulltext", "minLength" : 8, "fields" : [ "ff" ] };
-      doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
-      assertEqual(doc.code, 201);
-
       let cmd = api + `/inventory?batchId=${batchId}`;
       doc = arango.GET_RAW(cmd);
       assertEqual(doc.code, 200);
@@ -2091,7 +2087,7 @@ function dealing_with_the_initial_dumSuite () {
       assertFalse(parameters["waitForSync"]);
 
       indexes = c['indexes'];
-      assertEqual(indexes.length, 3);
+      assertEqual(indexes.length, 2);
 
       idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
@@ -2104,13 +2100,6 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(idx["type"], "skiplist");
       assertTrue(idx["unique"]);
       assertEqual(idx["fields"], [ "d" ]);
-
-      idx = indexes[2];
-      assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "fulltext");
-      assertFalse(idx["unique"]);
-      assertEqual(idx["minLength"], 8);
-      assertEqual(idx["fields"], [ "ff" ]);
     },
 
     ////////////////////////////////////////////////////////////////////////////////;
