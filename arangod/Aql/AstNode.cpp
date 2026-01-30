@@ -288,6 +288,7 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
 /// @brief compare nodes with direct VPack representation
+/// @return -1 if lhs < rhs, 0 if equal, +1 if lhs > rhs
 template<bool resolveAttributeAccess>
 int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
                                bool compareUtf8, VPackValueType lType) {
@@ -1609,8 +1610,8 @@ bool AstNode::isTrue() const {
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
              type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // Handle empty IN arrays: x.name NOT IN [] → true
-    if (numMembers() >= 2) {
-      TRI_ASSERT(numMembers() == 2);
+    // IN/NIN nodes always have exactly 2 members (lhs and rhs)
+    if (numMembers() == 2) {
       AstNode const* rhs = getMember(1);
       if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
           rhs->numMembers() == 0) {
@@ -1664,8 +1665,8 @@ bool AstNode::isFalse() const {
   } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
              type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // Handle empty IN arrays: x.name IN [] → false
-    if (numMembers() >= 2) {
-      TRI_ASSERT(numMembers() == 2);
+    // IN/NIN nodes always have exactly 2 members (lhs and rhs)
+    if (numMembers() == 2) {
       AstNode const* rhs = getMember(1);
       if (rhs != nullptr && rhs->type == NODE_TYPE_ARRAY &&
           rhs->numMembers() == 0) {

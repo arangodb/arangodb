@@ -1897,9 +1897,9 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     return;
   }
 
-  // Remove duplicate OR branches using canonical string comparison.
+  // Remove duplicate OR branches by comparing AST node structure.
   // This handles commutative operators, IN array ordering, and nested
-  // expressions by comparing canonical string representations.
+  // expressions using structural comparison via compareAstNodes.
   n = _root->numMembers();
   for (size_t i = n; i > 1; --i) {
     auto branch1 = _root->getMemberUnchecked(i - 1);
