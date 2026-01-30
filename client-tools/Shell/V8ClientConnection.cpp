@@ -673,10 +673,9 @@ void V8ClientConnection::reconnect() {
   _connection.swap(oldConnection);
   if (oldConnection) {
     if (oldConnection->state() == fu::Connection::State::Closed) {
-      LOG_TOPIC("7aaaaa", TRACE, arangodb::Logger::HTTPCLIENT)
-        << "connection state is closed of "
-        << oldConnectionId
-        << " not putting back to cache";
+      LOG_TOPIC("7aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+          << "connection state is closed of " << oldConnectionId
+          << " not putting back to cache";
       oldConnection->cancel();
     } else {
       // a non-closed connection. now try to insert it into the connection
