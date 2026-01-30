@@ -207,8 +207,17 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto counts = context->getBlockCounts();
 
   TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
-    // be able to have a look at the activity-registry in the meantime
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    // busy loop when we are the first fetch
+    // exist busy loop with second fetch
+    static std::atomic<bool> firstFetch{false};
+    if (!firstFetch.load()) {
+      firstFetch.store(true);
+      while (firstFetch.load()) {
+      }
+    } else {
+      firstFetch.store(false);
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   if (batch == nullptr) {
