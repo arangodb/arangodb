@@ -112,6 +112,9 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     -> void {
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
   if (not tmp.has_value()) {
@@ -165,7 +168,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      if (_queue.isBatched()) {
+      if (_queue.usesCursor()) {
         auto& cursor = _provider.createNeighbourCursor(step, posPrevious);
         _queue.append(cursor);
         LOG_TRAVERSAL << "Pushed   " << inspection::json(step) << " | "

@@ -15,7 +15,10 @@ clang-format --version
 # to be ObjectiveC files; we sidestep this problem by renaming them all
 # to .hpp, then running clang-format, and moving them back to their
 # original name.
-find $PATHS -iname \*.h > $HEADERNAMES
+find $PATHS -iname \*.h \
+  \! -wholename "lib/Basics/sdt.h" \
+  \! -wholename "lib/iresearch.build/external/snowball/libstemmer/modules.h" \
+  > $HEADERNAMES
 
 for file in $(cat $HEADERNAMES) ;
 do
@@ -27,7 +30,6 @@ done
 # and maybe should be moved otherplace
 find $PATHS \
   \( -name '*.cpp' -o -name '*.hpp' -o -name '*.tpp' \) \
-  \! -wholename "lib/Basics/${RANDOM_PREFIX}_sdt.hpp" \
   -type f \
   -exec clang-format -i {} \+
 

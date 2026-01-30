@@ -26,6 +26,7 @@
 #include <string_view>
 
 #include "CrashHandler/DumpManager.h"
+#include "RestServer/CrashHandlerFeatureOptions.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -43,7 +44,7 @@ class CrashHandlerFeature final : public ArangodFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   /// @brief returns true if crash dump logging is enabled
-  bool isEnabled() const noexcept { return _enabled; }
+  bool isEnabled() const noexcept { return _options.enabled; }
 
   void start() override final;
 
@@ -55,8 +56,7 @@ class CrashHandlerFeature final : public ArangodFeature {
   /// @brief pointer to the Crash Handler Dumper
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
 
-  /// @brief whether crash dump logging is enabled
-  bool _enabled{true};
+  CrashHandlerFeatureOptions _options;
 };
 
 }  // namespace arangodb

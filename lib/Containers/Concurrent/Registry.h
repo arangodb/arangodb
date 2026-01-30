@@ -39,8 +39,8 @@ struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry<T>> {
     once.
   */
   auto set_metrics(std::shared_ptr<containers::Metrics> new_metrics) -> void {
-    auto guard = std::lock_guard(
-        containers::ListOfNonOwnedLists<ThreadRegistry<T>>::_mutex);
+    auto guard = containers::ListOfNonOwnedLists<ThreadRegistry<T>>::_lists
+                     .getLockedGuard();
     TRI_ASSERT(not metricsAreSet.load(std::memory_order_relaxed));
     metrics = new_metrics;
     metricsAreSet.store(true, std::memory_order_release);

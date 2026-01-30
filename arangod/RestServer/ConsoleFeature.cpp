@@ -29,14 +29,12 @@
 
 #include "ConsoleFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Basics/debugging.h"
 #include "Basics/messages.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"

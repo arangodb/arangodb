@@ -1,0 +1,151 @@
+master
+-------------------------
+
+* Fix for clang 19 build
+
+1.3 (2023-05-02)
+-------------------------
+
+* Add WAND support to `by_term`.
+
+* Allow to store WAND-specific data in skip list.
+
+* Add ability to use an external tick in `IndexWriter::Commit`.
+
+* Refactor index write to maintain its own index snapshot.
+
+* Add ability to optionally cache columnstore data in memory.
+
+* Swtich to 3-way comparator for primary sort.
+
+* Make primary sort stable.
+
+* Add ability to specify custom callback for debug assertions.
+
+* Extend `term_reader` interface with the following methods:
+  - `term_meta term_meta(bytes_view term)`
+     Provides fast and efficient access to term's metadata.
+  - `size_t read_documents(bytes_view term, std::span<doc_id_t> docs)`
+     Efficiently reads first K documents associated with the given term
+     into the specified span.
+
+* Avoid writing empty sort entries.
+
+* Add `CachingFSDirectory` and `CachingMMapDirectory` allowing to reduce
+  a number of syscalls.
+
+* Speedup checksum computation.
+
+v1.2 (2022-10-06)
+-------------------------
+
+* Allow specifying progress report callback for
+  `index_writer::commit`/`index_writer::start`.
+
+* Allow getting offsets from phrase and ngram similarity queries.
+
+* Allow specifying minimum number of matches for `by_terms` filter.
+
+* Add `MinHashAnalyzer` capable of producing tokens composing a MinHash
+  signature.
+
+* Add `ByNestedFilter` capable of matching documents by nested query.
+
+* Add ability to access previous document for columnstore2 iterators.
+
+* Remove outdated `DECLARE_FACTORY_INLINE` macros.
+
+* Add `MergeType::kMin` allowing to evaluate minimum sub-iterator score.
+
+* Fix issue with loosing already flushed segment in case of failure during
+  document insertion into the same segment.
+
+* Force scorers to return scores as floating point numbers.
+
+* Deprecate and remove `iql`.
+
+* Use abseil as a submodule.
+
+* Added proxy_filter for caching search results.
+
+* Add ARM support.
+
+* Speedup BM25 scorer.
+
+* Move to C++20.
+
+* Add `classification_stream` capable of classifying input data based on FastText NN model.
+
+* Add `nearest_neighbors_stream` capable of generating synonyms based on FastText NN model.
+
+v1.1 (2022-01-05)
+-------------------------
+
+* Add support of column headers to columnstore.
+
+* Make column name and id a part of columnstore API.
+
+* Deprecate `column_meta`, `column_meta_writer`, `column_meta_reader`.
+
+* Fix possible race between file creation and directory cleaner.
+
+* Fix invalid sorting order of stored features in presence of primary sort.
+
+* Enhance troubleshooting experience for the analyzers required locale.
+
+* Eliminate dependency to Boost.Locale.
+
+* Get rid of internal conversions during analysis. All text analyzers now expect UTF-8 encoded input.
+
+* Fix threading related issues reported by TSAN.
+
+* Add "object" locale parsing for the `collation_token_stream` to support definig locale variant
+  and keywords.
+
+* Get rid of `utf8_path` in favor of `std::filesystem::path`.
+
+* Fix sporadic "error while reading compact" failures.
+
+* Rework Compression API to return `std::unique_ptr` instead of `std::shared_ptr`.
+
+* Rework Analyzer API to return `std::unique_ptr` instead of `std::shared_ptr`.
+
+* Derive `null_token_stream`, `string_token_stream`, `numeric_token_stream` and `null_token_stream`
+  from `analysis::analyzer`.
+
+* Rework iterators API to reduce number of heap allocations.
+
+* Add new analyzer `collation` capable of producing tokens honoring language
+  specific sorting.
+
+* Add new feature `iresearch::Norm2` representing fixed length norm value.
+
+* Split field features into built-in set of index features and pluggable field features.
+
+* Add ability to specify target prefix for `by_edit_distance` query.
+
+* Fix possible crash in `disjunction` inside `visit` of the already exhausted iterator.
+
+* Fix block boundaries evaluation in `block_iterator` for `memory_directory` and `fs_directory`.
+
+* Reduce number of heap allocations in `numeric_token_stream`.
+
+* Replace RapidJSON with Velocypack for analyzers and scorers serialization and deserialization
+
+* Add new `1_4` segment format utilizing new columnstore and term dictionary index format.
+
+* Add new columnstore implementation based on sparse bitset format.
+
+* Add random access functionality to `data_input` for both regular reads and
+  direct buffer access.
+
+* Add `sparse_bitset_writer`/`sparse_bitset_iterator`, a fast and efficient on-disk
+  format for storing sparse bit sets.
+
+* Add a set of SIMD-based utils for encoding.
+
+
+v1.0 (2021-06-14)
+-------------------------
+
+Initial release of IResearch library

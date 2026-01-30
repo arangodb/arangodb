@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/files.h"
-#include "Export/arangoexport.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/ManagedDirectory.h"
 
@@ -41,11 +40,11 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 }  // namespace httpclient
 
-class ExportFeature final : public ArangoExportFeature {
+class ExportFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Export"; }
 
-  ExportFeature(Server& server, int* result);
+  ExportFeature(application_features::ApplicationServer& server, int* result);
   ~ExportFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
