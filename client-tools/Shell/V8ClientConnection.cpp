@@ -722,96 +722,64 @@ std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 void V8ClientConnection::getConnectionHandleTable(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
+void V8ClientConnection::getConnectionHandleTable(
+    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::Local<v8::Object> table = v8::Object::New(isolate);
-  bool foundCurrConnection = false;
-  bool active = false;
-  std::string id;
 
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  auto conn = _connection;
-  auto cb = _builder;
 
-  auto addColumn = [&context, &isolate, &table, &id, &conn, &cb, &active]() {
-    v8::Local<v8::Object> column = v8::Object::New(isolate);
-    if (active) {
-      column
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
-                v8::True(isolate))
-          .FromMaybe(false);
-    } else {
-      column
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
-                v8::False(isolate))
-          .FromMaybe(true);
-    }
-    if (conn->state() == fu::Connection::State::Connected) {
-      column
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "connected"),
-                v8::True(isolate))
-          .FromMaybe(false);
-    } else {
-      column
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "connected"),
-                v8::False(isolate))
-          .FromMaybe(true);
-    }
-    std::string ep;
-    ep = conn->endpoint();
-    column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "endpoint"),
-              TRI_V8_STD_STRING(isolate, ep))
+  auto const setString = [&](char const* key, std::string const& value,
+                             auto& entry) {
+    entry
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+              TRI_V8_STD_STRING(isolate, value))
         .FromMaybe(false);
-    ep = conn->localEndpoint();
-    column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "localPort"),
-              TRI_V8_STD_STRING(isolate, ep))
-        .FromMaybe(false);
-
-    ep = cb.user();
-    column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "username"),
-              TRI_V8_STD_STRING(isolate, ep))
-        .FromMaybe(false);
-    ep = cb.password();
-    column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "password"),
-              TRI_V8_STD_STRING(isolate, ep))
-        .FromMaybe(false);
-    ep = cb.jwtToken();
-    column
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "jwToken"),
-              TRI_V8_STD_STRING(isolate, ep))
-        .FromMaybe(false);
-    table->Set(context, TRI_V8_STRING(isolate, id), column).FromMaybe(false);
   };
-  for (auto& it : _connectionCache) {
-    id = it.first;
-    if (it.second != nullptr) {
-      active = false;
-      conn = it.second;
-      auto cbp = _connectionBuilderCache.find(it.first);
-      if (cbp != _connectionBuilderCache.end()) {
-        cb = cbp->second;
+
+  auto const setBool = [&](char const* key, bool value, auto& entry) {
+    entry
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, key),
+              value ? v8::True(isolate) : v8::False(isolate))
+        .FromMaybe(false);
+  };
+
+  auto const addEntry =
+      [&](std::string const& id, std::shared_ptr<fu::Connection> const& conn,
+          fu::ConnectionBuilder const& builder, bool isActive) {
+        v8::Local<v8::Object> entry = v8::Object::New(isolate);
+
+        setBool("active", isActive, entry);
+        setBool("connected", conn->state() == fu::Connection::State::Connected,
+                entry);
+        setString("endpoint", conn->endpoint(), entry);
+        setString("localPort", conn->localEndpoint(), entry);
+        setString("username", builder.user(), entry);
+        setString("password", builder.password(), entry);
+        setString("jwtToken", builder.jwtToken(), entry);
+
+        table->Set(context, TRI_V8_STRING(isolate, id), entry).FromMaybe(false);
+      };
+
+  bool foundCurrentConnection = false;
+
+  for (auto const& [id, cachedConn] : _connectionCache) {
+    if (cachedConn != nullptr) {
+      auto builderIt = _connectionBuilderCache.find(id);
+      if (builderIt != _connectionBuilderCache.end()) {
+        addEntry(id, cachedConn, builderIt->second, /*isActive=*/false);
       }
     } else {
-      // the object was taken from the cache and lives in the current context
-      // instead:
-      active = true;
-      conn = _connection;
-      cb = _builder;
-      foundCurrConnection = true;
-    }
-    addColumn();
-  }
-  if (!foundCurrConnection) {
-    conn = _connection;
-    cb = _builder;
-    active = true;
-    id = _currentConnectionId;
-    if (conn != nullptr) {
-      addColumn();
+      // Connection was taken from cache and is now the active connection
+      addEntry(id, _connection, _builder, /*isActive=*/true);
+      foundCurrentConnection = true;
     }
   }
+
+  if (!foundCurrentConnection && _connection != nullptr) {
+    addEntry(_currentConnectionId, _connection, _builder, /*isActive=*/true);
+  }
+
   TRI_V8_RETURN(table);
 }
 
