@@ -27,7 +27,6 @@
 #include <rocksdb/listener.h>
 
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 
 #include <string_view>
 

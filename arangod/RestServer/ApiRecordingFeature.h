@@ -30,14 +30,14 @@
 #include <string_view>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DataSource.h"
-#include "RestServer/arangod.h"
-#include "RestServer/ApiRecordingFeatureOptions.h"
 #include "Containers/BoundedList.h"
-#include "Rest/CommonDefines.h"
 #include "Inspection/Transformers.h"
-#include "Metrics/LogScale.h"
 #include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
+#include "Rest/CommonDefines.h"
+#include "RestServer/ApiRecordingFeatureOptions.h"
 
 namespace arangodb {
 
@@ -106,7 +106,7 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
       f.field("bindVars", record.bindVars));
 }
 
-class ApiRecordingFeature : public ArangodFeature,
+class ApiRecordingFeature : public application_features::ApplicationFeature,
                             public crash_handler::CrashHandlerDataSource {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
@@ -114,7 +114,7 @@ class ApiRecordingFeature : public ArangodFeature,
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
   explicit ApiRecordingFeature(
-      Server& server,
+      application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
   ~ApiRecordingFeature() override;
 

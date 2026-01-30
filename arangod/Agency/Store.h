@@ -24,15 +24,12 @@
 #pragma once
 
 #include "AgentInterface.h"
-#include "Basics/ConditionVariable.h"
-#include "RestServer/arangod.h"
 
 #include <iostream>
 #include <map>
 #include <mutex>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 namespace arangodb {
 namespace consensus {

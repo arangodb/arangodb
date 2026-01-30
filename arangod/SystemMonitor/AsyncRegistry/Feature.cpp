@@ -127,9 +127,9 @@ VPackBuilder serialize(
 }
 
 Feature::Feature(
-    Server& server,
+    application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
-    : ArangodFeature{server, *this},
+    : application_features::ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
@@ -167,8 +167,7 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  _metrics =
-      create_metrics(server().template getFeature<metrics::MetricsFeature>());
+  _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
   registry.set_metrics(_metrics);
 }
 

@@ -92,8 +92,8 @@ auto replicated_state::ReplicatedStateFeature::createMetricsObject(
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
-    Server& server)
-    : ArangodFeature{server, *this} {
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ReplicatedLogFeature>();
   onlyEnabledWith<ReplicatedLogFeature>();

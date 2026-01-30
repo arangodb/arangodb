@@ -48,8 +48,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ScriptFeature::ScriptFeature(Server& server, int* result)
-    : ArangodFeature{server, *this}, _result(result) {
+ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
+    : ApplicationFeature{server, *this}, _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }

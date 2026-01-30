@@ -58,8 +58,8 @@ using namespace arangodb::basics;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
-DBServerAgencySync::DBServerAgencySync(ArangodServer& server,
-                                       HeartbeatThread* heartbeat)
+DBServerAgencySync::DBServerAgencySync(
+    application_features::ApplicationServer& server, HeartbeatThread* heartbeat)
     : _server(server), _heartbeat(heartbeat), _requestTimeout(60.) {}
 
 void DBServerAgencySync::work() {

@@ -34,8 +34,6 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
-#include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,8 +41,8 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>
@@ -220,9 +218,9 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 }  // namespace
 
-template<typename Server>
-RocksDBOptionFeature::RocksDBOptionFeature(Server& server,
-                                           AgencyFeature const* agencyFeature)
+RocksDBOptionFeature::RocksDBOptionFeature(
+    application_features::ApplicationServer& server,
+    AgencyFeature const* agencyFeature)
     : ApplicationFeature{server, *this},
       _agencyFeature(agencyFeature),
       // number of lock stripes for the transaction lock manager. we bump this
@@ -2212,16 +2210,3 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
 
   return result;
 }
-
-template<typename Server>
-auto RocksDBOptionFeature::construct(Server& server,
-                                     const AgencyFeature* agencyFeature)
-    -> std::unique_ptr<RocksDBOptionFeature> {
-  return std::make_unique<RocksDBOptionFeature>(server, agencyFeature);
-}
-
-// a named constructor is necessary, because a template constructor can't be
-// explicitly instantiated.
-template auto RocksDBOptionFeature::construct<ArangodServer>(
-    ArangodServer& server, const AgencyFeature* agencyFeature)
-    -> std::unique_ptr<RocksDBOptionFeature>;

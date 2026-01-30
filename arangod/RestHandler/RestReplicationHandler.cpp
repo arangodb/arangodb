@@ -386,9 +386,9 @@ static Result restoreDataParser(std::string_view currentLine,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -23,19 +23,19 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Actions/ActionFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 class ClusterFeaturePhase;
 }
 
-class ActionFeature final : public ArangodFeature {
+class ActionFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Action"; }
 
-  explicit ActionFeature(Server& server);
+  explicit ActionFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void unprepare() override final;
