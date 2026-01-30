@@ -301,7 +301,7 @@ class instance {
     if (this.options.extremeVerbosity || force === true) {
       let currentHandle = arango.getConnectionHandle();
       const tableColumnHeaders = [
-        "selected", "handle", "endpoint", "localport", "username", "password", "JWT"
+        "selected", "connected", "handle", "endpoint", "localport", "username", "password", "JWT"
       ];
       let resultTable = new AsciiTable("");
       resultTable.setHeading(tableColumnHeaders);
@@ -309,8 +309,10 @@ class instance {
       try {
         Object.keys(table).forEach(handle => {
           let active = table[handle]['active'] || handle === currentHandle;
+          let connected = table[handle]['connected'];
           resultTable.addRow([
             (active)? "*": "",
+            (connected)? "*": "",
             handle,
             table[handle]['endpoint'],
             table[handle]['localPort'],
@@ -838,6 +840,7 @@ class instance {
           return true;
         } else {
           print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.dumpConnectionTable(true);
           this.connectionHandle = undefined;
         }
       }
@@ -847,6 +850,7 @@ class instance {
           return arango.connectHandle(this.connectionHandle);
         } catch (ex) {
           print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.dumpConnectionTable(true);
           this.connectionHandle = undefined;
         }
       }

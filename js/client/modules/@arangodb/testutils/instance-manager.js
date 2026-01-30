@@ -287,7 +287,9 @@ class instanceManager {
         print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
     }
-    return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+    let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+    this.connectionHandle = arango.getConnectionHandle();
+    return ret;
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -1337,16 +1339,19 @@ class instanceManager {
                        `${this.options.password}`,
                        time() < deadline,
                        this.JWT);
+      this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
       arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+      this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
 
     try {
       if (this.endpoint !== null) {
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+        this.connectionHandle = arango.getConnectionHandle();
       } else {
         print("Don't have a frontend instance to connect to");
       }
@@ -1355,9 +1360,11 @@ class instanceManager {
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
         sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
+        this.connectionHandle = arango.getConnectionHandle();
       } else if (e instanceof ArangoError && e.message.search('service unavailable due to startup or maintenance mode') >= 0) {
         sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
+        this.connectionHandle = arango.getConnectionHandle();
       } else {
         throw e;
       }
