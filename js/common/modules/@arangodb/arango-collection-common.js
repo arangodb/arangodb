@@ -41,7 +41,7 @@ var SimpleQueryGeo = simple.SimpleQueryGeo;
 var SimpleQueryNear = simple.SimpleQueryNear;
 var SimpleQueryWithin = simple.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
-var SimpleQueryFulltext = simple.SimpleQueryFulltext;
+// Note: SimpleQueryFulltext was removed in 3.12 as fulltext indexes are no longer supported.
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief collection is corrupted
@@ -250,8 +250,14 @@ ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
 };
 
+// Note: Fulltext indexes are no longer supported (removed in 3.12).
+// This function is kept for API compatibility but throws an error.
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
-  return new SimpleQueryFulltext(this, attribute, query, iid);
+  'use strict';
+  var err = new ArangoError();
+  err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
+  err.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
+  throw err;
 };
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
@@ -422,21 +428,17 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a fulltext index
+// / @brief ensures a fulltext index - REMOVED in 3.12
 // //////////////////////////////////////////////////////////////////////////////
 
+// Note: Fulltext indexes are no longer supported (removed in 3.12).
+// This function is kept for API compatibility but throws an error.
 ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
   'use strict';
-
-  if (! Array.isArray(field)) {
-    field = [ field ];
-  }
-
-  return this.ensureIndex({
-    type: 'fulltext',
-    minLength: minLength || undefined,
-    fields: field
-  });
+  var err = new ArangoError();
+  err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
+  err.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
+  throw err;
 };
 
 

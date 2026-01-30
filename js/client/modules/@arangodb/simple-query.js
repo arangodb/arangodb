@@ -36,6 +36,7 @@ var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
 var SimpleQueryByCondition = sq.SimpleQueryByCondition;
+// Note: SimpleQueryFulltext was removed in 3.12 as fulltext indexes are no longer supported.
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -422,49 +423,8 @@ SimpleQueryWithinRectangle.prototype.execute = function (batchSize) {
   }
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes a fulltext query
-// //////////////////////////////////////////////////////////////////////////////
-SimpleQueryFulltext.prototype.execute = function (batchSize) {
-  if (this._execution === null) {
-    if (batchSize !== undefined && batchSize > 0) {
-      this._batchSize = batchSize;
-    }
-
-    var data = {
-      collection: this._collection.name(),
-      attribute: this._attribute,
-      query: this._query
-    };
-
-    if (this._limit !== null) {
-      data.limit = this._limit;
-    }
-
-    if (this._index !== null) {
-      data.index = this._index;
-    }
-
-    if (this._skip !== null) {
-      data.skip = this._skip;
-    }
-
-    if (this._batchSize !== null) {
-      data.batchSize = this._batchSize;
-    }
-
-    var requestResult = this._collection._database._connection.PUT(
-      '/_api/simple/fulltext', data);
-
-    arangosh.checkRequestResult(requestResult);
-
-    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
-
-    if (requestResult.hasOwnProperty('count')) {
-      this._countQuery = requestResult.count;
-    }
-  }
-};
+// Note: SimpleQueryFulltext.prototype.execute was removed in 3.12
+// as fulltext indexes are no longer supported.
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;

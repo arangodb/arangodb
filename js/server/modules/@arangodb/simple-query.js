@@ -34,6 +34,7 @@ var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
+// Note: SimpleQueryFulltext was removed in 3.12 as fulltext indexes are no longer supported.
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -285,28 +286,8 @@ SimpleQueryWithin.prototype.execute = function () {
   this._countTotal = documents.length;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes a fulltext query
-// //////////////////////////////////////////////////////////////////////////////
-
-SimpleQueryFulltext.prototype.execute = function () {
-  if (this._execution !== null) {
-    return;
-  }
-
-  let bindVars = {
-    '@collection': this._collection.name(),
-    attribute: this._attribute,
-    query: this._query
-  };
-  let query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query) ' +
-              limitString(this._skip, this._limit) + ' RETURN doc';
-  let documents = require('internal').db._query({ query, bindVars}).toArray();
-
-  this._execution = new GeneralArrayCursor(documents);
-  this._countQuery = documents.length - this._skip;
-  this._countTotal = documents.length;
-};
+// Note: SimpleQueryFulltext.prototype.execute was removed in 3.12
+// as fulltext indexes are no longer supported.
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a within-rectangle query

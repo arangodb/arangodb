@@ -279,52 +279,17 @@ actions.defineHttp({
   }
 });
 
+// Note: Fulltext indexes are no longer supported (removed in 3.12).
+// This endpoint is kept to return a clear error message.
 actions.defineHttp({
   url: API + 'fulltext',
   isSystem: false,
 
   callback: function (req, res) {
-    try {
-      var body = actions.getJsonBody(req, res);
-
-      if (body === undefined) {
-        return;
-      }
-
-      if (req.requestType !== actions.PUT) {
-        actions.resultUnsupported(req, res);
-      } else {
-        var limit = body.limit;
-        var skip = body.skip;
-        var attribute = body.attribute;
-        var query = body.query;
-        var iid = body.index || undefined;
-        var name = body.collection;
-        var collection = db._collection(name);
-
-        if (collection === null) {
-          actions.collectionNotFound(req, res, name);
-        } else if (attribute === null || attribute === undefined) {
-          actions.badParameter(req, res, 'attribute');
-        } else if (query === null || query === undefined) {
-          actions.badParameter(req, res, 'query');
-        } else {
-          var result = collection.fulltext(attribute, query, iid);
-
-          if (skip !== null && skip !== undefined) {
-            result = result.skip(skip);
-          }
-
-          if (limit !== null && limit !== undefined) {
-            result = result.limit(limit);
-          }
-
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
-        }
-      }
-    } catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
+    actions.resultError(req, res, actions.HTTP_GONE, 
+      arangodb.ERROR_NOT_IMPLEMENTED,
+      "fulltext indexes and queries are no longer supported. " +
+      "Please use ArangoSearch (inverted index) instead.");
   }
 });
 

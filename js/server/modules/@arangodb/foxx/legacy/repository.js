@@ -307,19 +307,14 @@ var indexPrototypes = {
       }.bind(this));
     }
   },
+  // Note: Fulltext indexes are no longer supported (removed in 3.12).
+  // This method is kept for API compatibility but throws an error.
   fulltext: {
-
     fulltext(attribute, query, options) {
-      if (!options) {
-        options = {};
-      }
-      var rawDocuments = this.collection.fulltext(attribute, query);
-      if (options.limit) {
-        rawDocuments = rawDocuments.limit(options.limit);
-      }
-      return _.map(rawDocuments.toArray(), function (rawDocument) {
-        return new this.model(rawDocument);
-      }.bind(this));
+      throw new ArangoError({
+        errorNum: require('internal').errors.ERROR_NOT_IMPLEMENTED.code,
+        errorMessage: 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.'
+      });
     }
   }
 };
