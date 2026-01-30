@@ -87,9 +87,7 @@ function WriteConcernReadOnlyMetricSuite() {
       eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
     },
 
-    // This is evident in _system database, where the metric is not reset after collection drop.
     testMetricAfterCollectionDrop: function () {
-      db._useDatabase("_system");
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
 
