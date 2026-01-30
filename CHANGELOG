@@ -1,5 +1,6 @@
 4.0
 ---
+* PUT method in /_api/cursor/<cursor-id>
 
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
