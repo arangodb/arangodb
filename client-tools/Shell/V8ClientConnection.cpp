@@ -197,6 +197,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 
   // try to find an existing connection in the cache
   // the cache has one connection per endpoint
+  std::lock_guard<std::recursive_mutex> guard(_lock);
   auto [newConnection, wasFromCache] = findConnection();
   int retryCount = wasFromCache ? 2 : 1;
   fu::StringMap params{{"details", "true"}};
@@ -672,6 +673,10 @@ void V8ClientConnection::reconnect() {
   _connection.swap(oldConnection);
   if (oldConnection) {
     if (oldConnection->state() == fu::Connection::State::Closed) {
+      LOG_TOPIC("7aaaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+        << "connection state is closed of "
+        << oldConnectionId
+        << " not putting back to cache";
       oldConnection->cancel();
     } else {
       // a non-closed connection. now try to insert it into the connection
@@ -691,13 +696,13 @@ void V8ClientConnection::reconnect() {
 
   if (isConnected() &&
       _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
-    LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("2d416", INFO, arangodb::Logger::HTTPCLIENT)
         << ClientFeature::buildConnectedMessage(
                endpointSpecification(), _version, _role, _mode, _databaseName,
                _client.username());
   } else {
     if (_client.getWarnConnect()) {
-      LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("9d7ea", ERR, arangodb::Logger::HTTPCLIENT)
           << "Could not connect to endpoint '" << _client.endpoint()
           << "', username: '" << _client.username()
           << "' - Server message: " << _lastErrorMessage;
@@ -737,6 +742,17 @@ void V8ClientConnection::getConnectionHandleTable(
     } else {
       column
           ->Set(context, TRI_V8_ASCII_STRING(isolate, "active"),
+                v8::False(isolate))
+          .FromMaybe(true);
+    }
+    if (conn->state() == fu::Connection::State::Connected) {
+      column
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "connected"),
+                v8::True(isolate))
+          .FromMaybe(false);
+    } else {
+      column
+          ->Set(context, TRI_V8_ASCII_STRING(isolate, "connected"),
                 v8::False(isolate))
           .FromMaybe(true);
     }
@@ -804,13 +820,13 @@ void V8ClientConnection::connectHandle(
   LOG_TOPIC("8aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
       << "Connecting to handle: " << handle;
 #endif
+  std::lock_guard<std::recursive_mutex> guard(_lock);
   if (_currentConnectionId == handle) {
     _builder = _connectedBuilder;
     // its the currently active one
     TRI_V8_RETURN_TRUE();
     return;
   }
-  std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   auto iit = _connectionBuilderCache.find(handle);
@@ -820,6 +836,7 @@ void V8ClientConnection::connectHandle(
     std::shared_ptr<fu::Connection> oldConnection;
     std::string oldConnectionId = _currentConnectionId;
     _connection.swap(oldConnection);
+    _connection.swap(it->second);
     _connectionCache.erase(it);
     _connectionCache.emplace(oldConnectionId, oldConnection);
     _currentConnectionId = handle;
