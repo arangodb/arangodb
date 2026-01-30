@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/FileSystemFeatureOptions.h"
 
 namespace arangodb {
 namespace options {
@@ -48,8 +49,7 @@ class FileSystemFeature final
   void prepare() override final;
 
  private:
-  // whether or not to use the splice() syscall on Linux
-  bool _useSplice = true;
+  FileSystemFeatureOptions _options;
 };
 
 }  // namespace arangodb
