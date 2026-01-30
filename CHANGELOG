@@ -1,6 +1,18 @@
 4.0
 ---
 
+* Remove fulltext indexes. Fulltext indexes are no longer supported and have
+  been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
+  will be automatically dropped during upgrade. The following functionality
+  has been removed:
+  - Fulltext index creation via `ensureFulltextIndex()` and `ensureIndex({type: "fulltext", ...})`
+  - The `FULLTEXT()` AQL function
+  - The `collection.fulltext()` JavaScript method
+  - The `PUT /_api/simple/fulltext` REST API endpoint
+  - The `lookupFulltextIndex()` method
+  Users should migrate to ArangoSearch with inverted indexes for full-text
+  search functionality.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 
