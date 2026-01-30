@@ -24,6 +24,27 @@
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Tests for AttributeDetector handling of JoinNode and MaterializeNode
+///
+/// These tests verify that the AttributeDetector correctly tracks attribute
+/// access when the optimizer creates JoinNode (merge-join) or MaterializeNode
+/// (late document materialization).
+///
+/// IMPORTANT: These tests REQUIRE the optimizer to create these specific nodes.
+/// If the optimizer behavior changes and stops creating these nodes, the tests
+/// will fail with a clear error message indicating which node was expected.
+///
+/// Requirements for JoinNode:
+/// - Two nested FOR loops with equi-join condition (FILTER a.x == b.y)
+/// - Both sides must use SORTED (persistent) indexes
+/// - The optimizer rule "join-index-nodes" must be enabled
+///
+/// Requirements for MaterializeNode:
+/// - Index scan with SORT on indexed field followed by LIMIT
+/// - The optimizer rule "late-document-materialization" must be enabled
+////////////////////////////////////////////////////////////////////////////////
+
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -143,8 +164,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
       `;
       const {accesses, plan} = explainAbac(query);
 
-      // Verify JoinNode was created (if optimizer applies the rule)
-      const hasJoin = hasNodeInPlan(plan, "JoinNode");
+      // Verify JoinNode was created - this is required to test the JoinNode handler
+      assertTrue(hasNodeInPlan(plan, "JoinNode"),
+          "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(2, accesses.length);
 
@@ -303,6 +325,10 @@ function attributeDetectorJoinMaterializeTestSuite() {
           RETURN doc.name
       `;
       const {accesses, plan} = explainAbac(query);
+
+      // Verify MaterializeNode was created - this is required to test the MaterializeNode handler
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+          "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertEqual(cnLarge, accesses[0].collection);
@@ -577,7 +603,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertTrue(containsReadAttr(productAccess, "name"));
     },
 
-    // Verify node type detection in plan
+    // Verify node type detection in plan - these tests REQUIRE the specific nodes
     testVerifyJoinNodeInPlan: function () {
       const query = `
         FOR o IN ${cnOrders}
@@ -587,27 +613,26 @@ function attributeDetectorJoinMaterializeTestSuite() {
       `;
       const {plan} = explainAbac(query);
 
-      // JoinNode may or may not be present depending on optimizer decisions
-      // This test documents the expected behavior
+      // JoinNode MUST be present - this test verifies the optimizer creates it
       const nodes = plan.nodes.map(n => n.type);
-      assertTrue(nodes.includes("IndexNode") || nodes.includes("JoinNode"),
-          "Plan should contain IndexNode or JoinNode");
+      assertTrue(nodes.includes("JoinNode"),
+          "Expected JoinNode in plan. Got nodes: " + nodes.join(", "));
     },
 
     testVerifyMaterializeNodeInPlan: function () {
       const query = `
         FOR doc IN ${cnLarge}
+          FILTER doc.sortKey >= 0
           SORT doc.sortKey
           LIMIT 10
           RETURN doc.name
       `;
       const {plan} = explainAbac(query);
 
-      // MaterializeNode may be present if late materialization rule applies
+      // MaterializeNode MUST be present - this test verifies the optimizer creates it
       const nodes = plan.nodes.map(n => n.type);
-      assertTrue(nodes.includes("IndexNode") || nodes.includes("MaterializeNode") ||
-          nodes.includes("EnumerateCollectionNode"),
-          "Plan should contain index-related nodes");
+      assertTrue(nodes.includes("MaterializeNode"),
+          "Expected MaterializeNode in plan. Got nodes: " + nodes.join(", "));
     }
   };
 }
