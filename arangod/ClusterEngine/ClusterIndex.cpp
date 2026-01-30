@@ -83,9 +83,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _coveredFields = {
           {basics::AttributeName(StaticStrings::KeyString, false)},
           {basics::AttributeName(StaticStrings::IdString, false)}};
-    } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX ||
-               _indexType == TRI_IDX_TYPE_HASH_INDEX ||
-               _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
@@ -489,9 +487,7 @@ ClusterIndex::coveredFields() const {
 Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
-    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-    case Index::TRI_IDX_TYPE_HASH_INDEX:
-    case Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBVPackIndex::checkSupportsStreamInterface(
             _coveredFields, _fields, _unique, opts);
@@ -526,9 +522,7 @@ StoredValues const& ClusterIndex::storedValues() const { return _storedValues; }
 bool ClusterIndex::supportsDistinctScan(
     IndexDistinctScanOptions const& scanOptions) const noexcept {
   switch (_indexType) {
-    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-    case Index::TRI_IDX_TYPE_HASH_INDEX:
-    case Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBVPackIndex::supportsScanDistinctForFields(scanOptions,
                                                                 _fields);

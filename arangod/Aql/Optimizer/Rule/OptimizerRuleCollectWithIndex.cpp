@@ -100,10 +100,7 @@ bool isIndexNodeEligible(IndexNode const& in) {
     return false;
   }
   auto index = in.getSingleIndex();
-  // persistent, hash, and skiplist indexes are all functionally equivalent
-  if (index->type() != arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX &&
-      index->type() != arangodb::Index::TRI_IDX_TYPE_HASH_INDEX &&
-      index->type() != arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (index->type() != arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
     LOG_RULE << "IndexNode " << in.id()
              << " not eligible - only persistent index supported";
     return false;

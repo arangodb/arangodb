@@ -3173,12 +3173,8 @@ struct SortToIndexNode final
         if (coveredAttributes == sortCondition.numAttributes()) {
           deleteSortNode(indexNode, sortCondition);
         } else if (usedIndexes.size() == 1 &&
-                   (usedIndexes[0]->type() ==
-                        Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-                    usedIndexes[0]->type() ==
-                        Index::IndexType::TRI_IDX_TYPE_HASH_INDEX ||
-                    usedIndexes[0]->type() ==
-                        Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX)) {
+                   usedIndexes[0]->type() ==
+                       Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
           _sortNode->setGroupedElements(coveredAttributes);
         }
       }
@@ -3284,9 +3280,7 @@ struct SortToIndexNode final
     if (indexFullyCoversSortCondition) {
       deleteSortNode(indexNode, sortCondition);
     } else if (index->type() ==
-                   Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-               index->type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX ||
-               index->type() == Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+               Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
       auto [numberOfCoveredAttributes, sortIsAscending] =
           sortCondition.coveredUnidirectionalAttributesWithDirection(
               outVariable, fields);
