@@ -48,8 +48,6 @@ struct RocksDBColumnFamilyManager {
     EdgeIndex = 3,
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
-    // Note: FulltextIndex was removed in 3.12. Fulltext indexes are no longer
-    // supported. The column family must be kept for RocksDB compatibility.
     FulltextIndexRemoved = 6,
     ReplicatedLogs = 7,
     MdiIndex = 8,

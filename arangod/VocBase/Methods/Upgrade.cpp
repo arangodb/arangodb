@@ -269,7 +269,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropPregelQueriesCollection);
 
-  // Fulltext indexes are no longer supported since 3.12
+  // Fulltext indexes are no longer supported since 4.0
   addTask(upgradeFeature, "dropFulltextIndexes",
           "drop obsolete fulltext indexes",
           /*system*/ Upgrade::Flags::DATABASE_ALL,

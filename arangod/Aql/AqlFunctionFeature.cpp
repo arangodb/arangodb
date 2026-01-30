@@ -564,8 +564,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   // optimizer with collection-/index-based subqueries. they are all
   // marked as deterministic and cacheable here as they are just
   // placeholders for collection/index accesses nowaways.
-  // Note: FULLTEXT was removed in 3.12 as fulltext indexes are no longer
-  // supported.
   add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable),

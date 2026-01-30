@@ -528,8 +528,6 @@ void arangodb::aql::replaceNearWithinFulltextRule(
           replacement = replaceWithinRectangle(astnode, node, plan.get());
           TRI_ASSERT(replacement);
         }
-        // Note: FULLTEXT was removed in 3.12 as fulltext indexes are no longer
-        // supported.
 
         if (replacement) {
           modified = true;

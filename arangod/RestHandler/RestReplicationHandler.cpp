@@ -2024,8 +2024,6 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       idxDef = rebuilder.slice();
     }
 
-    // Fulltext indexes are no longer supported (removed in 3.12).
-    // Skip them during replication.
     if (type.isEqualString("fulltext")) {
       LOG_TOPIC("43c17", WARN, Logger::REPLICATION)
           << "Skipping fulltext index during replication - fulltext indexes "

@@ -666,7 +666,7 @@ Result UpgradeTasks::dropPregelQueriesCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops all fulltext indexes (no longer supported since 3.12)
+/// @brief drops all fulltext indexes (no longer supported since 4.0)
 ////////////////////////////////////////////////////////////////////////////////
 
 Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,

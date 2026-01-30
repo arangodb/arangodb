@@ -94,8 +94,6 @@ class Index {
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
     TRI_IDX_TYPE_EDGE_INDEX,
-    // Note: TRI_IDX_TYPE_FULLTEXT_INDEX was removed in 3.12. Fulltext indexes
-    // are no longer supported. Keeping the enum value for compatibility.
     TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
     TRI_IDX_TYPE_TTL_INDEX,
