@@ -24,8 +24,22 @@
 #include "Servers.h"
 
 #include <algorithm>
+#include <typeindex>
 
 #include "Agency/AgencyStrings.h"
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "Random/RandomFeature.h"
+#include "Ssl/SslFeature.h"
+#include "gmock/gmock.h"
+#ifdef USE_V8
+#include "V8/V8PlatformFeature.h"
+#endif
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -139,7 +153,8 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
 };
 
 static void SetupGreetingsPhase(MockServer& server) {
-  server.addFeature<GreetingsFeaturePhase>(false, std::false_type{});
+  server.addFeature<application_features::GreetingsFeaturePhase>(
+      false, std::false_type{});
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
@@ -153,21 +168,23 @@ static void SetupGreetingsPhase(MockServer& server) {
 
 static void SetupBasicFeaturePhase(MockServer& server) {
   SetupGreetingsPhase(server);
-  server.addFeature<BasicFeaturePhaseServer>(false);
+  server.addFeature<application_features::BasicFeaturePhaseServer>(false);
   server.addFeature<ShardingFeature>(false);
   server.addFeature<DatabasePathFeature>(false);
 }
 
 static void SetupDatabaseFeaturePhase(MockServer& server) {
   SetupBasicFeaturePhase(server);
-  server.addFeature<DatabaseFeaturePhase>(false);  // true ??
+  server.addFeature<application_features::DatabaseFeaturePhase>(
+      false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false);
   server.addFeature<DatabaseFeature>(false);
   server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
-  server.addFeature<InitDatabaseFeature>(true, std::vector<size_t>{});
+  server.addFeature<InitDatabaseFeature>(true,
+                                         std::span<const std::type_index>{});
   server.addFeature<ViewTypesFeature>(false);  // true ??
   server.addFeature<VectorIndexFeature>(true);
 
@@ -180,7 +197,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
-  server.addFeature<ClusterFeaturePhase>(false);
+  server.addFeature<application_features::ClusterFeaturePhase>(false);
   server.addFeature<ClusterFeature>(false);
   // set default replication factor to 1 for tests. otherwise the default value
   // is 0, which will lead to follow up errors if it is not corrected later.
@@ -195,14 +212,14 @@ static void SetupClusterFeaturePhase(MockServer& server) {
 static void SetupCommunicationFeaturePhase(MockServer& server) {
   SetupClusterFeaturePhase(server);
   server.addFeature<HttpEndpointProvider, HttpEndpointProviderMock>(false);
-  server.addFeature<CommunicationFeaturePhase>(false);
+  server.addFeature<application_features::CommunicationFeaturePhase>(false);
   // This phase is empty...
 }
 
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
 #ifdef USE_V8
-  server.addFeature<V8FeaturePhase>(false);
+  server.addFeature<application_features::V8FeaturePhase>(false);
   server.addFeature<V8DealerFeature>(
       false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
@@ -211,7 +228,7 @@ static void SetupV8Phase(MockServer& server) {
 
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
-  server.addFeature<AqlFeaturePhase>(false);
+  server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(
       false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
@@ -303,12 +320,13 @@ void MockServer::startFeatures() {
         f.prepare();
         if (f.name() == AuthenticationFeature::name()) {
           auto& auth = static_cast<AuthenticationFeature&>(f);
-          std::unique_ptr<auth::UserManager> userManager(
+          std::unique_ptr<auth::UserManagerMock> userManager(
               new testing::StrictMock<auth::UserManagerMock>());
           if (auth.userManager() != nullptr) {
             // prepare should have created a userManager
             // If there is none, there was a reason for that, we do not want to
             // overwrite that.
+            EXPECT_CALL(*userManager, shutdown);
             auth.setUserManager(std::move(userManager));
           }
         }
@@ -560,7 +578,8 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   _server.getFeature<ClusterFeature>().allocateMembers();
 
-  addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
+  addFeature<UpgradeFeature>(false, &_dummy,
+                             std::span<const std::type_index>{});
   addFeature<ServerSecurityFeature>(false);
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
   addFeature<ReplicatedLogFeature>(false);
@@ -853,7 +872,8 @@ MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
   addFeature<MaintenanceFeature>(false);  // do not start the thread
 
   // turn off auto-repairing of revision trees for unit tests
-  auto& rf = addFeature<arangodb::ReplicationFeature>(false);  // do not start
+  auto& rf = addFeature<arangodb::ReplicationFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>());  // do not start
   rf.autoRepairRevisionTrees(false);
 
   if (start) {

@@ -24,6 +24,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManagerImpl.h"
@@ -337,6 +338,12 @@ void AuthenticationFeature::start() {
 #endif
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+}
+
+void AuthenticationFeature::stop() {
+  if (_userManager) {
+    _userManager->shutdown();
+  }
 }
 
 void AuthenticationFeature::unprepare() {

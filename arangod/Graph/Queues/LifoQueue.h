@@ -46,7 +46,7 @@ class LifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~LifoQueue() { this->clear(); }
 
-  bool isBatched() { return false; }
+  bool usesCursor() { return false; }
 
   void clear() {
     if (!_queue.empty()) {

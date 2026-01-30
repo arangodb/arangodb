@@ -93,6 +93,11 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
   char hex[32];
   arangodb::rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  LOG_TOPIC("9aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+      << "Connection identifier " << std::string(hex, 32)
+      << " calculated from: " << raw;
+#endif
   // and return
   return std::string(hex, 32);
 }
@@ -105,8 +110,8 @@ static constexpr uint32_t kFuzzNotConnected = 1002;
 
 }  // namespace
 
-V8ClientConnection::V8ClientConnection(ArangoshServer& server,
-                                       ClientFeature& client)
+V8ClientConnection::V8ClientConnection(
+    application_features::ApplicationServer& server, ClientFeature& client)
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
@@ -367,7 +372,9 @@ std::string V8ClientConnection::endpointSpecification() const {
   return "";
 }
 
-ArangoshServer& V8ClientConnection::server() { return _server; }
+application_features::ApplicationServer& V8ClientConnection::server() {
+  return _server;
+}
 
 void V8ClientConnection::setDatabaseName(std::string const& value) {
   _databaseName = value;
@@ -711,6 +718,10 @@ std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  LOG_TOPIC("8aaaa", TRACE, arangodb::Logger::HTTPCLIENT)
+      << "Connecting to handle: " << handle;
+#endif
   if (_currentConnectionId == handle) {
     _builder = _connectedBuilder;
     // its the currently active one
@@ -883,7 +894,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
@@ -2080,13 +2091,12 @@ static void ClientConnection_importCsv(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   auto* client = static_cast<ClientFeature*>(wrap->Value());
@@ -2177,14 +2187,13 @@ static void ClientConnection_importJson(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  ArangoshServer& server = v8connection->server();
+  application_features::ApplicationServer& server = v8connection->server();
 
   EncryptionFeature* encryption{};
-  if constexpr (ArangoshServer::contains<EncryptionFeature>()) {
-    if (server.hasFeature<EncryptionFeature>()) {
-      encryption = &server.getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server.hasFeature<EncryptionFeature>());
+  encryption = &server.getFeature<EncryptionFeature>();
+#endif
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());

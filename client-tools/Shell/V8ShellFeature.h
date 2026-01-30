@@ -28,18 +28,18 @@
 #include <libplatform/libplatform.h>
 #include <v8.h>
 
-#include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 
 namespace arangodb {
 
 class V8ClientConnection;
 
-class V8ShellFeature final : public ArangoshFeature {
+class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "V8Shell"; }
 
-  V8ShellFeature(Server& server, std::string const& name);
+  V8ShellFeature(application_features::ApplicationServer& server,
+                 std::string const& name);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
