@@ -123,7 +123,6 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_docs"));
     assertTrue(coll.hasOwnProperty("type"));
     assertTrue(coll.hasOwnProperty("n_edge"));
-    assertTrue(coll.hasOwnProperty("n_fulltext"));
     assertTrue(coll.hasOwnProperty("n_geo"));
     assertTrue(coll.hasOwnProperty("n_hash"));
     assertTrue(coll.hasOwnProperty("n_inverted"));

@@ -1018,7 +1018,6 @@ function OtherIndexesSuite () {
       });
     },
     
-    // Note: testFulltextIndex removed - fulltext indexes are no longer supported (removed in 3.12)
   };
 }
 
