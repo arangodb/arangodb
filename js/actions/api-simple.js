@@ -285,7 +285,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     actions.resultError(req, res, actions.HTTP_GONE, 
-      arangodb.ERROR_NOT_IMPLEMENTED,
+      ERRORS.ERROR_NOT_IMPLEMENTED.code,
       "fulltext indexes and queries are no longer supported. " +
       "Please use ArangoSearch (inverted index) instead.");
   }
