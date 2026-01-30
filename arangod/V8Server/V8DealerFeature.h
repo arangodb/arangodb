@@ -33,10 +33,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
 #include "V8Server/GlobalExecutorMethods.h"
@@ -52,7 +52,7 @@ class JavaScriptSecurityContext;
 class Thread;
 class V8Executor;
 
-class V8DealerFeature final : public ArangodFeature {
+class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   struct Statistics {
     size_t available;
@@ -73,7 +73,8 @@ class V8DealerFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
-  V8DealerFeature(Server& server, metrics::MetricsFeature& metrics);
+  V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;

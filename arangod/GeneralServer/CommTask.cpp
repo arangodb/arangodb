@@ -69,8 +69,8 @@ constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
-VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
-                                     GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(
+    application_features::ApplicationServer& server, GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -83,7 +83,8 @@ VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
+bool resolveRequestContext(application_features::ApplicationServer& server,
+                           GeneralRequest& req) {
   auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.

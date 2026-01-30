@@ -39,14 +39,15 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
+#include "RestServer/arangod.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 template<class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
-      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
+  TestThread(Function&& f, int i, char* c[])
+      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     std::unique_lock guard{_wait.mutex};
     while (true) {
@@ -155,7 +156,7 @@ int main(int argc, char* argv[]) {
   // ArangoGlobalContext above in the libmusl case:
   int result;
   auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
-  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();

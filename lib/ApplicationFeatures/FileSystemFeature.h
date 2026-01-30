@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/FileSystemFeatureOptions.h"
+#include "Logger/LoggerFeature.h"
 
 namespace arangodb {
 namespace options {
@@ -38,8 +39,7 @@ class FileSystemFeature final
  public:
   static constexpr std::string_view name() noexcept { return "FileSystem"; }
 
-  template<typename Server>
-  explicit FileSystemFeature(Server& server)
+  explicit FileSystemFeature(application_features::ApplicationServer& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
     startsAfter<LoggerFeature>();

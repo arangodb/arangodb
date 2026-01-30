@@ -23,22 +23,22 @@
 
 #pragma once
 
-#include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/AccessMode.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
 
+class ClusterFeature;
+
 class ClusterEngine final : public StorageEngine {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  explicit ClusterEngine(ArangodServer& server);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);

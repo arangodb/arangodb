@@ -40,8 +40,10 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, *this}, _queueVersion(0), _localQueueInserts(0) {
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
+      _queueVersion(0),
+      _localQueueInserts(0) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }

@@ -62,9 +62,9 @@ namespace {
 constexpr std::string_view moduleName("collection management");
 }
 
-RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+RestCollectionHandler::RestCollectionHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RequestLane RestCollectionHandler::lane() const {

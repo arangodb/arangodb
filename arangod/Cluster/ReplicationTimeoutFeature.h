@@ -23,18 +23,20 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ReplicationTimeoutFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 #include <string_view>
 
 namespace arangodb {
 
-class ReplicationTimeoutFeature : public ArangodFeature {
+class ReplicationTimeoutFeature
+    : public application_features::ApplicationFeature {
  public:
   static const std::string_view name() noexcept { return "ReplicationTimeout"; }
 
-  explicit ReplicationTimeoutFeature(Server& server);
+  explicit ReplicationTimeoutFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
