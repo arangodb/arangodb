@@ -122,7 +122,7 @@ void LanguageFeature::collectOptions(
       ->addOption("--default-language",
                   "An ISO-639 language code. You can only set this option "
                   "once, when initializing the database.",
-                  new StringParameter(&_defaultLanguage),
+                  new StringParameter(&_options.defaultLanguage),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(31000)
@@ -139,7 +139,7 @@ The default is the system locale of the platform.)");
           "An ICU locale ID to set a language and optionally additional "
           "properties that affect string comparisons and sorting. You can only "
           "set this option once, when initializing the database.",
-          new StringParameter(&_icuLanguage),
+          new StringParameter(&_options.icuLanguage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30901)
@@ -163,7 +163,7 @@ or `--default-language`. Setting both of them results in an error.)");
           "--default-language-check",
           "Check if `--icu-language` / `--default-language` matches the "
           "stored language.",
-          new BooleanParameter(&_forceLanguageCheck),
+          new BooleanParameter(&_options.forceLanguageCheck),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
@@ -252,7 +252,7 @@ void LanguageFeature::prepare() {
   }
 
   // Now on to the language type and locale settings:
-  _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
+  _langType = ::getLanguageType(_options.defaultLanguage, _options.icuLanguage);
 
   if (LanguageType::INVALID == _langType) {
     LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
@@ -261,9 +261,9 @@ void LanguageFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  ::setCollator(
-      _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
-      _langType);
+  ::setCollator(_langType == LanguageType::ICU ? _options.icuLanguage
+                                               : _options.defaultLanguage,
+                _langType);
   ::setLocale(_locale);
 }
 
@@ -272,14 +272,16 @@ icu_64_64::Locale& LanguageFeature::getLocale() { return _locale; }
 std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
   if (LanguageType::ICU == _langType) {
-    return {_icuLanguage, _langType};
+    return {_options.icuLanguage, _langType};
   }
   TRI_ASSERT(LanguageType::DEFAULT == _langType);
-  // If it is invalid type just returning _defaultLanguage
-  return {_defaultLanguage, _langType};
+  // If it is invalid type just returning _options.defaultLanguage
+  return {_options.defaultLanguage, _langType};
 }
 
-bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
+bool LanguageFeature::forceLanguageCheck() const {
+  return _options.forceLanguageCheck;
+}
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
@@ -289,15 +291,15 @@ std::string LanguageFeature::getCollatorLanguage() const {
 void LanguageFeature::resetLanguage(std::string_view language,
                                     arangodb::basics::LanguageType type) {
   _langType = type;
-  _defaultLanguage.clear();
-  _icuLanguage.clear();
+  _options.defaultLanguage.clear();
+  _options.icuLanguage.clear();
   switch (_langType) {
     case LanguageType::DEFAULT:
-      _defaultLanguage = language;
+      _options.defaultLanguage = language;
       break;
 
     case LanguageType::ICU:
-      _icuLanguage = language;
+      _options.icuLanguage = language;
       break;
 
     case LanguageType::INVALID:

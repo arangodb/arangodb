@@ -340,6 +340,12 @@ void AuthenticationFeature::start() {
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
+void AuthenticationFeature::stop() {
+  if (_userManager) {
+    _userManager->shutdown();
+  }
+}
+
 void AuthenticationFeature::unprepare() {
   INSTANCE.store(nullptr, std::memory_order_relaxed);
 }

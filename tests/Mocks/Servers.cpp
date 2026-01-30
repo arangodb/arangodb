@@ -36,6 +36,7 @@
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
+#include "gmock/gmock.h"
 #ifdef USE_V8
 #include "V8/V8PlatformFeature.h"
 #endif
@@ -319,12 +320,13 @@ void MockServer::startFeatures() {
         f.prepare();
         if (f.name() == AuthenticationFeature::name()) {
           auto& auth = static_cast<AuthenticationFeature&>(f);
-          std::unique_ptr<auth::UserManager> userManager(
+          std::unique_ptr<auth::UserManagerMock> userManager(
               new testing::StrictMock<auth::UserManagerMock>());
           if (auth.userManager() != nullptr) {
             // prepare should have created a userManager
             // If there is none, there was a reason for that, we do not want to
             // overwrite that.
+            EXPECT_CALL(*userManager, shutdown);
             auth.setUserManager(std::move(userManager));
           }
         }

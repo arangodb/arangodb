@@ -42,7 +42,7 @@ CrashHandlerFeature::CrashHandlerFeature(
 }
 
 void CrashHandlerFeature::start() {
-  if (_enabled) {
+  if (_options.enabled) {
     auto const path = server().getFeature<DatabasePathFeature>().directory();
     _dumpManager->setCrashesDirectory(path);
   }
@@ -53,7 +53,7 @@ void CrashHandlerFeature::collectOptions(
   options->addOption(
       "--crash-handler.enable-dumps",
       "Enable crash dump logging to write crash information to disk.",
-      new BooleanParameter(&_enabled),
+      new BooleanParameter(&_options.enabled),
       options::makeDefaultFlags(
           options::Flags::DefaultNoComponents, options::Flags::OnCoordinator,
           options::Flags::OnDBServer, options::Flags::OnAgent,

@@ -175,6 +175,9 @@ auto TwoSidedEnumerator<ProviderType, PathValidator>::Ball::fetchResults(
 template<class ProviderType, class PathValidator>
 auto TwoSidedEnumerator<ProviderType, PathValidator>::Ball::
     computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void {
+  if (_graphOptions.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -411,6 +414,13 @@ template<class ProviderType, class PathValidator>
 void TwoSidedEnumerator<ProviderType, PathValidator>::searchMoreResults() {
   while (_results.empty() && !searchDone()) {
     _resultsFetched = false;
+
+    // Check for kill signal before proceeding
+    // We will also do additional checks in computeNeighbourhoodOfNextVertex
+    if (_options.isKilled()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     if (_searchLeft) {
       if (ADB_UNLIKELY(_left.doneWithDepth())) {
         startNextDepth();

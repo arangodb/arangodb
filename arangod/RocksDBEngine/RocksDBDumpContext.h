@@ -351,7 +351,6 @@ class RocksDBDumpContext {
 
   std::atomic_bool _stopped{false};
 
- public:
   activity_registry::Activity _activity;
 };
 

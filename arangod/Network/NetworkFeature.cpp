@@ -573,6 +573,7 @@ void NetworkFeature::stop() {
     _pool->shutdownConnections();
     _pool->drainConnections();
     _pool->stop();
+    _pool.reset();  // Destroy the pool to avoid any races
   }
   _retryThread.reset();
 }
