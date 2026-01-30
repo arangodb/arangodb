@@ -69,8 +69,7 @@ class AllIterator : public doc_iterator {
     //         c        m  t   Result = eof()
     if (target > max_doc_) {
       doc.value = doc_limits::eof();
-    }
-    else {
+    } else {
       if (doc.value <= target) {
         doc.value = target;
       }
