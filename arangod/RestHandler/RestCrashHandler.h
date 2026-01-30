@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb::crash_handler {
@@ -33,7 +34,8 @@ namespace arangodb::crash_handler {
 
 class RestCrashHandler : public RestBaseHandler {
  public:
-  explicit RestCrashHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  explicit RestCrashHandler(application_features::ApplicationServer&,
+                            GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestCrashHandler"; }

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
@@ -32,7 +33,7 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
-#include "RestServer/arangod.h"
+#include "Metrics/MetricsFeature.h"
 
 #include <cstdint>
 #include <memory>
@@ -42,11 +43,12 @@
 namespace arangodb {
 class RestServerThread;
 
-class GeneralServerFeature final : public ArangodFeature {
+class GeneralServerFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
-  explicit GeneralServerFeature(Server& server,
+  explicit GeneralServerFeature(application_features::ApplicationServer& server,
                                 metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

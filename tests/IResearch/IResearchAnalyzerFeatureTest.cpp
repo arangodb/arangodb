@@ -432,7 +432,7 @@ class IResearchAnalyzerFeatureTest
     arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.addFeature<arangodb::AqlFeature>(true);
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
@@ -2797,7 +2797,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
     newServer.addFeature<arangodb::V8DealerFeature>(
-        newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+        newServer.getFeature<arangodb::metrics::MetricsFeature>());
 #endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();

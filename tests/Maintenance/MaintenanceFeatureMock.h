@@ -89,7 +89,7 @@ using namespace arangodb::maintenance;
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
  public:
-  TestMaintenanceFeature(arangodb::ArangodServer& as)
+  TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
       : arangodb::MaintenanceFeature(as) {
     // force activation of the feature, even in agency/single-server mode
     // (the catch tests use single-server mode)

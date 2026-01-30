@@ -41,7 +41,8 @@ class Slice;
 
 class RestBaseHandler : public rest::RestHandler {
  public:
-  explicit RestBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  explicit RestBaseHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
   void handleError(basics::Exception const&) override;
 

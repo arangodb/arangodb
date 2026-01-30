@@ -865,7 +865,7 @@ void Collections::applySystemCollectionProperties(
   bool isMock = false;
   if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
     StorageEngine& engine =
-        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
     isMock = (engine.typeName() == "Mock");
   } else {

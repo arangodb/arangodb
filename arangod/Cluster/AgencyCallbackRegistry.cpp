@@ -54,7 +54,8 @@ DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
               "Current number of agency callbacks registered");
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(
-    ApplicationServer& server, ClusterFeature& clusterFeature,
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature,
     EngineSelectorFeature& engineSelectorFeature,
     DatabaseFeature& databaseFeature, metrics::MetricsFeature& metrics,
     std::string const& callbackBasePath)

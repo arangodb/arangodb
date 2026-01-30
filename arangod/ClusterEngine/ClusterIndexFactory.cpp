@@ -53,8 +53,8 @@ using namespace arangodb::iresearch;
 struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(ArangodServer& server, std::string const& type,
-                               ClusterEngine& engine)
+  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
+                               std::string const& type, ClusterEngine& engine)
       : IndexTypeFactory(server), _type(type), _engine(engine) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -96,8 +96,8 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(ArangodServer& server, std::string const& type,
-                            ClusterEngine& engine)
+  explicit EdgeIndexFactory(application_features::ApplicationServer& server,
+                            std::string const& type, ClusterEngine& engine)
       : DefaultIndexFactory(server, type, engine) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -116,8 +116,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(ArangodServer& server, std::string const& type,
-                               ClusterEngine& engine)
+  explicit PrimaryIndexFactory(application_features::ApplicationServer& server,
+                               std::string const& type, ClusterEngine& engine)
       : DefaultIndexFactory(server, type, engine) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -138,8 +138,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
-  explicit IResearchInvertedIndexClusterFactory(ArangodServer& server,
-                                                ClusterEngine& engine)
+  explicit IResearchInvertedIndexClusterFactory(
+      application_features::ApplicationServer& server, ClusterEngine& engine)
       : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data(),
                             engine) {}
 
@@ -175,9 +175,9 @@ struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
-                                             IndexFactory& factory,
-                                             ClusterEngine& engine) {
+void ClusterIndexFactory::linkIndexFactories(
+    application_features::ApplicationServer& server, IndexFactory& factory,
+    ClusterEngine& engine) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge", engine);
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext",
                                                         engine);
@@ -217,8 +217,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(vectorIndexFactory._type, vectorIndexFactory);
 }
 
-ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server,
-                                         ClusterEngine& engine)
+ClusterIndexFactory::ClusterIndexFactory(
+    application_features::ApplicationServer& server, ClusterEngine& engine)
     : IndexFactory(server), _engine(engine) {
   linkIndexFactories(server, *this, engine);
 }
