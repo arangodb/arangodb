@@ -789,7 +789,10 @@ void V8ClientConnection::getConnectionHandleTable(
     if (it.second != nullptr) {
       active = false;
       conn = it.second;
-      cb = _connectionBuilderCache.find(it.first)->second;
+      auto cbp = _connectionBuilderCache.find(it.first);
+      if (cbp != _connectionBuilderCache.end()) {
+        cb = cbp->second;
+      }
     } else {
       // the object was taken from the cache and lives in the current context
       // instead:
