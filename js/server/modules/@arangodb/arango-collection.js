@@ -405,8 +405,6 @@ ArangoCollection.prototype.lookupSkiplist = function () {
   });
 };
 
-// Note: Fulltext indexes are no longer supported (removed in 3.12).
-// This function is kept for API compatibility but throws an error.
 ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
   'use strict';
   throw new ArangoError({

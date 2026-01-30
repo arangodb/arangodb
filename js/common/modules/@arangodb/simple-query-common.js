@@ -824,12 +824,6 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief fulltext query - REMOVED in 3.12
-// //////////////////////////////////////////////////////////////////////////////
-
-// Note: Fulltext indexes are no longer supported (removed in 3.12).
-// This class is kept for API compatibility but throws an error.
 function SimpleQueryFulltext (collection, attribute, query, iid) {
   var err = new ArangoError();
   err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;

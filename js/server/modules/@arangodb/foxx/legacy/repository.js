@@ -307,8 +307,6 @@ var indexPrototypes = {
       }.bind(this));
     }
   },
-  // Note: Fulltext indexes are no longer supported (removed in 3.12).
-  // This method is kept for API compatibility but throws an error.
   fulltext: {
     fulltext(attribute, query, options) {
       throw new ArangoError({

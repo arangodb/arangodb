@@ -34,7 +34,6 @@ var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
-// Note: SimpleQueryFulltext was removed in 3.12 as fulltext indexes are no longer supported.
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -285,9 +284,6 @@ SimpleQueryWithin.prototype.execute = function () {
   this._countQuery = documents.length - this._skip;
   this._countTotal = documents.length;
 };
-
-// Note: SimpleQueryFulltext.prototype.execute was removed in 3.12
-// as fulltext indexes are no longer supported.
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a within-rectangle query

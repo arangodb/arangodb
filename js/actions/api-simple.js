@@ -279,8 +279,6 @@ actions.defineHttp({
   }
 });
 
-// Note: Fulltext indexes are no longer supported (removed in 3.12).
-// This endpoint is kept to return a clear error message.
 actions.defineHttp({
   url: API + 'fulltext',
   isSystem: false,

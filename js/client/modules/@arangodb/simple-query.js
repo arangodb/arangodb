@@ -36,7 +36,6 @@ var SimpleQueryAll = sq.SimpleQueryAll;
 var SimpleQueryArray = sq.SimpleQueryArray;
 var SimpleQueryByExample = sq.SimpleQueryByExample;
 var SimpleQueryByCondition = sq.SimpleQueryByCondition;
-// Note: SimpleQueryFulltext was removed in 3.12 as fulltext indexes are no longer supported.
 var SimpleQueryFulltext = sq.SimpleQueryFulltext;
 var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
@@ -422,9 +421,6 @@ SimpleQueryWithinRectangle.prototype.execute = function (batchSize) {
     }
   }
 };
-
-// Note: SimpleQueryFulltext.prototype.execute was removed in 3.12
-// as fulltext indexes are no longer supported.
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
