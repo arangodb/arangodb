@@ -212,7 +212,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 default: 0.1
               }
             },
-            additionalProperties: true
+            additionalProperties: false
           },
           {
             properties: {
@@ -240,7 +240,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 default: 0.5
               }
             },
-            additionalProperties: true
+            additionalProperties: false
           }
         ],
         default: {
