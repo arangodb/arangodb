@@ -1857,6 +1857,9 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
         callNotify, actions, arangodb::MaintenanceFeature::ShardActionMap{},
         ReplicatedLogStatusMapByDatabase{}, ShardIdToLogIdMapByDatabase{});
 
+    for (auto action : actions) {
+      std::cout << *action.get() << std::endl;
+    }
     ASSERT_EQ(actions.size(), 1);
     assertIsResignLeadershipAction(*actions[0], "_system");
     ASSERT_EQ(actions[0]->get(SHARD), shname);
