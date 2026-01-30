@@ -1188,7 +1188,8 @@ function NewAqlReplaceAnyWithINTestSuite() {
             assertTrue(result !== undefined, "Query with nested subquery should execute");
 
             // Verify the simple conditions (without subquery) still work
-            var expected = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            // Filter is value > 5 AND name == 'Alice', so we expect values 6-10 for Alice
+            var expected = [6, 7, 8, 9, 10];
             var values = result.map(d => d.value).sort((a, b) => a - b);
             assertEqual(expected, values, "Nested subquery query should return correct Alice docs with value > 5");
         },
