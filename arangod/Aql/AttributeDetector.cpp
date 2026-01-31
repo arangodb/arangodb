@@ -44,6 +44,7 @@
 #include "Aql/Projections.h"
 #include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
+#include "Indexes/Index.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 
@@ -512,6 +513,27 @@ bool AttributeDetector::before(ExecutionNode* node) {
             access->requiresAllAttributesRead = true;
           }
         }
+
+        // When join keys are indexed, either of them may not appear in
+        // projections/filterProjections/condition because outVariable is only
+        // one side of the join, so add the index fields used in the join
+        if (idxInfo.index && !idxInfo.usedKeyFields.empty()) {
+          auto const& indexFields = idxInfo.index.get()->fields();
+          for (size_t pos : idxInfo.usedKeyFields) {
+            if (pos < indexFields.size()) {
+              std::vector<std::string> path;
+              path.reserve(indexFields[pos].size());
+              for (auto const& attr : indexFields[pos]) {
+                // Construct AttributeNamePath from index field names
+                path.push_back(attr.name);
+              }
+              if (!path.empty()) {
+                access->readAttributes.insert(AttributeNamePath(
+                    path, _plan->getAst()->query().resourceMonitor()));
+              }
+            }
+          }
+        }
       }
       break;
     }
@@ -562,9 +584,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
     }
 
     case ExecutionNode::MATERIALIZE: {
-      // Late materialization moves projections from IndexNode to MaterializeNode
-      auto* matNode =
-          dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      // Late materialization moves projections from IndexNode to
+      // MaterializeNode
+      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
       if (matNode != nullptr) {
         std::string collName = matNode->collection()->name();
 

@@ -24,27 +24,6 @@
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Tests for AttributeDetector handling of JoinNode and MaterializeNode
-///
-/// These tests verify that the AttributeDetector correctly tracks attribute
-/// access when the optimizer creates JoinNode (merge-join) or MaterializeNode
-/// (late document materialization).
-///
-/// IMPORTANT: These tests REQUIRE the optimizer to create these specific nodes.
-/// If the optimizer behavior changes and stops creating these nodes, the tests
-/// will fail with a clear error message indicating which node was expected.
-///
-/// Requirements for JoinNode:
-/// - Two nested FOR loops with equi-join condition (FILTER a.x == b.y)
-/// - Both sides must use SORTED (persistent) indexes
-/// - The optimizer rule "join-index-nodes" must be enabled
-///
-/// Requirements for MaterializeNode:
-/// - Index scan with SORT on indexed field followed by LIMIT
-/// - The optimizer rule "late-document-materialization" must be enabled
-////////////////////////////////////////////////////////////////////////////////
-
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -73,9 +52,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
     const expected = Array.isArray(attrPath) ? attrPath : [attrPath];
     const attrs = (access && access.read && access.read.attributes) || [];
     return attrs.some(a =>
-        Array.isArray(a) &&
-        a.length === expected.length &&
-        a.every((seg, i) => seg === expected[i])
+      Array.isArray(a) &&
+      a.length === expected.length &&
+      a.every((seg, i) => seg === expected[i])
     );
   };
 
@@ -104,8 +83,8 @@ function attributeDetectorJoinMaterializeTestSuite() {
       largeCollection = internal.db._create(cnLarge);
 
       // Sorted indexes required for JoinNode (merge-join needs sorted data)
-      ordersCollection.ensureIndex({type: "persistent", fields: ["productId"], storedValues: ["customerId", "orderDate"]});
-      productsCollection.ensureIndex({type: "persistent", fields: ["_key"], storedValues: ["name", "category", "price"]});
+      ordersCollection.ensureIndex({ type: "persistent", fields: ["productId"], storedValues: ["customerId", "orderDate"] });
+      productsCollection.ensureIndex({ type: "persistent", fields: ["_key"], storedValues: ["name", "category", "price"] });
 
       // Index with stored values for late materialization
       largeCollection.ensureIndex({
@@ -140,7 +119,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           sortKey: i,
           name: `Item ${i}`,
           category: `cat${i % 5}`,
-          payload: {nested: i, extra: `data${i}`}
+          payload: { nested: i, extra: `data${i}` }
         });
       }
     },
@@ -159,11 +138,11 @@ function attributeDetectorJoinMaterializeTestSuite() {
             FILTER o.productId == p._key
             RETURN {orderId: o._key, productName: p.name}
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       // Verify JoinNode was created
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
-          "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+        "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(2, accesses.length);
 
@@ -178,7 +157,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertFalse(orderAccess.read.requiresAll);
       assertFalse(orderAccess.write.requiresAll);
 
-      //assertTrue(containsReadAttr(productAccess, "_key")); // failed
+      assertTrue(containsReadAttr(productAccess, "_key"));
       assertTrue(containsReadAttr(productAccess, "name"));
       assertFalse(productAccess.read.requiresAll);
       assertFalse(productAccess.write.requiresAll);
@@ -189,23 +168,26 @@ function attributeDetectorJoinMaterializeTestSuite() {
         FOR o IN ${cnOrders}
           FOR p IN ${cnProducts}
             FILTER o.productId == p._key
-            RETURN {order: o, product: p}
+            RETURN {productName: p.name, order: o}
       `;
-    
-      const {accesses, plan} = explainAbac(query);
-    
+
+      const { accesses, plan } = explainAbac(query);
+
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
-    
+
       assertEqual(2, accesses.length);
       const orderAccess = accesses.find(a => a.collection === cnOrders);
       const productAccess = accesses.find(a => a.collection === cnProducts);
-    
+
       assertTrue(!!orderAccess);
       assertTrue(!!productAccess);
-    
+
+      assertTrue(containsReadAttr(productAccess, "name"));
+      assertTrue(containsReadAttr(productAccess, "_key"));
+
       assertTrue(orderAccess.read.requiresAll);
-      assertTrue(productAccess.read.requiresAll);
+      assertFalse(productAccess.read.requiresAll);
     },
 
     testJoin_MultipleAttributesFromBothSides: function () {
@@ -220,7 +202,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
               productPrice: p.price
             }
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
@@ -231,10 +213,10 @@ function attributeDetectorJoinMaterializeTestSuite() {
       let productAccess = accesses.find(a => a.collection === cnProducts);
 
       assertTrue(containsReadAttr(orderAccess, "productId"));
-      //assertTrue(containsReadAttr(orderAccess, "_key")); // failed
+      assertTrue(containsReadAttr(orderAccess, "_key"));
       assertTrue(containsReadAttr(orderAccess, "quantity"));
 
-      //assertTrue(containsReadAttr(productAccess, "_key")); // failed
+      assertTrue(containsReadAttr(productAccess, "_key"));
       assertTrue(containsReadAttr(productAccess, "name"));
       assertTrue(containsReadAttr(productAccess, "price"));
 
@@ -250,7 +232,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
             FILTER p.category == "cat1"
             RETURN {orderId: o._key, productName: p.name}
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
@@ -262,7 +244,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
 
       assertTrue(containsReadAttr(orderAccess, "productId"));
       assertTrue(containsReadAttr(orderAccess, "_key"));
-      //assertTrue(containsReadAttr(productAccess, "_key")); // failed
+      assertTrue(containsReadAttr(productAccess, "_key"));
       assertTrue(containsReadAttr(productAccess, "category"));
       assertTrue(containsReadAttr(productAccess, "name"));
       assertFalse(productAccess.read.requiresAll);
@@ -277,7 +259,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
             SORT p.price DESC
             RETURN {orderId: o._key, price: p.price}
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
@@ -289,7 +271,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
 
       assertTrue(containsReadAttr(orderAccess, "productId"));
       assertTrue(containsReadAttr(orderAccess, "_key"));
-      //assertTrue(containsReadAttr(productAccess, "_key")); // failed
+      assertTrue(containsReadAttr(productAccess, "_key"));
       assertTrue(containsReadAttr(productAccess, "price"));
       assertFalse(orderAccess.read.requiresAll);
       assertFalse(productAccess.read.requiresAll);
@@ -303,7 +285,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
             COLLECT category = p.category WITH COUNT INTO cnt
             RETURN {category, cnt}
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
@@ -314,22 +296,21 @@ function attributeDetectorJoinMaterializeTestSuite() {
       let productAccess = accesses.find(a => a.collection === cnProducts);
 
       assertTrue(containsReadAttr(orderAccess, "productId"));
-      //assertTrue(containsReadAttr(productAccess, "_key")); // failed
+      assertTrue(containsReadAttr(productAccess, "_key"));
       assertTrue(containsReadAttr(productAccess, "category"));
       assertFalse(orderAccess.read.requiresAll);
       assertFalse(productAccess.read.requiresAll);
     },
 
     testJoin_SelfJoin: function () {
-      // Self-join on orders by customerId
       const query = `
         FOR o1 IN ${cnOrders}
           FOR o2 IN ${cnOrders}
-            FILTER o1.customerId == o2.customerId
-            FILTER o1._key < o2._key
-            RETURN {order1: o1._key, order2: o2._key, customer: o1.customerId}
+            FILTER o1.productId == o2.productId
+            SORT o1.productId
+            RETURN {c: o1.customerId, k1: o1._key, k2: o2._key}
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
@@ -337,8 +318,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertEqual(1, accesses.length);
       assertEqual(cnOrders, accesses[0].collection);
 
-      assertTrue(containsReadAttr(accesses[0], "customerId"));
+      assertTrue(containsReadAttr(accesses[0], "productId"));
       assertTrue(containsReadAttr(accesses[0], "_key"));
+      assertTrue(containsReadAttr(accesses[0], "customerId"));
       assertFalse(accesses[0].read.requiresAll);
     },
 
@@ -353,11 +335,11 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc.name
       `;
-      const {accesses, plan} = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
 
       // Verify MaterializeNode was created - this is required to test the MaterializeNode handler
       assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
-          "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertEqual(cnLarge, accesses[0].collection);
@@ -374,7 +356,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(accesses[0].read.requiresAll);
@@ -389,7 +371,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 5
           RETURN {name: doc.name, category: doc.category, key: doc._key}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -407,7 +389,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 5
           RETURN doc.name
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -424,7 +406,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc.payload.nested
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -440,7 +422,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LET doubled = doc.sortKey * 2
           RETURN {name: doc.name, doubled}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -458,7 +440,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
             LIMIT 5
             RETURN {orderId: o._key, productName: p.name, price: p.price}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(2, accesses.length);
 
@@ -485,7 +467,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
             AGGREGATE totalQty = SUM(o.quantity), avgPrice = AVG(p.price)
             RETURN {category, totalQty, avgPrice}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(2, accesses.length);
 
@@ -509,7 +491,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
       const cnCustomers = "UnitTestsAttrDetCustomers";
       try {
         let customersCollection = internal.db._create(cnCustomers);
-        customersCollection.ensureIndex({type: "persistent", fields: ["_key"]});
+        customersCollection.ensureIndex({ type: "persistent", fields: ["_key"] });
 
         for (let i = 0; i < 5; ++i) {
           customersCollection.insert({
@@ -531,7 +513,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
                   customerName: c.name
                 }
         `;
-        const {accesses} = explainAbac(query);
+        const { accesses } = explainAbac(query);
 
         assertEqual(3, accesses.length);
 
@@ -570,7 +552,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 50, 10
           RETURN doc.name
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -589,7 +571,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           )
           RETURN {productName: p.name, orders: LENGTH(orderCount)}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(2, accesses.length);
 
@@ -619,7 +601,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           )
           RETURN {product: p.name, quantities: orders}
       `;
-      const {accesses} = explainAbac(query);
+      const { accesses } = explainAbac(query);
 
       assertEqual(2, accesses.length);
 
@@ -640,12 +622,12 @@ function attributeDetectorJoinMaterializeTestSuite() {
             FILTER o.productId == p._key
             RETURN {o: o._key, p: p._key}
       `;
-      const {plan} = explainAbac(query);
+      const { plan } = explainAbac(query);
 
       // JoinNode MUST be present - this test verifies the optimizer creates it
       const nodes = plan.nodes.map(n => n.type);
       assertTrue(nodes.includes("JoinNode"),
-          "Expected JoinNode in plan. Got nodes: " + nodes.join(", "));
+        "Expected JoinNode in plan. Got nodes: " + nodes.join(", "));
     },
 
     testVerifyMaterializeNodeInPlan: function () {
@@ -656,12 +638,12 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc.name
       `;
-      const {plan} = explainAbac(query);
+      const { plan } = explainAbac(query);
 
       // MaterializeNode MUST be present - this test verifies the optimizer creates it
       const nodes = plan.nodes.map(n => n.type);
       assertTrue(nodes.includes("MaterializeNode"),
-          "Expected MaterializeNode in plan. Got nodes: " + nodes.join(", "));
+        "Expected MaterializeNode in plan. Got nodes: " + nodes.join(", "));
     }
   };
 }
