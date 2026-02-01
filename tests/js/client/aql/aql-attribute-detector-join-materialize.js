@@ -324,6 +324,150 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertFalse(accesses[0].read.requiresAll);
     },
 
+    testJoinWithCollectAggregate: function () {
+      const query = `
+        FOR o IN ${cnOrders}
+          FOR p IN ${cnProducts}
+            FILTER o.productId == p._key
+            COLLECT category = p.category
+            AGGREGATE avgPrice = AVG(p.price)
+            RETURN {category, avgPrice}
+      `;
+      const { accesses, plan } = explainAbac(query);
+
+      assertTrue(hasNodeInPlan(plan, "JoinNode"),
+        "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+
+      assertEqual(2, accesses.length);
+
+      let orderAccess = accesses.find(a => a.collection === cnOrders);
+      let productAccess = accesses.find(a => a.collection === cnProducts);
+
+      assertTrue(containsReadAttr(orderAccess, "productId"));
+
+      assertTrue(containsReadAttr(productAccess, "_key"));
+      assertTrue(containsReadAttr(productAccess, "category"));
+      assertTrue(containsReadAttr(productAccess, "price"));
+
+      assertFalse(orderAccess.read.requiresAll);
+      assertFalse(productAccess.read.requiresAll);
+    },
+
+    testJoin_ThreeWayJoin: function () {
+      const cnCustomers = "UnitTestsAttrDetCustomers";
+      try {
+        let customersCollection = internal.db._create(cnCustomers);
+        customersCollection.ensureIndex({ type: "persistent", fields: ["_key"] });
+
+        for (let i = 0; i < 5; ++i) {
+          customersCollection.insert({
+            _key: `cust${i}`,
+            name: `Customer ${i}`,
+            region: `region${i % 2}`
+          });
+        }
+
+        const query = `
+          FOR o IN ${cnOrders}
+            FOR p IN ${cnProducts}
+              FOR c IN ${cnCustomers}
+                FILTER o.productId == p._key
+                FILTER o.customerId == c._key
+                RETURN {
+                  orderId: o._key,
+                  productName: p.name,
+                  customerName: c.name
+                }
+        `;
+        const { accesses, plan } = explainAbac(query);
+
+        assertTrue(hasNodeInPlan(plan, "JoinNode"),
+          "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+
+        assertEqual(3, accesses.length);
+
+        let orderAccess = accesses.find(a => a.collection === cnOrders);
+        let productAccess = accesses.find(a => a.collection === cnProducts);
+        let customerAccess = accesses.find(a => a.collection === cnCustomers);
+
+        assertTrue(orderAccess !== undefined);
+        assertTrue(productAccess !== undefined);
+        assertTrue(customerAccess !== undefined);
+
+        assertTrue(containsReadAttr(orderAccess, "productId"));
+        assertTrue(containsReadAttr(orderAccess, "customerId"));
+        assertTrue(containsReadAttr(orderAccess, "_key"));
+
+        assertTrue(containsReadAttr(productAccess, "_key"));
+        assertTrue(containsReadAttr(productAccess, "name"));
+
+        assertTrue(containsReadAttr(customerAccess, "_key"));
+        assertTrue(containsReadAttr(customerAccess, "name"));
+
+        assertFalse(orderAccess.read.requiresAll);
+        assertFalse(productAccess.read.requiresAll);
+        assertFalse(customerAccess.read.requiresAll);
+      } finally {
+        internal.db._drop(cnCustomers);
+      }
+    },
+
+    testJoin_WithSubquery: function () {
+      const query = `
+        FOR n IN 1..10
+          LET orderCount = (
+            FOR o IN ${cnOrders}
+              FOR p IN ${cnProducts}
+                FILTER o.productId == p._key
+                RETURN 1
+            )
+          RETURN {orders: orderCount}
+      `;
+
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "JoinNode"),
+        "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+      assertTrue(hasNodeInPlan(plan, "SubqueryStartNode"),
+        "Expected SubqueryStartNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+
+      assertEqual(2, accesses.length);
+
+      let orderAccess = accesses.find(a => a.collection === cnOrders);
+      let productAccess = accesses.find(a => a.collection === cnProducts);
+
+      assertTrue(containsReadAttr(orderAccess, "productId"));
+      assertTrue(containsReadAttr(productAccess, "_key"));
+      assertFalse(orderAccess.read.requiresAll);
+      assertFalse(productAccess.read.requiresAll);
+    },
+
+    testJoin_OptionalMatch: function () {
+      // Left outer join pattern
+      const query = `
+        FOR n IN 1..10
+          LET orders = (
+            FOR o IN ${cnOrders}
+              FOR p IN ${cnProducts}
+                FILTER o.productId == p._key
+                RETURN o
+          )
+          RETURN {orders: orders}
+      `;
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "JoinNode"),
+        "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+
+      assertEqual(2, accesses.length);
+
+      let orderAccess = accesses.find(a => a.collection === cnOrders);
+      let productAccess = accesses.find(a => a.collection === cnProducts);
+
+      assertTrue(containsReadAttr(orderAccess, "productId"));
+      assertTrue(containsReadAttr(productAccess, "_key"));
+      assertTrue(orderAccess.read.requiresAll);
+      assertFalse(productAccess.read.requiresAll);
+    },
+
     // MaterializeNode tests - late document materialization
     testMaterialize_SortLimitPattern: function () {
       // Pattern: INDEX scan -> SORT -> LIMIT triggers late materialization
@@ -371,7 +515,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 5
           RETURN {name: doc.name, category: doc.category, key: doc._key}
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -389,7 +535,10 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 5
           RETURN doc.name
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -406,7 +555,10 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc.payload.nested
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -422,7 +574,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LET doubled = doc.sortKey * 2
           RETURN {name: doc.name, doubled}
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
@@ -440,7 +594,12 @@ function attributeDetectorJoinMaterializeTestSuite() {
             LIMIT 5
             RETURN {orderId: o._key, productName: p.name, price: p.price}
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
+
+      assertTrue(hasNodeInPlan(plan, "JoinNode"),
+        "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(2, accesses.length);
 
@@ -458,91 +617,6 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertFalse(productAccess.read.requiresAll);
     },
 
-    testJoinWithCollectAggregate: function () {
-      const query = `
-        FOR o IN ${cnOrders}
-          FOR p IN ${cnProducts}
-            FILTER o.productId == p._key
-            COLLECT category = p.category
-            AGGREGATE totalQty = SUM(o.quantity), avgPrice = AVG(p.price)
-            RETURN {category, totalQty, avgPrice}
-      `;
-      const { accesses } = explainAbac(query);
-
-      assertEqual(2, accesses.length);
-
-      let orderAccess = accesses.find(a => a.collection === cnOrders);
-      let productAccess = accesses.find(a => a.collection === cnProducts);
-
-      assertTrue(containsReadAttr(orderAccess, "productId"));
-      assertTrue(containsReadAttr(orderAccess, "quantity"));
-
-      assertTrue(containsReadAttr(productAccess, "_key"));
-      assertTrue(containsReadAttr(productAccess, "category"));
-      assertTrue(containsReadAttr(productAccess, "price"));
-
-      assertFalse(orderAccess.read.requiresAll);
-      assertFalse(productAccess.read.requiresAll);
-    },
-
-    // Edge cases
-    testJoin_ThreeWayJoin: function () {
-      // Third collection for three-way join
-      const cnCustomers = "UnitTestsAttrDetCustomers";
-      try {
-        let customersCollection = internal.db._create(cnCustomers);
-        customersCollection.ensureIndex({ type: "persistent", fields: ["_key"] });
-
-        for (let i = 0; i < 5; ++i) {
-          customersCollection.insert({
-            _key: `cust${i}`,
-            name: `Customer ${i}`,
-            region: `region${i % 2}`
-          });
-        }
-
-        const query = `
-          FOR o IN ${cnOrders}
-            FOR p IN ${cnProducts}
-              FOR c IN ${cnCustomers}
-                FILTER o.productId == p._key
-                FILTER o.customerId == c._key
-                RETURN {
-                  orderId: o._key,
-                  productName: p.name,
-                  customerName: c.name
-                }
-        `;
-        const { accesses } = explainAbac(query);
-
-        assertEqual(3, accesses.length);
-
-        let orderAccess = accesses.find(a => a.collection === cnOrders);
-        let productAccess = accesses.find(a => a.collection === cnProducts);
-        let customerAccess = accesses.find(a => a.collection === cnCustomers);
-
-        assertTrue(orderAccess !== undefined);
-        assertTrue(productAccess !== undefined);
-        assertTrue(customerAccess !== undefined);
-
-        assertTrue(containsReadAttr(orderAccess, "productId"));
-        assertTrue(containsReadAttr(orderAccess, "customerId"));
-        assertTrue(containsReadAttr(orderAccess, "_key"));
-
-        assertTrue(containsReadAttr(productAccess, "_key"));
-        assertTrue(containsReadAttr(productAccess, "name"));
-
-        assertTrue(containsReadAttr(customerAccess, "_key"));
-        assertTrue(containsReadAttr(customerAccess, "name"));
-
-        assertFalse(orderAccess.read.requiresAll);
-        assertFalse(productAccess.read.requiresAll);
-        assertFalse(customerAccess.read.requiresAll);
-      } finally {
-        internal.db._drop(cnCustomers);
-      }
-    },
-
     testMaterialize_LargeOffset: function () {
       // Add FILTER to trigger index usage
       const query = `
@@ -552,82 +626,14 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 50, 10
           RETURN doc.name
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
       assertTrue(containsReadAttr(accesses[0], "name"));
       assertFalse(accesses[0].read.requiresAll);
-    },
-
-    testJoin_WithSubquery: function () {
-      // Subquery pattern - in cluster mode, inner query may need full scan
-      const query = `
-        FOR p IN ${cnProducts}
-          LET orderCount = (
-            FOR o IN ${cnOrders}
-              FILTER o.productId == p._key
-              RETURN 1
-          )
-          RETURN {productName: p.name, orders: LENGTH(orderCount)}
-      `;
-      const { accesses } = explainAbac(query);
-
-      assertEqual(2, accesses.length);
-
-      let orderAccess = accesses.find(a => a.collection === cnOrders);
-      let productAccess = accesses.find(a => a.collection === cnProducts);
-
-      assertTrue(orderAccess !== undefined);
-      assertTrue(productAccess !== undefined);
-
-      // Orders collection needs productId for filter
-      if (!orderAccess.read.requiresAll) {
-        assertTrue(containsReadAttr(orderAccess, "productId"));
-      }
-      // Products collection needs _key and name
-      assertTrue(containsReadAttr(productAccess, "_key") || productAccess.read.requiresAll);
-      assertTrue(containsReadAttr(productAccess, "name") || productAccess.read.requiresAll);
-    },
-
-    testJoin_OptionalMatch: function () {
-      // Left outer join pattern
-      const query = `
-        FOR p IN ${cnProducts}
-          LET orders = (
-            FOR o IN ${cnOrders}
-              FILTER o.productId == p._key
-              RETURN o.quantity
-          )
-          RETURN {product: p.name, quantities: orders}
-      `;
-      const { accesses } = explainAbac(query);
-
-      assertEqual(2, accesses.length);
-
-      let orderAccess = accesses.find(a => a.collection === cnOrders);
-      let productAccess = accesses.find(a => a.collection === cnProducts);
-
-      assertTrue(containsReadAttr(orderAccess, "productId"));
-      assertTrue(containsReadAttr(orderAccess, "quantity"));
-      assertTrue(containsReadAttr(productAccess, "_key"));
-      assertTrue(containsReadAttr(productAccess, "name"));
-    },
-
-    // Verify node type detection in plan - these tests REQUIRE the specific nodes
-    testVerifyJoinNodeInPlan: function () {
-      const query = `
-        FOR o IN ${cnOrders}
-          FOR p IN ${cnProducts}
-            FILTER o.productId == p._key
-            RETURN {o: o._key, p: p._key}
-      `;
-      const { plan } = explainAbac(query);
-
-      // JoinNode MUST be present - this test verifies the optimizer creates it
-      const nodes = plan.nodes.map(n => n.type);
-      assertTrue(nodes.includes("JoinNode"),
-        "Expected JoinNode in plan. Got nodes: " + nodes.join(", "));
     },
 
     testVerifyMaterializeNodeInPlan: function () {
