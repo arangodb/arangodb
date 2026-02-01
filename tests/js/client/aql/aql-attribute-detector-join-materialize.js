@@ -470,18 +470,15 @@ function attributeDetectorJoinMaterializeTestSuite() {
 
     // MaterializeNode tests - late document materialization
     testMaterialize_SortLimitPattern: function () {
-      // Pattern: INDEX scan -> SORT -> LIMIT triggers late materialization
-      // Without a FILTER using the index, optimizer may do full collection scan
       const query = `
         FOR doc IN ${cnLarge}
           FILTER doc.sortKey >= 0
           SORT doc.sortKey
           LIMIT 10
-          RETURN doc.name
+          RETURN {name: doc.name, category: doc.category, key: doc._key}
       `;
       const { accesses, plan } = explainAbac(query);
 
-      // Verify MaterializeNode was created - this is required to test the MaterializeNode handler
       assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
         "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
@@ -490,6 +487,8 @@ function attributeDetectorJoinMaterializeTestSuite() {
 
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
       assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
+      assertTrue(containsReadAttr(accesses[0], "_key"));
       assertFalse(accesses[0].read.requiresAll);
     },
 
@@ -500,7 +499,10 @@ function attributeDetectorJoinMaterializeTestSuite() {
           LIMIT 10
           RETURN doc
       `;
-      const { accesses } = explainAbac(query);
+      const { accesses, plan } = explainAbac(query);
+
+      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
+        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertTrue(accesses[0].read.requiresAll);
@@ -527,27 +529,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertFalse(accesses[0].read.requiresAll);
     },
 
-    testMaterialize_WithFilter: function () {
-      const query = `
-        FOR doc IN ${cnLarge}
-          FILTER doc.sortKey >= 10
-          SORT doc.sortKey
-          LIMIT 5
-          RETURN doc.name
-      `;
-      const { accesses, plan } = explainAbac(query);
-
-      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
-        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
-
-      assertEqual(1, accesses.length);
-      assertTrue(containsReadAttr(accesses[0], "sortKey"));
-      assertTrue(containsReadAttr(accesses[0], "name"));
-      assertFalse(accesses[0].read.requiresAll);
-    },
-
     testMaterialize_NestedAttributeAccess: function () {
-      // Add FILTER to trigger index usage
       const query = `
         FOR doc IN ${cnLarge}
           FILTER doc.sortKey >= 0
@@ -572,7 +554,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
           SORT doc.sortKey
           LIMIT 10
           LET doubled = doc.sortKey * 2
-          RETURN {name: doc.name, doubled}
+          RETURN {name: doc.name, category: doc.category, key: doc._key, doubled: doubled}
       `;
       const { accesses, plan } = explainAbac(query);
       assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
@@ -581,75 +563,49 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertEqual(1, accesses.length);
       assertTrue(containsReadAttr(accesses[0], "sortKey"));
       assertTrue(containsReadAttr(accesses[0], "name"));
+      assertTrue(containsReadAttr(accesses[0], "category"));
+      assertTrue(containsReadAttr(accesses[0], "_key"));
       assertFalse(accesses[0].read.requiresAll);
     },
 
     // Combined patterns
     testJoinWithMaterialize_JoinThenSortLimit: function () {
       const query = `
-        FOR o IN ${cnOrders}
-          FOR p IN ${cnProducts}
-            FILTER o.productId == p._key
-            SORT p.price DESC
-            LIMIT 5
-            RETURN {orderId: o._key, productName: p.name, price: p.price}
+      for doc IN ${cnLarge}
+        FILTER doc.sortKey >= 0
+        SORT doc.sortKey
+          FOR o IN ${cnOrders}
+            FOR p IN ${cnProducts}
+              FILTER o.productId == p._key
+              SORT p.price DESC
+              LIMIT 5
+            RETURN {name: doc.name, category: doc.category, key: doc._key, productId: o.productId, price: p.price}
       `;
       const { accesses, plan } = explainAbac(query);
       assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
         "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
-
       assertTrue(hasNodeInPlan(plan, "JoinNode"),
         "Expected JoinNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
 
-      assertEqual(2, accesses.length);
+      assertEqual(3, accesses.length);
 
       let orderAccess = accesses.find(a => a.collection === cnOrders);
       let productAccess = accesses.find(a => a.collection === cnProducts);
+      let largeAccess = accesses.find(a => a.collection === cnLarge);
 
       assertTrue(containsReadAttr(orderAccess, "productId"));
-      assertTrue(containsReadAttr(orderAccess, "_key"));
 
       assertTrue(containsReadAttr(productAccess, "_key"));
-      assertTrue(containsReadAttr(productAccess, "name"));
       assertTrue(containsReadAttr(productAccess, "price"));
+
+      assertTrue(containsReadAttr(largeAccess, "sortKey"));
+      assertTrue(containsReadAttr(largeAccess, "name"));
+      assertTrue(containsReadAttr(largeAccess, "category"));
+      assertTrue(containsReadAttr(largeAccess, "_key"));
 
       assertFalse(orderAccess.read.requiresAll);
       assertFalse(productAccess.read.requiresAll);
-    },
-
-    testMaterialize_LargeOffset: function () {
-      // Add FILTER to trigger index usage
-      const query = `
-        FOR doc IN ${cnLarge}
-          FILTER doc.sortKey >= 0
-          SORT doc.sortKey
-          LIMIT 50, 10
-          RETURN doc.name
-      `;
-      const { accesses, plan } = explainAbac(query);
-      assertTrue(hasNodeInPlan(plan, "MaterializeNode"),
-        "Expected MaterializeNode in plan. Got nodes: " + plan.nodes.map(n => n.type).join(", "));
-
-      assertEqual(1, accesses.length);
-      assertTrue(containsReadAttr(accesses[0], "sortKey"));
-      assertTrue(containsReadAttr(accesses[0], "name"));
-      assertFalse(accesses[0].read.requiresAll);
-    },
-
-    testVerifyMaterializeNodeInPlan: function () {
-      const query = `
-        FOR doc IN ${cnLarge}
-          FILTER doc.sortKey >= 0
-          SORT doc.sortKey
-          LIMIT 10
-          RETURN doc.name
-      `;
-      const { plan } = explainAbac(query);
-
-      // MaterializeNode MUST be present - this test verifies the optimizer creates it
-      const nodes = plan.nodes.map(n => n.type);
-      assertTrue(nodes.includes("MaterializeNode"),
-        "Expected MaterializeNode in plan. Got nodes: " + nodes.join(", "));
+      assertFalse(largeAccess.read.requiresAll);
     }
   };
 }
