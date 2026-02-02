@@ -374,11 +374,11 @@
       priority: 500
       type: cluster
     suites:
-      - shell_api_multi
       - shell_api_multi:
-        args:
-          protocol: ssl
-          suffix: ssl
+      - shell_api_multi:
+          args:
+            protocol: ssl
+            suffix: ssl
 
 # shell_client_multi tests run quite long, so want to have a
 # separate job for each protocol
