@@ -25,14 +25,15 @@
 
 namespace arangodb::activity_registry {
 
-Registry::ScopedCurrentActivity::ScopedCurrentActivity(
+Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
     ActivityId activity) noexcept {
-  _oldActivity = Registry::currentActivity();
-  Registry::setCurrentActivity(activity);
+  _oldExecutingActivity = Registry::currentlyExecutingActivity();
+  Registry::setCurrentlyExecutingActivity(activity);
 }
 
-Registry::ScopedCurrentActivity::~ScopedCurrentActivity() {
-  Registry::setCurrentActivity(_oldActivity);
+Registry::ScopedCurrentlyExecutingActivity::
+    ~ScopedCurrentlyExecutingActivity() {
+  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
 }
 
 }  // namespace arangodb::activity_registry
