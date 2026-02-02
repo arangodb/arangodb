@@ -218,8 +218,6 @@ ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server,
   linkIndexFactories(server, *this, engine);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-/// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 ClusterIndexFactory::indexAliases() const {
   auto* ae = _engine.actualEngine();
