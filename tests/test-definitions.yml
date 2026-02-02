@@ -528,7 +528,6 @@
 
 - dump_multiple_two:
     options:
-      buckets: auto
       type: cluster
       size: large
       parallelity: 5
