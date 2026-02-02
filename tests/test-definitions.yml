@@ -25,11 +25,11 @@
     args:
       extraArgs:log.level: replication=trace
     suites:
-      replication_fuzz
-      replication_ongoing
-      replication_ongoing_frompresent
-      replication_ongoing_global
-      replication_ongoing_global_spec
+      - replication_fuzz
+      - replication_ongoing
+      - replication_ongoing_frompresent
+      - replication_ongoing_global
+      - replication_ongoing_global_spec
 # one run for each test...
 - replication_static:
     options:
