@@ -438,7 +438,6 @@
     options:
       priority: 1000
       parallelity: 3
-      buckets: 3
       type: single
     suites:
       - server_parameters
