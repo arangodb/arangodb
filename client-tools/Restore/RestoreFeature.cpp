@@ -1807,8 +1807,8 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
            type.stringView() == StaticStrings::IndexNameVector) ==
           doVectorIndexes) {
         // transform deprecated "hash" or "skiplist" into "persistent"
-        if (type.isString() && (type.stringView() == "hash" ||
-                                type.stringView() == "skiplist")) {
+        if (type.isString() &&
+            (type.stringView() == "hash" || type.stringView() == "skiplist")) {
           rebuilder.clear();
           rebuilder.openObject();
           rebuilder.add(StaticStrings::IndexType, VPackValue("persistent"));
