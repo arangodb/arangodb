@@ -34,8 +34,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FrontendFeature::FrontendFeature(Server& server)
-    : ArangodFeature{server, *this} {
+FrontendFeature::FrontendFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }

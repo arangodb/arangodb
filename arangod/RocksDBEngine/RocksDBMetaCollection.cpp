@@ -246,7 +246,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
   std::size_t count = 0;
 
-  ArangodServer& server = vocbase.server();
+  auto& server = vocbase.server();
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);

@@ -26,6 +26,8 @@
 #include <memory>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
@@ -44,8 +46,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
-  template<typename Server>
-  LoggerFeature(Server& server, bool threaded)
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded)
       : LoggerFeature(server, typeid(LoggerFeature), threaded) {
     startsAfter<ShellColorsFeature>();
     startsAfter<VersionFeature>();

@@ -28,6 +28,7 @@
 #include <string_view>
 
 #include "Shell/ShellConsoleFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
@@ -57,19 +58,19 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static double const LONG_TIMEOUT = 86400.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
-  template<typename Server>
-  ClientFeature(Server& server, bool allowJwtSecret, size_t maxNumEndpoints = 1,
+  ClientFeature(application_features::ApplicationServer& server,
+                bool allowJwtSecret, size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
       : ClientFeature{server,
-                      server.template getFeature<CommunicationFeaturePhase>(),
+                      server.getFeature<CommunicationFeaturePhase>(),
                       typeid(HttpEndpointProvider),
                       allowJwtSecret,
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    if (server.template hasFeature<ShellConsoleFeature>()) {
-      _console = &server.template getFeature<ShellConsoleFeature>();
+    if (server.hasFeature<ShellConsoleFeature>()) {
+      _console = &server.getFeature<ShellConsoleFeature>();
     }
 
     startsAfter<CommunicationFeaturePhase>();

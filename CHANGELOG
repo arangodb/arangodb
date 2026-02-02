@@ -1,6 +1,11 @@
 devel
 -----
 
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
+* FE-937: fix distribution tab getting stuck on loading.
+
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
   option on collections with computed values.
 

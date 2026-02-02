@@ -30,6 +30,8 @@ const { assertTrue } = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const db = require('internal').db;
 const activitiesModule = require('@arangodb/activity-registry');
+const dump = require('@arangodb/arango-dump');
+const arangosh = require('@arangodb/arangosh');
 const IM = global.instanceManager;
 
 const c = "my_collection";
@@ -58,12 +60,7 @@ function activityRegistrySuite() {
   }
 
   function fetchDumpAsynchronously(dumpId, server) {
-    let res;
-    if (internal.isCluster()) {
-      res = internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?dbserver=${server}&batchId=0`, {}, {"x-arango-async": "store"});
-    } else {
-      res = internal.arango.POST_RAW(`/_api/dump/next/${dumpId}?batchId=0`, {}, {"x-arango-async": "store"});
-    }
+    const res = arangosh.checkRequestResult(dump.next(dumpId, 0, undefined, server, {"x-arango-async": "store"}));
     assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
     return res.headers["x-arango-async-id"];
   }
@@ -84,19 +81,19 @@ function activityRegistrySuite() {
     },
 
     testDumpContextIsAnActivity: function () {
-      let createDump;
       let server;
+      let shard;
       if (internal.isCluster()) {
         const shards = db[c].shards(true);
-        const shard = Object.keys(shards)[0];
+        shard = Object.keys(shards)[0];
         server = shards[shard][0];
-        createDump = internal.arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, { shards: [shard], ttl: 1000.0 });
       } else {
-        createDump = internal.arango.POST_RAW(`/_api/dump/start`, { shards: [c], ttl: 1000.0 });
+        shard = c;
       }
+      const createDump = dump.start({ shards: [shard], ttl: 1000.0 }, server);
 
       // activity: dump context
-      const dumpId = createDump.headers["x-arango-dump-id"];
+      const dumpId = dump.get_batch_id_from_start_response(arangosh.checkRequestResult(createDump));
       const activities = activitiesModule.get_snapshot(server);
       assertArrayLengthLargerThan(activities, 1);
       assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
@@ -124,11 +121,7 @@ function activityRegistrySuite() {
       }
 
       // cleanup
-      if (internal.isCluster()) {
-        internal.arango.DELETE_RAW(`_api/dump/${dumpId}?dbserver=${server}`);
-      } else {
-        internal.arango.DELETE_RAW(`_api/dump/${dumpId}`);
-      }
+      arangosh.checkRequestResult(dump.delete(dumpId, server));
     }
   };
 }

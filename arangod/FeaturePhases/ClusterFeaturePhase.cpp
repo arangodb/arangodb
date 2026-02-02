@@ -34,7 +34,8 @@
 
 namespace arangodb::application_features {
 
-ClusterFeaturePhase::ClusterFeaturePhase(ArangodServer& server)
+ClusterFeaturePhase::ClusterFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<DatabaseFeaturePhase>();

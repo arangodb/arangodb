@@ -36,6 +36,7 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const db = internal.db;
 const { getMetricSingle } = require('@arangodb/test-helper');
+const dump = require('@arangodb/arango-dump');
 
 function testSuite() {
   const cn = "UnitTestsCollection";
@@ -72,7 +73,7 @@ function testSuite() {
         parallelism: 8, 
         shards: collections,
       };
-      let res = arango.POST_RAW("/_api/dump/start", config);
+      let res = dump.start(config);
       assertEqual(201, res.code);
           
       let id = res.headers["x-arango-dump-id"];
@@ -108,7 +109,7 @@ function testSuite() {
           internal.sleep(0.5);
         }
       } finally {
-        arango.DELETE_RAW("/_api/dump/" + id);
+        dump.delete(id);
      
         // after finishing the dump, the number of ongoing dumps should
         // be back to 0.
@@ -128,7 +129,7 @@ function testSuite() {
         parallelism: 8, 
         shards: collections,
       };
-      let res = arango.POST_RAW("/_api/dump/start", config);
+      let res = dump.start(config);
       assertEqual(201, res.code);
           
       let id = res.headers["x-arango-dump-id"];
@@ -157,7 +158,7 @@ function testSuite() {
         }
         assertTrue(blocked > originalBlocked, {blocked});
       } finally {
-        arango.DELETE_RAW("/_api/dump/" + id);
+        dump.delete(id);
      
         // after finishing the dump, the number of ongoing dumps should
         // be back to 0.
@@ -183,7 +184,7 @@ function testSuite() {
       for (let i = 0; i < n; ++i) {
         let shard = cn + (1 + (i % 3));
         config.shards = [ shard ];
-        let res = arango.POST_RAW("/_api/dump/start", config);
+        let res = dump.start(config);
         assertEqual(201, res.code);
          
         let id = res.headers["x-arango-dump-id"];
@@ -204,11 +205,7 @@ function testSuite() {
       try {
         while (true) {
           dumps.filter((d) => !d.done && d.asyncId === undefined).forEach((d) => {
-            let url = "/_api/dump/next/" + d.id + "?batchId=" + d.batchId;
-            if (d.lastBatch !== null) {
-              url += "&lastBatch=" + d.lastBatch;
-            }
-            let res = arango.POST_RAW(url, {}, {"x-arango-async": "store"});
+            const res = dump.next(d.id, d.batchId, d.lastBatch, undefined, {"x-arango-async": "store"});
             d.asyncId = res.headers["x-arango-async-id"];
             assertEqual(202, res.code, res);
           });
@@ -227,16 +224,16 @@ function testSuite() {
               d.asyncId = undefined;
               return;
             }
-            
             if (res.code === 204) {
               // dump is finished
               d.asyncId = undefined;
               d.done = true;
               return;
             }
+            assertEqual(200, res.code, res);
+
             assertTrue(res.headers.hasOwnProperty("x-arango-async-id"), res);
             let shard = res.headers["x-arango-dump-shard-id"];
-            assertEqual(200, res.code, res);
             assertTrue(d.shard, shard, { shard, res });
             d.lastBatch = d.batchId;
             d.asyncId = undefined;
@@ -258,7 +255,7 @@ function testSuite() {
         }
       } finally {
         dumps.forEach((d) => {
-          arango.DELETE_RAW("/_api/dump/" + d.id);
+          dump.delete(d.id);
         });
           
         let blocked = getMetricSingle("arangodb_dump_threads_blocked_total");

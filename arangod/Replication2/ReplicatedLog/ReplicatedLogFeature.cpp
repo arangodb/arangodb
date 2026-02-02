@@ -43,8 +43,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-ReplicatedLogFeature::ReplicatedLogFeature(Server& server)
-    : ArangodFeature{server, *this},
+ReplicatedLogFeature::ReplicatedLogFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _options(std::make_shared<ReplicatedLogGlobalSettings>()) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();

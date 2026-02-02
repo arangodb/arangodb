@@ -141,7 +141,7 @@ struct NetworkMethodsTest
                                             arangodb::LogLevel::FATAL> {
   NetworkMethodsTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(
-        true, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        true, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     pool = std::make_unique<DummyPool>(config());

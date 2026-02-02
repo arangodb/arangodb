@@ -42,10 +42,9 @@ using namespace arangodb::velocypack;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response,
-                                             Agent* agent)
+RestAgencyPrivHandler::RestAgencyPrivHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {

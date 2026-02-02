@@ -27,18 +27,17 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
-#include "RestServer/arangod.h"
 #include "Transaction/Context.h"
 
 namespace arangodb {
 
 class ApiRecordingFeature;
 
-class AqlFeature final : public ArangodFeature {
+class AqlFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Aql"; }
 
-  explicit AqlFeature(ArangodServer& server);
+  explicit AqlFeature(application_features::ApplicationServer& server);
   ~AqlFeature();
 
   static bool lease() noexcept;
