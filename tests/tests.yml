@@ -419,7 +419,6 @@
       - hot_backup_el_cheapo
 - hot_backup:
     options:
-      buckets: auto
       type: cluster
       size: large
       parallelity: 5
