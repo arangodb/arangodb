@@ -77,7 +77,7 @@ auto withSetCurrentlyExecutingActivity(ActivityId activity, Func&& func) {
 template<typename Func>
 auto withCurrentlyExecutingActivity(Func&& func) {
   return withSetCurrentlyExecutingActivity(
-      Registry::currentlyExecutingActivity(), std::move(func));
+      Registry::currentlyExecutingActivity(), std::forward<Func>(func));
 }
 
 }  // namespace arangodb::activity_registry
