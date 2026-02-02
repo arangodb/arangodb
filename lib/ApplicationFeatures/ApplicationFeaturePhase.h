@@ -35,7 +35,8 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationServer;
 
-class ApplicationFeaturePhase : public ApplicationFeature {
+class ApplicationFeaturePhase
+    : public application_features::ApplicationFeature {
   friend class ApplicationServer;
 
  public:

@@ -36,6 +36,7 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/arangod.h"
 
 class IResearchViewMetaTest : public ::testing::Test {
  protected:

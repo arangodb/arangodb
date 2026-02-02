@@ -33,7 +33,6 @@
 #include "IResearch/IResearchFilterContext.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "RestServer/arangod.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"

@@ -103,8 +103,9 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(Server& server)
-    : ArangodFeature{server, *this}, _clientPid(0) {
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this}, _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();

@@ -56,7 +56,8 @@ namespace {
 struct DefaultIndexFactory : public IndexTypeFactory {
   Index::IndexType const _type;
 
-  explicit DefaultIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
+                               Index::IndexType type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -66,7 +67,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(ArangodServer& server)
+  explicit EdgeIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_EDGE_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -106,7 +107,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  explicit FulltextIndexFactory(ArangodServer& server)
+  explicit FulltextIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -135,7 +136,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  explicit GeoIndexFactory(ArangodServer& server)
+  explicit GeoIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -164,7 +165,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  explicit Geo1IndexFactory(ArangodServer& server)
+  explicit Geo1IndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -194,7 +195,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  explicit Geo2IndexFactory(ArangodServer& server)
+  explicit Geo2IndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -225,7 +226,8 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
 template<typename F, Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
-  explicit SecondaryIndexFactory(ArangodServer& server)
+  explicit SecondaryIndexFactory(
+      application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -258,7 +260,8 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct MdiIndexFactory : public DefaultIndexFactory {
-  explicit MdiIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit MdiIndexFactory(application_features::ApplicationServer& server,
+                           Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -302,7 +305,8 @@ struct MdiIndexFactory : public DefaultIndexFactory {
 };
 
 struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
-  explicit MdiPrefixedIndexFactory(ArangodServer& server)
+  explicit MdiPrefixedIndexFactory(
+      application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -344,7 +348,8 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
 };
 
 struct VectorIndexFactory : public DefaultIndexFactory {
-  explicit VectorIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit VectorIndexFactory(application_features::ApplicationServer& server,
+                              Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -384,7 +389,8 @@ struct VectorIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  TtlIndexFactory(ArangodServer& server, Index::IndexType type)
+  TtlIndexFactory(application_features::ApplicationServer& server,
+                  Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -414,7 +420,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(ArangodServer& server)
+  explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -449,7 +455,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
+RocksDBIndexFactory::RocksDBIndexFactory(
+    application_features::ApplicationServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);

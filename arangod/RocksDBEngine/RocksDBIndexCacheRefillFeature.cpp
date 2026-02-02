@@ -52,8 +52,9 @@ using namespace arangodb;
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
 
-RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
-    : ArangodFeature{server, *this},
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),

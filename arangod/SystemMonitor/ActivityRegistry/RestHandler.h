@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "SystemMonitor/ActivityRegistry/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -39,7 +40,8 @@ namespace arangodb::activity_registry {
  */
 class RestHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
 
  public:
   char const* name() const override final {

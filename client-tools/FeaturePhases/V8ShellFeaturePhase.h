@@ -37,8 +37,7 @@ class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "V8ShellPhase"; }
 
-  template<typename Server>
-  explicit V8ShellFeaturePhase(Server& server)
+  explicit V8ShellFeaturePhase(application_features::ApplicationServer& server)
       : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
     startsAfter<GreetingsFeaturePhase>();

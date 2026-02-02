@@ -50,7 +50,7 @@ target_link_libraries(${BIN_ARANGOD}
   arango_iresearch)
 
 if (USE_JEMALLOC)
-  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
+  target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
@@ -58,9 +58,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOD} v8_build)
 endif ()
 add_dependencies(${BIN_ARANGOD} iculegacy_build)
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOD} jemalloc_build)
-endif ()
 add_dependencies(${BIN_ARANGOD} man)
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
