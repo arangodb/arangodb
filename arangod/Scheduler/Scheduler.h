@@ -142,7 +142,8 @@ class Scheduler {
           _disable(false),
           _scheduler(scheduler),
           _logContext(LogContext::current()),
-          _currentActivity(activity_registry::Registry::currentActivity()) {}
+          _currentlyExecutingActivity(
+              activity_registry::Registry::currentlyExecutingActivity()) {}
 
     // This is not copyable or movable
     DelayedWorkItem(DelayedWorkItem const&) = delete;
@@ -159,8 +160,8 @@ class Scheduler {
       // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
         LogContext::ScopedContext ctxGuard(_logContext);
-        activity_registry::Registry::ScopedCurrentActivity activityGuard(
-            _currentActivity);
+        activity_registry::Registry::ScopedCurrentlyExecutingActivity
+            activityGuard(_currentlyExecutingActivity);
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
@@ -180,7 +181,7 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
     LogContext _logContext;
-    activity_registry::ActivityId _currentActivity;
+    activity_registry::ActivityId _currentlyExecutingActivity;
   };
 
  protected:
@@ -191,7 +192,8 @@ class Scheduler {
     explicit WorkItem(F f)
         : F(std::move(f)),
           logContext(LogContext::current()),
-          currentActivity(activity_registry::Registry::currentActivity()) {
+          currentlyExecutingActivity(
+              activity_registry::Registry::currentlyExecutingActivity()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() {
@@ -200,14 +202,14 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
-      activity_registry::Registry::ScopedCurrentActivity activityGuard(
-          currentActivity);
+      activity_registry::Registry::ScopedCurrentlyExecutingActivity
+          activityGuard(currentlyExecutingActivity);
       this->operator()();
     }
 
    private:
     LogContext logContext;
-    activity_registry::ActivityId currentActivity;
+    activity_registry::ActivityId currentlyExecutingActivity;
   };
 
   // Enqueues a task - this is implemented on the specific scheduler

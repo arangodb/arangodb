@@ -63,10 +63,11 @@ auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
 
 Activity::Activity(std::string name, Metadata metadata)
     : _node_in_registry{get_thread_registry().add([&]() {
-        return ActivityInRegistry{.name = std::move(name),
-                                  .state = State::Active,
-                                  .parent = {Registry::currentActivity()},
-                                  .metadata = metadata};
+        return ActivityInRegistry{
+            .name = std::move(name),
+            .state = State::Active,
+            .parent = {Registry::currentlyExecutingActivity()},
+            .metadata = metadata};
       })} {}
 
 Activity::Activity(std::string name, Metadata metadata, Parent parent)

@@ -34,47 +34,50 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   auto operator=(Registry const&) = delete;
   auto operator=(Registry&&) = delete;
 
-  struct ScopedCurrentActivity;
+  struct ScopedCurrentlyExecutingActivity;
 
-  static auto currentActivity() noexcept -> ActivityId {
-    return _currentActivity;
+  static auto currentlyExecutingActivity() noexcept -> ActivityId {
+    return _currentlyExecutingActivity;
   }
-  static auto setCurrentActivity(ActivityId activity) noexcept -> void {
-    _currentActivity = std::move(activity);
+  static auto setCurrentlyExecutingActivity(ActivityId activity) noexcept
+      -> void {
+    _currentlyExecutingActivity = std::move(activity);
   }
 
  private:
-  static thread_local ActivityId _currentActivity;
+  static thread_local ActivityId _currentlyExecutingActivity;
 };
 
-struct Registry::ScopedCurrentActivity {
-  explicit ScopedCurrentActivity(ActivityId activity) noexcept;
-  ~ScopedCurrentActivity();
+struct Registry::ScopedCurrentlyExecutingActivity {
+  explicit ScopedCurrentlyExecutingActivity(ActivityId activity) noexcept;
+  ~ScopedCurrentlyExecutingActivity();
 
-  ScopedCurrentActivity(ScopedCurrentActivity const&) = delete;
-  ScopedCurrentActivity(ScopedCurrentActivity&&) = delete;
-  auto operator=(ScopedCurrentActivity const&) = delete;
-  auto operator=(ScopedCurrentActivity&&) = delete;
+  ScopedCurrentlyExecutingActivity(ScopedCurrentlyExecutingActivity const&) =
+      delete;
+  ScopedCurrentlyExecutingActivity(ScopedCurrentlyExecutingActivity&&) = delete;
+  auto operator=(ScopedCurrentlyExecutingActivity const&) = delete;
+  auto operator=(ScopedCurrentlyExecutingActivity&&) = delete;
 
  private:
-  ActivityId _oldActivity;
+  ActivityId _oldExecutingActivity;
 };
 
 template<typename Func>
-auto withSetCurrentActivity(ActivityId activity, Func&& func) {
+auto withSetCurrentlyExecutingActivity(ActivityId activity, Func&& func) {
   return [func = std::forward<Func>(func),
           activity]<typename... Args,
                     typename =
                         std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
              Args&&... args) mutable {
-    Registry::ScopedCurrentActivity guard(activity);
+    Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
 }
 
 template<typename Func>
-auto withCurrentActivity(Func&& func) {
-  return withSetCurrentActivity(Registry::currentActivity(), std::move(func));
+auto withCurrentlyExecutingActivity(Func&& func) {
+  return withSetCurrentlyExecutingActivity(
+      Registry::currentlyExecutingActivity(), std::move(func));
 }
 
 }  // namespace arangodb::activity_registry

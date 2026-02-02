@@ -26,7 +26,7 @@
 namespace arangodb::activity_registry {
 
 Registry registry;
-thread_local ActivityId Registry::_currentActivity;
+thread_local ActivityId Registry::_currentlyExecutingActivity;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
