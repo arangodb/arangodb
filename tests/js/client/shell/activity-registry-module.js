@@ -36,12 +36,6 @@ const c = "my_collection";
 
 function activityRegistryModuleSuite() {
   return {
-    setUpAll: function () {
-    },
-
-    tearDownAll: function () {
-    },
-
     testPrintsOutASingleActivity: function () {
       const lines = activitiesModule.pretty_print([
         {
