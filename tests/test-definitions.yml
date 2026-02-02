@@ -550,10 +550,10 @@
     suites:
       - dump:
       - dump:
-        options:
-          suffix: _vpack
-        args:
-          dumpVPack: true
+          options:
+            suffix: _vpack
+          args:
+            dumpVPack: true
       - dump_authentication:
       - dump_jwt:
       - dump_multiple_same:
