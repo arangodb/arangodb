@@ -463,8 +463,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  auto activityGuard = activity_registry::Registry::ScopedCurrentActivity(
-      handler->_activity->id());
+  auto activityGuard =
+      activity_registry::Registry::ScopedCurrentlyExecutingActivity(
+          handler->_activity->id());
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase

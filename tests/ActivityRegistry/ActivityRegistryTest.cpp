@@ -49,7 +49,9 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 constexpr auto ActivityRoot = ActivityId{nullptr};
 
 struct ActivityRegistryTest : ::testing::Test {
-  ActivityRegistryTest() { Registry::setCurrentActivity(ActivityRoot); }
+  ActivityRegistryTest() {
+    Registry::setCurrentlyExecutingActivity(ActivityRoot);
+  }
   void TearDown() override {
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_activities().size(), 0);
@@ -57,11 +59,11 @@ struct ActivityRegistryTest : ::testing::Test {
 };
 
 TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, creates_activity) {
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
 
   auto all_activities = get_all_activities();
@@ -73,18 +75,18 @@ TEST_F(ActivityRegistryTest, creates_activity) {
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
-  Registry::setCurrentActivity(a.id());
+  Registry::setCurrentlyExecutingActivity(a.id());
 
-  auto current = Registry::currentActivity();
+  auto current = Registry::currentlyExecutingActivity();
 
   ASSERT_EQ(a.id(), current);
 }
 
 TEST_F(ActivityRegistryTest,
        a_base_activity_creates_a_root_activity_with_additional_information) {
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto activity =
       Activity{"test activity", {{"id", "1234"}, {"some_other_key", "value"}}};
 
@@ -154,63 +156,65 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
 TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {
   auto a = Activity("activity", {});
 
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   {
-    auto scopeGuard = Registry::ScopedCurrentActivity(a.id());
-    EXPECT_EQ(Registry::currentActivity(), a.id());
+    auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(a.id());
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
   }
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
   auto a = Activity("activity1", {});
   auto b = Activity("activity2", {});
 
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   {
-    auto outerScopeGuard = Registry::ScopedCurrentActivity(a.id());
-    EXPECT_EQ(Registry::currentActivity(), a.id());
+    auto outerScopeGuard = Registry::ScopedCurrentlyExecutingActivity(a.id());
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
 
     {
-      auto innerScopeGuard = Registry::ScopedCurrentActivity(b.id());
-      EXPECT_EQ(Registry::currentActivity(), b.id());
+      auto innerScopeGuard = Registry::ScopedCurrentlyExecutingActivity(b.id());
+      EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
     }
 
-    EXPECT_EQ(Registry::currentActivity(), a.id());
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
   }
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, with_set_current_activity) {
   auto a = Activity("activity to be in scope", {});
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
 
-  auto scoped = withSetCurrentActivity(
-      a.id(), [id = a.id()]() { EXPECT_EQ(Registry::currentActivity(), id); });
+  auto scoped = withSetCurrentlyExecutingActivity(a.id(), [id = a.id()]() {
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), id);
+  });
 
-  EXPECT_EQ(Registry::currentActivity(), ActivityRoot);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
 
   auto b = Activity("activity to be current", {});
-  auto scopeGuard = Registry::ScopedCurrentActivity(b.id());
+  auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(b.id());
 
-  EXPECT_EQ(Registry::currentActivity(), b.id());
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
 
   scoped();
 
-  EXPECT_EQ(Registry::currentActivity(), b.id());
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
 }
 
 TEST_F(ActivityRegistryTest, with_current_activity) {
   auto outer = Activity("outer activity", {});
   auto inner = Activity("inner activity", {});
 
-  auto outerGuard = Registry::ScopedCurrentActivity(outer.id());
-  auto testee = withCurrentActivity([id = Registry::currentActivity()]() {
-    EXPECT_EQ(Registry::currentActivity(), id);
-  });
+  auto outerGuard = Registry::ScopedCurrentlyExecutingActivity(outer.id());
+  auto testee = withCurrentlyExecutingActivity(
+      [id = Registry::currentlyExecutingActivity()]() {
+        EXPECT_EQ(Registry::currentlyExecutingActivity(), id);
+      });
 
   {
-    auto innerGuard = Registry::ScopedCurrentActivity(inner.id());
+    auto innerGuard = Registry::ScopedCurrentlyExecutingActivity(inner.id());
     testee();
   }
 }
