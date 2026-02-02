@@ -168,24 +168,6 @@
       type: single
       size: medium
 
-# shell_client_multi tests run quite long, so want to have a separate job for each protocol
-- shell_client_multi:
-    options:
-      priority: 1500
-      parallelity: 2
-      type: single
-      suffix: http2
-    args:
-      http2: true
-- shell_client_multi:
-    options:
-      priority: 1500
-      parallelity: 2
-      type: single
-      suffix: http
-    args:
-      http: true
-
 - shell_client_transaction:
     options:
       priority: 750
@@ -200,7 +182,7 @@
             http: true
             suffix: http
 
-- shell_client_traffic:
+- shell_client_traffic_multi:
     options:
       priority: 250
       parallelity: 1
@@ -224,6 +206,15 @@
             http2: true
             ssl: true
             suffix: http2-ssl
+      - shell_client_multi:
+        args:
+          http2: true
+          suffix: http2
+      - shell_client_multi
+        args:
+          http: true
+          suffix: http
+
 
 - shell_client_aql:
     options:
@@ -333,13 +324,9 @@
       type: cluster
     args:
       dumpAgencyOnError: true
-- load_balancing_auth:
-    options:
-      priority: 500
-      size: small
-      type: cluster
-    args:
-      dumpAgencyOnError: true
+    suites:
+      - load_balancing
+      - load_balancing_auth
 
 #- replication2_client:
 #    options:
@@ -354,32 +341,22 @@
 #        --dumpAgencyOnError true
 # see also DISABLED restart tests when re-enabling!
 
-- resilience_analyzers:
+- cluster_resilience:
     options:
       priority: 500
       size: medium
       type: cluster
     args:
       dumpAgencyOnError: true
+    suites:
+      - resilience_analyzers
+      - resilience_move
+      - resilience_sharddist
 - resilience_failover:
     options:
       priority: 1200
       size: medium
       buckets: 4
-      type: cluster
-    args:
-      dumpAgencyOnError: true
-- resilience_move:
-    options:
-      priority: 600
-      size: medium
-      buckets: 3
-      type: cluster
-    args:
-      dumpAgencyOnError: true
-- resilience_sharddist:
-    options:
-      size: small
       type: cluster
     args:
       dumpAgencyOnError: true
@@ -393,14 +370,12 @@
     options:
       priority: 500
       type: cluster
-      suffix: http
-- shell_api_multi:
-    options:
-      priority: 500
-      type: cluster
-      suffix: https
-    args:
-      protocol: ssl
+    suites:
+      shell_api_multi
+      shell_api_multi:
+        args:
+          protocol: ssl
+          suffix: ssl
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
 - shell_client_multi:
@@ -443,7 +418,7 @@
       type: cluster
       parallelity: 5
       size: small
-      buckets: 5
+      buckets: 3
     args:
       dumpAgencyOnError: true
 #- shell_client_replication2_recovery:
@@ -530,14 +505,12 @@
       priority: 1000
       parallelity: 5
       size: small
-      buckets: 2
     args:
       dumpAgencyOnError: true
 
 # Dump Tests
 - dump_single:
     options:
-      buckets: auto
       type: single
       size: medium
     suites:
