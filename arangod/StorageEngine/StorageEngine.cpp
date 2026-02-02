@@ -27,15 +27,39 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cache/CacheManagerFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
 #include <utility>
 
 using namespace arangodb;
+
+StorageEngine::StorageEngine(application_features::ApplicationServer& server,
+                             std::string_view engineName,
+                             std::string_view featureName,
+                             std::type_index registration,
+                             std::unique_ptr<IndexFactory>&& indexFactory)
+    : ApplicationFeature{server, registration, featureName},
+      _indexFactory(std::move(indexFactory)),
+      _typeName(engineName) {
+  // each specific storage engine feature is optional. the storage engine
+  // selection feature will make sure that exactly one engine is selected at
+  // startup
+  setOptional(true);
+  // storage engines must not use elevated privileges for files etc
+  startsAfter<application_features::BasicFeaturePhaseServer>();
+
+  startsAfter<CacheManagerFeature>();
+  startsBefore<StorageEngineFeature>();
+  startsAfter<transaction::ManagerFeature>();
+  startsAfter<ViewTypesFeature>();
+}
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}

@@ -25,14 +25,12 @@
 #include "IResearchFeature.h"
 
 #include "Basics/DownCast.h"
-#include "Basics/StaticStrings.h"
-#include <utils/source_location.hpp>
-
 #include "search/scorers.hpp"
 #include "utils/assert.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/source_location.hpp"
 
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -52,11 +50,10 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "CrashHandler/CrashHandler.h"
-#include "Containers/SmallVector.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -607,7 +604,8 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 }
 
 template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory, ArangodServer& server) {
+void registerSingleFactory(IndexTypeFactory& factory,
+                           application_features::ApplicationServer& server) {
   if (!server.hasFeature<T>()) {
     return;
   }
@@ -673,7 +671,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerUpgradeTasks(ArangodServer& server) {
+void registerUpgradeTasks(application_features::ApplicationServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
              // applied)
@@ -718,7 +716,7 @@ void registerUpgradeTasks(ArangodServer& server) {
   }
 }
 
-void registerViewFactory(ArangodServer& server) {
+void registerViewFactory(application_features::ApplicationServer& server) {
   Result r;
   auto check = [&] {
     if (!r.ok()) {
@@ -802,9 +800,9 @@ class AssertionCallbackSetter {
  private:
   [[noreturn]] static void assertCallback(irs::SourceLocation&& source,
                                           std::string_view message) noexcept {
-    CrashHandler::assertionFailure(source.file.data(),
-                                   static_cast<int>(source.line),
-                                   source.func.data(), message.data(), "");
+    crash_handler::CrashHandler::assertionFailure(
+        source.file.data(), static_cast<int>(source.line), source.func.data(),
+        message.data(), "");
   }
 };
 
@@ -866,8 +864,9 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
   return func.implementation == &offsetInfoFunc;
 }
 
-IResearchFeature::IResearchFeature(Server& server)
-    : ArangodFeature{server, *this},
+IResearchFeature::IResearchFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_num_out_of_sync_links{})),

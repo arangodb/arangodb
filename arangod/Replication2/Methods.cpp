@@ -1040,8 +1040,8 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
-                                           ArangodServer& server)
+  explicit ReplicatedLogMethodsCoordinator(
+      DatabaseID vocbase, application_features::ApplicationServer& server)
       : vocbaseName(std::move(vocbase)),
         clusterFeature(server.getFeature<ClusterFeature>()),
         clusterInfo(clusterFeature.clusterInfo()),
@@ -1273,8 +1273,8 @@ auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
   }
 }
 
-auto ReplicatedLogMethods::createInstance(DatabaseID database,
-                                          ArangodServer& server)
+auto ReplicatedLogMethods::createInstance(
+    DatabaseID database, application_features::ApplicationServer& server)
     -> std::shared_ptr<ReplicatedLogMethods> {
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_COORDINATOR:

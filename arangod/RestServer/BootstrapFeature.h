@@ -24,15 +24,15 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
 
-class BootstrapFeature final : public ArangodFeature {
+class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  explicit BootstrapFeature(Server& server);
+  explicit BootstrapFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -47,8 +47,8 @@ class BootstrapFeature final : public ArangodFeature {
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
 
+  BootstrapFeatureOptions _options;
   bool _isReady;
-  bool _bark;
 };
 
 }  // namespace arangodb

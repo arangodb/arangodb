@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileDescriptors.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
@@ -34,7 +35,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/EnvironmentFeature.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
@@ -61,9 +61,8 @@ DECLARE_GAUGE(
 
 namespace arangodb {
 
-FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _countDescriptorsInterval(60 * 1000),
+FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
@@ -82,7 +81,7 @@ void FileDescriptorsFeature::collectOptions(
           "Controls the interval (in milliseconds) in which the number of open "
           "file descriptors for the process is determined "
           "(0 = disable counting).",
-          new UInt64Parameter(&_countDescriptorsInterval),
+          new UInt64Parameter(&_options.countDescriptorsInterval),
           arangodb::options::makeFlags())
       .setIntroducedIn(31100);
 }
@@ -90,12 +89,13 @@ void FileDescriptorsFeature::collectOptions(
 void FileDescriptorsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> /*options*/) {
   constexpr uint64_t lowerBound = 10000;
-  if (_countDescriptorsInterval > 0 && _countDescriptorsInterval < lowerBound) {
+  if (_options.countDescriptorsInterval > 0 &&
+      _options.countDescriptorsInterval < lowerBound) {
     LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
         << "too low value for `--server.count-descriptors-interval`. Should be "
            "at least "
         << lowerBound;
-    _countDescriptorsInterval = lowerBound;
+    _options.countDescriptorsInterval = lowerBound;
   }
 }
 
@@ -130,7 +130,7 @@ void FileDescriptorsFeature::countOpenFiles() {
 }
 
 void FileDescriptorsFeature::countOpenFilesIfNeeded() {
-  if (_countDescriptorsInterval == 0) {
+  if (_options.countDescriptorsInterval == 0) {
     return;
   }
 
@@ -141,7 +141,7 @@ void FileDescriptorsFeature::countOpenFilesIfNeeded() {
   if (guard.owns_lock() &&
       (_lastCountStamp.time_since_epoch().count() == 0 ||
        now - _lastCountStamp >
-           std::chrono::milliseconds(_countDescriptorsInterval))) {
+           std::chrono::milliseconds(_options.countDescriptorsInterval))) {
     countOpenFiles();
     _lastCountStamp = now;
   }

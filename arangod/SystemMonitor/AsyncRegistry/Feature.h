@@ -22,30 +22,45 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Async/Registry/registry_variable.h"
-#include "SystemMonitor/AsyncRegistry/Metrics.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Async/Registry/promise.h"
+#include "CrashHandler/DataSource.h"
+#include "CrashHandler/DataSourceRegistry.h"
+#include "Containers/Forest/forest.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
+#include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
 
-class Feature final : public ArangodFeature {
+auto all_undeleted_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
+
+VPackBuilder serialize(
+    containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
+
+class Feature final : public application_features::ApplicationFeature,
+                      public crash_handler::CrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
-  static constexpr std::string_view name() { return "Coroutines"; }
+  static constexpr std::string_view name() { return "AsyncRegistry"; }
   auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
     return _asyncLock.lock();
   };
 
-  Feature(Server& server);
+  Feature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   void prepare() override final;
   void start() override final;
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
+  velocypack::SharedSlice getCrashData() const override;
+
+  std::string_view getDataSourceName() const override;
 
  private:
   struct Options {

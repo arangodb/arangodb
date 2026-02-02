@@ -1,6 +1,40 @@
 devel
 -----
 
+* FE-937: fix distribution tab getting stuck on loading.
+
+* Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
+  option on collections with computed values.
+
+* COR-22: Improved crash dumps with additional diagnostic data. Added
+ `ApiRecordingFeature` as a data source to include recent API calls
+ and AQL queries in crash dumps, as well as the async registry for
+ currently existing async operations. New REST API endpoints for crash dump
+ management:
+  - `GET /_admin/crashes`: List all crash dumps
+  - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
+  - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
+
+* Fix runaway io_uring file descriptors.
+
+* Fixed changing writeConcern on a collection
+  could cause subsequent writes to fail due to a stale internal write flag.
+
+* Fixed BTS-2298: Supervision cleanup job now correctly removes shadow collections
+  when deleting broken smart edge collections after a coordinator dies.
+
+* Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
+  least three levels of subqueries it could happen that the executor ended up in a
+  state it could not handle and the query would throw an error.
+  The effect seen by the customer was a hanging database because a lock was held.
+
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
+* Improve the output of fields `dbStats` for every column family
+  when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
 * COR-53: Fixed handling of forced vector index hints in AQL, so it is
   handled properly by changing the order of optimization rules.
 

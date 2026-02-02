@@ -23,17 +23,18 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cache/CacheOptionsProvider.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class CacheOptionsFeature final : public ArangodFeature,
-                                  public CacheOptionsProvider {
+class CacheOptionsFeature final
+    : public application_features::ApplicationFeature,
+      public CacheOptionsProvider {
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
-  explicit CacheOptionsFeature(Server& server);
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

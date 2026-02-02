@@ -35,7 +35,6 @@
 #include "Metrics/MetricKey.h"
 #include "Metrics/Parse.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb::metrics {
@@ -47,7 +46,8 @@ namespace arangodb::metrics {
 ///
 /// See IResearchLinkCoordinator as an example
 ////////////////////////////////////////////////////////////////////////////////
-class ClusterMetricsFeature final : public ArangodFeature {
+class ClusterMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterMetrics"; }
 
@@ -83,7 +83,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
     LeaderResponse packed;
     Metrics metrics;
   };
-  explicit ClusterMetricsFeature(Server& server);
+  explicit ClusterMetricsFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;

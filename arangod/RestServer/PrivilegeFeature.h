@@ -25,33 +25,32 @@
 
 #include <sys/types.h>
 #include <memory>
-#include <string>
+#include <string_view>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/operating-system.h"
-
-#include "RestServer/arangod.h"
+#include "RestServer/PrivilegeFeatureOptions.h"
 
 namespace arangodb {
 namespace options {
 class ProgramOptions;
 }
 
-class PrivilegeFeature final : public ArangodFeature {
+class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Privilege"; }
 
-  explicit PrivilegeFeature(Server& server);
+  explicit PrivilegeFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-
-  std::string _uid;
-  std::string _gid;
 
   void dropPrivilegesPermanently();
 
  private:
   void extractPrivileges();
+
+  PrivilegeFeatureOptions _options;
 
 #ifdef ARANGODB_HAVE_SETUID
   TRI_uid_t _numericUid{};

@@ -23,8 +23,12 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ClusterUpgradeFeatureOptions.h"
+
 namespace arangodb {
+
+class DatabaseFeature;
 
 // this feature is responsible for performing a cluster upgrade.
 // it is only doing something in a coordinator, and only if the server was
@@ -32,11 +36,12 @@ namespace arangodb {
 // in the startup sequence, so it can use the full cluster functionality when
 // run. after the feature has executed the upgrade, it will shut down the
 // server.
-class ClusterUpgradeFeature final : public ArangodFeature {
+class ClusterUpgradeFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
 
-  ClusterUpgradeFeature(ArangodServer& server,
+  ClusterUpgradeFeature(application_features::ApplicationServer& server,
                         DatabaseFeature& databaseFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -50,7 +55,7 @@ class ClusterUpgradeFeature final : public ArangodFeature {
   bool upgradeCoordinator();
 
  private:
-  std::string _upgradeMode;
+  ClusterUpgradeFeatureOptions _options;
   DatabaseFeature& _databaseFeature;
 };
 

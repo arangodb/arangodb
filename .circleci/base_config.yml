@@ -25,7 +25,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:18"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d76ea9cb
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -585,7 +585,7 @@ jobs:
                   - install.tar.gz
                   - build/bin
                   - build/etc
-                  - build/3rdParty/iresearch/external/snowball/libstemmer/
+                  - build/3rdParty/snowball/libstemmer/ # required for cppcheck
                   - build/build_version.cc
                   - scripts/
                   - js/
@@ -594,7 +594,7 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - 3rdParty/iresearch/tests/resources
+                  - lib/iresearch/tests/resources
                   - 3rdParty/rta-makedata
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
 
+#include <frozen/string.h>
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
@@ -46,9 +47,8 @@
 
 namespace arangodb::metrics {
 
-template<typename Server>
 MetricsFeature::MetricsFeature(
-    Server& server,
+    application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
     LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
@@ -64,16 +64,9 @@ MetricsFeature::MetricsFeature(
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
   setOptional(false);
-  startsAfter<LoggerFeature, Server>();
-  startsBefore<application_features::GreetingsFeaturePhase, Server>();
+  startsAfter<LoggerFeature>();
+  startsBefore<application_features::GreetingsFeaturePhase>();
 }
-
-template MetricsFeature::MetricsFeature(
-    ArangodServer&, LazyApplicationFeatureReference<QueryRegistryFeature>,
-    LazyApplicationFeatureReference<StatisticsFeature>,
-    LazyApplicationFeatureReference<EngineSelectorFeature>,
-    LazyApplicationFeatureReference<ClusterMetricsFeature>,
-    LazyApplicationFeatureReference<ClusterFeature>);
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {

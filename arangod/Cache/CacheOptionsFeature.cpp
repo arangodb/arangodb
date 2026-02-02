@@ -27,18 +27,18 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cache/Manager.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheOptionsFeature::CacheOptionsFeature(Server& server)
-    : ArangodFeature{server, *this} {
+CacheOptionsFeature::CacheOptionsFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -120,9 +120,9 @@ value will be inflated in size by the cache rebalancer.)")
                       arangodb::options::Flags::OnSingle))
       .setLongDescription(
           R"(By transparently compressing values in the in-memory
-edge index cache, more data can be held in memory than without compression.  
-Storing compressed values can increase CPU usage for the on-the-fly compression 
-and decompression. In case compression is undesired, this option can be set to a 
+edge index cache, more data can be held in memory than without compression.
+Storing compressed values can increase CPU usage for the on-the-fly compression
+and decompression. In case compression is undesired, this option can be set to a
 very high value, which will effectively disable it. To use compression, set the
 option to a value that is lower than medium-to-large average payload sizes.
 It is normally not that useful to compress values that are smaller than 100 bytes.)")
@@ -141,7 +141,7 @@ It is normally not that useful to compress values that are smaller than 100 byte
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setLongDescription(
-          R"(This value controls the LZ4-internal acceleration factor for the 
+          R"(This value controls the LZ4-internal acceleration factor for the
 LZ4 compression. Higher values typically yield less compression in exchange
 for faster compression and decompression speeds. An increase of 1 commonly leads
 to a compression speed increase of 3%, and could slightly increase decompression
@@ -162,7 +162,7 @@ speed.)")
       .setLongDescription(
           R"(This value controls the cache's effective memory usage limit.
 The user-defined memory limit (i.e. `--cache.size`) is multipled with this
-value to create the effective memory limit, from which on the cache will 
+value to create the effective memory limit, from which on the cache will
 try to free up memory by evicting the oldest entries.)")
       .setIntroducedIn(31200);
 

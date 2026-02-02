@@ -50,6 +50,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -90,6 +91,9 @@
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBCFStats.h"
+
+#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -268,10 +272,9 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 }
 
 // create the storage engine
-template<typename Server>
 RocksDBEngine::RocksDBEngine(
-    Server& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
+    application_features::ApplicationServer& server,
+    RocksDBOptionsProvider& optionsProvider, metrics::MetricsFeature& metrics,
     DatabasePathFeature const& databasePathFeature,
     VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
@@ -282,8 +285,7 @@ RocksDBEngine::RocksDBEngine(
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
     CacheManagerFeature& cacheManagerFeature,
     AgencyFeature const& agencyFeature)
-    : StorageEngine(server, kEngineName, name(),
-                    Server::template id<RocksDBEngine>(),
+    : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathFeature(databasePathFeature),
       _vectorIndexFeature(vectorIndexFeature),
@@ -367,39 +369,18 @@ RocksDBEngine::RocksDBEngine(
       _forceLegacySortingMethod(false),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
-  startsAfter<BasicFeaturePhaseServer, Server>();
-  startsAfter<VectorIndexFeature, Server>();
+  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
-  startsAfter<RocksDBOptionFeature, Server>();
-  startsAfter<LanguageFeature, Server>();
-  startsAfter<LanguageCheckFeature, Server>();
+  startsAfter<RocksDBOptionFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<LanguageCheckFeature>();
 }
 
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-template<typename Server>
-auto RocksDBEngine::construct(
-    Server& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
-    ReplicatedLogFeature* replicatedLogFeature,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine> {
-  return std::make_unique<RocksDBEngine>(
-      server, optionsProvider, metrics, databasePathFeature, vectorIndexFeature,
-      flushFeature, dumpLimitsFeature, schedulerFeature, replicatedLogFeature,
-      rocksDbRecoveryManager, databaseFeature, rocksDbIndexCacheRefillFeature,
-      cacheManagerFeature, agencyFeature);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -770,7 +751,7 @@ archive to about the specified value and trigger WAL archive file deletion once
 the threshold is reached. You can use this to get rid of archived WAL files in
 a disk size-constrained environment.
 
-**Note**: The value is only a threshold, so the archive may get bigger than 
+**Note**: The value is only a threshold, so the archive may get bigger than
 the configured value until the background thread actually deletes files from
 the archive. Also note that deletion from the archive only kicks in after
 `--rocksdb.wal-file-timeout-initial` seconds have elapsed after server start.
@@ -3594,16 +3575,11 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     std::string name = RocksDBColumnFamilyManager::name(
         family, RocksDBColumnFamilyManager::NameMode::External);
     rocksdb::ColumnFamilyHandle* c = RocksDBColumnFamilyManager::get(family);
-    std::string v;
-    builder.add(name, VPackValue(VPackValueType::Object));
-    if (_db->GetProperty(c, rocksdb::DB::Properties::kCFStats, &v)) {
-      builder.add("dbstats", VPackValue(v));
-    }
 
     // re-add this line to count all keys in the column family (slow!!!)
     // builder.add("keys", VPackValue(rocksutils::countKeys(_db, c)));
 
-    // estimate size on disk and in memtables
+    // Estimate size on disk and in memtables
     uint64_t out = 0;
     rocksdb::Range r(rocksdb::Slice("\x00\x00\x00\x00\x00\x00\x00\x00", 8),
                      rocksdb::Slice("\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
@@ -3614,8 +3590,11 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                                               .include_files = true};
     _db->GetApproximateSizes(options, c, &r, 1, &out);
 
-    builder.add("memory", VPackValue(out));
-    builder.close();
+    // Collect structured CF stats using direct RocksDB APIs
+    auto cfStats = RocksDBCFStatsCollector::collect(_db, c, name);
+    VPackBuilder tempBuilder;
+    velocypack::serialize(tempBuilder, cfStats);
+    builder.add(name, tempBuilder.slice());
   };
 
   builder.openObject(/*unindexed*/ true);
@@ -4348,21 +4327,5 @@ auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
 auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
   return _flushFeature;
 }
-
-// a named constructor is necessary, because a template constructor can't be
-// explicitly instantiated.
-template auto RocksDBEngine::construct<ArangodServer>(
-    ArangodServer& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
-    ReplicatedLogFeature* replicatedLogFeature,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine>;
 
 }  // namespace arangodb

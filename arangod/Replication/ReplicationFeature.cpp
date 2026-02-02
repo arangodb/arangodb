@@ -24,24 +24,25 @@
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -55,8 +56,10 @@ DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
 
 namespace arangodb {
 
-ReplicationFeature::ReplicationFeature(Server& server)
-    : ArangodFeature{server, *this},
+ReplicationFeature::ReplicationFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : application_features::ApplicationFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),
@@ -65,15 +68,9 @@ ReplicationFeature::ReplicationFeature(Server& server)
           server.getFeature<application_features::CommunicationFeaturePhase>(),
           httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
-      _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_cluster_inventory_requests_total{})),
-      _clients(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_clients{})) {
-  static_assert(
-      Server::isCreatedAfter<ReplicationFeature,
-                             application_features::CommunicationFeaturePhase,
-                             metrics::MetricsFeature>());
-
+      _inventoryRequests(
+          metrics.add(arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(metrics.add(arangodb_replication_clients{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

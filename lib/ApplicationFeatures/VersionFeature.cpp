@@ -40,21 +40,21 @@ void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--version",
       "Print the version and other related information, then exit.",
-      new BooleanParameter(&_printVersion),
+      new BooleanParameter(&_options.printVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 
   options
       ->addOption("--version-json",
                   "Print the version and other related information in JSON "
                   "format, then exit.",
-                  new BooleanParameter(&_printVersionJson),
+                  new BooleanParameter(&_options.printVersionJson),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Command))
       .setIntroducedIn(30900);
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_printVersionJson) {
+  if (_options.printVersionJson) {
     VPackBuilder builder;
     {
       VPackObjectBuilder ob(&builder);
@@ -67,7 +67,7 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     exit(EXIT_SUCCESS);
   }
 
-  if (_printVersion) {
+  if (_options.printVersion) {
     std::cout << Version::getServerVersion() << std::endl
               << std::endl
               << LGPLNotice << std::endl

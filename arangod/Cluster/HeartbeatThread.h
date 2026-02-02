@@ -60,10 +60,11 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public ServerThread<ArangodServer>,
+class HeartbeatThread : public ServerThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(Server&, AgencyCallbackRegistry*, std::chrono::microseconds,
+  HeartbeatThread(application_features::ApplicationServer&,
+                  AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning,
                   double noHeartbeatDelayBeforeShutdown);
   ~HeartbeatThread();

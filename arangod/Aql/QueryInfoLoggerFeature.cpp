@@ -36,12 +36,14 @@
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Methods.h"
@@ -68,17 +70,18 @@ using namespace arangodb;
 
 namespace arangodb::aql {
 
-class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
+class QueryInfoLoggerThread final : public Thread {
  public:
-  explicit QueryInfoLoggerThread(ArangodServer& server,
-                                 size_t maxBufferedQueries,
-                                 uint64_t pushInterval,
-                                 uint64_t cleanupInterval, double retentionTime)
-      : ServerThread<ArangodServer>(server, "QueryInfoLogger"),
+  explicit QueryInfoLoggerThread(
+      application_features::ApplicationServer& server,
+      size_t maxBufferedQueries, uint64_t pushInterval,
+      uint64_t cleanupInterval, double retentionTime)
+      : Thread("QueryInfoLogger"),
         _maxBufferedQueries(maxBufferedQueries),
         _pushInterval(pushInterval),
         _cleanupInterval(cleanupInterval),
-        _retentionTime(retentionTime) {}
+        _retentionTime(retentionTime),
+        _systemDatabaseFeature(server.getFeature<SystemDatabaseFeature>()) {}
 
   ~QueryInfoLoggerThread() { shutdown(); }
 
@@ -266,9 +269,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 
   // return pointer to _system database, if it exists.
   SystemDatabaseFeature::ptr getSystemDatabase() {
-    return server().hasFeature<SystemDatabaseFeature>()
-               ? server().getFeature<SystemDatabaseFeature>().use()
-               : nullptr;
+    return _systemDatabaseFeature.use();
   }
 
   // run a cleanup query on the _queries collection, in order to purge
@@ -467,6 +468,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   // system collection before they are purged.
   double const _retentionTime;
 
+  SystemDatabaseFeature& _systemDatabaseFeature;
+
   // mutex and condition variable that protect _queries.
   std::mutex _mutex;
   std::condition_variable _condition;
@@ -483,12 +486,13 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   Scheduler::WorkHandle _workItem;
 };
 
-QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
-    : ArangodFeature{server, *this} {
+QueryInfoLoggerFeature::QueryInfoLoggerFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
-  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }

@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestAdminRoutingHandler : public RestVocbaseBaseHandler {
  public:
-  RestAdminRoutingHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAdminRoutingHandler(application_features::ApplicationServer&,
+                          GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;

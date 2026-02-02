@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Shell/arangosh.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <memory>
 #include <optional>
@@ -38,11 +38,11 @@ namespace velocypack {
 class Builder;
 }
 
-class ShellFeature final : public ArangoshFeature {
+class ShellFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Shell"; }
 
-  ShellFeature(Server& server, int* result);
+  ShellFeature(application_features::ApplicationServer& server, int* result);
 
   ~ShellFeature();
 

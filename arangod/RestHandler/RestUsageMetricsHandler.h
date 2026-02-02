@@ -31,7 +31,8 @@ namespace arangodb {
 
 class RestUsageMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestUsageMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestUsageMetricsHandler(application_features::ApplicationServer&,
+                          GeneralRequest*, GeneralResponse*);
 
   char const* name() const final { return "RestUsageMetricsHandler"; }
   /// @brief must be on fast lane so that metrics can always be retrieved,
