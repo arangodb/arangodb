@@ -218,7 +218,6 @@ void RestDumpHandler::handleCommandDumpNext() {
     } else {
       firstFetch.store(false);
     }
-    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   if (batch == nullptr) {
