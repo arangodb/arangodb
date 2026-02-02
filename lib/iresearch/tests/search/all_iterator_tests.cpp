@@ -8,13 +8,10 @@ using namespace irs;
 struct test_doc_iterator : public doc_iterator {
   using ptr = memory::managed_ptr<test_doc_iterator>;
 
-  test_doc_iterator(const std::vector<doc_id_t>& elements) :
-  begin_(elements.begin()), end_(elements.end()) {
-  }
+  test_doc_iterator(const std::vector<doc_id_t>& elements)
+      : begin_(elements.begin()), end_(elements.end()) {}
 
-  virtual doc_id_t value() const override {
-    return doc_.value;
-  }
+  virtual doc_id_t value() const override { return doc_.value; }
 
   // TODO(MBkkt) return T? In such case some algorithms probably will be faster
   virtual bool next() final {
@@ -27,9 +24,8 @@ struct test_doc_iterator : public doc_iterator {
     doc_.value = doc_limits::eof();
     return false;
   }
-  
-  virtual doc_id_t seek(doc_id_t target) final {
 
+  virtual doc_id_t seek(doc_id_t target) final {
     while (doc_.value < target && next()) {
     }
 
@@ -43,12 +39,12 @@ struct test_doc_iterator : public doc_iterator {
     return nullptr;
   }
 
-  private:
-    std::vector<doc_id_t>::const_iterator begin_;
-    std::vector<doc_id_t>::const_iterator end_;
-    document doc_;
+ private:
+  std::vector<doc_id_t>::const_iterator begin_;
+  std::vector<doc_id_t>::const_iterator end_;
+  document doc_;
 };
-  
+
 class all_iterator_test : public ::testing::TestWithParam<size_t> {
  public:
   all_iterator_test() {}
@@ -57,18 +53,17 @@ class all_iterator_test : public ::testing::TestWithParam<size_t> {
     auto reader = SegmentReader();
     auto scorers = Scorers();
     score_t boost = 0.0;
-    auto allItr = memory::make_managed<AllIterator>(reader, nullptr, Scorers::kUnordered, docs_count, boost);
+    auto allItr = memory::make_managed<AllIterator>(
+        reader, nullptr, Scorers::kUnordered, docs_count, boost);
     return allItr;
   }
 
  protected:
-  void SetUp() final {
-  }
+  void SetUp() final {}
 };
 
 TEST_F(all_iterator_test, AllIterator) {
-
-  uint64_t docs_count { 10 };
+  uint64_t docs_count{10};
   auto allItr = makeAllIterator(docs_count);
 
   EXPECT_EQ(allItr->value(), 0);
@@ -83,12 +78,13 @@ TEST_F(all_iterator_test, AllIterator) {
 }
 
 TEST_F(all_iterator_test, exclusion_smoketest) {
-  std::vector<doc_id_t> incl { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-  std::vector<doc_id_t> excl { 1, 2, 3, 4, 5, 6 };
+  std::vector<doc_id_t> incl{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::vector<doc_id_t> excl{1, 2, 3, 4, 5, 6};
 
   auto inclItr = memory::make_managed<test_doc_iterator>(incl);
   auto exclItr = memory::make_managed<test_doc_iterator>(excl);
-  auto testItr = memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
+  auto testItr =
+      memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
 
   EXPECT_EQ(testItr->value(), 0);
 
@@ -106,13 +102,14 @@ TEST_F(all_iterator_test, exclusion_smoketest) {
 }
 
 TEST_F(all_iterator_test, exclusion_using_AllIterator) {
-  uint64_t docs_count { 10 };
+  uint64_t docs_count{10};
   auto inclItr = makeAllIterator(docs_count);
 
-  std::vector<doc_id_t> excl { 1, 2, 3, 4, 5, 6 };
+  std::vector<doc_id_t> excl{1, 2, 3, 4, 5, 6};
   auto exclItr = memory::make_managed<test_doc_iterator>(excl);
 
-  auto exclusionItr = memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
+  auto exclusionItr =
+      memory::make_managed<exclusion>(std::move(inclItr), std::move(exclItr));
 
   EXPECT_EQ(exclusionItr->value(), 0);
   auto result = exclusionItr->seek(1);
