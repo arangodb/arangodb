@@ -513,6 +513,12 @@
           options:
             parallelity: 1
             priority: 2000
+      - dump_mixed_single_cluster:
+      - dump_mixed_single_cluster:
+          options:
+            suffix: vpack
+          args:
+            dumpVPack: true
       # BTS-1852 enable after fix:
       # - dump:
       #     options:
@@ -521,7 +527,7 @@
       #       dumpVPack: true
       #       forceOneShard: true
 
-- dump_cluster_large:
+- dump_multiple_two:
     options:
       buckets: auto
       type: cluster
@@ -530,14 +536,6 @@
     args:
       extremeVerbosity: true
       dumpAgencyOnError: true
-    suites:
-      - dump_multiple_two
-      - dump_mixed_single_cluster
-      - dump_mixed_single_cluster:
-          options:
-            suffix: vpack
-          args:
-            dumpVPack: true
 
 # Full Tests Single Server
 - shell_fuzzer:
