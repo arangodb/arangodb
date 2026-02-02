@@ -43,19 +43,24 @@ exports.get_snapshot = function (server) {
   return exports.pretty_print(activities);
 };
 
-// TODO add also stuff like ├ and │ for continuations
-function branch_symbol(hierarchy) {
-  if (hierarchy === 0) {
-    return "──";
-  }
-  return `${Array(3*hierarchy+1).join(" ")}└──`; 
-}
-
 exports.pretty_print = function (activities) {
   const forest = exports.createForest(activities);
   return Array.from(forest.iter())
-    .map(({hierarchy, item}) => `${branch_symbol(hierarchy)} ${item.name}: ${JSON.stringify(item.metadata)}`)
+    .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.name}: ${JSON.stringify(item.metadata)}`)
     .join('\n');
+}
+
+function branch_symbol(hierarchy, continuations) {
+  if (hierarchy === 0) {
+    return " ──";
+  }
+  let spacesArray = Array(4*hierarchy).fill(" ");
+  Array.from(continuations).filter((c) => c < hierarchy).forEach((c) => spacesArray[4*c] = `│`);
+  const spaces = spacesArray.join("");
+  if (continuations.has(hierarchy)) {
+    return spaces + `├──`;
+  }
+  return spaces + `└──`; 
 }
 
 exports.createForest = function (activities) {
@@ -66,8 +71,6 @@ exports.createForest = function (activities) {
   }));
   return new exports.Forest(leaves);
 }
-
-// general structs
 
 exports.DFS = class DFS {
   constructor(items) {
@@ -82,8 +85,11 @@ exports.DFS = class DFS {
       if (item === undefined) {
         return;
       }
+      const continuations = new Set(stack.map(({hierarchy, id}) => hierarchy).filter((h) => h <= hierarchy));
       item.children.forEach((c) => stack.push({hierarchy: hierarchy+1, id:c}));
-      yield {hierarchy, item}
+      // continuations are the hierarchy levels that have not yet been finished
+      // because the stack includes another item of that hierarchy
+      yield {item, hierarchy, continuations};
     }
   }
 };
