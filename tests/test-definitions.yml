@@ -39,7 +39,6 @@
       parallelity: 3
       size: small
       type: single
-      buckets: 2
     args:
       extraArgs:log.level: replication=trace
       extraArgs:experimental-vector-index: true
@@ -84,7 +83,7 @@
 - recovery:
     options:
       priority: 2000
-      buckets: 8
+      buckets: 6
       parallelity: 3
       size: small
       type: single
@@ -101,12 +100,12 @@
 - recovery_server:
     options:
       priority: 2000
-      buckets: 3
+      buckets: 2
       parallelity: 3
       size: small
       type: single
 
-- shell_api:
+- shell_api_multi_permissions:
     options:
       priority: 500
       type: single
@@ -119,13 +118,14 @@
           args:
             ssl: true
             suffix: ssl
+      - server_permissions
 
 # Shell client tests Single Server; distribute evenly
 - shell_client:
     options:
       priority: 250
       parallelity: 2
-      buckets: 4
+      buckets: 3
       type: single
       size: medium
 
@@ -179,7 +179,7 @@
 
 - shell_client_aql:
     options:
-      buckets: 19
+      buckets: 10
       priority: 250
       type: single
     args:
@@ -380,7 +380,6 @@
       type: cluster
       parallelity: 5
       size: small
-      buckets: 2
     args:
       dumpAgencyOnError: true
 # - shell_client_replication2_recovery:
@@ -434,14 +433,12 @@
       - hot_backup_el_cheapo
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
-- server_parameters_permissions:
+- server_parameters:
     options:
       priority: 1000
       parallelity: 3
       type: single
-    suites:
-      - server_parameters
-      - server_permissions
+
 - server_parameters:
     options:
       priority: 1000
