@@ -676,7 +676,7 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
-      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         LOG_TOPIC("d4e3f", INFO, Logger::STARTUP)
             << "Dropping obsolete fulltext index '" << index->id().id()
             << "' from collection '" << collection->name()

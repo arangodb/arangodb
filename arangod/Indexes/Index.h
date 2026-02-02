@@ -86,6 +86,7 @@ class Index {
       emptyCoveredFields;
 
   /// @brief index types
+  /// The TRI_IDX_TYPE_FULLTEXT_INDEX was removed in 4.0
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
@@ -94,7 +95,7 @@ class Index {
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
     TRI_IDX_TYPE_EDGE_INDEX,
-    TRI_IDX_TYPE_FULLTEXT_INDEX_REMOVED,
+    TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
     TRI_IDX_TYPE_TTL_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
