@@ -380,10 +380,9 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<ArangodServer> {
+class ClusterInfo::SyncerThread final : public Thread {
  public:
-  explicit SyncerThread(Server&, std::string const& section,
+  explicit SyncerThread(std::string const& section,
                         std::function<consensus::index_t()> const&,
                         AgencyCache&);
   ~SyncerThread() override;
@@ -436,7 +435,8 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
               "Global number of shards");
 
-ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+                         AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
                          metrics::MetricsFeature& metrics)
@@ -447,11 +447,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
+      _memoryUsage(
+          metrics.addShared(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
       _lcTimer(metrics.add(arangodb_load_current_runtime{})),
       _metadataMetrics(std::nullopt),
-      _resourceMonitor(_memoryUsage),
+      _resourceMonitor(*_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
       _serverAdvertisedEndpoints(_resourceMonitor),
@@ -5865,7 +5866,9 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-ArangodServer& ClusterInfo::server() const { return _server; }
+application_features::ApplicationServer& ClusterInfo::server() const {
+  return _server;
+}
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
   return _agencyCallbackRegistry;
@@ -5873,9 +5876,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
-      _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
+      "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current",
+      "Current",
       [this] {
         TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
           using namespace std::chrono_literals;
@@ -5949,9 +5952,9 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    Server& server, std::string const& section,
-    std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread<Server>(server, section + "Syncer"),
+    std::string const& section, std::function<consensus::index_t()> const& f,
+    AgencyCache& agencyCache)
+    : Thread(section + "Syncer"),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

@@ -53,11 +53,11 @@ class ClusterInfo;
 class DatabaseFeature;
 class HeartbeatThread;
 
-class ClusterFeature : public ArangodFeature {
+class ClusterFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
-  explicit ClusterFeature(Server& server);
+  explicit ClusterFeature(application_features::ApplicationServer& server);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -227,8 +227,9 @@ class ClusterFeature : public ArangodFeature {
                             std::string const& endpoints);
 
  private:
-  ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
-                 DatabaseFeature& database, std::type_index registration);
+  ClusterFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics, DatabaseFeature& database,
+                 std::type_index registration);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();

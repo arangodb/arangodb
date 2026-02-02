@@ -37,7 +37,6 @@
 #include "analysis/token_streams.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
-#include "index/norm.hpp"
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationServerHelper.h"
@@ -48,22 +47,20 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/FunctionUtils.h"
-#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
-#include "IResearchAqlAnalyzer.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/Wildcard/Analyzer.h"
+#include "IResearchAqlAnalyzer.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -84,7 +81,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VelocyPackHelper.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -706,7 +702,8 @@ inline std::string normalizedAnalyzerName(std::string_view database,
   return absl::StrCat(database, "::", analyzer);
 }
 
-bool analyzerInUse(ArangodServer& server, std::string_view dbName,
+bool analyzerInUse(application_features::ApplicationServer& server,
+                   std::string_view dbName,
                    AnalyzerPool::ptr const& analyzerPtr) {
   TRI_ASSERT(analyzerPtr);
 
@@ -780,7 +777,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    ArangodServer& server, std::string_view vocbase) {
+    application_features::ApplicationServer& server, std::string_view vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<ClusterFeature>() &&
                server.getFeature<ClusterFeature>().isEnabled());
@@ -1094,8 +1091,9 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   return {};
 }
 
-IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
-    : ArangodFeature{server, *this},
+IResearchAnalyzerFeature::IResearchAnalyzerFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
 #ifdef USE_V8

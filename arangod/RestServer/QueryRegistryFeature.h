@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
@@ -33,7 +33,8 @@
 
 namespace arangodb {
 
-class QueryRegistryFeature final : public ArangodFeature {
+class QueryRegistryFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
 
@@ -41,7 +42,8 @@ class QueryRegistryFeature final : public ArangodFeature {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
+  QueryRegistryFeature(application_features::ApplicationServer& server,
+                       metrics::MetricsFeature& metrics);
   ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

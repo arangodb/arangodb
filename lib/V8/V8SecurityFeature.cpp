@@ -169,7 +169,7 @@ void V8SecurityFeature::collectOptions(
   options->addOption(
       "--javascript.allow-port-testing",
       "Allow the testing of ports from within JavaScript actions.",
-      new BooleanParameter(&_allowPortTesting),
+      new BooleanParameter(&_options.allowPortTesting),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
@@ -180,7 +180,7 @@ void V8SecurityFeature::collectOptions(
       "--javascript.allow-external-process-control",
       "Allow the execution and control of external processes from "
       "within JavaScript actions.",
-      new BooleanParameter(&_allowProcessControl),
+      new BooleanParameter(&_options.allowProcessControl),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
@@ -190,7 +190,7 @@ void V8SecurityFeature::collectOptions(
   options->addOption("--javascript.harden",
                      "Disable access to JavaScript functions in the internal "
                      "module: getPid() and logLevel().",
-                     new BooleanParameter(&_hardenInternalModule),
+                     new BooleanParameter(&_options.hardenInternalModule),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
@@ -200,7 +200,7 @@ void V8SecurityFeature::collectOptions(
       "--javascript.startup-options-allowlist",
       "Startup options whose names match this regular "
       "expression are allowed and exposed to JavaScript.",
-      new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
+      new VectorParameter<StringParameter>(&_options.startupOptionsAllowList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
@@ -211,36 +211,36 @@ void V8SecurityFeature::collectOptions(
       "Startup options whose names match this regular "
       "expression are not exposed (if not in the allowlist) to "
       "JavaScript actions.",
-      new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
+      new VectorParameter<StringParameter>(&_options.startupOptionsDenyList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.environment-variables-allowlist",
-      "Environment variables that are accessible in JavaScript.",
-      new VectorParameter<StringParameter>(&_environmentVariablesAllowListVec),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.environment-variables-allowlist",
+                     "Environment variables that are accessible in JavaScript.",
+                     new VectorParameter<StringParameter>(
+                         &_options.environmentVariablesAllowList),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.environment-variables-denylist",
-      "Environment variables that are inaccessible in "
-      "JavaScript (if not in the allowlist).",
-      new VectorParameter<StringParameter>(&_environmentVariablesDenyListVec),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.environment-variables-denylist",
+                     "Environment variables that are inaccessible in "
+                     "JavaScript (if not in the allowlist).",
+                     new VectorParameter<StringParameter>(
+                         &_options.environmentVariablesDenyList),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--javascript.endpoints-allowlist",
       "Endpoints that can be connected to via the "
       "`@arangodb/request` module in JavaScript actions.",
-      new VectorParameter<StringParameter>(&_endpointsAllowListVec),
+      new VectorParameter<StringParameter>(&_options.endpointsAllowList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
@@ -251,20 +251,21 @@ void V8SecurityFeature::collectOptions(
       "Endpoints that cannot be connected to via the "
       "`@arangodb/request` module in JavaScript actions "
       "(if not in the allowlist).",
-      new VectorParameter<StringParameter>(&_endpointsDenyListVec),
+      new VectorParameter<StringParameter>(&_options.endpointsDenyList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnCoordinator,
           arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.files-allowlist",
-                     "Filesystem paths that are accessible from within "
-                     "JavaScript actions.",
-                     new VectorParameter<StringParameter>(&_filesAllowListVec),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.files-allowlist",
+      "Filesystem paths that are accessible from within "
+      "JavaScript actions.",
+      new VectorParameter<StringParameter>(&_options.filesAllowList),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
   options->addOldOption("--javascript.startup-options-whitelist",
                         "--javascript.startup-options-allowlist");
@@ -287,28 +288,28 @@ void V8SecurityFeature::validateOptions(
   // check if the regular expressions compile properly
 
   // startup options
-  convertToSingleExpression(_startupOptionsAllowListVec,
+  convertToSingleExpression(_options.startupOptionsAllowList,
                             _startupOptionsAllowList);
-  convertToSingleExpression(_startupOptionsDenyListVec,
+  convertToSingleExpression(_options.startupOptionsDenyList,
                             _startupOptionsDenyList);
   testRegexPair(_startupOptionsAllowList, _startupOptionsDenyList,
                 "startup-options");
 
   // environment variables
-  convertToSingleExpression(_environmentVariablesAllowListVec,
+  convertToSingleExpression(_options.environmentVariablesAllowList,
                             _environmentVariablesAllowList);
-  convertToSingleExpression(_environmentVariablesDenyListVec,
+  convertToSingleExpression(_options.environmentVariablesDenyList,
                             _environmentVariablesDenyList);
   testRegexPair(_environmentVariablesAllowList, _environmentVariablesDenyList,
                 "environment-variables");
 
   // endpoints
-  convertToSingleExpression(_endpointsAllowListVec, _endpointsAllowList);
-  convertToSingleExpression(_endpointsDenyListVec, _endpointsDenyList);
+  convertToSingleExpression(_options.endpointsAllowList, _endpointsAllowList);
+  convertToSingleExpression(_options.endpointsDenyList, _endpointsDenyList);
   testRegexPair(_endpointsAllowList, _endpointsDenyList, "endpoints");
 
   // file access
-  convertToSingleExpression(_filesAllowListVec, _filesAllowList);
+  convertToSingleExpression(_options.filesAllowList, _filesAllowList);
   testRegexPair(_filesAllowList, "", "files");
 }
 
@@ -391,23 +392,24 @@ void V8SecurityFeature::addToInternalAllowList(std::string const& inItem,
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses() const {
-  return _allowProcessControl;
+  return _options.allowProcessControl;
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(
     v8::Isolate* isolate) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
-  return _allowProcessControl && v8g->_securityContext.canControlProcesses();
+  return _options.allowProcessControl &&
+         v8g->_securityContext.canControlProcesses();
 }
 
 bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* /*isolate*/) const {
-  return _allowPortTesting;
+  return _options.allowPortTesting;
 }
 
 bool V8SecurityFeature::isInternalModuleHardened(
     v8::Isolate* /*isolate*/) const {
-  return _hardenInternalModule;
+  return _options.hardenInternalModule;
 }
 
 bool V8SecurityFeature::isAllowedToDefineHttpAction(

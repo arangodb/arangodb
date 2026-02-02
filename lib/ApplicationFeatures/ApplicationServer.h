@@ -134,7 +134,7 @@ class ApplicationServer {
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
                     char const* binaryPath);
 
-  virtual ~ApplicationServer() = default;
+  virtual ~ApplicationServer();
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
@@ -314,23 +314,9 @@ class ApplicationServer {
     TRI_ASSERT(!hasFeature<Type>());
     auto& slot = _features[typeid(Type)];
     slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+    _featureInitOrder.push_back(typeid(Type));
 
     return static_cast<Impl&>(*slot);
-  }
-
-  // Adds a feature to the application server using a factory function.
-  // This is useful for features with template constructors that cannot
-  // be explicitly instantiated - they can provide a static `construct`
-  // factory method instead.
-  template<typename Type, typename Factory>
-  Type& addFeatureFactory(Factory&& factory) {
-    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
-
-    TRI_ASSERT(!hasFeature<Type>());
-    auto& slot = _features[typeid(Type)];
-    slot = std::forward<Factory>(factory)();
-
-    return static_cast<Type&>(*slot);
   }
 
  protected:
@@ -341,20 +327,9 @@ class ApplicationServer {
 
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
-  bool hasFeature(std::type_index type) const noexcept {
-    return _features.contains(type);
-  }
+  bool hasFeature(std::type_index type) const noexcept;
 
-  ApplicationFeature& getFeature(std::type_index type) const {
-    auto it = _features.find(type);
-    if (ADB_LIKELY(it != _features.end())) {
-      return *it->second;
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("unknown feature '") + type.name() + "'");
-  }
+  ApplicationFeature& getFeature(std::type_index type) const;
 
   void disableFeatures(std::span<const std::type_index> types, bool force);
 
@@ -411,6 +386,10 @@ class ApplicationServer {
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
+
+  // order in which the features are were added to the server.
+  // required to make sure features are destroyed in inverse order
+  std::vector<std::type_index> _featureInitOrder;
 
   // will be signaled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;

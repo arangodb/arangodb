@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
 #include "Containers/FlatHashMap.h"
@@ -35,24 +36,30 @@
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
 
 #include <map>
 #include <shared_mutex>
 
+namespace arangodb {
+class QueryRegistryFeature;
+class StatisticsFeature;
+class EngineSelectorFeature;
+class ClusterFeature;
+}  // namespace arangodb
 namespace arangodb::metrics {
 
-class MetricsFeature final : public ApplicationFeature {
+class ClusterMetricsFeature;
+
+class MetricsFeature final : public application_features::ApplicationFeature {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  template<typename Server>
   explicit MetricsFeature(
-      Server& server,
+      application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
       LazyApplicationFeatureReference<StatisticsFeature>

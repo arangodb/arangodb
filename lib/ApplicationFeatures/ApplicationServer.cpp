@@ -86,6 +86,14 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
       }});
 }
 
+ApplicationServer::~ApplicationServer() {
+  // destroy features in inverse order in which they were added.
+  for (auto it = _featureInitOrder.rbegin(); it != _featureInitOrder.rend();
+       ++it) {
+    _features[*it].reset();
+  }
+}
+
 std::pair<std::string, std::string> ApplicationServer::progressInfo() const {
   std::unique_lock mtx{_progressMutex};
 
@@ -126,15 +134,30 @@ void ApplicationServer::forceDisableFeatures(
   disableFeatures(types, true);
 }
 
+bool ApplicationServer::hasFeature(std::type_index type) const noexcept {
+  return _features.contains(type);
+}
+
+ApplicationFeature& ApplicationServer::getFeature(std::type_index type) const {
+  auto it = _features.find(type);
+  if (ADB_LIKELY(it != _features.end())) {
+    return *it->second;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, std::string("unknown feature '") + type.name() + "'");
+}
+
 void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
-    if (hasFeature(type)) {
-      auto& feature = *_features[type];
+    auto it = _features.find(type);
+    if (it != _features.end()) {
+      TRI_ASSERT(it->second != nullptr);
       if (force) {
-        feature.forceDisable();
+        it->second->forceDisable();
       } else {
-        feature.disable();
+        it->second->disable();
       }
     }
   }

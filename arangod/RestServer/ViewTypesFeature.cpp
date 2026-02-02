@@ -67,8 +67,9 @@ InvalidViewFactory const kInvalid;
 
 namespace arangodb {
 
-ViewTypesFeature::ViewTypesFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ViewTypesFeature::ViewTypesFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

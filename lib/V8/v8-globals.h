@@ -33,9 +33,11 @@
 
 #include <v8.h>
 
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
+#include "RestServer/arangod.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 
@@ -471,20 +473,8 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  template<typename Server>
-  TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
-      : TRI_v8_global_t{
-            server,
-            server.template getFeature<arangodb::V8SecurityFeature>(),
-            server.template getFeature<arangodb::HttpEndpointProvider>(),
-            server.template getFeature<
-                arangodb::application_features::CommunicationFeaturePhase>(),
-#ifdef USE_ENTERPRISE
-            server.template getFeature<arangodb::EncryptionFeature>(),
-#endif
-            isolate,
-            id} {
-  }
+  TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
+                  v8::Isolate* isolate, size_t id);
 
   ~TRI_v8_global_t();
 

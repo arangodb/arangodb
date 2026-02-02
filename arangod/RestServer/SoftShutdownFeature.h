@@ -23,8 +23,7 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Scheduler/Scheduler.h"
 
 #include <velocypack/Builder.h>
@@ -36,11 +35,12 @@ namespace arangodb {
 
 class SoftShutdownTracker;
 
-class SoftShutdownFeature final : public ArangodFeature {
+class SoftShutdownFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "SoftShutdown"; }
 
-  explicit SoftShutdownFeature(Server& server);
+  explicit SoftShutdownFeature(application_features::ApplicationServer& server);
   SoftShutdownTracker& softShutdownTracker() const {
     TRI_ASSERT(_softShutdownTracker != nullptr);
     return *_softShutdownTracker;
@@ -67,7 +67,7 @@ class SoftShutdownTracker
   // bit in each counter is reset. Then no new activity should be begun.
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   std::atomic<bool> _softShutdownOngoing;  // flag, if soft shutdown is ongoing
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;  // used for soft shutdown checker
@@ -94,7 +94,7 @@ class SoftShutdownTracker
     }
   };
 
-  explicit SoftShutdownTracker(ArangodServer& server);
+  explicit SoftShutdownTracker(application_features::ApplicationServer& server);
   ~SoftShutdownTracker(){};
 
   void initiateSoftShutdown();

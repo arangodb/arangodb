@@ -631,6 +631,13 @@ Result LogicalCollection::drop() {
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setDeleted();
+
+  // Reset followers to decrement write concern metric. Otherwise the metric
+  // would only be decremented when the collection object is destroyed, which
+  // can be much later (when the database is dropped/shutdown).
+  // For collections in _system database this does not even happen.
+  _followers.reset();
+
   _physical->drop();
 
   return {};

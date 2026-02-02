@@ -37,6 +37,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
+const AsciiTable = require('ascii-table');
 
 /* Functions: */
 const {
@@ -106,7 +107,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -133,6 +134,7 @@ class instance {
       }
     }
     this.authHeaders = authHeaders;
+    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -200,6 +202,7 @@ class instance {
       rootDir: this.rootDir,
       protocol: this.protocol,
       authHeaders: this.authHeaders,
+      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
@@ -229,6 +232,7 @@ class instance {
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
     this.authHeaders = struct['authHeaders'];
+    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -291,6 +295,37 @@ class instance {
   resetAuthHeaders(authHeaders, JWT) {
     this.authHeaders = authHeaders;
     this.JWT = JWT;
+  }
+
+  dumpConnectionTable(force) {
+    if (this.options.extremeVerbosity || force === true) {
+      let currentHandle = arango.getConnectionHandle();
+      const tableColumnHeaders = [
+        "selected", "connected", "handle", "endpoint", "localport", "username", "password", "JWT"
+      ];
+      let resultTable = new AsciiTable("");
+      resultTable.setHeading(tableColumnHeaders);
+      let table = arango.getConnectionHandleTable();
+      try {
+        Object.keys(table).forEach(handle => {
+          let active = table[handle]['active'] || handle === currentHandle;
+          let connected = table[handle]['connected'];
+          resultTable.addRow([
+            (active)? "*": "",
+            (connected)? "*": "",
+            handle,
+            table[handle]['endpoint'],
+            table[handle]['localPort'],
+            table[handle]['username'],
+            table[handle]['password'],
+            table[handle]['jwToken']
+          ]);
+        });
+      } catch (ex) {
+        print(ex);
+      }
+      print(CYAN + resultTable.toString() + RESET);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -371,6 +406,7 @@ class instance {
         !this.args.hasOwnProperty('server.jwt-secret') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
+      this.JWT = fs.read(this.restKeyFile);
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
@@ -621,7 +657,7 @@ class instance {
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeaders, time() + seconds(60));
+    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -756,6 +792,7 @@ class instance {
                                  true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           } else {
             print(`${Date()} ${this.name} reconnecting ${this.url}`);
@@ -765,6 +802,7 @@ class instance {
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           }
           return;
@@ -797,25 +835,37 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle === arango.getConnectionHandle()) {
-        return true;
+      if (this.connectionHandle === arango.getConnectionHandle()){
+        if (this.endpoint === arango.getEndpoint()) {
+          return true;
+        } else {
+          print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
-      try {
-        return arango.connectHandle(this.connectionHandle);
-      } catch (ex) {
-        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
-        this.connectionHandle = undefined;
+      if (this.connectionHandle !== undefined) {
+        try {
+          this.dumpConnectionTable();
+          return arango.connectHandle(this.connectionHandle);
+        } catch (ex) {
+          print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
     }
     if (this.JWT) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     }
   }

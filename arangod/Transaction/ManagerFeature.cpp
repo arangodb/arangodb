@@ -24,13 +24,14 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/DatabaseFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
@@ -46,11 +47,8 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _streamingMaxTransactionSize(defaultStreamingMaxTransactionSize),
-      _streamingLockTimeout(8.0),
-      _streamingIdleTimeout(defaultStreamingIdleTimeout),
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_transactions_expired_total{})) {
   setOptional(false);
@@ -87,19 +85,21 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--transaction.streaming-lock-timeout",
       "The lock timeout (in seconds) "
       "in case of parallel access to the same Stream Transaction.",
-      new DoubleParameter(&_streamingLockTimeout),
+      new DoubleParameter(&_options.streamingLockTimeout),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption("--transaction.streaming-idle-timeout",
-                  "The idle timeout (in seconds) for Stream Transactions.",
-                  new DoubleParameter(&_streamingIdleTimeout, /*base*/ 1.0,
-                                      /*minValue*/ 0.0,
-                                      /*maxValue*/ maxStreamingIdleTimeout),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--transaction.streaming-idle-timeout",
+          "The idle timeout (in seconds) for Stream Transactions.",
+          new DoubleParameter(
+              &_options.streamingIdleTimeout, /*base*/ 1.0,
+              /*minValue*/ 0.0,
+              /*maxValue*/ ManagerFeatureOptions::maxStreamingIdleTimeout),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800)
       .setLongDescription(R"(Stream Transactions automatically expire after
 this period when no further operations are posted into them. Posting an
@@ -110,7 +110,7 @@ timeout to the configured idle timeout.)");
       ->addOption(
           "--transaction.streaming-max-transaction-size",
           "The maximum transaction size (in bytes) for Stream Transactions.",
-          new SizeTParameter(&_streamingMaxTransactionSize),
+          new SizeTParameter(&_options.streamingMaxTransactionSize),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::DefaultNoComponents,
@@ -182,15 +182,15 @@ void ManagerFeature::stop() {
 void ManagerFeature::unprepare() { MANAGER.reset(); }
 
 size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
-  return _streamingMaxTransactionSize;
+  return _options.streamingMaxTransactionSize;
 }
 
 double ManagerFeature::streamingLockTimeout() const noexcept {
-  return _streamingLockTimeout;
+  return _options.streamingLockTimeout;
 }
 
 double ManagerFeature::streamingIdleTimeout() const noexcept {
-  return _streamingIdleTimeout;
+  return _options.streamingIdleTimeout;
 }
 
 /*static*/ transaction::Manager* ManagerFeature::manager() noexcept {

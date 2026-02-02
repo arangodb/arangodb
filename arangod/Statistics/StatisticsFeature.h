@@ -23,12 +23,12 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
-#include "Basics/system-functions.h"
 #include "Metrics/Fwd.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
+#include "Statistics/StatisticsFeatureOptions.h"
 #include "Statistics/figures.h"
 
 #include <array>
@@ -86,11 +86,12 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final : public ArangodFeature {
+class StatisticsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
-  explicit StatisticsFeature(Server& server);
+  explicit StatisticsFeature(application_features::ApplicationServer& server);
 
   static double time();
 
@@ -110,7 +111,7 @@ class StatisticsFeature final : public ArangodFeature {
       TRI_vocbase_t& vocbase, double start,
       arangodb::velocypack::Builder& result) const;
 
-  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
 
  private:
   static void appendMetric(std::string& result, std::string const& val,
@@ -130,10 +131,8 @@ class StatisticsFeature final : public ArangodFeature {
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
-  bool _statistics;
-  bool _statisticsHistory;
-  bool _statisticsHistoryTouched;
-  bool _statisticsAllDatabases;
+  StatisticsFeatureOptions _options;
+  bool _statisticsHistoryTouched = false;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

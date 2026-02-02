@@ -71,7 +71,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -98,8 +99,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  ArangodServer& server() noexcept { return _server; }
-  ArangodServer const& server() const noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
+  application_features::ApplicationServer const& server() const noexcept {
+    return _server;
+  }
 
   [[nodiscard]] RequestStatistics::Item const& requestStatistics()
       const noexcept {
@@ -216,7 +219,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   RequestStatistics::Item _statistics;
 
  private:
