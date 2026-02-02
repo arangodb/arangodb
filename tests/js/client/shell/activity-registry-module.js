@@ -25,14 +25,8 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const { assertTrue } = jsunity.jsUnity.assertions;
-
-const internal = require('internal');
-const db = require('internal').db;
+const { assertTrue, assertEqual } = jsunity.jsUnity.assertions;
 const activitiesModule = require('@arangodb/activity-registry');
-const IM = global.instanceManager;
-
-const c = "my_collection";
 
 function activityRegistryModuleSuite() {
   return {
@@ -216,7 +210,6 @@ function activityRegistryModuleSuite() {
         }
       ];
       const lines = activitiesModule.pretty_print(activities).split('\n');
-      print(lines);
       assertEqual(lines.length, 8);
       assertEqual(lines[0], ' ── 1: {}');
       assertEqual(lines[1], '    ├── 8: {}');
@@ -252,7 +245,7 @@ function activityRegistryModuleSuite() {
       assertTrue(roots.has("1"));
       assertTrue(roots.has("4"));
 
-      assertEqual(Array.from(forest.iter()).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(forest.iter()).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {id: "1", parent: {id: "0x0"}, children: ["2", "3"]}},
         {hierarchy: 1, item: {id: "3", parent: {id: "1"}, children: []}},
         {hierarchy: 1, item: {id: "2", parent: {id: "1"}, children: []}},
@@ -274,34 +267,34 @@ function activityRegistryModuleSuite() {
         ["6", {"id": "6", children: []}]
       ]);
       const DFS = new activitiesModule.DFS(tree);
-      assertEqual(Array.from(DFS.iter("0")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("0")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "0", children: ["1", "2"]}},
         {hierarchy: 1, item: {"id": "2", children: []}},
         {hierarchy: 1, item: {"id": "1", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("1")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("1")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "1", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("2")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("2")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "2", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("3")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("3")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "3", children: ["4", "5"]}},
         {hierarchy: 1, item: {"id": "5", children: ["6"]}},
         {hierarchy: 2, item: {"id": "6", children: []}},
         {hierarchy: 1, item: {"id": "4", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("4")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("4")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "4", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("5")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("5")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "5", children: ["6"]}},
         {hierarchy: 1, item: {"id": "6", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("6")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), [
+      assertEqual(Array.from(DFS.iter("6")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
         {hierarchy: 0, item: {"id": "6", children: []}}
       ]);
-      assertEqual(Array.from(DFS.iter("100")).map(({hierarchy, item, continuations}) => new Object({hierarchy, item})), []);
+      assertEqual(Array.from(DFS.iter("100")).map(({hierarchy, item, continuations}) => ({hierarchy, item})), []);
     }
 
     

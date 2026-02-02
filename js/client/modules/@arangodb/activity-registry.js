@@ -48,14 +48,14 @@ exports.pretty_print = function (activities) {
   return Array.from(forest.iter())
     .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.name}: ${JSON.stringify(item.metadata)}`)
     .join('\n');
-}
+};
 
 function branch_symbol(hierarchy, continuations) {
   if (hierarchy === 0) {
     return " ──";
   }
   let spacesArray = Array(4*hierarchy).fill(" ");
-  Array.from(continuations).filter((c) => c < hierarchy).forEach((c) => spacesArray[4*c] = `│`);
+  Array.from(continuations).filter((c) => c < hierarchy).forEach((c) => {spacesArray[4*c] = `│`;});
   const spaces = spacesArray.join("");
   if (continuations.has(hierarchy)) {
     return spaces + `├──`;
@@ -70,7 +70,7 @@ exports.createForest = function (activities) {
     return [a.id, {...a, children: children.get(a.id) ?? []}];
   }));
   return new exports.Forest(leaves);
-}
+};
 
 exports.DFS = class DFS {
   constructor(items) {
@@ -109,6 +109,6 @@ exports.Forest = class Forest {
   roots = function() {
     const non_roots = new Set(Array.from(this.items.values()).filter((a) => a.children !== undefined).map((a) => a.children).flat(1));
     return new Set(Array.from(this.items.keys()).filter((a) => !non_roots.has(a)));
-  }
+  };
 };
 
