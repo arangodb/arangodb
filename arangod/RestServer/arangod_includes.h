@@ -53,6 +53,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
+#include "SystemMonitor/ActivityRegistry/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
@@ -106,6 +107,7 @@
 #ifdef USE_V8
 #include "RestServer/ConsoleFeature.h"
 #endif
+#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"

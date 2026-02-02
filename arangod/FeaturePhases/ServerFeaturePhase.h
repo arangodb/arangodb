@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 
@@ -31,23 +32,7 @@ class ServerFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "ServerPhase"; }
 
-  template<typename Server>
-  explicit ServerFeaturePhase(Server& server);
+  explicit ServerFeaturePhase(application_features::ApplicationServer& server);
 };
-
-template<typename Server>
-ServerFeaturePhase::ServerFeaturePhase(Server& server)
-    : ApplicationFeaturePhase{server, *this} {
-  setOptional(false);
-  startsAfter<AqlFeaturePhase, Server>();
-
-  startsAfter<HttpEndpointProvider, Server>();
-  startsAfter<GeneralServerFeature, Server>();
-  startsAfter<NetworkFeature, Server>();
-  startsAfter<ServerFeature, Server>();
-  startsAfter<SslServerFeature, Server>();
-  startsAfter<StatisticsFeature, Server>();
-  startsAfter<UpgradeFeature, Server>();
-}
 
 }  // namespace arangodb::application_features

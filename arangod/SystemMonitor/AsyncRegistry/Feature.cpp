@@ -20,25 +20,26 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Feature.h"
+#include "SystemMonitor/AsyncRegistry/Feature.h"
 
-#include "Basics/FutureSharedLock.h"
+#include "Containers/Forest/depth_first.h"
+#include "Containers/Forest/forest.h"
+#include "CrashHandler/DataSource.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
-
-using namespace arangodb::async_registry;
+#include "Inspection/VPack.h"
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
-    "Total number of created asynchronous promises since database creation");
+    "Total number of created asynchronous operations since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises");
+              "Number of currently existing asynchronous operations");
 
 DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently existing asynchronous promises that wait "
+              "Number of currently existing asynchronous operations that wait "
               "for their garbage collection");
 
 DECLARE_COUNTER(arangodb_async_thread_registries_total,
@@ -46,16 +47,95 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "since database creation");
 
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing asynchronous "
-              "operations");
+              "Number of currently existing async thread registries");
 
-Feature::Feature(Server& server)
-    : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
+using namespace arangodb::containers;
+
+namespace arangodb::async_registry {
+
+struct Entry {
+  TreeHierarchy hierarchy;
+  PromiseSnapshot data;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, Entry& x) {
+  return f.object(x).fields(f.field("hierarchy", x.hierarchy),
+                            f.field("data", x.data));
+}
+/**
+   Creates a forest of all promises in the async registry
+
+   An edge between two promises means that the lower hierarchy promise waits for
+ the larger hierarchy promise.
+ **/
+auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
+  Forest<PromiseSnapshot> forest;
+  std::vector<Id> roots;
+  registry.for_node([&](PromiseSnapshot promise) {
+    if (promise.state != State::Deleted) {
+      std::visit(overloaded{
+                     [&](PromiseId const& async_waiter) {
+                       forest.insert(promise.id.id, async_waiter.id, promise);
+                     },
+                     [&](basics::ThreadInfo const& sync_waiter_thread) {
+                       forest.insert(promise.id.id, nullptr, promise);
+                       roots.emplace_back(promise.id.id);
+                     },
+                 },
+                 promise.requester);
+    }
+  });
+  return ForestWithRoots{forest, roots};
+}
+
+/**
+   Converts a forest of promises into a list of stacktraces inside a
+ velocypack.
+
+   The list of stacktraces include one stacktrace per tree in the forest. To
+ create one stacktrace, it uses a depth first search to traverse the forest in
+ post order, such that promises with the highest hierarchy in a tree are given
+ first and the root promise is given last.
+ **/
+VPackBuilder serialize(
+    IndexedForestWithRoots<PromiseSnapshot> const& promises) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("promise_stacktraces"));
+  builder.openArray();
+  for (auto const& root : promises.roots()) {
+    builder.openArray();
+    auto dfs = DFS_PostOrder{promises, root};
+    do {
+      auto next = dfs.next();
+      if (next == std::nullopt) {
+        break;
+      }
+      auto [id, hierarchy] = next.value();
+      auto data = promises.node(id);
+      if (data != std::nullopt) {
+        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
+        serialize(builder, entry);
+      }
+    } while (true);
+    builder.close();
+  }
+  builder.close();
+  builder.close();
+  return builder;
+}
+
+Feature::Feature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    : application_features::ApplicationFeature{server, *this},
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
 
-auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       metrics_feature.addShared(arangodb_async_promises_total{}),
@@ -64,11 +144,6 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(arangodb_async_thread_registries_total{}),
       metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
 }
-auto Feature::asyncLock()
-    -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
-  return _async_mutex.asyncLockExclusive();
-}
-
 struct Feature::PromiseCleanupThread {
   PromiseCleanupThread(size_t gc_timeout)
       : _thread([gc_timeout, this](std::stop_token stoken) {
@@ -92,9 +167,8 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::prepare() {
-  metrics = create_metrics(
-      server().template getFeature<arangodb::metrics::MetricsFeature>());
-  registry.set_metrics(metrics);
+  _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
+  registry.set_metrics(_metrics);
 }
 
 void Feature::start() {
@@ -117,4 +191,54 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
 
-Feature::~Feature() { registry.set_metrics(nullptr); }
+/**
+   Converts a forest of promises into a list of stacktraces inside a
+ velocypack.
+
+   The list of stacktraces include one stacktrace per tree in the forest. To
+ create one stacktrace, it uses a depth first search to traverse the forest in
+ post order, such that promises with the highest hierarchy in a tree are given
+ first and the root promise is given last.
+ **/
+VPackBuilder getStacktraceData(
+    IndexedForestWithRoots<PromiseSnapshot> const& promises) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("promise_stacktraces"));
+  builder.openArray();
+  for (auto const& root : promises.roots()) {
+    builder.openArray();
+    auto dfs = DFS_PostOrder{promises, root};
+    do {
+      auto next = dfs.next();
+      if (next == std::nullopt) {
+        break;
+      }
+      auto [id, hierarchy] = next.value();
+      auto data = promises.node(id);
+      if (data != std::nullopt) {
+        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
+        velocypack::serialize(builder, entry);
+      }
+    } while (true);
+    builder.close();
+  }
+  builder.close();
+  builder.close();
+  return builder;
+}
+
+velocypack::Builder collectAsyncRegistryData() {
+  // Collect all undeleted promises and index them by awaitee
+  auto promises = all_undeleted_promises().index_by_parent();
+  // Convert to stacktrace data
+  return getStacktraceData(promises);
+}
+
+velocypack::SharedSlice Feature::getCrashData() const {
+  return collectAsyncRegistryData().sharedSlice();
+}
+
+std::string_view Feature::getDataSourceName() const { return name(); }
+
+}  // namespace arangodb::async_registry

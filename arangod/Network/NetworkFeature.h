@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Network/ConnectionPool.h"
-#include "RestServer/arangod.h"
+#include "Network/NetworkOptions.h"
 #include "Scheduler/Scheduler.h"
 
 #include <fuerte/requests.h>
@@ -51,7 +52,7 @@ struct RetryableRequest {
 };
 }  // namespace network
 
-class NetworkFeature final : public ArangodFeature {
+class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   using RequestCallback = std::function<void(
       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
@@ -59,7 +60,8 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+  NetworkFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics,
                  network::ConnectionPool::Config);
   ~NetworkFeature();
 
@@ -112,11 +114,8 @@ class NetworkFeature final : public ArangodFeature {
                            fuerte::Request& req) const;
 
   // configuration
-  std::string _protocol;
-  uint64_t _maxOpenConnections;
-  uint64_t _idleTtlMilli;
-  uint32_t _numIOThreads;
-  bool _verifyHosts;
+  NetworkOptions _options;
+  using CompressionType = NetworkOptions::CompressionType;
 
   std::atomic<bool> _prepared;
 
@@ -137,7 +136,6 @@ class NetworkFeature final : public ArangodFeature {
   /// is used)
   metrics::Counter& _forwardedRequests;
 
-  std::uint64_t _maxInFlight;
   metrics::Gauge<std::uint64_t>& _requestsInFlight;
 
   metrics::Counter& _requestTimeouts;
@@ -148,11 +146,6 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 
-  uint64_t _compressRequestThreshold;
-
-  enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
-  CompressionType _compressionType;
-  std::string _compressionTypeLabel;
   metrics::MetricsFeature& _metrics;
 };
 

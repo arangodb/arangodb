@@ -45,6 +45,8 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
 
+using application_features::ApplicationServer;
+
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
     DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
     size_t maxCapacity)

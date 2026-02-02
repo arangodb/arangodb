@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillThread.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <memory>
@@ -55,10 +55,10 @@ class RocksDBIndexCacheRefillFeature final
     return "RocksDBIndexCacheRefill";
   }
 
-  template<typename Server>
   explicit RocksDBIndexCacheRefillFeature(
-      Server& server, DatabaseFeature& databaseFeature,
-      ClusterFeature* clusterFeature, metrics::MetricsFeature& metricsFeature);
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::MetricsFeature& metricsFeature);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -120,26 +120,7 @@ class RocksDBIndexCacheRefillFeature final
   // (not used for initial filling at startup)
   std::unique_ptr<RocksDBIndexCacheRefillThread> _refillThread;
 
-  // maximum capacity of queue used for automatic refilling of in-memory index
-  // caches after insert/update/replace (not used for initial filling at
-  // startup)
-  size_t _maxCapacity;
-
-  // maximum concurrent index fill tasks that we are allowed to run to fill
-  // indexes during startup
-  size_t _maxConcurrentIndexFillTasks;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // refilled upon insert/update/replace
-  bool _autoRefill;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // populated on server start
-  bool _fillOnStartup;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // refilled on followers
-  bool _autoRefillOnFollowers;
+  RocksDBIndexCacheRefillFeatureOptions _options;
 
   // total number of full index refills completed
   metrics::Counter& _totalFullIndexRefills;
@@ -156,31 +137,5 @@ class RocksDBIndexCacheRefillFeature final
 
   size_t _currentlyRunningIndexFillTasks;
 };
-
-template<typename Server>
-RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
-    Server& server, DatabaseFeature& databaseFeature,
-    ClusterFeature* clusterFeature, metrics::MetricsFeature& metricsFeature)
-    : ApplicationFeature{server, *this},
-      _databaseFeature(databaseFeature),
-      _clusterFeature(clusterFeature),
-      _metricsFeature(metricsFeature),
-      _maxCapacity(128 * 1024),
-      _maxConcurrentIndexFillTasks(defaultConcurrentIndexFillTasks()),
-      _autoRefill(false),
-      _fillOnStartup(false),
-      _autoRefillOnFollowers(true),
-      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
-      _currentlyRunningIndexFillTasks(0) {
-  setOptional(true);
-
-  // we want to be late in the startup sequence
-  startsAfter<BootstrapFeature, Server>();
-  startsAfter<DatabaseFeature, Server>();
-  startsAfter<RocksDBEngine, Server>();
-
-  // default value must be at least 1, as the minimum allowed value is also 1.
-  TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
-}
 
 }  // namespace arangodb

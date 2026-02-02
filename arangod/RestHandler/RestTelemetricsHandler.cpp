@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SupportInfoBuilder.h"
 
@@ -118,9 +117,9 @@ RequestTracker& ensureRequestTracker(GeneralServerFeature& gf) {
 
 }  // namespace
 
-RestTelemetricsHandler::RestTelemetricsHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestTelemetricsHandler::RestTelemetricsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTelemetricsHandler::execute() {

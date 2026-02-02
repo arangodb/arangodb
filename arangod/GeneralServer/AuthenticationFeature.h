@@ -23,8 +23,9 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "AuthenticationOptions.h"
 #include "Basics/Result.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstddef>
@@ -38,17 +39,20 @@ class TokenCache;
 class UserManager;
 }  // namespace auth
 
-class AuthenticationFeature final : public ArangodFeature {
+class AuthenticationFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
-  explicit AuthenticationFeature(Server& server);
+  explicit AuthenticationFeature(
+      application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void stop() override final;
   void unprepare() override final;
 
   static AuthenticationFeature* instance() noexcept;
@@ -71,9 +75,9 @@ class AuthenticationFeature final : public ArangodFeature {
   std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
 #endif
 
-  double sessionTimeout() const { return _sessionTimeout; }
-  double minimalJwtExpiryTime() const { return _minimalJwtExpiryTime; }
-  double maximalJwtExpiryTime() const { return _maximalJwtExpiryTime; }
+  double sessionTimeout() const { return _options.sessionTimeout; }
+  double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }
+  double maximalJwtExpiryTime() const { return _options.maximalJwtExpiryTime; }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -91,26 +95,11 @@ class AuthenticationFeature final : public ArangodFeature {
 
   static constexpr size_t kMaxSecretLength = 64;
 
+  AuthenticationOptions _options;
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
-  bool _authenticationUnixSockets;
-  bool _authenticationSystemOnly;
-  bool _active;
-  double _authenticationTimeout;
-  double _sessionTimeout;
-  double _minimalJwtExpiryTime;
-  double _maximalJwtExpiryTime;
 
   mutable std::mutex _jwtSecretsLock;
-
-  std::string _jwtSecretProgramOption;
-  std::string _jwtSecretKeyfileProgramOption;
-  std::string _jwtSecretFolderProgramOption;
-
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> _jwtPassiveSecrets;
-#endif
 
   static std::atomic<AuthenticationFeature*> INSTANCE;
 };

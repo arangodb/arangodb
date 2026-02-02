@@ -24,24 +24,25 @@
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -55,30 +56,21 @@ DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
 
 namespace arangodb {
 
-ReplicationFeature::ReplicationFeature(Server& server)
-    : ArangodFeature{server, *this},
+ReplicationFeature::ReplicationFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : application_features::ApplicationFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),
       _forceRequestTimeout(false),
-      _replicationApplierAutoStart(true),
-      _syncByRevision(true),
-      _autoRepairRevisionTrees(true),
       _connectionCache{
           server.getFeature<application_features::CommunicationFeaturePhase>(),
           httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0),
-      _quickKeysLimit(1000000),
-      _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_cluster_inventory_requests_total{})),
-      _clients(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_clients{})) {
-  static_assert(
-      Server::isCreatedAfter<ReplicationFeature,
-                             application_features::CommunicationFeaturePhase,
-                             metrics::MetricsFeature>());
-
+      _inventoryRequests(
+          metrics.add(arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(metrics.add(arangodb_replication_clients{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -98,7 +90,7 @@ void ReplicationFeature::collectOptions(
   options->addOption(
       "--replication.auto-start",
       "Enable or disable the automatic start of replication appliers.",
-      new BooleanParameter(&_replicationApplierAutoStart),
+      new BooleanParameter(&_options.replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOldOption("server.disable-replication-applier",
@@ -116,7 +108,7 @@ void ReplicationFeature::collectOptions(
       "--replication.max-parallel-tailing-invocations",
       "The maximum number of concurrently allowed WAL tailing invocations "
       "(0 = unlimited).",
-      new UInt64Parameter(&_maxParallelTailingInvocations),
+      new UInt64Parameter(&_options.maxParallelTailingInvocations),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--replication.connect-timeout",
@@ -132,19 +124,19 @@ void ReplicationFeature::collectOptions(
       "--replication.quick-keys-limit",
       "Limit at which 'quick' calls to the replication keys API return "
       "only the document count for the second run.",
-      new UInt64Parameter(&_quickKeysLimit),
+      new UInt64Parameter(&_options.quickKeysLimit),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--replication.sync-by-revision",
       "Whether to use the newer revision-based replication protocol.",
-      new BooleanParameter(&_syncByRevision));
+      new BooleanParameter(&_options.syncByRevision));
 
   options
       ->addOption("--replication.auto-repair-revision-trees",
                   "Whether to automatically repair revision trees of shards "
                   "after too many shard synchronization failures.",
-                  new BooleanParameter(&_autoRepairRevisionTrees),
+                  new BooleanParameter(&_options.autoRepairRevisionTrees),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer))
@@ -198,7 +190,8 @@ void ReplicationFeature::start() {
       << ", hasState: " << _globalReplicationApplier->hasState();
 
   if (_globalReplicationApplier->autoStart() &&
-      _globalReplicationApplier->hasState() && _replicationApplierAutoStart) {
+      _globalReplicationApplier->hasState() &&
+      _options.replicationApplierAutoStart) {
     _globalReplicationApplier->startTailing(/*initialTick*/ 0,
                                             /*useTick*/ false);
   }
@@ -240,8 +233,8 @@ httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
 /// will throw an exception if the number of concurrently running operations
 /// would exceed the configured maximum
 void ReplicationFeature::trackTailingStart() {
-  if (++_parallelTailingInvocations > _maxParallelTailingInvocations &&
-      _maxParallelTailingInvocations > 0) {
+  if (++_parallelTailingInvocations > _options.maxParallelTailingInvocations &&
+      _options.maxParallelTailingInvocations > 0) {
     // we are above the configured maximum
     --_parallelTailingInvocations;
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -275,17 +268,17 @@ double ReplicationFeature::checkRequestTimeout(double value) const {
 }
 
 bool ReplicationFeature::syncByRevision() const noexcept {
-  return _syncByRevision;
+  return _options.syncByRevision;
 }
 
 bool ReplicationFeature::autoRepairRevisionTrees() const noexcept {
-  return _autoRepairRevisionTrees;
+  return _options.autoRepairRevisionTrees;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // only used during testing
 void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
-  _autoRepairRevisionTrees = value;
+  _options.autoRepairRevisionTrees = value;
 }
 #endif
 
@@ -296,7 +289,7 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
 
   if (!ServerState::instance()->isClusterRole() &&
       vocbase->replicationApplier()->autoStart()) {
-    if (!_replicationApplierAutoStart) {
+    if (!_options.replicationApplierAutoStart) {
       LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
           << "replication applier explicitly deactivated for database '"
           << vocbase->name() << "'";
@@ -323,7 +316,7 @@ GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
 }
 
 void ReplicationFeature::disableReplicationApplier() {
-  _replicationApplierAutoStart = false;
+  _options.replicationApplierAutoStart = false;
 }
 
 // stop the replication applier for a single database

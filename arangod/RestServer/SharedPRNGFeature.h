@@ -33,18 +33,11 @@ class SharedPRNGFeature final
  public:
   static constexpr std::string_view name() noexcept { return "SharedPRNG"; }
 
-  template<typename Server>
-  explicit SharedPRNGFeature(Server& server);
+  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
 
   void prepare() override final;
 
   uint64_t rand() noexcept;
 };
-
-template<typename Server>
-SharedPRNGFeature::SharedPRNGFeature(Server& server)
-    : ApplicationFeature{server, *this} {
-  setOptional(true);
-}
 
 }  // namespace arangodb

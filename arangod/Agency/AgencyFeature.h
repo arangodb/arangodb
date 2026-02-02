@@ -23,18 +23,19 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "Agency/AgencyOptions.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public ArangodFeature {
+class AgencyFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
-  explicit AgencyFeature(Server& server);
+  explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -45,33 +46,12 @@ class AgencyFeature : public ArangodFeature {
   void stop() override final;
   void unprepare() override final;
 
-  bool activated() const noexcept { return _activated; }
+  bool activated() const noexcept { return _options.activated; }
 
   consensus::Agent* agent() const;
 
  private:
-  bool _activated;
-  uint64_t _size;              // agency size (default: 5)
-  uint64_t _poolSize;          // deprecated, do not use!
-  double _minElectionTimeout;  // min election timeout
-  double _maxElectionTimeout;  // max election timeout
-  bool _supervision;
-  bool _supervisionTouched;
-  bool _waitForSync;
-  double _supervisionFrequency;
-  uint64_t _compactionStepSize;
-  uint64_t _compactionKeepSize;
-  uint64_t _maxAppendSize;
-  double _supervisionGracePeriod;
-  double _supervisionOkThreshold;
-  double _supervisionExpiredServersGracePeriod;
-  uint64_t _supervisionDelayAddFollower;
-  uint64_t _supervisionDelayFailedFollower;
-  bool _failedLeaderAddsFollower;
-  std::string _agencyMyAddress;
-  std::vector<std::string> _agencyEndpoints;
-  std::string _recoveryId;
-
+  AgencyOptions _options;
   std::unique_ptr<consensus::Agent> _agent;
 };
 

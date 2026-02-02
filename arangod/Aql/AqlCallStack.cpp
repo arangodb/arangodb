@@ -184,17 +184,21 @@ auto AqlCallStack::needToSkipSubquery() const noexcept -> bool {
                      });
 }
 
-auto AqlCallStack::shadowRowDepthToSkip() const -> size_t {
-  TRI_ASSERT(needToCountSubquery());
-  size_t const n = _operations.size();
+// TODO: is there a better name?
+auto AqlCallStack::shadowRowDepthToSkip() const -> std::optional<size_t> {
+  auto const n = _operations.size();
+
   for (size_t i = 0; i < n; ++i) {
     auto& call = _operations[i];
+    if (!call.hasMoreCalls()) {
+      return n - i - 1;
+    }
     auto const& nextCall = call.peekNextCall();
     if (nextCall.needSkipMore() || nextCall.getLimit() == 0) {
       return n - i - 1;
     }
   }
-  return 0;
+  return std::nullopt;
 }
 
 auto AqlCallStack::modifyCallAtDepth(size_t depth) -> AqlCall& {

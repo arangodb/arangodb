@@ -37,9 +37,11 @@
 
 using namespace arangodb;
 
+using application_features::ApplicationServer;
+
 /// @brief construct the configuration with default values
 ReplicationApplierConfiguration::ReplicationApplierConfiguration(
-    ArangodServer& server)
+    ApplicationServer& server)
     : _server(server),
       _replicationFeature(server.hasFeature<ReplicationFeature>()
                               ? &server.getFeature<ReplicationFeature>()
@@ -215,7 +217,8 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder,
 
 /// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
-    ArangodServer& server, VPackSlice slice, std::string const& databaseName) {
+    ApplicationServer& server, VPackSlice slice,
+    std::string const& databaseName) {
   return fromVelocyPack(ReplicationApplierConfiguration(server), slice,
                         databaseName);
 }

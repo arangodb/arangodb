@@ -43,8 +43,7 @@ class CacheManagerFeature final
  public:
   static constexpr std::string_view name() { return "CacheManager"; }
 
-  template<typename Server>
-  explicit CacheManagerFeature(Server& server,
+  explicit CacheManagerFeature(application_features::ApplicationServer& server,
                                CacheOptionsProvider const& provider,
                                SharedPRNGFeature& sharedPRNGFeature);
   ~CacheManagerFeature();
@@ -67,17 +66,5 @@ class CacheManagerFeature final
   SharedPRNGFeature& _sharedPRNGFeature;
   CacheOptions _options;
 };
-
-template<typename Server>
-CacheManagerFeature::CacheManagerFeature(Server& server,
-                                         CacheOptionsProvider const& provider,
-                                         SharedPRNGFeature& sharedPRNGFeature)
-    : ApplicationFeature{server, *this},
-      _provider(provider),
-      _sharedPRNGFeature(sharedPRNGFeature) {
-  setOptional(true);
-  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
-  startsAfter<CacheOptionsFeature, Server>();
-}
 
 }  // namespace arangodb

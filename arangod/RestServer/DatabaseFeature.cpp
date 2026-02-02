@@ -30,28 +30,25 @@
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FeatureFlags.h"
-#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
-#include "Metrics/GaugeBuilder.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/Version.h"
@@ -63,17 +60,15 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/Events.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/VocbaseMetrics.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <atomic>
@@ -101,7 +96,8 @@ void waitUnique(std::shared_ptr<T> const& ptr) {
   std::atomic_thread_fence(std::memory_order_acquire);
 }
 
-CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
+CreateDatabaseInfo createExpressionVocbaseInfo(
+    application_features::ApplicationServer& server) {
   CreateDatabaseInfo info{server, ExecContext::current()};
   // name does not matter. We just need validity check to pass.
   auto r = info.load("Z", std::numeric_limits<uint64_t>::max());
@@ -122,10 +118,10 @@ CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
-DatabaseManagerThread::DatabaseManagerThread(Server& server,
-                                             DatabaseFeature& databaseFeature,
-                                             StorageEngine& engine)
-    : ServerThread<ArangodServer>(server, "DatabaseManager"),
+DatabaseManagerThread::DatabaseManagerThread(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, StorageEngine& engine)
+    : ServerThread(server, "DatabaseManager"),
       _databaseFeature(databaseFeature),
       _engine(engine)
 #ifdef USE_V8
@@ -274,10 +270,11 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, *this} {
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
-  startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
@@ -306,20 +303,21 @@ void DatabaseFeature::collectOptions(
   }();
 
   options
-      ->addOption("--database.default-replication-version",
-                  "The default replication version, can be overwritten "
-                  "when creating a new database, possible values: 1, 2",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_defaultReplicationVersion, allowedReplicationVersions),
-                  options::makeDefaultFlags(options::Flags::Uncommon,
-                                            options::Flags::Experimental))
+      ->addOption(
+          "--database.default-replication-version",
+          "The default replication version, can be overwritten "
+          "when creating a new database, possible values: 1, 2",
+          new DiscreteValuesParameter<StringParameter>(
+              &_options.defaultReplicationVersion, allowedReplicationVersions),
+          options::makeDefaultFlags(options::Flags::Uncommon,
+                                    options::Flags::Experimental))
       .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",
       "The default waitForSync behavior. Can be overwritten when creating a "
       "collection.",
-      new options::BooleanParameter(&_defaultWaitForSync),
+      new options::BooleanParameter(&_options.defaultWaitForSync),
       options::makeDefaultFlags(options::Flags::Uncommon));
 
   // the following option was obsoleted in 3.9
@@ -330,17 +328,18 @@ void DatabaseFeature::collectOptions(
       "property of each collection determine it.",
       false);
 
-  options->addOption("--database.ignore-datafile-errors",
-                     "Load collections even if datafiles may contain errors.",
-                     new options::BooleanParameter(&_ignoreDatafileErrors),
-                     options::makeDefaultFlags(options::Flags::Uncommon));
+  options->addOption(
+      "--database.ignore-datafile-errors",
+      "Load collections even if datafiles may contain errors.",
+      new options::BooleanParameter(&_options.ignoreDatafileErrors),
+      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
       ->addOption("--database.extended-names",
                   "Allow most UTF-8 characters in the names of databases, "
                   "collections, Views, and indexes. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNames),
+                  new options::BooleanParameter(&_options.extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
@@ -351,7 +350,7 @@ void DatabaseFeature::collectOptions(
   options
       ->addOption("--database.io-heartbeat",
                   "Perform I/O heartbeat to test the underlying volume.",
-                  new options::BooleanParameter(&_performIOHeartbeat),
+                  new options::BooleanParameter(&_options.performIOHeartbeat),
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
@@ -359,7 +358,7 @@ void DatabaseFeature::collectOptions(
   options
       ->addOption("--database.max-databases",
                   "The maximum number of databases that can exist in parallel.",
-                  new options::SizeTParameter(&_maxDatabases))
+                  new options::SizeTParameter(&_options.maxDatabases))
       .setLongDescription(R"(If the maximum number of databases is reached, no
 additional databases can be created in the deployment. In order to create additional
 databases, other databases need to be removed first.")")
@@ -414,7 +413,8 @@ void DatabaseFeature::validateOptions(
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
+void DatabaseFeature::initCalculationVocbase(
+    application_features::ApplicationServer& server) {
   auto& df = server.getFeature<DatabaseFeature>();
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       createExpressionVocbaseInfo(server), df.versionTracker(),
@@ -466,9 +466,9 @@ void DatabaseFeature::start() {
   if ((ServerState::instance()->isDBServer() ||
        ServerState::instance()->isSingleServer() ||
        ServerState::instance()->isAgent()) &&
-      _performIOHeartbeat) {
+      _options.performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
-        server(), server().getFeature<metrics::MetricsFeature>(),
+        server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());
     if (!_ioHeartbeatThread->start()) {
       LOG_TOPIC("7eb07", FATAL, Logger::FIXME)

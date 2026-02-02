@@ -22,23 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ServerSecurityFeature::ServerSecurityFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _enableFoxxApi(true),
-      _enableFoxxStore(true),
-      _hardenedRestApi(false),
-      _foxxAllowInstallFromRemote(false) {
+ServerSecurityFeature::ServerSecurityFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -49,11 +45,11 @@ void ServerSecurityFeature::collectOptions(
       "--server.harden",
       "Lock down REST APIs that reveal version information or server "
       "internals for non-admin users.",
-      new BooleanParameter(&_hardenedRestApi));
+      new BooleanParameter(&_options.hardenedRestApi));
 
   options->addOption("--foxx.api",
                      "Whether to enable the Foxx management REST APIs.",
-                     new BooleanParameter(&_enableFoxxApi),
+                     new BooleanParameter(&_options.enableFoxxApi),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
@@ -61,7 +57,7 @@ void ServerSecurityFeature::collectOptions(
 
   options->addOption("--foxx.store",
                      "Whether to enable the Foxx store in the web interface.",
-                     new BooleanParameter(&_enableFoxxStore),
+                     new BooleanParameter(&_options.enableFoxxStore),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
@@ -71,7 +67,7 @@ void ServerSecurityFeature::collectOptions(
       ->addOption(
           "--foxx.allow-install-from-remote",
           "Allow installing Foxx apps from remote URLs other than GitHub.",
-          new BooleanParameter(&_foxxAllowInstallFromRemote),
+          new BooleanParameter(&_options.foxxAllowInstallFromRemote),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
@@ -80,19 +76,19 @@ void ServerSecurityFeature::collectOptions(
 }
 
 void ServerSecurityFeature::disableFoxxApi() noexcept {
-  _enableFoxxApi = false;
+  _options.enableFoxxApi = false;
 }
 
 bool ServerSecurityFeature::isFoxxApiDisabled() const noexcept {
-  return !_enableFoxxApi;
+  return !_options.enableFoxxApi;
 }
 
 bool ServerSecurityFeature::isFoxxStoreDisabled() const noexcept {
-  return !_enableFoxxStore || !_enableFoxxApi;
+  return !_options.enableFoxxStore || !_options.enableFoxxApi;
 }
 
 bool ServerSecurityFeature::isRestApiHardened() const noexcept {
-  return _hardenedRestApi;
+  return _options.hardenedRestApi;
 }
 
 bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
@@ -110,5 +106,5 @@ bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
 }
 
 bool ServerSecurityFeature::foxxAllowInstallFromRemote() const noexcept {
-  return _foxxAllowInstallFromRemote;
+  return _options.foxxAllowInstallFromRemote;
 }

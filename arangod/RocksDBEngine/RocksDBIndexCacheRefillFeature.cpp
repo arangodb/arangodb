@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
@@ -50,16 +49,28 @@
 
 using namespace arangodb;
 
-size_t RocksDBIndexCacheRefillFeature::defaultConcurrentIndexFillTasks() {
-  size_t n = NumberOfCores::getValue();
-  if (n >= 16) {
-    return n >> 3U;
-  }
-  return 1;
-}
-
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
+
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::MetricsFeature& metricsFeature)
+    : application_features::ApplicationFeature{server, *this},
+      _databaseFeature(databaseFeature),
+      _clusterFeature(clusterFeature),
+      _metricsFeature(metricsFeature),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
+      _currentlyRunningIndexFillTasks(0) {
+  setOptional(true);
+  // we want to be late in the startup sequence
+  startsAfter<BootstrapFeature>();
+  startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+
+  // default value must be at least 1, as the minimum allowed value is also 1.
+  TRI_ASSERT(_options.maxConcurrentIndexFillTasks >= 1);
+}
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
@@ -72,7 +83,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                   "Whether to automatically fill the in-memory index caches "
                   "with entries from edge indexes and cache-enabled persistent "
                   "indexes on server startup.",
-                  new options::BooleanParameter(&_fillOnStartup),
+                  new options::BooleanParameter(&_options.fillOnStartup),
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle))
@@ -89,7 +100,7 @@ option.)");
                   "caches with entries from edge indexes and cache-enabled "
                   "persistent indexes on insert/update/replace/remove "
                   "operations by default.",
-                  new options::BooleanParameter(&_autoRefill),
+                  new options::BooleanParameter(&_options.autoRefill),
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle))
@@ -117,7 +128,7 @@ the cache.)");
           "--rocksdb.auto-refill-index-caches-queue-capacity",
           "How many changes can be queued at most for automatically refilling "
           "the index caches.",
-          new options::SizeTParameter(&_maxCapacity),
+          new options::SizeTParameter(&_options.maxCapacity),
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
                              options::Flags::OnSingle))
@@ -134,7 +145,7 @@ or cache-enabled persistent indexes.)");
           "--rocksdb.max-concurrent-index-fill-tasks",
           "The maximum number of index fill tasks that can run concurrently on "
           "server startup.",
-          new options::SizeTParameter(&_maxConcurrentIndexFillTasks,
+          new options::SizeTParameter(&_options.maxConcurrentIndexFillTasks,
                                       /*minValue*/ 1),
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
@@ -149,13 +160,13 @@ index cache filling, but the longer it takes to complete.)");
           "--rocksdb.auto-refill-index-caches-on-followers",
           "Whether or not to automatically (re-)fill the in-memory index "
           "caches on followers as well.",
-          new options::BooleanParameter(&_autoRefillOnFollowers),
+          new options::BooleanParameter(&_options.autoRefillOnFollowers),
           arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
                                        options::Flags::OnDBServer,
                                        options::Flags::OnSingle))
       .setIntroducedIn(31005)
       .setLongDescription(R"(Set this to `false` to only (re-)fill in-memory
-index caches on leaders and save memory on followers. 
+index caches on leaders and save memory on followers.
 Note that the value of this option should be identical for all DBServers.)");
 }
 
@@ -176,7 +187,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      _databaseFeature, _metricsFeature, _maxCapacity);
+      _databaseFeature, _metricsFeature, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -184,7 +195,7 @@ void RocksDBIndexCacheRefillFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_fillOnStartup) {
+  if (_options.fillOnStartup) {
     buildStartupIndexRefillTasks();
     scheduleIndexRefillTasks();
   }
@@ -193,19 +204,19 @@ void RocksDBIndexCacheRefillFeature::start() {
 void RocksDBIndexCacheRefillFeature::stop() { stopThread(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
-  return _autoRefill;
+  return _options.autoRefill;
 }
 
 bool RocksDBIndexCacheRefillFeature::autoRefillOnFollowers() const noexcept {
-  return _autoRefillOnFollowers;
+  return _options.autoRefillOnFollowers;
 }
 
 size_t RocksDBIndexCacheRefillFeature::maxCapacity() const noexcept {
-  return _maxCapacity;
+  return _options.maxCapacity;
 }
 
 bool RocksDBIndexCacheRefillFeature::fillOnStartup() const noexcept {
-  return _fillOnStartup;
+  return _options.fillOnStartup;
 }
 
 void RocksDBIndexCacheRefillFeature::trackRefill(
@@ -276,8 +287,8 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   // while we still have something to push out, do it.
   // note: we will only be scheduling at most _maxConcurrentIndexFillTask
   // index refills concurrently, in order to not overwhelm the instance.
-  while (!_indexFillTasks.empty() &&
-         _currentlyRunningIndexFillTasks < _maxConcurrentIndexFillTasks) {
+  while (!_indexFillTasks.empty() && _currentlyRunningIndexFillTasks <
+                                         _options.maxConcurrentIndexFillTasks) {
     if (server().isStopping()) {
       return;
     }

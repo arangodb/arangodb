@@ -46,10 +46,12 @@ add_library(arangoserver STATIC
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
+  FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
   FeaturePhases/ClusterFeaturePhase.cpp
   FeaturePhases/DatabaseFeaturePhase.cpp
   FeaturePhases/FinalFeaturePhase.cpp
+  FeaturePhases/ServerFeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AcceptorUnixDomain.cpp
@@ -59,6 +61,7 @@ add_library(arangoserver STATIC
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
@@ -119,6 +122,7 @@ add_library(arangoserver STATIC
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CrashHandlerFeature.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -139,6 +143,7 @@ add_library(arangoserver STATIC
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
@@ -180,7 +185,8 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8) 
+
+if(USE_V8)
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
     FeaturePhases/V8FeaturePhase.cpp
@@ -193,10 +199,14 @@ if (USE_V8)
     RestServer/FrontendFeature.cpp
     RestServer/ScriptFeature.cpp)
 endif()
-if (USE_MAINTAINER_MODE)
+
+if(USE_MAINTAINER_MODE)
   target_sources(arangoserver PRIVATE
     RestHandler/RestTestHandler.cpp)
 endif()
+
+target_sources(arangoserver PRIVATE
+  RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
   arango_agency
@@ -219,11 +229,12 @@ target_link_libraries(arangoserver
   arango_scheduler
   boost_boost
   ${MSVC_LIBS})
-if (MSVC)
+
+if(MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
 endif()
 
-if (USE_V8)
+if(USE_V8)
   target_link_libraries(arangoserver arango_v8server)
 endif()
 

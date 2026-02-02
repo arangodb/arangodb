@@ -24,29 +24,28 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Shell/ShellConsoleFeature.h"
+#include "Shell/V8ShellFeature.h"
+#include "V8/V8PlatformFeature.h"
+#include "V8/V8SecurityFeature.h"
 
 namespace arangodb {
-class ShellConsoleFeature;
-class V8ShellFeature;
-class V8PlatformFeature;
-class V8SecurityFeature;
 namespace application_features {
-class GreetingsFeaturePhase;
 
 class V8ShellFeaturePhase final : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "V8ShellPhase"; }
 
-  template<typename Server>
-  explicit V8ShellFeaturePhase(Server& server)
+  explicit V8ShellFeaturePhase(application_features::ApplicationServer& server)
       : ApplicationFeaturePhase{server, *this} {
     setOptional(false);
-    startsAfter<GreetingsFeaturePhase, Server>();
+    startsAfter<GreetingsFeaturePhase>();
 
-    startsAfter<ShellConsoleFeature, Server>();
-    startsAfter<V8ShellFeature, Server>();
-    startsAfter<V8PlatformFeature, Server>();
-    startsAfter<V8SecurityFeature, Server>();
+    startsAfter<ShellConsoleFeature>();
+    startsAfter<V8ShellFeature>();
+    startsAfter<V8PlatformFeature>();
+    startsAfter<V8SecurityFeature>();
   }
 };
 

@@ -37,19 +37,22 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class DatabaseFeature;
+class ClusterFeature;
 struct OperationOptions;
 namespace methods {
 
 struct Databases {
-  static std::vector<std::string> list(ArangodServer& server,
-                                       std::string const& user = "");
+  static std::vector<std::string> list(
+      application_features::ApplicationServer& server,
+      std::string const& user = "");
   static std::vector<std::string> list(DatabaseFeature& databaseFeature,
                                        ClusterFeature* clusterFeature,
                                        std::string const& user = "");
   static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
-  static Result create(ArangodServer& server, ExecContext const& context,
-                       std::string const& dbName, velocypack::Slice users,
-                       velocypack::Slice options);
+  static Result create(application_features::ApplicationServer& server,
+                       ExecContext const& context, std::string const& dbName,
+                       velocypack::Slice users, velocypack::Slice options);
   static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
                      std::string const& dbName);
 

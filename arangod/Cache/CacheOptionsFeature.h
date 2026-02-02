@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/PhysicalMemory.h"
 #include "Cache/CacheOptionsProvider.h"
 
 namespace arangodb {
@@ -38,8 +37,7 @@ class CacheOptionsFeature final
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
-  template<typename Server>
-  explicit CacheOptionsFeature(Server& server);
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -52,21 +50,5 @@ class CacheOptionsFeature final
 
   CacheOptions _options;
 };
-
-template<typename Server>
-CacheOptionsFeature::CacheOptionsFeature(Server& server)
-    : ApplicationFeature{server, *this} {
-  setOptional(true);
-  startsAfter<application_features::BasicFeaturePhaseServer, Server>();
-
-  _options.cacheSize =
-      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
-          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
-                                        (static_cast<std::uint64_t>(2) << 30)) *
-                                       0.25)
-          : (256 << 20);
-  // currently there is no way to turn stats off
-  _options.enableWindowedStats = true;
-}
 
 }  // namespace arangodb

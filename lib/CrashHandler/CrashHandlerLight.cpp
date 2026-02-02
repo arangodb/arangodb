@@ -29,7 +29,8 @@
 // This is a Light/Mock version of ArangoDB's crash handler without
 // dependencies on the remainder of ArangoDB.
 
-namespace arangodb {
+namespace arangodb::crash_handler {
+
 void CrashHandler::logBacktrace() {}
 
 [[noreturn]] void CrashHandler::crash(std::string_view context) {
@@ -61,4 +62,4 @@ void CrashHandler::installCrashHandler() {
   CrashHandler::crash("installCrashHandler is not implemented.");
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::crash_handler

@@ -24,7 +24,6 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Auth/UserManager.h"
@@ -32,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -44,6 +44,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/FoxxFeature.h"
 #endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -63,6 +64,43 @@ class Query;
 
 using namespace arangodb;
 using namespace arangodb::options;
+
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature,
+    EngineSelectorFeature& engineSelectorFeature,
+    DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature,
+    V8DealerFeature* v8DealerFeature)
+    : ApplicationFeature{server, *this},
+      _clusterFeature(clusterFeature),
+      _engineSelectorFeature(engineSelectorFeature),
+      _databaseFeature(databaseFeature),
+      _systemDatabaseFeature(systemDatabaseFeature),
+      _clusterUpgradeFeature(clusterUpgradeFeature),
+      _v8DealerFeature(v8DealerFeature),
+      _isReady(false) {
+  startsAfter<application_features::ServerFeaturePhase>();
+
+  startsAfter<SystemDatabaseFeature>();
+
+#ifdef USE_V8
+  // TODO: It is only in FoxxPhase because of:
+  startsAfter<FoxxFeature>();
+#else
+  startsAfter<application_features::ServerFeaturePhase>();
+#endif
+
+  // If this is Sorted out we can go down to ServerPhase
+  // And activate the following dependencies:
+  /*
+  startsAfter("Endpoint");
+  startsAfter("GeneralServer");
+  startsAfter("Server");
+  startsAfter("Upgrade");
+  */
+}
 
 bool BootstrapFeature::isReady() const {
   TRI_IF_FAILURE("BootstrapFeature_not_ready") { return false; }
@@ -93,7 +131,8 @@ V8DealerFeature* BootstrapFeature::v8DealerFeature() {
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--hund", "Make ArangoDB bark on startup.", new BooleanParameter(&_bark),
+      "--hund", "Make ArangoDB bark on startup.",
+      new BooleanParameter(&_options.bark),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
@@ -354,7 +393,7 @@ void BootstrapFeature::start() {
         << ") is ready for business. Have fun!";
   }
 
-  if (_bark) {
+  if (_options.bark) {
     LOG_TOPIC("bb9b7", INFO, arangodb::Logger::FIXME)
         << "The dog says: Гав гав";
   }

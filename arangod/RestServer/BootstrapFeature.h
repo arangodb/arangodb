@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
 class FoxxFeature;
@@ -41,8 +42,8 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  template<typename Server>
-  explicit BootstrapFeature(Server& server, ClusterFeature& clusterFeature,
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
                             EngineSelectorFeature& engineSelectorFeature,
                             DatabaseFeature& databaseFeature,
                             SystemDatabaseFeature* systemDatabaseFeature,
@@ -76,46 +77,8 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   ClusterUpgradeFeature* _clusterUpgradeFeature{};
   V8DealerFeature* _v8DealerFeature{};
 
+  BootstrapFeatureOptions _options;
   bool _isReady;
-  bool _bark;
 };
-
-template<typename Server>
-BootstrapFeature::BootstrapFeature(Server& server,
-                                   ClusterFeature& clusterFeature,
-                                   EngineSelectorFeature& engineSelectorFeature,
-                                   DatabaseFeature& databaseFeature,
-                                   SystemDatabaseFeature* systemDatabaseFeature,
-                                   ClusterUpgradeFeature* clusterUpgradeFeature,
-                                   V8DealerFeature* v8DealerFeature)
-    : ApplicationFeature{server, *this},
-      _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
-      _databaseFeature(databaseFeature),
-      _systemDatabaseFeature(systemDatabaseFeature),
-      _clusterUpgradeFeature(clusterUpgradeFeature),
-      _v8DealerFeature(v8DealerFeature),
-      _isReady(false),
-      _bark(false) {
-  startsAfter<application_features::ServerFeaturePhase, Server>();
-
-  startsAfter<SystemDatabaseFeature, Server>();
-
-#ifdef USE_V8
-  // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxFeature, Server>();
-#else
-  startsAfter<application_features::ServerFeaturePhase, Server>();
-#endif
-
-  // If this is Sorted out we can go down to ServerPhase
-  // And activate the following dependencies:
-  /*
-  startsAfter("Endpoint");
-  startsAfter("GeneralServer");
-  startsAfter("Server");
-  startsAfter("Upgrade");
-  */
-}
 
 }  // namespace arangodb

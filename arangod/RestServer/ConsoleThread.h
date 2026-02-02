@@ -24,8 +24,6 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "V8Server/V8Executor.h"
-#include "RestServer/arangod.h"
 
 #include <mutex>
 
@@ -41,7 +39,7 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class ConsoleThread final : public ServerThread<ArangodServer> {
+class ConsoleThread final : public ServerThread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
