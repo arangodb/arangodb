@@ -39,6 +39,7 @@
       parallelity: 3
       size: small
       type: single
+      buckets: 2
     args:
       extraArgs:log.level: replication=trace
       extraArgs:experimental-vector-index: true
