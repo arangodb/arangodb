@@ -16,7 +16,7 @@
       - version
 
 # Single Server Replication Tests
-- replication:
+- replication_shell:
     options:
       priority: 500
       parallelity: 4
@@ -30,6 +30,8 @@
       - replication_ongoing_frompresent
       - replication_ongoing_global
       - replication_ongoing_global_spec
+      - shell_replication
+      - http_replication
 # one run for each test...
 - replication_static:
     options:
@@ -55,15 +57,6 @@
       type: single
     args:
       extraArgs:log.level: replication=trace
-
-- replication_shell_http:
-    options:
-      parallelity: 3
-      size: small
-      type: single
-    suites:
-      - shell_replication
-      - http_replication
 
 
 - authentication_audit_endpoints_import_export_agency:
@@ -387,7 +380,7 @@
       type: cluster
       parallelity: 5
       size: small
-      buckets: 3
+      buckets: 2
     args:
       dumpAgencyOnError: true
 # - shell_client_replication2_recovery:
@@ -398,32 +391,21 @@
 #     args:
 #       dumpAgencyOnError: true
 
-
-# shell aql vector index tests
-- shell_client_aql_vector:
-    options:
-      priority: 1000
-      size: medium+
-      type: cluster
-      buckets: 1
-    args:
-      dumpAgencyOnError: true
-
 # Common Tests
-- import_export:
+- import_export_aql_vector:
     options:
       parallelity: 5
-      size: small
+      size: medium+
       type: cluster
     args:
       dumpAgencyOnError: true
     suites:
       - importing
       - export
+      - shell_client_aql_vector
 
 - hot_backup:
     options:
-      buckets: auto
       type: single
       size: medium
     args:
@@ -452,14 +434,15 @@
       - hot_backup_el_cheapo
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
-- server_parameters:
+- server_parameters_permissions:
     options:
       priority: 1000
       parallelity: 3
       buckets: 3
       type: single
-    args:
-      dumpAgencyOnError: true
+    suites:
+      - server_parameters
+      - server_permissions
 - server_parameters:
     options:
       priority: 1000
@@ -467,13 +450,6 @@
       buckets: 10
       size: large
       type: cluster
-    args:
-      dumpAgencyOnError: true
-- server_permissions:
-    options:
-      priority: 1000
-      parallelity: 5
-      size: small
     args:
       dumpAgencyOnError: true
 
