@@ -56,14 +56,14 @@
     args:
       extraArgs:log.level: replication=trace
 
-- replication:
+- replication_shell_http:
     options:
       parallelity: 3
       size: small
       type: single
     suites:
-      shell_replication
-      http_replication
+      - shell_replication
+      - http_replication
 
 
 - authentication_audit_endpoints_import_export_agency:
