@@ -27,7 +27,7 @@ const internal = require('internal');
 
 const ACTIVITY_REGISTRY_URL = '/_admin/activity-registry';
 
-exports.get_snapshot = function (server) {
+exports.get_snapshot_bare = function (server) {
   if (server === undefined) {
     return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
   }
@@ -38,6 +38,11 @@ exports.get_snapshot = function (server) {
   return result;
 };
 
+exports.get_snapshot = function (server) {
+  const activities = exports.get_snapshot_bare(server);
+  return exports.pretty_print(activities);
+};
+
 // TODO add also stuff like ├ and │ for continuations
 function branch_symbol(hierarchy) {
   if (hierarchy === 0) {
@@ -46,7 +51,6 @@ function branch_symbol(hierarchy) {
   return `${Array(3*hierarchy+1).join(" ")}└──`; 
 }
 
-// TODO: parent needs to be null or directly id instead of object
 exports.pretty_print = function (activities) {
   const forest = exports.createForest(activities);
   return Array.from(forest.iter())
@@ -55,7 +59,7 @@ exports.pretty_print = function (activities) {
 }
 
 exports.createForest = function (activities) {
-  const groupedByParent = Map.groupBy(activities, (a) => a.parent); // parent_id -> [child activity, child activity]
+  const groupedByParent = Map.groupBy(activities, (a) => a.parent.id);
   const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
   const leaves = new Map(activities.map((a) => {
     return [a.id, {...a, children: children.get(a.id) ?? []}];
