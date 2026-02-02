@@ -1,3 +1,4 @@
+---
 # https://github.com/arangodb/oskar#testing
 
 # Single Server only Tests
@@ -68,8 +69,10 @@
     args:
       extraArgs:log.level: replication=trace
       extraArgs:experimental-vector-index: true
-# TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
-# For CircleCI we have a special case in the generate_config script to override this. Once we can change the buckets
+# TODO - we could actually use 4 buckets instead of 2,
+# but ATM this causes issues with other tests on Jenkins
+# For CircleCI we have a special case in the generate_config
+# script to override this. Once we can change the buckets
 # here, make sure to remove this special case!
 - replication_sync:
     options:
@@ -328,17 +331,17 @@
       - load_balancing
       - load_balancing_auth
 
-#- replication2_client:
-#    options:
-#      size: small
-#      type: cluster
-#- replication2_server:
-#    options:
-#      size: medium
-#      type: cluster
-#      buckets: 3
-#    args:
-#        --dumpAgencyOnError true
+# - replication2_client:
+#     options:
+#       size: small
+#       type: cluster
+# - replication2_server:
+#     options:
+#       size: medium
+#       type: cluster
+#       buckets: 3
+#     args:
+#         --dumpAgencyOnError true
 # see also DISABLED restart tests when re-enabling!
 
 - cluster_resilience:
@@ -371,13 +374,14 @@
       priority: 500
       type: cluster
     suites:
-      shell_api_multi
-      shell_api_multi:
+      - shell_api_multi
+      - shell_api_multi:
         args:
           protocol: ssl
           suffix: ssl
 
-# shell_client_multi tests run quite long, so want to have a separate job for each protocol
+# shell_client_multi tests run quite long, so want to have a
+# separate job for each protocol
 - shell_client_multi:
     options:
       priority: 1500
@@ -421,13 +425,13 @@
       buckets: 3
     args:
       dumpAgencyOnError: true
-#- shell_client_replication2_recovery:
-#    options:
-#      priority: 500
-#      size: medium
-#      type: cluster
-#    args:
-#      dumpAgencyOnError: true
+# - shell_client_replication2_recovery:
+#     options:
+#       priority: 500
+#       size: medium
+#       type: cluster
+#     args:
+#       dumpAgencyOnError: true
 
 
 # shell aql vector index tests
@@ -461,11 +465,11 @@
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
     suites:
-     - hot_backup
-     - hot_backup_views
-     - hot_backup_aql
-     - hot_backup_smart_graphs
-     - hot_backup_el_cheapo
+      - hot_backup
+      - hot_backup_views
+      - hot_backup_aql
+      - hot_backup_smart_graphs
+      - hot_backup_el_cheapo
 - hot_backup:
     options:
       buckets: auto
@@ -476,11 +480,11 @@
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
     suites:
-     - hot_backup
-     - hot_backup_views
-     - hot_backup_aql
-     - hot_backup_smart_graphs
-     - hot_backup_el_cheapo
+      - hot_backup
+      - hot_backup_views
+      - hot_backup_aql
+      - hot_backup_smart_graphs
+      - hot_backup_el_cheapo
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 - server_parameters:
@@ -525,7 +529,7 @@
             suffix: _vpack
           args:
             dumpVPack: true
-        # takes long, needs to go first. However, doesn't utilize the SUT hard.
+      # takes long, needs to go first. However, doesn't utilize the SUT hard.
       - dump_with_crashes:
           options:
             parallelity: 1
@@ -546,10 +550,10 @@
     suites:
       - dump
       - dump:
-            options:
-              suffix: _vpack
-            args:
-              dumpVPack: true
+        options:
+          suffix: _vpack
+        args:
+          dumpVPack: true
       - dump_authentication
       - dump_jwt
       - dump_multiple_same
@@ -558,27 +562,27 @@
       - dump_encrypted
       - dump_mixed_cluster_single
       - dump_mixed_cluster_single:
-            options:
-              suffix: vpack
-            args:
-              dumpVPack: true
+          options:
+            suffix: vpack
+          args:
+            dumpVPack: true
       - dump_with_crashes:
-            options:
-              parallelity: 1
-              priority: 2000
-            requires:
-              full: true
+          options:
+            parallelity: 1
+            priority: 2000
+          requires:
+            full: true
       - dump_with_crashes_non_parallel:
-            options:
-              parallelity: 1
-              priority: 2000
-        # BTS-1852 enable after fix:
-        #- dump:
-        #    options:
-        #      name: dump_singleshard_cluster
-        #    args:
-        #      dumpVPack: true
-        #      forceOneShard: true
+          options:
+            parallelity: 1
+            priority: 2000
+      # BTS-1852 enable after fix:
+      # - dump:
+      #     options:
+      #       name: dump_singleshard_cluster
+      #     args:
+      #       dumpVPack: true
+      #       forceOneShard: true
 
 - dump_cluster_large:
     options:
@@ -593,10 +597,10 @@
       - dump_multiple_two
       - dump_mixed_single_cluster
       - dump_mixed_single_cluster:
-            options:
-              suffix: vpack
-            args:
-              dumpVPack: true
+          options:
+            suffix: vpack
+          args:
+            dumpVPack: true
 
 # Full Tests Single Server
 - shell_fuzzer:
@@ -685,7 +689,9 @@
       type: cluster
       priority: 9600
       size: large
-      # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+      # nightly chaos tests runs 32 different combinations,
+      # each running for 3 min plus some time to check
+      # for consistency
       timeLimit: 9600
     requires:
       coverage: false
