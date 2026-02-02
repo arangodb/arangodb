@@ -226,6 +226,19 @@ exports.getMetric = function (endpoint, name) {
   return getMetricName(text, name);
 };
 
+exports.eventuallyAssertEqual = function (fn, expectedValue, maxRetries = 60) {
+  let value;
+  for (let i = 0; i < maxRetries; ++i) {
+    value = fn();
+    if (value === expectedValue) {
+      break;
+    }
+    internal.sleep(0.5);
+  }
+
+  assertEqual(expectedValue, value, `eventuallyAssertEqual timed out after ${maxRetries * 0.5}s: expected ${expectedValue}, got ${value}`);
+};
+
 exports.getMetricSingle = function (name) {
   let res = arango.GET_RAW("/_admin/metrics");
   if (res.code !== 200) {
