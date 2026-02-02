@@ -21,6 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ActivityRegistry/registry.h"
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
 #include "ActivityRegistry/activity.h"
@@ -45,15 +46,47 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 
 }  // namespace
 
+constexpr auto ActivityRoot = ActivityId{nullptr};
+
 struct ActivityRegistryTest : ::testing::Test {
+  ActivityRegistryTest() {
+    Registry::setCurrentlyExecutingActivity(ActivityRoot);
+  }
   void TearDown() override {
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_activities().size(), 0);
   }
 };
 
+TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, creates_activity) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+  auto a = Activity("test activity", {{"test", "bla"}});
+
+  auto all_activities = get_all_activities();
+  auto s = std::find_if(std::begin(all_activities), std::end(all_activities),
+                        [id = a.id()](auto i) { return i.id == id; });
+
+  EXPECT_NE(s, std::end(all_activities));
+  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, sets_current_activity) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+  auto a = Activity("test activity", {{"test", "bla"}});
+  Registry::setCurrentlyExecutingActivity(a.id());
+
+  auto current = Registry::currentlyExecutingActivity();
+
+  ASSERT_EQ(a.id(), current);
+}
+
 TEST_F(ActivityRegistryTest,
        a_base_activity_creates_a_root_activity_with_additional_information) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto activity =
       Activity{"test activity", {{"id", "1234"}, {"some_other_key", "value"}}};
 
@@ -64,14 +97,15 @@ TEST_F(ActivityRegistryTest,
                     .name = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
-                    .parent = {RootActivity{}},
+                    .parent = {ActivityRoot},
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
-  EXPECT_NE(specific, std::end(all_activities));
+  EXPECT_NE(specific, std::end(all_activities))
+      << inspection::json(all_activities);
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity) {
   auto parent_activity = Activity{"parent activity", {}};
-  auto child_activity = Activity{"child activity", {}, parent_activity.id()};
+  auto child_activity = Activity{"child activity", {}, {parent_activity.id()}};
 
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
@@ -79,21 +113,22 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
                     .name = "child activity",
                     .state = State::Active,
                     .id = child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = {ActivityId{parent_activity.id()}},
+                    .metadata = {}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {RootActivity{}}})}));
+                                            .parent = {ActivityRoot}})}));
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
   auto parent_activity = Activity{"parent activity", {}};
   auto first_child_activity =
-      Activity{"first child activity", {}, parent_activity.id()};
+      Activity{"first child activity", {}, {parent_activity.id()}};
   auto second_child_activity =
-      Activity{"second child activity", {}, parent_activity.id()};
+      Activity{"second child activity", {}, {parent_activity.id()}};
   auto child_of_first_child_activity =
-      Activity{"child of child activity", {}, first_child_activity.id()};
+      Activity{"child of child activity", {}, {first_child_activity.id()}};
 
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
@@ -115,5 +150,71 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {RootActivity{}}})}));
+                                            .parent = {ActivityRoot}})}));
+}
+
+TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {
+  auto a = Activity("activity", {});
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+  {
+    auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(a.id());
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
+  }
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
+  auto a = Activity("activity1", {});
+  auto b = Activity("activity2", {});
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+  {
+    auto outerScopeGuard = Registry::ScopedCurrentlyExecutingActivity(a.id());
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
+
+    {
+      auto innerScopeGuard = Registry::ScopedCurrentlyExecutingActivity(b.id());
+      EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
+    }
+
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), a.id());
+  }
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, with_set_current_activity) {
+  auto a = Activity("activity to be in scope", {});
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+
+  auto scoped = withSetCurrentlyExecutingActivity(a.id(), [id = a.id()]() {
+    EXPECT_EQ(Registry::currentlyExecutingActivity(), id);
+  });
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+
+  auto b = Activity("activity to be current", {});
+  auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(b.id());
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
+
+  scoped();
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), b.id());
+}
+
+TEST_F(ActivityRegistryTest, with_current_activity) {
+  auto outer = Activity("outer activity", {});
+  auto inner = Activity("inner activity", {});
+
+  auto outerGuard = Registry::ScopedCurrentlyExecutingActivity(outer.id());
+  auto testee = withCurrentlyExecutingActivity(
+      [id = Registry::currentlyExecutingActivity()]() {
+        EXPECT_EQ(Registry::currentlyExecutingActivity(), id);
+      });
+
+  {
+    auto innerGuard = Registry::ScopedCurrentlyExecutingActivity(inner.id());
+    testee();
+  }
 }

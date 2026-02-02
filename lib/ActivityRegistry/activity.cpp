@@ -63,17 +63,18 @@ auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
 
 Activity::Activity(std::string name, Metadata metadata)
     : _node_in_registry{get_thread_registry().add([&]() {
-        return ActivityInRegistry{.name = std::move(name),
-                                  .state = State::Active,
-                                  .parent = {RootActivity{}},
-                                  .metadata = metadata};
+        return ActivityInRegistry{
+            .name = std::move(name),
+            .state = State::Active,
+            .parent = {Registry::currentlyExecutingActivity()},
+            .metadata = metadata};
       })} {}
 
-Activity::Activity(std::string name, Metadata metadata, ActivityId parent)
+Activity::Activity(std::string name, Metadata metadata, Parent parent)
     : _node_in_registry{get_thread_registry().add([&]() {
         return ActivityInRegistry{.name = std::move(name),
                                   .state = State::Active,
-                                  .parent = {Parent{parent}},
+                                  .parent = parent,
                                   .metadata = metadata};
       })} {}
 
@@ -83,4 +84,6 @@ Activity::~Activity() {
   }
 }
 
-auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
+auto Activity::id() const noexcept -> ActivityId {
+  return _node_in_registry->data.id();
+}
