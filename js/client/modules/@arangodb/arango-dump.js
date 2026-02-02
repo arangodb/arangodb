@@ -37,7 +37,7 @@ exports.start = function (options, server) {
 };
 exports.next = function (dumpId, batchId, previousBatchId, server, headerOpts={}) {
   let url = `${URL}/next/${dumpId}?batchId=${batchId}`;
-  if (previousBatchId !== undefined || null) {
+  if (previousBatchId !== undefined && previousBatchId !== null) {
     url += `&lastBatch=${previousBatchId}`;
   }
   if (server !== undefined) {
