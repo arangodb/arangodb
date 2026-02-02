@@ -1,6 +1,9 @@
 devel
 -----
 
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+results when condition optimization is turned off.
+
 * FE-937: fix distribution tab getting stuck on loading.
 
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
