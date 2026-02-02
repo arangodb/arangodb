@@ -208,13 +208,13 @@
             ssl: true
             suffix: http2-ssl
       - shell_client_multi:
-        args:
-          http2: true
-          suffix: http2
-      - shell_client_multi
-        args:
-          http: true
-          suffix: http
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_multi:
+          args:
+            http: true
+            suffix: http
 
 
 - shell_client_aql:
