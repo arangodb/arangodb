@@ -1,7 +1,7 @@
 name: arangodb_metadata_number_not_replicated_shards
 introducedIn: "3.12.8"
 help: |
-  Number of not replicated shards
+  Number of not replicated shards.
 unit: number
 type: gauge
 category: Statistics

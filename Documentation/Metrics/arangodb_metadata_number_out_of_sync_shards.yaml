@@ -1,7 +1,7 @@
 name: arangodb_metadata_number_out_of_sync_shards
 introducedIn: "3.12.8"
 help: |
-  Number of out of sync shards 
+  Number of out of sync shards. 
 unit: number
 type: gauge
 category: Statistics

@@ -435,6 +435,21 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
               "Global number of shards");
 
+// New coordinator-level shard metrics
+DECLARE_GAUGE(arangodb_metadata_total_number_of_shards, std::uint64_t,
+              "Total number of shards (viewed by coordinator)");
+DECLARE_GAUGE(arangodb_metadata_number_out_of_sync_shards, std::uint64_t,
+              "Number of shards out-of-sync between Plan and Current");
+DECLARE_GAUGE(arangodb_metadata_number_not_replicated_shards, std::uint64_t,
+              "Number of shards with fewer replicas in Current than planned");
+DECLARE_GAUGE(arangodb_metadata_number_follower_shards, std::uint64_t,
+              "Total number of follower replicas observed in Current");
+DECLARE_GAUGE(arangodb_metadata_shards_follower_number, std::uint64_t,
+              "Number of follower shards (total - leaders)");
+DECLARE_GAUGE(
+    arangodb_metadata_shard_followers_out_of_sync_number, std::uint64_t,
+    "Number of follower shards that are out of sync with their leader");
+
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
@@ -2224,31 +2239,31 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
 
     _current.swap(newCurrent);
-  std::uint64_t memoryUsage = 0;
-  for (auto const& it : _current) {
-    TRI_ASSERT(it.second != nullptr);
-    memoryUsage += it.second->slice().byteSize();
-  }
-  _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
-  _resourceMonitor.increaseMemoryUsage(memoryUsage);
-  _currentMemoryUsage = memoryUsage;
+    std::uint64_t memoryUsage = 0;
+    for (auto const& it : _current) {
+      TRI_ASSERT(it.second != nullptr);
+      memoryUsage += it.second->slice().byteSize();
+    }
+    _resourceMonitor.decreaseMemoryUsage(_currentMemoryUsage);
+    _resourceMonitor.increaseMemoryUsage(memoryUsage);
+    _currentMemoryUsage = memoryUsage;
 
-  _currentVersion = changeSet.version;
-  _currentIndex = changeSet.ind;
-  LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
-      << "Updating current in ClusterInfo: version=" << changeSet.version
-      << " index=" << _currentIndex;
+    _currentVersion = changeSet.version;
+    _currentIndex = changeSet.ind;
+    LOG_TOPIC("feddd", TRACE, Logger::CLUSTER)
+        << "Updating current in ClusterInfo: version=" << changeSet.version
+        << " index=" << _currentIndex;
 
-  if (swapDatabases) {
-    _currentDatabases.swap(newDatabases);
-  }
+    if (swapDatabases) {
+      _currentDatabases.swap(newDatabases);
+    }
 
-  if (swapCollections) {
-    LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
-        << "Have loaded new collections current cache!";
-    _currentCollections.swap(newCollections);
-    _shardsToCurrentServers.swap(newShardsToCurrentServers);
-  }
+    if (swapCollections) {
+      LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
+          << "Have loaded new collections current cache!";
+      _currentCollections.swap(newCollections);
+      _shardsToCurrentServers.swap(newShardsToCurrentServers);
+    }
 
     _currentProt.isValid = true;
   }
@@ -2849,7 +2864,8 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
         // consistent. Keep defensive behaviour in release builds, but assert
         // in maintainer builds to catch the underlying bug.
         LOG_TOPIC("c0abc", ERR, Logger::CLUSTER)
-            << "Inconsistent cluster state: no plan servers recorded for shard '"
+            << "Inconsistent cluster state: no plan servers recorded for shard "
+               "'"
             << shard << "' while iterating _shards";
         // We cannot reliably determine `notReplicated` from Plan alone here;
         // leave the metric update to the Current-derived update routine.
@@ -2862,10 +2878,9 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
 
   // The following coordinator-level shard metrics are only reliably
   // determined from Current (actual reported state) and are updated by the
-  // Current-derived metrics updater. For Plan-only updates we leave them at
-  // a neutral value (0) or skip updating them here to avoid double-reporting.
-  _metadataMetrics->numberOutOfSyncShards.store(0, std::memory_order_relaxed);
-  _metadataMetrics->numberNotReplicatedShards.store(0, std::memory_order_relaxed);
+  // Current-derived metrics updater. For Plan-only updates we skip updating
+  // them here to avoid double-reporting.
+  // (These metrics are updated by updateCoordinatorCurrentShardMetrics())
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
@@ -6363,17 +6378,22 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
 }
 
 ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
-  : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
-    numberOfCollections(
-      metrics.add(arangodb_metadata_number_of_collections{})),
-    numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})),
-    totalNumberOfShards(
-      metrics.add(arangodb_metadata_total_number_of_shards{})),
-    numberOutOfSyncShards(
-      metrics.add(arangodb_metadata_number_out_of_sync_shards{})),
-    numberNotReplicatedShards(
-      metrics.add(arangodb_metadata_number_not_replicated_shards{})),
-    numberFollowerShards(metrics.add(arangodb_metadata_number_follower_shards{})) {
+    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+      numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})),
+      totalNumberOfShards(
+          metrics.add(arangodb_metadata_total_number_of_shards{})),
+      numberOutOfSyncShards(
+          metrics.add(arangodb_metadata_number_out_of_sync_shards{})),
+      numberNotReplicatedShards(
+          metrics.add(arangodb_metadata_number_not_replicated_shards{})),
+      numberFollowerShards(
+          metrics.add(arangodb_metadata_number_follower_shards{})),
+      shardsFollowerNumber(
+          metrics.add(arangodb_metadata_shards_follower_number{})),
+      shardFollowersOutOfSync(
+          metrics.add(arangodb_metadata_shard_followers_out_of_sync_number{})) {
   // TODO We should expose these on a single server as well, but that can't
   //      happen in the ClusterInfo.
   TRI_ASSERT(ServerState::instance()->isCoordinator())
@@ -6390,9 +6410,12 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
   }
 
   uint64_t totalShards = 0;
-  uint64_t followers = 0;
-  uint64_t outOfSync = 0;
-  uint64_t notReplicated = 0;
+  uint64_t totalFollowers = 0;  // Total follower count in Current
+  uint64_t outOfSync = 0;       // Shards where Plan != Current (set difference)
+  uint64_t notReplicated =
+      0;  // Shards with only leader in Current (but plan expects more)
+  uint64_t followersOutOfSync =
+      0;  // Count of individual planned followers missing from Current
 
   // read plan under read lock to compare leaders/replication factors
   READ_LOCKER(readLocker, _planProt.lock);
@@ -6400,84 +6423,86 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
   // Iterate over Plan shards (source of truth) and compare to Current. This
   // avoids counting stale entries that may remain in Current for deleted
   // shards/collections.
-  for (auto const& pit : _shardsToPlanServers) {
-    auto const& shardId = pit.first;
-    auto const& plannedServersPtr = pit.second;
+  for (auto const& [shardId, plannedServersPtr] : _shardsToPlanServers) {
     ++totalShards;
 
     size_t plannedN = (plannedServersPtr ? plannedServersPtr->size() : 0);
-    std::string_view plannedLeader{};
-    if (plannedN > 0) {
-      plannedLeader = plannedServersPtr->at(0);
-    }
 
-    // lookup current
+    // Lookup current
     auto cit = _shardsToCurrentServers.find(shardId);
-    auto const& serversPtr = (cit != _shardsToCurrentServers.end() ? cit->second
-                                     : nullptr);
+    auto const& serversPtr =
+        (cit != _shardsToCurrentServers.end() ? cit->second : nullptr);
+
+    // Safety check - keep assertions for maintainer builds
     TRI_ASSERT(serversPtr != nullptr);
     TRI_ASSERT(serversPtr->size() > 0);
+
     size_t currentN = (serversPtr ? serversPtr->size() : 0);
+
+    // Count total followers in Current
     if (currentN > 0) {
-      followers += (currentN - 1);
+      totalFollowers += (currentN - 1);
     }
 
-    // current leader
-    std::string_view currentLeader{};
-    if (serversPtr && !serversPtr->empty()) {
-      currentLeader = serversPtr->at(0);
+    // Build current servers set for lookups
+    absl::flat_hash_set<std::string_view> curSet;
+    if (serversPtr) {
+      for (auto const& s : *serversPtr) {
+        curSet.insert(s);
+      }
     }
 
-    // out of sync: leader changed/missing or any planned follower missing
+    // Build planned servers set for comparison
+    absl::flat_hash_set<std::string_view> planSet;
+    if (plannedServersPtr) {
+      for (auto const& s : *plannedServersPtr) {
+        planSet.insert(s);
+      }
+    }
+
+    // Check if shard is out of sync (any set difference)
     bool shardOutOfSync = false;
-    if (plannedN == 0) {
-      // No plan present (empty planned servers): treat as out-of-sync
-      shardOutOfSync = true;
-    } else if (currentLeader.empty()) {
-      shardOutOfSync = true;
-    } else if (!plannedLeader.empty() && plannedLeader != currentLeader) {
+    if (plannedN == 0 || currentN == 0) {
       shardOutOfSync = true;
     } else {
-      // Check that all planned followers are present in Current. If any
-      // planned follower is missing, treat as out-of-sync.
-      if (plannedN > 1) {
-        // build a small lookup for current servers
-        absl::flat_hash_set<std::string_view> curSet;
-        if (serversPtr) {
-          for (auto const& s : *serversPtr) {
-            curSet.insert(s);
-          }
-        }
-        for (size_t i = 1; i < plannedN; ++i) {
-          auto const& plannedFollower = plannedServersPtr->at(i);
-          if (curSet.find(plannedFollower) == curSet.end()) {
-            shardOutOfSync = true;
-            break;
-          }
-        }
-      }
+      // Use set comparison to detect any difference (missing or extra servers)
+      shardOutOfSync = (planSet != curSet);
     }
 
     if (shardOutOfSync) {
       ++outOfSync;
     }
 
-    // notReplicated: either the plan expects only a single replica, or the
-    // current state has only the leader (only one in-sync replica). Both
-    // cases indicate the shard is not (fully) replicated.
-    if (plannedN <= 1 || currentN <= 1) {
+    // Count followers out of sync: planned followers (index 1+) missing from
+    // Current
+    if (plannedN > 1) {
+      for (size_t i = 1; i < plannedN; ++i) {
+        auto const& plannedFollower = plannedServersPtr->at(i);
+        if (curSet.find(plannedFollower) == curSet.end()) {
+          ++followersOutOfSync;  // This individual follower is not in Current
+        }
+      }
+    }
+
+    // Not replicated: plan expects replicas but only leader (or none) in
+    // Current
+    if (plannedN > 1 && currentN <= 1) {
       ++notReplicated;
     }
   }
 
   _metadataMetrics->totalNumberOfShards.store(totalShards,
                                               std::memory_order_relaxed);
-  _metadataMetrics->numberFollowerShards.store(followers,
+  _metadataMetrics->numberFollowerShards.store(totalFollowers,
+                                               std::memory_order_relaxed);
+  _metadataMetrics->shardsFollowerNumber.store(totalFollowers,
                                                std::memory_order_relaxed);
   _metadataMetrics->numberOutOfSyncShards.store(outOfSync,
                                                 std::memory_order_relaxed);
   _metadataMetrics->numberNotReplicatedShards.store(notReplicated,
-                                                   std::memory_order_relaxed);
+                                                    std::memory_order_relaxed);
+  _metadataMetrics->shardFollowersOutOfSync.store(followersOutOfSync,
+                                                  std::memory_order_relaxed);
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

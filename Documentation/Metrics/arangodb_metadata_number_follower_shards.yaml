@@ -1,7 +1,7 @@
 name: arangodb_metadata_number_follower_shards
 introducedIn: "3.12.8"
 help: |
-  Number of follower shards
+  Number of follower shards.
 unit: number
 type: gauge
 category: Statistics
