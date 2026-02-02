@@ -549,19 +549,19 @@
     args:
       dumpAgencyOnError: true
     suites:
-      - dump
+      - dump:
       - dump:
         options:
           suffix: _vpack
         args:
           dumpVPack: true
-      - dump_authentication
-      - dump_jwt
-      - dump_multiple_same
-      - dump_non_parallel
-      - dump_maskings
-      - dump_encrypted
-      - dump_mixed_cluster_single
+      - dump_authentication:
+      - dump_jwt:
+      - dump_multiple_same:
+      - dump_non_parallel:
+      - dump_maskings:
+      - dump_encrypted:
+      - dump_mixed_cluster_single:
       - dump_mixed_cluster_single:
           options:
             suffix: vpack
