@@ -391,7 +391,7 @@ TEST_F(AttributeDetectorTest, IndexDynamicCollectionAccessWithBindParameters1) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, JoinTwoCollections) {
+TEST_F(AttributeDetectorTest, NestedIndexScan_TwoCollections) {
   ensureHashIndex("users", "_key");
   ensureHashIndex("posts", "userId");
 
@@ -429,7 +429,7 @@ TEST_F(AttributeDetectorTest, JoinTwoCollections) {
   EXPECT_FALSE(postsAccess->requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, JoinReturnFullDocuments) {
+TEST_F(AttributeDetectorTest, NestedIndexScan_ReturnFullDocuments) {
   ensureHashIndex("users", "_key");
   ensureHashIndex("posts", "userId");
 
@@ -459,7 +459,7 @@ TEST_F(AttributeDetectorTest, JoinReturnFullDocuments) {
   EXPECT_FALSE(postsAccess->requiresAllAttributesWrite);
 }
 
-TEST_F(AttributeDetectorTest, JoinWithFilterCondition) {
+TEST_F(AttributeDetectorTest, NestedIndexScan_WithFilterCondition) {
   ensureHashIndex("users", "age");
   ensureHashIndex("users", "_key");
   ensureHashIndex("posts", "userId");
@@ -626,8 +626,7 @@ TEST_F(AttributeDetectorTest, IndexMissingAttributeStillRecorded3) {
   EXPECT_FALSE(accesses[0].requiresAllAttributesWrite);
 }
 
-// Sorted join pattern with index lookup
-TEST_F(AttributeDetectorTest, SortedJoinPattern) {
+TEST_F(AttributeDetectorTest, NestedIndexScan_SortedPattern) {
   ensureHashIndex("users", "_key");
   ensureHashIndex("posts", "userId");
 

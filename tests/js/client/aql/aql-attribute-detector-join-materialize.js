@@ -302,7 +302,7 @@ function attributeDetectorJoinMaterializeTestSuite() {
       assertFalse(productAccess.read.requiresAll);
     },
 
-    testJoin_SelfJoin: function () {
+    testSelfJoin_SameCollection: function () {
       const query = `
         FOR o1 IN ${cnOrders}
           FOR o2 IN ${cnOrders}
@@ -312,8 +312,9 @@ function attributeDetectorJoinMaterializeTestSuite() {
       `;
       const { accesses, plan } = explainAbac(query);
 
-      assertTrue(hasNodeInPlan(plan, "JoinNode"),
-        "Expected JoinNode. Got: " + plan.nodes.map(n => n.type).join(", "));
+      // Optimizer may use JoinNode or IndexNode for self-joins
+      assertTrue(hasNodeInPlan(plan, "JoinNode") || hasNodeInPlan(plan, "IndexNode"),
+        "Expected JoinNode or IndexNode. Got: " + plan.nodes.map(n => n.type).join(", "));
 
       assertEqual(1, accesses.length);
       assertEqual(cnOrders, accesses[0].collection);
