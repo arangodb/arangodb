@@ -37,8 +37,9 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
+using application_features::ApplicationServer;
 
-EndpointFeature::EndpointFeature(ArangodServer& server)
+EndpointFeature::EndpointFeature(ApplicationServer& server)
     : HttpEndpointProvider{server, *this} {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();

@@ -29,7 +29,8 @@
 
 namespace arangodb::application_features {
 
-AgencyFeaturePhase::AgencyFeaturePhase(ArangodServer& server)
+AgencyFeaturePhase::AgencyFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
 #ifdef USE_V8

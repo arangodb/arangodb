@@ -76,8 +76,9 @@ namespace arangodb {
 
 /// Constructor needs to be called synchronously,
 /// will load counts from the db and scan the WAL
-RocksDBRecoveryManager::RocksDBRecoveryManager(Server& server)
-    : ArangodFeature{server, *this},
+RocksDBRecoveryManager::RocksDBRecoveryManager(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _currentSequenceNumber(0),
       _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
@@ -136,7 +137,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   WBReader(WBReader const&) = delete;
   WBReader const& operator=(WBReader const&) = delete;
 
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   struct ProgressState {
     // sequence number from which we start recovering
@@ -174,7 +175,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(ArangodServer& server,
+  explicit WBReader(application_features::ApplicationServer& server,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
                     std::atomic<rocksdb::SequenceNumber>& currentSequence)

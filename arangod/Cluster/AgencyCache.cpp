@@ -44,7 +44,7 @@ using namespace arangodb::consensus;
 DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
               "Current number of entries in agency cache callbacks table");
 
-AgencyCache::AgencyCache(ArangodServer& server,
+AgencyCache::AgencyCache(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
     : ServerThread(server, "AgencyCache"),

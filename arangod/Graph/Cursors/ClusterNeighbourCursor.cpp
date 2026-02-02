@@ -68,8 +68,7 @@ ClusterNeighbourCursor<Step>::ClusterNeighbourCursor(
   leased->add("batchSize", VPackValue(aql::ExecutionBlock::DefaultBatchSize));
   leased->close();
 
-  auto* pool =
-      trx->vocbase().server().template getFeature<NetworkFeature>().pool();
+  auto* pool = trx->vocbase().server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx->vocbase().name();
@@ -95,8 +94,7 @@ auto ClusterNeighbourCursor<Step>::hasMore() -> bool {
 
 template<typename Step>
 auto ClusterNeighbourCursor<Step>::next() -> std::vector<Step> {
-  auto* pool =
-      _trx->vocbase().server().template getFeature<NetworkFeature>().pool();
+  auto* pool = _trx->vocbase().server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
   reqOpts.database = _trx->vocbase().name();

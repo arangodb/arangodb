@@ -25,15 +25,14 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/BootstrapFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class BootstrapFeature final : public ArangodFeature {
+class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  explicit BootstrapFeature(Server& server);
+  explicit BootstrapFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;

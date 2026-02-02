@@ -27,7 +27,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <functional>
 #include <mutex>
 #include <queue>
 #include <string_view>
@@ -37,10 +36,7 @@
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
 
 namespace arangodb {
@@ -57,7 +53,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler(ArangodServer&);
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -107,7 +103,7 @@ class Scheduler {
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   // Returns the scheduler's server object
-  ArangodServer& server() noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   struct WorkItemBase {
     virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
@@ -183,7 +179,7 @@ class Scheduler {
   };
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {

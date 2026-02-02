@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Scheduler/SchedulerFeatureOptions.h"
 
 #include <memory>
@@ -31,14 +31,18 @@
 namespace arangodb {
 
 class Scheduler;
+namespace metrics {
+class MetricsFeature;
+}
 
-class SchedulerFeature final : public ArangodFeature {
+class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
   static Scheduler* SCHEDULER;
 
-  SchedulerFeature(Server& server, metrics::MetricsFeature& metrics);
+  SchedulerFeature(application_features::ApplicationServer& server,
+                   metrics::MetricsFeature& metrics);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

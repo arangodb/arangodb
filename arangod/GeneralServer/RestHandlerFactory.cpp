@@ -40,7 +40,8 @@ RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
-    ArangodServer& server, std::unique_ptr<GeneralRequest> req,
+    application_features::ApplicationServer& server,
+    std::unique_ptr<GeneralRequest> req,
     std::unique_ptr<GeneralResponse> res) const {
   TRI_ASSERT(_sealed);
 

@@ -51,7 +51,7 @@
     "styled-components": "^6.1.11",
     "styled-css-grid": "^1.2.1",
     "styled-icons": "^10.47.1",
-    "swr": "^2.1.1",
+    "swr": "^2.3.8",
     "tippy.js": "^2.6.0",
     "typeahead.js": "^0.11.1",
     "underscore": "^1.13.6",
@@ -118,7 +118,8 @@
     "express": "^4.21.0",
     "rollup": "^2.79.2",
     "webpack-dev-middleware": "^5.3.4",
-    "qs": "^6.14.1"
+    "qs": "^6.14.1",
+    "@emotion/react": "^11.13.0"
   },
   "babel": {
     "presets": [
