@@ -26,6 +26,7 @@
 #include <format>
 #include <sstream>
 
+#include "Assertions/Assert.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPackWithErrorT.h"
