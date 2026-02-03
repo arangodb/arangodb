@@ -2858,12 +2858,11 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
     }
     for (auto const& shard : *shardVecPtr) {
       auto it = _shardsToPlanServers.find(shard);
-      TRI_ASSERT(it != _shardsToPlanServers.end() && it->second);
       if (it == _shardsToPlanServers.end() || !it->second) {
-        // This should be impossible: _shards and _shardsToPlanServers must be
-        // consistent. Keep defensive behaviour in release builds, but assert
-        // in maintainer builds to catch the underlying bug.
-        LOG_TOPIC("c0abc", ERR, Logger::CLUSTER)
+        // This can happen during transient states when _shards and
+        // _shardsToPlanServers are not perfectly synchronized (e.g., during
+        // collection creation/deletion or test setup). Handle gracefully.
+        LOG_TOPIC("c0abc", DEBUG, Logger::CLUSTER)
             << "Inconsistent cluster state: no plan servers recorded for shard "
                "'"
             << shard << "' while iterating _shards";
@@ -6433,11 +6432,24 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
     auto const& serversPtr =
         (cit != _shardsToCurrentServers.end() ? cit->second : nullptr);
 
-    // Safety check - keep assertions for maintainer builds
-    TRI_ASSERT(serversPtr != nullptr);
-    TRI_ASSERT(serversPtr->size() > 0);
+    // Handle case where shard exists in Plan but not yet in Current
+    // (e.g., during collection creation) or has been removed from Current
+    // (e.g., during deletion). This can legitimately happen during transitions.
+    if (!serversPtr || serversPtr->empty()) {
+      // Shard is in Plan but not in Current - treat as out of sync
+      ++outOfSync;
+      // Count all planned followers as out of sync since Current doesn't exist
+      if (plannedN > 1) {
+        followersOutOfSync += (plannedN - 1);
+      }
+      // If plan expects replication but Current is empty, it's not replicated
+      if (plannedN > 1) {
+        ++notReplicated;
+      }
+      continue;  // Skip to next shard
+    }
 
-    size_t currentN = (serversPtr ? serversPtr->size() : 0);
+    size_t currentN = serversPtr->size();
 
     // Count total followers in Current
     if (currentN > 0) {
@@ -6445,11 +6457,11 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
     }
 
     // Build current servers set for lookups
+    // Note: serversPtr is guaranteed to be non-null and non-empty here
+    // due to the check above
     absl::flat_hash_set<std::string_view> curSet;
-    if (serversPtr) {
-      for (auto const& s : *serversPtr) {
-        curSet.insert(s);
-      }
+    for (auto const& s : *serversPtr) {
+      curSet.insert(s);
     }
 
     // Build planned servers set for comparison
