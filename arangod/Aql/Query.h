@@ -549,7 +549,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   std::atomic<bool> _isExecuting{false};
 
-  activity_registry::Activity _activity;
+  activities::Activity _activity;
 };
 
 }  // namespace aql

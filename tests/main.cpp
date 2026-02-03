@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
 
   // set metrics of registries
   arangodb::async_registry::registry.set_metrics(nullptr);
-  arangodb::activity_registry::registry.set_metrics(nullptr);
+  arangodb::activities::registry.set_metrics(nullptr);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the

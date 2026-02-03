@@ -29,7 +29,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 DECLARE_COUNTER(arangodb_activity_activities_total,
                 "Total number of created activities since database creation");
@@ -72,7 +72,7 @@ struct Feature::CleanupThread {
             std::unique_lock guard(_mutex);
             auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
             if (status == std::cv_status::timeout) {
-              activity_registry::registry.run_external_cleanup();
+              activities::registry.run_external_cleanup();
             }
           }
         }) {}

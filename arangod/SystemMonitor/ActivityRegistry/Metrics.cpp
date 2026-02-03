@@ -25,7 +25,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 auto RegistryMetrics::increment_total_nodes() -> void {
   activities_total->count();

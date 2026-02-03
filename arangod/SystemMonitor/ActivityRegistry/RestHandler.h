@@ -26,7 +26,7 @@
 #include "SystemMonitor/ActivityRegistry/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 /**
    Activity-registry REST handler
@@ -53,4 +53,4 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   Feature& _feature;
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

@@ -29,7 +29,7 @@
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 using namespace arangodb::containers;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,

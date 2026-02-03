@@ -468,7 +468,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     LogicalCollection& collection, VPackSlice input, bool create,
     VPackBuilder& output, std::shared_ptr<ProgressTracker> progress,
     Replication2Callback replicationCb) {
-  activity_registry::Activity ensureIndexActivity(
+  activities::Activity ensureIndexActivity(
       "ensureIndex",
       {{"collection", collection.name()}, {"parameters", input.toJson()}});
 
@@ -831,10 +831,10 @@ std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
 }
 
 template<typename IndexSpec>
-requires std::is_same_v<IndexSpec, IndexId> or
-    std::is_same_v<IndexSpec, velocypack::Slice>
-        futures::Future<arangodb::Result> Indexes::dropDBServer(
-            LogicalCollection& col, IndexSpec indexSpec) {
+  requires std::is_same_v<IndexSpec, IndexId> or
+           std::is_same_v<IndexSpec, velocypack::Slice>
+futures::Future<arangodb::Result> Indexes::dropDBServer(LogicalCollection& col,
+                                                        IndexSpec indexSpec) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // we have one index less now, so we should flush all cached query execution

@@ -33,7 +33,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 namespace {
 auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {

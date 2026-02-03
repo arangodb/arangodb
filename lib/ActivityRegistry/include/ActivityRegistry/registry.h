@@ -24,7 +24,7 @@
 #include "ActivityRegistry/activity.h"
 #include "Containers/Concurrent/Registry.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
 
 struct Registry : containers::Registry<ActivityInRegistry> {
@@ -64,11 +64,11 @@ struct Registry::ScopedCurrentlyExecutingActivity {
 
 template<typename Func>
 auto withSetCurrentlyExecutingActivity(ActivityId activity, Func&& func) {
-  return [
-    func = std::forward<Func>(func), activity
-  ]<typename... Args,
-    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+  return [func = std::forward<Func>(func),
+          activity]<typename... Args,
+                    typename =
+                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
@@ -80,4 +80,4 @@ auto withCurrentlyExecutingActivity(Func&& func) {
       Registry::currentlyExecutingActivity(), std::forward<Func>(func));
 }
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

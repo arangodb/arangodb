@@ -26,7 +26,7 @@
 #include "ActivityRegistry/activity.h"
 #include "ActivityRegistry/registry.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 /**
    Global variable that holds all active activities.
@@ -44,4 +44,4 @@ extern Registry registry;
  */
 auto get_thread_registry() noexcept -> ThreadRegistry&;
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

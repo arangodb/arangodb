@@ -26,7 +26,7 @@
 #include "SystemMonitor/ActivityRegistry/Metrics.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 class Feature final : public application_features::ApplicationFeature {
  private:
@@ -60,4 +60,4 @@ class Feature final : public application_features::ApplicationFeature {
   AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

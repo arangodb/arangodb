@@ -165,7 +165,7 @@ class RocksDBDumpContext {
   bool applyFilter(velocypack::Slice const& documentSlice) const;
 
   // get the activityId of this dump context
-  activity_registry::ActivityId activityId() const noexcept;
+  activities::ActivityId activityId() const noexcept;
 
   // Contains the data for a batch
   struct Batch {
@@ -353,7 +353,7 @@ class RocksDBDumpContext {
 
   std::atomic_bool _stopped{false};
 
-  activity_registry::Activity _activity;
+  activities::Activity _activity;
 };
 
 }  // namespace arangodb
