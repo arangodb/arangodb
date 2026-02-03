@@ -420,6 +420,45 @@ class TestingRunner:
         with self.testfailures_file.open("a") as filep:
             filep.write(text + "\n")
 
+    # pylint: disable=too-many-arguments disable=logging-fstring-interpolation
+    def mp_zip_tar(self, fnlist, zip_dir, tarfile, verb, filetype):
+        """ use full machine to compress files in zip-tar """
+        zip_slots = psutil.cpu_count(logical=False)
+        count = 0
+        zip_slot_array = []
+        for _ in range(zip_slots):
+            zip_slot_array.append([])
+        for one_file in fnlist:
+            if one_file.exists():
+                zip_slot_array[count % zip_slots].append(one_file)
+                count += 1
+        zippers = []
+        logging.info(f"{verb} launching zipper sub processes {zip_slot_array}")
+        for zip_slot in zip_slot_array:
+            if len(zip_slot) > 0:
+                proc = Process(target=zipp_this, args=(zip_slot, zip_dir))
+                proc.start()
+                zippers.append(proc)
+        for zipper in zippers:
+            zipper.join()
+        logging.info("compressing files done")
+
+        for one_file in fnlist:
+            if one_file.is_file():
+                one_file.unlink(missing_ok=True)
+
+        logging.info(f"creating {filetype}: {str(tarfile)} with {str(fnlist)}.tar")
+        sys.stdout.flush()
+        try:
+            shutil.make_archive(str(tarfile),
+                                'tar',
+                                (zip_dir / '..').resolve(),
+                                zip_dir.name,
+                                True)
+        except Exception as ex:
+            logging.info(f"Failed to create {verb} zip: {str(ex)}")
+            self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
+
     def cleanup_unneeded_binary_files(self):
         """delete all files not needed for the crashreport binaries"""
         shutil.rmtree(str(self.cfg.bin_dir / "tzdata"))
@@ -539,18 +578,8 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            sys.stdout.flush()
-            try:
-                shutil.make_archive(
-                    str(binary_report_file),
-                    ZIPFORMAT,
-                    (self.cfg.bin_dir / "..").resolve(),
-                    self.cfg.bin_dir.name,
-                    True,
-                )
-            except Exception as ex:
-                logging.info("Failed to create crashdump zip: %s", str(ex))
-                self.append_report_txt("Failed to create crashdump zip: " + str(ex))
+            bin_files_list = [f for f in self.cfg.bin_dir.glob('*') if not f.is_symlink()]
+            self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
 
     def generate_test_report(self):
         """regular testresults zip"""
