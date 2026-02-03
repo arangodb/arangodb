@@ -71,8 +71,9 @@ class AuthenticationFeature final
 
   bool hasUserdefinedJwt() const;
 #ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
+  /// verification only secrets (returns active secret, passive secrets,
+  /// isES256)
+  std::tuple<std::string, std::vector<std::string>, bool> jwtSecrets() const;
 #endif
 
   double sessionTimeout() const { return _options.sessionTimeout; }

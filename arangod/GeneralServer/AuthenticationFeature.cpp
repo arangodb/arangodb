@@ -42,9 +42,63 @@
 
 #include <limits>
 
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+
 using namespace arangodb::options;
 
 namespace arangodb {
+
+namespace {
+/// @brief Check if a string contains a PEM-formatted key
+bool isPemFormat(std::string const& content) {
+  return content.find("-----BEGIN") != std::string::npos &&
+         content.find("-----END") != std::string::npos;
+}
+
+/// @brief Check if a PEM file contains an EC private key
+bool isEcPrivateKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+
+/// @brief Check if a PEM file contains an EC public key
+bool isEcPublicKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+}  // namespace
 
 std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
@@ -311,13 +365,16 @@ void AuthenticationFeature::prepare() {
       _options.jwtSecretProgramOption +=
           static_cast<char>(1 + RandomGenerator::interval(m));
     }
+    _options.jwtSecretIsES256 = false;  // generated secrets are always HS256
   }
 
 #ifdef USE_ENTERPRISE
   _authCache->setJwtSecrets(_options.jwtSecretProgramOption,
-                            _options.jwtPassiveSecrets);
+                            _options.jwtPassiveSecrets,
+                            _options.jwtSecretIsES256);
 #else
-  _authCache->setJwtSecret(_options.jwtSecretProgramOption);
+  _authCache->setJwtSecret(_options.jwtSecretProgramOption,
+                           _options.jwtSecretIsES256);
 #endif
 
   INSTANCE.store(this, std::memory_order_release);
@@ -386,10 +443,11 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
 
 #ifdef USE_ENTERPRISE
 /// verification only secrets
-std::pair<std::string, std::vector<std::string>>
+std::tuple<std::string, std::vector<std::string>, bool>
 AuthenticationFeature::jwtSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets};
+  return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets,
+          _options.jwtSecretIsES256};
 }
 #endif
 
@@ -476,10 +534,32 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   std::sort(std::begin(list), std::end(list));
   std::string activeSecret = slurpy(list[0]);
 
+  // Check if the active secret is in PEM format (ES256) or raw bytes (HS256)
+  bool isES256 = false;
+  if (isPemFormat(activeSecret)) {
+    // Check if it's an EC private key or public key
+    if (isEcPrivateKey(activeSecret)) {
+      isES256 = true;
+      LOG_TOPIC("4922e", INFO, arangodb::Logger::AUTHENTICATION)
+          << "Detected ES256 private key in JWT secret file (for signing and "
+             "verification)";
+    } else if (isEcPublicKey(activeSecret)) {
+      isES256 = true;
+      LOG_TOPIC("4922d", INFO, arangodb::Logger::AUTHENTICATION)
+          << "Detected ES256 public key in JWT secret file (for verification "
+             "only)";
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "PEM file detected but does not contain a valid EC key");
+    }
+  }
+
   const std::string msg = "Given JWT secret too long. Max length is 64";
-  if (activeSecret.length() > kMaxSecretLength) {
+  if (!isES256 && activeSecret.length() > kMaxSecretLength) {
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
+
+  _options.jwtSecretIsES256 = isES256;
 
 #ifdef USE_ENTERPRISE
   std::vector<std::string> passiveSecrets;

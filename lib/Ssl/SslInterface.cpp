@@ -311,4 +311,108 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   return rsaPrivSign(ctx, pKey, msg, sign, error);
 }
 
+bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
+                          char const* message, size_t messageLen,
+                          char const* signature, size_t signatureLen) {
+  BIO* keybio = BIO_new_mem_buf(publicKeyPem, static_cast<int>(publicKeyLen));
+  if (keybio == nullptr) {
+    return false;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  EVP_PKEY* pKey = PEM_read_bio_PUBKEY(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    return false;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    return false;
+  }
+
+  EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+  if (mdctx == nullptr) {
+    return false;
+  }
+  auto cleanupCtx = scopeGuard([&]() noexcept { EVP_MD_CTX_free(mdctx); });
+
+  if (EVP_DigestVerifyInit(mdctx, nullptr, EVP_sha256(), nullptr, pKey) != 1) {
+    return false;
+  }
+
+  if (EVP_DigestVerifyUpdate(mdctx, message, messageLen) != 1) {
+    return false;
+  }
+
+  int result = EVP_DigestVerifyFinal(
+      mdctx, reinterpret_cast<unsigned char const*>(signature), signatureLen);
+
+  return result == 1;
+}
+
+int signES256(char const* privateKeyPem, size_t privateKeyLen,
+              char const* message, size_t messageLen, std::string& signature,
+              std::string& error) {
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem, static_cast<int>(privateKeyLen));
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    error.append("Failed to read private key from PEM: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    error.append("Key is not an EC key");
+    return 1;
+  }
+
+  EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+  if (mdctx == nullptr) {
+    error.append("EVP_MD_CTX_new failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupCtx = scopeGuard([&]() noexcept { EVP_MD_CTX_free(mdctx); });
+
+  if (EVP_DigestSignInit(mdctx, nullptr, EVP_sha256(), nullptr, pKey) != 1) {
+    error.append("EVP_DigestSignInit failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  if (EVP_DigestSignUpdate(mdctx, message, messageLen) != 1) {
+    error.append("EVP_DigestSignUpdate failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  size_t signatureLen = 0;
+  if (EVP_DigestSignFinal(mdctx, nullptr, &signatureLen) != 1) {
+    error.append("EVP_DigestSignFinal (length) failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  signature.resize(signatureLen);
+  if (EVP_DigestSignFinal(mdctx,
+                          reinterpret_cast<unsigned char*>(signature.data()),
+                          &signatureLen) != 1) {
+    error.append("EVP_DigestSignFinal failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  signature.resize(signatureLen);
+  return 0;
+}
+
 }  // namespace arangodb::rest::SslInterface
