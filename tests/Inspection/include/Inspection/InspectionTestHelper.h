@@ -33,9 +33,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
 #include "Inspection/Transformers.h"

@@ -44,7 +44,6 @@
 #include <vector>
 
 #include <boost/container_hash/hash_fwd.hpp>
-#include <fmt/core.h>
 
 #include <gtest/gtest.h>
 
