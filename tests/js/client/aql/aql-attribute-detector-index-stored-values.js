@@ -24,7 +24,7 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-// This test file is for the behavior of 
+// This test file is for the behavior of
 // (1) INDEX_NODE for persistent index
 // (2) INDEX_NODE for stored values index
 // (3) INDEX_COLLECT
@@ -56,7 +56,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             a.length === expected.length &&
             a.every((seg, i) => seg === expected[i])
         );
-    }
+    };
 
     return {
         setUp: function () {
@@ -1089,8 +1089,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             collection.ensureIndex({type: "persistent", fields: ["category"]});
 
             const query = `
-                FOR doc IN ${cn} 
-                    COLLECT category = doc.category 
+                FOR doc IN ${cn}
+                    COLLECT category = doc.category
                     RETURN category`;
 
             const explainRes = db._createStatement({query: query}).explain();
@@ -1101,7 +1101,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             const collAccess = accesses.find(a => a.collection === cn);
 
             assertTrue(containsReadAttr(collAccess, "category"));
-            
+
             assertFalse(collAccess.read.requiresAll);
             assertFalse(collAccess.write.requiresAll);
         },
@@ -1110,8 +1110,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             storedCollection.ensureIndex({type: "persistent", fields: ["category"]});
 
             const query = `
-                FOR doc IN ${cnStored} 
-                    COLLECT category = doc.category 
+                FOR doc IN ${cnStored}
+                    COLLECT category = doc.category
                     RETURN category`;
 
             const explainRes = db._createStatement({query: query}).explain();
@@ -1163,9 +1163,9 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             });
 
             const query = `
-                FOR doc IN ${cnStored} 
-                    COLLECT category = doc.category 
-                    AGGREGATE maxV = MAX(doc.value), sumP = SUM(doc.price) 
+                FOR doc IN ${cnStored}
+                    COLLECT category = doc.category
+                    AGGREGATE maxV = MAX(doc.value), sumP = SUM(doc.price)
                     RETURN [category, maxV, sumP]`;
 
             const explainRes = db._createStatement({query: query}).explain();
