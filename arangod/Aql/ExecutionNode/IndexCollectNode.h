@@ -76,9 +76,7 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
 
   std::shared_ptr<arangodb::Index> const& index() const { return _index; }
   IndexCollectGroups const& groups() const { return _groups; }
-  IndexCollectAggregations const& aggregations() const {
-    return _aggregations;
-  }
+  IndexCollectAggregations const& aggregations() const { return _aggregations; }
   Variable const* oldIndexVariable() const { return _oldIndexVariable; }
 
   NodeType getType() const override { return INDEX_COLLECT; }

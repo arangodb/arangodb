@@ -212,7 +212,8 @@ TEST_F(AttributeDetectorTest, ComplicatedArangoSearchSortAndLimit) {
   EXPECT_EQ(actual, expected);
 }
 
-// --- Complicated view: return only _key (view still reports full read for all linked colls) ---
+// --- Complicated view: return only _key (view still reports full read for all
+// linked colls) ---
 TEST_F(AttributeDetectorTest, ComplicatedArangoSearchReturnKeyOnly) {
   auto query = executeQuery(R"aql(
     FOR d IN usersViewComplicated
