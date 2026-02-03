@@ -132,7 +132,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "SystemMonitor/ActivityRegistry/RestHandler.h"
+#include "SystemMonitor/Activities/RestHandler.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif

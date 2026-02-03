@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "SystemMonitor/ActivityRegistry/Metrics.h"
+#include "SystemMonitor/Activities/Metrics.h"
 #include "Scheduler/AsyncLockWithScheduler.h"
 
 namespace arangodb::activities {

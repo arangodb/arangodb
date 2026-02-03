@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "SystemMonitor/ActivityRegistry/Feature.h"
+#include "SystemMonitor/Activities/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb::activities {

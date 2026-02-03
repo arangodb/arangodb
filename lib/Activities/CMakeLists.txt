@@ -1,15 +1,21 @@
-add_library(arango_activity_registry_interface INTERFACE)
-target_include_directories(arango_activity_registry_interface INTERFACE
+add_library(arango_activities_interface INTERFACE)
+target_include_directories(arango_activities_interface INTERFACE
   ${PROJECT_SOURCE_DIR}/lib
   include)
 
 
-add_library(arango_activity_registry STATIC)
-target_include_directories(arango_activity_registry PUBLIC
+add_library(arango_activities STATIC)
+target_include_directories(arango_activities PUBLIC
   include)
-target_link_libraries(arango_activity_registry PUBLIC arango_thread_owning_list arango_shared arango_inspection)
+target_link_libraries(arango_activities
+PUBLIC
+  arango_thread_owning_list
+  arango_shared
+  arango_inspection)
 
-add_library(arango_activity_registry_global STATIC)
-target_link_libraries(arango_activity_registry_global PUBLIC arango_activity_registry)
+add_library(arango_activities_global STATIC)
+target_link_libraries(arango_activities_global
+PUBLIC
+  arango_activities)
 
 add_subdirectory(src)

@@ -1,14 +1,14 @@
-add_library(arango_tests_activity_registry OBJECT
+add_library(arango_tests_activities OBJECT
   ActivityRegistryTest.cpp)
-target_link_libraries(arango_tests_activity_registry PRIVATE
-  arango_activity_registry_global
+target_link_libraries(arango_tests_activities PRIVATE
+  arango_activities_global
   arango_async
   gtest
 )
 
-add_executable(arangodbtests_activity_registry EXCLUDE_FROM_ALL)
-target_link_libraries(arangodbtests_activity_registry
-  arango_tests_activity_registry
+add_executable(arangodbtests_activities EXCLUDE_FROM_ALL)
+target_link_libraries(arangodbtests_activities
+  arango_tests_activities
   arango_async
   gtest_main)
 
