@@ -92,6 +92,8 @@ class TestConfig:
             "--testXmlOutputDirectory",
             str(self.xml_report_dir),
         ]
+        if cfg.memory_limit > 0:
+            self.args += ["--memory", cfg.memory_limit]
 
         if "filter" in os.environ:
             self.args += ["--test", os.environ["filter"]]

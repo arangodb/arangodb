@@ -155,12 +155,16 @@ class SiteConfig:
             socket_count = str(get_socket_count())
         except psutil.AccessDenied:
             pass
-
+        memory_limit_path =  Path("/sys/fs/cgroup/memory/memory.limit_in_bytes")
+        if memory_limit_path.exists():
+            self.memory_limit =  memory_limit_path.read_text();
+        else:
+            self.memory_limit = -1
         logging.info(
             f"""Machine Info [{psutil.Process().pid}]:
  - {psutil.cpu_count(logical=False)} Cores / {psutil.cpu_count(logical=True)} Threads
  - {platform.processor()} processor architecture
- - {psutil.virtual_memory()} virtual Memory
+ - {psutil.virtual_memory()} virtual Memory {self.memory_limit} limit
  - {self.slots_to_parallelity_factor} parallelity to load estimate factor
  - {self.overload} load1 threshhold for overload logging
  - {self.max_load} / {self.max_load1} configured maximum load 0 / 1
