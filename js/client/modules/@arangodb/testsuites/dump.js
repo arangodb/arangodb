@@ -49,9 +49,9 @@ const functionsDocumentation = {
   'dump_maskings': 'masked dump tests',
   'dump_multiple_same': 'restore multiple DBs at once to the same installation',
   'dump_multiple_two': 'restore multiple DBs at once to a fresh installation',
-  'dump_with_crashes': 'restore and crash the client multiple times',
-  'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
-  'dump_parallel': 'use experimental parallel dump',
+  'dump_with_crashes': 'restore and crash the client multiple times - parallel version',
+  'dump_with_crashes_non_parallel': 'restore and crash the client multiple times',
+  'dump_non_parallel': 'use dump',
 };
 
 const optionsDocumentation = [
@@ -69,8 +69,8 @@ const testPaths = {
   'dump_multiple_same': [tu.pathForTesting('client/dump')],
   'dump_multiple_two': [tu.pathForTesting('client/dump')],
   'dump_with_crashes': [tu.pathForTesting('client/dump')],
-  'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
-  'dump_parallel': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes_non_parallel': [tu.pathForTesting('client/dump')],
+  'dump_non_parallel': [tu.pathForTesting('client/dump')],
 };
 
 function dump_backend_two_instances (firstRunOptions, secondRunOptions,
@@ -342,7 +342,7 @@ function dumpWithCrashesNonParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_non_parallel', tstFiles, function(){}, []);
 }
 
 function dumpAuthentication (options) {
@@ -461,7 +461,7 @@ function dumpNonParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_non_parallel', tstFiles, function(){}, []);
 }
 
 function dumpMaskings (options) {

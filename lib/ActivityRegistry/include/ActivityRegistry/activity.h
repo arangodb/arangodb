@@ -47,7 +47,7 @@ auto inspect(Inspector& f, RootActivity& x) {
 }
 
 struct ActivityId {
-  void* id;
+  void* id{nullptr};
   bool operator==(ActivityId const&) const = default;
 };
 template<typename Inspector>
@@ -129,10 +129,10 @@ struct Activity {
   Activity& operator=(Activity const&) = delete;
 
   Activity(std::string name, Metadata metadata);
-  Activity(std::string name, Metadata metadata, ActivityId parent);
+  Activity(std::string name, Metadata metadata, Parent parent);
   ~Activity();
 
-  auto id() -> ActivityId;
+  auto id() const noexcept -> ActivityId;
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by
