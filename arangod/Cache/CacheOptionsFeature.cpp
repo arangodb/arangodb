@@ -24,8 +24,8 @@
 #include "CacheOptionsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
+#include "Basics/PhysicalMemory.h"
 #include "Cache/Manager.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"

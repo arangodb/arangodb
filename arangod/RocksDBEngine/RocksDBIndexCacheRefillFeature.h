@@ -36,9 +36,17 @@
 #include <vector>
 
 namespace arangodb {
+class RocksDBEngine;
+class BootstrapFeature;
+
+class ClusterFeature;
 class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
+
+namespace metrics {
+class MetricsFeature;
+}
 
 class RocksDBIndexCacheRefillFeature final
     : public application_features::ApplicationFeature {
@@ -48,7 +56,9 @@ class RocksDBIndexCacheRefillFeature final
   }
 
   explicit RocksDBIndexCacheRefillFeature(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::MetricsFeature& metricsFeature);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -93,11 +103,16 @@ class RocksDBIndexCacheRefillFeature final
   // the method can indirectly schedule itself.
   void scheduleIndexRefillTasks();
 
+  static metrics::Counter& addTotalFullIndexRefills(
+      metrics::MetricsFeature& metrics);
+
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
 
   DatabaseFeature& _databaseFeature;
+  ClusterFeature* _clusterFeature{};
+  metrics::MetricsFeature& _metricsFeature;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
@@ -120,4 +135,5 @@ class RocksDBIndexCacheRefillFeature final
 
   size_t _currentlyRunningIndexFillTasks;
 };
+
 }  // namespace arangodb
