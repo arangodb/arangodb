@@ -1589,7 +1589,7 @@ limited number of edge collections/shards/indexes.)");
                RocksDBColumnFamilyManager::Family::EdgeIndex,
                RocksDBColumnFamilyManager::Family::VPackIndex,
                RocksDBColumnFamilyManager::Family::GeoIndex,
-               RocksDBColumnFamilyManager::Family::FulltextIndexRemoved,
+               RocksDBColumnFamilyManager::Family::FulltextIndex,
                RocksDBColumnFamilyManager::Family::ReplicatedLogs,
                RocksDBColumnFamilyManager::Family::MdiIndex,
                RocksDBColumnFamilyManager::Family::MdiVPackIndex,

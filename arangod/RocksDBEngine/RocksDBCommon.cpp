@@ -266,7 +266,7 @@ Result compactAll(rocksdb::DB* db, bool changeLevel,
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::GeoIndex),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::FulltextIndexRemoved),
+          RocksDBColumnFamilyManager::Family::FulltextIndex),
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
   };

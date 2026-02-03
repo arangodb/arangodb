@@ -48,7 +48,7 @@ struct RocksDBColumnFamilyManager {
     EdgeIndex = 3,
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
-    FulltextIndexRemoved = 6,
+    FulltextIndex = 6, // removed
     ReplicatedLogs = 7,
     MdiIndex = 8,
     MdiVPackIndex = 9,
