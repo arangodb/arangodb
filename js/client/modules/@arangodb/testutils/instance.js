@@ -106,7 +106,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -133,6 +133,7 @@ class instance {
       }
     }
     this.authHeaders = authHeaders;
+    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -200,6 +201,7 @@ class instance {
       rootDir: this.rootDir,
       protocol: this.protocol,
       authHeaders: this.authHeaders,
+      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
@@ -229,6 +231,7 @@ class instance {
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
     this.authHeaders = struct['authHeaders'];
+    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -370,6 +373,7 @@ class instance {
         !this.args.hasOwnProperty('server.jwt-secret') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
+      this.JWT = fs.read(this.restKeyFile);
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
@@ -619,7 +623,7 @@ class instance {
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeaders, time() + seconds(60));
+    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -1337,7 +1341,7 @@ class instance {
     }
 
     let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
-    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
+    let metricsReply = download(this.url + '/_admin/metrics', opts);
     if (metricsReply.code === 200) {
       fs.write(fnMetrics, metricsReply.body);
       print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);

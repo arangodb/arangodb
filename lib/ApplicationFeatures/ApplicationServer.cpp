@@ -86,6 +86,14 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
       }});
 }
 
+ApplicationServer::~ApplicationServer() {
+  // destroy features in inverse order in which they were added.
+  for (auto it = _featureInitOrder.rbegin(); it != _featureInitOrder.rend();
+       ++it) {
+    _features[*it].reset();
+  }
+}
+
 std::pair<std::string, std::string> ApplicationServer::progressInfo() const {
   std::unique_lock mtx{_progressMutex};
 

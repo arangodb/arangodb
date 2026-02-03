@@ -857,9 +857,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       "/_admin/statistics",
       RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  f.addPrefixHandler(
-      "/_admin/metrics",
-      RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+  f.addHandler("/_admin/metrics",
+               RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/usage-metrics",
