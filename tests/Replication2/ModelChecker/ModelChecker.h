@@ -31,6 +31,7 @@
 #include <chrono>
 #include <cstdint>
 #include <deque>
+#include <format>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -59,7 +60,7 @@ struct TracedSeedGenerator {
         << "A seed should only be taken once per test!";
     auto seed = arangodb::RandomDevice::seed();
     _seedTrace.emplace(location.file_name(), location.line(),
-                       fmt::format("Seed used: {}", seed));
+                       std::format("Seed used: {}", seed));
     return seed;
   }
 
@@ -302,7 +303,7 @@ struct DFSEnumerator {
             return result;
           } else if (v->depth > maxDepth) {
             result.failed.emplace(
-                CheckError(fmt::format("path too long (>{})", maxDepth)), step,
+                CheckError(std::format("path too long (>{})", maxDepth)), step,
                 buildPathVector());
             return result;
           }

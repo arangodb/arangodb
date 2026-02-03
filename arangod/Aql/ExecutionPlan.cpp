@@ -78,8 +78,7 @@
 #include "VocBase/AccessMode.h"
 
 #include <absl/strings/str_cat.h>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
+#include <absl/strings/str_join.h>
 #include <velocypack/Iterator.h>
 
 #include <format>
@@ -2630,8 +2629,8 @@ void logMissingVariablesExceptionDetails(
                        v->name, v->id);
   };
   auto const formatVars = [&](std::vector<Variable const*> const& vars) {
-    return fmt::format(
-        "[{}]", fmt::join(vars | std::views::transform(formatVar), ", "));
+    return std::format(
+        "[{}]", absl::StrJoin(vars | std::views::transform(formatVar), ", "));
   };
   auto const formatNode = [&, errNode = exception.node()](
                               ExecutionNode const& node) -> std::string {
@@ -2646,8 +2645,8 @@ void logMissingVariablesExceptionDetails(
        node = node->getFirstDependency()) {
     nodeStrings.emplace_back(formatNode(*node));
   }
-  auto const planString = fmt::format(
-      "{}: {}", planHeader, fmt::join(nodeStrings | std::views::reverse, ", "));
+  auto const planString = std::format(
+      "{}: {}", planHeader, absl::StrJoin(nodeStrings | std::views::reverse, ", "));
 
   LOG_TOPIC("b57cb", ERR, arangodb::Logger::AQL)
       << "Plan causing MissingVariablesException of query " << query.id()

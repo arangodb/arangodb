@@ -402,7 +402,7 @@ auto inspect(Inspector& f, NonDefaultConstructibleIntLike& x) {
 }  // namespace
 
 template<>
-struct fmt::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
+struct std::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
 
 namespace arangodb::inspection {
 template<>
@@ -639,7 +639,7 @@ auto inspect(Inspector& f, MyTransformedStringEnum& x) {
 }  // namespace
 
 template<>
-struct fmt::formatter<MyStringEnum>
+struct std::formatter<MyStringEnum>
     : arangodb::inspection::inspection_formatter {};
 
 namespace {
