@@ -25,6 +25,7 @@
 
 #include "CommTask.h"
 
+#include "ActivityRegistry/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -461,6 +462,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
+
+  auto activityGuard =
+      activity_registry::Registry::ScopedCurrentlyExecutingActivity(
+          handler->_activity->id());
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase

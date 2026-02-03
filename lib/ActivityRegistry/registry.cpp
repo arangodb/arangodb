@@ -18,21 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ActivityRegistry/registry.h"
+#include "ActivityRegistry/activity.h"
 
-#include "ApplicationFeatures/ApplicationFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+namespace arangodb::activity_registry {
 
-namespace arangodb::application_features {
+Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
+    ActivityId activity) noexcept {
+  _oldExecutingActivity = Registry::currentlyExecutingActivity();
+  Registry::setCurrentlyExecutingActivity(activity);
+}
 
-class AqlFeaturePhase : public ApplicationFeaturePhase {
- public:
-  static constexpr std::string_view name() noexcept { return "AQLPhase"; }
+Registry::ScopedCurrentlyExecutingActivity::
+    ~ScopedCurrentlyExecutingActivity() {
+  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
+}
 
-  explicit AqlFeaturePhase(application_features::ApplicationServer& server);
-};
-
-}  // namespace arangodb::application_features
+}  // namespace arangodb::activity_registry

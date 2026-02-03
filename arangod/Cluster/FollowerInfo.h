@@ -149,6 +149,11 @@ class FollowerInfo {
   /// @brief clear follower list, no changes in agency necesary
   void clear();
 
+  /// @brief Clear the write concern metric. This is called when the collection
+  /// is dropped to ensure the metric is decremented before the collection
+  /// object is destroyed.
+  void clearWriteConcernMetric();
+
   /// @brief check whether the given server is a follower
   bool contains(ServerID const& s) const;
 

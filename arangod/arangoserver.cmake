@@ -206,7 +206,7 @@ if(USE_MAINTAINER_MODE)
 endif()
 
 target_sources(arangoserver PRIVATE
-RestHandler/RestCrashHandler.cpp)
+  RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
   arango_agency

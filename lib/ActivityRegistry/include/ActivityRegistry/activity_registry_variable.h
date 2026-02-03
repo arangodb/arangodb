@@ -24,11 +24,9 @@
 
 #include "Containers/Concurrent/Registry.h"
 #include "ActivityRegistry/activity.h"
+#include "ActivityRegistry/registry.h"
 
 namespace arangodb::activity_registry {
-
-using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
-using Registry = containers::Registry<ActivityInRegistry>;
 
 /**
    Global variable that holds all active activities.

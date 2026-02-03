@@ -124,8 +124,7 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
                      DatabaseFeature& databaseFeature, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
-                     std::string database, bool useVPack,
-                     activity_registry::ActivityId parentActivity);
+                     std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
 
@@ -164,6 +163,9 @@ class RocksDBDumpContext {
   // determine whether the given document should be included in the
   // dump
   bool applyFilter(velocypack::Slice const& documentSlice) const;
+
+  // get the activityId of this dump context
+  activity_registry::ActivityId activityId() const noexcept;
 
   // Contains the data for a batch
   struct Batch {
