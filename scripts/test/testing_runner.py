@@ -423,7 +423,7 @@ class TestingRunner:
     # pylint: disable=too-many-arguments disable=logging-fstring-interpolation
     def mp_zip_tar(self, fnlist, zip_dir, tarfile, verb, filetype):
         """ use full machine to compress files in zip-tar """
-        zip_slots = psutil.cpu_count(logical=False)
+        zip_slots = psutil.cpu_count(logical=False) * 2
         count = 0
         zip_slot_array = []
         for _ in range(zip_slots):
