@@ -252,20 +252,16 @@ void arangodb::aql::replaceAnyEqWithInRule(Optimizer* opt,
 
   bool modified = false;
   for (auto const& n : nodes) {
-    TRI_ASSERT(n->hasDependency());
-    auto const dep = n->getFirstDependency();
-
-    if (dep->getType() != EN::CALCULATION) {
-      continue;
-    }
-
     auto fn = ExecutionNode::castTo<FilterNode const*>(n);
-    auto cn = ExecutionNode::castTo<CalculationNode*>(dep);
-    auto outVar = cn->outVariable();
+    // find the node with the filter expression
+    auto setter = plan->getVarSetBy(fn->inVariable()->id);
 
-    if (outVar != fn->inVariable()) {
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
+
+    auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
+    auto outVar = cn->outVariable();
 
     auto root = cn->expression()->node();
 
