@@ -5,16 +5,29 @@
     model: window.ClusterServer,
     host: '',
 
-    url: arangoHelper.databaseUrl('/_admin/aardvark/cluster/DBServers'),
-
     updateUrl: function () {
-      // this.url = window.App.getNewRoute("DBServers")
-      this.url = window.App.getNewRoute(this.host) + this.url;
+      // No-op - kept for compatibility
     },
 
     initialize: function (models, options) {
       this.host = options.host;
-    // window.App.registerForUpdate(this)
+    },
+
+    fetch: function (options) {
+      var self = this;
+      options = options || {};
+
+      return arangoHelper.getHealthModels('DBServer').done(function (models) {
+        self.reset(models);
+        self.successFullTry();
+        if (options.success) {
+          options.success.call(self, self, models, options);
+        }
+      }).fail(function () {
+        if (options.error) {
+          options.error.call(self);
+        }
+      });
     },
 
     statusClass: function (s) {
@@ -37,19 +50,15 @@
         return;
       }
       var self = this;
-      var completed = function () {
+      this.fetch({
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb))
+      }).done(function () {
         self.successFullTry();
         self._retryCount = 0;
         self.forEach(function (m) {
           cb(self.statusClass(m.get('status')), m.get('address'));
         });
-      };
-      // This is the first function called in
-      // Each update loop
-      this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
-        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb))
-      }).done(completed);
+      });
     },
 
     byAddress: function (res, callback) {
@@ -58,7 +67,6 @@
       }
       var self = this;
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
       }).done(function () {
         self.successFullTry();
@@ -71,9 +79,6 @@
           res[addr].dbs.push(m);
         });
         callback(res);
-      }).error(function (e) {
-        console.log('error');
-        console.log(e);
       });
     },
 

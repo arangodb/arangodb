@@ -3,14 +3,28 @@
   window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
 
-    url: arangoHelper.databaseUrl('/_admin/aardvark/cluster/Coordinators'),
-
     updateUrl: function () {
-      this.url = window.App.getNewRoute('Coordinators');
+      // No-op - kept for compatibility
     },
 
     initialize: function () {
-      // window.App.registerForUpdate(this)
+    },
+
+    fetch: function (options) {
+      var self = this;
+      options = options || {};
+
+      return arangoHelper.getHealthModels('Coordinator').done(function (models) {
+        self.reset(models);
+        self.successFullTry();
+        if (options.success) {
+          options.success.call(self, self, models, options);
+        }
+      }).fail(function () {
+        if (options.error) {
+          options.error.call(self);
+        }
+      });
     },
 
     statusClass: function (s) {
@@ -34,7 +48,6 @@
       }
       var self = this;
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
       }).done(function () {
         self.successFullTry();
@@ -51,7 +64,6 @@
       }
       var self = this;
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
       }).done(function () {
         self.successFullTry();
@@ -73,7 +85,6 @@
         return;
       }
       this.fetch({
-        beforeSend: window.App.addAuth.bind(window.App),
         error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
       }).done(function () {
         self.successFullTry();

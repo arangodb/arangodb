@@ -4,26 +4,16 @@
   'use strict';
   var isCoordinator = null;
 
+  // In cluster mode, the web UI is always served by a coordinator.
+  // No need to call the Foxx endpoint - use frontendConfig directly.
+  // Note: Must be async to allow caller's initialization to complete first.
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
-      var url = 'cluster/amICoordinator';
-      $.ajax(
-        url,
-        {
-          async: true,
-          success: function (d) {
-            isCoordinator = d;
-            callback(false, d);
-          },
-          error: function (d) {
-            isCoordinator = d;
-            callback(true, d);
-          }
-        }
-      );
-    } else {
-      callback(false, isCoordinator);
+      isCoordinator = frontendConfig.isCluster;
     }
+    window.setTimeout(function () {
+      callback(false, isCoordinator);
+    }, 0);
   };
 
   window.versionHelper = {
@@ -96,6 +86,87 @@
       error: 'rgb(236, 112, 99)',
       warning: '#ffb075',
       debug: 'rgb(64, 74, 83)'
+    },
+
+    // Transforms health API data to legacy cluster model format.
+    // roleFilter: 'DBServer', 'Coordinator', or null/undefined for all
+    parseHealthToClusterModels: function (healthData, roleFilter) {
+      var models = [];
+      if (!healthData || typeof healthData !== 'object') {
+        return models;
+      }
+
+      _.each(healthData, function (node, nodeId) {
+        if (roleFilter && node.Role !== roleFilter) {
+          return;
+        }
+
+        var endpoint = node.Endpoint || '';
+        var protocol = 'http';
+        var address = endpoint;
+
+        if (endpoint.indexOf('tcp://') === 0) {
+          address = endpoint.substr(6);
+        } else if (endpoint.indexOf('ssl://') === 0) {
+          protocol = 'https';
+          address = endpoint.substr(6);
+        }
+
+        models.push({
+          id: nodeId,
+          name: node.ShortName || nodeId,
+          role: node.Role === 'DBServer' ? 'primary' : 'coordinator',
+          status: node.Status === 'GOOD' ? 'ok' : 'critical',
+          protocol: protocol,
+          address: address
+        });
+      });
+
+      return models;
+    },
+
+    // Fetches cluster models from cached health data with optional waiting.
+    // roleFilter: 'DBServer', 'Coordinator', or null for all
+    // Returns a jQuery Deferred that resolves with the models array.
+    getHealthModels: function (roleFilter) {
+      var self = this;
+      var deferred = $.Deferred();
+
+      var processHealth = function () {
+        var healthData = window.App && window.App.lastHealthCheckResult
+          ? window.App.lastHealthCheckResult.Health
+          : null;
+
+        if (!healthData) {
+          return null;
+        }
+        return self.parseHealthToClusterModels(healthData, roleFilter);
+      };
+
+      // If health data is already available, use it immediately
+      var models = processHealth();
+      if (models !== null) {
+        deferred.resolve(models);
+        return deferred.promise();
+      }
+
+      // Otherwise wait for health data to become available
+      var attempts = 0;
+      var maxAttempts = 50; // 5 seconds max wait
+
+      var waitForHealth = function () {
+        var models = processHealth();
+        if (models !== null) {
+          deferred.resolve(models);
+        } else if (attempts++ < maxAttempts) {
+          window.setTimeout(waitForHealth, 100);
+        } else {
+          deferred.resolve([]); // Return empty on timeout
+        }
+      };
+
+      waitForHealth();
+      return deferred.promise();
     },
 
     getCurrentJwt: function () {

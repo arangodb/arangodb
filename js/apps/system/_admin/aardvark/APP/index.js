@@ -38,5 +38,5 @@ if (internal.isFoxxApiDisabled()) {
 } else {
   context.use('/foxxes', require('./foxxes'));
 }
-context.use('/cluster', require('./cluster'));
+// cluster.js routes removed - now using /_admin/cluster/health API directly
 context.use('/statistics', require('./statistics'));
