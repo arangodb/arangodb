@@ -459,7 +459,47 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      access->requiresAllAttributesRead = true;
+
+      access->outVariable = collectNode->oldIndexVariable(); // outVariable before IndexCollectNode
+      auto& monitor = _plan->getAst()->query().resourceMonitor();
+      auto const& coveredFields = collectNode->index()->coveredFields();
+
+      for (auto const& grp : collectNode->groups()) {
+        if (grp.indexField < coveredFields.size()) { // If within coveredFields
+          std::vector<std::string> path;
+          for (auto const& attr : coveredFields[grp.indexField]) {
+            if (!attr.shouldExpand) {
+              // Construct AttributeNamePath
+              path.push_back(attr.name);
+            }
+          }
+          if (!path.empty()) {
+            access->readAttributes.insert(AttributeNamePath(path, monitor));
+          }
+        }
+      }
+
+      for (auto const& agg : collectNode->aggregations()) {
+        if (agg.expression != nullptr) {
+          containers::FlatHashSet<aql::AttributeNamePath> attributes;
+          if (Ast::getReferencedAttributesRecursive(
+                  agg.expression->node(), access->outVariable, "", attributes,
+                  monitor)) {
+            for (auto const& attr : attributes) {
+              if (!attr.empty()) {
+                access->readAttributes.insert(attr);
+              }
+            }
+          } else {
+            access->requiresAllAttributesRead = true;
+            break;
+          }
+        }
+      }
+
+      if (access->readAttributes.empty() && !access->requiresAllAttributesRead) {
+        access->requiresAllAttributesRead = true;
+      }
       break;
     }
 
@@ -627,10 +667,68 @@ bool AttributeDetector::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return true;
 }
 
-void AttributeDetector::toVelocyPack(velocypack::Builder& builder) const {
-  builder.openArray();
+namespace {
+/// @brief Stringify an attribute path as JSON array
+/// e.g., {"profile", "bio"} -> "[\"profile\", \"bio\"]"
+std::string stringifyAttributePath(std::vector<std::string> const& path) {
+  velocypack::Builder b;
+  b.openArray();
+  for (auto const& attr : path) {
+    b.add(velocypack::Value(attr));
+  }
+  b.close();
+  return b.slice().toJson();
+}
+}  // namespace
+
+std::vector<AttributeDetector::AbacPermissionRequest>
+AttributeDetector::getAbacRequests() const {
+  std::vector<AbacPermissionRequest> requests;
+
   for (auto const& access : _collectionAccesses) {
-    velocypack::serialize(builder, access);
+    // Check if we have any read access
+    bool hasReadAccess =
+        access.requiresAllAttributesRead || !access.readAttributes.empty();
+
+    // Create read request if needed
+    if (hasReadAccess) {
+      AbacPermissionRequest req;
+      req.action = "read";
+      req.resource = access.collectionName;
+
+      if (access.requiresAllAttributesRead) {
+        req.context.parameters["readAll"] = ContextParameter{{"true"}};
+      } else {
+        std::vector<std::string> attrValues;
+        attrValues.reserve(access.readAttributes.size());
+        for (auto const& path : access.readAttributes) {
+          attrValues.push_back(stringifyAttributePath(path.get()));
+        }
+        req.context.parameters["read"] =
+            ContextParameter{std::move(attrValues)};
+      }
+
+      requests.push_back(std::move(req));
+    }
+
+    // Create write request if needed (writes always require all attributes)
+    if (access.requiresAllAttributesWrite) {
+      AbacPermissionRequest req;
+      req.action = "write";
+      req.resource = access.collectionName;
+      req.context.parameters["writeAll"] = ContextParameter{{"true"}};
+      requests.push_back(std::move(req));
+    }
+  }
+
+  return requests;
+}
+
+void AttributeDetector::toVelocyPackAbac(velocypack::Builder& builder) const {
+  auto requests = getAbacRequests();
+  builder.openArray();
+  for (auto const& req : requests) {
+    velocypack::serialize(builder, req);
   }
   builder.close();
 }

@@ -24,6 +24,11 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
+// This test file is for the behavior of 
+// (1) INDEX_NODE for persistent index
+// (2) INDEX_NODE for stored values index
+// (3) INDEX_COLLECT
+
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -58,7 +63,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cn);
             collection = internal.db._create(cn);
 
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 collection.insert({
                     _key: `doc${i}`,
                     value: i,
@@ -76,7 +81,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cnStored);
             storedCollection = internal.db._create(cnStored);
 
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 storedCollection.insert({
                     _key: `sdoc${i}`,
                     value: i,
@@ -98,6 +103,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cn);
             internal.db._drop(cnStored);
         },
+
+        // TESTS FOR PERSISTENT INDEX
 
         testAbac_IndexSimpleProjection: function () {
             const query = `
@@ -533,7 +540,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertFalse(accesses[0].write.requiresAll);
         },
 
-        ///* StoredValues tests *///
+        // TESTS FOR STORED VALUES INDEX
 
         testAbac_Stored_IndexSimpleProjection: function () {
             const query = `
@@ -1076,26 +1083,314 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertFalse(accesses[0].write.requiresAll);
         },
 
-        // Test that requiresAllAttributesRead can have empty attributes list
-        testAbac_RequiresAll_EmptyAttributesList: function () {
+        // TESTS FOR INDEX_COLLECT NODE
+
+        testAbac_IndexCollectDistinct: function () {
+            collection.ensureIndex({type: "persistent", fields: ["category"]});
+
             const query = `
-    FOR doc IN ${cn}
-      RETURN doc
-  `;
+                FOR doc IN ${cn} 
+                    COLLECT category = doc.category 
+                    RETURN category`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cn);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectDistinctStoredCollection: function () {
+            storedCollection.ensureIndex({type: "persistent", fields: ["category"]});
+
+            const query = `
+                FOR doc IN ${cnStored} 
+                    COLLECT category = doc.category 
+                    RETURN category`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            assertTrue(accesses.length >= 1, "abacAccesses should include collection");
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectAggregate: function () {
+            storedCollection.ensureIndex({
+                type: "persistent",
+                fields: ["category"],
+                storedValues: ["price"]
+            });
+
+            const query = `
+                FOR doc IN ${cnStored}
+                    COLLECT category = doc.category
+                    AGGREGATE maxPrice = MAX(doc.price)
+                    RETURN [category, maxPrice]`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            assertTrue(containsReadAttr(collAccess, "price"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectAggregateMultipleAttrs: function () {
+            storedCollection.ensureIndex({
+                type: "persistent",
+                fields: ["category"],
+                storedValues: ["value", "price"]
+            });
+
+            const query = `
+                FOR doc IN ${cnStored} 
+                    COLLECT category = doc.category 
+                    AGGREGATE maxV = MAX(doc.value), sumP = SUM(doc.price) 
+                    RETURN [category, maxV, sumP]`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            assertTrue(containsReadAttr(collAccess, "value"));
+            assertTrue(containsReadAttr(collAccess, "price"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+    };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for AttributeDetector with INDEX_COLLECT node
+/// INDEX_COLLECT is an optimization that uses a persistent index to execute
+/// COLLECT operations more efficiently. The AttributeDetector should correctly
+/// detect that INDEX_COLLECT requires all attributes from the collection.
+////////////////////////////////////////////////////////////////////////////////
+
+function attributeDetectorIndexCollectTestSuite() {
+    const cnCollect = "UnitTestsAttributeDetectorIndexCollect";
+    let collectCollection;
+
+    const explainAbac = function (query, bindVars, options) {
+        const explainRes = db._createStatement({
+            query: query,
+            bindVars: bindVars || {},
+            options: options || {}
+        }).explain();
+        return explainRes.abacAccesses || [];
+    };
+
+    const hasIndexCollectNode = function (query, bindVars, options) {
+        const explainRes = db._createStatement({
+            query: query,
+            bindVars: bindVars || {},
+            options: options || {}
+        }).explain();
+        return explainRes.plan.nodes.some(n => n.type === "IndexCollectNode");
+    };
+
+    const containsReadAttr = function (access, attrPath) {
+        const expected = Array.isArray(attrPath) ? attrPath : [attrPath];
+        const attrs = (access && access.read && access.read.attributes) || [];
+        return attrs.some(a =>
+            Array.isArray(a) &&
+            a.length === expected.length &&
+            a.every((seg, i) => seg === expected[i])
+        );
+    };
+
+    return {
+        setUp: function () {
+            internal.db._drop(cnCollect);
+            collectCollection = internal.db._create(cnCollect);
+
+            // Insert test data
+            for (let i = 0; i < 100; ++i) {
+                collectCollection.insert({
+                    _key: `doc${i}`,
+                    category: `cat${i % 5}`,
+                    subcategory: `sub${i % 10}`,
+                    value: i,
+                    name: `name${i}`,
+                    price: i * 10
+                });
+            }
+
+            // Create persistent index for INDEX_COLLECT optimization
+            collectCollection.ensureIndex({
+                type: "persistent",
+                fields: ["category", "subcategory", "value"]
+            });
+        },
+
+        tearDown: function () {
+            internal.db._drop(cnCollect);
+        },
+
+        // Test that simple COLLECT triggers INDEX_COLLECT
+        // and AttributeDetector marks requiresAllAttributesRead = true
+        testAbac_IndexCollect_SimpleCollect: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT category = doc.category
+        RETURN category
+      `;
+
+            // Verify INDEX_COLLECT is used
+            assertTrue(hasIndexCollectNode(query),
+                "Expected INDEX_COLLECT optimization to be applied");
+
             const accesses = explainAbac(query);
 
             assertEqual(1, accesses.length);
-            assertEqual(cn, accesses[0].collection);
+            assertEqual(cnCollect, accesses[0].collection);
 
+            // INDEX_COLLECT requires all attributes
+            assertTrue(accesses[0].read.requiresAll,
+                "INDEX_COLLECT should mark requiresAllAttributesRead = true");
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test COLLECT with multiple fields
+        testAbac_IndexCollect_MultiFieldCollect: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT category = doc.category, subcategory = doc.subcategory
+        RETURN {category, subcategory}
+      `;
+
+            assertTrue(hasIndexCollectNode(query),
+                "Expected INDEX_COLLECT optimization to be applied");
+
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnCollect, accesses[0].collection);
+
+            assertTrue(accesses[0].read.requiresAll,
+                "INDEX_COLLECT should mark requiresAllAttributesRead = true");
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test COLLECT with AGGREGATE
+        testAbac_IndexCollect_WithAggregate: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT category = doc.category
+        AGGREGATE maxVal = MAX(doc.value)
+        RETURN {category, maxVal}
+      `;
+
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnCollect, accesses[0].collection);
+
+            // Either requiresAll (INDEX_COLLECT) or specific attributes
+            if (hasIndexCollectNode(query)) {
+                assertTrue(accesses[0].read.requiresAll);
+            } else {
+                assertTrue(containsReadAttr(accesses[0], "category") ||
+                    accesses[0].read.requiresAll);
+            }
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test COLLECT without INDEX_COLLECT (disabled via options)
+        testAbac_IndexCollect_DisabledByOption: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT category = doc.category OPTIONS {disableIndex: true}
+        RETURN category
+      `;
+
+            // INDEX_COLLECT should NOT be used
+            assertFalse(hasIndexCollectNode(query),
+                "INDEX_COLLECT should be disabled by option");
+
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnCollect, accesses[0].collection);
+
+            // Without INDEX_COLLECT, only specific attributes
+            assertTrue(containsReadAttr(accesses[0], "category"));
+            assertFalse(accesses[0].read.requiresAll);
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test regular COLLECT (no suitable index)
+        testAbac_RegularCollect_NoIndexCollect: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT name = doc.name
+        RETURN name
+      `;
+
+            // INDEX_COLLECT should NOT be used (no suitable index)
+            assertFalse(hasIndexCollectNode(query),
+                "INDEX_COLLECT should not be available for non-indexed field");
+
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnCollect, accesses[0].collection);
+
+            assertTrue(containsReadAttr(accesses[0], "name"));
+            assertFalse(accesses[0].read.requiresAll);
+            assertFalse(accesses[0].write.requiresAll);
+        },
+
+        // Test COLLECT with INTO clause (disables INDEX_COLLECT)
+        testAbac_IndexCollect_IntoClause: function () {
+            const query = `
+        FOR doc IN ${cnCollect}
+        COLLECT category = doc.category INTO groups
+        RETURN {category, count: LENGTH(groups)}
+      `;
+
+            // INTO clause disables INDEX_COLLECT
+            assertFalse(hasIndexCollectNode(query),
+                "INDEX_COLLECT should not be used with INTO clause");
+
+            const accesses = explainAbac(query);
+
+            assertEqual(1, accesses.length);
+            assertEqual(cnCollect, accesses[0].collection);
+
+            // INTO requires all document attributes
             assertTrue(accesses[0].read.requiresAll);
-            // When requiresAll is true, attributes list can be empty
-            assertTrue(Array.isArray(accesses[0].read.attributes));
-            // Empty list is valid when requiresAll is true
             assertFalse(accesses[0].write.requiresAll);
         },
     };
 }
 
 jsunity.run(attributeDetectorIndexStoredValuesTestSuite);
+jsunity.run(attributeDetectorIndexCollectTestSuite);
 
 return jsunity.done();

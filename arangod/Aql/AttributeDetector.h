@@ -29,6 +29,7 @@
 #include "Containers/FlatHashSet.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -84,11 +85,52 @@ class AttributeDetector final
     }
   };
 
+  /// @brief Context parameter for ABAC request (matches protobuf)
+  struct ContextParameter {
+    std::vector<std::string> values;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, ContextParameter& x) {
+      return f.object(x).fields(f.field("values", x.values));
+    }
+  };
+
+  /// @brief Context for ABAC request (matches protobuf)
+  struct AbacContext {
+    std::map<std::string, ContextParameter> parameters;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, AbacContext& x) {
+      return f.object(x).fields(f.field("parameters", x.parameters));
+    }
+  };
+
+  /// @brief Single ABAC permission request (matches protobuf)
+  struct AbacPermissionRequest {
+    std::string action;
+    std::string resource;
+    AbacContext context;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, AbacPermissionRequest& x) {
+      return f.object(x).fields(f.field("action", x.action),
+                                f.field("resource", x.resource),
+                                f.field("context", x.context));
+    }
+  };
+
   explicit AttributeDetector(ExecutionPlan* plan);
   ~AttributeDetector() = default;
 
   void detect();
-  void toVelocyPack(velocypack::Builder& builder) const;
+
+  /// @brief Serialize to VelocyPack in ABAC batch request format
+  /// Produces an array of AbacPermissionRequest objects matching the
+  /// authorization service protobuf API
+  void toVelocyPackAbac(velocypack::Builder& builder) const;
+
+  /// @brief Get ABAC permission requests for all collections
+  std::vector<AbacPermissionRequest> getAbacRequests() const;
 
   std::vector<CollectionAccess> const& getCollectionAccesses() const {
     return _collectionAccesses;
