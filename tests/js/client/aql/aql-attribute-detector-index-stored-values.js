@@ -51,11 +51,11 @@ function attributeDetectorIndexStoredValuesTestSuite() {
     const containsReadAttr = function (access, attrPath) {
         const expected = Array.isArray(attrPath) ? attrPath : [attrPath];
         const attrs = (access && access.read && access.read.attributes) || [];
-        return attrs.some(a =>
-            Array.isArray(a) &&
-            a.length === expected.length &&
-            a.every((seg, i) => seg === expected[i])
-        );
+        return attrs.some(a => {
+            return Array.isArray(a) &&
+                a.length === expected.length &&
+                a.every((seg, i) => seg === expected[i]);
+        });
     };
 
     return {
@@ -1217,11 +1217,11 @@ function attributeDetectorIndexCollectTestSuite() {
     const containsReadAttr = function (access, attrPath) {
         const expected = Array.isArray(attrPath) ? attrPath : [attrPath];
         const attrs = (access && access.read && access.read.attributes) || [];
-        return attrs.some(a =>
-            Array.isArray(a) &&
-            a.length === expected.length &&
-            a.every((seg, i) => seg === expected[i])
-        );
+        return attrs.some(a => {
+            return Array.isArray(a) &&
+                a.length === expected.length &&
+                a.every((seg, i) => seg === expected[i]);
+        });
     };
 
     return {

@@ -85,7 +85,8 @@ class AttributeDetector final
     }
   };
 
-  /// @brief Context parameter for ABAC request (matches protobuf)
+  /// @brief Context parameter for ABAC request (protobuf has no
+  /// map<string, repeated string>; message uses repeated string values = 1).
   struct ContextParameter {
     std::vector<std::string> values;
 
@@ -128,6 +129,12 @@ class AttributeDetector final
   /// Produces an array of AbacPermissionRequest objects matching the
   /// authorization service protobuf API
   void toVelocyPackAbac(velocypack::Builder& builder) const;
+
+  /// @brief Returns the ABAC batch payload as a stringified JSON string
+  /// (equivalent to JSON.stringify of the request array; for protobuf string
+  /// field or wire format). Builds same content as toVelocyPackAbac then
+  /// serializes to JSON string.
+  std::string getAbacRequestsJsonString() const;
 
   /// @brief Get ABAC permission requests for all collections
   std::vector<AbacPermissionRequest> getAbacRequests() const;

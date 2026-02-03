@@ -42,7 +42,9 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Projections.h"
+#include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
+#include "VocBase/vocbase.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Graph/ShortestPathOptions.h"
@@ -688,16 +690,24 @@ std::vector<AttributeDetector::AbacPermissionRequest>
 AttributeDetector::getAbacRequests() const {
   std::vector<AbacPermissionRequest> requests;
 
+  std::string resourcePrefix;
+  if (_plan != nullptr) {
+    resourcePrefix =
+        "arangodb:" + _plan->getAst()->query().vocbase().name() + ":";
+  }
+
   for (auto const& access : _collectionAccesses) {
-    // Check if we have any read access
+    std::string const resource = resourcePrefix.empty()
+                                     ? access.collectionName
+                                     : resourcePrefix + access.collectionName;
+
     bool hasReadAccess =
         access.requiresAllAttributesRead || !access.readAttributes.empty();
 
-    // Create read request if needed
     if (hasReadAccess) {
       AbacPermissionRequest req;
-      req.action = "read";
-      req.resource = access.collectionName;
+      req.action = "core:ReadCollection";
+      req.resource = resource;
 
       if (access.requiresAllAttributesRead) {
         req.context.parameters["readAll"] = ContextParameter{{"true"}};
@@ -714,11 +724,10 @@ AttributeDetector::getAbacRequests() const {
       requests.push_back(std::move(req));
     }
 
-    // Create write request if needed (writes always require all attributes)
     if (access.requiresAllAttributesWrite) {
       AbacPermissionRequest req;
-      req.action = "write";
-      req.resource = access.collectionName;
+      req.action = "core:WriteCollection";
+      req.resource = resource;
       req.context.parameters["writeAll"] = ContextParameter{{"true"}};
       requests.push_back(std::move(req));
     }
@@ -734,6 +743,12 @@ void AttributeDetector::toVelocyPackAbac(velocypack::Builder& builder) const {
     velocypack::serialize(builder, req);
   }
   builder.close();
+}
+
+std::string AttributeDetector::getAbacRequestsJsonString() const {
+  velocypack::Builder builder;
+  toVelocyPackAbac(builder);
+  return builder.slice().toJson();
 }
 
 }  // namespace arangodb::aql
