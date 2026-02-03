@@ -436,10 +436,18 @@ bool auth::TokenCache::validateJwtES256Signature(
   std::string signature;
   absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
-  READ_LOCKER(guard, _jwtSecretLock);
-  return SslInterface::verifyES256Signature(
-      _jwtActiveSecret.data(), _jwtActiveSecret.size(), message.data(),
-      message.size(), signature.data(), signature.size());
+  READ_LOCKER(readLocker, _jwtSecretLock);
+
+  // check all the passive certificates
+  for (auto const& passive : _jwtPassiveSecrets) {
+    bool good = SslInterface::verifyES256Signature(
+        passive.data(), passive.size(), message.data(), message.size(),
+        signature.data(), signature.size());
+    if (good) {
+      return good;
+    }
+  }
+  return false;
 }
 #endif
 

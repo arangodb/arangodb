@@ -312,7 +312,10 @@ void AuthenticationFeature::validateOptions(
     }
   }
   if (!_options.jwtSecretProgramOption.empty()) {
-    if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+    // Only check length for non-PEM (HS256) secrets
+    // ES256 keys in PEM format can be longer
+    if (!_options.jwtSecretIsES256 &&
+        _options.jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << kMaxSecretLength
           << " have " << _options.jwtSecretProgramOption.length();
@@ -567,12 +570,44 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
     list.erase(list.begin());
     for (auto const& file : list) {
       std::string secret = slurpy(file);
+
+      if (secret.empty()) {
+        continue;  // ignore empty files
+      }
+
+      // Check if this is a PEM file
+      if (isPemFormat(secret)) {
+        // Ignore ES256 private keys in passive secrets (only the active secret
+        // should sign)
+        if (isEcPrivateKey(secret)) {
+          LOG_TOPIC("4922c", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Ignoring ES256 private key in passive secrets: " << file
+              << " (only the first/active secret should be a private key)";
+          continue;
+        }
+
+        // Accept ES256 public keys for verification
+        if (isEcPublicKey(secret)) {
+          LOG_TOPIC("4922b", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Adding ES256 public key to passive secrets for verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
+          continue;
+        }
+
+        // PEM file but not a valid EC key
+        LOG_TOPIC("4922a", WARN, arangodb::Logger::AUTHENTICATION)
+            << "Ignoring PEM file that does not contain a valid EC key: "
+            << file;
+        continue;
+      }
+
+      // For non-PEM (HS256) secrets, check the length limit
       if (secret.length() > kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
-      if (!secret.empty()) {  // ignore
-        passiveSecrets.push_back(std::move(secret));
-      }
+
+      passiveSecrets.push_back(std::move(secret));
     }
   }
   _options.jwtPassiveSecrets = std::move(passiveSecrets);

@@ -29,7 +29,11 @@
 #include "Basics/memory.h"
 #include "Random/UniformCharacter.h"
 
+#include "Logger/LogMacros.h"
+
 #include <cstring>
+#include <openssl/bn.h>
+#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -331,6 +335,66 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
     return false;
   }
 
+  // JWT ES256 signatures are in raw R||S format (IEEE P1363), but OpenSSL
+  // expects DER-encoded ECDSA-Sig-Value. For P-256, R and S are 32 bytes each.
+  std::string derSignature;
+  if (signatureLen == 64) {
+    // Convert from raw R||S to DER format
+    unsigned char const* sigBytes =
+        reinterpret_cast<unsigned char const*>(signature);
+
+    // Create ECDSA_SIG structure
+    ECDSA_SIG* ecdsaSig = ECDSA_SIG_new();
+    if (ecdsaSig == nullptr) {
+      LOG_TOPIC("8f3a1", DEBUG, Logger::AUTHENTICATION)
+          << "Failed to create ECDSA_SIG structure for ES256 signature "
+             "verification";
+      return false;
+    }
+    auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
+
+    // Set R and S from the raw signature
+    BIGNUM* r = BN_bin2bn(sigBytes, 32, nullptr);
+    BIGNUM* s = BN_bin2bn(sigBytes + 32, 32, nullptr);
+    if (r == nullptr || s == nullptr) {
+      LOG_TOPIC("8f3a2", DEBUG, Logger::AUTHENTICATION)
+          << "Failed to convert R and S components to BIGNUM for ES256 "
+             "signature";
+      if (r != nullptr) BN_free(r);
+      if (s != nullptr) BN_free(s);
+      return false;
+    }
+
+    // ECDSA_SIG_set0 takes ownership of r and s
+    if (ECDSA_SIG_set0(ecdsaSig, r, s) != 1) {
+      LOG_TOPIC("8f3a3", DEBUG, Logger::AUTHENTICATION)
+          << "Failed to set R and S in ECDSA_SIG structure";
+      BN_free(r);
+      BN_free(s);
+      return false;
+    }
+
+    // Convert to DER format
+    int derLen = i2d_ECDSA_SIG(ecdsaSig, nullptr);
+    if (derLen <= 0) {
+      LOG_TOPIC("8f3a4", DEBUG, Logger::AUTHENTICATION)
+          << "Failed to get DER signature length for ES256";
+      return false;
+    }
+
+    derSignature.resize(derLen);
+    unsigned char* derPtr =
+        reinterpret_cast<unsigned char*>(derSignature.data());
+    if (i2d_ECDSA_SIG(ecdsaSig, &derPtr) != derLen) {
+      LOG_TOPIC("8f3a5", DEBUG, Logger::AUTHENTICATION)
+          << "Failed to encode ES256 signature to DER format";
+      return false;
+    }
+
+    signature = derSignature.data();
+    signatureLen = derLen;
+  }
+
   EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
   if (mdctx == nullptr) {
     return false;
@@ -348,6 +412,11 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
   int result = EVP_DigestVerifyFinal(
       mdctx, reinterpret_cast<unsigned char const*>(signature), signatureLen);
 
+  if (result == -1) {
+    LOG_TOPIC("8f3a6", TRACE, Logger::AUTHENTICATION)
+        << "Error verifying ES256 signature: "
+        << ERR_error_string(ERR_get_error(), nullptr);
+  }
   return result == 1;
 }
 
@@ -395,23 +464,65 @@ int signES256(char const* privateKeyPem, size_t privateKeyLen,
     return 1;
   }
 
-  size_t signatureLen = 0;
-  if (EVP_DigestSignFinal(mdctx, nullptr, &signatureLen) != 1) {
+  size_t derSignatureLen = 0;
+  if (EVP_DigestSignFinal(mdctx, nullptr, &derSignatureLen) != 1) {
     error.append("EVP_DigestSignFinal (length) failed: ")
         .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
 
-  signature.resize(signatureLen);
+  std::string derSignature;
+  derSignature.resize(derSignatureLen);
   if (EVP_DigestSignFinal(mdctx,
-                          reinterpret_cast<unsigned char*>(signature.data()),
-                          &signatureLen) != 1) {
+                          reinterpret_cast<unsigned char*>(derSignature.data()),
+                          &derSignatureLen) != 1) {
     error.append("EVP_DigestSignFinal failed: ")
         .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
+  derSignature.resize(derSignatureLen);
 
-  signature.resize(signatureLen);
+  // Convert DER signature to raw R||S format for JWT compatibility
+  unsigned char const* derPtr =
+      reinterpret_cast<unsigned char const*>(derSignature.data());
+  ECDSA_SIG* ecdsaSig = d2i_ECDSA_SIG(nullptr, &derPtr, derSignature.size());
+  if (ecdsaSig == nullptr) {
+    error.append("Failed to parse DER signature: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
+
+  BIGNUM const* r = nullptr;
+  BIGNUM const* s = nullptr;
+  ECDSA_SIG_get0(ecdsaSig, &r, &s);
+  if (r == nullptr || s == nullptr) {
+    error.append("Failed to get R and S from signature");
+    return 1;
+  }
+
+  // For P-256, R and S should be 32 bytes each
+  signature.resize(64);
+  unsigned char* sigBytes = reinterpret_cast<unsigned char*>(signature.data());
+
+  // Pad R to 32 bytes
+  int rLen = BN_num_bytes(r);
+  if (rLen > 32) {
+    error.append("R component too large");
+    return 1;
+  }
+  std::memset(sigBytes, 0, 32);
+  BN_bn2bin(r, sigBytes + (32 - rLen));
+
+  // Pad S to 32 bytes
+  int sLen = BN_num_bytes(s);
+  if (sLen > 32) {
+    error.append("S component too large");
+    return 1;
+  }
+  std::memset(sigBytes + 32, 0, 32);
+  BN_bn2bin(s, sigBytes + 32 + (32 - sLen));
+
   return 0;
 }
 
