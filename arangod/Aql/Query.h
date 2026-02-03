@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AttributeDetector.h"
 #include "Aql/BindParameters.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
@@ -316,6 +317,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
+  std::vector<AttributeDetector::CollectionAccess> const& abacAccesses() const {
+    return _abacAccesses;
+  }
+
   /// @brief convert query bind parameters to a string representation
   void stringifyBindParameters(std::string& out, std::string_view prefix,
                                size_t maxLength) const;
@@ -539,6 +544,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                           // transaction, it is valid and remains valid
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
+
+  std::vector<AttributeDetector::CollectionAccess> _abacAccesses;
 
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;

@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
+#include "Aql/AttributeDetector.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -87,6 +88,8 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/V8Executor.h"
 #endif
+
+#include "CollectionAccess.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Dumper.h>
@@ -706,6 +709,12 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   _bindParameters.validateAllUsed();
 
   plan->findVarUsage();
+
+  enterState(QueryExecutionState::ValueType::ABAC_CHECK);
+
+  AttributeDetector detector(plan.get());
+  detector.detect();
+  _abacAccesses = detector.getCollectionAccesses();
 
   if (_planCacheKey.has_value()) {
     TRI_ASSERT(_queryOptions.optimizePlanForCaching &&
@@ -1394,6 +1403,8 @@ QueryResult Query::explain() {
   options.buildUnindexedArrays = true;
   result.data = std::make_shared<VPackBuilder>(&options);
 
+  std::vector<AttributeDetector::CollectionAccess> abacAccessesForExplain;
+
   try {
     if (tryLoadPlanFromCache()) {
       TRI_ASSERT(_planCacheKey.has_value());
@@ -1569,6 +1580,12 @@ QueryResult Query::explain() {
           _planCacheKey.reset();
         }
       }
+      // ABAC collection accesses
+      // explain() doesn't call preparePlan() that invokes AttributeDetector, so
+      // it needs to invoke AttributeDetector independently using bestPlan
+      AttributeDetector detector(bestPlan.get());
+      detector.detect();
+      abacAccessesForExplain = detector.getCollectionAccesses();
     }
 
     // the query object no owns the memory used by the plan(s)
@@ -1596,6 +1613,12 @@ QueryResult Query::explain() {
         // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
       }
+
+      b.add("abacAccesses", velocypack::ValueType::Array);
+      for (auto const& access : abacAccessesForExplain) {
+        velocypack::serialize(b, access);
+      }
+      b.close();
     }
   } catch (Exception const& ex) {
     result.reset(Result(

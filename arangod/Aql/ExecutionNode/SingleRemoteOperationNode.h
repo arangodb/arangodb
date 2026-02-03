@@ -92,6 +92,7 @@ class SingleRemoteOperationNode final : public ExecutionNode,
       const noexcept override final;
 
   std::string const& key() const { return _key; }
+  ExecutionNode::NodeType mode() const { return _mode; }
 
  protected:
   /// @brief export to VelocyPack

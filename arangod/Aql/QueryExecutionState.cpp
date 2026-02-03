@@ -37,6 +37,7 @@ static std::string const StateNames[] = {
     "loading collections",      // LOADING_COLLECTIONS
     "instantiating plan",       // PLAN_INSTANTIATION
     "optimizing plan",          // PLAN_OPTIMIZATION
+    "checking abac",            // ABAC_CHECK
     "instantiating executors",  // PHYSICAL_INSTANTIATION
     "executing",                // EXECUTION
     "finalizing",               // FINALIZATION
