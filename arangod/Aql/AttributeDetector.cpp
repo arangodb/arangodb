@@ -459,7 +459,47 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      access->requiresAllAttributesRead = true;
+
+      access->outVariable = collectNode->oldIndexVariable(); // outVariable before IndexCollectNode
+      auto& monitor = _plan->getAst()->query().resourceMonitor();
+      auto const& coveredFields = collectNode->index()->coveredFields();
+
+      for (auto const& grp : collectNode->groups()) {
+        if (grp.indexField < coveredFields.size()) { // If within coveredFields
+          std::vector<std::string> path;
+          for (auto const& attr : coveredFields[grp.indexField]) {
+            if (!attr.shouldExpand) {
+              // Construct AttributeNamePath
+              path.push_back(attr.name);
+            }
+          }
+          if (!path.empty()) {
+            access->readAttributes.insert(AttributeNamePath(path, monitor));
+          }
+        }
+      }
+
+      for (auto const& agg : collectNode->aggregations()) {
+        if (agg.expression != nullptr) {
+          containers::FlatHashSet<aql::AttributeNamePath> attributes;
+          if (Ast::getReferencedAttributesRecursive(
+                  agg.expression->node(), access->outVariable, "", attributes,
+                  monitor)) {
+            for (auto const& attr : attributes) {
+              if (!attr.empty()) {
+                access->readAttributes.insert(attr);
+              }
+            }
+          } else {
+            access->requiresAllAttributesRead = true;
+            break;
+          }
+        }
+      }
+
+      if (access->readAttributes.empty() && !access->requiresAllAttributesRead) {
+        access->requiresAllAttributesRead = true;
+      }
       break;
     }
 

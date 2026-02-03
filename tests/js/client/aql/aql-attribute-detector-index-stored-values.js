@@ -24,6 +24,11 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
+// This test file is for the behavior of 
+// (1) INDEX_NODE for persistent index
+// (2) INDEX_NODE for stored values index
+// (3) INDEX_COLLECT
+
 const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -58,7 +63,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cn);
             collection = internal.db._create(cn);
 
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 collection.insert({
                     _key: `doc${i}`,
                     value: i,
@@ -76,7 +81,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cnStored);
             storedCollection = internal.db._create(cnStored);
 
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 storedCollection.insert({
                     _key: `sdoc${i}`,
                     value: i,
@@ -98,6 +103,8 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             internal.db._drop(cn);
             internal.db._drop(cnStored);
         },
+
+        // TESTS FOR PERSISTENT INDEX
 
         testAbac_IndexSimpleProjection: function () {
             const query = `
@@ -533,7 +540,7 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertFalse(accesses[0].write.requiresAll);
         },
 
-        ///* StoredValues tests *///
+        // TESTS FOR STORED VALUES INDEX
 
         testAbac_Stored_IndexSimpleProjection: function () {
             const query = `
@@ -1076,22 +1083,104 @@ function attributeDetectorIndexStoredValuesTestSuite() {
             assertFalse(accesses[0].write.requiresAll);
         },
 
-        // Test that requiresAllAttributesRead can have empty attributes list
-        testAbac_RequiresAll_EmptyAttributesList: function () {
+        // TESTS FOR INDEX_COLLECT NODE
+
+        testAbac_IndexCollectDistinct: function () {
+            collection.ensureIndex({type: "persistent", fields: ["category"]});
+
             const query = `
-    FOR doc IN ${cn}
-      RETURN doc
-  `;
-            const accesses = explainAbac(query);
+                FOR doc IN ${cn} 
+                    COLLECT category = doc.category 
+                    RETURN category`;
 
-            assertEqual(1, accesses.length);
-            assertEqual(cn, accesses[0].collection);
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
 
-            assertTrue(accesses[0].read.requiresAll);
-            // When requiresAll is true, attributes list can be empty
-            assertTrue(Array.isArray(accesses[0].read.attributes));
-            // Empty list is valid when requiresAll is true
-            assertFalse(accesses[0].write.requiresAll);
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cn);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectDistinctStoredCollection: function () {
+            storedCollection.ensureIndex({type: "persistent", fields: ["category"]});
+
+            const query = `
+                FOR doc IN ${cnStored} 
+                    COLLECT category = doc.category 
+                    RETURN category`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            assertTrue(accesses.length >= 1, "abacAccesses should include collection");
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectAggregate: function () {
+            storedCollection.ensureIndex({
+                type: "persistent",
+                fields: ["category"],
+                storedValues: ["price"]
+            });
+
+            const query = `
+                FOR doc IN ${cnStored}
+                    COLLECT category = doc.category
+                    AGGREGATE maxPrice = MAX(doc.price)
+                    RETURN [category, maxPrice]`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            assertTrue(containsReadAttr(collAccess, "price"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
+        },
+
+        testAbac_IndexCollectAggregateMultipleAttrs: function () {
+            storedCollection.ensureIndex({
+                type: "persistent",
+                fields: ["category"],
+                storedValues: ["value", "price"]
+            });
+
+            const query = `
+                FOR doc IN ${cnStored} 
+                    COLLECT category = doc.category 
+                    AGGREGATE maxV = MAX(doc.value), sumP = SUM(doc.price) 
+                    RETURN [category, maxV, sumP]`;
+
+            const explainRes = db._createStatement({query: query}).explain();
+            const indexCollectNodes = (explainRes.plan.nodes || []).filter(n => n.type === "IndexCollectNode");
+            assertEqual(1, indexCollectNodes.length, "Plan should contain exactly one IndexCollectNode");
+
+            const accesses = explainRes.abacAccesses || [];
+            const collAccess = accesses.find(a => a.collection === cnStored);
+
+            assertTrue(containsReadAttr(collAccess, "category"));
+            assertTrue(containsReadAttr(collAccess, "value"));
+            assertTrue(containsReadAttr(collAccess, "price"));
+
+            assertFalse(collAccess.read.requiresAll);
+            assertFalse(collAccess.write.requiresAll);
         },
     };
 }
