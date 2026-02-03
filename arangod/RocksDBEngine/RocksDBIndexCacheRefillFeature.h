@@ -106,8 +106,6 @@ class RocksDBIndexCacheRefillFeature final
   static metrics::Counter& addTotalFullIndexRefills(
       metrics::MetricsFeature& metrics);
 
-  static size_t defaultConcurrentIndexFillTasks();
-
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);

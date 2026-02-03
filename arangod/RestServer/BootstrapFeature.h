@@ -27,10 +27,6 @@
 #include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
-class FoxxFeature;
-namespace application_features {
-class ServerFeaturePhase;
-}
 class V8DealerFeature;
 class ClusterUpgradeFeature;
 class SystemDatabaseFeature;

@@ -27,9 +27,6 @@
 #include "Cache/CacheOptionsProvider.h"
 
 namespace arangodb {
-namespace application_features {
-class BasicFeaturePhaseServer;
-}
 
 class CacheOptionsFeature final
     : public application_features::ApplicationFeature,
