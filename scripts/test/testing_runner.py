@@ -490,6 +490,7 @@ class TestingRunner:
         core_dir = Path.cwd()
         core_pattern = "core*"
         system_corefiles = []
+        self.cleanup_unneeded_binary_files()
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
         else:
@@ -562,7 +563,6 @@ class TestingRunner:
                 logging.info("Failed to create binaries zip: %s", str(ex))
                 self.append_report_txt("Failed to create binaries zip: " + str(ex))
 
-            self.cleanup_unneeded_binary_files()
             shutil.rmtree(str(core_zip_dir), ignore_errors=True)
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
