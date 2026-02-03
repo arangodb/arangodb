@@ -23,7 +23,7 @@
 
 #include "Indexes.h"
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryPlanCache.h"
 #include "Basics/ReadLocker.h"

@@ -25,7 +25,7 @@
 #include <thread>
 
 #include "Async/Registry/registry_variable.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

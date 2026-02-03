@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"

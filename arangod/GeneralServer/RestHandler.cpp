@@ -45,7 +45,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>

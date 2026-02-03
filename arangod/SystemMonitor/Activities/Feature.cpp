@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Feature.h"
 
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include "Basics/FutureSharedLock.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"

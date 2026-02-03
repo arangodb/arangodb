@@ -25,7 +25,7 @@
 #include "Async/Registry/promise.h"
 #include "Logger/LogContext.h"
 #include "Utils/ExecContext.h"
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 
 namespace arangodb {
 

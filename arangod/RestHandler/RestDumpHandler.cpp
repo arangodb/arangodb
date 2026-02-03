@@ -23,7 +23,7 @@
 
 #include "RestDumpHandler.h"
 
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"

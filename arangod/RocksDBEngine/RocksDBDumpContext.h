@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Inspection/Types.h"

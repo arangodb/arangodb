@@ -32,7 +32,7 @@
 #include <string_view>
 #include <utility>
 
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"

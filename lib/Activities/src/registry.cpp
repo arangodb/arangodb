@@ -20,8 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/registry.h"
-#include "ActivityRegistry/activity.h"
+#include "Activities/registry.h"
+#include "Activities/activity.h"
 
 namespace arangodb::activities {
 

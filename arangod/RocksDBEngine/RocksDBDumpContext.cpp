@@ -23,8 +23,8 @@
 
 #include "RocksDBDumpContext.h"
 
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"

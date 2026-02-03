@@ -39,7 +39,7 @@
 #include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

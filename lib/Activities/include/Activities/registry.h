@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "Containers/Concurrent/Registry.h"
 
 namespace arangodb::activities {

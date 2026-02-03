@@ -25,7 +25,7 @@
 #include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;

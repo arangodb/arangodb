@@ -23,8 +23,8 @@
 #pragma once
 
 #include "Containers/Concurrent/Registry.h"
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 
 namespace arangodb::activities {
 

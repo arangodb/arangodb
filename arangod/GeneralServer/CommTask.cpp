@@ -25,7 +25,7 @@
 
 #include "CommTask.h"
 
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
