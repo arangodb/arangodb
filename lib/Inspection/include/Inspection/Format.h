@@ -23,10 +23,8 @@
 
 #pragma once
 
-
 #include <format>
 #include <sstream>
-
 
 #include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackSaveInspector.h"
@@ -147,8 +145,8 @@ struct std::formatter<arangodb::inspection::JsonPrintable<T>, Char>
 
     // Use stringstream to capture the JSON output
     std::basic_ostringstream<Char> oss;
-    arangodb::inspection::JsonPrintInspector<> insp(oss, format,
-                                                     _quoteFieldNames && v.quoteFieldNames);
+    arangodb::inspection::JsonPrintInspector<> insp(
+        oss, format, _quoteFieldNames && v.quoteFieldNames);
     auto res = insp.apply(v.value);
     TRI_ASSERT(res.ok());  // TODO - print error if failed?
 
@@ -158,7 +156,6 @@ struct std::formatter<arangodb::inspection::JsonPrintable<T>, Char>
   }
 
  private:
-
   // format: 'm' - Minimal, 'c' - Compact, 'p' - Pretty.
   std::optional<arangodb::inspection::JsonPrintFormat> _format;
   bool _quoteFieldNames = true;

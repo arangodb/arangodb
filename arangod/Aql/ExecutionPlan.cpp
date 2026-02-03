@@ -2645,8 +2645,9 @@ void logMissingVariablesExceptionDetails(
        node = node->getFirstDependency()) {
     nodeStrings.emplace_back(formatNode(*node));
   }
-  auto const planString = std::format(
-      "{}: {}", planHeader, absl::StrJoin(nodeStrings | std::views::reverse, ", "));
+  auto const planString =
+      std::format("{}: {}", planHeader,
+                  absl::StrJoin(nodeStrings | std::views::reverse, ", "));
 
   LOG_TOPIC("b57cb", ERR, arangodb::Logger::AQL)
       << "Plan causing MissingVariablesException of query " << query.id()
