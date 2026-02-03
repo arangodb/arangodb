@@ -70,7 +70,7 @@ Activity::Activity(std::string name, Metadata metadata)
             .metadata = metadata};
       })} {}
 
-Activity::Activity(std::string name, Metadata metadata, Parent parent)
+Activity::Activity(std::string name, Metadata metadata, ActivityId parent)
     : _node_in_registry{get_thread_registry().add([&]() {
         return ActivityInRegistry{.name = std::move(name),
                                   .state = State::Active,
