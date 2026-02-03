@@ -1957,9 +1957,9 @@ TEST_F(AttributeDetectorTest, ArangoSearchView_NestedFieldSearch) {
       foundUsersAccess = true;
       // Either nested attribute or all attributes depending on view config
       EXPECT_TRUE(access.requiresAllAttributesRead ||
-                  access.readAttributes.contains(makePath(
-                      std::vector<std::string>{"profile", "bio"},
-                      query->resourceMonitor())));
+                  access.readAttributes.contains(
+                      makePath(std::vector<std::string>{"profile", "bio"},
+                               query->resourceMonitor())));
     }
   }
   EXPECT_TRUE(foundUsersAccess);

@@ -460,12 +460,14 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access->collectionName = collName;
       }
 
-      access->outVariable = collectNode->oldIndexVariable(); // outVariable before IndexCollectNode
+      access->outVariable =
+          collectNode
+              ->oldIndexVariable();  // outVariable before IndexCollectNode
       auto& monitor = _plan->getAst()->query().resourceMonitor();
       auto const& coveredFields = collectNode->index()->coveredFields();
 
       for (auto const& grp : collectNode->groups()) {
-        if (grp.indexField < coveredFields.size()) { // If within coveredFields
+        if (grp.indexField < coveredFields.size()) {  // If within coveredFields
           std::vector<std::string> path;
           for (auto const& attr : coveredFields[grp.indexField]) {
             if (!attr.shouldExpand) {
@@ -482,9 +484,9 @@ bool AttributeDetector::before(ExecutionNode* node) {
       for (auto const& agg : collectNode->aggregations()) {
         if (agg.expression != nullptr) {
           containers::FlatHashSet<aql::AttributeNamePath> attributes;
-          if (Ast::getReferencedAttributesRecursive(
-                  agg.expression->node(), access->outVariable, "", attributes,
-                  monitor)) {
+          if (Ast::getReferencedAttributesRecursive(agg.expression->node(),
+                                                    access->outVariable, "",
+                                                    attributes, monitor)) {
             for (auto const& attr : attributes) {
               if (!attr.empty()) {
                 access->readAttributes.insert(attr);
@@ -497,7 +499,8 @@ bool AttributeDetector::before(ExecutionNode* node) {
         }
       }
 
-      if (access->readAttributes.empty() && !access->requiresAllAttributesRead) {
+      if (access->readAttributes.empty() &&
+          !access->requiresAllAttributesRead) {
         access->requiresAllAttributesRead = true;
       }
       break;
