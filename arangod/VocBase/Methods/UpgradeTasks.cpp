@@ -32,13 +32,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -673,6 +673,7 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
                                          velocypack::Slice /*upgradeParams*/) {
   auto collections = vocbase.collections(false);
 
+  // First, drop all fulltext indexes from all collections
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
@@ -692,5 +693,6 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
       }
     }
   }
+
   return {};
 }
