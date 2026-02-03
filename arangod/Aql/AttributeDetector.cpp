@@ -719,7 +719,6 @@ AttributeDetector::getAbacRequests() const {
       AbacPermissionRequest req;
       req.action = "write";
       req.resource = access.collectionName;
-      req.context.parameters["readAll"] = ContextParameter{{"true"}};
       req.context.parameters["writeAll"] = ContextParameter{{"true"}};
       requests.push_back(std::move(req));
     }
