@@ -64,8 +64,7 @@ namespace arangodb {
 FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server,
                                                metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _fileDescriptorsCurrent(
-          metrics.add(arangodb_file_descriptors_current{})),
+      _fileDescriptorsCurrent(metrics.add(arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(metrics.add(arangodb_file_descriptors_limit{})) {
   setOptional(false);
   startsAfter<BumpFileDescriptorsFeature>();
