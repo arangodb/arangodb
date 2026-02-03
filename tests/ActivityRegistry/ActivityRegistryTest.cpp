@@ -46,8 +46,6 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 
 }  // namespace
 
-constexpr auto ActivityRoot = ActivityId{nullptr};
-
 struct ActivityRegistryTest : ::testing::Test {
   ActivityRegistryTest() {
     Registry::setCurrentlyExecutingActivity(ActivityRoot);
@@ -71,7 +69,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
                         [id = a.id()](auto i) { return i.id == id; });
 
   EXPECT_NE(s, std::end(all_activities));
-  EXPECT_EQ(s->parent, ActivityId{});
+  EXPECT_EQ(s->parent, ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
@@ -97,7 +95,7 @@ TEST_F(ActivityRegistryTest,
                     .name = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
-                    .parent = {},
+                    .parent = ActivityRoot,
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
   EXPECT_NE(specific, std::end(all_activities))
       << inspection::json(all_activities);
@@ -150,7 +148,7 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {}})}));
+                                            .parent = ActivityRoot})}));
 }
 
 TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {

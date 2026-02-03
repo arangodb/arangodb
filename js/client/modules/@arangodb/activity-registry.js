@@ -66,10 +66,10 @@ function branch_symbol(hierarchy, continuations) {
 exports.createForest = function (activities) {
   const groupedByParent = Map.groupBy(activities, (a) => a.parent.id);
   const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
-  const leaves = new Map(activities.map((a) => {
+  const nodes = new Map(activities.map((a) => {
     return [a.id, {...a, children: children.get(a.id) ?? []}];
   }));
-  return new exports.Forest(leaves);
+  return new exports.Forest(nodes);
 };
 
 exports.DFS = class DFS {
@@ -107,7 +107,7 @@ exports.Forest = class Forest {
     }
   }
   roots = function() {
-    const non_roots = new Set(Array.from(this.items.values()).filter((a) => a.children !== undefined).map((a) => a.children).flat(1));
+    const non_roots = new Set(Array.from(this.items.values()).map((a) => a.children).flat(1));
     return new Set(Array.from(this.items.keys()).filter((a) => !non_roots.has(a)));
   };
 };

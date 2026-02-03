@@ -54,6 +54,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, ActivityId& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
 }
+constexpr auto ActivityRoot = ActivityId{nullptr};
 
 enum class State { Active = 0, Deleted };
 template<typename Inspector>
