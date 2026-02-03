@@ -3,13 +3,13 @@ target_include_directories(arango_activity_registry_interface INTERFACE
   ${PROJECT_SOURCE_DIR}/lib
   include)
 
-add_library(arango_activity_registry STATIC
-  activity.cpp
-  registry.cpp)
+
+add_library(arango_activity_registry STATIC)
 target_include_directories(arango_activity_registry PUBLIC
   include)
 target_link_libraries(arango_activity_registry PUBLIC arango_thread_owning_list arango_shared arango_inspection)
 
-add_library(arango_activity_registry_global STATIC
-  activity_registry_variable.cpp)
+add_library(arango_activity_registry_global STATIC)
 target_link_libraries(arango_activity_registry_global PUBLIC arango_activity_registry)
+
+add_subdirectory(src)
