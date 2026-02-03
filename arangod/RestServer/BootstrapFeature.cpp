@@ -125,10 +125,6 @@ ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
   return _clusterUpgradeFeature;
 }
 
-V8DealerFeature* BootstrapFeature::v8DealerFeature() {
-  return _v8DealerFeature;
-}
-
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--hund", "Make ArangoDB bark on startup.",

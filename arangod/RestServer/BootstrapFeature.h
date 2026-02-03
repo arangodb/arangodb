@@ -58,7 +58,6 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   DatabaseFeature& databaseFeature();
   SystemDatabaseFeature* systemDatabaseFeature();
   ClusterUpgradeFeature* clusterUpgradeFeature();
-  V8DealerFeature* v8DealerFeature();
 
  private:
   void killRunningQueries();
