@@ -346,7 +346,6 @@ target_link_libraries(arango_lightweight
          arango_activity_registry_global
          arango_async
   PRIVATE date_interface
-          fmt
           arango_assertions
           arango_static_strings
           arango_futures
@@ -410,8 +409,6 @@ target_link_libraries(arango
 if (USE_V8)
   target_link_libraries(arango PUBLIC ${V8_LIBS})
 endif()
-
-target_link_libraries(arango PUBLIC fmt::fmt)
 
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

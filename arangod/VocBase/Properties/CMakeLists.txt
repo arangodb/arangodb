@@ -23,10 +23,8 @@ target_include_directories(arango_vocbase_api PRIVATE
 target_compile_options(arango_vocbase_api PRIVATE
         ${CMAKE_DEPRECATE_OPTIONS})
 
-
 target_link_libraries(arango_vocbase_api PUBLIC
         velocypack
-        fmt
 
         # Required for Result / ResultT
         PRIVATE arango

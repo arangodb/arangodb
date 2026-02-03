@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -351,7 +351,6 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
-  fmt
   velocypack_utils
 )
 
