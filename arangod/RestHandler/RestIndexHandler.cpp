@@ -59,7 +59,8 @@ using namespace arangodb::rest;
 RestIndexHandler::RestIndexHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _clusterFeature(server.getFeature<ClusterFeature>()) {}
 
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
@@ -97,10 +98,8 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      return server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .getCollectionNT(_vocbase.name(), cName);
+      return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
+                                                           cName);
     }
     return _vocbase.lookupCollection(cName);
   }
@@ -169,7 +168,7 @@ async<void> RestIndexHandler::getIndexes() {
       // even the in-progress indexes
       std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
                                     coll->planId().id(), "/indexes");
-      auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+      auto& ac = _clusterFeature.agencyCache();
       // we need to wait for the latest commit index here, because otherwise
       // we may not see all indexes that were declared ready by the
       // supervision.
@@ -180,10 +179,7 @@ async<void> RestIndexHandler::getIndexes() {
       // Let's wait until the ClusterInfo has processed at least this
       // Raft index. This means that if an index is no longer `isBuilding`
       // in the agency Plan, then ClusterInfo should know it.
-      co_await _vocbase.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForPlan(idx);
+      co_await _clusterFeature.clusterInfo().waitForPlan(idx);
 
       // now fetch list of ready indexes
       VPackBuilder indexes;

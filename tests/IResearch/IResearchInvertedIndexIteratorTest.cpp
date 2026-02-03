@@ -114,7 +114,8 @@ class IResearchInvertedIndexIteratorTestBase
   IResearchInvertedIndexIteratorTestBase() {
     arangodb::tests::init();
     _docs = Provider::docs();
-    _server.addFeature<arangodb::FlushFeature>(false);
+    _server.addFeature<arangodb::FlushFeature>(
+        false, _server.getFeature<arangodb::metrics::MetricsFeature>());
     _server.startFeatures();
     auto& dbFeature = _server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(_server.server()), _vocbase);

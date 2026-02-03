@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Metrics/Fwd.h"
 
 #include <cstdint>
 #include <memory>
@@ -54,7 +55,8 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
 
   static constexpr uint32_t BufferSize = 2048;
 
-  explicit LogBufferFeature(application_features::ApplicationServer& server);
+  LogBufferFeature(application_features::ApplicationServer& server,
+                   metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;

@@ -154,7 +154,8 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
   ASSERT_TRUE(dbFeature.createDatabase(testDBInfo(server), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);
 
-  arangodb::FlushFeature feature(server);
+  arangodb::FlushFeature feature(
+      server, server.getFeature<arangodb::metrics::MetricsFeature>());
   feature.prepare();
 
   {

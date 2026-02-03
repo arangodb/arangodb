@@ -58,7 +58,14 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class ClusterFeature;
 class DatabaseFeature;
+class EngineSelectorFeature;
+class SystemDatabaseFeature;
+
+namespace network {
+class ConnectionPool;
+}
 
 namespace iresearch {
 
@@ -584,7 +591,11 @@ class IResearchAnalyzerFeature final
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  ClusterFeature* _clusterFeature;
+  EngineSelectorFeature& _engineSelector;
+  SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
+  network::ConnectionPool* _connectionPool;
 };
 
 }  // namespace iresearch

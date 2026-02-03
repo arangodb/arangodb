@@ -453,7 +453,9 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 ////////////////////////////////////////////////////////////////////////////////
 Result visitAnalyzers(TRI_vocbase_t& vocbase,
                       std::function<Result(VPackSlice)> const& visitor,
-                      transaction::OperationOrigin operationOrigin) {
+                      transaction::OperationOrigin operationOrigin,
+                      ClusterFeature* clusterFeature,
+                      network::ConnectionPool* connectionPool) {
   auto const resultVisitor =
       [](std::function<Result(VPackSlice)> const& visitor,
          TRI_vocbase_t const& vocbase, VPackSlice slice) -> Result {
@@ -480,11 +482,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       "FOR d IN ", arangodb::StaticStrings::AnalyzersCollection, " RETURN d"));
 
   if (ServerState::instance()->isDBServer()) {
-    NetworkFeature const& feature =
-        vocbase.server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = feature.pool();
-
-    if (!pool) {
+    if (!connectionPool) {
       return {TRI_ERROR_SHUTTING_DOWN,
               absl::StrCat("failure to find connection pool while visiting "
                            "Analyzer collection '",
@@ -492,14 +490,9 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
                            "' in vocbase '", vocbase.name(), "'")};
     }
 
-    auto& server = vocbase.server();
-
     std::vector<std::string> coords;
-    if (server.hasFeature<ClusterFeature>() &&
-        server.getFeature<ClusterFeature>().isEnabled()) {
-      coords = server.getFeature<ClusterFeature>()
-                   .clusterInfo()
-                   .getCurrentCoordinators();
+    if (clusterFeature && clusterFeature->isEnabled()) {
+      coords = clusterFeature->clusterInfo().getCurrentCoordinators();
     }
 
     Result res;
@@ -511,7 +504,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo = clusterFeature->clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
       if (!collection) {
@@ -581,7 +574,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
     for (auto const& coord : coords) {
       auto f = network::sendRequestRetry(
-          pool, "server:" + coord, fuerte::RestVerb::Post,
+          connectionPool, "server:" + coord, fuerte::RestVerb::Post,
           RestVocbaseBaseHandler::CURSOR_PATH, buffer, reqOpts);
 
       auto& response = f.waitAndGet();
@@ -704,7 +697,9 @@ inline std::string normalizedAnalyzerName(std::string_view database,
 
 bool analyzerInUse(application_features::ApplicationServer& server,
                    std::string_view dbName,
-                   AnalyzerPool::ptr const& analyzerPtr) {
+                   AnalyzerPool::ptr const& analyzerPtr,
+                   DatabaseFeature& databaseFeature,
+                   SystemDatabaseFeature& systemDatabase) {
   TRI_ASSERT(analyzerPtr);
 
   if (analyzerPtr.use_count() > 1) {  // +1 for ref in '_analyzers'
@@ -756,32 +751,28 @@ bool analyzerInUse(application_features::ApplicationServer& server,
 
   // check analyzer database
 
-  if (server.hasFeature<DatabaseFeature>()) {
-    vocbase = server.getFeature<DatabaseFeature>().useDatabase(dbName);
+  vocbase = databaseFeature.useDatabase(dbName);
 
-    if (vocbase != nullptr && checkDatabase(vocbase.get())) {
-      return true;
-    }
+  if (vocbase != nullptr && checkDatabase(vocbase.get())) {
+    return true;
   }
 
   // check system database if necessary
-  if (server.hasFeature<SystemDatabaseFeature>()) {
-    auto sysVocbase = server.getFeature<SystemDatabaseFeature>().use();
+  auto sysVocbase = systemDatabase.use();
 
-    if (sysVocbase.get() != vocbase.get() && checkDatabase(sysVocbase.get())) {
-      return true;
-    }
+  if (sysVocbase.get() != vocbase.get() && checkDatabase(sysVocbase.get())) {
+    return true;
   }
 
   return false;
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    application_features::ApplicationServer& server, std::string_view vocbase) {
+    application_features::ApplicationServer& server, std::string_view vocbase,
+    ClusterFeature* clusterFeature) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
-    TRI_ASSERT(server.hasFeature<ClusterFeature>() &&
-               server.getFeature<ClusterFeature>().isEnabled());
-    auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
+    TRI_ASSERT(clusterFeature && clusterFeature->isEnabled());
+    auto& engine = clusterFeature->clusterInfo();
     return std::make_unique<AnalyzerModificationTransaction>(vocbase, &engine,
                                                              false);
   }
@@ -1094,7 +1085,13 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this},
-      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
+      _clusterFeature(server.hasFeature<ClusterFeature>()
+                          ? &server.getFeature<ClusterFeature>()
+                          : nullptr),
+      _engineSelector(server.getFeature<EngineSelectorFeature>()),
+      _systemDatabase(server.getFeature<SystemDatabaseFeature>()),
+      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()),
+      _connectionPool(server.getFeature<NetworkFeature>().pool()) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -1117,12 +1114,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
       return;
     }
 
-    if (this->server().hasFeature<ClusterFeature>() &&
-        this->server().getFeature<ClusterFeature>().isEnabled()) {
-      auto cleanupTrans = this->server()
-                              .getFeature<ClusterFeature>()
-                              .clusterInfo()
-                              .createAnalyzersCleanupTrans();
+    if (_clusterFeature && _clusterFeature->isEnabled()) {
+      auto cleanupTrans =
+          _clusterFeature->clusterInfo().createAnalyzersCleanupTrans();
       if (cleanupTrans) {
         if (cleanupTrans->start().ok()) {
           cleanupTrans->commit();
@@ -1375,8 +1369,8 @@ Result IResearchAnalyzerFeature::emplace(
     Features features /* = {} */) {
   auto const split = splitAnalyzerName(name);
 
-  auto transaction =
-      createAnalyzerModificationTransaction(server(), split.first);
+  auto transaction = createAnalyzerModificationTransaction(
+      server(), split.first, _clusterFeature);
   if (transaction) {
     auto startRes = transaction->start();
     if (startRes.fail()) {
@@ -1415,7 +1409,7 @@ Result IResearchAnalyzerFeature::emplace(
       return res;
     }
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = _engineSelector.engine();
     bool erase = emplaceRes.second;  // an insertion took place
     irs::Finally cleanup = [&erase, this, &emplaceRes]() noexcept {
       if (erase) {
@@ -1487,8 +1481,8 @@ Result IResearchAnalyzerFeature::emplace(
 
 Result IResearchAnalyzerFeature::removeAllAnalyzers(
     TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
-  auto analyzerModificationTrx =
-      createAnalyzerModificationTransaction(server(), vocbase.name());
+  auto analyzerModificationTrx = createAnalyzerModificationTransaction(
+      server(), vocbase.name(), _clusterFeature);
   if (analyzerModificationTrx) {
     auto startRes = analyzerModificationTrx->start();
     if (startRes.fail()) {
@@ -1594,8 +1588,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(
     transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(dumpedAnalyzers.isArray());
   TRI_ASSERT(!dumpedAnalyzers.isEmptyArray());
-  auto transaction =
-      createAnalyzerModificationTransaction(server(), vocbase.name());
+  auto transaction = createAnalyzerModificationTransaction(
+      server(), vocbase.name(), _clusterFeature);
   if (transaction) {
     auto startRes = transaction->start();
     if (startRes.fail()) {
@@ -1985,7 +1979,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
               database, "'")};
     }
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = _engineSelector.engine();
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
@@ -2157,7 +2151,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // .........................................................................
 
     // database key used in '_lastLoad'
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = _engineSelector.engine();
     auto itr = _lastLoad.find(database);
 
     auto vocbase = _databaseFeature.useDatabase(database);
@@ -2288,7 +2282,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
       return {};
     };
-    auto const res = visitAnalyzers(*vocbase, visitor, operationOrigin);
+    auto const res = visitAnalyzers(*vocbase, visitor, operationOrigin,
+                                    _clusterFeature, _connectionPool);
     if (!res.ok()) {
       if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
         // collection not found, cleanup any analyzers for 'database'
@@ -2471,13 +2466,9 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     const TRI_vocbase_t& vocbase, bool forceLoadPlan /* = false */) const {
   if (ServerState::instance()->isRunningInCluster()) {
-    auto const& server = vocbase.server();
-
-    if (server.hasFeature<ClusterFeature>() &&
-        server.getFeature<ClusterFeature>().isEnabled()) {
-      auto ptr = server.getFeature<ClusterFeature>()
-                     .clusterInfo()
-                     .getAnalyzersRevision(vocbase.name(), forceLoadPlan);
+    if (_clusterFeature && _clusterFeature->isEnabled()) {
+      auto ptr = _clusterFeature->clusterInfo().getAnalyzersRevision(
+          vocbase.name(), forceLoadPlan);
       // could be null if plan is still not loaded
       return ptr ? ptr : AnalyzersRevision::getEmptyRevision();
     }
@@ -2627,8 +2618,9 @@ Result IResearchAnalyzerFeature::remove(
                            name, "'")};
     }
 
-    if (!force && analyzerInUse(server(), split.first,
-                                pool)) {  // +1 for ref in '_analyzers'
+    if (!force &&
+        analyzerInUse(server(), split.first, pool, _databaseFeature,
+                      _systemDatabase)) {  // +1 for ref in '_analyzers'
       return {
           TRI_ERROR_ARANGO_CONFLICT,
           absl::StrCat("analyzer in-use while removing arangosearch analyzer '",
@@ -2643,8 +2635,8 @@ Result IResearchAnalyzerFeature::remove(
       return {};
     }
 
-    auto analyzerModificationTrx =
-        createAnalyzerModificationTransaction(server(), split.first);
+    auto analyzerModificationTrx = createAnalyzerModificationTransaction(
+        server(), split.first, _clusterFeature);
     if (analyzerModificationTrx) {
       auto startRes = analyzerModificationTrx->start();
       if (startRes.fail()) {
@@ -2670,7 +2662,7 @@ Result IResearchAnalyzerFeature::remove(
                        "' while removing arangosearch analyzer '", name, "'")};
     }
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = _engineSelector.engine();
 
     // do not allow persistence while in recovery
     if (engine.inRecovery()) {
@@ -2786,11 +2778,9 @@ void IResearchAnalyzerFeature::start() {
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // we rely on having a system database
-  if (server().hasFeature<SystemDatabaseFeature>()) {
-    auto vocbase = server().getFeature<SystemDatabaseFeature>().use();
-    if (vocbase) {  // feature/db may be absent in some unit-test enviroment
-      TRI_ASSERT(vocbase->name() == arangodb::StaticStrings::SystemDatabase);
-    }
+  auto vocbase = _systemDatabase.use();
+  if (vocbase) {  // feature/db may be absent in some unit-test enviroment
+    TRI_ASSERT(vocbase->name() == arangodb::StaticStrings::SystemDatabase);
   }
 #endif
   if (server().hasFeature<ClusterFeature>() &&
@@ -2837,7 +2827,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
                            pool.name(), "' configuration with 'null' type")};
     }
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = _engineSelector.engine();
 
     // do not allow persistence while in recovery
     if (engine.inRecovery()) {

@@ -53,11 +53,12 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
-      _databaseFeature(server.getFeature<DatabaseFeature>()),
-      _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_full_index_refills_total{})),
+      _databaseFeature(databaseFeature),
+      _totalFullIndexRefills(
+          metrics.add(rocksdb_cache_full_index_refills_total{})),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -347,9 +348,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
 
 Result RocksDBIndexCacheRefillFeature::warmupIndex(
     std::string const& database, std::string const& collection, IndexId iid) {
-  auto& df = server().getFeature<DatabaseFeature>();
-
-  DatabaseGuard guard(df, database);
+  DatabaseGuard guard(_databaseFeature, database);
 
   auto c =
       guard.database().useCollection(collection, /*checkPermissions*/ false);

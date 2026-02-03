@@ -88,7 +88,8 @@ class IResearchViewSortedTest
   IResearchViewSortedTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();

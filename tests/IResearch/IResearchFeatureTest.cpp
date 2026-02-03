@@ -98,10 +98,10 @@ class IResearchFeatureTest
   IResearchFeatureTest() : server(false) {
     arangodb::tests::init();
 
+    auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
-    server.addFeature<arangodb::FlushFeature>(false);
-    server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.getFeature<arangodb::metrics::MetricsFeature>());
+    server.addFeature<arangodb::FlushFeature>(false, metrics);
+    server.addFeature<arangodb::QueryRegistryFeature>(false, metrics);
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
   }

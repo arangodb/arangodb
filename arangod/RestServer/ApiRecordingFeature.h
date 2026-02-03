@@ -34,6 +34,7 @@
 #include "CrashHandler/DataSource.h"
 #include "Containers/BoundedList.h"
 #include "Inspection/Transformers.h"
+#include "Metrics/Fwd.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Rest/CommonDefines.h"
@@ -113,8 +114,9 @@ class ApiRecordingFeature : public application_features::ApplicationFeature,
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
   static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
-  explicit ApiRecordingFeature(
+  ApiRecordingFeature(
       application_features::ApplicationServer& server,
+      metrics::MetricsFeature& metrics,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
   ~ApiRecordingFeature() override;
 

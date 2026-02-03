@@ -72,7 +72,8 @@ class IResearchInvertedIndexConditionTest
  protected:
   IResearchInvertedIndexConditionTest() : server(false) {
     arangodb::tests::init();
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);

@@ -770,10 +770,10 @@ Result DumpFeature::DumpShardJob::run(
 }
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server,
-                         int& exitCode)
+                         ClientFeature& client, int& exitCode)
     : ApplicationFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::DUMP},
+      _client(client),
+      _clientManager{client, Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
@@ -1480,8 +1480,6 @@ void DumpFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // get database name to operate on
-  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   // get a client to use in main thread
   auto httpClient =
       _clientManager.getConnectedClient(_options.force, true, true, 0);
@@ -1510,8 +1508,8 @@ void DumpFeature::start() {
 
   if (_options.progress) {
     LOG_TOPIC("f3a1f", INFO, Logger::DUMP)
-        << "Connected to ArangoDB '" << client.endpoint() << "', database: '"
-        << client.databaseName() << "', username: '" << client.username()
+        << "Connected to ArangoDB '" << _client.endpoint() << "', database: '"
+        << _client.databaseName() << "', username: '" << _client.username()
         << "'";
 
     LOG_TOPIC("5e989", INFO, Logger::DUMP)
@@ -1528,13 +1526,13 @@ void DumpFeature::start() {
     std::tie(res, databases) = ::getDatabases(*httpClient);
   } else {
     // use just the single database that was specified
-    databases.push_back(client.databaseName());
+    databases.push_back(_client.databaseName());
   }
 
   if (res.ok()) {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
-        client.setDatabaseName(db);
+        _client.setDatabaseName(db);
         httpClient =
             _clientManager.getConnectedClient(_options.force, false, true, 0);
       }

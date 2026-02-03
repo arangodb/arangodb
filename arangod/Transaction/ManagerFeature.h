@@ -42,7 +42,8 @@ class ManagerFeature final : public application_features::ApplicationFeature {
     return "TransactionManager";
   }
 
-  explicit ManagerFeature(application_features::ApplicationServer& server);
+  ManagerFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics);
   ~ManagerFeature();
 
   void collectOptions(

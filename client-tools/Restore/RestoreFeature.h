@@ -41,6 +41,8 @@
 
 namespace arangodb {
 
+class ClientFeature;
+
 namespace basics {
 class StringBuffer;
 }
@@ -52,7 +54,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Restore"; }
 
   RestoreFeature(application_features::ApplicationServer& server,
-                 int& exitCode);
+                 ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -272,6 +274,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   std::vector<DatabaseInfo> determineDatabaseList(
       std::string const& databaseName);
 
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

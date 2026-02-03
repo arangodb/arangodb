@@ -77,7 +77,8 @@ class QueryTestMulti
   QueryTestMulti() : server{false} {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     auto& analyzers =

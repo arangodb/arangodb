@@ -28,6 +28,7 @@
 #include "Basics/DownCast.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchView.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -38,7 +39,8 @@
 IResearchQueryTest::IResearchQueryTest() : server{false} {
   arangodb::tests::init(true);
 
-  server.addFeature<arangodb::FlushFeature>(false);
+  server.addFeature<arangodb::FlushFeature>(
+      false, server.getFeature<arangodb::metrics::MetricsFeature>());
   server.startFeatures();
 
   auto& analyzers =

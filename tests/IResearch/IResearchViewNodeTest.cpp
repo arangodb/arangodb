@@ -101,7 +101,8 @@ class IResearchViewNodeTest
   IResearchViewNodeTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -1443,15 +1444,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        R"({ 
+        R"({
         "id":42, "depth":0, "totalNrRegs":0, "varInfoList":[],
         "nrRegs":[], "nrRegsHere":[], "regsToClear":[],
         "varsUsedLaterStack":[[]], "varsValid":[],
         "outVariable": {
           "name":"variable", "id":0
         },
-        "options": { 
-          "waitForSync" : true, 
+        "options": {
+          "waitForSync" : true,
           "collections":[],
           "parallelism": 2
         }, "viewId": ")" +
@@ -3661,7 +3662,8 @@ class IResearchViewVolatitlityTest
   IResearchViewVolatitlityTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -4078,7 +4080,8 @@ class IResearchViewBlockTest
   IResearchViewBlockTest() : server(false) {
     arangodb::tests::init(true);
 
-    server.addFeature<arangodb::FlushFeature>(false);
+    server.addFeature<arangodb::FlushFeature>(
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
