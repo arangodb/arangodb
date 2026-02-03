@@ -463,24 +463,17 @@ class TestingRunner:
         """delete all files not needed for the crashreport binaries"""
         shutil.rmtree(str(self.cfg.bin_dir / "tzdata"))
         needed = [
-            "tzdata",
-            "icudtl",
             "fuertetest",
-            "arangovpack",
             "arangobackup",
             "arangosh",
             "arangoexport",
             "arangoinspect",
             "arangoimport",
             "arangoimp",
-            "arango-secure-installation",
-            "foxx-manager",
             "arangorestore",
             "arangobench",
-            "snowball",
             # 'arangodbtests', we do not need arangodbtests since these tests are executed in a separate job
             "arangod",
-            "arango-init-database",
             "arangodump",
         ]
         for one_file in self.cfg.bin_dir.iterdir():
