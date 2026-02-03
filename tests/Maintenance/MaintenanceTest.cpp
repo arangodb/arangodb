@@ -557,10 +557,12 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
     auto& rocksDbIndexCacheRefillFeature =
-        as.addFeature<RocksDBIndexCacheRefillFeature>();
+        as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
+                                                      metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
+    auto& sharedPrngFeature = as.addFeature<SharedPRNGFeature>();
     auto& cacheManagerFeature =
-        as.addFeature<CacheManagerFeature>(cacheOptions);
+        as.addFeature<CacheManagerFeature>(cacheOptions, sharedPrngFeature);
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
