@@ -27,7 +27,6 @@
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
 #include "Containers/Forest/forest.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
 #include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {

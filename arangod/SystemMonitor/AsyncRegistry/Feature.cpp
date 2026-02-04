@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 
+#include "Async/Registry/registry_variable.h"
 #include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
 #include "CrashHandler/DataSource.h"
@@ -30,6 +31,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "Inspection/VPack.h"
+
+#include <thread>
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
@@ -132,7 +135,6 @@ Feature::Feature(
     : application_features::ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
-  startsAfter<SchedulerFeature>();
 }
 
 auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)

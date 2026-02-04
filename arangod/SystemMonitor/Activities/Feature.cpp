@@ -29,6 +29,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 
+#include <thread>
+
 using namespace arangodb::activities;
 
 DECLARE_COUNTER(arangodb_activity_activities_total,
@@ -51,7 +53,6 @@ DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
 Feature::Feature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
   startsAfter<metrics::MetricsFeature>();
-  startsAfter<SchedulerFeature>();
 }
 
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
