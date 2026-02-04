@@ -25,11 +25,11 @@
 #include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 using namespace arangodb::containers;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
@@ -41,7 +41,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-        "you need admin user rights for activity-registry operations");
+        "you need admin user rights for activity registry operations");
     co_return;
   }
 

@@ -21,11 +21,11 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity.h"
+#include "Activities/activity_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
 
@@ -33,7 +33,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 namespace {
 auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {

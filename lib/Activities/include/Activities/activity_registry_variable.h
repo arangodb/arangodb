@@ -20,25 +20,28 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Containers/Concurrent/Registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
-Registry registry;
-thread_local ActivityId Registry::_currentlyExecutingActivity = ActivityRoot;
+/**
+   Global variable that holds all active activities.
 
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard()
-        : _registry{ThreadRegistry::make(registry.get_metrics())} {
-      registry.add(_registry);
-    }
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
 
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
-}
+/**
+   Get thread registry of all active activities on current thread.
 
-}  // namespace arangodb::activity_registry
+   Creates the thread registry when called for the first time and adds it to
+   the global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::activities
