@@ -34,7 +34,7 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   auto operator=(Registry const&) = delete;
   auto operator=(Registry&&) = delete;
 
-  struct ScopedCurrentlyExecutingActivity;
+  struct [[nodiscard]] ScopedCurrentlyExecutingActivity;
 
   static auto currentlyExecutingActivity() noexcept -> ActivityId {
     return _currentlyExecutingActivity;
@@ -48,7 +48,7 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   static thread_local ActivityId _currentlyExecutingActivity;
 };
 
-struct Registry::ScopedCurrentlyExecutingActivity {
+struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
   explicit ScopedCurrentlyExecutingActivity(ActivityId activity) noexcept;
   ~ScopedCurrentlyExecutingActivity();
 
@@ -64,11 +64,11 @@ struct Registry::ScopedCurrentlyExecutingActivity {
 
 template<typename Func>
 auto withSetCurrentlyExecutingActivity(ActivityId activity, Func&& func) {
-  return [
-    func = std::forward<Func>(func), activity
-  ]<typename... Args,
-    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+  return [func = std::forward<Func>(func),
+          activity]<typename... Args,
+                    typename =
+                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
