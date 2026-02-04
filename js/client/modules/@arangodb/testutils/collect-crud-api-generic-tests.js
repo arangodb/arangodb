@@ -181,7 +181,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
     },
 
-    /// @brief this tests the SimpleQueries lookupByKeys and removeByKeys
+    /// @brief this tests the document API batch lookup and remove by keys
     [`testLookupByKeys${testNamePostfix}`]: function () {
       const collection = collectionWrapper.rawCollection();
       const cn = collection.name();

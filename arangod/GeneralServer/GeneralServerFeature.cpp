@@ -637,14 +637,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
                      RestHandlerCreator<RestIndexHandler>::createNoData);
 
-#ifdef USE_V8
-  if (server().isEnabled<V8DealerFeature>()) {
-    // the tasks feature depends on V8. only enable it if JavaScript is enabled
-    f.addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                       RestHandlerCreator<RestTasksHandler>::createNoData);
-  }
-#endif
-
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                      RestHandlerCreator<RestUploadHandler>::createNoData);
 
