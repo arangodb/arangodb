@@ -23,6 +23,7 @@
 
 #include "RestDumpHandler.h"
 
+#include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -167,8 +168,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard = _dumpManager->createContext(std::move(opts), user, database,
-                                           useVPack, _activity->id());
+  auto guard =
+      _dumpManager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -199,8 +200,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
 
-  activity_registry::Activity fetch{
-      "dump context fetching", {{"id", id}}, _activity->id()};
+  activities::Activity fetch{
+      "dump context fetching", {{"id", id}}, {context->activityId()}};
 
   context->extendLifetime();
 

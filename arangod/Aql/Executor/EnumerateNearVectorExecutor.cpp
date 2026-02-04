@@ -85,7 +85,7 @@ void EnumerateNearVectorsExecutor::fillInput(
   if (vectorComponentsCount != dimension) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        fmt::format("a vector must be of dimension {}, but is {}", dimension,
+        std::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
   ++_processedInputs;
@@ -209,7 +209,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    LOG_INTERNAL << fmt::format(
+    LOG_INTERNAL << std::format(
         "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
         "hasResults={}, call={}, colCount={}",
         skipped, remainingRows, _currentProcessedResultCount,

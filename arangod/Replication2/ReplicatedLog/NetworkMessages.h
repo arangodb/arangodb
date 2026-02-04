@@ -54,7 +54,7 @@ struct MessageId {
 
   template<class Inspector>
   friend auto inspect(Inspector&, MessageId&);
-  friend struct fmt::formatter<MessageId>;
+  friend struct std::formatter<MessageId>;
 
  protected:
   auto value() -> std::uint64_t;
@@ -191,15 +191,10 @@ struct velocypack::Extractor<replication2::replicated_log::MessageId> {
 }  // namespace arangodb
 
 template<>
-struct fmt::formatter<::arangodb::replication2::replicated_log::MessageId>
-    : fmt::formatter<std::uint64_t> {
-  template<class FormatContext>
+struct std::formatter<::arangodb::replication2::replicated_log::MessageId>
+    : std::formatter<std::uint64_t> {
   auto format(::arangodb::replication2::replicated_log::MessageId mid,
-              FormatContext& fc) const {
-    return ::fmt::formatter<typename std::uint64_t>::format(mid.value(), fc);
-  }
-  template<typename ParseContext>
-  auto parse(ParseContext& ctx) {
-    return ::fmt::formatter<typename std::uint64_t>::parse(ctx);
+              std::format_context& fc) const {
+    return std::formatter<std::uint64_t>::format(mid.value(), fc);
   }
 };

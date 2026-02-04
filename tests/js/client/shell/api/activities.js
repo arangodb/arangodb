@@ -29,7 +29,7 @@ const { assertTrue } = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = require('internal').db;
-const activitiesModule = require('@arangodb/activity-registry');
+const activitiesModule = require('@arangodb/activities');
 const dump = require('@arangodb/arango-dump');
 const arangosh = require('@arangodb/arangosh');
 const IM = global.instanceManager;
@@ -75,7 +75,7 @@ function activityRegistrySuite() {
     },
 
     testRegistryIncludesAtLeastRestRequestActivity: function () {
-      const activities = activitiesModule.get_snapshot(); // is one REST request
+      const activities = activitiesModule.get_snapshot_bare(); // is one REST request
       assertArrayLengthLargerThan(activities, 0);
       assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
     },
@@ -94,7 +94,7 @@ function activityRegistrySuite() {
 
       // activity: dump context
       const dumpId = dump.get_batch_id_from_start_response(arangosh.checkRequestResult(createDump));
-      const activities = activitiesModule.get_snapshot(server);
+      const activities = activitiesModule.get_snapshot_bare(server);
       assertArrayLengthLargerThan(activities, 1);
       assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
       assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
@@ -104,7 +104,7 @@ function activityRegistrySuite() {
         IM.debugSetFailAt("RestDumpHandler::fetch-delay");
         
         const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call is keps busy with failure point
-        const activities = activitiesModule.get_snapshot(server);
+        const activities = activitiesModule.get_snapshot_bare(server);
         internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
 
         assertArrayLengthLargerThan(activities, 3); // includes busy dump-fetch Rest call

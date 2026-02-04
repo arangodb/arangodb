@@ -23,10 +23,9 @@
 
 #include <array>
 #include <csignal>
-#include <fmt/core.h>
+#include <format>
 #include <immer/flex_vector.hpp>
 #include <string>
-#include <vector>
 
 auto breakpoint() {
 #ifndef WIN32
@@ -90,7 +89,7 @@ auto get_testees() {
 
 auto testee_to_pretty_string(auto testee) {
   // e.g. ```immer::flex_vector of length 2 = {"hello", "world"}```
-  auto res = fmt::format("immer::flex_vector of length {}", testee.size());
+  auto res = std::format("immer::flex_vector of length {}", testee.size());
   if (!testee.empty()) {
     res += " = {";
     res += '"' + testee[0] + '"';
