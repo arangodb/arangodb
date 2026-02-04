@@ -24,7 +24,6 @@
 
 #include "RocksDBColumnFamilyManager.h"
 
-#include <span>
 #include <rocksdb/db.h>
 
 #include "Basics/debugging.h"
@@ -119,14 +118,17 @@ char const* RocksDBColumnFamilyManager::name(
   return "unknown";
 }
 
-std::span<rocksdb::ColumnFamilyHandle*>
+std::vector<rocksdb::ColumnFamilyHandle*>
 RocksDBColumnFamilyManager::allHandles() {
-  std::size_t valid_size{_handles.size()};
-  while (valid_size > 0 && _handles[valid_size - 1] == nullptr) {
-    --valid_size;
+  // Some column families are null, we need to filter them out.
+  std::vector<rocksdb::ColumnFamilyHandle*> result;
+  result.reserve(_handles.size());
+  for (auto* handle : _handles) {
+    if (handle != nullptr) {
+      result.push_back(handle);
+    }
   }
-
-  return std::span(_handles.data(), valid_size);
+  return result;
 }
 
 RocksDBColumnFamilyManager::Family RocksDBColumnFamilyManager::fromString(

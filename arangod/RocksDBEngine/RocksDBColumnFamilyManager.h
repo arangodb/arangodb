@@ -29,8 +29,8 @@
 
 #include <array>
 #include <cstdint>
-#include <span>
 #include <string_view>
+#include <vector>
 
 namespace arangodb {
 
@@ -81,11 +81,10 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  /// We purposefully cut off the handles still set to nullptr, since they were
-  /// not initialized
-  /// TODO find better solution that propagates changes to how many column
-  /// families there are on start time
-  static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
+  /// @brief Returns all non-null column family handles.
+  /// Handles that are nullptr (e.g., FulltextIndex which was removed in 4.0)
+  /// are filtered out.
+  static std::vector<rocksdb::ColumnFamilyHandle*> allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;
