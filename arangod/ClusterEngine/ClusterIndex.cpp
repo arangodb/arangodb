@@ -338,7 +338,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     }
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       TRI_ASSERT(false) << "Fulltext indexes are not supported!";
-      break;
+      return Index::FilterCosts::defaultCosts(itemsInIndex);
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
@@ -376,7 +376,8 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     }
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       TRI_ASSERT(false) << "Fulltext indexes are not supported!";
-      break;
+      return Index::supportsSortCondition(sortCondition, reference,
+                                          itemsInIndex);
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
@@ -452,6 +453,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
       break;
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       TRI_ASSERT(false) << "Fulltext indexes are not supported!";
+      return mdi::specializeCondition(this, node, reference);
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -483,7 +485,7 @@ ClusterIndex::coveredFields() const {
     }
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       TRI_ASSERT(false) << "Fulltext indexes are not supported!";
-      break;
+      return Index::emptyCoveredFields;
     default:
       return _fields;
   }
