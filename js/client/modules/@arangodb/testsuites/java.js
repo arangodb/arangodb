@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db, getAddrInfo */
+/* global print db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -183,28 +183,6 @@ class runInKafkaTest extends runWithAllureReport {
     let results = {
       'message': ''
     };
-    let re = new RegExp('http://(.*):8081');
-    let m = re.exec(this.options.kafkaSchemaHost);
-    if (m.length === 2) {
-      let count = 0;
-      while (count < 50) {
-        count +=1;
-        try {
-          let ip = getAddrInfo(m[1]);
-          if (ip.length > 0) {
-            print(ip);
-            this.options.kafkaSchemaHost = `http://${ip[0]}:8081`;
-            print(`re-routing kafka schema host to ${this.options.kafkaSchemaHost}`);
-            break;
-          }
-        }
-        catch (ex) {
-          print(ex);
-        }
-        print('retrying nameserver lookup');
-        internal.sleep(0.5);
-      }
-    }
     // strip i.e. http:// from the URL to conform with what the driver expects:
     let rx = /.*:\/\//gi;
     let args = [
