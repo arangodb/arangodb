@@ -734,6 +734,7 @@ jobs:
         name: kafka-schema-registry
         environment:
           - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
+          - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     environment:
@@ -756,6 +757,7 @@ jobs:
             wait_server kafka-1 9092
             wait_server kafka-2 9092
             wait_server kafka-3 9092
+            wait_server kafka-schema-registry 8081
       - run-test:
           suiteName: << parameters.suiteName >>
           suites: << parameters.suites >>
