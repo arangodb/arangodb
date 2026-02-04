@@ -29,7 +29,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "velocypack/SharedSlice.h"
-#include "ActivityRegistry/activity_registry_variable.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb::activities;
@@ -122,7 +121,7 @@ velocypack::Builder Feature::getData() const {
   VPackBuilder builder;
   builder.openArray();
   registry.for_node([&](ActivityInRegistrySnapshot activity) {
-    if (activity.state != activity_registry::State::Deleted) {
+    if (activity.state != activities::State::Deleted) {
       velocypack::serialize(builder, activity);
     }
   });
