@@ -183,6 +183,7 @@ class runInKafkaTest extends runWithAllureReport {
     let results = {
       'message': ''
     };
+
     // strip i.e. http:// from the URL to conform with what the driver expects:
     let rx = /.*:\/\//gi;
     let args = [
