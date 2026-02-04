@@ -26,9 +26,9 @@
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
-#include "fmt/format.h"
 
 #include <atomic>
+#include <format>
 #include <cstdint>
 #include <optional>
 #include <source_location>
@@ -52,7 +52,7 @@ struct ActivityId {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActivityId& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
+  return f.object(x).fields(f.field("id", std::format("{}", x.id)));
 }
 constexpr auto ActivityRoot = ActivityId{nullptr};
 

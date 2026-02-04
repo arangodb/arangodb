@@ -276,7 +276,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
     // this fails if index is not sparse
     if (value.isNone()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              fmt::format("vector field not present in document {}",
+              std::format("vector field not present in document {}",
                           transaction::helpers::extractKeyFromDocument(doc)
                               .copyString()
                               .c_str())};
@@ -284,7 +284,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 
     if (!value.isArray()) {
       return {TRI_ERROR_TYPE_ERROR,
-              fmt::format("array expected for vector attribute for document {}",
+              std::format("array expected for vector attribute for document {}",
                           transaction::helpers::extractKeyFromDocument(doc)
                               .copyString()
                               .c_str())};
@@ -292,7 +292,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 
     if (value.length() != _definition.dimension) {
       return {TRI_ERROR_TYPE_ERROR,
-              fmt::format(
+              std::format(
                   "provided vector is not of matching dimension for document "
                   "{}, index dimension: {}, document dimension: {}",
                   transaction::helpers::extractKeyFromDocument(doc)
@@ -306,7 +306,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
       if (not d.isNumber<double>()) {
         return {
             TRI_ERROR_TYPE_ERROR,
-            fmt::format("vector contains data not representable as double for "
+            std::format("vector contains data not representable as double for "
                         "document {}",
                         transaction::helpers::extractKeyFromDocument(doc)
                             .copyString()
@@ -318,7 +318,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
     return {};
   } catch (velocypack::Exception const& e) {
     return {TRI_ERROR_TYPE_ERROR,
-            fmt::format("deserialization error when accessing a document: {}",
+            std::format("deserialization error when accessing a document: {}",
                         e.what())};
   }
 }
