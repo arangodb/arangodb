@@ -3469,39 +3469,40 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "getAddrInfo(<hostname>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("getAddrInfo(<hostname>)");
   }
 
   std::string hostNameStr = TRI_ObjectToString(isolate, args[0]);
 
   int status;
   struct addrinfo hints;
-  struct addrinfo *servinfo;  // will point to the results
+  struct addrinfo* servinfo;  // will point to the results
 
-  memset(&hints, 0, sizeof hints); // make sure the struct is empty
-  hints.ai_family = AF_UNSPEC;     // don't care IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
-  hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
-  if ((status = getaddrinfo(hostNameStr.c_str(), "3490", &hints, &servinfo)) != 0) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   gai_strerror(status));
+  memset(&hints, 0, sizeof hints);  // make sure the struct is empty
+  hints.ai_family = AF_UNSPEC;      // don't care IPv4 or IPv6
+  hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
+  hints.ai_flags = AI_PASSIVE;      // fill in my IP for me
+  if ((status = getaddrinfo(hostNameStr.c_str(), "3490", &hints, &servinfo)) !=
+      0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, gai_strerror(status));
   }
   auto context = TRI_IGETC;
   v8::Local<v8::Object> array = v8::Array::New(isolate);
 
   uint32_t i = 0;
-  for (struct addrinfo *addr = servinfo; addr != nullptr; addr = addr->ai_next)
-  {
+  for (struct addrinfo* addr = servinfo; addr != nullptr;
+       addr = addr->ai_next) {
     char peer_addr_str[INET_ADDRSTRLEN + 1];
     memset(peer_addr_str, 0, INET_ADDRSTRLEN);
-    inet_ntop(addr->ai_family, &addr->ai_addr, peer_addr_str, INET_ADDRSTRLEN + 1);
-    v8::Handle<v8::String> oneAddr = TRI_V8_ASCII_STRING(isolate, peer_addr_str);
+    inet_ntop(addr->ai_family, &addr->ai_addr, peer_addr_str,
+              INET_ADDRSTRLEN + 1);
+    v8::Handle<v8::String> oneAddr =
+        TRI_V8_ASCII_STRING(isolate, peer_addr_str);
     array->Set(context, i, oneAddr).FromMaybe(false);
     i++;
   }
 
-  freeaddrinfo(servinfo); // free the linked-list
+  freeaddrinfo(servinfo);  // free the linked-list
   TRI_V8_RETURN(array);
   TRI_V8_TRY_CATCH_END
 }
@@ -3730,8 +3731,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   ConnectionTempl.Reset(isolate, connection_inst);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "getAddrInfo"),
-      JS_getAddrInfo);
+      isolate, TRI_V8_ASCII_STRING(isolate, "getAddrInfo"), JS_getAddrInfo);
 
   // add the client connection to the context:
   TRI_AddGlobalVariableVocbase(isolate,
