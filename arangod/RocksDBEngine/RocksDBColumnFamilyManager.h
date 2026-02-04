@@ -30,6 +30,7 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <string_view>
 
 namespace arangodb {
 
@@ -63,9 +64,15 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 10;
+  // Note: This includes FulltextIndex (removed in 4.0) to keep array indices
+  // aligned with Family enum values
+  static constexpr size_t numberOfColumnFamilies = 11;
 
   static void initialize();
+
+  /// @brief Convert a column family name (internal name) to Family enum.
+  /// Returns Family::Invalid if the name is not recognized.
+  static Family fromString(std::string_view name);
 
   static rocksdb::ColumnFamilyHandle* get(Family family);
   static void set(Family family, rocksdb::ColumnFamilyHandle* handle);

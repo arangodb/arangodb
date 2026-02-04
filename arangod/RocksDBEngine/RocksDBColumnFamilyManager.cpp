@@ -31,31 +31,29 @@
 
 namespace arangodb {
 
-// `Zkd` is the old designation for an unprefix mdi
+// Note: Array indices must match Family enum values.
+// FulltextIndex (index 6) is kept as a placeholder even though it was removed
+// in 4.0. "ZkdIndex" is the old name for MdiIndex, kept for backwards compat.
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default", "Documents", "PrimaryIndex", "EdgeIndex", "VPackIndex",
-        "GeoIndex",
-        "ReplicatedLogs",  // Keep "FulltextIndex" name for
-                           // RocksDB compatibility
-        "ZkdIndex", "MdiPrefixed", "VectorIndex"};  // We have to keep
-                                                    // `ZkdIndex` cf
-                                                    // name for
-                                                    // backwards
-                                                    // compatibility.
+        "default",        "Documents", "PrimaryIndex", "EdgeIndex",
+        "VPackIndex",     "GeoIndex",
+        "FulltextIndex",  // removed in 4.0, kept for index alignment
+        "ReplicatedLogs", "ZkdIndex",  "MdiPrefixed",  "VectorIndex"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
-        "definitions", "documents",       "primary", "edge",         "vpack",
-        "geo",         "replicated-logs", "mdi",     "mdi-prefixed", "vector"};
+        "definitions",     "documents", "primary",      "edge",  "vpack", "geo",
+        "fulltext",  // removed in 4.0, kept for index alignment
+        "replicated-logs", "mdi",       "mdi-prefixed", "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr};
+                                            nullptr, nullptr, nullptr};
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
     nullptr;
@@ -129,6 +127,23 @@ RocksDBColumnFamilyManager::allHandles() {
   }
 
   return std::span(_handles.data(), valid_size);
+}
+
+RocksDBColumnFamilyManager::Family RocksDBColumnFamilyManager::fromString(
+    std::string_view name) {
+  // Check for default column family
+  if (name == "default" || name == rocksdb::kDefaultColumnFamilyName) {
+    return Family::Definitions;
+  }
+
+  // Search in internal names array
+  for (std::size_t i = 0; i < _internalNames.size(); ++i) {
+    if (name == _internalNames[i]) {
+      return static_cast<Family>(i);
+    }
+  }
+
+  return Family::Invalid;
 }
 
 }  // namespace arangodb
