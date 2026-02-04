@@ -176,19 +176,19 @@
           args:
             http: true
             suffix: http
-      - hot_backup
+      - hot_backup:
           args:
             extraArgs:experimental-vector-index: true
-      - hot_backup_views
+      - hot_backup_views:
           args:
             extraArgs:experimental-vector-index: true
-      - hot_backup_aql
+      - hot_backup_aql:
           args:
             extraArgs:experimental-vector-index: true
-      - hot_backup_smart_graphs
+      - hot_backup_smart_graphs:
           args:
             extraArgs:experimental-vector-index: true
-      - hot_backup_el_cheapo
+      - hot_backup_el_cheapo:
           args:
             extraArgs:experimental-vector-index: true
 
