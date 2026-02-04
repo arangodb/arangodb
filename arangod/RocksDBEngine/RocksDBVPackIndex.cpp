@@ -2831,6 +2831,11 @@ void RocksDBVPackIndex::truncateCommit(TruncateGuard&& guard,
 }
 
 Result RocksDBVPackIndex::drop() {
+  // Ignore the fulltext index, it was removed in 4.0 and we don't need to drop
+  // it since the column family was dropped during upgrade.
+  if (type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+    return {};
+  }
   Result res = RocksDBIndex::drop();
 
   if (res.ok() && _estimator != nullptr) {
