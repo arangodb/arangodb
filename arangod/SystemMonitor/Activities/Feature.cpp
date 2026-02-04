@@ -28,8 +28,12 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
+#include "velocypack/SharedSlice.h"
+#include "ActivityRegistry/activity_registry_variable.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb::activities;
+using namespace arangodb;
 
 DECLARE_COUNTER(arangodb_activity_activities_total,
                 "Total number of created activities since database creation");
@@ -48,13 +52,16 @@ DECLARE_COUNTER(arangodb_activity_thread_registries_total,
 DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
               "Number of currently existing activity thread registries");
 
-Feature::Feature(application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+Feature::Feature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    : application_features::ApplicationFeature{server, *this},
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
 }
 
-auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
       metrics_feature.addShared(arangodb_activity_activities_total{}),
@@ -88,8 +95,7 @@ struct Feature::CleanupThread {
 };
 
 void Feature::prepare() {
-  _metrics =
-      create_metrics(server().getFeature<arangodb::metrics::MetricsFeature>());
+  _metrics = create_metrics(server().getFeature<metrics::MetricsFeature>());
   registry.set_metrics(_metrics);
 }
 
@@ -110,4 +116,20 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
                                       /*minValue*/ 1))
       .setLongDescription(
           R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+}
+
+velocypack::Builder Feature::getData() const {
+  VPackBuilder builder;
+  builder.openArray();
+  registry.for_node([&](ActivityInRegistrySnapshot activity) {
+    if (activity.state != activity_registry::State::Deleted) {
+      velocypack::serialize(builder, activity);
+    }
+  });
+  builder.close();
+  return builder;
+}
+
+velocypack::SharedSlice Feature::getCrashData() const {
+  return getData().sharedSlice();
 }
