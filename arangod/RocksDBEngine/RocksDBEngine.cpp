@@ -454,6 +454,72 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
   _db = nullptr;
 }
 
+void RocksDBEngine::dropObsoleteFulltextColumnFamily(
+    rocksdb::TransactionDBOptions const& transactionOptions) {
+  // Check if FulltextIndex column family exists in the database.
+  // Fulltext indexes were removed in ArangoDB 4.0, so we need to drop
+  // this column family if upgrading from an older version.
+  std::vector<std::string> cfNames;
+  rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), _path, &cfNames);
+
+  if (std::ranges::find(cfNames, "FulltextIndex") == cfNames.end()) {
+    // FulltextIndex column family doesn't exist - nothing to do
+    return;
+  }
+
+  LOG_TOPIC("d4e43", INFO, Logger::STARTUP)
+      << "Found obsolete FulltextIndex column family - will drop it";
+
+  // Open database with all existing column families
+  std::vector<rocksdb::ColumnFamilyDescriptor> cfDescriptors;
+  for (const auto& cfName : cfNames) {
+    rocksdb::ColumnFamilyOptions specialized =
+        _optionsProvider.getColumnFamilyOptions(
+            RocksDBColumnFamilyManager::fromString(cfName));
+    cfDescriptors.emplace_back(cfName, specialized);
+  }
+
+  std::vector<rocksdb::ColumnFamilyHandle*> handles;
+  rocksdb::Status status = rocksdb::TransactionDB::Open(
+      _dbOptions, transactionOptions, _path, cfDescriptors, &handles, &_db);
+
+  if (!status.ok()) {
+    LOG_TOPIC("d4e44", FATAL, Logger::STARTUP)
+        << "Failed to open RocksDB to drop fulltext column family: "
+        << status.ToString();
+    FATAL_ERROR_EXIT();
+  }
+
+  // Find and drop the FulltextIndex column family
+  for (size_t i = 0; i < handles.size(); ++i) {
+    if (handles[i]->GetName() == "FulltextIndex") {
+      status = _db->DropColumnFamily(handles[i]);
+      if (!status.ok()) {
+        LOG_TOPIC("d4e45", ERR, Logger::STARTUP)
+            << "Failed to drop FulltextIndex column family: "
+            << status.ToString();
+      } else {
+        LOG_TOPIC("d4e46", INFO, Logger::STARTUP)
+            << "Successfully dropped obsolete FulltextIndex column family";
+      }
+      _db->DestroyColumnFamilyHandle(handles[i]);
+      handles[i] = nullptr;
+      break;
+    }
+  }
+
+  // Clean up all remaining handles and close the database.
+  // We need to close it so the normal startup code can reopen it
+  // without the fulltext column family.
+  for (auto* handle : handles) {
+    if (handle != nullptr) {
+      _db->DestroyColumnFamilyHandle(handle);
+    }
+  }
+  delete _db;
+  _db = nullptr;
+}
+
 void RocksDBEngine::flushOpenFilesIfRequired() {
   if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
     return;
@@ -1180,36 +1246,12 @@ void RocksDBEngine::start() {
   _dbOptions.listeners.push_back(
       std::make_shared<RocksDBMetricsListener>(_metrics));
 
-  // Dropping unsupported fulltext index column family
-  // 1. Get all column families
-  std::vector<std::string> cf_names;
-  rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), _path, &cf_names);
-
-  if (std::ranges::find(cf_names, "FulltextIndex") != cf_names.end()) {
-    // We haveto drop fulltext index column family
-    // 2. Open with all of them
-    std::vector<rocksdb::ColumnFamilyDescriptor> cf_descriptors;
-    for (const auto& name : cf_names) {
-      cf_descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
-    }
-
-    std::vector<rocksdb::ColumnFamilyHandle*> handles;
-    rocksdb::Status status = rocksdb::TransactionDB::Open(
-        _dbOptions, transactionOptions, _path, cf_descriptors, &handles, &_db);
-
-    // 3. Find and drop the target column family
-    for (size_t i = 0; i < handles.size(); ++i) {
-      if (handles[i]->GetName() == "FulltextIndex") {
-        _db->DropColumnFamily(handles[i]);
-        _db->DestroyColumnFamilyHandle(handles[i]);
-        handles[i] = nullptr;
-        break;
-      }
-    }
-  }
-
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
+
+  // Drop obsolete FulltextIndex column family if it exists (removed in 4.0)
+  dropObsoleteFulltextColumnFamily(transactionOptions);
+
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
   auto addFamily = [this,
@@ -1276,6 +1318,10 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
 
   // set our column families
+  // Note: indices must match the order of addFamily calls above
+  // [0]=Definitions, [1]=Documents, [2]=PrimaryIndex, [3]=EdgeIndex,
+  // [4]=VPackIndex, [5]=GeoIndex, [6]=ReplicatedLogs, [7]=MdiIndex,
+  // [8]=MdiVPackIndex, [9]=VectorIndex
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Invalid,
                                   _db->DefaultColumnFamily());
   RocksDBColumnFamilyManager::set(
@@ -1291,14 +1337,14 @@ void RocksDBEngine::start() {
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::GeoIndex,
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[6]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
-                                  cfHandles[8]);
+                                  cfHandles[7]);
   RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[8]);
   if (isVectorIndexEnabled()) {
     RocksDBColumnFamilyManager::set(
-        RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
+        RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[9]);
   }
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
