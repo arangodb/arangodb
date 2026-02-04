@@ -34,7 +34,7 @@
 #include <source_location>
 #include <string>
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 using Metadata = std::unordered_map<std::string, std::string>;
 
@@ -133,9 +133,9 @@ struct Activity {
       _node_in_registry = nullptr;
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities
 
 auto operator<<(
     std::ostream& out,
-    arangodb::activity_registry::ActivityInRegistrySnapshot const& activity)
+    arangodb::activities::ActivityInRegistrySnapshot const& activity)
     -> std::ostream&;

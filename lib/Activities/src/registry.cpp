@@ -20,10 +20,10 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/registry.h"
-#include "ActivityRegistry/activity.h"
+#include "Activities/registry.h"
+#include "Activities/activity.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
     ActivityId activity) noexcept {
@@ -36,4 +36,4 @@ Registry::ScopedCurrentlyExecutingActivity::
   Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
 }
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

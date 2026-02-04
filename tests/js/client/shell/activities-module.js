@@ -26,7 +26,7 @@
 
 const jsunity = require('jsunity');
 const { assertTrue, assertEqual } = jsunity.jsUnity.assertions;
-const activitiesModule = require('@arangodb/activity-registry');
+const activitiesModule = require('@arangodb/activities');
 
 function activityRegistryModuleSuite() {
   return {
@@ -39,11 +39,11 @@ function activityRegistryModuleSuite() {
           "parent" : {id: "0x0"}, 
           "metadata" : { 
             "method" : "GET", 
-            "url" : "/_admin/activity-registry" 
+            "url" : "/_admin/activities" 
           } 
         }
       ]);
-      assertEqual(lines, ' ── ActivityRegistryRestHandler: {"method":"GET","url":"/_admin/activity-registry"}');
+      assertEqual(lines, ' ── ActivityRegistryRestHandler: {"method":"GET","url":"/_admin/activities"}');
     },
     testPrintsOutSeparateActivities: function () {
       const lines = activitiesModule.pretty_print([
@@ -54,7 +54,7 @@ function activityRegistryModuleSuite() {
           "parent" : {id: "0x0"}, 
           "metadata" : { 
             "method" : "GET", 
-            "url" : "/_admin/activity-registry" 
+            "url" : "/_admin/activities" 
           } 
         },
         {
@@ -69,7 +69,7 @@ function activityRegistryModuleSuite() {
         }
       ]).split('\n');
       assertEqual(lines.length, 2);
-      assertTrue(lines.includes(' ── ActivityRegistryRestHandler: {"method":"GET","url":"/_admin/activity-registry"}'), JSON.stringify(lines));
+      assertTrue(lines.includes(' ── ActivityRegistryRestHandler: {"method":"GET","url":"/_admin/activities"}'), JSON.stringify(lines));
       assertTrue(lines.includes(' ── RestDumpHandler: {"method":"POST","url":"/_api/dump/start"}'), JSON.stringify(lines));
     },
 

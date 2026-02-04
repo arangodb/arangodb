@@ -328,7 +328,7 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_activity_registry
+  arango_tests_activities
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
@@ -415,7 +415,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
-add_subdirectory(ActivityRegistry)
+add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
