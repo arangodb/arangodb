@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "Containers/Concurrent/Registry.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
 
 struct Registry : containers::Registry<ActivityInRegistry> {
@@ -80,4 +80,4 @@ auto withCurrentlyExecutingActivity(Func&& func) {
       Registry::currentlyExecutingActivity(), std::forward<Func>(func));
 }
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

@@ -29,7 +29,7 @@ const { assertTrue } = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = require('internal').db;
-const activitiesModule = require('@arangodb/activity-registry');
+const activitiesModule = require('@arangodb/activities');
 const dump = require('@arangodb/arango-dump');
 const arangosh = require('@arangodb/arangosh');
 const IM = global.instanceManager;

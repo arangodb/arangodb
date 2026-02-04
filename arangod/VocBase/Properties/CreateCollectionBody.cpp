@@ -63,7 +63,7 @@ auto rewriteStatusErrorMessage(inspection::Status const& status) -> Result {
   return Result{TRI_ERROR_BAD_PARAMETER,
                 status.error() + (status.path().empty()
                                       ? ""
-                                      : fmt::format(" (on attribute \"{}\")",
+                                      : std::format(" (on attribute \"{}\")",
                                                     status.path()))};
 }
 
@@ -100,7 +100,7 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
   return Result{TRI_ERROR_BAD_PARAMETER,
                 status.error() + (status.path().empty()
                                       ? ""
-                                      : fmt::format(" (on attribute \"{}\")",
+                                      : std::format(" (on attribute \"{}\")",
                                                     status.path()))};
 }
 

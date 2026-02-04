@@ -20,34 +20,25 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Metrics.h"
 
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
+#include "Activities/activity_registry_variable.h"
 
-using namespace arangodb::activity_registry;
+namespace arangodb::activities {
 
-auto RegistryMetrics::increment_total_nodes() -> void {
-  activities_total->count();
+Registry registry;
+thread_local ActivityId Registry::_currentlyExecutingActivity;
+
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard()
+        : _registry{ThreadRegistry::make(registry.get_metrics())} {
+      registry.add(_registry);
+    }
+
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
 }
-auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_activities->fetch_add(1);
-}
-auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_activities->fetch_sub(1);
-}
-auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_add(1);
-}
-auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_sub(1);
-}
-auto RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
+
+}  // namespace arangodb::activities
