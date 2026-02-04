@@ -25,7 +25,7 @@ const arangosh = require('@arangodb/arangosh');
 const IM = global.instanceManager;
 const internal = require('internal');
 
-const ACTIVITY_REGISTRY_URL = '/_admin/activity-registry';
+const ACTIVITY_REGISTRY_URL = '/_admin/activities';
 
 exports.get_snapshot_bare = function (server) {
   if (server === undefined) {

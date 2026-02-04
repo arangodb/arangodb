@@ -41,7 +41,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-        "you need admin user rights for activity-registry operations");
+        "you need admin user rights for activity registry operations");
     co_return;
   }
 

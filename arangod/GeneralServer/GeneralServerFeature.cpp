@@ -830,7 +830,7 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
-      "/_admin/activity-registry",
+      "/_admin/activities",
       RestHandlerCreator<arangodb::activities::RestHandler>::createNoData);
 
   f.addPrefixHandler(
