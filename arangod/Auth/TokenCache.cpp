@@ -440,9 +440,7 @@ bool auth::TokenCache::validateJwtES256Signature(
 
   // check all the passive certificates
   for (auto const& passive : _jwtPassiveSecrets) {
-    bool good = SslInterface::verifyES256Signature(
-        passive.data(), passive.size(), message.data(), message.size(),
-        signature.data(), signature.size());
+    bool good = SslInterface::verifyES256Signature(passive, message, signature);
     if (good) {
       return good;
     }
@@ -497,9 +495,8 @@ void auth::TokenCache::generateSuperToken() {
 
     std::string signature;
     std::string error;
-    int result = SslInterface::signES256(
-        _jwtActiveSecret.data(), _jwtActiveSecret.size(), fullMessage.data(),
-        fullMessage.size(), signature, error);
+    int result = SslInterface::signES256(_jwtActiveSecret, fullMessage,
+                                         signature, error);
 
     if (result != 0) {
       LOG_TOPIC("71a77", ERR, Logger::AUTHENTICATION)

@@ -315,10 +315,10 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   return rsaPrivSign(ctx, pKey, msg, sign, error);
 }
 
-bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
-                          char const* message, size_t messageLen,
-                          char const* signature, size_t signatureLen) {
-  BIO* keybio = BIO_new_mem_buf(publicKeyPem, static_cast<int>(publicKeyLen));
+bool verifyES256Signature(std::string_view publicKeyPem,
+                          std::string_view message,
+                          std::string_view signature) {
+  BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(), static_cast<int>(publicKeyPem.size()));
   if (keybio == nullptr) {
     return false;
   }
@@ -338,10 +338,10 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
   // JWT ES256 signatures are in raw R||S format (IEEE P1363), but OpenSSL
   // expects DER-encoded ECDSA-Sig-Value. For P-256, R and S are 32 bytes each.
   std::string derSignature;
-  if (signatureLen == 64) {
+  if (signature.size() == 64) {
     // Convert from raw R||S to DER format
     unsigned char const* sigBytes =
-        reinterpret_cast<unsigned char const*>(signature);
+        reinterpret_cast<unsigned char const*>(signature.data());
 
     // Create ECDSA_SIG structure
     ECDSA_SIG* ecdsaSig = ECDSA_SIG_new();
@@ -391,8 +391,8 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
       return false;
     }
 
-    signature = derSignature.data();
-    signatureLen = derLen;
+    // Use the DER signature for verification
+    signature = std::string_view(derSignature);
   }
 
   EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
@@ -405,12 +405,12 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
     return false;
   }
 
-  if (EVP_DigestVerifyUpdate(mdctx, message, messageLen) != 1) {
+  if (EVP_DigestVerifyUpdate(mdctx, message.data(), message.size()) != 1) {
     return false;
   }
 
   int result = EVP_DigestVerifyFinal(
-      mdctx, reinterpret_cast<unsigned char const*>(signature), signatureLen);
+      mdctx, reinterpret_cast<unsigned char const*>(signature.data()), signature.size());
 
   if (result == -1) {
     LOG_TOPIC("8f3a6", TRACE, Logger::AUTHENTICATION)
@@ -420,10 +420,9 @@ bool verifyES256Signature(char const* publicKeyPem, size_t publicKeyLen,
   return result == 1;
 }
 
-int signES256(char const* privateKeyPem, size_t privateKeyLen,
-              char const* message, size_t messageLen, std::string& signature,
-              std::string& error) {
-  BIO* keybio = BIO_new_mem_buf(privateKeyPem, static_cast<int>(privateKeyLen));
+int signES256(std::string_view privateKeyPem, std::string_view message,
+              std::string& signature, std::string& error) {
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(), static_cast<int>(privateKeyPem.size()));
   if (keybio == nullptr) {
     error.append("Failed to initialize keybio.");
     return 1;
@@ -458,7 +457,7 @@ int signES256(char const* privateKeyPem, size_t privateKeyLen,
     return 1;
   }
 
-  if (EVP_DigestSignUpdate(mdctx, message, messageLen) != 1) {
+  if (EVP_DigestSignUpdate(mdctx, message.data(), message.size()) != 1) {
     error.append("EVP_DigestSignUpdate failed: ")
         .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
