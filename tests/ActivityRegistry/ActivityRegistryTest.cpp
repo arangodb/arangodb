@@ -46,8 +46,6 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 
 }  // namespace
 
-constexpr auto ActivityRoot = ActivityId{nullptr};
-
 struct ActivityRegistryTest : ::testing::Test {
   ActivityRegistryTest() {
     Registry::setCurrentlyExecutingActivity(ActivityRoot);
@@ -71,7 +69,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
                         [id = a.id()](auto i) { return i.id == id; });
 
   EXPECT_NE(s, std::end(all_activities));
-  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityRoot);
+  EXPECT_EQ(s->parent, ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
@@ -97,7 +95,7 @@ TEST_F(ActivityRegistryTest,
                     .name = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
-                    .parent = {ActivityRoot},
+                    .parent = ActivityRoot,
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
   EXPECT_NE(specific, std::end(all_activities))
       << inspection::json(all_activities);
@@ -113,7 +111,7 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
                     .name = "child activity",
                     .state = State::Active,
                     .id = child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}},
+                    .parent = ActivityId{parent_activity.id()},
                     .metadata = {}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
@@ -136,21 +134,21 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                     .name = "child of child activity",
                     .state = State::Active,
                     .id = child_of_first_child_activity.id(),
-                    .parent = {ActivityId{first_child_activity.id()}}}),
+                    .parent = ActivityId{first_child_activity.id()}}),
                 (ActivityInRegistrySnapshot{
                     .name = "second child activity",
                     .state = State::Active,
                     .id = second_child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = ActivityId{parent_activity.id()}}),
                 (ActivityInRegistrySnapshot{
                     .name = "first child activity",
                     .state = State::Active,
                     .id = first_child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = ActivityId{parent_activity.id()}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {ActivityRoot}})}));
+                                            .parent = ActivityRoot})}));
 }
 
 TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {

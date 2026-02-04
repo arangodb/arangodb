@@ -54,18 +54,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, ActivityId& x) {
   return f.object(x).fields(f.field("id", std::format("{}", x.id)));
 }
-
-/**
-   An activity can either have no parent because it is a root activity or its
-   parent is another activity, defined via its id.
- */
-struct Parent : std::variant<RootActivity, ActivityId> {};
-template<typename Inspector>
-auto inspect(Inspector& f, Parent& x) {
-  return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<RootActivity>(),
-      inspection::inlineType<ActivityId>());
-}
+constexpr auto ActivityRoot = ActivityId{nullptr};
 
 enum class State { Active = 0, Deleted };
 template<typename Inspector>
@@ -81,7 +70,7 @@ struct ActivityInRegistrySnapshot {
   std::string name;
   State state;
   ActivityId id;
-  Parent parent;
+  ActivityId parent;
   Metadata metadata;
   bool operator==(ActivityInRegistrySnapshot const&) const = default;
   auto update_state(State new_state) -> ActivityInRegistrySnapshot& {
@@ -111,7 +100,7 @@ struct ActivityInRegistry {
 
   std::string const name;
   std::atomic<State> state;
-  Parent parent;
+  ActivityId parent;
   Metadata metadata;
 };
 
@@ -129,7 +118,7 @@ struct Activity {
   Activity& operator=(Activity const&) = delete;
 
   Activity(std::string name, Metadata metadata);
-  Activity(std::string name, Metadata metadata, Parent parent);
+  Activity(std::string name, Metadata metadata, ActivityId parent);
   ~Activity();
 
   auto id() const noexcept -> ActivityId;
