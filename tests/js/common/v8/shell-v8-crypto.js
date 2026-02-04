@@ -515,6 +515,56 @@ function CryptoSuite () {
       data.forEach(function(value) {
         assertEqual(value[2], crypto.constantEquals(value[0], value[1]));
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test jwtEncode / jwtDecode with ES256
+////////////////////////////////////////////////////////////////////////////////
+
+    testJwtES256 : function () {
+      // Test ES256 private key (P-256 curve)
+      const privateKeyPem = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7Nr6WlCNIRNMo8jV
+VCeiIe4RFndm9opvA+B1Q1d6aU+hRANCAART+SbFZkZueXG1BIHw/0U3av6eqFqN
+hO6zkgGKYw4wGM5H3ZZR5hETHnOZ1OwmEDEyVqXAZBuznqQic3z/vnug
+-----END PRIVATE KEY-----
+`;
+
+      // Test ES256 public key
+      const publicKeyPem = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEU/kmxWZGbnlxtQSB8P9FN2r+nqha
+jYTus5IBimMOMBjOR92WUeYREx5zmdTsJhAxMlalwGQbs56kInN8/757oA==
+-----END PUBLIC KEY-----
+`;
+
+      const message = {sub: '1234567890', name: 'John Doe', admin: true, iat: 1516239022};
+
+      // Test ES256 encoding
+      const token = crypto.jwtEncode(privateKeyPem, message, 'ES256');
+      assertTrue(typeof token === 'string');
+      assertTrue(token.split('.').length === 3);
+
+      // Test ES256 decoding with correct public key
+      const decoded = crypto.jwtDecode(publicKeyPem, token);
+      assertEqual(message.sub, decoded.sub);
+      assertEqual(message.name, decoded.name);
+      assertEqual(message.admin, decoded.admin);
+      assertEqual(message.iat, decoded.iat);
+
+      // Test that wrong public key fails verification
+      const wrongPublicKey = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkCtCB8jXYqKqLhNLRUNdC7hqvU42
+sJ7dJmUmWGcBZlIB4NvmTDfPpKclGMBZ8vE5gvD8Y1LQhKhLTJQvXHCLvg==
+-----END PUBLIC KEY-----`;
+
+      var err;
+      try {
+        crypto.jwtDecode(wrongPublicKey, token);
+        fail();
+      } catch(e) {
+        err = e;
+      }
+      assertTrue(err);
     }
   };
 }
