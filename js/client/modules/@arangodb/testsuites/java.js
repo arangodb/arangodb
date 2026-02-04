@@ -192,6 +192,7 @@ class runInKafkaTest extends runWithAllureReport {
         try {
           let ip = getAddrInfo(m[1]);
           if (ip.length > 0) {
+            print(ip);
             this.options.kafkaSchemaHost = `http://${ip[0]}:8081`;
             print(`re-routing kafka schema host to ${this.options.kafkaSchemaHost}`);
             break;
