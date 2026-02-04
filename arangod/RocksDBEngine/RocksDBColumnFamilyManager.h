@@ -48,7 +48,7 @@ struct RocksDBColumnFamilyManager {
     EdgeIndex = 3,
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
-    FulltextIndex = 6, // removed
+    FulltextIndex = 6,  // removed in 4.0
     ReplicatedLogs = 7,
     MdiIndex = 8,
     MdiVPackIndex = 9,
@@ -63,7 +63,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 11;
+  static constexpr size_t numberOfColumnFamilies = 10;
 
   static void initialize();
 

@@ -36,7 +36,7 @@ std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
         "default", "Documents", "PrimaryIndex", "EdgeIndex", "VPackIndex",
-        "GeoIndex", "FulltextIndex",
+        "GeoIndex",
         "ReplicatedLogs",  // Keep "FulltextIndex" name for
                            // RocksDB compatibility
         "ZkdIndex", "MdiPrefixed", "VectorIndex"};  // We have to keep
@@ -48,15 +48,14 @@ std::array<char const*,
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
-        "definitions", "documents",    "primary",  "edge",
-        "vpack",       "geo",          "fulltext", "replicated-logs",
-        "mdi",         "mdi-prefixed", "vector"};
+        "definitions", "documents",       "primary", "edge",         "vpack",
+        "geo",         "replicated-logs", "mdi",     "mdi-prefixed", "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr};
+                                            nullptr, nullptr};
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
     nullptr;
