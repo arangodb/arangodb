@@ -1190,20 +1190,20 @@ void RocksDBEngine::start() {
     // 2. Open with all of them
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_descriptors;
     for (const auto& name : cf_names) {
-        cf_descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
+      cf_descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
     }
 
     std::vector<rocksdb::ColumnFamilyHandle*> handles;
     rocksdb::Status status = rocksdb::TransactionDB::Open(
-      _dbOptions, transactionOptions, _path, cf_descriptors, &handles, &_db);
+        _dbOptions, transactionOptions, _path, cf_descriptors, &handles, &_db);
 
-      // 3. Find and drop the target column family
+    // 3. Find and drop the target column family
     for (size_t i = 0; i < handles.size(); ++i) {
       if (handles[i]->GetName() == "FulltextIndex") {
-          _db->DropColumnFamily(handles[i]);
-          _db->DestroyColumnFamilyHandle(handles[i]);
-          handles[i] = nullptr;
-          break;
+        _db->DropColumnFamily(handles[i]);
+        _db->DestroyColumnFamilyHandle(handles[i]);
+        handles[i] = nullptr;
+        break;
       }
     }
   }
