@@ -1180,6 +1180,34 @@ void RocksDBEngine::start() {
   _dbOptions.listeners.push_back(
       std::make_shared<RocksDBMetricsListener>(_metrics));
 
+  // Dropping unsupported fulltext index column family
+  // 1. Get all column families
+  std::vector<std::string> cf_names;
+  rocksdb::DB::ListColumnFamilies(rocksdb::DBOptions(), _path, &cf_names);
+
+  if (std::ranges::find(cf_names, "FulltextIndex") != cf_names.end()) {
+    // We haveto drop fulltext index column family
+    // 2. Open with all of them
+    std::vector<rocksdb::ColumnFamilyDescriptor> cf_descriptors;
+    for (const auto& name : cf_names) {
+        cf_descriptors.emplace_back(name, rocksdb::ColumnFamilyOptions());
+    }
+
+    std::vector<rocksdb::ColumnFamilyHandle*> handles;
+    rocksdb::Status status = rocksdb::TransactionDB::Open(
+      _dbOptions, transactionOptions, _path, cf_descriptors, &handles, &_db);
+
+      // 3. Find and drop the target column family
+    for (size_t i = 0; i < handles.size(); ++i) {
+      if (handles[i]->GetName() == "FulltextIndex") {
+          _db->DropColumnFamily(handles[i]);
+          _db->DestroyColumnFamilyHandle(handles[i]);
+          handles[i] = nullptr;
+          break;
+      }
+    }
+  }
+
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
   // create column families
@@ -1198,13 +1226,10 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1265,8 +1290,6 @@ void RocksDBEngine::start() {
       RocksDBColumnFamilyManager::Family::VPackIndex, cfHandles[4]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::GeoIndex,
                                   cfHandles[5]);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
@@ -3760,13 +3783,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
   builder.close();
 
   if (_throttleListener) {
