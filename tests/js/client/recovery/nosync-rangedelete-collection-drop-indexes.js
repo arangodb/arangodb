@@ -46,8 +46,8 @@ if (runSetup === true) {
     }
   }
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value", "_to"], unique: true });
  
   // should trigger range deletion
   db._drop('UnitTestsRecovery1'); 

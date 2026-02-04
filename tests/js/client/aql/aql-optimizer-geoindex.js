@@ -121,7 +121,7 @@ function legacyOptimizerRuleTestSuite() {
 
     testLegacyRuleBasics : function () {
       if (enabled.basics) {
-        geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+        geocol.ensureIndex({ type: "persistent", fields: [ "y", "z" ], unique: false });
 
         var queries = [
           { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0) ASC LIMIT 1 RETURN d",
@@ -509,7 +509,7 @@ function optimizerRuleTestSuite() {
 
     testRuleBasics: function () {
       if (enabled.basics) {
-        geocol.ensureIndex({ type: "hash", fields: ["y", "z"], unique: false });
+        geocol.ensureIndex({ type: "persistent", fields: ["y", "z"], unique: false });
 
         var queries = [
           {

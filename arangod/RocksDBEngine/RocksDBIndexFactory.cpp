@@ -46,6 +46,7 @@
 #include "VocBase/voc-types.h"
 #include "RestServer/VectorIndexFeature.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -257,6 +258,57 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+// Deprecated hash index factory - rejects creation but supports existing
+// indexes
+template<typename F, Index::IndexType type>
+struct DeprecatedSecondaryIndexFactory : public DefaultIndexFactory {
+  std::string_view const _deprecatedName;
+  std::string_view const _replacement;
+
+  explicit DeprecatedSecondaryIndexFactory(ArangodServer& server,
+                                           std::string_view deprecatedName,
+                                           std::string_view replacement)
+      : DefaultIndexFactory(server, type),
+        _deprecatedName(deprecatedName),
+        _replacement(replacement) {}
+
+  std::shared_ptr<Index> instantiate(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<F>(id, collection, definition);
+  }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    if (isCreation) {
+      // deprecated index types cannot be created anymore
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat(_deprecatedName,
+                       " index type is deprecated and cannot be created "
+                       "anymore. Please use '",
+                       _replacement, "' index type instead."));
+    }
+
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(type)));
+
+    if (!ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    bool est = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexEstimates, true);
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+
+    return IndexFactory::enhanceJsonIndexGeneric(definition, normalized,
+                                                 isCreation);
+  }
+};
+
 struct MdiIndexFactory : public DefaultIndexFactory {
   explicit MdiIndexFactory(ArangodServer& server, Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
@@ -456,15 +508,15 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   static const GeoIndexFactory geoIndexFactory(server);
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBHashIndex,
-                                     Index::TRI_IDX_TYPE_HASH_INDEX>
-      hashIndexFactory(server);
+  static const DeprecatedSecondaryIndexFactory<RocksDBHashIndex,
+                                               Index::TRI_IDX_TYPE_HASH_INDEX>
+      hashIndexFactory(server, "hash", "persistent");
   static const SecondaryIndexFactory<RocksDBPersistentIndex,
                                      Index::TRI_IDX_TYPE_PERSISTENT_INDEX>
       persistentIndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBSkiplistIndex,
-                                     Index::TRI_IDX_TYPE_SKIPLIST_INDEX>
-      skiplistIndexFactory(server);
+  static const DeprecatedSecondaryIndexFactory<
+      RocksDBSkiplistIndex, Index::TRI_IDX_TYPE_SKIPLIST_INDEX>
+      skiplistIndexFactory(server, "skiplist", "persistent");
   static const TtlIndexFactory ttlIndexFactory(server,
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);

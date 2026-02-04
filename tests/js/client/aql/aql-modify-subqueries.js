@@ -897,7 +897,7 @@ function ahuacatlModifySuite () {
 
     testRemoveMainLevelCustomShardKeysWithFilterIndexed : function () {
       let c = db._create(cn, {numberOfShards:5, shardKeys: ["id1", "id2"]});
-      c.ensureIndex({ type: "hash", fields: ["id1", "id2"] });
+      c.ensureIndex({ type: "persistent", fields: ["id1", "id2"] });
 
       for (let i = 0; i < 100; ++i) {
         c.insert({ id1: i, id2: i % 10 });

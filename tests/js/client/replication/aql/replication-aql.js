@@ -258,7 +258,7 @@ function ReplicationSuite() {
             docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
           c.insert(docs);
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "persistent", fields: ["value2"] });
         },
 
         function(state) {
@@ -328,7 +328,7 @@ function ReplicationSuite() {
             docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
           c.insert(docs);
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "persistent", fields: ["value2"] });
         },
 
         function(state) {
@@ -440,7 +440,7 @@ function ReplicationSuite() {
           for (let i = 0; i < 100; ++i) {
             c.insert({ _key: "test" + i, _from: "test/v" + i, _to: "test/y" + i });
           }
-          c.ensureIndex({ type: "hash", fields: ["_from", "_to"], unique: true });
+          c.ensureIndex({ type: "persistent", fields: ["_from", "_to"], unique: true });
         },
 
         function(state) {
@@ -521,7 +521,7 @@ function ReplicationSuite() {
             docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
           c.insert(docs);
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "persistent", fields: ["value2"] });
         },
 
         function(state) {

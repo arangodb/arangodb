@@ -82,7 +82,7 @@ function ReplicationNonIncrementalKeyConflict () {
     testKeyConflictsNonIncremental: function () {
       var c = db._create(cn);
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -115,7 +115,7 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
@@ -149,7 +149,7 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
     },
     
@@ -157,7 +157,7 @@ function ReplicationNonIncrementalKeyConflict () {
       var c = db._create(cn);
       var i;
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -181,7 +181,7 @@ function ReplicationNonIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
@@ -226,7 +226,7 @@ function ReplicationNonIncrementalKeyConflict () {
       c = db._collection(cn);
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
     }
   };
