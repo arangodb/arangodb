@@ -435,6 +435,7 @@
     options:
       priority: 1000
       parallelity: 3
+      buckets: 2
       type: single
 
 - server_parameters:
