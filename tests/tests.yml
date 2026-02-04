@@ -525,15 +525,7 @@
       #     args:
       #       dumpVPack: true
       #       forceOneShard: true
-
-- dump_multiple_two:
-    options:
-      type: cluster
-      size: large
-      parallelity: 5
-    args:
-      extremeVerbosity: true
-      dumpAgencyOnError: true
+      - dump_multiple_two:
 
 # Full Tests Single Server
 - shell_fuzzer:
