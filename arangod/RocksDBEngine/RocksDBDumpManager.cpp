@@ -70,7 +70,8 @@ RocksDBDumpManager::~RocksDBDumpManager() {
 
 std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
     RocksDBDumpContextOptions opts, std::string const& user,
-    std::string const& database, bool useVPack) {
+    std::string const& database, bool useVPack,
+    activity_registry::ActivityId parentActivity) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
 
@@ -93,8 +94,8 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, *this, _engine.server().getFeature<DatabaseFeature>(),
-      generateId(), std::move(opts), user, database, useVPack);
+      _engine, *this, _engine.getDatabaseFeature(), generateId(),
+      std::move(opts), user, database, useVPack, parentActivity);
 
   std::lock_guard mutexLocker{_lock};
 

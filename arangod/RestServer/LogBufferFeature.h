@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "RestServer/LogBufferFeatureOptions.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
 
@@ -71,8 +72,7 @@ class LogBufferFeature final : public ArangodFeature {
  private:
   std::shared_ptr<LogAppender> _inMemoryAppender;
   std::shared_ptr<LogAppender> _metricsCounter;
-  std::string _minInMemoryLogLevel;
-  bool _useInMemoryAppender;
+  LogBufferFeatureOptions _options;
 };
 
 }  // namespace arangodb

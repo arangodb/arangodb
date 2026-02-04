@@ -57,8 +57,7 @@ function AttributesSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-      c.unload();
+    tearDown: function () {
       c.drop();
       c = null;
     },

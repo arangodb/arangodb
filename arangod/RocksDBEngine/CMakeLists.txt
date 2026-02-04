@@ -2,6 +2,7 @@ add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
   ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
+  RocksDBCFStats.cpp
   RocksDBChecksumEnv.cpp
   RocksDBCollection.cpp
   RocksDBColumnFamilyManager.cpp
@@ -18,6 +19,7 @@ add_library(arango_rocksdb STATIC
   RocksDBIncrementalSync.cpp
   RocksDBIndex.cpp
   RocksDBIndexCacheRefillFeature.cpp
+  RocksDBIndexCacheRefillFeatureOptions.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
   RocksDBIndexingDisabler.cpp

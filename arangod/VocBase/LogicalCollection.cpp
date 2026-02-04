@@ -1047,6 +1047,14 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
+
+      // Invalidate the _canWrite flag in FollowerInfo since writeConcern
+      // has changed. This ensures the write condition
+      // will be re-evaluated on the next write attempt.
+      if (_followers != nullptr) {
+        _followers->invalidateCanWrite();
+      }
+
       if (ServerState::instance()->isCoordinator() &&
           writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,

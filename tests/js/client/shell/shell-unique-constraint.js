@@ -54,8 +54,7 @@ function UniqueConstraintSuite() {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-  tearDown : function () {
-    collection.unload();
+    tearDown: function () {
     collection.drop();
     internal.wait(0.0);
     collection = null;

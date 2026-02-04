@@ -49,7 +49,6 @@ function CollectionBinaryDocumentSuite () {
 
     tearDown : function () {
       if (collection) {
-        collection.unload();
         collection.drop();
         collection = null;
       }

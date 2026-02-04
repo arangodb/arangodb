@@ -83,7 +83,7 @@ add_executable(
 
 set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
-#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+# required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests-iresearch PRIVATE -fno-devirtualize)
 endif()
@@ -98,6 +98,10 @@ target_link_libraries(arangodbtests-iresearch
   boost_boost
 )
 
+if(USE_JEMALLOC)
+  target_link_libraries(arangodbtests-iresearch jemalloc)
+endif()
+
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
@@ -111,7 +115,3 @@ target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
 )
 
 target_link_libraries(arangodbtests-iresearch v8_interface)
-
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests-iresearch jemalloc_build)
-endif ()

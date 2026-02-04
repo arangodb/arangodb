@@ -64,7 +64,7 @@ parameters:
     description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d76ea9cb
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
@@ -99,6 +99,7 @@ jobs:
             not:
               or:
                 - equal: [devel, << pipeline.git.branch >>]
+                - equal: ["4.0", << pipeline.git.branch >>]
                 - equal: [api, << pipeline.trigger_source >>]
                 - equal: [scheduled_pipeline, << pipeline.trigger_source >>]
           steps:
@@ -208,7 +209,7 @@ jobs:
               if [ "$?" == "0" ] ; then
                 ENTERPRISE_BRANCH=$CIRCLE_BRANCH
               else
-                ENTERPRISE_BRANCH=devel
+                ENTERPRISE_BRANCH=<< parameters.default-enterprise-branch >>
               fi
               set -e
               echo "Actually using this for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
@@ -269,5 +270,6 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
+          default-enterprise-branch: "4.0"
           requires:
             - cancel-redundant-pipelines

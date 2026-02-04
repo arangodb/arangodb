@@ -27,7 +27,6 @@
 
 if (getOptions === true) {
   return {
-    'server.allow-use-database': 'true',
     'javascript.files-allowlist': '^.*$',
     'runSetup': true
   };

@@ -234,7 +234,6 @@ static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
     "/Current/ServersRegistered";
-static std::string const foxxmaster = "/Current/Foxxmaster";
 
 void Supervision::upgradeOne(Builder& builder) {
   // "/arango/Agency/Definition" not exists or is 0
@@ -458,12 +457,6 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         VPackObjectBuilder b(&create);
         // unconditionally increase reboot id and plan version
         Job::addIncreaseRebootId(create, serverID);
-
-        // if the current foxxmaster server failed => reset the value to ""
-        if (auto fx = snapshot.hasAsString(foxxmaster);
-            fx && fx.value() == serverID) {
-          create.add(foxxmaster, VPackValue(""));
-        }
       }
     }
     singleWriteTransaction(agent, create, false);
@@ -2345,21 +2338,20 @@ void Supervision::deleteBrokenDatabase(AgentInterface* agent,
   }
 }
 
-void Supervision::deleteBrokenCollection(AgentInterface* agent,
-                                         std::string const& database,
-                                         std::string const& collection,
-                                         std::string const& coordinatorID,
-                                         uint64_t rebootID,
-                                         bool coordinatorFound) {
+void Supervision::deleteBrokenCollection(
+    AgentInterface* agent, std::string const& database,
+    std::string const& collection, std::string const& coordinatorID,
+    std::vector<std::string> const& additionalCollections, uint64_t rebootID,
+    bool coordinatorFound) {
   velocypack::Builder envelope;
   {
     VPackArrayBuilder trxs(&envelope);
     {
-      std::string collection_path = plan()
-                                        ->collections()
-                                        ->database(database)
-                                        ->collection(collection)
-                                        ->str();
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
 
       VPackArrayBuilder trx(&envelope);
       {
@@ -2371,19 +2363,28 @@ void Supervision::deleteBrokenCollection(AgentInterface* agent,
         }
         // delete the collection from Plan/Collections/<db>
         {
-          VPackObjectBuilder o(&envelope, collection_path);
+          VPackObjectBuilder o(&envelope, collectionPath);
+          envelope.add("op", VPackValue("delete"));
+        }
+        for (auto const& additionalCollection : additionalCollections) {
+          std::string path = plan()
+                                 ->collections()
+                                 ->database(database)
+                                 ->collection(additionalCollection)
+                                 ->str();
+          VPackObjectBuilder o(&envelope, path);
           envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this collection is still in Plan and is building
         VPackObjectBuilder preconditions(&envelope);
-        envelope.add(collection_path + "/" + StaticStrings::AttrIsBuilding,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrIsBuilding,
                      VPackValue(true));
         envelope.add(
-            collection_path + "/" + StaticStrings::AttrCoordinatorRebootId,
+            collectionPath + "/" + StaticStrings::AttrCoordinatorRebootId,
             VPackValue(rebootID));
-        envelope.add(collection_path + "/" + StaticStrings::AttrCoordinator,
+        envelope.add(collectionPath + "/" + StaticStrings::AttrCoordinator,
                      VPackValue(coordinatorID));
 
         {
@@ -2557,11 +2558,24 @@ void Supervision::checkBrokenCollections() {
             LOG_TOPIC("fe523", INFO, Logger::SUPERVISION)
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
-                << dbpair.first;
+                << dbpair.first << "/" << collectionPair.first;
+            // account for smart edge collections and delete their
+            // shadowCollections as well
+            std::vector<std::string> shadowCollections;
+            if (auto shadowCols =
+                    collectionPair.second->get("shadowCollections")) {
+              if (auto arr = shadowCols->getArray()) {
+                for (Node::VPackStringType const& colName : *arr) {
+                  shadowCollections.emplace_back(
+                      std::to_string(colName.getNumericValue<uint64_t>()));
+                }
+              }
+            }
+
             // delete this collection
             deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
-                                   ev.coordinatorId, ev.coordinatorRebootId,
-                                   ev.coordinatorFound);
+                                   ev.coordinatorId, shadowCollections,
+                                   ev.coordinatorRebootId, ev.coordinatorFound);
           });
 
       // also check all indexes of the collection to see if they are abandoned

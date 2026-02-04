@@ -24,17 +24,15 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -64,7 +62,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(Server& server)
-    : ArangodFeature{server, *this}, _isReady(false), _bark(false) {
+    : ArangodFeature{server, *this}, _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
@@ -88,7 +86,8 @@ bool BootstrapFeature::isReady() const {
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--hund", "Make ArangoDB bark on startup.", new BooleanParameter(&_bark),
+      "--hund", "Make ArangoDB bark on startup.",
+      new BooleanParameter(&_options.bark),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
@@ -177,11 +176,6 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
       continue;
     }
 
-    // become Foxxmaster, ignore result
-    LOG_TOPIC("00162", DEBUG, Logger::STARTUP) << "Write Foxxmaster";
-    agency.setValue("Current/Foxxmaster", b.slice(), 0);
-    agency.increment("Current/Version");
-
     LOG_TOPIC("571fb", DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
@@ -254,14 +248,6 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-    std::string const myId =
-        ServerState::instance()->getId();  // local cluster UUID
-
-    // become leader before running server.js to ensure the leader
-    // is the foxxmaster. Everything else is handled in heartbeat
-    ServerState::instance()->setFoxxmaster(
-        myId);  // could be empty, but set anyway
-
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on
@@ -290,7 +276,7 @@ void BootstrapFeature::start() {
         << ") is ready for business. Have fun!";
   }
 
-  if (_bark) {
+  if (_options.bark) {
     LOG_TOPIC("bb9b7", INFO, arangodb::Logger::FIXME)
         << "The dog says: Гав гав";
   }

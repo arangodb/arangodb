@@ -313,7 +313,12 @@ function server_secrets(options) {
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectoryRecursive(keyfileDir);
 
-  fs.copyFile(fs.join("etc", "testing", "server.pem"), keyfileName);
+  let pemFile = fs.join("etc", "testing", "server.pem");
+  if (!fs.exists(keyfileName)) {
+    fs.copyFile(pemFile, keyfileName);
+  } else {
+    print(`not placing ${pemFile} into ${keyfileName} with content ${fs.read(keyfileName)}`);
+  }
 
   process.env["tls-keyfile"] = keyfileName;
 

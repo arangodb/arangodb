@@ -33,7 +33,7 @@ struct AssertionConditionalLogger {
   void operator&(AssertionConditionalStream& stream) const {
     if (!stream.condition) {
       std::string message = stream.stream.str();
-      arangodb::CrashHandler::assertionFailure(
+      arangodb::crash_handler::CrashHandler::assertionFailure(
           file, line, function, expr,
           message.empty() ? nullptr : message.c_str());
     } else {

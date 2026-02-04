@@ -27,11 +27,17 @@
 #include <string>
 #include <string_view>
 
-#include "Shell/arangosh.h"
+#include "Shell/ShellConsoleFeature.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
+
+using application_features::ApplicationServer;
+using application_features::CommunicationFeaturePhase;
+using application_features::GreetingsFeaturePhase;
 
 class Endpoint;
 
@@ -57,22 +63,17 @@ class ClientFeature final : public HttpEndpointProvider {
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
       : ClientFeature{server,
                       server.template getFeature<CommunicationFeaturePhase>(),
-                      Server::template id<HttpEndpointProvider>(),
+                      typeid(HttpEndpointProvider),
                       allowJwtSecret,
                       maxNumEndpoints,
                       connectionTimeout,
                       requestTimeout} {
-    static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
-                                                  CommunicationFeaturePhase>());
-
-    if constexpr (Server::template contains<ShellConsoleFeature>()) {
-      static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
-                                                    ShellConsoleFeature>());
+    if (server.template hasFeature<ShellConsoleFeature>()) {
       _console = &server.template getFeature<ShellConsoleFeature>();
     }
 
-    startsAfter<CommunicationFeaturePhase, Server>();
-    startsAfter<GreetingsFeaturePhase, Server>();
+    startsAfter<CommunicationFeaturePhase>();
+    startsAfter<GreetingsFeaturePhase>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -143,7 +144,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
-                size_t registration, bool allowJwtSecret,
+                std::type_index registration, bool allowJwtSecret,
                 size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);

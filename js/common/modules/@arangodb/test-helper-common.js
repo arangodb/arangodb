@@ -187,11 +187,6 @@ exports.helper = {
       }
     });
   },
-
-  waitUnload: function (collection, waitForCollector) {
-    let internal = require('internal');
-    internal.wal.flush(true, waitForCollector || false);
-  },
 };
 
 exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
