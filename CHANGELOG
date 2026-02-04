@@ -4,6 +4,11 @@ devel
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
 results when condition optimization is turned off.
 
+* FE-954: make view validation on UI less strict.
+
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
 * FE-937: fix distribution tab getting stuck on loading.
 
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
