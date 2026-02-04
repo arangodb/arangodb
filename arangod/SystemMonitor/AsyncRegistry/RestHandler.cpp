@@ -52,8 +52,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
-
   auto promises = all_undeleted_promises().index_by_parent();
   generateResult(rest::ResponseCode::OK,
                  arangodb::async_registry::serialize(promises).slice());

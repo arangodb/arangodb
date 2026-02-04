@@ -56,8 +56,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
-
   VPackBuilder builder;
   builder.openArray();
   registry.for_node([&](ActivityInRegistrySnapshot activity) {
