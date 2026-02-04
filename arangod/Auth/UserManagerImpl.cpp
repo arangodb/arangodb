@@ -186,12 +186,19 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
   namespace chrono = std::chrono;
   using namespace std::chrono_literals;
   {
+    // We want to see if the initial load takes longer,
+    // but we do not want to spam it on every retry. One log every 3 seconds
+    // seems sensible.
+    auto constexpr LogAfterSeconds = std::chrono::seconds(3);
+    // 133 tries are about 2min.
+    uint32_t constexpr MaxRetries = 133;
+
     LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
     auto start = chrono::system_clock::now();
     uint32_t tries = 0;
     while (loadFromDB() == 0) {
-      if (tries >= 133) {
-        // 133 tries are about 2min, if after 2min we still are not able to load
+      if (tries >= MaxRetries) {
+        // If after this we still are not able to load
         // anything from the _users collections, we should stop. We cant recover
         // and we are useless without users.
         LOG_TOPIC("ef78d", ERR, Logger::AUTHENTICATION)
@@ -200,7 +207,7 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
       }
       tries++;
       auto const now = chrono::system_clock::now();
-      if ((now - start) > std::chrono::seconds(3)) {
+      if ((now - start) > LogAfterSeconds) {
         start = chrono::system_clock::now();
         LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
             << "Preloading user cache is still in progress. Tried " << tries
