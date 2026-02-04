@@ -734,7 +734,6 @@ jobs:
         name: kafka-schema-registry
         environment:
           - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
-          - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     environment:
