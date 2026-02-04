@@ -130,7 +130,7 @@ struct ActivitiesAsyncTest : ::testing::Test {
         *arangodb::async_registry::get_current_coroutine()));
   }
 
-  NoWait wait;
+  WaitType wait;
 };
 
 using MyTypes = ::testing::Types<NoWait, WaitSlot, ConcurrentNoWait>;
