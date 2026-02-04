@@ -145,7 +145,7 @@
             http: true
             suffix: http
 
-- shell_client_traffic_multi:
+- shell_client_hot_backup_traffic_multi:
     options:
       priority: 250
       parallelity: 1
@@ -177,7 +177,21 @@
           args:
             http: true
             suffix: http
-
+      - hot_backup
+          args:
+            extraArgs:experimental-vector-index: true
+      - hot_backup_views
+          args:
+            extraArgs:experimental-vector-index: true
+      - hot_backup_aql
+          args:
+            extraArgs:experimental-vector-index: true
+      - hot_backup_smart_graphs
+          args:
+            extraArgs:experimental-vector-index: true
+      - hot_backup_el_cheapo
+          args:
+            extraArgs:experimental-vector-index: true
 
 - shell_client_aql:
     options:
@@ -324,11 +338,6 @@
     args:
       dumpAgencyOnError: true
 
-- shell_api:
-    options:
-      priority: 500
-      type: cluster
-
 - shell_api_multi:
     options:
       priority: 500
@@ -404,20 +413,8 @@
       - importing
       - export
       - shell_client_aql_vector
+      - shell_api
 
-- hot_backup:
-    options:
-      type: single
-      size: medium
-    args:
-      dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
-    suites:
-      - hot_backup
-      - hot_backup_views
-      - hot_backup_aql
-      - hot_backup_smart_graphs
-      - hot_backup_el_cheapo
 - hot_backup:
     options:
       type: cluster
