@@ -38,7 +38,7 @@ std::shared_ptr<VPackBuilder> vpackFromJsonString(char const* c) {
   return parser.steal();
 }
 
-auto operator"" _vpack(const char* json, size_t) {
+auto operator""_vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 }  // namespace

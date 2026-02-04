@@ -48,8 +48,8 @@ class QueryCursorTest : public ::testing::Test {
 };
 
 namespace {
-arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
-                                                    size_t len) {
+arangodb::velocypack::SharedSlice operator""_vpack(const char* json,
+                                                   size_t len) {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   options.validateUtf8Strings = true;

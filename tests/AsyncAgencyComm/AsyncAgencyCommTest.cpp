@@ -66,7 +66,7 @@ VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
   return b;
 }
 
-VPackBuffer<uint8_t> operator"" _vpack(const char* json, size_t) {
+VPackBuffer<uint8_t> operator""_vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 

@@ -38,7 +38,7 @@ VPackBufferPtr arangodb::tests::vpackFromJsonString(char const* c) {
   return builder->steal();
 }
 
-VPackBufferPtr arangodb::tests::operator"" _vpack(const char* json, size_t) {
+VPackBufferPtr arangodb::tests::operator""_vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
