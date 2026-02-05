@@ -193,52 +193,13 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
 
-/**
-   Converts a forest of promises into a list of stacktraces inside a
- velocypack.
-
-   The list of stacktraces include one stacktrace per tree in the forest. To
- create one stacktrace, it uses a depth first search to traverse the forest in
- post order, such that promises with the highest hierarchy in a tree are given
- first and the root promise is given last.
- **/
-VPackBuilder getStacktraceData(
-    IndexedForestWithRoots<PromiseSnapshot> const& promises) {
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(VPackValue("promise_stacktraces"));
-  builder.openArray();
-  for (auto const& root : promises.roots()) {
-    builder.openArray();
-    auto dfs = DFS_PostOrder{promises, root};
-    do {
-      auto next = dfs.next();
-      if (next == std::nullopt) {
-        break;
-      }
-      auto [id, hierarchy] = next.value();
-      auto data = promises.node(id);
-      if (data != std::nullopt) {
-        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
-        velocypack::serialize(builder, entry);
-      }
-    } while (true);
-    builder.close();
-  }
-  builder.close();
-  builder.close();
-  return builder;
-}
-
-velocypack::Builder collectAsyncRegistryData() {
-  // Collect all undeleted promises and index them by awaitee
+velocypack::Builder Feature::getData() const {
   auto promises = all_undeleted_promises().index_by_parent();
-  // Convert to stacktrace data
-  return getStacktraceData(promises);
+  return serialize(promises);
 }
 
 velocypack::SharedSlice Feature::getCrashData() const {
-  return collectAsyncRegistryData().sharedSlice();
+  return getData().sharedSlice();
 }
 
 std::string_view Feature::getDataSourceName() const { return name(); }

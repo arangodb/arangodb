@@ -52,8 +52,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto promises = all_undeleted_promises().index_by_parent();
-  generateResult(rest::ResponseCode::OK,
-                 arangodb::async_registry::serialize(promises).slice());
+  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
   co_return;
 }

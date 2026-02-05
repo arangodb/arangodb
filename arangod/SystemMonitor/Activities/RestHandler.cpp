@@ -21,12 +21,8 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
-#include <optional>
-#include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Activities/activity_registry_variable.h"
-#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::activities;
@@ -56,14 +52,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  VPackBuilder builder;
-  builder.openArray();
-  registry.for_node([&](ActivityInRegistrySnapshot activity) {
-    if (activity.state != State::Deleted) {
-      velocypack::serialize(builder, activity);
-    }
-  });
-  builder.close();
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
   co_return;
 }
