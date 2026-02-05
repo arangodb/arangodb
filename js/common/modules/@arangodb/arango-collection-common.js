@@ -249,14 +249,6 @@ ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
 };
 
-ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
-  'use strict';
-  var err = new ArangoError();
-  err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
-  err.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
-  throw err;
-};
-
 ArangoCollection.prototype.iterate = function (iterator, options) {
   var probability = 1.0;
   var limit = null;

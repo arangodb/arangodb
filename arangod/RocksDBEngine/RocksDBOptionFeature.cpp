@@ -2198,7 +2198,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
   // override
   std::size_t index = static_cast<
       std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
-  // TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
+  TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
   if (_maxWriteBufferNumberCf[index] > 0) {
     result.max_write_buffer_number =
         static_cast<int>(_maxWriteBufferNumberCf[index]);

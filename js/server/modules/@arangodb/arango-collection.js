@@ -378,10 +378,3 @@ ArangoCollection.prototype.lookupHashIndex = function () {
   });
 };
 
-ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
-  'use strict';
-  throw new ArangoError({
-    errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
-    errorMessage: 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.'
-  });
-};

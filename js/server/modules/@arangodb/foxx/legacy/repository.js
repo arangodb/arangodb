@@ -298,15 +298,6 @@ var indexPrototypes = {
       }.bind(this));
     }
   },
-  fulltext: {
-    fulltext(attribute, query, options) {
-      const err = require('internal').errors.ERROR_NOT_IMPLEMENTED;
-      const e = new Error(err.message);
-      e.errorNum = err.code;
-      e.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
-      throw e;
-    }
-  }
 };
 
 function addIndexMethods (prototype) {

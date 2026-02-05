@@ -824,13 +824,6 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-function SimpleQueryFulltext (collection, attribute, query, iid) {
-  var err = new ArangoError();
-  err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
-  err.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
-  throw err;
-}
-
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
@@ -841,4 +834,3 @@ exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
-exports.SimpleQueryFulltext = SimpleQueryFulltext;
