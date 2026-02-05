@@ -1,6 +1,9 @@
 4.0
 ---
 
+* Remove the deprecated `algorithm: "legacy"` option from K_SHORTEST_PATHS queries.
+  Yen's algorithm is now the only implementation and is used by default.
+
 * Remove support for creating deprecated index types. The following index types
   can no longer be created but existing indexes are still supported for upgrades:
 
