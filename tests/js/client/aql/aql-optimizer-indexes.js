@@ -1624,7 +1624,6 @@ function optimizerIndexesTestSuite () {
           assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
         }
         // The condition is impossible. We do not care for indexes.
-        // assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
         var results = db._query(query, {}, opt);
         assertEqual(0, results.toArray().length);
         assertTrue(results.getExtra().stats.scannedIndex >= 0);
@@ -1846,7 +1845,6 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -1881,7 +1879,6 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -1917,7 +1914,6 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -1953,7 +1949,6 @@ function optimizerIndexesModifyTestSuite () {
       assertEqual(0, results.getExtra().stats.scannedIndex);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
@@ -1991,7 +1986,6 @@ function optimizerIndexesModifyTestSuite () {
       assertTrue(results.getExtra().stats.scannedIndex > 0);
 
       // retry without index
-       //var idx = c.lookupIndex({ type: "persistent", fields: [ "value" ] });
       c.dropIndex(idx);
       idx = null;
 
