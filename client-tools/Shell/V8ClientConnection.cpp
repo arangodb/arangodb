@@ -3482,7 +3482,7 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   hints.ai_family = AF_UNSPEC;      // don't care IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
   hints.ai_flags = AI_PASSIVE;      // fill in my IP for me
-  if ((status = getaddrinfo(hostNameStr.c_str(), "3490", &hints, &servinfo)) !=
+  if ((status = getaddrinfo(hostNameStr.c_str(), nullptr, &hints, &servinfo)) !=
       0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, gai_strerror(status));
   }
