@@ -29,13 +29,13 @@ const ACTIVITY_REGISTRY_URL = '/_admin/activities';
 
 exports.get_snapshot_bare = function (server) {
   if (server === undefined) {
-    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
+    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL)).activities;
   }
   IM.rememberConnection();
   IM.arangods.filter((x) => x.id === server)[0].connect();
   const result = arangosh.checkRequestResult(internal.arango.GET_RAW(ACTIVITY_REGISTRY_URL)).parsedBody;
   IM.reconnectMe();
-  return result;
+  return result.activities;
 };
 
 exports.get_snapshot = function (server) {
