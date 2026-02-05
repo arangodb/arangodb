@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -328,7 +328,7 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_activity_registry
+  arango_tests_activities
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
@@ -351,7 +351,6 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
-  fmt
   velocypack_utils
 )
 
@@ -416,7 +415,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
-add_subdirectory(ActivityRegistry)
+add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)

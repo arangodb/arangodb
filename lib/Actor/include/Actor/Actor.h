@@ -63,8 +63,8 @@ concept MessageIsVariant = requires(typename Runtime::ActorPID pid,
 template<typename A>
 concept IsInspectable = requires(typename A::Message message,
                                  typename A::State state) {
-  {fmt::format("{}", message)};
-  {fmt::format("{}", state)};
+  {std::format("{}", message)};
+  {std::format("{}", state)};
 };
 }  // namespace
 template<typename Runtime, typename A>
@@ -283,6 +283,6 @@ auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
 
 template<typename Runtime, typename Config>
 requires arangodb::actor::Actorable<Runtime, Config>
-struct fmt::formatter<arangodb::actor::Actor<Runtime, Config>>
+struct std::formatter<arangodb::actor::Actor<Runtime, Config>>
     : arangodb::inspection::inspection_formatter {
 };

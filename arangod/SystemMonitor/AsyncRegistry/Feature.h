@@ -58,6 +58,7 @@ class Feature final : public application_features::ApplicationFeature,
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
+  velocypack::Builder getData() const;
   velocypack::SharedSlice getCrashData() const override;
 
   std::string_view getDataSourceName() const override;

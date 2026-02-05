@@ -41,6 +41,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/FollowerInfo.h"
 #include "Replication2/Version.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
@@ -352,6 +353,12 @@ RocksDBCollection::~RocksDBCollection() {
 void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& cb) {
   RocksDBMetaCollection::deferDropCollection(cb);
+  // Clear the write concern metric for this collection. This is needed because
+  // the collection object may live in _deadCollections for a long time.
+  auto const& followers = _logicalCollection.followers();
+  if (followers) {
+    followers->clearWriteConcernMetric();
+  }
   freeMemory();
 }
 

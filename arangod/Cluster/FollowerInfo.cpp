@@ -449,6 +449,12 @@ void FollowerInfo::clear() {
   _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
 }
 
+void FollowerInfo::clearWriteConcernMetric() {
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(writeLocker, _dataLock);
+  _writeConcernReached.clear();
+}
+
 /// @brief check whether the given server is a follower
 bool FollowerInfo::contains(ServerID const& sid) const {
   READ_LOCKER(readLocker, _dataLock);

@@ -111,7 +111,7 @@ auto DocumentStateLeaderInterface::postSnapshotRequest(
         if (!slice.hasKey("result")) {
           return ResultT<T>::error(
               TRI_ERROR_INTERNAL,
-              fmt::format("Missing \"result\" key in slice {}, while "
+              std::format("Missing \"result\" key in slice {}, while "
                           "processing snapshot response",
                           slice.toJson()));
         }

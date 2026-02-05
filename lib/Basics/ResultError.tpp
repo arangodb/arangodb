@@ -25,7 +25,7 @@
 
 #include "ResultError.h"
 
-#include <fmt/core.h>
+#include <format>
 
 #include "Basics/error.h"
 
@@ -33,8 +33,8 @@ namespace arangodb::result {
 
 template<typename... Args>
 auto Error::fmt(ErrorCode errorCode, Args&&... args) -> Error {
-  return Error(errorCode, fmt::format(fmt::runtime(TRI_errno_string(errorCode)),
-                                      std::forward<Args>(args)...));
+  return Error(errorCode, std::vformat(TRI_errno_string(errorCode),
+                                       std::make_format_args(args...)));
 }
 
 }  // namespace arangodb::result

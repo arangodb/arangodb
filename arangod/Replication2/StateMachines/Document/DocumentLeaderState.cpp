@@ -377,7 +377,7 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
         if (handler == nullptr) {
           return Result{
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-              fmt::format(
+              std::format(
                   "Could not get snapshot status of {}, state resigned.", gid)};
         }
         return getSnapshot(handler);
@@ -392,7 +392,7 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
   }
 
   return Result(TRI_ERROR_INTERNAL,
-                fmt::format("Snapshot not available for {}!", gid));
+                std::format("Snapshot not available for {}!", gid));
 }
 
 auto DocumentLeaderState::snapshotStatus(SnapshotId id)
@@ -424,7 +424,7 @@ auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
     if (handler == nullptr) {
       return Result{
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-          fmt::format("Could not get snapshot status of {}, state resigned.",
+          std::format("Could not get snapshot status of {}, state resigned.",
                       gid)};
     }
     return handler->finish(params.id);
@@ -439,7 +439,7 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
         }
         return Result{
             TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-            fmt::format(
+            std::format(
                 "Could not get snapshot statuses of {}, state resigned.",
                 to_string(gid))};
       });
@@ -473,7 +473,7 @@ auto DocumentLeaderState::createShard(ShardID shard,
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-          fmt::format(
+          std::format(
               "Leader {} resigned before replicating CreateShard operation",
               gid));
     }
@@ -541,7 +541,7 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
                       << " for collection properties update returned nullptr";
     return Result{
         TRI_ERROR_INTERNAL,
-        fmt::format(
+        std::format(
             "Locking shard {} for collection properties update returned "
             "nullptr",
             shard)};

@@ -25,12 +25,11 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
+#include <format>
 
 template<>
-struct fmt::formatter<::arangodb::ServerHealthState>
-    : fmt::formatter<string_view> {
+struct std::formatter<::arangodb::ServerHealthState>
+    : std::formatter<string_view> {
   template<class FormatContext>
   auto format(::arangodb::ServerHealthState state, FormatContext& fc) const {
     std::stringstream ss;
