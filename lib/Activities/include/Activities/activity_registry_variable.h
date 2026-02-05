@@ -18,22 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "ActivityRegistry/registry.h"
-#include "ActivityRegistry/activity.h"
+#include "Containers/Concurrent/Registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
-Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
-    ActivityId activity) noexcept {
-  _oldExecutingActivity = Registry::currentlyExecutingActivity();
-  Registry::setCurrentlyExecutingActivity(activity);
-}
+/**
+   Global variable that holds all active activities.
 
-Registry::ScopedCurrentlyExecutingActivity::
-    ~ScopedCurrentlyExecutingActivity() {
-  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
-}
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
 
-}  // namespace arangodb::activity_registry
+/**
+   Get thread registry of all active activities on current thread.
+
+   Creates the thread registry when called for the first time and adds it to
+   the global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::activities

@@ -26,7 +26,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -45,7 +44,8 @@ class LogicalCollection;
 class RocksDBIndexCacheRefillThread final : public Thread {
  public:
   explicit RocksDBIndexCacheRefillThread(
-      application_features::ApplicationServer& server, size_t maxCapacity);
+      DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
+      size_t maxCapacity);
 
   ~RocksDBIndexCacheRefillThread();
 

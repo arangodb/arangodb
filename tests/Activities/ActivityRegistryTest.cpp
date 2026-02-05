@@ -21,11 +21,11 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/registry.h"
+#include "Activities/registry.h"
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity.h"
+#include "Activities/activity_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
 
@@ -33,7 +33,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 namespace {
 auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
@@ -45,8 +45,6 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 }
 
 }  // namespace
-
-constexpr auto ActivityRoot = ActivityId{nullptr};
 
 struct ActivityRegistryTest : ::testing::Test {
   ActivityRegistryTest() {
@@ -71,7 +69,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
                         [id = a.id()](auto i) { return i.id == id; });
 
   EXPECT_NE(s, std::end(all_activities));
-  EXPECT_EQ(std::get<ActivityId>(s->parent), ActivityRoot);
+  EXPECT_EQ(s->parent, ActivityRoot);
 }
 
 TEST_F(ActivityRegistryTest, sets_current_activity) {
@@ -97,7 +95,7 @@ TEST_F(ActivityRegistryTest,
                     .name = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
-                    .parent = {ActivityRoot},
+                    .parent = ActivityRoot,
                     .metadata = {{"id", "1234"}, {"some_other_key", "value"}}});
   EXPECT_NE(specific, std::end(all_activities))
       << inspection::json(all_activities);
@@ -113,7 +111,7 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
                     .name = "child activity",
                     .state = State::Active,
                     .id = child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}},
+                    .parent = ActivityId{parent_activity.id()},
                     .metadata = {}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
@@ -136,21 +134,21 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
                     .name = "child of child activity",
                     .state = State::Active,
                     .id = child_of_first_child_activity.id(),
-                    .parent = {ActivityId{first_child_activity.id()}}}),
+                    .parent = ActivityId{first_child_activity.id()}}),
                 (ActivityInRegistrySnapshot{
                     .name = "second child activity",
                     .state = State::Active,
                     .id = second_child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = ActivityId{parent_activity.id()}}),
                 (ActivityInRegistrySnapshot{
                     .name = "first child activity",
                     .state = State::Active,
                     .id = first_child_activity.id(),
-                    .parent = {ActivityId{parent_activity.id()}}}),
+                    .parent = ActivityId{parent_activity.id()}}),
                 (ActivityInRegistrySnapshot{.name = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
-                                            .parent = {ActivityRoot}})}));
+                                            .parent = ActivityRoot})}));
 }
 
 TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {

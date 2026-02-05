@@ -48,16 +48,17 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
 using application_features::ApplicationServer;
 
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
-    ApplicationServer& server, size_t maxCapacity)
+    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
+    size_t maxCapacity)
     : Thread("RocksDBCacheRefiller"),
-      _databaseFeature(server.getFeature<DatabaseFeature>()),
+      _databaseFeature(databaseFeature),
       _maxCapacity(maxCapacity),
       _numQueued(0),
       _proceeding(0),
-      _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_auto_refill_loaded_total{})),
-      _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_auto_refill_dropped_total{})) {}
+      _totalNumQueued(
+          metricsFeature.add(rocksdb_cache_auto_refill_loaded_total{})),
+      _totalNumDropped(
+          metricsFeature.add(rocksdb_cache_auto_refill_dropped_total{})) {}
 
 RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 

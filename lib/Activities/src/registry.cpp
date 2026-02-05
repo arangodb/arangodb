@@ -18,27 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/registry.h"
+#include "Activities/activity.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
-Registry registry;
-thread_local ActivityId Registry::_currentlyExecutingActivity;
-
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard()
-        : _registry{ThreadRegistry::make(registry.get_metrics())} {
-      registry.add(_registry);
-    }
-
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
+Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
+    ActivityId activity) noexcept {
+  _oldExecutingActivity = Registry::currentlyExecutingActivity();
+  Registry::setCurrentlyExecutingActivity(activity);
 }
 
-}  // namespace arangodb::activity_registry
+Registry::ScopedCurrentlyExecutingActivity::
+    ~ScopedCurrentlyExecutingActivity() {
+  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
+}
+
+}  // namespace arangodb::activities
