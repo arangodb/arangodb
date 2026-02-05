@@ -3481,7 +3481,7 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   memset(&hints, 0, sizeof hints);  // make sure the struct is empty
   hints.ai_family = AF_UNSPEC;      // don't care IPv4 or IPv6
   hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
-  hints.ai_flags = AI_PASSIVE;      // fill in my IP for me
+  hints.ai_flags = AI_ADDRCONFIG;
   if ((status = getaddrinfo(hostNameStr.c_str(), nullptr, &hints, &servinfo)) !=
       0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, gai_strerror(status));
