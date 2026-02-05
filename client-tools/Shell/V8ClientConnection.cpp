@@ -62,11 +62,12 @@
 #include <fuerte/requests.h>
 #include <fuerte/helper.h>
 #include <v8.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <stdexcept>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #include <sys/socket.h>
 #include <netdb.h>
@@ -3474,40 +3475,28 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string hostNameStr = TRI_ObjectToString(isolate, args[0]);
 
-  int status;
-  struct addrinfo hints;
-  struct addrinfo* servinfo;  // will point to the results
+  boost::asio::io_context io_ctx;
+  boost::asio::ip::tcp::resolver resolver(io_ctx);
+  boost::system::error_code ec;
 
-  memset(&hints, 0, sizeof hints);  // make sure the struct is empty
-  hints.ai_family = AF_UNSPEC;      // don't care IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM;  // TCP stream sockets
-  hints.ai_flags = AI_ADDRCONFIG;
-  if ((status = getaddrinfo(hostNameStr.c_str(), nullptr, &hints, &servinfo)) !=
-      0) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, gai_strerror(status));
+  auto results = resolver.resolve(hostNameStr, "", ec);
+
+  if (ec) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ec.message().c_str());
   }
+
   auto context = TRI_IGETC;
   v8::Local<v8::Object> array = v8::Array::New(isolate);
-
   uint32_t i = 0;
-  for (struct addrinfo* addr = servinfo; addr != nullptr;
-       addr = addr->ai_next) {
-    char peer_addr_str[INET6_ADDRSTRLEN + 1];
-    memset(peer_addr_str, 0, sizeof(peer_addr_str));
-    const char* ntopResult =
-        inet_ntop(addr->ai_family, &addr->ai_addr, peer_addr_str,
-                  sizeof(peer_addr_str));
-    if (ntopResult == nullptr) {
-      // Skip this address if conversion fails
-      continue;
-    }
+
+  for (const auto& entry : results) {
+    std::string addr_str = entry.endpoint().address().to_string();
     v8::Handle<v8::String> oneAddr =
-        TRI_V8_ASCII_STRING(isolate, peer_addr_str);
+        TRI_V8_ASCII_STRING(isolate, addr_str.c_str());
     array->Set(context, i, oneAddr).FromMaybe(false);
     i++;
   }
 
-  freeaddrinfo(servinfo);  // free the linked-list
   TRI_V8_RETURN(array);
   TRI_V8_TRY_CATCH_END
 }
