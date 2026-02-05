@@ -46,7 +46,7 @@ exports.get_snapshot = function (server) {
 exports.pretty_print = function (activities) {
   const forest = exports.createForest(activities);
   return Array.from(forest.iter())
-    .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.name}: ${JSON.stringify(item.metadata)}`)
+    .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.type}: ${JSON.stringify(item.metadata)}`)
     .join('\n');
 };
 
