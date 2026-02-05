@@ -71,7 +71,6 @@ function config (options) {
 
   const ts = [
     'arangod',
-    'arangobench',
     'arangodump',
     'arangoimport',
     'arangorestore',

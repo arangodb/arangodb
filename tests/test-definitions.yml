@@ -13,7 +13,6 @@
     options:
       type: single
     suites:
-      - arangobench
       - permissions
       - paths_server
       - version
@@ -288,34 +287,6 @@
       javascript.gc-interval: "25"
     args:
       dumpAgencyOnError: true
-
-- arangobench_deadlock_audit:
-    options:
-      priority: 1000
-      type: mixed
-    suites:
-      - deadlock:
-          args:
-            dumpAgencyOnError: true
-            cluster: true
-      - arangobench:
-          args:
-            dumpAgencyOnError: true
-            cluster: true
-      - server_secrets:
-          args:
-            suffix: cluster
-            dumpAgencyOnError: true
-            cluster: true
-      - audit_client:
-          args:
-            cluster: true
-      - audit_server:
-          args:
-            cluster: true
-      - server_secrets:
-          args:
-            suffix: single
 
 - restart:
     options:

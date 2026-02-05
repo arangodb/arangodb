@@ -188,7 +188,6 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model graph database")
 
 
 # binaries
-set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOBACKUP  arangobackup)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)

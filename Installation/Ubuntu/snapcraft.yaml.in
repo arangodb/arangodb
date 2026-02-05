@@ -75,12 +75,5 @@ apps:
     plugs:               # enable interfaces
       - network
 
-  arangobench:
-    command: arangobench  \
-      --server.endpoint=tcp://127.0.0.1:@SNAP_PORT@ \
-      --temp.path=${SNAP_DATA}
-    plugs:               # enable interfaces
-      - network
-
   arangovpack:
     command: arangovpack

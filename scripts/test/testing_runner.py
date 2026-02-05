@@ -437,7 +437,6 @@ class TestingRunner:
             "arango-secure-installation",
             "foxx-manager",
             "arangorestore",
-            "arangobench",
             "snowball",
             # 'arangodbtests', we do not need arangodbtests since these tests are executed in a separate job
             "arangod",

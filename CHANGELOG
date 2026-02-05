@@ -1,6 +1,8 @@
 4.0
 ---
 
+* Remove arangobench.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 
