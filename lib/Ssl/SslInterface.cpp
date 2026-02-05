@@ -318,15 +318,23 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
 bool verifyES256Signature(std::string_view publicKeyPem,
                           std::string_view message,
                           std::string_view signature) {
-  BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(), static_cast<int>(publicKeyPem.size()));
+  BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(),
+                                static_cast<int>(publicKeyPem.size()));
   if (keybio == nullptr) {
     return false;
   }
   auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
 
+  // Try to read as a public key first
   EVP_PKEY* pKey = PEM_read_bio_PUBKEY(keybio, nullptr, nullptr, nullptr);
   if (pKey == nullptr) {
-    return false;
+    // If that fails, try to read as a private key (which also contains the
+    // public key)
+    BIO_reset(keybio);
+    pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+    if (pKey == nullptr) {
+      return false;
+    }
   }
   auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
@@ -410,7 +418,8 @@ bool verifyES256Signature(std::string_view publicKeyPem,
   }
 
   int result = EVP_DigestVerifyFinal(
-      mdctx, reinterpret_cast<unsigned char const*>(signature.data()), signature.size());
+      mdctx, reinterpret_cast<unsigned char const*>(signature.data()),
+      signature.size());
 
   if (result == -1) {
     LOG_TOPIC("8f3a6", TRACE, Logger::AUTHENTICATION)
@@ -422,7 +431,8 @@ bool verifyES256Signature(std::string_view publicKeyPem,
 
 int signES256(std::string_view privateKeyPem, std::string_view message,
               std::string& signature, std::string& error) {
-  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(), static_cast<int>(privateKeyPem.size()));
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(),
+                                static_cast<int>(privateKeyPem.size()));
   if (keybio == nullptr) {
     error.append("Failed to initialize keybio.");
     return 1;
@@ -522,6 +532,58 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
   std::memset(sigBytes + 32, 0, 32);
   BN_bn2bin(s, sigBytes + 32 + (32 - sLen));
 
+  return 0;
+}
+
+int extractPublicKeyFromPrivateKey(std::string_view privateKeyPem,
+                                   std::string& publicKeyPem,
+                                   std::string& error) {
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(),
+                                static_cast<int>(privateKeyPem.size()));
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    error.append("Failed to read private key from PEM: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    error.append("Key is not an EC key");
+    return 1;
+  }
+
+  // Extract the public key and write it to a string
+  BIO* pubKeyBio = BIO_new(BIO_s_mem());
+  if (pubKeyBio == nullptr) {
+    error.append("Failed to create BIO for public key");
+    return 1;
+  }
+  auto cleanupPubKeyBio =
+      scopeGuard([&]() noexcept { BIO_free_all(pubKeyBio); });
+
+  if (PEM_write_bio_PUBKEY(pubKeyBio, pKey) != 1) {
+    error.append("Failed to write public key to BIO: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  // Read the public key PEM from the BIO
+  char* pubKeyData = nullptr;
+  long pubKeyLen = BIO_get_mem_data(pubKeyBio, &pubKeyData);
+  if (pubKeyLen <= 0 || pubKeyData == nullptr) {
+    error.append("Failed to get public key data from BIO");
+    return 1;
+  }
+
+  publicKeyPem.assign(pubKeyData, pubKeyLen);
   return 0;
 }
 

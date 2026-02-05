@@ -158,8 +158,7 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
 //////////////////////////////////////////////////////////////////////////
 
 bool verifyES256Signature(std::string_view publicKeyPem,
-                          std::string_view message,
-                          std::string_view signature);
+                          std::string_view message, std::string_view signature);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief ECDSA signing with ES256 (SHA256)
@@ -169,5 +168,15 @@ bool verifyES256Signature(std::string_view publicKeyPem,
 
 int signES256(std::string_view privateKeyPem, std::string_view message,
               std::string& signature, std::string& error);
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief Extract public key from an EC private key PEM
+///
+/// Will return 0 on success and populate publicKeyPem, non-zero on error
+//////////////////////////////////////////////////////////////////////////
+
+int extractPublicKeyFromPrivateKey(std::string_view privateKeyPem,
+                                   std::string& publicKeyPem,
+                                   std::string& error);
 
 }  // namespace arangodb::rest::SslInterface

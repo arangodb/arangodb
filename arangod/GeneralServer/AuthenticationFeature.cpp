@@ -280,9 +280,7 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "--server.jwt-secret-folder",
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
-          new StringParameter(&_options.jwtSecretFolderProgramOption),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise))
+          new StringParameter(&_options.jwtSecretFolderProgramOption))
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
@@ -371,14 +369,9 @@ void AuthenticationFeature::prepare() {
     _options.jwtSecretIsES256 = false;  // generated secrets are always HS256
   }
 
-#ifdef USE_ENTERPRISE
   _authCache->setJwtSecrets(_options.jwtSecretProgramOption,
                             _options.jwtPassiveSecrets,
                             _options.jwtSecretIsES256);
-#else
-  _authCache->setJwtSecret(_options.jwtSecretProgramOption,
-                           _options.jwtSecretIsES256);
-#endif
 
   INSTANCE.store(this, std::memory_order_release);
 }
@@ -444,7 +437,6 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
   return !_options.jwtSecretProgramOption.empty();
 }
 
-#ifdef USE_ENTERPRISE
 /// verification only secrets
 std::tuple<std::string, std::vector<std::string>, bool>
 AuthenticationFeature::jwtSecrets() const {
@@ -452,7 +444,6 @@ AuthenticationFeature::jwtSecrets() const {
   return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets,
           _options.jwtSecretIsES256};
 }
-#endif
 
 Result AuthenticationFeature::loadJwtSecretsFromFile() {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
@@ -482,6 +473,35 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
         basics::FileUtils::slurp(_options.jwtSecretKeyfileProgramOption);
     _options.jwtSecretProgramOption =
         basics::StringUtils::trim(contents, " \t\n\r");
+
+    // Check if this is an ES256 key (PEM format)
+    if (isPemFormat(_options.jwtSecretProgramOption)) {
+      // The active secret must be a private key for signing JWT tokens
+      if (isEcPrivateKey(_options.jwtSecretProgramOption)) {
+        _options.jwtSecretIsES256 = true;
+        LOG_TOPIC("4923e", INFO, arangodb::Logger::AUTHENTICATION)
+            << "Detected ES256 private key in JWT secret keyfile (for signing "
+               "and "
+               "verification)";
+      } else if (isEcPublicKey(_options.jwtSecretProgramOption)) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "JWT secret keyfile contains an ES256 public key, but a "
+            "private key is required for signing JWT tokens needed for "
+            "intra-cluster communication");
+      } else {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "PEM file detected but does not contain a valid EC key");
+      }
+    } else {
+      // Non-PEM format, must be HS256
+      _options.jwtSecretIsES256 = false;
+      // Check length limit for HS256 secrets
+      if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Given JWT secret too long. Max length is 64");
+      }
+    }
   } catch (std::exception const& ex) {
     std::string msg("unable to read content of jwt-secret file '");
     msg.append(_options.jwtSecretKeyfileProgramOption)
@@ -540,17 +560,19 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   // Check if the active secret is in PEM format (ES256) or raw bytes (HS256)
   bool isES256 = false;
   if (isPemFormat(activeSecret)) {
-    // Check if it's an EC private key or public key
+    // The active secret must be a private key for signing JWT tokens
     if (isEcPrivateKey(activeSecret)) {
       isES256 = true;
       LOG_TOPIC("4922e", INFO, arangodb::Logger::AUTHENTICATION)
           << "Detected ES256 private key in JWT secret file (for signing and "
              "verification)";
     } else if (isEcPublicKey(activeSecret)) {
-      isES256 = true;
-      LOG_TOPIC("4922d", INFO, arangodb::Logger::AUTHENTICATION)
-          << "Detected ES256 public key in JWT secret file (for verification "
-             "only)";
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          "First JWT secret file (active secret) contains an ES256 "
+          "public key, but a private key is required for signing JWT "
+          "tokens needed for intra-cluster communication. Public keys "
+          "can only be used as passive secrets for verification.");
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "PEM file detected but does not contain a valid EC key");
@@ -564,7 +586,6 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
 
   _options.jwtSecretIsES256 = isES256;
 
-#ifdef USE_ENTERPRISE
   std::vector<std::string> passiveSecrets;
   if (list.size() > 1) {
     list.erase(list.begin());
@@ -577,12 +598,14 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
 
       // Check if this is a PEM file
       if (isPemFormat(secret)) {
-        // Ignore ES256 private keys in passive secrets (only the active secret
-        // should sign)
+        // Accept both ES256 private and public keys for verification
+        // Private keys can now be used for signature verification too
         if (isEcPrivateKey(secret)) {
           LOG_TOPIC("4922c", INFO, arangodb::Logger::AUTHENTICATION)
-              << "Ignoring ES256 private key in passive secrets: " << file
-              << " (only the first/active secret should be a private key)";
+              << "Adding ES256 private key to passive secrets for "
+                 "verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
           continue;
         }
 
@@ -614,7 +637,6 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
 
   LOG_TOPIC("4a34f", INFO, arangodb::Logger::AUTHENTICATION)
       << "have " << _options.jwtPassiveSecrets.size() << " passive JWT secrets";
-#endif
 
   _options.jwtSecretProgramOption = std::move(activeSecret);
 

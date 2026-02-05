@@ -78,21 +78,26 @@ auth::TokenCache::~TokenCache() {
   }
 }
 
-#ifndef USE_ENTERPRISE
-
-void auth::TokenCache::setJwtSecret(std::string jwtSecret, bool isES256) {
+void auth::TokenCache::setJwtSecrets(std::string active,
+                                     std::vector<std::string> passive,
+                                     bool isES256) {
   {
     WRITE_LOCKER(writeLocker, _jwtSecretLock);
     LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
-        << "Setting jwt secret of size " << jwtSecret.size()
+        << "Setting active jwt secret of size " << active.size()
+        << ", additionally setting (" << passive.size() << ") passive secret(s)"
         << " (ES256: " << (isES256 ? "yes" : "no") << ")";
-    _jwtActiveSecret = jwtSecret;
+
+    _jwtActiveSecret = std::move(active);
+    _jwtPassiveSecrets = std::move(passive);
     _jwtActiveSecretIsES256 = isES256;
+  }
+  {
+    std::lock_guard<std::mutex> guard(_jwtCacheMutex);
+    _jwtCache.clear();
   }
   generateSuperToken();
 }
-
-#endif
 
 std::string const& auth::TokenCache::jwtToken() const noexcept {
   TRI_ASSERT(!_jwtSuperToken.empty());
@@ -417,18 +422,31 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   return authResult;
 }
 
-#ifndef USE_ENTERPRISE
 bool auth::TokenCache::validateJwtHMAC256Signature(
     std::string_view message, std::string_view signatureWebBase64) {
   std::string signature;
   absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
-  READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(
-      _jwtActiveSecret.data(), _jwtActiveSecret.size(),
-      message.data(),                    // cppcheck-suppress invalidLifetime
-      message.size(), signature.data(),  // cppcheck-suppress invalidLifetime
-      signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  READ_LOCKER(readLocker, _jwtSecretLock);
+
+  bool good =
+      verifyHMAC(_jwtActiveSecret.data(), _jwtActiveSecret.size(),
+                 message.data(), message.size(), signature.data(),
+                 signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  if (good) {
+    return good;
+  }
+
+  // check all the passive secrets
+  for (auto const& passive : _jwtPassiveSecrets) {
+    good = verifyHMAC(passive.data(), passive.size(), message.data(),
+                      message.size(), signature.data(), signature.size(),
+                      SslInterface::Algorithm::ALGORITHM_SHA256);
+    if (good) {
+      return good;
+    }
+  }
+  return false;
 }
 
 bool auth::TokenCache::validateJwtES256Signature(
@@ -437,6 +455,16 @@ bool auth::TokenCache::validateJwtES256Signature(
   absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
   READ_LOCKER(readLocker, _jwtSecretLock);
+
+  // First try the active secret - it can be either a private key or a public
+  // key. verifyES256Signature handles both cases.
+  if (!_jwtActiveSecret.empty()) {
+    bool good = SslInterface::verifyES256Signature(_jwtActiveSecret, message,
+                                                   signature);
+    if (good) {
+      return true;
+    }
+  }
 
   // check all the passive certificates
   for (auto const& passive : _jwtPassiveSecrets) {
@@ -447,7 +475,6 @@ bool auth::TokenCache::validateJwtES256Signature(
   }
   return false;
 }
-#endif
 
 /// generate a JWT token for internal cluster communication
 void auth::TokenCache::generateSuperToken() {

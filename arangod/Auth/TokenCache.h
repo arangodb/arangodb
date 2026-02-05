@@ -92,14 +92,9 @@ class TokenCache {
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
 
-#ifdef USE_ENTERPRISE
-  /// set new jwt secret, regenerate _jwtToken
+  /// set new jwt secret(s), regenerate _jwtToken
   void setJwtSecrets(std::string active, std::vector<std::string> passive,
                      bool isES256);
-#else
-  /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecret(std::string active, bool isES256);
-#endif
 
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept;
@@ -134,9 +129,7 @@ class TokenCache {
 
   mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
 
-#ifdef USE_ENTERPRISE
   std::vector<std::string> _jwtPassiveSecrets;
-#endif
   std::string _jwtActiveSecret;
   bool _jwtActiveSecretIsES256{false};  /// true if active secret is ES256 key
   std::string _jwtSuperToken;           /// token for internal use
