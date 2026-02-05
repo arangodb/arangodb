@@ -69,9 +69,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
-#include <sys/socket.h>
-#include <netdb.h>
-
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -3491,7 +3488,7 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   for (const auto& entry : results) {
     std::string addr_str = entry.endpoint().address().to_string();
-    v8::Handle<v8::String> oneAddr =
+    v8::Local<v8::String> oneAddr =
         TRI_V8_ASCII_STRING(isolate, addr_str.c_str());
     array->Set(context, i, oneAddr).FromMaybe(false);
     i++;
