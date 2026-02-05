@@ -517,7 +517,7 @@ endif()
 
 # need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilities
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 # turn off compiler language extensions(e.g. don't use -std=gnu++20, but
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
