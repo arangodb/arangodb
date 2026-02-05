@@ -1136,7 +1136,6 @@ class ClusterInfo final {
     metrics::Gauge<std::uint64_t>& numberOutOfSyncShards;
     metrics::Gauge<std::uint64_t>& numberNotReplicatedShards;
     metrics::Gauge<std::uint64_t>& numberFollowerShards;
-    metrics::Gauge<std::uint64_t>& shardsFollowerNumber;
     metrics::Gauge<std::uint64_t>& shardFollowersOutOfSync;
 
     explicit MetadataMetrics(metrics::MetricsFeature& metrics);

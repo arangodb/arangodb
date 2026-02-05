@@ -433,24 +433,21 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 // Shards metric is cluster-specific (databases and collections metrics are
 // declared in DatabaseFeature.h)
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
-              "Global number of shards");
+              "Number of leader shards"); // NUmber of Leader shards
 
 // New coordinator-level shard metrics
 DECLARE_GAUGE(arangodb_metadata_total_number_of_shards, std::uint64_t,
-              "Total number of shards (viewed by coordinator)");
+              "Total number of shards (viewed by coordinator)"); // Leaders + Followers
 DECLARE_GAUGE(arangodb_metadata_number_out_of_sync_shards, std::uint64_t,
-              "Number of shards out-of-sync between Plan and Current");
+              "Number of shards out-of-sync between Plan and Current"); // Replication Factor diff then the Number of Followers
 DECLARE_GAUGE(arangodb_metadata_number_not_replicated_shards, std::uint64_t,
-              "Number of shards with fewer replicas in Current than planned");
+              "Number of non replicated shards"); // Number of shards replication factor bigger than 1 and just 1 follower
 DECLARE_GAUGE(arangodb_metadata_number_follower_shards, std::uint64_t,
-              "Total number of follower replicas observed in Current");
-DECLARE_GAUGE(arangodb_metadata_shards_follower_number, std::uint64_t,
-              "Number of follower shards (total - leaders)");
-DECLARE_GAUGE(
-    arangodb_metadata_shard_followers_out_of_sync_number, std::uint64_t,
-    "Number of follower shards that are out of sync with their leader");
+              "Total number of follower replicas observed in Current"); // Number of Folloers = Total Number of Shards - Leaders
+DECLARE_GAUGE(arangodb_metadata_shard_followers_out_of_sync_number, std::uint64_t,
+    "Number of follower shards that are out of sync with their leader"); // No leaders have been elected yet or they are catching up
 
-ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+    ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
@@ -6389,8 +6386,6 @@ ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
           metrics.add(arangodb_metadata_number_not_replicated_shards{})),
       numberFollowerShards(
           metrics.add(arangodb_metadata_number_follower_shards{})),
-      shardsFollowerNumber(
-          metrics.add(arangodb_metadata_shards_follower_number{})),
       shardFollowersOutOfSync(
           metrics.add(arangodb_metadata_shard_followers_out_of_sync_number{})) {
   // TODO We should expose these on a single server as well, but that can't
@@ -6506,8 +6501,6 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
   _metadataMetrics->totalNumberOfShards.store(totalShards,
                                               std::memory_order_relaxed);
   _metadataMetrics->numberFollowerShards.store(totalFollowers,
-                                               std::memory_order_relaxed);
-  _metadataMetrics->shardsFollowerNumber.store(totalFollowers,
                                                std::memory_order_relaxed);
   _metadataMetrics->numberOutOfSyncShards.store(outOfSync,
                                                 std::memory_order_relaxed);

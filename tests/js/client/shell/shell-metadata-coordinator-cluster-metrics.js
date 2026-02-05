@@ -88,9 +88,15 @@ function metadataCoordinatorMetricsSuite() {
     testMetricsSimple: function() {
       const endpoints = getEndpointsByType('coordinator');
       assertTrue(endpoints.length > 0);
-      // Do not assert exact numbers here; just ensure metrics exist and are
-      // non-negative. Exact counts may vary across test environments.
-      assertMetrics(endpoints, null, null);
+      
+      // Get base values from _system database
+      db._useDatabase("_system");
+      const ep = endpoints[0];
+      const baseCollections = getMetric(ep, "arangodb_metadata_number_of_collections");
+      const baseShards = getMetric(ep, "arangodb_metadata_number_of_shards");
+      
+      // Assert that we reach those base metrics
+      assertMetrics(endpoints, baseCollections, baseShards);
     },
 
     testCoordinatorNewMetricsExistAndMatchShards: function() {
@@ -134,11 +140,6 @@ function metadataCoordinatorMetricsSuite() {
 
       assertEqual(total, expectedTotal, `total shards after create: ${total}, expected ${expectedTotal}`);
       assertEqual(followers, expectedFollowers, `follower shards after create: ${followers}, expected ${expectedFollowers}`);
-
-      // cleanup
-      db._drop(testCollectionName);
-      db._useDatabase("_system");
-      db._dropDatabase(testDbName);
     },
 
     testCoordinatorMetricsNotReplicatedCount: function() {
@@ -198,44 +199,6 @@ function metadataCoordinatorMetricsSuite() {
       }
 
       assertEqual(followers, baseFollowers, `followers after move: ${followers}, expected ${baseFollowers}`);
-
-      // cleanup
-      db._drop(testCollectionName);
-      db._useDatabase("_system");
-      db._dropDatabase(testDbName);
-    },
-
-    testCoordinatorShardsFollowerNumber: function() {
-      const endpoints = getEndpointsByType('coordinator');
-      assertTrue(endpoints.length > 0);
-      const ep = endpoints[0];
-
-      const baseFollowerNumber = getMetric(ep, "arangodb_metadata_shards_follower_number");
-      const baseTotal = getMetric(ep, "arangodb_metadata_total_number_of_shards");
-      const baseLeaders = getMetric(ep, "arangodb_metadata_number_of_shards");
-
-      db._createDatabase(testDbName);
-      db._useDatabase(testDbName);
-      db._create(testCollectionName, { numberOfShards: 3, replicationFactor: 3 });
-
-      const expectedTotal = baseTotal + 3;
-      const expectedLeaders = baseLeaders + 3;
-      const expectedFollowerNumber = baseFollowerNumber + 6; // 3 * (3-1)
-
-      let followerNumber = 0, total = 0, leaders = 0;
-      for (let i = 0; i < 8; ++i) {
-        internal.sleep(0.1);
-        followerNumber = getMetric(ep, "arangodb_metadata_shards_follower_number");
-        total = getMetric(ep, "arangodb_metadata_total_number_of_shards");
-        leaders = getMetric(ep, "arangodb_metadata_number_of_shards");
-        if (followerNumber === expectedFollowerNumber && total === expectedTotal && leaders === expectedLeaders) break;
-      }
-
-      assertEqual(followerNumber, expectedFollowerNumber, 
-                  `follower number after create: ${followerNumber}, expected ${expectedFollowerNumber}`);
-      // Verify that follower number equals total - leaders
-      assertEqual(followerNumber, total - leaders,
-                  `follower number (${followerNumber}) should equal total (${total}) - leaders (${leaders})`);
 
       // cleanup
       db._drop(testCollectionName);
