@@ -542,7 +542,7 @@ function ReplicationSuite() {
             let collection = pickCollection();
             emit("createIndex " + db._name() + " " + collection.name());
             collection.ensureIndex({ 
-              type: Math.random() >= 0.5 ? "hash" : "skiplist", 
+              type: "persistent", 
               fields: [ name ],
               sparse: Math.random() > 0.5 
             }); 

@@ -141,14 +141,14 @@ describe('Index figures', function () {
 
   }); // end edge index
 
-// hash index ///////////////////////////////////////////////////////////
-  describe('hash index', function () {
-    const colName = "UnitTestDoggyHash";
+// persistent index ///////////////////////////////////////////////////////////
+  describe('persistent index', function () {
+    const colName = "UnitTestDoggyPersistent";
     var col;
     before('create collection',function(){
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "hash", fields: ["name"]});
+      col.ensureIndex({type: "persistent", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }
@@ -160,7 +160,7 @@ describe('Index figures', function () {
       var indexes = col.indexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
-      expect(indexes[1].type).to.be.equal("hash");
+      expect(indexes[1].type).to.be.equal("persistent");
     });
     it('verify index - memory', function() {
       var indexes = col.indexes(true);
@@ -178,46 +178,7 @@ describe('Index figures', function () {
     after(function(){
       db._drop(col);
     });
-  }); // end hash index
-
-// skiplist index ///////////////////////////////////////////////////////////
-  describe('skiplist index', function () {
-    const colName = "UnitTestDoggySkip";
-    var col;
-    before('create collection',function(){
-      db._drop(colName);
-      col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "skiplist", fields: ["name"]});
-      for(var i = 0; i < 100; i++){
-        col.insert({"name":"Harry"+i});
-      }
-    });
-    after(function() {
-      db._drop(colName);
-    });
-    it('verify index types', function() {
-      var indexes = col.indexes(true);
-      expect(indexes.length).to.be.equal(2);
-      expect(indexes[0].type).to.be.equal("primary");
-      expect(indexes[1].type).to.be.equal("skiplist");
-    });
-    it('verify index - memory', function() {
-      var indexes = col.indexes(true);
-      indexes.forEach((i) => {
-        verifyMemory(i);
-      });
-    });
-    // FIXME not implemented
-    it.skip('verify figures - cache', function() {
-      var indexes = col.indexes(true);
-      indexes.forEach((i) => {
-        verifyCache(i);
-      });
-    });
-    after(function(){
-      db._drop(col);
-    });
-  }); // end skiplist index
+  }); // end persistent index
 
 // geo index ///////////////////////////////////////////////////////////
   describe('geo index', function () {

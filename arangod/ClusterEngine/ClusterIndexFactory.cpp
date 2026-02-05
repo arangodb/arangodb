@@ -182,13 +182,10 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   static const DefaultIndexFactory geoIndexFactory(server, "geo", engine);
   static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine);
   static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine);
-  static const DefaultIndexFactory hashIndexFactory(server, "hash", engine);
   static const DefaultIndexFactory persistentIndexFactory(server, "persistent",
                                                           engine);
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary",
                                                        engine);
-  static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist",
-                                                        engine);
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl", engine);
   static const DefaultIndexFactory mdiIndexFactory(server, "mdi", engine);
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd", engine);
@@ -202,10 +199,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(geoIndexFactory._type, geoIndexFactory);
   factory.emplace(geo1IndexFactory._type, geo1IndexFactory);
   factory.emplace(geo2IndexFactory._type, geo2IndexFactory);
-  factory.emplace(hashIndexFactory._type, hashIndexFactory);
   factory.emplace(persistentIndexFactory._type, persistentIndexFactory);
   factory.emplace(primaryIndexFactory._type, primaryIndexFactory);
-  factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
   factory.emplace(mdiIndexFactory._type, mdiIndexFactory);
@@ -220,8 +215,6 @@ ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server,
   linkIndexFactories(server, *this, engine);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-/// "hash") used to display storage engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 ClusterIndexFactory::indexAliases() const {
   auto* ae = _engine.actualEngine();

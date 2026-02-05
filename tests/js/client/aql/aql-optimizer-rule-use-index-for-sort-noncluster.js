@@ -55,7 +55,7 @@ function optimizerRuleTestSuite() {
         docs.push({ value: i });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "value" ] });
     },
 
     ////////////////////////////////////////////////////////////////////////////////

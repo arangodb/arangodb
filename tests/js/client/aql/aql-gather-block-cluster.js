@@ -343,7 +343,7 @@ function gatherBlockTestSuite () {
     },
 
     testSingleShardWithIndex : function () {
-      idx = c2.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      idx = c2.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn2 + " SORT doc.Hallo RETURN doc.Hallo";
       // check the return value
       let result = db._query(query).toArray();
@@ -366,7 +366,7 @@ function gatherBlockTestSuite () {
     },
     
     testSingleShardWithIndexDescending : function () {
-      idx = c2.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      idx = c2.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn2 + " SORT doc.Hallo DESC RETURN doc.Hallo";
       // check the return value
       let result = db._query(query).toArray();
@@ -434,7 +434,7 @@ function gatherBlockTestSuite () {
 
     testMultipleShardsWithIndex : function () {
       const opts = { optimizer: { rules: ["-optimize-projections"] } };
-      idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      idx = c1.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn1 + " SORT doc.Hallo RETURN doc.Hallo";
       // check the return value
       let result = db._query(query, null, opts).toArray();
@@ -460,7 +460,7 @@ function gatherBlockTestSuite () {
     
     testMultipleShardsWithIndexDescending : function () {
       const opts = { optimizer: { rules: ["-optimize-projections"] } };
-      idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      idx = c1.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn1 + " SORT doc.Hallo DESC RETURN doc.Hallo";
       // check the return value
       let result = db._query(query, null, opts).toArray();
@@ -514,7 +514,7 @@ function gatherBlockTestSuite () {
     },
     
     testMultipleShardsCollect : function () {
-      idx = c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      idx = c1.ensureIndex({ type: "persistent", fields: ["Hallo"] });
       let query = "FOR doc IN " + cn1 + " FILTER doc.Hallo == 10 COLLECT WITH COUNT INTO length RETURN length";
       
       let nodes = query_explain(query).plan.nodes;

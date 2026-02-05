@@ -87,7 +87,7 @@ function ReplicationIncrementalKeyConflict () {
     testKeyConflictsIncremental: function () {
       var c = db._create(cn);
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -115,7 +115,7 @@ function ReplicationIncrementalKeyConflict () {
       db._flushCache();
       c = db._collection(cn);
       
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       assertEqual(3, c.count());
@@ -147,7 +147,7 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
@@ -192,7 +192,7 @@ function ReplicationIncrementalKeyConflict () {
     testKeyConflictsRandom: function () {
       var c = db._create(cn);
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -245,7 +245,7 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
@@ -256,7 +256,7 @@ function ReplicationIncrementalKeyConflict () {
     testKeyConflictsRandomDiverged: function () {
       var c = db._create(cn);
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -296,7 +296,7 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
@@ -308,7 +308,7 @@ function ReplicationIncrementalKeyConflict () {
       var c = db._create(cn);
       var i;
       c.ensureIndex({
-        type: 'hash',
+        type: 'persistent',
         fields: ['value'],
         unique: true
       });
@@ -332,7 +332,7 @@ function ReplicationIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
@@ -376,7 +376,7 @@ function ReplicationIncrementalKeyConflict () {
       c = db._collection(cn);
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.indexes()[1].type);
+      assertEqual('persistent', c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
     }
   };

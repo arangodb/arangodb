@@ -431,7 +431,7 @@ describe('Global Replication on a fresh boot', function () {
 
         let oIdx = db._collection(docColName).indexes();
 
-        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
+        db._collection(docColName).ensureIndex({ type: "persistent", fields: ["value"] });
 
         let mIdx = db._collection(docColName).indexes();
 
@@ -460,7 +460,7 @@ describe('Global Replication on a fresh boot', function () {
           }
         }
 
-        c.ensureIndex({ type: "hash", fields: ["value2"] });
+        c.ensureIndex({ type: "persistent", fields: ["value2"] });
         let mIdx = c.indexes();
 
         waitForReplication();
@@ -692,7 +692,7 @@ describe('Global Replication on a fresh boot', function () {
         db._useDatabase(dbName);
         let oIdx = db._collection(docColName).indexes();
 
-        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
+        db._collection(docColName).ensureIndex({ type: "persistent", fields: ["value"] });
 
         let mIdx = db._collection(docColName).indexes();
 
@@ -724,7 +724,7 @@ describe('Global Replication on a fresh boot', function () {
           }
         }
 
-        c.ensureIndex({ type: "hash", fields: ["value2"] });
+        c.ensureIndex({ type: "persistent", fields: ["value2"] });
         let mIdx = c.indexes();
 
         waitForReplication();
@@ -754,7 +754,7 @@ const fillLeaderWithInitialData = function () {
     docs.push({value: i});
   }
   let col = db._create(docColName);
-  col.ensureIndex({ type: "hash", fields: ["value"] });
+  col.ensureIndex({ type: "persistent", fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   col.save(docs);
@@ -764,7 +764,7 @@ const fillLeaderWithInitialData = function () {
   db._useDatabase(dbName);
 
   let dcol = db._create(docColName);
-  dcol.ensureIndex({ type: "hash", fields: ["value"] });
+  dcol.ensureIndex({ type: "persistent", fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   dcol.save(docs);
@@ -986,7 +986,7 @@ describe('Test switch off and restart replication', function() {
       connectToLeader();
       let mcol = db._collection(col);
       let omidx = mcol.indexes();
-      mcol.ensureIndex({ type: "hash", fields: ["value"] });
+      mcol.ensureIndex({ type: "persistent", fields: ["value"] });
 
       let midxs = mcol.indexes();
 

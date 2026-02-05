@@ -10,8 +10,13 @@
   - The `collection.fulltext()` JavaScript method
   - The `PUT /_api/simple/fulltext` REST API endpoint
   - The `lookupFulltextIndex()` method
-  Users should migrate to ArangoSearch with inverted indexes for full-text
-  search functionality.
+  Users should migrate to inverted indexes for full-text search functionality.
+
+* Remove support for creating deprecated index types. The following index types
+  can no longer be created but existing indexes are still supported for upgrades:
+
+  - `hash`: Use `persistent` index type instead.
+  - `skiplist`: Use `persistent` index type instead.
 
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.

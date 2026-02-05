@@ -67,7 +67,7 @@ function aqlErrorMessagesSuite () {
     
     testErrorMessageOnUpdateUniqueConstraintViolated : function () {
       let col = db._create(collectionName, {numberOfShards: 1});
-      col.ensureIndex({ type: "hash", fields: ["val"], unique: true });
+      col.ensureIndex({ type: "persistent", fields: ["val"], unique: true });
       
       col.insert({ val: 1 });
       let key = col.insert({ val: 99999 })._key;
@@ -93,7 +93,7 @@ function aqlErrorMessagesSuite () {
     
     testErrorMessageOnReplaceUniqueConstraintViolated : function () {
       let col = db._create(collectionName, {numberOfShards: 1});
-      col.ensureIndex({ type: "hash", fields: ["val"], unique: true });
+      col.ensureIndex({ type: "persistent", fields: ["val"], unique: true });
       
       col.insert({ val: 1 });
       let key = col.insert({ val: 99999 })._key;

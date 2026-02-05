@@ -374,18 +374,6 @@ function addIndexOptions (body, parameters) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a hash index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureHashIndex = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'hash',
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a unique constraint
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -393,45 +381,10 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
   'use strict';
 
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'persistent',
     unique: true
   }, arguments));
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
-    unique: false
-  }, arguments));
-};
-
-ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  'use strict';
-  var err = new ArangoError();
-  err.errorNum = arangodb.ERROR_NOT_IMPLEMENTED;
-  err.errorMessage = 'fulltext indexes are no longer supported. Please use ArangoSearch (inverted index) instead.';
-  throw err;
-};
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a geo index
@@ -516,7 +469,8 @@ ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
   }
   options.fields = fields;
   if (!options.hasOwnProperty('type')) {
-    options.type = 'hash';
+    // Default to persistent
+    options.type = 'persistent';
   }
   return this.ensureIndex(options);
 };

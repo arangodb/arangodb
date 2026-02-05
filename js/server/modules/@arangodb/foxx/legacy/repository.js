@@ -240,16 +240,7 @@ Object.assign(Repository.prototype, {
 });
 
 var indexPrototypes = {
-  skiplist: {
-
-    range(attribute, left, right) {
-      var rawDocuments = this.collection.range(attribute, left, right).toArray();
-      return _.map(rawDocuments, function (rawDocument) {
-        return new this.model(rawDocument);
-      }.bind(this));
-    }
-  },
-  geo: {
+    geo: {
 
     near(latitude, longitude, options) {
       var collection = this.collection,

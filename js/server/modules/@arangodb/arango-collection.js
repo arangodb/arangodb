@@ -359,48 +359,21 @@ ArangoCollection.prototype.lookupUniqueConstraint = function () {
   'use strict';
 
   return this.lookupIndex({
-    type: 'hash',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments),
     unique: true
   });
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a hash index
+// / @brief looks up a persistent index
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupHashIndex = function () {
   'use strict';
 
   return this.lookupIndex({
-    type: 'hash',
-    fields: Array.prototype.slice.call(arguments)
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a unique skiplist index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.lookupUniqueSkiplist = function () {
-  'use strict';
-
-  return this.lookupIndex({
-    type: 'skiplist',
-    fields: Array.prototype.slice.call(arguments),
-    unique: true
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up a skiplist index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.lookupSkiplist = function () {
-  'use strict';
-
-  return this.lookupIndex({
-    type: 'skiplist',
+    type: 'persistent',
     fields: Array.prototype.slice.call(arguments)
   });
 };

@@ -36,8 +36,8 @@ if (runSetup === true) {
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
 
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "persistent", fields: ["value1"] });
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
   let docs = [];
   for (let i = 0; i < 100; ++i) {

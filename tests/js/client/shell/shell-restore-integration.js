@@ -871,7 +871,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-            {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+            {id: "295", fields: ["value"], type: "persistent", sparse: true},
           ],
           name: cn,
           numberOfShards: 3,
@@ -890,7 +890,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -975,7 +975,7 @@ function restoreIntegrationSuite() {
       fs.write(fn, JSON.stringify({
         indexes: [
           {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-          {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+          {id: "295", fields: ["value"], type: "persistent", sparse: true},
         ],
         parameters: {
           name: cn,
@@ -995,7 +995,7 @@ function restoreIntegrationSuite() {
       assertEqual("geo", indexes[1].type);
       assertEqual(["loc"], indexes[1].fields);
       assertFalse(indexes[1].geoJson);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1021,7 +1021,7 @@ function restoreIntegrationSuite() {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
             {id: "1", fields: ["_from", "_to"], type: "edge"},
-            {id: "95", fields: ["value"], type: "hash"},
+            {id: "95", fields: ["value"], type: "persistent"},
           ],
           name: cn,
           numberOfShards: 3,
@@ -1039,7 +1039,7 @@ function restoreIntegrationSuite() {
       assertEqual(["_key"], indexes[0].fields);
       assertEqual("edge", indexes[1].type);
       assertEqual(["_from", "_to"], indexes[1].fields);
-      assertEqual("hash", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the indexes work
@@ -1273,6 +1273,68 @@ function restoreIntegrationSuite() {
       assertFalse(props.syncByRevision);
       fs.removeDirectoryRecursive(path, true);
     },
+
+    // Test for restoring deprecated index types (hash and skiplist)
+    // These index types are deprecated and should be converted to persistent
+    // TODO: Enable this once arangorestore supports restoring deprecated index types
+    // testRestoreDeprecatedHashAndSkiplistIndexes: function () {
+    //   let path = fs.getTempFile();
+    //   fs.makeDirectory(path);
+    //   let fn = fs.join(path, cn + ".structure.json");
+
+    //   // Simulate an old dump file with deprecated "hash" and "skiplist" index types
+    //   fs.write(fn, JSON.stringify({
+    //     indexes: [],
+    //     parameters: {
+    //       indexes: [
+    //         {id: "0", fields: ["_key"], type: "primary", unique: true},
+    //         {id: "95", fields: ["hashField"], type: "hash", unique: false, sparse: false},
+    //         {id: "195", fields: ["skiplistField"], type: "skiplist", unique: true, sparse: true},
+    //       ],
+    //       name: cn,
+    //       numberOfShards: 3,
+    //       type: 2
+    //     }
+    //   }));
+
+    //   let data = [];
+    //   for (let i = 0; i < 100; ++i) {
+    //     data.push({_key: "test" + i, hashField: i, skiplistField: i});
+    //   }
+    //   dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
+
+    //   let args = ['--collection', cn, '--import-data', 'true'];
+    //   runRestore(path, args, 0);
+
+    //   let c = db._collection(cn);
+    //   let indexes = c.indexes();
+    //   // Deprecated indexes should be converted to persistent
+    //   assertEqual(3, indexes.length);
+    //   assertEqual("primary", indexes[0].type);
+    //   assertEqual(["_key"], indexes[0].fields);
+    //   // Hash index converted to persistent
+    //   assertEqual("persistent", indexes[1].type);
+    //   assertEqual(["hashField"], indexes[1].fields);
+    //   assertFalse(indexes[1].unique);
+    //   assertFalse(indexes[1].sparse);
+    //   // Skiplist index converted to persistent
+    //   assertEqual("persistent", indexes[2].type);
+    //   assertEqual(["skiplistField"], indexes[2].fields);
+    //   assertTrue(indexes[2].unique);
+    //   assertTrue(indexes[2].sparse);
+
+    //   // Verify the indexes work
+    //   assertEqual(100, c.count());
+    //   let result = db._query("FOR doc IN " + cn + " FILTER doc.hashField == 42 RETURN doc").toArray();
+    //   assertEqual(1, result.length);
+    //   assertEqual("test42", result[0]._key);
+
+    //   // Test range query (formerly skiplist-specific)
+    //   result = db._query("FOR doc IN " + cn + " FILTER doc.skiplistField >= 50 RETURN doc").toArray();
+    //   assertEqual(50, result.length);
+
+    //   fs.removeDirectoryRecursive(path, true);
+    // },
   };
 }
 

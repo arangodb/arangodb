@@ -720,7 +720,7 @@ function SimpleQueryByExampleSuite () {
       var d, s;
       var example = { 'a': { 'b': true, 'c': 'foo' }, 'd': true };
 
-      collection.ensureIndex({ type: "hash", fields: ["d"] });
+      collection.ensureIndex({ type: "persistent", fields: ["d"] });
 
       d = collection.save(example);
       s = collection.firstExample({ 'd': true });
@@ -747,7 +747,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureIndex({ type: "hash", fields: ["a.b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a.b"] });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -782,7 +782,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureIndex({ type: "hash", fields: ["a.b"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a.b"], sparse: true });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -814,7 +814,7 @@ function SimpleQueryByExampleSuite () {
       var d, s;
       var example = { 'a': { 'b': true, 'c': 'foo' }, 'd': true };
 
-      collection.ensureIndex({ type: "skiplist", fields: ["d"] });
+      collection.ensureIndex({ type: "persistent", fields: ["d"] });
 
       d = collection.save(example);
       s = collection.firstExample({ 'd': true });
@@ -841,7 +841,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureIndex({ type: "skiplist", fields: ["a.b"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a.b"] });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -876,7 +876,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureIndex({ type: "skiplist", fields: ["a.b"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["a.b"], sparse: true });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -920,7 +920,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesHashIndex: function () {
-      collection.ensureIndex({ type: "hash", fields: ["value"] });
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -937,7 +937,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSparseHashIndex: function () {
-      collection.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["value"], sparse: true });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -954,7 +954,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSkiplist: function () {
-      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -971,7 +971,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSparseSkiplist: function () {
-      collection.ensureIndex({ type: "skiplist", fields: ["value"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["value"], sparse: true });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -2012,7 +2012,7 @@ function SimpleQueryRangeSuite () {
         docs.push({ age: i });
       }
       collection.insert(docs);
-      collection.ensureIndex({ type: "skiplist", fields: ["age"] });
+      collection.ensureIndex({ type: "persistent", fields: ["age"] });
     },
     
     tearDown: function () {
@@ -2061,7 +2061,7 @@ function SimpleQuerySparseRangeSuite () {
         docs.push({ age: i });
       }
       collection.insert(docs);
-      collection.ensureIndex({ type: "skiplist", fields: ["age"], sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["age"], sparse: true });
     },
 
     tearDown: function () {
@@ -2092,7 +2092,7 @@ function SimpleQuerySparseRangeSuite () {
 
     testSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
-      collection.ensureIndex({ type: "skiplist", fields: ["age"] });
+      collection.ensureIndex({ type: "persistent", fields: ["age"] });
 
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
@@ -2132,7 +2132,7 @@ function SimpleQueryUniqueRangeSuite () {
         docs.push({ age: i });
       }
       collection.insert(docs);
-      collection.ensureIndex({ type: "skiplist", fields: ["age"], unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["age"], unique: true });
     },
 
     tearDown: function () {
@@ -2181,7 +2181,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
         docs.push({ age: i });
       }
       collection.insert(docs);
-      collection.ensureIndex({ type: "skiplist", fields: ["age"], unique: true, sparse: true });
+      collection.ensureIndex({ type: "persistent", fields: ["age"], unique: true, sparse: true });
     },
 
     tearDown: function () {
@@ -2212,7 +2212,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 
     testUniqueSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
-      collection.ensureIndex({ type: "skiplist", fields: ["age"], sparse: false, unique: true });
+      collection.ensureIndex({ type: "persistent", fields: ["age"], sparse: false, unique: true });
 
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
