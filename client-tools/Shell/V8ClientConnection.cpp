@@ -3493,9 +3493,14 @@ static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (struct addrinfo* addr = servinfo; addr != nullptr;
        addr = addr->ai_next) {
     char peer_addr_str[INET_ADDRSTRLEN + 1];
-    memset(peer_addr_str, 0, INET_ADDRSTRLEN);
-    inet_ntop(addr->ai_family, &addr->ai_addr, peer_addr_str,
-              INET_ADDRSTRLEN + 1);
+    memset(peer_addr_str, 0, sizeof(peer_addr_str));
+    const char* ntopResult =
+        inet_ntop(addr->ai_family, &addr->ai_addr, peer_addr_str,
+                  sizeof(peer_addr_str));
+    if (ntopResult == nullptr) {
+      // Skip this address if conversion fails
+      continue;
+    }
     v8::Handle<v8::String> oneAddr =
         TRI_V8_ASCII_STRING(isolate, peer_addr_str);
     array->Set(context, i, oneAddr).FromMaybe(false);
