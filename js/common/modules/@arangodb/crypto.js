@@ -233,6 +233,21 @@ exports.jwtAlgorithms = {
     sign: jwtHmacSigner('sha512'),
     verify: jwtHmacVerifier('sha512')
   },
+  ES256: {
+    sign: function (key, segments) {
+      const message = segments.join('.');
+      return jwtUrlEncode(internal.es256sign(key, message));
+    },
+    verify: function (key, segments) {
+      const message = segments.slice(0, 2).join('.');
+      let signatureBase64 = segments[2].replace(/-/g, '+').replace(/_/g, '/');
+      // Pad the base64 string if needed
+      while ((signatureBase64.length % 4) !== 0) {
+        signatureBase64 += '=';
+      }
+      return internal.es256verify(key, message, signatureBase64);
+    }
+  },
   none: {
     sign: function (key) {
       if (key) {
