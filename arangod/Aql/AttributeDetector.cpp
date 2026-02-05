@@ -402,8 +402,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      auto& monitor = _plan->getAst()->query().resourceMonitor();
-      access->readAttributes.insert(AttributeNamePath("_key", monitor));
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
@@ -432,8 +430,6 @@ bool AttributeDetector::before(ExecutionNode* node) {
         access = std::make_unique<CollectionAccess>();
         access->collectionName = collName;
       }
-      auto& monitor = _plan->getAst()->query().resourceMonitor();
-      access->readAttributes.insert(AttributeNamePath("_key", monitor));
       access->requiresAllAttributesRead = true;
       access->requiresAllAttributesWrite = true;
       break;
