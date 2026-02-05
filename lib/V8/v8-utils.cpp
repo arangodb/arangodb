@@ -3970,7 +3970,7 @@ static void JS_Es256Sign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto res = SslInterface::signES256(key, message, sign, error);
 
   if (res == 0) {
-    sign = absl::Base64Escape(sign);
+    sign = absl::WebSafeBase64Escape(sign);
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, error);
   }
@@ -3991,20 +3991,24 @@ static void JS_Es256Verify(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract arguments
-  if (args.Length() != 3 || !args[0]->IsString() || !args[1]->IsString() || !args[2]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("es256verify(<public key pem>, <message>, <signature>)");
+  if (args.Length() != 3 || !args[0]->IsString() || !args[1]->IsString() ||
+      !args[2]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "es256verify(<public key pem>, <message>, <signature>)");
   }
 
   std::string publicKey = TRI_ObjectToString(isolate, args[0]);
   std::string message = TRI_ObjectToString(isolate, args[1]);
   std::string signatureBase64 = TRI_ObjectToString(isolate, args[2]);
-  
+
   std::string signature;
-  if (!absl::Base64Unescape(signatureBase64, &signature)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Invalid base64 signature");
+  if (!absl::WebSafeBase64Unescape(signatureBase64, &signature)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Invalid base64 signature");
   }
 
-  bool valid = SslInterface::verifyES256Signature(publicKey, message, signature);
+  bool valid =
+      SslInterface::verifyES256Signature(publicKey, message, signature);
 
   TRI_V8_RETURN(v8::Boolean::New(isolate, valid));
   TRI_V8_TRY_CATCH_END

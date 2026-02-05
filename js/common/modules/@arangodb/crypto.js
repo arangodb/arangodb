@@ -241,10 +241,6 @@ exports.jwtAlgorithms = {
     verify: function (key, segments) {
       const message = segments.slice(0, 2).join('.');
       let signatureBase64 = jwtUrlEncode(new Buffer(segments[2], "hex").toString("base64"));
-      // Pad the base64 string if needed
-      while ((signatureBase64.length % 4) !== 0) {
-        signatureBase64 += '=';
-      }
       return internal.es256verify(key, message, signatureBase64);
     }
   },
