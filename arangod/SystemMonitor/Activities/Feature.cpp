@@ -31,6 +31,8 @@
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPack.h"
 
+#include <thread>
+
 using namespace arangodb::activities;
 using namespace arangodb;
 
@@ -57,7 +59,6 @@ Feature::Feature(
     : application_features::ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
   startsAfter<metrics::MetricsFeature>();
-  startsAfter<SchedulerFeature>();
 }
 
 auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)

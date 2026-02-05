@@ -27,7 +27,6 @@
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
 #include "Containers/Forest/forest.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
 #include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
@@ -45,9 +44,6 @@ class Feature final : public application_features::ApplicationFeature,
 
  public:
   static constexpr std::string_view name() { return "AsyncRegistry"; }
-  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
-    return _asyncLock.lock();
-  };
 
   Feature(
       application_features::ApplicationServer& server,
@@ -73,8 +69,6 @@ class Feature final : public application_features::ApplicationFeature,
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;
-
-  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
 }  // namespace arangodb::async_registry
