@@ -240,7 +240,7 @@ exports.jwtAlgorithms = {
     },
     verify: function (key, segments) {
       const message = segments.slice(0, 2).join('.');
-      let signatureBase64 = segments[2].replace(/-/g, '+').replace(/_/g, '/');
+      let signatureBase64 = jwtUrlEncode(new Buffer(segments[2], "hex").toString("base64"));
       // Pad the base64 string if needed
       while ((signatureBase64.length % 4) !== 0) {
         signatureBase64 += '=';
