@@ -67,7 +67,7 @@ auto inspect(Inspector& f, State& x) {
    A snapshot of an activity in the registry
  */
 struct ActivityInRegistrySnapshot {
-  std::string name;
+  std::string type;
   State state;
   ActivityId id;
   ActivityId parent;
@@ -81,7 +81,7 @@ struct ActivityInRegistrySnapshot {
 template<typename Inspector>
 auto inspect(Inspector& f, ActivityInRegistrySnapshot& x) {
   return f.object(x).fields(
-      f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
+      f.embedFields(x.id), f.field("type", x.type), f.field("state", x.state),
       f.field("parent", x.parent), f.field("metadata", x.metadata));
 }
 
@@ -98,7 +98,7 @@ struct ActivityInRegistry {
     state.store(State::Deleted, std::memory_order_release);
   }
 
-  std::string const name;
+  std::string const type;
   std::atomic<State> state;
   ActivityId parent;
   Metadata metadata;
