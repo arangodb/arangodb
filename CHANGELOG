@@ -1,6 +1,9 @@
 4.0
 ---
 
+* Changed the default value of `--rocksdb.format-version` from 5 to 6. This invalidates
+  hotbackups from earlier versions.
+
 * Remove support for creating deprecated index types. The following index types
   can no longer be created but existing indexes are still supported for upgrades:
 
