@@ -52,8 +52,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
-
   generateResult(rest::ResponseCode::OK, _feature.getData().slice());
   co_return;
 }
