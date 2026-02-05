@@ -27,6 +27,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {

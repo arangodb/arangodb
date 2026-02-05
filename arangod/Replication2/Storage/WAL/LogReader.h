@@ -27,6 +27,7 @@
 
 #include "Replication2/ReplicatedLog/PersistedLogEntry.h"
 #include "Replication2/Storage/WAL/Record.h"
+#include "Replication2/Storage/WAL/IFileReader.h"
 
 namespace arangodb::replication2::storage::wal {
 
