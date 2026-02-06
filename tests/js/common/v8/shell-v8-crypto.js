@@ -403,7 +403,7 @@ function CryptoSuite () {
 /// @brief test jwtEncode / jwtDecode
 ////////////////////////////////////////////////////////////////////////////////
 
-    testJwt : function () {
+    testJwt: function () {
       var data = [
         [ "secret", "", undefined, "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiI.NXK2YUp4x5L1lDfGi34S-_Sk3q6Xeehm3gSwpwpjFDk" ],
         [ "secret", "", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiI.NXK2YUp4x5L1lDfGi34S-_Sk3q6Xeehm3gSwpwpjFDk" ],
@@ -418,8 +418,11 @@ function CryptoSuite () {
         [ "secret", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.zjLEjyjxv_NzWMPQEyXcSgFB9c2-t1n_jZRQkxnpQU9-UNJQ-kUpW8pYsObMHDKcmM8GspmX4X5653Fb-ZDkWA" ],
         [ "SECRET", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.6MGHLPoS6r_F9HTZcHyRFWaQmLDf4boaTK5cxNnJPQeXNTSp8itLo4b1KPnq-wL4Q4HxnomghQLWRUjW612Wug" ],
         [ "", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
-        [ null, {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
+        [ null, { foxx: "roxx" }, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9."]
       ];
+      // Note that we cannot test ES256 here, since the signature algorithm uses a random
+      // nonce, which is not deterministic. So every repeated signature is different, which
+      // is a crucial ingredient for security.
 
       data.forEach(function (value) {
         if (value[2] === undefined) {
@@ -577,4 +580,3 @@ sJ7dJmUmWGcBZlIB4NvmTDfPpKclGMBZ8vE5gvD8Y1LQhKhLTJQvXHCLvg==
 jsunity.run(CryptoSuite);
 
 return jsunity.done();
-
