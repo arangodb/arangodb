@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.5.5.
+
 * FE-954: make view validation on UI less strict.
 
 * COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
