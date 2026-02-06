@@ -34,6 +34,14 @@ function metadataCoordinatorMetricsSuite() {
   const testDbName = "testMetricsCoordinator";
   const testCollectionName = "testMetricsCollection";
 
+  // Metric name constants
+  const numberOfShardsMetric = "arangodb_metadata_number_of_shards";
+  const totalNumberOfShardsMetric = "arangodb_metadata_total_number_of_shards";
+  const numberFollowerShardsMetric = "arangodb_metadata_number_follower_shards";
+  const numberOutOfSyncShardsMetric = "arangodb_metadata_number_out_of_sync_shards";
+  const numberNotReplicatedShardsMetric = "arangodb_metadata_number_not_replicated_shards";
+  const shardFollowersOutOfSyncMetric = "arangodb_metadata_shard_followers_out_of_sync_number";
+
   // Helper function to eventually assert a single metric with a custom comparison function
   // compareFn takes the metric value and returns true if the assertion should pass
   const eventuallyAssertMetric = function(coordinators, metricName, compareFn, errorMessage) {
@@ -87,6 +95,43 @@ function metadataCoordinatorMetricsSuite() {
     return getTotalShardCount() - getLeaderShardCount();
   };
 
+  // Helper: assert all shard metrics eventually match expected values
+  const assertAllShardMetrics = function(coordinators, expectedLeaderShards,
+                                         expectedTotalShards, expectedFollowerShards,
+                                         expectedNotReplicated, expectedOutOfSync,
+                                         expectedFollowersOutOfSync) {
+    eventuallyAssertMetric(
+      coordinators, numberOfShardsMetric,
+      (value) => value === expectedLeaderShards,
+      `leader shards expected: ${expectedLeaderShards}`
+    );
+    eventuallyAssertMetric(
+      coordinators, totalNumberOfShardsMetric,
+      (value) => value === expectedTotalShards,
+      `total shards expected: ${expectedTotalShards}`
+    );
+    eventuallyAssertMetric(
+      coordinators, numberFollowerShardsMetric,
+      (value) => value === expectedFollowerShards,
+      `follower shards expected: ${expectedFollowerShards}`
+    );
+    eventuallyAssertMetric(
+      coordinators, numberNotReplicatedShardsMetric,
+      (value) => value === expectedNotReplicated,
+      `not replicated shards expected: ${expectedNotReplicated}`
+    );
+    eventuallyAssertMetric(
+      coordinators, numberOutOfSyncShardsMetric,
+      (value) => value === expectedOutOfSync,
+      `out of sync shards expected: ${expectedOutOfSync}`
+    );
+    eventuallyAssertMetric(
+      coordinators, shardFollowersOutOfSyncMetric,
+      (value) => value === expectedFollowersOutOfSync,
+      `followers out of sync expected: ${expectedFollowersOutOfSync}`
+    );
+  };
+
   // Helper: compute not-replicated shard count (shards with replicationFactor == 1)
   const getNotReplicatedShardCount = function() {
     const currentDb = db._name();
@@ -105,45 +150,6 @@ function metadataCoordinatorMetricsSuite() {
     return count;
   };
 
-  const assertMetrics = function(coordinators, expectedCollections, expectedShards) {
-    coordinators.forEach((coordinator) => {
-      let numCollections = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_collections");
-      let numShards = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_shards");
-
-      for (let i = 0; i < 100; ++i) {
-        internal.sleep(0.1);
-
-        numCollections = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_collections");
-        if (expectedCollections !== null && numCollections !== expectedCollections) {
-          continue;
-        }
-
-        numShards = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_shards");
-        if (expectedShards !== null && numShards !== expectedShards) {
-          continue;
-        }
-
-        break; // all matched or not checking exact values
-      }
-
-      if (expectedCollections !== null) {
-        assertEqual(numCollections, expectedCollections,
-                    `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
-      } else {
-        assertTrue(typeof numCollections === 'number' && numCollections >= 0,
-                   `Number of collections metric missing or invalid: ${numCollections}`);
-      }
-
-      if (expectedShards !== null) {
-        assertEqual(numShards, expectedShards,
-                    `Number of shards found: ${numShards}, expected: ${expectedShards}`);
-      } else {
-        assertTrue(typeof numShards === 'number' && numShards >= 0,
-                   `Number of shards metric missing or invalid: ${numShards}`);
-      }
-    });
-  };
-
   return {
     tearDown: function() {
       try {
@@ -154,30 +160,31 @@ function metadataCoordinatorMetricsSuite() {
       }
     },
 
-    testMetricsSimple: function() {
+    testMetricsBaseValues: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
-      
-      // Get base values from _system database
-      db._useDatabase("_system");
-      const coordinator = coordinators[0];
-      const baseCollections = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_collections");
-      const baseShards = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_shards");
-      
-      // Assert that we reach those base metrics
-      assertMetrics(coordinators, baseCollections, baseShards);
+
+      // Compute expected base values from collection definitions
+      const expectedLeaderShards = getLeaderShardCount();
+      const expectedTotalShards = getTotalShardCount();
+      const expectedFollowerShards = getFollowerShardCount();
+      const expectedNotReplicated = getNotReplicatedShardCount();
+
+      // In a healthy baseline state, no shards should be out of sync
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+                            expectedFollowerShards, expectedNotReplicated, 0, 0);
     },
 
     testCoordinatorNewMetricsExistAndMatchShards: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       coordinators.forEach((coordinator) => {
-        let total = getMetric(coordinator.endpoint, "arangodb_metadata_total_number_of_shards");
-        let planShards = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_shards");
+        let total = getMetric(coordinator.endpoint, totalNumberOfShardsMetric);
+        let planShards = getMetric(coordinator.endpoint, numberOfShardsMetric);
         for (let i = 0; i < 3 && total !== planShards; ++i) {
           internal.sleep(0.1);
-          total = getMetric(coordinator.endpoint, "arangodb_metadata_total_number_of_shards");
-          planShards = getMetric(coordinator.endpoint, "arangodb_metadata_number_of_shards");
+          total = getMetric(coordinator.endpoint, totalNumberOfShardsMetric);
+          planShards = getMetric(coordinator.endpoint, numberOfShardsMetric);
         }
         assertEqual(total, planShards,
                     `coordinator total shards (${total}) must match metadata shards (${planShards})`);
@@ -196,19 +203,18 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
 
-      print(`expectedLeader: ${expectedLeader}, expectedTotal: ${expectedTotal}, expectedFollowers: ${expectedFollowers}`);
       eventuallyAssertMetric(
-        coordinators, "arangodb_metadata_number_of_shards",
+        coordinators, numberOfShardsMetric,
         (value) => value === expectedLeader,
         `expected: ${expectedLeader}`
       );
       eventuallyAssertMetric(
-        coordinators, "arangodb_metadata_total_number_of_shards",
+        coordinators, totalNumberOfShardsMetric,
         (value) => value === expectedTotal, 
         `expected: ${expectedTotal}`
       );
       eventuallyAssertMetric(
-        coordinators, "arangodb_metadata_number_follower_shards",
+        coordinators, numberFollowerShardsMetric,
         (value) => value === expectedFollowers,
         `expected: ${expectedFollowers}`
       );
@@ -219,7 +225,7 @@ function metadataCoordinatorMetricsSuite() {
       assertTrue(coordinators.length > 0);
       const coordinator = coordinators[0];
 
-      const baseNotRep = getMetric(coordinator.endpoint, "arangodb_metadata_number_not_replicated_shards");
+      const baseNotRep = getMetric(coordinator.endpoint, numberNotReplicatedShardsMetric);
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
@@ -230,7 +236,7 @@ function metadataCoordinatorMetricsSuite() {
       let notrep = 0;
       for (let i = 0; i < 8; ++i) {
         internal.sleep(0.1);
-        notrep = getMetric(coordinator.endpoint, "arangodb_metadata_number_not_replicated_shards");
+        notrep = getMetric(coordinator.endpoint, numberNotReplicatedShardsMetric);
         if (notrep === expectedNotRep) break;
       }
 
@@ -252,7 +258,7 @@ function metadataCoordinatorMetricsSuite() {
       const col = db._create(testCollectionName, { numberOfShards: 3, replicationFactor: 3 });
 
       // baseline follower
-      const baseFollowers = getMetric(coordinator.endpoint, "arangodb_metadata_number_follower_shards");
+      const baseFollowers = getMetric(coordinator.endpoint, numberFollowerShardsMetric);
 
       const shards = col.shards(true);
       const shardId = Object.keys(shards)[0];
@@ -266,7 +272,7 @@ function metadataCoordinatorMetricsSuite() {
       let followers = 0;
       for (let i = 0; i < 12; ++i) {
         internal.sleep(0.1);
-        followers = getMetric(coordinator.endpoint, "arangodb_metadata_number_follower_shards");
+        followers = getMetric(coordinator.endpoint, numberFollowerShardsMetric);
         if (followers === baseFollowers) break;
       }
 
@@ -283,7 +289,7 @@ function metadataCoordinatorMetricsSuite() {
       assertTrue(coordinators.length > 0);
       const coordinator = coordinators[0];
 
-      const baseOutOfSync = getMetric(coordinator.endpoint, "arangodb_metadata_shard_followers_out_of_sync_number");
+      const baseOutOfSync = getMetric(coordinator.endpoint, shardFollowersOutOfSyncMetric);
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
@@ -293,7 +299,7 @@ function metadataCoordinatorMetricsSuite() {
       let outOfSync = 0;
       for (let i = 0; i < 8; ++i) {
         internal.sleep(0.1);
-        outOfSync = getMetric(coordinator.endpoint, "arangodb_metadata_shard_followers_out_of_sync_number");
+        outOfSync = getMetric(coordinator.endpoint, shardFollowersOutOfSyncMetric);
         // In a healthy cluster, followers should sync quickly, so out of sync should be 0 or low
         if (outOfSync >= 0) break;
       }
