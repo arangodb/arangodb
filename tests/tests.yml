@@ -371,7 +371,7 @@
       priority: 1000
       size: medium+
       type: cluster
-      buckets: 20
+      buckets: 17
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
