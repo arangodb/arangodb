@@ -757,6 +757,7 @@ jobs:
             wait_server kafka-1 9092
             wait_server kafka-2 9092
             wait_server kafka-3 9092
+            wait_server kafka-schema-registry 8081
       - run-test:
           suiteName: << parameters.suiteName >>
           suites: << parameters.suites >>
