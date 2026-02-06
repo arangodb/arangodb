@@ -442,7 +442,7 @@
       priority: 1000
       parallelity: 5
       buckets: 10
-      size: large
+      size: medium
       type: cluster
     args:
       dumpAgencyOnError: true
