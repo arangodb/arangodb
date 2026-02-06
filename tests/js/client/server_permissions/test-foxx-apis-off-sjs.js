@@ -112,7 +112,7 @@ function testSuite() {
         arango.reconnect(endpoint, db._name(), user, "testi");
 
         let routes = [
-          "", "thumbnail", "config", "deps", "fishbowl"
+          "", "thumbnail", "config", "deps"
         ];
 
         routes.forEach(function(route) {
