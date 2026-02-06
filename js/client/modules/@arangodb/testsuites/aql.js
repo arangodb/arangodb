@@ -32,6 +32,7 @@ const functionsDocumentation = {
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_client_aql': 'AQL tests in the client',
+  'shell_client_aqllarge': 'AQL tests in the client - high cpu usage, long duration',
   'shell_client_aql_vector': 'AQL tests in the client with vector index feature enabled',
   'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
@@ -59,6 +60,7 @@ const testPaths = {
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
+  'shell_client_aqllarge': [ tu.pathForTesting('client/aqllarge')],
   'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -232,6 +234,23 @@ function shellClientAql (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_aqllarge
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientAqlLarge (options) {
+  let testCases;
+  let name = 'shell_client_aqllarge';
+  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
+
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_aql_vector
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -325,6 +344,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client'] = shellClient;
   testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_client_aql'] = shellClientAql;
+  testFns['shell_client_aqllarge'] = shellClientAqlLarge;
   testFns['shell_client_aql_vector'] = shellClientAqlVector;
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
