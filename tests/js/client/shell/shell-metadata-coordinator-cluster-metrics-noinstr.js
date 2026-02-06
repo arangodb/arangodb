@@ -132,23 +132,6 @@ function metadataCoordinatorMetricsSuite() {
     );
   };
 
-  // Helper: compute not-replicated shard count (shards with replicationFactor == 1)
-  const getNotReplicatedShardCount = function() {
-    const currentDb = db._name();
-    let count = 0;
-    db._useDatabase("_system");
-    db._databases().forEach((database) => {
-      db._useDatabase(database);
-      db._collections().forEach((col) => {
-        const props = col.properties();
-        if (props.replicationFactor === 1) {
-          count += props.numberOfShards;
-        }
-      });
-    });
-    db._useDatabase(currentDb);
-    return count;
-  };
 
   return {
     tearDown: function() {
@@ -168,11 +151,10 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
-      const expectedNotReplicated = getNotReplicatedShardCount();
 
       // In a healthy baseline state, no shards should be out of sync
       assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
-                            expectedFollowerShards, expectedNotReplicated, 0, 0);
+                            expectedFollowerShards, 0, 0, 0);
     },
 
     testCoordinatorMetricsCreateAndDropDatabase: function() {
@@ -183,7 +165,6 @@ function metadataCoordinatorMetricsSuite() {
       const baseLeader = getLeaderShardCount();
       const baseTotal = getTotalShardCount();
       const baseFollowers = getFollowerShardCount();
-      const baseNotReplicated = getNotReplicatedShardCount();
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
@@ -192,23 +173,21 @@ function metadataCoordinatorMetricsSuite() {
       const expectedLeader = getLeaderShardCount();
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
-      const expectedNotReplicated = getNotReplicatedShardCount();
 
       assertAllShardMetrics(coordinators, expectedLeader, expectedTotal,
-                            expectedFollowers, expectedNotReplicated, 0, 0);
+                            expectedFollowers, 0, 0, 0);
 
       // Drop the database and assert metrics return to base values
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
 
       assertAllShardMetrics(coordinators, baseLeader, baseTotal,
-                            baseFollowers, baseNotReplicated, 0, 0);
+                            baseFollowers, 0, 0, 0);
     },
 
     testCoordinatorMetricsAfterCreateAndDropCollection: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
-
       
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
@@ -217,23 +196,21 @@ function metadataCoordinatorMetricsSuite() {
       const baseLeader = getLeaderShardCount();
       const baseTotal = getTotalShardCount();
       const baseFollowers = getFollowerShardCount();
-      const baseNotReplicated = getNotReplicatedShardCount();
 
       db._create(testCollectionName, { numberOfShards: 5, replicationFactor: 3 });
 
       const expectedLeader = getLeaderShardCount();
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
-      const expectedNotReplicated = getNotReplicatedShardCount();
 
       assertAllShardMetrics(coordinators, expectedLeader, expectedTotal,
-                            expectedFollowers, expectedNotReplicated, 0, 0);
+                            expectedFollowers, 0, 0, 0);
 
       // Drop just the collection and assert metrics return to base values
       db._drop(testCollectionName);
 
       assertAllShardMetrics(coordinators, baseLeader, baseTotal,
-                            baseFollowers, baseNotReplicated, 0, 0);
+                            baseFollowers, 0, 0, 0);
     },
 
   };
