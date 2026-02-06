@@ -132,6 +132,52 @@ function metadataCoordinatorMetricsSuite() {
     );
   };
 
+    // Helper function to generate documents that cover all shards
+    const generateDocsForAllShards = function(collection, numberOfShards, docsPerShard) {
+      let shardMap = {};
+      let docsToInsert = [];
+      const batchSize = 1000;
+      let keyIndex = 0;
+
+      while (Object.keys(shardMap).length < numberOfShards ||
+             Object.values(shardMap).some(count => count < docsPerShard)) {
+
+        const query = `
+          FOR i IN @from..@to
+            RETURN { key: CONCAT('key', i), shardId: SHARD_ID(@collection, { _key: CONCAT('test', i) }) }
+        `;
+        const results = db._query(query, {
+          'from': keyIndex,
+          'to': keyIndex + batchSize,
+          'collection': collection.name()
+        }).toArray();
+ 
+        // Process the batch results
+        for (const result of results) {
+          const { key, shardId } = result;
+  
+          if (!shardMap[shardId]) {
+            shardMap[shardId] = 0;
+          }
+ 
+          if (shardMap[shardId] < docsPerShard) {
+            shardMap[shardId]++;
+            docsToInsert.push({ _key: key });
+          }
+ 
+          // Early exit if we've satisfied all shards
+          if (Object.keys(shardMap).length >= numberOfShards &&
+              Object.values(shardMap).every(count => count >= docsPerShard)) {
+            break;
+          }
+        }
+ 
+        keyIndex += batchSize;
+      }
+ 
+      return docsToInsert;
+    };
+
 
   return {
     tearDown: function() {
@@ -155,6 +201,51 @@ function metadataCoordinatorMetricsSuite() {
       // In a healthy baseline state, no shards should be out of sync
       assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
+    },
+
+    testShardOutOfSyncMetricChange: function () {
+      const coordinators = getCoordinators();
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      db._create(testCollectionName, {
+        numberOfShards: 2,
+        replicationFactor: 3,
+      });
+      
+      // Compute expected base values from collection definitions
+      const expectedLeaderShards = getLeaderShardCount();
+      const expectedTotalShards = getTotalShardCount();
+      const expectedFollowerShards = getFollowerShardCount();
+
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+                            expectedFollowerShards, 0, 0, 0);
+      
+      const dbServers = getDBServers();
+      const shards = db[testCollectionName].shards(true);
+      const dbServerWithLeaderId = Object.values(shards).map(servers => servers[0]);
+      const dbServerWithoutLeader = dbServers.find(server => !dbServerWithLeaderId.includes(server.id));
+      dbServerWithoutLeader.suspend();
+
+      // Ensure we insert documents on ALL shards
+      const docsToInsert = generateDocsForAllShards(db[testCollectionName], 2, 50);
+      db[testCollectionName].insert(docsToInsert);
+
+      // Get metrics after we kill one db server with follower
+      // const onlineServers = dbServers.filter(server => server.id !== dbServerWithoutLeader.id);
+      // The server we crashed had two followers, so we have 2 out of sync shards
+      // also other system shards might also be out of sync
+      eventuallyAssertMetric(coordinators, numberOutOfSyncShardsMetric,
+        (value) => value >= 2,
+        "Expected at least 2 shards out of sync");
+      // One server is down, so we lose testCollShards shards (one replica per shard)
+      // const onlineShardCount = totalShardCount - testCollShards;
+      // getMetricsAndAssert(onlineServers, onlineShardCount, totalLeaderCount, null, 0);
+
+      dbServerWithoutLeader.resume();
+
+      // Eventually true
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+        expectedFollowerShards, 0, 0, 0);
     },
 
     testShardMetricsDuringMoveFollower: function () {
