@@ -151,30 +151,30 @@ function metadataCoordinatorMetricsSuite() {
           'to': keyIndex + batchSize,
           'collection': collection.name()
         }).toArray();
- 
+
         // Process the batch results
         for (const result of results) {
           const { key, shardId } = result;
-  
+
           if (!shardMap[shardId]) {
             shardMap[shardId] = 0;
           }
- 
+
           if (shardMap[shardId] < docsPerShard) {
             shardMap[shardId]++;
             docsToInsert.push({ _key: key });
           }
- 
+
           // Early exit if we've satisfied all shards
           if (Object.keys(shardMap).length >= numberOfShards &&
               Object.values(shardMap).every(count => count >= docsPerShard)) {
             break;
           }
         }
- 
+
         keyIndex += batchSize;
       }
- 
+
       return docsToInsert;
     };
 
@@ -211,7 +211,7 @@ function metadataCoordinatorMetricsSuite() {
         numberOfShards: 2,
         replicationFactor: 3,
       });
-      
+
       // Compute expected base values from collection definitions
       const expectedLeaderShards = getLeaderShardCount();
       const expectedTotalShards = getTotalShardCount();
@@ -219,7 +219,7 @@ function metadataCoordinatorMetricsSuite() {
 
       assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
-      
+
       const dbServers = getDBServers();
       const shards = db[testCollectionName].shards(true);
       const dbServerWithLeaderId = Object.values(shards).map(servers => servers[0]);
@@ -244,6 +244,62 @@ function metadataCoordinatorMetricsSuite() {
       dbServerWithoutLeader.resume();
 
       // Eventually true
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+        expectedFollowerShards, 0, 0, 0);
+    },
+
+    testMetricsWhenFollowerIsMissing: function () {
+      const coordinators = getCoordinators();
+
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      db._create(testCollectionName, {
+        numberOfShards: 1,
+        replicationFactor: 2,
+      });
+
+      // Compute expected base values from collection definitions
+      const expectedLeaderShards = getLeaderShardCount();
+      const expectedTotalShards = getTotalShardCount();
+      const expectedFollowerShards = getFollowerShardCount();
+
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+        expectedFollowerShards, 0, 0, 0);
+
+        // Identify follower and other DB servers for our single shard
+      const dbServers = getDBServers();
+      const shards = db[testCollectionName].shards(true);
+      const shardServers = Object.values(shards).flat();
+      const dbServerFollower = dbServers.find(server => server.id === shardServers[1]);
+      const dbServersOthers = dbServers.filter(server => !shardServers.includes(server.id));
+
+      // Shutdown others first to prevent a FailedFollower job from replacing
+      // the follower on a free server.
+      dbServersOthers.forEach(server => server.suspend());
+      // Then shutdown the follower.
+      dbServerFollower.suspend();
+
+      // Insert data to trigger replication
+      db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${testCollectionName}`);
+
+      // Coordinator should see Plan != Current: the follower is missing.
+      // With both non-leaders down, the shard has only the leader in Current,
+      // so it should be out of sync, not replicated, and the follower out of sync.
+      eventuallyAssertMetric(coordinators, numberOutOfSyncShardsMetric,
+        (value) => value >= 1,
+        "Expected at least 1 shard out of sync");
+      eventuallyAssertMetric(coordinators, numberNotReplicatedShardsMetric,
+        (value) => value >= 1,
+        "Expected at least 1 shard not replicated");
+      eventuallyAssertMetric(coordinators, shardFollowersOutOfSyncMetric,
+        (value) => value >= 1,
+        "Expected at least 1 follower out of sync");
+
+      // Resume all down servers
+      dbServerFollower.resume();
+      dbServersOthers.forEach(server => server.resume());
+
+      // Eventually all metrics should return to healthy state
       assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
     },
@@ -280,7 +336,7 @@ function metadataCoordinatorMetricsSuite() {
       assertNotEqual(fromServerId, toServerId);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
+      const moveResult = moveShard(testDbName, testCollectionName, shardId,
         fromServerId, toServerId, false);
       assertTrue(moveResult);
 
@@ -319,7 +375,7 @@ function metadataCoordinatorMetricsSuite() {
     testCoordinatorMetricsAfterCreateAndDropCollection: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
-      
+
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
 
