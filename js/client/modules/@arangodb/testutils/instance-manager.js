@@ -1674,6 +1674,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     const search = 'MemTotal:';
     let pos = f.search(search);
     memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+    print(`defaulting memory to ${memory}`);
   }
   tu.CopyIntoObject(optionsDefaults, {
     'memory': memory,
