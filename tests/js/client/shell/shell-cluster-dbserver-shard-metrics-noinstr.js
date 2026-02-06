@@ -338,10 +338,11 @@ function ClusterDBServerShardMetricsTestSuite() {
       const totalLeaderCount = getDbLeaderCount("_system") + getDbLeaderCount(dbName);
       getMetricsAndAssert(dbServers, totalShardCount, totalLeaderCount, 0, 0);
 
-      // Get db servers which have the two followers
+      // Get db servers which have 1 follower
       const shards = db[collectionName].shards(true);
       const dbServerFollowersId = Object.values(shards).flatMap(servers => servers.slice(1));
       const dbServerFollowers = dbServers.filter(server => dbServerFollowersId.includes(server.id));
+      assertEqual(dbServerFollowers.length, 1);
 
       // Get a db server which has a single leader and its metrics
       const dbServerLeaderId = Object.values(shards).flatMap(servers => servers[0])[0];
