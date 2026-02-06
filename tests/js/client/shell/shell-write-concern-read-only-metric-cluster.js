@@ -30,7 +30,7 @@ let internal = require("internal");
 let db = arangodb.db;
 
 const {
-  waitForShardsInSync, getMetric, getUrlById, getAllMetric, eventuallyAssertEqual
+  waitForShardsInSync, getUrlById, eventuallyAssertMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
@@ -63,7 +63,7 @@ function WriteConcernReadOnlyMetricSuite() {
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
       global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
@@ -73,18 +73,18 @@ function WriteConcernReadOnlyMetricSuite() {
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
 
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after sync`);
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
     },
 
     testMetricAfterCollectionDrop: function () {
@@ -96,7 +96,7 @@ function WriteConcernReadOnlyMetricSuite() {
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
       global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
@@ -106,12 +106,12 @@ function WriteConcernReadOnlyMetricSuite() {
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       // Lets drop the collection and see if the metric changes
       db._drop(c.name());
 
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
     },
 
     testCheckMetricChangeWriteConcern: function () {
@@ -124,7 +124,7 @@ function WriteConcernReadOnlyMetricSuite() {
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
       global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
@@ -134,7 +134,7 @@ function WriteConcernReadOnlyMetricSuite() {
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 1);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       // change write concern
       c.properties({writeConcern: 1});
@@ -158,7 +158,7 @@ function WriteConcernReadOnlyMetricSuite() {
         internal.wait(0.5);
       }
 
-      eventuallyAssertEqual(() => getMetric(getUrlById(leader), metricName), 0);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after write concern change`);
 
       global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
@@ -167,7 +167,7 @@ function WriteConcernReadOnlyMetricSuite() {
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      eventuallyAssertEqual(() => getAllMetric(getUrlById(leader), '').indexOf(database), -1);
+      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after database drop`);
     },
   };
 }

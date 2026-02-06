@@ -27,7 +27,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require('internal');
-const { getMetric, getCoordinators, moveShard, getDBServers } = require("@arangodb/test-helper");
+const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
 
 function metadataCoordinatorMetricsSuite() {
   'use strict';
@@ -41,23 +41,6 @@ function metadataCoordinatorMetricsSuite() {
   const numberOutOfSyncShardsMetric = "arangodb_metadata_number_out_of_sync_shards";
   const numberNotReplicatedShardsMetric = "arangodb_metadata_number_not_replicated_shards";
   const shardFollowersOutOfSyncMetric = "arangodb_metadata_shard_followers_out_of_sync_number";
-
-  // Helper function to eventually assert a single metric with a custom comparison function
-  // compareFn takes the metric value and returns true if the assertion should pass
-  const eventuallyAssertMetric = function(coordinators, metricName, compareFn, errorMessage) {
-    let metricValue;
-    const coordinator = coordinators[0];
-    for (let i = 0; i < 200; i++) {
-      internal.wait(0.1);
-      metricValue = getMetric(coordinator.endpoint, metricName);
-      if (compareFn(metricValue)) {
-        break;
-      }
-    }
-    // Final assertion with error message
-    assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
-    return metricValue;
-  };
 
   // Helper: compute total shard count across all databases (shards * replicationFactor)
   const getTotalShardCount = function() {
@@ -96,37 +79,37 @@ function metadataCoordinatorMetricsSuite() {
   };
 
   // Helper: assert all shard metrics eventually match expected values
-  const assertAllShardMetrics = function(coordinators, expectedLeaderShards,
+  const assertAllShardMetrics = function(endpoint, expectedLeaderShards,
                                          expectedTotalShards, expectedFollowerShards,
                                          expectedNotReplicated, expectedOutOfSync,
                                          expectedFollowersOutOfSync) {
     eventuallyAssertMetric(
-      coordinators, numberOfShardsMetric,
+      endpoint, numberOfShardsMetric,
       (value) => value === expectedLeaderShards,
       `leader shards expected: ${expectedLeaderShards}`
     );
     eventuallyAssertMetric(
-      coordinators, totalNumberOfShardsMetric,
+      endpoint, totalNumberOfShardsMetric,
       (value) => value === expectedTotalShards,
       `total shards expected: ${expectedTotalShards}`
     );
     eventuallyAssertMetric(
-      coordinators, numberFollowerShardsMetric,
+      endpoint, numberFollowerShardsMetric,
       (value) => value === expectedFollowerShards,
       `follower shards expected: ${expectedFollowerShards}`
     );
     eventuallyAssertMetric(
-      coordinators, numberNotReplicatedShardsMetric,
+      endpoint, numberNotReplicatedShardsMetric,
       (value) => value === expectedNotReplicated,
       `not replicated shards expected: ${expectedNotReplicated}`
     );
     eventuallyAssertMetric(
-      coordinators, numberOutOfSyncShardsMetric,
+      endpoint, numberOutOfSyncShardsMetric,
       (value) => value === expectedOutOfSync,
       `out of sync shards expected: ${expectedOutOfSync}`
     );
     eventuallyAssertMetric(
-      coordinators, shardFollowersOutOfSyncMetric,
+      endpoint, shardFollowersOutOfSyncMetric,
       (value) => value === expectedFollowersOutOfSync,
       `followers out of sync expected: ${expectedFollowersOutOfSync}`
     );
@@ -199,7 +182,7 @@ function metadataCoordinatorMetricsSuite() {
       const expectedFollowerShards = getFollowerShardCount();
 
       // In a healthy baseline state, no shards should be out of sync
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
     },
 
@@ -217,7 +200,7 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
 
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
 
       const dbServers = getDBServers();
@@ -234,7 +217,7 @@ function metadataCoordinatorMetricsSuite() {
       // const onlineServers = dbServers.filter(server => server.id !== dbServerWithoutLeader.id);
       // The server we crashed had two followers, so we have 2 out of sync shards
       // also other system shards might also be out of sync
-      eventuallyAssertMetric(coordinators, numberOutOfSyncShardsMetric,
+      eventuallyAssertMetric(coordinators[0].endpoint, numberOutOfSyncShardsMetric,
         (value) => value >= 2,
         "Expected at least 2 shards out of sync");
       // One server is down, so we lose testCollShards shards (one replica per shard)
@@ -244,7 +227,7 @@ function metadataCoordinatorMetricsSuite() {
       dbServerWithoutLeader.resume();
 
       // Eventually true
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
     },
 
@@ -263,7 +246,7 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotalShards = getTotalShardCount();
       const expectedFollowerShards = getFollowerShardCount();
 
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
 
         // Identify follower and other DB servers for our single shard
@@ -285,13 +268,13 @@ function metadataCoordinatorMetricsSuite() {
       // Coordinator should see Plan != Current: the follower is missing.
       // With both non-leaders down, the shard has only the leader in Current,
       // so it should be out of sync, not replicated, and the follower out of sync.
-      eventuallyAssertMetric(coordinators, numberOutOfSyncShardsMetric,
+      eventuallyAssertMetric(coordinators[0].endpoint, numberOutOfSyncShardsMetric,
         (value) => value >= 1,
         "Expected at least 1 shard out of sync");
-      eventuallyAssertMetric(coordinators, numberNotReplicatedShardsMetric,
+      eventuallyAssertMetric(coordinators[0].endpoint, numberNotReplicatedShardsMetric,
         (value) => value >= 1,
         "Expected at least 1 shard not replicated");
-      eventuallyAssertMetric(coordinators, shardFollowersOutOfSyncMetric,
+      eventuallyAssertMetric(coordinators[0].endpoint, shardFollowersOutOfSyncMetric,
         (value) => value >= 1,
         "Expected at least 1 follower out of sync");
 
@@ -300,7 +283,7 @@ function metadataCoordinatorMetricsSuite() {
       dbServersOthers.forEach(server => server.resume());
 
       // Eventually all metrics should return to healthy state
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
     },
 
@@ -320,7 +303,7 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotalShards = getTotalShardCount();
       const expectedLeaderShards = getLeaderShardCount();
       const expectedFollowerShards = getFollowerShardCount();
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
 
       // Get shard information - shards(true) returns server IDs
@@ -340,7 +323,7 @@ function metadataCoordinatorMetricsSuite() {
         fromServerId, toServerId, false);
       assertTrue(moveResult);
 
-      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeaderShards, expectedTotalShards,
         expectedFollowerShards, 0, 0, 0);
     },
 
@@ -361,14 +344,14 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
 
-      assertAllShardMetrics(coordinators, expectedLeader, expectedTotal,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeader, expectedTotal,
                             expectedFollowers, 0, 0, 0);
 
       // Drop the database and assert metrics return to base values
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
 
-      assertAllShardMetrics(coordinators, baseLeader, baseTotal,
+      assertAllShardMetrics(coordinators[0].endpoint, baseLeader, baseTotal,
                             baseFollowers, 0, 0, 0);
     },
 
@@ -390,13 +373,13 @@ function metadataCoordinatorMetricsSuite() {
       const expectedTotal = getTotalShardCount();
       const expectedFollowers = getFollowerShardCount();
 
-      assertAllShardMetrics(coordinators, expectedLeader, expectedTotal,
+      assertAllShardMetrics(coordinators[0].endpoint, expectedLeader, expectedTotal,
                             expectedFollowers, 0, 0, 0);
 
       // Drop just the collection and assert metrics return to base values
       db._drop(testCollectionName);
 
-      assertAllShardMetrics(coordinators, baseLeader, baseTotal,
+      assertAllShardMetrics(coordinators[0].endpoint, baseLeader, baseTotal,
                             baseFollowers, 0, 0, 0);
     },
 
