@@ -35,6 +35,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
+const ct = require('@arangodb/testutils/client-tools');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
@@ -1639,7 +1640,7 @@ class instanceManager {
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
-      let args = pu.makeArgs.arangosh(this.options);
+      let args = ct.makeArgs.arangosh(this.options);
       args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
