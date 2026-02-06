@@ -1,6 +1,11 @@
 devel
 -----
 
+* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.16.
+
 * Upgraded OpenSSL to 3.5.5.
 
 * FE-954: make view validation on UI less strict.
