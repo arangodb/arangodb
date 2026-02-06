@@ -61,14 +61,6 @@ ArangoCollection.STATUS_LOADED = 3;
 
 ArangoCollection.STATUS_DELETED = 5;
 
-/// note: the following collection statuses are not used by arangod anymore.
-/// they are only here for backwards-compatibility, but they will be rmeoved
-/// in a future version
-ArangoCollection.STATUS_NEW_BORN = 1;
-ArangoCollection.STATUS_UNLOADED = 2;
-ArangoCollection.STATUS_UNLOADING = 4;
-ArangoCollection.STATUS_LOADING = 6;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief document collection
 // //////////////////////////////////////////////////////////////////////////////
@@ -379,14 +371,15 @@ function addIndexOptions (body, parameters) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a hash index
+// / @brief ensures a persistent index
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
   'use strict';
 
+  // hash indexes are deprecated, use persistent instead
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'persistent',
   }, arguments));
 };
 
@@ -398,34 +391,8 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
   'use strict';
 
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'persistent',
     unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a unique skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
-    unique: true
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a skip-list index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureSkiplist = function () {
-  'use strict';
-
-  return this.ensureIndex(addIndexOptions({
-    type: 'skiplist',
-    unique: false
   }, arguments));
 };
 
@@ -531,7 +498,8 @@ ArangoCollection.prototype.ensureVertexCentricIndex = function (...fields) {
   }
   options.fields = fields;
   if (!options.hasOwnProperty('type')) {
-    options.type = 'hash';
+    // Default to persistent
+    options.type = 'persistent';
   }
   return this.ensureIndex(options);
 };

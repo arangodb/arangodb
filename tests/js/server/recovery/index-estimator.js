@@ -34,8 +34,8 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "hash", fields: ["value2"] });
+  c.ensureIndex({ type: "persistent", fields: ["value1"] });
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
   let docs = [];
   for (let i = 0; i < 10000; ++i) {
@@ -65,7 +65,7 @@ function recoverySuite () {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value1' ], idx.fields);
-      assertEqual('hash', idx.type);
+      assertEqual('persistent', idx.type);
       // values in the index are unique, but the estimates are approximate.
       // so leave some leeway.
       assertTrue(idx.selectivityEstimate >= 0.90, idx); 
@@ -74,7 +74,7 @@ function recoverySuite () {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value2' ], idx.fields);
-      assertEqual('hash', idx.type);
+      assertEqual('persistent', idx.type);
       // values in the index are unique, but the estimates are approximate.
       // so leave some leeway.
       assertTrue(idx.selectivityEstimate < 0.005, idx); 

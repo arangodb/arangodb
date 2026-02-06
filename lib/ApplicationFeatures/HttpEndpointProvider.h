@@ -34,11 +34,11 @@ class HttpEndpointProvider : public application_features::ApplicationFeature {
  protected:
   template<typename Server, typename Impl>
   HttpEndpointProvider(Server& server, const Impl&)
-      : ApplicationFeature(server, Server::template id<HttpEndpointProvider>(),
-                           Impl::name()) {}
+      : ApplicationFeature(server, typeid(HttpEndpointProvider), Impl::name()) {
+  }
 
   HttpEndpointProvider(application_features::ApplicationServer& server,
-                       size_t registration, std::string_view name)
+                       std::type_index registration, std::string_view name)
       : application_features::ApplicationFeature(server, registration, name){};
 };
 }  // namespace arangodb

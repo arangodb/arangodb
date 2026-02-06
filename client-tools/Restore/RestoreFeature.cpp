@@ -280,8 +280,9 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(
-    arangodb::ArangoRestoreServer& server, std::string const& name,
-    VPackSlice properties, arangodb::RestoreFeature::Options const& options) {
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& name, VPackSlice properties,
+    arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -410,10 +411,10 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
-                                   arangodb::ManagedDirectory& directory,
-                                   bool forceSameDatabase, bool& useEnvelope,
-                                   bool& useVPack) {
+arangodb::Result checkDumpDatabase(
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::ManagedDirectory& directory, bool forceSameDatabase,
+    bool& useEnvelope, bool& useVPack) {
   using arangodb::ClientFeature;
   using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
@@ -1157,11 +1158,10 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
         EncryptionFeature* encryption{};
-        if constexpr (Server::contains<EncryptionFeature>()) {
-          if (server().hasFeature<EncryptionFeature>()) {
-            encryption = &server().getFeature<EncryptionFeature>();
-          }
-        }
+#ifdef USE_ENTERPRISE
+        TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+        encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
         ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
@@ -1797,13 +1797,30 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
   arangodb::Result result;
   VPackSlice indexes = parameters.get("indexes");
   VPackBuilder newIndexes;
+  // may be used for rebuilding index infos (e.g. for deprecated index types)
+  VPackBuilder rebuilder;
   {
     VPackArrayBuilder guard(&newIndexes);
-    for (auto const& ind : VPackArrayIterator(indexes)) {
+    for (auto ind : VPackArrayIterator(indexes)) {
       VPackSlice type = ind.get("type");
       if ((type.isString() &&
            type.stringView() == StaticStrings::IndexNameVector) ==
           doVectorIndexes) {
+        // transform deprecated "hash" or "skiplist" into "persistent"
+        if (type.isString() &&
+            (type.stringView() == "hash" || type.stringView() == "skiplist")) {
+          rebuilder.clear();
+          rebuilder.openObject();
+          rebuilder.add(StaticStrings::IndexType, VPackValue("persistent"));
+          for (auto const& it : VPackObjectIterator(ind)) {
+            if (!it.key.isEqualString(StaticStrings::IndexType)) {
+              rebuilder.add(it.key);
+              rebuilder.add(it.value);
+            }
+          }
+          rebuilder.close();
+          ind = rebuilder.slice();
+        }
         newIndexes.add(ind);
       }
     }
@@ -1902,19 +1919,18 @@ Result RestoreFeature::RestoreSendJob::run(
   return res;
 }
 
-RestoreFeature::RestoreFeature(Server& server, int& exitCode)
-    : ArangoRestoreFeature{server, *this},
+RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
+                               int& exitCode)
+    : ApplicationFeature{server, *this},
       _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
                      Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
-  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
-
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
-    startsAfter<BumpFileDescriptorsFeature>();
-  }
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<BumpFileDescriptorsFeature>();
+#endif
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -1978,9 +1994,9 @@ void RestoreFeature::collectOptions(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(Maximum cumulated size of in-memory buffers to keep around for 
+          R"(Maximum cumulated size of in-memory buffers to keep around for
 sending batches.
-A value > 0 will increase the memory usage of arangorestore, but can help in 
+A value > 0 will increase the memory usage of arangorestore, but can help in
 avoiding repeated memory allocations for building new in-memory buffers.)");
 
   options->addOption(
@@ -2211,11 +2227,10 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(
@@ -2383,11 +2398,10 @@ void RestoreFeature::start() {
           << "Restoring database '" << db.name << "'";
 
       EncryptionFeature* encryption{};
-      if constexpr (Server::contains<EncryptionFeature>()) {
-        if (server().hasFeature<EncryptionFeature>()) {
-          encryption = &server().getFeature<EncryptionFeature>();
-        }
-      }
+#ifdef USE_ENTERPRISE
+      TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+      encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
       _directory = std::make_unique<ManagedDirectory>(
           encryption,

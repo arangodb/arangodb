@@ -828,7 +828,7 @@ class AbstractGraph {
       ${transformExampleToAQL(vertexExample, Object.keys(this.__vertexCollections), bindVars, 'start')}
       FOR v, e IN ${options.minDepth || 1}..${options.maxDepth || 1} ${options.direction || 'ANY'} start
       ${buildEdgeCollectionRestriction(options.edgeCollectionRestriction, bindVars, this)}
-      OPTIONS {bfs: true}
+      OPTIONS {order: 'bfs'}
       ${buildFilter(options.neighborExamples, bindVars, 'v')}
       ${buildFilter(options.edgeExamples, bindVars, 'e')}
       ${Array.isArray(options.vertexCollectionRestriction) && options.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(options.vertexCollectionRestriction, 'v') : ''}
@@ -855,14 +855,14 @@ class AbstractGraph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)
@@ -1337,14 +1337,14 @@ class AbstractGraph {
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left
           ${buildEdgeCollectionRestriction(optionsVertex1.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex1.vertexCollectionRestriction) && optionsVertex1.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex1.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
         ${transformExampleToAQL(vertex2Example, Object.keys(this.__vertexCollections), bindVars, 'right')}
           FILTER right != left
           LET rightNeighbors = (FOR v IN ${optionsVertex2.minDepth || 1}..${optionsVertex2.maxDepth || 1} ${optionsVertex2.direction || 'ANY'} right
           ${buildEdgeCollectionRestriction(optionsVertex2.edgeCollectionRestriction, bindVars, this)}
-          OPTIONS {bfs: true, uniqueVertices: "global"}
+          OPTIONS {order: "bfs", uniqueVertices: "global"}
           ${Array.isArray(optionsVertex2.vertexCollectionRestriction) && optionsVertex2.vertexCollectionRestriction.length > 0 ? buildVertexCollectionRestriction(optionsVertex2.vertexCollectionRestriction, 'v') : ''}
           RETURN v)
           LET neighbors = INTERSECTION(leftNeighbors, rightNeighbors)

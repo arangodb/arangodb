@@ -89,14 +89,14 @@ function CollectionSuite () {
       // invalid indexes will simply be ignored
       // This ignorance is only in Backwards compatibility with 3.11
       // The commented test below will be used in the future
-      db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+      db._create(cn, { indexes: [{ id: "1234", type: "persistent", fields: ["a"] }] });
       let indexes = db[cn].indexes();
       assertEqual(1, indexes.length);
       assertEqual("primary", indexes[0].type);
       /*
       // invalid indexes will be rejected
       try {
-        db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+        db._create(cn, { indexes: [{ id: "1234", type: "persistent", fields: ["a"] }] });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -106,8 +106,8 @@ function CollectionSuite () {
 
     testTruncateSelectivityEstimates : function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
       // add enough docs to trigger RangeDelete in truncate
       const docs = [];
@@ -129,10 +129,7 @@ function CollectionSuite () {
             case 'primary':
               assertEqual(i.selectivityEstimate, 1);
               break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'skiplist':
+            case 'persistent':
               assertEqual(i.selectivityEstimate, 1);
               break;
             default:
@@ -143,10 +140,10 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rename loaded collection
+/// @brief rename collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRenameLoaded : function () {
+    testRename: function () {
       var cn = "example";
       var nn = "example2";
 
@@ -154,45 +151,7 @@ function CollectionSuite () {
       db._drop(nn);
       var c1 = db._create(cn);
 
-      c1.save({ a : 1 });
-
-      assertTypeOf("string", c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      var id = c1._id;
-
-      c1.rename(nn);
-
-      assertEqual(id, c1._id);
-      assertEqual(nn, c1.name());
-      assertTypeOf("number", c1.status());
-      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
-      assertTypeOf("number", c1.type());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(null, c2);
-
-      db._drop(nn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rename unloaded collection
-////////////////////////////////////////////////////////////////////////////////
-
-    testRenameUnloaded : function () {
-      var cn = "example";
-      var nn = "example2";
-
-      db._drop(cn);
-      db._drop(nn);
-      var c1 = db._create(cn);
-
-      c1.save({ a : 1 });
-      c1.unload();
+      c1.save({ a: 1 });
 
       assertTypeOf("string", c1._id);
       assertEqual(cn, c1.name());
@@ -241,7 +200,7 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test system collection dropping / renaming / unloading
+/// @brief test system collection dropping / renaming
 ////////////////////////////////////////////////////////////////////////////////
 
     testSystemSpecial : function () {
@@ -267,9 +226,6 @@ function CollectionSuite () {
       } catch (err2) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err2.errorNum);
       }
-
-      // unload is allowed
-      c.unload();
     },
 
     testEdgeCacheBehavior : function() {

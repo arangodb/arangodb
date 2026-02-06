@@ -47,15 +47,15 @@ if (runSetup === true) {
       'lazy',
       'dog',
     'xxxxxxxxxxx' ] });
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "persistent", fields: ["value1"] });
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', {
     waitForSync: false,
   });
   c.save({ value1: { 'some': 'rubbish' } });
-  c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+  c.ensureIndex({ type: "persistent", fields: ["value1"] });
 
   db._drop('UnitTestsRecovery3');
   c = db._createEdgeCollection('UnitTestsRecovery3', {
@@ -63,13 +63,13 @@ if (runSetup === true) {
   });
 
   c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
-  c.ensureIndex({ type: "skiplist", fields: ["value1"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
 
   db._drop('_UnitTestsRecovery4');
   c = db._create('_UnitTestsRecovery4', { isSystem: true });
 
   c.save({ value42: 42 });
-  c.ensureIndex({ type: "hash", fields: ["value42"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["value42"], unique: true });
   c.save({ _key: 'crashme' }, true);
   
   return 0;
@@ -110,7 +110,7 @@ function recoverySuite () {
       assertFalse(prop.isSystem);
       idx = c.indexes();
       assertEqual(2, idx.length);
-      assertEqual('skiplist', idx[1].type);
+      assertEqual('persistent', idx[1].type);
       assertFalse(idx[1].unique);
 
       c = db._collection('UnitTestsRecovery3');
@@ -123,7 +123,7 @@ function recoverySuite () {
       idx = c.indexes();
       assertEqual(3, idx.length);
       assertEqual('edge', idx[1].type);
-      assertEqual('skiplist', idx[2].type);
+      assertEqual('persistent', idx[2].type);
       assertTrue(idx[2].unique);
 
       c = db._collection('_UnitTestsRecovery4');
@@ -133,7 +133,7 @@ function recoverySuite () {
       assertTrue(prop.isSystem);
       idx = c.indexes();
       assertEqual(2, idx.length);
-      assertEqual('hash', idx[1].type);
+      assertEqual('persistent', idx[1].type);
       assertTrue(idx[1].unique);
     }
 

@@ -24,10 +24,16 @@
 #include "ServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Basics/application-exit.h"
-#include "Basics/process-utils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
@@ -35,7 +41,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -59,14 +64,14 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.rest-server", "Start a REST server.",
-      new BooleanParameter(&_restServer),
+      new BooleanParameter(&_options.restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.validate-utf8-strings",
       "Perform UTF-8 string validation for incoming JSON and VelocyPack "
       "data.",
-      new BooleanParameter(&_validateUtf8Strings),
+      new BooleanParameter(&_options.validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
@@ -119,7 +124,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
-  if (!_restServer && !db.upgrade() &&
+  if (!_options.restServer && !db.upgrade() &&
       !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "Rest server cannot be disabled any more, because it is pointless.";
@@ -127,21 +132,16 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   auto disableDeamonAndSupervisor = [&]() {
-    if constexpr (Server::contains<DaemonFeature>()) {
-      server().disableFeatures(std::array{Server::id<DaemonFeature>()});
-    }
-    if constexpr (Server::contains<SupervisorFeature>()) {
-      server().disableFeatures(std::array{Server::id<SupervisorFeature>()});
-    }
+#ifdef ARANGODB_HAVE_FORK
+    server().disableFeatures<DaemonFeature>();
+    server().disableFeatures<SupervisorFeature>();
+#endif
   };
 
-  if (!_restServer) {
-    server().disableFeatures(std::array{
-        Server::id<HttpEndpointProvider>(),
-        Server::id<GeneralServerFeature>(),
-        Server::id<SslServerFeature>(),
-        Server::id<StatisticsFeature>(),
-    });
+  if (!_options.restServer) {
+    server()
+        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
+                         SslServerFeature, StatisticsFeature>();
     disableDeamonAndSupervisor();
 
     if (!options->processingResult().touched("replication.auto-start")) {
@@ -160,7 +160,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
   basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings =
-      _validateUtf8Strings;
+      _options.validateUtf8Strings;
 }
 
 void ServerFeature::start() {

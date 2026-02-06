@@ -127,7 +127,7 @@ function subQuerySuite() {
       // were already visited. the vertex id tracked pointed to memory
       // which was allocated only temporarily and that became invalid
       // once TraverserCache::clear() got called.
-      let query = `WITH ${vn} FOR i IN 1..3 FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key`;
+      let query = `WITH ${vn} FOR i IN 1..3 FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', order: "bfs" } SORT v._key RETURN v._key`;
       let result = db._query(query).toArray();
       assertEqual([ 
         "B", "B", "B", 
@@ -151,7 +151,7 @@ function subQuerySuite() {
       ], result);
       
       // while we are here, try a different query as well
-      query = `WITH ${vn} FOR i IN 1..3 LET sub = (FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key) RETURN sub`;
+      query = `WITH ${vn} FOR i IN 1..3 LET sub = (FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', order: "bfs" } SORT v._key RETURN v._key) RETURN sub`;
       result = db._query(query).toArray();
       assertEqual([ 
         [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 

@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 
+#include "Async/Registry/registry_variable.h"
+#include "ActivityRegistry/activity_registry_variable.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -143,6 +145,10 @@ int main(int argc, char* argv[]) {
   // enable mocking globally - not awesome, but helps to prevent runtime
   // assertions in queries
   arangodb::ClusterEngine::Mocking = true;
+
+  // set metrics of registries
+  arangodb::async_registry::registry.set_metrics(nullptr);
+  arangodb::activity_registry::registry.set_metrics(nullptr);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the

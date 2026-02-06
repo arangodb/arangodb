@@ -2518,10 +2518,6 @@ function transactionRollbackSuite (dbParams) {
       // end trx
 
       assertEqual(0, c1.count());
-
-      testHelper.waitUnload(c1);
-
-      assertEqual(0, c1.count());
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3885,202 +3881,6 @@ function transactionCrossCollectionSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: test cross collection commit
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testDeleteReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
-      var i;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
-        c2.save({ _key: 'b' + i, b: i });
-      }
-
-      let obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        }
-      };
-
-      // begin trx
-      let trx = db._createTransaction(obj);
-      try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
-
-        for (i = 0; i < 10; ++i) {
-          tc1.remove('a' + i);
-          tc2.remove('b' + i);
-        }
-
-      } finally {
-        trx.commit();
-      }
-      // end trx
-
-      assertEqual(0, c1.count());
-      assertEqual(0, c2.count());
-
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
-
-      assertEqual(0, c1.count());
-      assertEqual(0, c2.count());
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: test cross collection commit
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCommitReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
-      let obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        }
-      };
-
-      // begin trx
-      let trx = db._createTransaction(obj);
-      try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
-
-        for (let i = 0; i < 10; ++i) {
-          tc1.save({ _key: 'a' + i });
-        }
-
-        for (let i = 0; i < 10; ++i) {
-          tc2.save({ _key: 'b' + i });
-        }
-
-        assertEqual(10, tc1.count());
-        assertEqual(10, tc2.count());
-
-        tc1.remove('a4');
-        tc2.remove('b6');
-
-      } finally {
-        trx.commit();
-      }
-      // end trx
-
-      assertEqual(9, c1.count());
-      assertEqual(9, c2.count());
-
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
-
-      assertEqual(9, c1.count());
-      assertEqual(9, c2.count());
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: test cross collection rollback
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testRollbackReload: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-      c2 = db._create(cn2, {numberOfShards: 2});
-
-      c1.save({ _key: 'a1' });
-      c2.save({ _key: 'b1', a: 1 });
-
-      let obj = {
-        collections: {
-          write: [ cn1, cn2 ]
-        }
-      };
-
-      // begin trx
-      let trx = db._createTransaction(obj);
-      try {
-        let tc1 = trx.collection(c1.name());
-        let tc2 = trx.collection(c2.name());
-
-        tc1.save({ _key: 'a2' });
-        tc1.save({ _key: 'a3' });
-
-        tc2.save({ _key: 'b2' });
-        tc2.update('b1', { a: 2 });
-        assertEqual(2, tc2.document('b1').a);
-
-      } catch (err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
-      } finally {
-        trx.abort(); // rollback
-      }
-      // end trx
-
-      assertEqual(1, c1.count());
-      assertEqual(1, c2.count());
-
-      assertEqual([ 'a1' ], sortedKeys(c1));
-      assertEqual([ 'b1' ], sortedKeys(c2));
-      assertEqual(1, c2.document('b1').a);
-
-      c1.unload();
-      c2.unload();
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
-
-      assertEqual(1, c1.count());
-      assertEqual(1, c2.count());
-
-      assertEqual([ 'a1' ], sortedKeys(c1));
-      assertEqual([ 'b1' ], sortedKeys(c2));
-      assertEqual(1, c2.document('b1').a);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: unload / reload after aborting transactions
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testUnloadReloadAbortedTrx: function () {
-      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
-
-      for (let i = 0; i < 10; ++i) {
-        c1.save({ _key: 'a' + i, a: i });
-      }
-
-      let obj = {
-        collections: {
-          write: [ cn1 ]
-        }
-      };
-
-      for (let i = 0; i < 50; ++i) {
-
-        // begin trx
-        let trx = db._createTransaction(obj);
-        try {
-          let tc1 = trx.collection(c1.name());
-
-          for (let x = 0; x < 100; ++x) {
-            tc1.save({ _key: 'test' + x });
-          }
-
-        } catch (err) {
-          fail("Transaction failed with: " + JSON.stringify(err));
-        } finally {
-          trx.abort(); // rollback
-        }
-        // end trx
-      }
-
-      assertEqual(10, c1.count());
-
-      testHelper.waitUnload(c1);
-
-      assertEqual(10, c1.count());
-    }
-
   };
 }
 
@@ -5640,11 +5440,11 @@ function transactionDatabaseSuite() {
         const trx2 = new ArangoTransaction(db, trx1);
         trx1._database = db;
         const status2 = trx2.status();
-        assertFalse(true);
+        assertFalse(true, status2);
       } catch (err) {
-        assertTrue(err.error);
-        assertEqual(err.code, 404);
-        assertEqual(err.errorNum, 1655);
+        assertTrue(err.error, err);
+        assertEqual(err.code, 404, err);
+        assertEqual(err.errorNum, 1655, err);
       } finally {
         db._useDatabase(dbn1);
         trx1.abort();
@@ -5733,6 +5533,7 @@ function transactionDatabaseSuite() {
         assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
       } finally {
         db._useDatabase(dbn1);
+        trx.abort();
       }
     },
   };

@@ -69,6 +69,40 @@ function TransactionsIResearchSuite() {
   let view = null;
   let saView = null;
 
+  // Helper function to create common index and view metadata
+  const getIndexAndViewMeta = function(includeValueInNonEnterprise = false) {
+    let indexMeta = {};
+    let viewMeta = {};
+    if (isEnterprise) {
+      viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      indexMeta = { type: 'inverted', name: 'inverted', fields: [
+        {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+        {name: 'text', analyzer: 'myText'}
+      ]};
+    } else {
+      if (includeValueInNonEnterprise) {
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": {} } } } };
+      } else {
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      }
+      indexMeta = { type: 'inverted', name: 'inverted', fields: [
+        {"name": "value[*]"},
+        {name: 'text', analyzer: 'myText'}
+      ]};
+    }
+    return { indexMeta, viewMeta };
+  };
+
+  // Helper function to setup view and inverted index
+  const setupViewAndIndex = function(indexMeta, viewMeta) {
+    c.ensureIndex(indexMeta);
+    view = db._createView("UnitTestsView", "arangosearch", {});
+    view.properties(viewMeta);
+    saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
+    let links = view.properties().links;
+    assertNotEqual(links[cn], undefined);
+  };
+
   return {
 
     setUpAll: function() {
@@ -96,7 +130,6 @@ function TransactionsIResearchSuite() {
     tearDown: function () {
       // we need try...catch here because at least one test drops the collection itself!
       try {
-        c.unload();
         c.drop();
       } catch (err) {
       }
@@ -120,28 +153,8 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
-
-      let indexMeta = {};
-      let viewMeta = {};
-      if (isEnterprise) {
-        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      } else {
-        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }}}}};
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value[*]"},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      }
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      c.ensureIndex(indexMeta);
-      view.properties(viewMeta);
-      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
-      let links = view.properties().links;
-      assertNotEqual(links[cn], undefined);
+      const { indexMeta, viewMeta } = getIndexAndViewMeta();
+      setupViewAndIndex(indexMeta, viewMeta);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog" });
       c.save({ _key: "half", text: "quick fox over lazy" });
@@ -187,29 +200,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks2 : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
-
-      let indexMeta = {};
-      let viewMeta = {};
-      if (isEnterprise) {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      } else {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value[*]"},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      }
-      c.ensureIndex(indexMeta);
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(viewMeta);
-      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
-      let links = view.properties().links;
-      assertNotEqual(links[cn], undefined);
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
+      const { indexMeta, viewMeta } = getIndexAndViewMeta();
+      setupViewAndIndex(indexMeta, viewMeta);
 
       db._executeTransaction({
         collections: {write: cn},
@@ -255,29 +248,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks3 : function () {
-      let indexMeta = {};
-      let viewMeta = {};
-      if (isEnterprise) {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      } else {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": {} } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value[*]"},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      }
-      c.ensureIndex(indexMeta);
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(viewMeta);
-      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
-      let links = view.properties().links;
-      assertNotEqual(links[cn], undefined);
-
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
+      const { indexMeta, viewMeta } = getIndexAndViewMeta(true);
+      setupViewAndIndex(indexMeta, viewMeta);
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
 
       db._executeTransaction({
         collections: {write: cn},
@@ -323,29 +296,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackRemovalWithLinks1 : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
-
-      let indexMeta = {};
-      let viewMeta = {};
-      if (isEnterprise) {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      } else {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value[*]"},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      }
-      c.ensureIndex(indexMeta);
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(viewMeta);
-      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
-      let links = view.properties().links;
-      assertNotEqual(links[cn], undefined);
+      c.ensureIndex({type: 'persistent', fields:['val', 'text1'], unique: true});
+      const { indexMeta, viewMeta } = getIndexAndViewMeta(true);
+      setupViewAndIndex(indexMeta, viewMeta);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
@@ -398,29 +351,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testWaitForSyncError : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text'], unique: true});
-
-      let indexMeta = {};
-      let viewMeta = {};
-      if (isEnterprise) {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {"name": 'text', "analyzer": 'myText'}
-        ]};
-      } else {
-        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
-        indexMeta = { type: 'inverted', name: 'inverted', fields: [
-          {"name": "value[*]"},
-          {name: 'text', analyzer: 'myText'}
-        ]};
-      }
-      c.ensureIndex(indexMeta);
-      view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(viewMeta);
-      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
-      let links = view.properties().links;
-      assertNotEqual(links[cn], undefined);
+      c.ensureIndex({type: 'persistent', fields:['val', 'text'], unique: true});
+      const { indexMeta, viewMeta } = getIndexAndViewMeta(true);
+      setupViewAndIndex(indexMeta, viewMeta);
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });

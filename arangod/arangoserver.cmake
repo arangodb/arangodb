@@ -1,7 +1,4 @@
 add_library(arangoserver STATIC
-  Actions/ActionFeature.cpp
-  Actions/RestActionHandler.cpp
-  Actions/actions.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -61,6 +58,7 @@ add_library(arangoserver STATIC
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/GeneralServerOptions.cpp
   GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
@@ -121,6 +119,7 @@ add_library(arangoserver STATIC
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CrashHandlerFeature.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -141,6 +140,7 @@ add_library(arangoserver STATIC
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
@@ -182,22 +182,14 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (USE_V8)
-  target_sources(arangoserver PRIVATE
-    FeaturePhases/FoxxFeaturePhase.cpp
-    RestHandler/RestAdminExecuteHandler.cpp
-    RestHandler/RestAdminRoutingHandler.cpp
-    RestHandler/RestAqlUserFunctionsHandler.cpp
-    RestHandler/RestTasksHandler.cpp
-    RestServer/ConsoleFeature.cpp
-    RestServer/ConsoleThread.cpp
-    RestServer/FrontendFeature.cpp
-    RestServer/ScriptFeature.cpp)
-endif()
-if (USE_MAINTAINER_MODE)
+
+if(USE_MAINTAINER_MODE)
   target_sources(arangoserver PRIVATE
     RestHandler/RestTestHandler.cpp)
 endif()
+
+target_sources(arangoserver PRIVATE
+  RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
   arango_agency
@@ -220,13 +212,6 @@ target_link_libraries(arangoserver
   arango_scheduler
   boost_boost
   ${MSVC_LIBS})
-if (MSVC)
-  target_link_libraries(arangoserver Bcrypt.lib)
-endif()
-
-if (USE_V8)
-  target_link_libraries(arangoserver arango_v8server)
-endif()
 
 target_include_directories(arangoserver PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

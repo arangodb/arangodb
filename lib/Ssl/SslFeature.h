@@ -42,7 +42,7 @@ class SslFeature final : public application_features::ApplicationFeature {
   explicit SslFeature(Server& server)
       : application_features::ApplicationFeature(server, *this) {
     setOptional(true);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
   }
 
  private:

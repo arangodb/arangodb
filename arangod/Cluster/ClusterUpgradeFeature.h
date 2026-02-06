@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include "Cluster/ClusterUpgradeFeatureOptions.h"
 #include "RestServer/arangod.h"
+
 namespace arangodb {
 
 // this feature is responsible for performing a cluster upgrade.
@@ -50,7 +52,7 @@ class ClusterUpgradeFeature final : public ArangodFeature {
   bool upgradeCoordinator();
 
  private:
-  std::string _upgradeMode;
+  ClusterUpgradeFeatureOptions _options;
   DatabaseFeature& _databaseFeature;
 };
 

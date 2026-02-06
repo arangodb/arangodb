@@ -35,8 +35,8 @@ const runSetup = function () {
 
   db._drop(colName);
   const c = db._create(colName);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
@@ -119,11 +119,12 @@ const recoverySuite = function () {
           case 'primary':
             assertEqual(i.selectivityEstimate, 1);
             break;
-          case 'hash':
-            assertEqual(i.selectivityEstimate, 0.025);
-            break;
-          case 'skiplist':
-            assertEqual(i.selectivityEstimate, 0.01);
+          case 'persistent':
+            if (i.fields[0] === 'value') {
+              assertEqual(i.selectivityEstimate, 0.025);
+            } else {
+              assertEqual(i.selectivityEstimate, 0.01);
+            }
             break;
           default:
             fail();

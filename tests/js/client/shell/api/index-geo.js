@@ -190,51 +190,5 @@ function creating_geo_indexesSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
-// creating a geo index and unloading;
-////////////////////////////////////////////////////////////////////////////////;
-function geo_indexes_after_unload_loadSuite () {
-  let cn = "UnitTestsCollectionIndexes";
-  return {
-    setUp: function() {
-      db._drop(cn);
-      db._create(cn);
-    },
-
-    tearDown: function() {
-      db._drop(cn);
-    },
-
-    test_survives_unload: function() {
-      let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "geo", "fields" : [ "a" ] };
-      let doc = arango.POST_RAW(cmd, body);
-
-      assertEqual(doc.code, 201);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 201);
-      assertMatch(reFull, doc.parsedBody['id']);
-
-      let iid = doc.parsedBody['id'];
-
-      cmd = api + `/${iid}`;
-      doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertMatch(reFull, doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['id'], iid);
-      assertEqual(doc.parsedBody['type'], "geo");
-      assertFalse(doc.parsedBody['geoJson']);
-      assertEqual(doc.parsedBody['fields'], [ "a" ]);
-      assertTrue(doc.parsedBody['sparse']);
-    },
-  };
-}
-
 jsunity.run(creating_geo_indexesSuite);
-jsunity.run(geo_indexes_after_unload_loadSuite);
 return jsunity.done();

@@ -24,6 +24,8 @@
 
 #include "StorageEngineMock.h"
 
+#include <typeindex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Basics/Result.h"
@@ -199,7 +201,8 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 StorageEngineMock::StorageEngineMock(arangodb::ArangodServer& server,
                                      bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "", std::numeric_limits<size_t>::max(),
+    : StorageEngine(server, "Mock", "Mock",
+                    std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),

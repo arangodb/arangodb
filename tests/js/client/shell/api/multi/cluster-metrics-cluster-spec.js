@@ -51,6 +51,11 @@ const MetricNames = {
   PHASE_2_COUNT: "arangodb_maintenance_phase2_runtime_msec_count",
   SHARD_COUNT: "arangodb_shards_number",
   SHARD_LEADER_COUNT: "arangodb_shards_leader_number",
+  SHARD_FOLLOWER_COUNT: "arangodb_shards_follower_number",
+  SHARD_OUT_OF_SYNC_COUNT: "arangodb_shards_out_of_sync",
+  FOLLOWERS_OUT_OF_SYNC_COUNT: "arangodb_shard_followers_out_of_sync_number",
+  SHARD_NOT_REPLICATED_COUNT: "arangodb_shards_not_replicated",
+  SYNC_TIMEOUTS_TOTAL: "arangodb_sync_timeouts_total",
   HEARTBEAT_BUCKET: "arangodb_heartbeat_send_time_msec_bucket",
   HEARTBEAT_COUNT: "arangodb_heartbeat_send_time_msec_count",
   SUPERVISION_BUCKET: "arangodb_agency_supervision_runtime_msec_bucket",
@@ -209,6 +214,42 @@ class ShardLeaderCountWatcher extends DBServerValueWatcher {
   };
 }
 
+class ShardOutOfSyncCountWatcher extends DBServerValueWatcher {
+  constructor(expectedValue) {
+    super(MetricNames.SHARD_OUT_OF_SYNC_COUNT);
+    this._expectedValue = expectedValue;
+  }
+
+  afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._expectedValue);
+  };
+}
+
+class ShardNotReplicatedCountWatcher extends DBServerValueWatcher {
+  constructor(expectedValue) {
+    super(MetricNames.SHARD_NOT_REPLICATED_COUNT);
+    this._expectedValue = expectedValue;
+  }
+
+  afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._expectedValue);
+  };
+}
+
+class ShardFollowerCountWatcher extends DBServerValueWatcher {
+  constructor(change) {
+    super(MetricNames.SHARD_FOLLOWER_COUNT);
+    this._change = change;
+  }
+
+  afterDBServer(metrics) {
+    const after =  metrics[this._metric];
+    expect(after).to.be.equal(this._before + this._change);
+  };
+}
+
 class MaintenanceWatcher extends Watcher {
   constructor() {
     super();
@@ -333,7 +374,7 @@ describe('_admin/metrics', () => {
     };
 
     const loadMetrics = (role, idx) =>  {
-      const url = `${servers.get(role)[idx]}/_admin/metrics/v2`;
+      const url = `${servers.get(role)[idx]}/_admin/metrics`;
 
       const res = request({
         json: true,
@@ -363,6 +404,39 @@ describe('_admin/metrics', () => {
     const loadAllMetrics = (role) => {
       return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
      };
+
+    // Polls metrics every pollInterval seconds until the predicate returns true or maxWaitTime is exceeded
+    const waitForMetrics = (predicate, maxWaitTime = 30, pollInterval = 0.1) => {
+      let elapsed = 0;
+      while (elapsed < maxWaitTime) {
+        const dbMetrics = loadAllMetrics("dbserver");
+        if (predicate(dbMetrics)) {
+          return;
+        }
+        internal.wait(pollInterval, false);
+        elapsed += pollInterval;
+      }
+      expect.fail(`Timed out after ${maxWaitTime}s waiting for metrics to match expected values`);
+    };
+
+    // Waits for shard metrics to match expected values
+    const waitForShardMetrics = (expectedShards, expectedLeaders, expectedFollowers, maxWaitTime = 30) => {
+      waitForMetrics((dbMetrics) => {
+        const shardCount = dbMetrics[MetricNames.SHARD_COUNT];
+        const leaderCount = dbMetrics[MetricNames.SHARD_LEADER_COUNT];
+        const followerCount = dbMetrics[MetricNames.SHARD_FOLLOWER_COUNT];
+        const outOfSyncCount = dbMetrics[MetricNames.SHARD_OUT_OF_SYNC_COUNT];
+        const followersOutOfSyncCount = dbMetrics[MetricNames.FOLLOWERS_OUT_OF_SYNC_COUNT];
+        const notReplicatedCount = dbMetrics[MetricNames.SHARD_NOT_REPLICATED_COUNT];
+
+        return shardCount >= expectedShards &&
+               leaderCount >= expectedLeaders &&
+               followerCount >= expectedFollowers &&
+               outOfSyncCount === 0 &&
+               followersOutOfSyncCount === 0 &&
+               notReplicatedCount === 0;
+      }, maxWaitTime);
+    };
 
     const runTest = (action, watchers) => {
       const coordBefore = loadAllMetrics("coordinator");
@@ -396,12 +470,14 @@ describe('_admin/metrics', () => {
       try {
         runTest(() => {
           db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
-          require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
+          // Wait for maintenance to update shard metrics (9 shards * 2 replicas = 18 total, 9 leaders, 9 followers)
+          waitForShardMetrics(18, 9, 9);
         },
-        [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
+        [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9), 
+         new ShardFollowerCountWatcher(9), new ShardOutOfSyncCountWatcher(0), new ShardNotReplicatedCountWatcher(0)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
+          db["UnitTestCollection"].ensureIndex({ type: "persistent", fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );
@@ -414,5 +490,61 @@ describe('_admin/metrics', () => {
       runTest(() => {
         require("internal").wait(1.0);
       }, [new HeartBeatWatcher(), new SupervisionWatcher()]);
+    });
+
+    it('shard metrics consistency', () => {
+      try {
+        // Create a collection with shards
+        db._create("ConsistencyTestCollection", {numberOfShards: 5, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+        
+        // Wait for maintenance to update metrics (5 shards * 2 replicas = 10 total, 5 leaders, 5 followers)
+        waitForShardMetrics(10, 5, 5);
+
+        // Read metrics multiple times and verify they're consistent
+        const readings = [];
+        for (let i = 0; i < 20; i++) {
+          const dbMetrics = loadAllMetrics("dbserver");
+          readings.push({
+            shardCount: dbMetrics[MetricNames.SHARD_COUNT],
+            leaderCount: dbMetrics[MetricNames.SHARD_LEADER_COUNT],
+            followerCount: dbMetrics[MetricNames.SHARD_FOLLOWER_COUNT],
+            outOfSyncCount: dbMetrics[MetricNames.SHARD_OUT_OF_SYNC_COUNT],
+            followersOutOfSyncCount: dbMetrics[MetricNames.FOLLOWERS_OUT_OF_SYNC_COUNT],
+            notReplicatedCount: dbMetrics[MetricNames.SHARD_NOT_REPLICATED_COUNT]
+          });
+          require("internal").wait(0.5); // Small delay between readings
+        }
+
+        // Verify all readings are identical
+        const firstReading = readings[0];
+        for (let i = 1; i < readings.length; i++) {
+          expect(readings[i].shardCount).to.equal(firstReading.shardCount, 
+            `Shard count inconsistent at reading ${i}: expected ${firstReading.shardCount}, got ${readings[i].shardCount}`);
+          expect(readings[i].leaderCount).to.equal(firstReading.leaderCount,
+            `Leader count inconsistent at reading ${i}: expected ${firstReading.leaderCount}, got ${readings[i].leaderCount}`);
+          expect(readings[i].followerCount).to.equal(firstReading.followerCount,
+            `Follower count inconsistent at reading ${i}: expected ${firstReading.followerCount}, got ${readings[i].followerCount}`);
+          expect(readings[i].outOfSyncCount).to.equal(firstReading.outOfSyncCount,
+            `Out-of-sync count inconsistent at reading ${i}: expected ${firstReading.outOfSyncCount}, got ${readings[i].outOfSyncCount}`);
+          expect(readings[i].followersOutOfSyncCount).to.equal(firstReading.followersOutOfSyncCount,
+            `Followers out-of-sync count inconsistent at reading ${i}: expected ${firstReading.followersOutOfSyncCount}, got ${readings[i].followersOutOfSyncCount}`);
+          expect(readings[i].notReplicatedCount).to.equal(firstReading.notReplicatedCount,
+            `Not-replicated count inconsistent at reading ${i}: expected ${firstReading.notReplicatedCount}, got ${readings[i].notReplicatedCount}`);
+        }
+
+        // Verify the counts are reasonable (should have 10 shards total, 5 leaders)
+        expect(firstReading.shardCount).to.be.at.least(10, 'Expected at least 10 shards (5 shards * 2 replicas)');
+        expect(firstReading.leaderCount).to.be.at.least(5, 'Expected at least 5 leader shards');
+        expect(firstReading.followerCount).to.be.at.least(5, 'Expected at least 5 follower shards');
+        // Verify follower count = total shards - leader shards
+        expect(firstReading.followerCount).to.equal(firstReading.shardCount - firstReading.leaderCount,
+          'Follower count should equal total shards minus leader shards');
+        // Since we wait for sync replication, out-of-sync and not-replicated should be 0
+        expect(firstReading.outOfSyncCount).to.equal(0, 'Expected 0 out-of-sync shards after waitForSyncReplication');
+        expect(firstReading.followersOutOfSyncCount).to.equal(0, 'Expected 0 followers out-of-sync after waitForSyncReplication');
+        expect(firstReading.notReplicatedCount).to.equal(0, 'Expected 0 not-replicated shards after waitForSyncReplication');
+      } finally {
+        db._drop("ConsistencyTestCollection");
+      }
     });
 });

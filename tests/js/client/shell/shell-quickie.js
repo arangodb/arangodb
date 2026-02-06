@@ -83,7 +83,7 @@ function QuickieSuite () {
       assertEqual(r._key, aql[0]);
       var i = c.indexes();
       assertEqual(1, i.length); // We have a primary index
-      c.ensureIndex({type: "hash", fields: ["Hallo"]});
+      c.ensureIndex({type: "persistent", fields: ["Hallo"]});
       i = c.indexes();
       assertEqual(2, i.length); // We have a primary index and a hash Index
       aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14 RETURN x._key").toArray();
@@ -132,7 +132,7 @@ function QuickieSuite () {
       assertEqual(r._key, aql[0]);
       var i = c.indexes();
       assertEqual(1, i.length); // We have a primary index
-      c.ensureIndex({type: "hash", fields: ["Hallo"]});
+      c.ensureIndex({type: "persistent", fields: ["Hallo"]});
       i = c.indexes();
       assertEqual(2, i.length); // We have a primary index and a hash Index
       aql = db._query("FOR x IN UnitTestCollection FILTER x.Hallo == 14RETURN x._key").toArray();

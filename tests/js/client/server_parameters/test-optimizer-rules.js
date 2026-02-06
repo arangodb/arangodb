@@ -41,7 +41,7 @@ function testSuite() {
     setUp: function() {
       db._drop(cn);
       let c = db._create(cn);
-      c.ensureIndex({ type: "skiplist", fields: ["value"] });
+      c.ensureIndex({ type: "persistent", fields: ["value"] });
     },
     
     tearDown: function() {

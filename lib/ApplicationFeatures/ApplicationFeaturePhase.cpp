@@ -31,7 +31,7 @@ namespace arangodb {
 namespace application_features {
 
 ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
-                                                 size_t registration,
+                                                 std::type_index registration,
                                                  std::string_view name)
     : ApplicationFeature(server, registration, name) {}
 

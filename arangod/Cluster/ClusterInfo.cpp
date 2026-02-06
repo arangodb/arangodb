@@ -25,11 +25,12 @@
 
 #include "ClusterInfo.h"
 
+#include <frozen/unordered_map.h>
+
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "Agency/Supervision.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryPlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
@@ -61,23 +62,21 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "Logger/Logger.h"
-#include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/CountCache.h"
 #include "Utils/Events.h"
@@ -448,11 +447,12 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
+      _memoryUsage(
+          metrics.addShared(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
       _lcTimer(metrics.add(arangodb_load_current_runtime{})),
       _metadataMetrics(std::nullopt),
-      _resourceMonitor(_memoryUsage),
+      _resourceMonitor(*_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
       _serverAdvertisedEndpoints(_resourceMonitor),

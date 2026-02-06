@@ -31,6 +31,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Metrics/MetricsFeature.h"

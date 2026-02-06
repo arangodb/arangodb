@@ -207,12 +207,12 @@ function clusterInventorySuite () {
       db._createEdgeCollection("UnitTestsDumpEdges");
 
       let c = db._create("UnitTestsDumpIndexes");
-      c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
-      c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
-      c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
-      c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a_uc"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a_s1", "a_s2"] });
+      c.ensureIndex({ type: "persistent", fields: ["a_h1", "a_h2"] });
+      c.ensureIndex({ type: "persistent", fields: ["a_su"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a_hs1", "a_hs2"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a_ss1", "a_ss2"], sparse: true });
       c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
       c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
       
@@ -327,27 +327,27 @@ function clusterInventorySuite () {
       assertEqual(8, collection.indexes.length);
 
       assertEqual(["a_uc"], collection.indexes[0].fields);
-      assertEqual("hash", collection.indexes[0].type);
+      assertEqual("persistent", collection.indexes[0].type);
       assertFalse(collection.indexes[0].sparse);
       assertTrue(collection.indexes[0].unique);
       assertEqual(["a_s1", "a_s2"], collection.indexes[1].fields);
-      assertEqual("skiplist", collection.indexes[1].type);
+      assertEqual("persistent", collection.indexes[1].type);
       assertFalse(collection.indexes[1].sparse);
       assertFalse(collection.indexes[1].unique);
       assertEqual(["a_h1", "a_h2"], collection.indexes[2].fields);
-      assertEqual("hash", collection.indexes[2].type);
+      assertEqual("persistent", collection.indexes[2].type);
       assertFalse(collection.indexes[2].sparse);
       assertFalse(collection.indexes[2].unique);
       assertEqual(["a_su"], collection.indexes[3].fields);
-      assertEqual("skiplist", collection.indexes[3].type);
+      assertEqual("persistent", collection.indexes[3].type);
       assertFalse(collection.indexes[3].sparse);
       assertTrue(collection.indexes[3].unique);
       assertEqual(["a_hs1", "a_hs2"], collection.indexes[4].fields);
-      assertEqual("hash", collection.indexes[4].type);
+      assertEqual("persistent", collection.indexes[4].type);
       assertTrue(collection.indexes[4].sparse);
       assertFalse(collection.indexes[4].unique);
       assertEqual(["a_ss1", "a_ss2"], collection.indexes[5].fields);
-      assertEqual("skiplist", collection.indexes[5].type);
+      assertEqual("persistent", collection.indexes[5].type);
       assertTrue(collection.indexes[5].sparse);
       assertFalse(collection.indexes[5].unique);
       assertEqual(["a_f"], collection.indexes[6].fields);

@@ -57,7 +57,7 @@ namespace arangodb {
 
 ClientFeature::ClientFeature(ApplicationServer& server,
                              CommunicationFeaturePhase& comm,
-                             size_t registration, bool allowJwtSecret,
+                             std::type_index registration, bool allowJwtSecret,
                              size_t maxNumEndpoints, double connectionTimeout,
                              double requestTimeout)
     : HttpEndpointProvider(server, registration, name()),
@@ -228,7 +228,7 @@ received by an ArangoDB server.)");
                   new UInt64Parameter(&_compressRequestThreshold))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(Automatically compress outgoing HTTP requests 
+          R"(Automatically compress outgoing HTTP requests
 with the deflate compression format. Compression will only happen for
 HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
 body exceeds the threshold value controlled by this startup option,

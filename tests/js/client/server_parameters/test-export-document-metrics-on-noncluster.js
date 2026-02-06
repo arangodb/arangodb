@@ -35,7 +35,7 @@ const jsunity = require('jsunity');
 
 function testSuite() {
   let getMetrics = function() {
-    let res = arango.GET_RAW(`/_admin/metrics/v2`);
+    let res = arango.GET_RAW(`/_admin/metrics`);
     let lines = res.body.split(/\n/);
     return lines;
   };

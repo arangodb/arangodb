@@ -65,7 +65,7 @@ std::set<std::string, std::less<>> failurePoints;
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(std::string_view message) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CrashHandler::setHardKill();
+  crash_handler::CrashHandler::setHardKill();
 
   // there are some reserved crash messages we use in testing the
   // crash handler
@@ -113,8 +113,8 @@ void TRI_TerminateDebugging(std::string_view message) {
 #endif
 
   // intentional crash - no need for a backtrace here
-  CrashHandler::disableBacktraces();
-  CrashHandler::crash(message);
+  crash_handler::CrashHandler::disableBacktraces();
+  crash_handler::CrashHandler::crash(message);
 }
 
 /// @brief check whether we should fail at a specific failure point

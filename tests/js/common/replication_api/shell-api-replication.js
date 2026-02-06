@@ -789,16 +789,16 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._create("UnitTestsReplication2");
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type" : "persistent", "unique" : false, "fields" : [ "a", "b" ] };
       let doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type" : "persistent", "unique" : false, "fields" : [ "c" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "d" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication2", body);
       assertEqual(doc.code, 201);
 
@@ -847,13 +847,13 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       let idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "hash");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "a", "b" ]);
 
       idx = indexes[1];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "c" ]);
 
@@ -878,7 +878,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertTrue(idx["unique"]);
       assertEqual(idx["fields"], [ "d" ]);
 
@@ -1998,11 +1998,11 @@ function dealing_with_the_initial_dumSuite () {
 
       let idxUrl = "/_db/UnitTestDB/_api/index";
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type" : "persistent", "unique" : false, "fields" : [ "a", "b" ] };
       let doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type" : "persistent", "unique" : false, "fields" : [ "c" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication`, body);
       assertEqual(doc.code, 201);
 
@@ -2011,7 +2011,7 @@ function dealing_with_the_initial_dumSuite () {
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type" : "persistent", "unique" : true, "fields" : [ "d" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
@@ -2064,13 +2064,13 @@ function dealing_with_the_initial_dumSuite () {
 
       let idx = indexes[0];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "hash");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "a", "b" ]);
 
       idx = indexes[1];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertFalse(idx["unique"]);
       assertEqual(idx["fields"], [ "c" ]);
 
@@ -2101,7 +2101,7 @@ function dealing_with_the_initial_dumSuite () {
 
       idx = indexes[1];
       assertMatch(/^[0-9]+$/, idx["id"]);
-      assertEqual(idx["type"], "skiplist");
+      assertEqual(idx["type"], "persistent");
       assertTrue(idx["unique"]);
       assertEqual(idx["fields"], [ "d" ]);
 

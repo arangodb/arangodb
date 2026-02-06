@@ -321,6 +321,13 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
   return WriteState::ALLOWED;
 }
 
+void FollowerInfo::invalidateCanWrite() {
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(dataLocker, _dataLock);
+  _canWrite = false;
+  _writeConcernReached = checkWriteConcernCondition(_followers, _docColl);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a follower from a shard, this is only done by the
 /// server if a synchronous replication request fails. This reports to
