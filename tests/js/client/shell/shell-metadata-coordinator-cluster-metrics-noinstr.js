@@ -27,7 +27,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require('internal');
-const { getMetric, getCoordinators, moveShard } = require("@arangodb/test-helper");
+const { getMetric, getCoordinators, moveShard, getDBServers } = require("@arangodb/test-helper");
 
 function metadataCoordinatorMetricsSuite() {
   'use strict';
@@ -155,6 +155,46 @@ function metadataCoordinatorMetricsSuite() {
       // In a healthy baseline state, no shards should be out of sync
       assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
                             expectedFollowerShards, 0, 0, 0);
+    },
+
+    testShardMetricsDuringMoveFollower: function () {
+      const coordinators = getCoordinators();
+
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      let col = db._create(testCollectionName, {
+        numberOfShards: 1,
+        replicationFactor: 2,
+      });
+      // Data is necessary to trigger replication
+      db._query(`FOR i IN 0..10 INSERT {} IN ${testCollectionName}`);
+
+      // Calculate expected counts after setup
+      const expectedTotalShards = getTotalShardCount();
+      const expectedLeaderShards = getLeaderShardCount();
+      const expectedFollowerShards = getFollowerShardCount();
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+                            expectedFollowerShards, 0, 0, 0);
+
+      // Get shard information - shards(true) returns server IDs
+      const shards = col.shards(true);
+      const shardId = Object.keys(shards)[0];
+      const leaderServerId = shards[shardId][0]; // leader server
+      const fromServerId = shards[shardId][1]; // follower server
+
+      const dbServers = getDBServers();
+      const dbFreeDBServer = dbServers.filter(server => server.id !== leaderServerId && server.id !== fromServerId);
+      const toServerId = dbFreeDBServer[0].id;
+      assertEqual(dbFreeDBServer.length, 1);
+      assertNotEqual(fromServerId, toServerId);
+
+      // Move the shard (swap leader and follower) and wait for completion
+      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
+        fromServerId, toServerId, false);
+      assertTrue(moveResult);
+
+      assertAllShardMetrics(coordinators, expectedLeaderShards, expectedTotalShards,
+        expectedFollowerShards, 0, 0, 0);
     },
 
     testCoordinatorMetricsCreateAndDropDatabase: function() {
