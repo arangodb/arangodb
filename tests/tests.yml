@@ -95,6 +95,7 @@
       priority: 2000
       type: cluster
       buckets: 8
+      size: small
     args:
       extremeVerbosity: true
 
