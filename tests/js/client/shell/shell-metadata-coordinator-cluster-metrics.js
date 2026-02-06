@@ -175,7 +175,7 @@ function metadataCoordinatorMetricsSuite() {
                             expectedFollowerShards, expectedNotReplicated, 0, 0);
     },
 
-    testCoordinatorMetricsDatabase: function() {
+    testCoordinatorMetricsCreateAndDropDatabase: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
 
@@ -205,7 +205,7 @@ function metadataCoordinatorMetricsSuite() {
                             baseFollowers, baseNotReplicated, 0, 0);
     },
 
-    testCoordinatorMetricsAfterDroppingCollection: function() {
+    testCoordinatorMetricsAfterCreateAndDropCollection: function() {
       const coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
 
