@@ -1401,8 +1401,6 @@ void RocksDBCollection::figuresSpecific(
                 true);
             break;
           case Index::TRI_IDX_TYPE_GEO_INDEX:
-          case Index::TRI_IDX_TYPE_GEO1_INDEX:
-          case Index::TRI_IDX_TYPE_GEO2_INDEX:
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::GeoIndex(rix->objectId()), snapshot,
                 true);

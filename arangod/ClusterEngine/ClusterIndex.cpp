@@ -327,8 +327,6 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
           allIndexes, this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
@@ -364,8 +362,6 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
       break;
     }
     case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
@@ -414,8 +410,6 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
     // should not be called for these
     case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
@@ -468,8 +462,6 @@ ClusterIndex::coveredFields() const {
   }
   switch (_indexType) {
     case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:

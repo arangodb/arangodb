@@ -196,7 +196,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
 
-      if (index.type === 'geo1' || (index.type === 'geo' && index.fields.length === 1)) {
+      if (index.type === 'geo' && index.fields.length === 1) {
         if (index.fields[0] === loc && index.geoJson === order) {
           return index;
         }
@@ -213,7 +213,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
 
-      if (index.type === 'geo2' || (index.type === 'geo' && index.fields.length === 2)) {
+      if (index.type === 'geo' && index.fields.length === 2) {
         if (index.fields[0] === lat && index.fields[1] === lon) {
           return index;
         }
@@ -461,7 +461,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 
   if (typeof lon === 'boolean') {
     return this.ensureIndex({
-      type: 'geo1',
+      type: 'geo',
       fields: [ lat ],
       geoJson: lon
     });
@@ -469,14 +469,14 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 
   if (lon === undefined) {
     return this.ensureIndex({
-      type: 'geo1',
+      type: 'geo',
       fields: [ lat ],
       geoJson: false
     });
   }
 
   return this.ensureIndex({
-    type: 'geo2',
+    type: 'geo',
     fields: [ lat, lon ]
   });
 };
