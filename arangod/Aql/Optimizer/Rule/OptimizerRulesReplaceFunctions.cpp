@@ -193,9 +193,7 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
 }
 
 bool isGeoIndex(arangodb::Index::IndexType type) {
-  return type == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-         type == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
-         type == arangodb::Index::TRI_IDX_TYPE_GEO_INDEX;
+  return type == arangodb::Index::TRI_IDX_TYPE_GEO_INDEX;
 }
 
 std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
@@ -212,38 +210,35 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
 
   for (auto& idx : coll->indexes()) {
     if (::isGeoIndex(idx->type())) {
-      // we take the first index that is found
-      bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
-      bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
-      bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+      if (Index::IndexType::TRI_IDX_TYPE_GEO_INDEX) {
+        auto fieldNum = idx->fields().size();
+        if (fieldNum == 2) {  // individual fields
+          auto accessLatitude = idx->fields()[0];
+          auto accessLongitude = idx->fields()[1];
 
-      auto fieldNum = idx->fields().size();
-      if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
-        auto accessLatitude = idx->fields()[0];
-        auto accessLongitude = idx->fields()[1];
+          accessNodeLat =
+              ast->createNodeAttributeAccess(accessNodeLat, accessLatitude);
+          accessNodeLon =
+              ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
 
-        accessNodeLat =
-            ast->createNodeAttributeAccess(accessNodeLat, accessLatitude);
-        accessNodeLon =
-            ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
+          indexFound = true;
+        } else if (fieldNum == 1) {
+          auto accessBase = idx->fields()[0];
+          AstNode* base =
+              ast->createNodeAttributeAccess(accessNodeLon, accessBase);
 
-        indexFound = true;
-      } else if ((isGeo1 || isGeo) && fieldNum == 1) {
-        auto accessBase = idx->fields()[0];
-        AstNode* base =
-            ast->createNodeAttributeAccess(accessNodeLon, accessBase);
+          velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
+          VPackBuilder builder(sb);
+          idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+          bool geoJson = basics::VelocyPackHelper::getBooleanValue(
+              builder.slice(), "geoJson", false);
 
-        velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
-        VPackBuilder builder(sb);
-        idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
-        bool geoJson = basics::VelocyPackHelper::getBooleanValue(
-            builder.slice(), "geoJson", false);
-
-        accessNodeLat = ast->createNodeIndexedAccess(
-            base, ast->createNodeValueInt(geoJson ? 1 : 0));
-        accessNodeLon = ast->createNodeIndexedAccess(
-            base, ast->createNodeValueInt(geoJson ? 0 : 1));
-        indexFound = true;
+          accessNodeLat = ast->createNodeIndexedAccess(
+              base, ast->createNodeValueInt(geoJson ? 1 : 0));
+          accessNodeLon = ast->createNodeIndexedAccess(
+              base, ast->createNodeValueInt(geoJson ? 0 : 1));
+          indexFound = true;
+        }
       }
       break;
     }

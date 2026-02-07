@@ -6973,56 +6973,53 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   // check for suitiable indexes
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
-    std::size_t fieldNum = idx->fields().size();
-    bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
-                  supportLegacy;
-    bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX &&
-                  supportLegacy;
-    bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
-
-    if ((isGeo2 || isGeo) && fieldNum == 2) {  // individual fields
-      // check access paths of attributes in ast and those in index match
-      if (idx->fields()[0] == attributeAccess1.second &&
-          idx->fields()[1] == attributeAccess2.second) {
-        if (info.index != nullptr && info.index != idx) {
-          return false;
+    if (idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX) {
+      std::size_t fieldNum = idx->fields().size();
+      
+      if (fieldNum == 2) {  // individual fields
+        // check access paths of attributes in ast and those in index match
+        if (idx->fields()[0] == attributeAccess1.second &&
+            idx->fields()[1] == attributeAccess2.second) {
+          if (info.index != nullptr && info.index != idx) {
+            return false;
+          }
+          info.index = idx;
+          info.latitudeVar = latArg;
+          info.longitudeVar = lngArg;
+          info.collectionNodeToReplace = collNode;
+          info.collectionNodeOutVar = collNode->outVariable();
+          info.collection = collNode->collection();
+          return true;
         }
-        info.index = idx;
-        info.latitudeVar = latArg;
-        info.longitudeVar = lngArg;
-        info.collectionNodeToReplace = collNode;
-        info.collectionNodeOutVar = collNode->outVariable();
-        info.collection = collNode->collection();
-        return true;
-      }
-    } else if ((isGeo1 || isGeo) && fieldNum == 1) {
-      std::vector<basics::AttributeName> fields1 = idx->fields()[0];
-      std::vector<basics::AttributeName> fields2 = idx->fields()[0];
+      } else if (fieldNum == 1) {
+        std::vector<basics::AttributeName> fields1 = idx->fields()[0];
+        std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
-      velocypack::SupervisedBuffer sb(
-          plan->getAst()->query().resourceMonitor());
-      VPackBuilder builder(sb);
-      idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
-      bool geoJson = basics::VelocyPackHelper::getBooleanValue(
-          builder.slice(), "geoJson", false);
+        velocypack::SupervisedBuffer sb(
+            plan->getAst()->query().resourceMonitor());
+        VPackBuilder builder(sb);
+        idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+        bool geoJson = basics::VelocyPackHelper::getBooleanValue(
+            builder.slice(), "geoJson", false);
 
-      fields1.back().name += geoJson ? "[1]" : "[0]";
-      fields2.back().name += geoJson ? "[0]" : "[1]";
-      if (fields1 == attributeAccess1.second &&
-          fields2 == attributeAccess2.second) {
-        if (info.index != nullptr && info.index != idx) {
-          return false;
+        fields1.back().name += geoJson ? "[1]" : "[0]";
+        fields2.back().name += geoJson ? "[0]" : "[1]";
+        if (fields1 == attributeAccess1.second &&
+            fields2 == attributeAccess2.second) {
+          if (info.index != nullptr && info.index != idx) {
+            return false;
+          }
+          info.index = idx;
+          info.latitudeVar = latArg;
+          info.longitudeVar = lngArg;
+          info.collectionNodeToReplace = collNode;
+          info.collectionNodeOutVar = collNode->outVariable();
+          info.collection = collNode->collection();
+          return true;
         }
-        info.index = idx;
-        info.latitudeVar = latArg;
-        info.longitudeVar = lngArg;
-        info.collectionNodeToReplace = collNode;
-        info.collectionNodeOutVar = collNode->outVariable();
-        info.collection = collNode->collection();
-        return true;
-      }
-    }  // if isGeo 1 or 2
-  }    // for index in collection
+      }  // if fieldNum is 1 or 2
+    }  // if index is a geo index
+  }  // for index in collection
   return false;
 }
 
@@ -7559,9 +7556,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {
             auto idxType = idx->type();
-            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
-                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+            if (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX) {
               mustRespectIdxHint = true;
             } else {
               info.index = idx;

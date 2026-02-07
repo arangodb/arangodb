@@ -184,6 +184,7 @@ void ClusterIndexFactory::linkIndexFactories(
   static const DefaultIndexFactory geoIndexFactory(server, "geo", engine);
   static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine);
   static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine);
+  static const DefaultIndexFactory hashIndexFactory(server, "hash", engine);
   static const DefaultIndexFactory persistentIndexFactory(server, "persistent",
                                                           engine);
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary",
@@ -200,8 +201,6 @@ void ClusterIndexFactory::linkIndexFactories(
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
   factory.emplace(geoIndexFactory._type, geoIndexFactory);
-  factory.emplace(geo1IndexFactory._type, geo1IndexFactory);
-  factory.emplace(geo2IndexFactory._type, geo2IndexFactory);
   factory.emplace(persistentIndexFactory._type, persistentIndexFactory);
   factory.emplace(primaryIndexFactory._type, primaryIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);

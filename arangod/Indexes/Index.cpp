@@ -418,12 +418,6 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "geo") {
     return TRI_IDX_TYPE_GEO_INDEX;
   }
-  if (type == "geo1") {
-    return TRI_IDX_TYPE_GEO1_INDEX;
-  }
-  if (type == "geo2") {
-    return TRI_IDX_TYPE_GEO2_INDEX;
-  }
   if (type == "mdi") {
     return TRI_IDX_TYPE_MDI_INDEX;
   }
@@ -471,10 +465,6 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "persistent";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
-    case TRI_IDX_TYPE_GEO1_INDEX:
-      return "geo1";
-    case TRI_IDX_TYPE_GEO2_INDEX:
-      return "geo2";
     case TRI_IDX_TYPE_GEO_INDEX:
       return "geo";
     case TRI_IDX_TYPE_IRESEARCH_LINK:

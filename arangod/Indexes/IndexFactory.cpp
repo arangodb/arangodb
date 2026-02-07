@@ -135,9 +135,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   }
 
   // sparse must be identical if present
-  if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
+  if (Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
       Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX != type) {
     bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
         lhs, StaticStrings::IndexSparse, false);
@@ -150,8 +148,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
 
   VPackSlice value;
 
-  if (Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
+  if (Index::IndexType::TRI_IDX_TYPE_GEO_INDEX == type) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
 
@@ -354,6 +351,11 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid index type definition");
+  }
+
+  if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+      "Index type 'geo1' and 'geo2' are no longer supported. Please use 'geo' instead.");
   }
 
   auto& factory = IndexFactory::factory(type.copyString());

@@ -166,66 +166,6 @@ struct GeoIndexFactory : public DefaultIndexFactory {
   }
 };
 
-struct Geo1IndexFactory : public DefaultIndexFactory {
-  explicit Geo1IndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
-                                             "geo1");
-  }
-
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation,
-                           TRI_vocbase_t const& /*vocbase*/) const override {
-    TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
-
-    if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey(StaticStrings::ObjectId)) {
-      normalized.add(StaticStrings::ObjectId,
-                     velocypack::Value(std::to_string(TRI_NewTickServer())));
-    }
-
-    return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
-                                             1, 1);
-  }
-};
-
-struct Geo2IndexFactory : public DefaultIndexFactory {
-  explicit Geo2IndexFactory(application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
-                                             "geo2");
-  }
-
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice definition, bool isCreation,
-                           TRI_vocbase_t const& /*vocbase*/) const override {
-    TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(
-        StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
-
-    if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey(StaticStrings::ObjectId)) {
-      normalized.add(StaticStrings::ObjectId,
-                     velocypack::Value(std::to_string(TRI_NewTickServer())));
-    }
-
-    return IndexFactory::enhanceJsonIndexGeo(definition, normalized, isCreation,
-                                             1, 2);
-  }
-};
-
 template<typename F, Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
   explicit SecondaryIndexFactory(
@@ -514,8 +454,6 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);
   static const GeoIndexFactory geoIndexFactory(server);
-  static const Geo1IndexFactory geo1IndexFactory(server);
-  static const Geo2IndexFactory geo2IndexFactory(server);
   static const DeprecatedSecondaryIndexFactory<RocksDBHashIndex,
                                                Index::TRI_IDX_TYPE_HASH_INDEX>
       hashIndexFactory(server, "hash", "persistent");
@@ -541,8 +479,6 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
   emplace("geo", geoIndexFactory);
-  emplace("geo1", geo1IndexFactory);
-  emplace("geo2", geo2IndexFactory);
   emplace("hash", hashIndexFactory);
   emplace("persistent", persistentIndexFactory);
   emplace("primary", primaryIndexFactory);
