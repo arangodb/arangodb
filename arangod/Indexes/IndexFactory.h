@@ -197,7 +197,7 @@ class IndexFactory {
   static Result enhanceJsonIndexTtl(velocypack::Slice definition,
                                     velocypack::Builder& builder, bool create);
 
-  /// @brief enhances the json of a geo, geo1 or geo2 index
+  /// @brief enhances the json of a geo index
   static Result enhanceJsonIndexGeo(velocypack::Slice definition,
                                     velocypack::Builder& builder, bool create,
                                     int minFields, int maxFields);

@@ -48,8 +48,8 @@ function GeoIndexCreationSuite() {
       internal.db._drop(cn);
     },
     
-    testGeo1 : function () {
-      collection.ensureIndex({ type: "geo1", fields: ["loc"], geoJson: false });
+    testGeo : function () {
+      collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: false });
       let indexes = collection.indexes();
       assertTrue(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -58,8 +58,8 @@ function GeoIndexCreationSuite() {
       assertFalse(indexes[1].geoJson);
     },
     
-    testGeo1GeoJson : function () {
-      collection.ensureIndex({ type: "geo1", fields: ["loc"], geoJson: true });
+    testGeoJson : function () {
+      collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
       let indexes = collection.indexes();
       assertTrue(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -68,8 +68,8 @@ function GeoIndexCreationSuite() {
       assertTrue(indexes[1].geoJson);
     },
     
-    testGeo2 : function () {
-      collection.ensureIndex({ type: "geo2", fields: ["a", "b"] });
+    testGeo : function () {
+      collection.ensureIndex({ type: "geo", fields: ["a", "b"] });
       let indexes = collection.indexes();
       assertTrue(2, indexes.length);
       assertEqual("primary", indexes[0].type);
