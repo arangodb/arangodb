@@ -229,7 +229,8 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
 
           velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
           VPackBuilder builder(sb);
-          idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+          idx->toVelocyPack(builder,
+                            Index::makeFlags(Index::Serialize::Basics));
           bool geoJson = basics::VelocyPackHelper::getBooleanValue(
               builder.slice(), "geoJson", false);
 

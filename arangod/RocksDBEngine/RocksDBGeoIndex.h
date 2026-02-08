@@ -43,9 +43,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   ~RocksDBGeoIndex() = default;
 
-  IndexType type() const override {
-    return TRI_IDX_TYPE_GEO_INDEX;
-  }
+  IndexType type() const override { return TRI_IDX_TYPE_GEO_INDEX; }
 
   bool pointsOnly() const { return (_typeName != "geo"); }
 
