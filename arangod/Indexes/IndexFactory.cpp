@@ -750,7 +750,7 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
   return res;
 }
 
-/// @brief enhances the json of a geo, geo1 or geo2 index
+/// @brief enhances the json of a geo index
 Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
                                          VPackBuilder& builder, bool create,
                                          int minFields, int maxFields) {
