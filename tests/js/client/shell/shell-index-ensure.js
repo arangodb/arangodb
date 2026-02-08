@@ -839,6 +839,32 @@ function ensureIndexSuite() {
                                      legacyPolygons: false }), false);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo1 index type is no longer supported
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeoTypeGeo1Rejected : function () {
+      try {
+        collection.ensureIndex({ type: "geo1", fields: ["pos"] });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: geo2 index type is no longer supported
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureGeoTypeGeo2Rejected : function () {
+      try {
+        collection.ensureIndex({ type: "geo2", fields: ["lat", "lon"] });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
   };
 }
 
