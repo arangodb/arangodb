@@ -48,7 +48,7 @@ function GeoIndexCreationSuite() {
       internal.db._drop(cn);
     },
     
-    testGeo : function () {
+    testGeo1 : function () {
       collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: false });
       let indexes = collection.indexes();
       assertTrue(2, indexes.length);
@@ -68,7 +68,7 @@ function GeoIndexCreationSuite() {
       assertTrue(indexes[1].geoJson);
     },
     
-    testGeo : function () {
+    testGeo2 : function () {
       collection.ensureIndex({ type: "geo", fields: ["a", "b"] });
       let indexes = collection.indexes();
       assertTrue(2, indexes.length);

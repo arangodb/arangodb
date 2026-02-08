@@ -355,7 +355,8 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
   if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-      "Index type 'geo1' and 'geo2' are no longer supported. Please use 'geo' instead.");
+                                   "Index type 'geo1' and 'geo2' are no longer "
+                                   "supported. Please use 'geo' instead.");
   }
 
   auto& factory = IndexFactory::factory(type.copyString());

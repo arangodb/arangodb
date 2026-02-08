@@ -1628,7 +1628,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -4525,7 +4525,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -6975,7 +6975,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
     // check if current index is a geo-index
     if (idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX) {
       std::size_t fieldNum = idx->fields().size();
-      
+
       if (fieldNum == 2) {  // individual fields
         // check access paths of attributes in ast and those in index match
         if (idx->fields()[0] == attributeAccess1.second &&
@@ -7018,8 +7018,8 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
           return true;
         }
       }  // if fieldNum is 1 or 2
-    }  // if index is a geo index
-  }  // for index in collection
+    }    // if index is a geo index
+  }      // for index in collection
   return false;
 }
 
