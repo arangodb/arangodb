@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -267,9 +268,9 @@ struct DeprecatedSecondaryIndexFactory : public DefaultIndexFactory {
   std::string_view const _deprecatedName;
   std::string_view const _replacement;
 
-  explicit DeprecatedSecondaryIndexFactory(ArangodServer& server,
-                                           std::string_view deprecatedName,
-                                           std::string_view replacement)
+  explicit DeprecatedSecondaryIndexFactory(
+      application_features::ApplicationServer& server,
+      std::string_view deprecatedName, std::string_view replacement)
       : DefaultIndexFactory(server, type),
         _deprecatedName(deprecatedName),
         _replacement(replacement) {}
