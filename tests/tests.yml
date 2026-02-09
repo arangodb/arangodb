@@ -416,7 +416,7 @@
       priority: 500
       type: cluster
       size: small
-      buckets: 6
+      buckets: 5
     args:
       dumpAgencyOnError: true
 - shell_client_large:
