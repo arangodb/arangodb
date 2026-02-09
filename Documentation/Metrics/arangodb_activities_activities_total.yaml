@@ -1,4 +1,4 @@
-name: arangodb_activity_activities_total
+name: arangodb_activities_activities_total
 introducedIn: "3.12.8"
 help: |
   Total number of created activities since database creation.

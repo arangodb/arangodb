@@ -1,4 +1,4 @@
-name: arangodb_activity_thread_registries_total
+name: arangodb_activities_thread_registries_total
 introducedIn: "3.12.8"
 help: |
   Total number of threads that started activities since database creation.
