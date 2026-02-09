@@ -4,7 +4,6 @@
 WD=$(pwd)
 if [ -z "$*" ] ; then
   JAVASCRIPT_JSLINT="\
-    $(find "${WD}/js/actions" -name "*.js") \
     $(find "${WD}/js/common/bootstrap" -name "*.js") \
     $(find "${WD}/js/client/bootstrap" -name "*.js") \
     $(find "${WD}/js/server/bootstrap" -name "*.js") \
@@ -22,7 +21,6 @@ if [ -z "$*" ] ; then
     ${WD}/js/common/modules/jsunity.js \
     ${WD}/js/client/client.js \
     ${WD}/js/client/inspector.js \
-    ${WD}/js/server/server.js \
     ${WD}/js/server/initialize.js \
     \
   "
