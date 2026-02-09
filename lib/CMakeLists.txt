@@ -170,7 +170,7 @@ target_link_libraries(arango_basic_utils
          zlib_interface
          snappy
          lz4_static
-         arango_activity_registry_global
+         arango_activities_global
 )
 
 # Enterprise
@@ -343,10 +343,9 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
-         arango_activity_registry_global
+         arango_activities_global
          arango_async
   PRIVATE date_interface
-          fmt
           arango_assertions
           arango_static_strings
           arango_futures
@@ -407,8 +406,6 @@ target_link_libraries(arango
          absl::strings
          arango_lightweight)
 
-target_link_libraries(arango PUBLIC fmt::fmt)
-
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -457,4 +454,4 @@ add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
-add_subdirectory(ActivityRegistry)
+add_subdirectory(Activities)

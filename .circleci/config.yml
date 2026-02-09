@@ -39,7 +39,7 @@ parameters:
     description: "Build arangod without serverside JS (must be true now since 4.0!)"
   config-definitions:
     type: string
-    default: test-definitions.yml
+    default: tests.yml ui.yml
     description: Space separated list of YAML files with test definitions. Available files
       arangojs.yml java.yml spark-datasource.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
   config-definitions-branches:

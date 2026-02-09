@@ -73,7 +73,7 @@ let getLogLines = function() {
 
 exports.WalArchiveSizeLimitSuite = WalArchiveSizeLimitSuite;
 exports.sendLargeServerOperation = function(maxWaitTime) {
-  logServer("testmann: start");
+  logServer("testmann: start", "error");
   let time = require("internal").time;
   let tEnd = time() + maxWaitTime;
   let checkCount = 0;

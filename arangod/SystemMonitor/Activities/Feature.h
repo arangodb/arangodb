@@ -23,28 +23,32 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "SystemMonitor/ActivityRegistry/Metrics.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
+#include "CrashHandler/DataSource.h"
+#include "SystemMonitor/Activities/Metrics.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
-class Feature final : public application_features::ApplicationFeature {
+class Feature final : public application_features::ApplicationFeature,
+                      public crash_handler::CrashHandlerDataSource {
  private:
-  static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+  static auto create_metrics(metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
   static constexpr std::string_view name() { return "Activities"; }
-  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
-    return _asyncLock.lock();
-  };
 
-  Feature(application_features::ApplicationServer& server);
+  Feature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   void prepare() override final;
   void start() override final;
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
+  velocypack::Builder getData() const;
+  velocypack::SharedSlice getCrashData() const override;
+  std::string_view getDataSourceName() const override { return name(); }
 
  private:
   struct Options {
@@ -56,8 +60,6 @@ class Feature final : public application_features::ApplicationFeature {
 
   struct CleanupThread;
   std::shared_ptr<CleanupThread> _cleanupThread;
-
-  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

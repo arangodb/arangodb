@@ -80,7 +80,7 @@ void ArangodServer::addFeatures(
   addFeature<ApiRecordingFeature>(dataSourceRegistry);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
-  addFeature<activity_registry::Feature>();
+  addFeature<activities::Feature>(dataSourceRegistry);
   addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT

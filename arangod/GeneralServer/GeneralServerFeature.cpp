@@ -121,7 +121,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "SystemMonitor/ActivityRegistry/RestHandler.h"
+#include "SystemMonitor/Activities/RestHandler.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
@@ -788,9 +788,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
-      "/_admin/activity-registry",
-      RestHandlerCreator<
-          arangodb::activity_registry::RestHandler>::createNoData);
+      "/_admin/activities",
+      RestHandlerCreator<arangodb::activities::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

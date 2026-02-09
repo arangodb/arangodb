@@ -4871,7 +4871,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
         return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                      fmt::format("Could not find servers of shard {} in "
+                      std::format("Could not find servers of shard {} in "
                                   "Current version {} (raft index {})",
                                   shardId, _currentVersion, _currentIndex)};
       }
@@ -4912,14 +4912,14 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       readLocker.unlock();
       if (!database.has_value()) {
         co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                   fmt::format("Could not find database for shard {} in Plan "
+                   std::format("Could not find database for shard {} in Plan "
                                "version {} (raft index {})",
                                shardId, planVersion, planIndex)};
       }
       if (collection.empty()) {
         co_return {
             TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            fmt::format("Could not find collection for shard {} in Plan "
+            std::format("Could not find collection for shard {} in Plan "
                         "version {} (raft index {}) (database is {})",
                         shardId, planVersion, planIndex, database.value())};
       }
@@ -4942,7 +4942,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                 if (servers.isNone()) {
                   return std::make_tuple(
                       Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                             fmt::format(
+                             std::format(
                                  "Database or collection ({}/{}) gone in "
                                  "Current "
                                  "while waiting for leader of shard {} (raft "

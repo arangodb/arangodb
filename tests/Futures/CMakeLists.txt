@@ -8,8 +8,7 @@ target_link_libraries(arango_tests_futures
     arango
     arango_futures
     gtest
-    velocypack
-    fmt)
+    velocypack)
 
 add_executable(arangodbtests_futures EXCLUDE_FROM_ALL)
 target_link_libraries(arangodbtests_futures
