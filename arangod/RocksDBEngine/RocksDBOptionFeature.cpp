@@ -282,10 +282,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _blockCacheType(::kBlockCacheTypeLRU),
       _checksumType(::kChecksumTypeXXHash64),
       _compactionStyle(::kCompactionStyleLevel),
-      // stay at format version 5 for now so downgrading back to the older
-      // RocksDB 7.2 is possible with the datafiles from the newer version
-      // of RocksDB. Later go to format version 6
-      _formatVersion(5),
+      _formatVersion(6),
       // note: the following option has historically had a default value of
       // false in RocksDB. RocksDB 9.1 changes the default value to true.
       // explicitly set it to false here to keep old behavior intact
