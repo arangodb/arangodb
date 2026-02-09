@@ -937,9 +937,9 @@ class instanceManager {
       });
     }
     if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
-      let files = fs.list(addArgs['server.jwt-secret-folder']);
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
-      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     this.arangods.forEach(arangod => {
