@@ -125,10 +125,6 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
     makeSatellite();
   } else {
     auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
-    if (writeConcernSlice
-            .isNone()) {  // minReplicationFactor is deprecated in 3.6
-      writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
-    }
     if (!writeConcernSlice.isNone()) {
       if (writeConcernSlice.isNumber()) {
         _writeConcern = writeConcernSlice.getNumber<size_t>();
@@ -360,9 +356,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
       result.add(StaticStrings::ReplicationFactor,
                  VPackValue(_replicationFactor));
     }
-    // minReplicationFactor deprecated in 3.6
     result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-    result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
 
   if (!_distributeShardsLike.empty()) {
@@ -549,18 +543,6 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
     }
 
     auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
-    auto minReplicationFactorSlice =
-        slice.get(StaticStrings::MinReplicationFactor);
-
-    if (writeConcernSlice.isNumber() && minReplicationFactorSlice.isNumber()) {
-      // both attributes set. now check if they have different values
-      if (basics::VelocyPackHelper::compare(
-              writeConcernSlice, minReplicationFactorSlice, false) != 0) {
-        return {
-            TRI_ERROR_BAD_PARAMETER,
-            "got ambiguous values for writeConcern and minReplicationFactor"};
-      }
-    }
 
     if (enforceReplicationFactor) {
       auto enforceSlice = slice.get("enforceReplicationFactor");
@@ -572,7 +554,7 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
               replicationFactorSlice.getNumber<int64_t>();
           if (replicationFactorProbe == 0) {
             // TODO: Which configuration for satellites are valid regarding
-            // minRepl and writeConcern valid for creating a SatelliteCollection
+            //  writeConcern for creating a SatelliteCollection
             return {};
           }
           if (replicationFactorProbe < 0) {
@@ -612,10 +594,6 @@ Result ShardingInfo::validateShardsAndReplicationFactor(
 
         if (!replicationFactorSlice.isString()) {
           // beware: "satellite" replicationFactor
-          if (writeConcernSlice.isNone()) {
-            writeConcernSlice = minReplicationFactorSlice;
-          }
-
           if (writeConcernSlice.isNumber()) {
             int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
             if (writeConcern <= 0) {

@@ -141,8 +141,7 @@ class ShardingInfo {
   std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)
-  // Writes will be disallowed if we know we cannot fulfill
-  // minReplicationFactor.
+  // Writes will be disallowed if we know we cannot fulfill writeConcern.
   std::atomic<size_t> _writeConcern;
 
   // @brief name of other collection this collection's shards should be

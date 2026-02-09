@@ -68,7 +68,7 @@ function GeneralGraphClusterCreationSuite() {
       let myGraph = graph._create(gn, edgeDef, null, { numberOfShards: maxNumberOfShards, replicationFactor: 1 });
       let properties = db._graphs.document(gn);
       assertEqual(1, properties.replicationFactor);
-      assertEqual(1, properties.minReplicationFactor);
+      assertEqual(1, properties.writeConcern);
       assertEqual(maxNumberOfShards, properties.numberOfShards);
     },
 
