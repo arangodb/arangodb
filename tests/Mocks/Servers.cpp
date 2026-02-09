@@ -23,6 +23,8 @@
 
 #include "Servers.h"
 
+#include "gmock/gmock.h"
+
 #include <algorithm>
 #include <typeindex>
 
@@ -36,7 +38,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
