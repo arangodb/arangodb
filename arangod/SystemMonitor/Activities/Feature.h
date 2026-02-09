@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DataSource.h"
 #include "SystemMonitor/Activities/Metrics.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
 
 namespace arangodb::activities {
 
@@ -37,9 +36,6 @@ class Feature final : public application_features::ApplicationFeature,
 
  public:
   static constexpr std::string_view name() { return "Activities"; }
-  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
-    return _asyncLock.lock();
-  };
 
   Feature(
       application_features::ApplicationServer& server,
@@ -64,8 +60,6 @@ class Feature final : public application_features::ApplicationFeature,
 
   struct CleanupThread;
   std::shared_ptr<CleanupThread> _cleanupThread;
-
-  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
 }  // namespace arangodb::activities

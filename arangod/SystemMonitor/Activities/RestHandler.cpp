@@ -52,8 +52,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("activities", _feature.getData().slice());
+  builder.close();
 
-  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
+  generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }
