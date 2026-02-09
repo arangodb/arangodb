@@ -718,12 +718,6 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 idxType = "iresearch";
               }
 
-              if (idxType == "geo1" || idxType == "geo2") {
-                // older deployments can have indexes of type "geo1"
-                // and "geo2". these are old names for "geo" indexes with
-                // specific setting. simply rename them to "geo" here.
-                idxType = "geo";
-              }
               result.add("type", VPackValue(idxType));
               bool isSparse = false;
               auto idxSlice = it.get("sparse");
