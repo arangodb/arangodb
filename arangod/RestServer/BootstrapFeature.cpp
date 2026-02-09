@@ -48,8 +48,8 @@
 #include <velocypack/Iterator.h>
 
 namespace {
-static std::string const bootstrapKey = "Bootstrap";
-static std::string const healthKey = "Supervision/Health";
+std::string const bootstrapKey = "Bootstrap";
+std::string const healthKey = "Supervision/Health";
 }  // namespace
 
 namespace arangodb {
@@ -62,8 +62,21 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this}, _isReady(false) {
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature,
+    EngineSelectorFeature& engineSelectorFeature,
+    DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature,
+    V8DealerFeature* v8DealerFeature)
+    : ApplicationFeature{server, *this},
+      _clusterFeature(clusterFeature),
+      _engineSelectorFeature(engineSelectorFeature),
+      _databaseFeature(databaseFeature),
+      _systemDatabaseFeature(systemDatabaseFeature),
+      _clusterUpgradeFeature(clusterUpgradeFeature),
+      _v8DealerFeature(v8DealerFeature),
+      _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
@@ -85,6 +98,24 @@ bool BootstrapFeature::isReady() const {
   return _isReady;
 }
 
+ClusterFeature& BootstrapFeature::clusterFeature() { return _clusterFeature; }
+
+EngineSelectorFeature& BootstrapFeature::engineSelectorFeature() {
+  return _engineSelectorFeature;
+}
+
+DatabaseFeature& BootstrapFeature::databaseFeature() {
+  return _databaseFeature;
+}
+
+SystemDatabaseFeature* BootstrapFeature::systemDatabaseFeature() {
+  return _systemDatabaseFeature;
+}
+
+ClusterUpgradeFeature* BootstrapFeature::clusterUpgradeFeature() {
+  return _clusterUpgradeFeature;
+}
+
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--hund", "Make ArangoDB bark on startup.",
@@ -99,8 +130,9 @@ namespace {
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
-  AgencyComm agency(feature.server());
-  auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
+  AgencyComm agency(feature.server(), feature.clusterFeature(),
+                    feature.engineSelectorFeature(), feature.databaseFeature());
+  auto& ci = feature.clusterFeature().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
     if (!result.successful()) {
@@ -158,12 +190,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
       continue;
     }
 
-    arangodb::SystemDatabaseFeature::ptr vocbase =
-        feature.server().hasFeature<arangodb::SystemDatabaseFeature>()
-            ? feature.server()
-                  .getFeature<arangodb::SystemDatabaseFeature>()
-                  .use()
-            : nullptr;
+    auto vocbase = feature.systemDatabaseFeature() != nullptr
+                       ? feature.systemDatabaseFeature()->use()
+                       : nullptr;
     auto upgradeRes =
         vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -192,10 +221,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     if (result.successful()) {
       // store current version number in agency to avoid unnecessary upgrades
       // to the same version
-      if (feature.server().hasFeature<ClusterUpgradeFeature>()) {
-        ClusterUpgradeFeature& clusterUpgradeFeature =
-            feature.server().getFeature<ClusterUpgradeFeature>();
-        clusterUpgradeFeature.setBootstrapVersion();
+      if (auto* clusterUpgradeFeature = feature.clusterUpgradeFeature();
+          clusterUpgradeFeature != nullptr) {
+        clusterUpgradeFeature->setBootstrapVersion();
       }
       return;
     }
@@ -209,12 +237,11 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
 }  // namespace
 
 void BootstrapFeature::start() {
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  auto& databaseFeature = _databaseFeature;
 
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      server().hasFeature<arangodb::SystemDatabaseFeature>()
-          ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
-          : nullptr;
+      _systemDatabaseFeature != nullptr ? _systemDatabaseFeature->use()
+                                        : nullptr;
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum const role = ServerState::instance()->getRole();
@@ -296,10 +323,8 @@ void BootstrapFeature::unprepare() {
 }
 
 void BootstrapFeature::killRunningQueries() {
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
-
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    auto vocbase = databaseFeature.useDatabase(name);
+  for (auto& name : _databaseFeature.getDatabaseNames()) {
+    auto vocbase = _databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
@@ -311,7 +336,8 @@ void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER)
       << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency(server());
+  AgencyComm agency(server(), _clusterFeature, _engineSelectorFeature,
+                    _databaseFeature);
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);
@@ -336,7 +362,7 @@ void BootstrapFeature::waitForHealthEntry() {
 }
 
 void BootstrapFeature::waitForDatabases() const {
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   uint64_t iterations = 0;
   while (ci.databases().empty() && !server().isStopping()) {
