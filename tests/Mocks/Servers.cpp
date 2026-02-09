@@ -29,6 +29,7 @@
 #include <typeindex>
 
 #include "Agency/AgencyStrings.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
