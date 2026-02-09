@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
+const { assert, log } = require('console');
 
 function optimizerRuleTestSuite () {
   const ruleName = "move-calculations-down";
@@ -879,6 +880,46 @@ FOR n IN UNION(
         assertEqual(json, expected, { query, params });
       }
     },
+
+    testNestedVaribleInSubquery: function () {
+
+      //  setup
+      let cn = "test";
+      db._drop(cn);
+      c = db._create(cn);
+      v = db._createView("testview", "arangosearch")
+      v.properties({ links: { test: { includeAllFields: true}}});
+      for (let i = 1; i <= 1000; i++) {
+        c.insert({ yearly: "DATE_TIMESTAMP('2025-03-03T00:00Z')" })
+      }
+      for (let i = 1; i <= 2000; i++) {
+        c.insert({ yearly: "DATE_TIMESTAMP('2024-03-03T00:00Z')" })
+      }
+
+      db._query("FOR d IN testview OPTIONS { waitForSync: true } RETURN d");
+
+      let query = `FOR year IN 2024..2025
+          LET startOfYear = DATE_TIMESTAMP(CONCAT(year, '-01-01T00:00Z'))
+          LET endOfYear = DATE_TIMESTAMP(CONCAT(year+1, '-01-01T00:00Z'))
+          LET yearlyData = (
+              FOR q IN testview
+                  SEARCH IN_RANGE(q.yearly, startOfYear, endOfYear, true, false)
+                  RETURN 1
+          )
+          RETURN {
+              year,
+              // outputing either or both fields below fixes the issue
+              // startOfYear: DATE_ISO8601(startOfYear),
+              // endOfYear: DATE_ISO8601(endOfYear),
+              dataCount: LENGTH(yearlyData),
+          }`;
+
+      let result = db._query(query);
+      assertEqual("{1}", result.toArray());
+
+      db._dropView(v)
+      db._drop(cn)
+    }
   };
 }
 
