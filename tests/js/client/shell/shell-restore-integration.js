@@ -39,10 +39,10 @@ const dbs = [{"name": "ma√ß√£", "id": "9999994", "isUnicode": true}, {
   "id": "9999995",
   "isUnicode": false
 }, {"name": "testName", "id": "9999996", "isUnicode": false}, {
-  "name": "üòÄ",
+  "name": "??Ä",
   "id": "9999997",
   "isUnicode": true
-}, {"name": "„Åã„Çè„ÅÑ„ÅÑÁä¨", "id": "9999998"}, {"name": "ÔªöÔª†Ô∫ë ÔªûÔªÑÔª¥Ôªì", "id": "9999999", "isUnicode": true}];
+}, {"name": "„Åã„Çè„Å?„Å?Áä¨", "id": "9999998"}, {"name": "?ªöÔª??∫? ?ªûÔª??ª¥?ª?", "id": "9999999", "isUnicode": true}];
 const validatorJson = {
   "message": "",
   "level": "new",
@@ -905,7 +905,7 @@ function restoreIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
 
-    testRestoreIndexesOldFormatGeo_1: function () {
+    testRestoreIndexesOldFormatGeo1: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let fn = fs.join(path, cn + ".structure.json");
@@ -914,7 +914,7 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "95", fields: ["loc"], type: "geo", geoJson: false},
+            {id: "95", fields: ["loc"], type: "geo1", geoJson: false},
           ],
           name: cn,
           numberOfShards: 3,
@@ -936,7 +936,7 @@ function restoreIntegrationSuite() {
       fs.removeDirectoryRecursive(path, true);
     },
 
-    testRestoreIndexesOldFormatGeo_2: function () {
+    testRestoreIndexesOldFormatGeo2: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let fn = fs.join(path, cn + ".structure.json");
@@ -945,7 +945,7 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "95", fields: ["a", "b"], type: "geo", geoJson: false},
+            {id: "95", fields: ["a", "b"], type: "geo2", geoJson: false},
           ],
           name: cn,
           numberOfShards: 3,
