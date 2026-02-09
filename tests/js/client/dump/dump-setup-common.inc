@@ -158,12 +158,12 @@ function createModifyCollection() {
 
   // we create a lot of (meaningless) indexes here
   c = db._create("UnitTestsDumpIndexes");
-  c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
-  c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
-  c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
-  c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
-  c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
-  c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
+  c.ensureIndex({ type: "persistent", fields: ["a_uc"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["a_s1", "a_s2"] });
+  c.ensureIndex({ type: "persistent", fields: ["a_h1", "a_h2"] });
+  c.ensureIndex({ type: "persistent", fields: ["a_su"], unique: true });
+  c.ensureIndex({ type: "persistent", fields: ["a_hs1", "a_hs2"], sparse: true });
+  c.ensureIndex({ type: "persistent", fields: ["a_ss1", "a_ss2"], sparse: true });
   c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
   c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
 

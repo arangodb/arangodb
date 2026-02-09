@@ -107,9 +107,9 @@
   db._createEdgeCollection("UnitTestsImportEdgeRewriteCollectionOn");
   db._createEdgeCollection("UnitTestsImportEdgeRewriteCollectionOff");
   db._create("UnitTestsImportIgnore");
-  db.UnitTestsImportIgnore.ensureIndex({type: "hash", fields: ["value"], unique: true});
+  db.UnitTestsImportIgnore.ensureIndex({type: "persistent", fields: ["value"], unique: true});
   db._create("UnitTestsImportUniqueConstraints");
-  db.UnitTestsImportUniqueConstraints.ensureIndex({type: "hash", fields: ["value"], unique: true});
+  db.UnitTestsImportUniqueConstraints.ensureIndex({type: "persistent", fields: ["value"], unique: true});
   db._create("UnitTestsImportCsvMergeAttributes");
   db._create("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 })();

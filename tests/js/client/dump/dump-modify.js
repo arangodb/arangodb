@@ -46,7 +46,7 @@ function dumpTestSuite() {
     testEmpty: function() {
       var c = db._collection("UnitTestsDumpEmpty");
 
-      c.ensureIndex({type: "hash", fields: ["abc"]});
+      c.ensureIndex({type: "persistent", fields: ["abc"]});
       assertTrue(true);
     },
 
@@ -64,7 +64,7 @@ function dumpTestSuite() {
       assertEqual(1, c.indexes().length); // just primary index
       assertEqual("primary", c.indexes()[0].type);
 
-      c.ensureIndex({type: "hash", fields: ["abc"]});
+      c.ensureIndex({type: "persistent", fields: ["abc"]});
 
       assertEqual(100000, c.count());
 
@@ -128,7 +128,7 @@ function dumpTestSuite() {
       assertEqual("primary", c.indexes()[0].type);
       assertEqual("edge", c.indexes()[1].type);
       assertEqual(10, c.count());
-      c.ensureIndex({type: "hash", fields: ["abc"]});
+      c.ensureIndex({type: "persistent", fields: ["abc"]});
 
       // remove half of the documents
       for (let i = 0; i < 10; i += 2) {
@@ -181,7 +181,7 @@ function dumpTestSuite() {
       assertEqual("primary", c.indexes()[0].type);
       assertEqual(9000, c.count());
 
-      c.ensureIndex({type: "hash", fields: ["abc"]});
+      c.ensureIndex({type: "persistent", fields: ["abc"]});
       let docs = [];
       for (let i = 5; i < 10000; i += 10) {
         docs.push("test" + i);
@@ -204,32 +204,32 @@ function dumpTestSuite() {
       assertEqual(9, c.indexes().length);
       assertEqual("primary", c.indexes()[0].type);
 
-      assertEqual("hash", c.indexes()[1].type);
+      assertEqual("persistent", c.indexes()[1].type);
       assertTrue(c.indexes()[1].unique);
       assertFalse(c.indexes()[1].sparse);
       assertEqual(["a_uc"], c.indexes()[1].fields);
 
-      assertEqual("skiplist", c.indexes()[2].type);
+      assertEqual("persistent", c.indexes()[2].type);
       assertFalse(c.indexes()[2].unique);
       assertFalse(c.indexes()[2].sparse);
       assertEqual(["a_s1", "a_s2"], c.indexes()[2].fields);
 
-      assertEqual("hash", c.indexes()[3].type);
+      assertEqual("persistent", c.indexes()[3].type);
       assertFalse(c.indexes()[3].unique);
       assertFalse(c.indexes()[3].sparse);
       assertEqual(["a_h1", "a_h2"], c.indexes()[3].fields);
 
-      assertEqual("skiplist", c.indexes()[4].type);
+      assertEqual("persistent", c.indexes()[4].type);
       assertTrue(c.indexes()[4].unique);
       assertFalse(c.indexes()[4].sparse);
       assertEqual(["a_su"], c.indexes()[4].fields);
 
-      assertEqual("hash", c.indexes()[5].type);
+      assertEqual("persistent", c.indexes()[5].type);
       assertFalse(c.indexes()[5].unique);
       assertTrue(c.indexes()[5].sparse);
       assertEqual(["a_hs1", "a_hs2"], c.indexes()[5].fields);
 
-      assertEqual("skiplist", c.indexes()[6].type);
+      assertEqual("persistent", c.indexes()[6].type);
       assertFalse(c.indexes()[6].unique);
       assertTrue(c.indexes()[6].sparse);
       assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
@@ -243,7 +243,7 @@ function dumpTestSuite() {
       assertFalse(c.indexes()[8].unique);
 
       assertEqual(0, c.count());
-      c.ensureIndex({type: "hash", fields: ["abc"]});
+      c.ensureIndex({type: "persistent", fields: ["abc"]});
     },
 
 ////////////////////////////////////////////////////////////////////////////////

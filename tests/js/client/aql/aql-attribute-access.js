@@ -185,9 +185,8 @@ function nestedAttributeAccessTestSuite () {
         { 'xpRes': 2, 'q': "FOR item IN @@cn FILTER item.`foo.bar` == 'searchvalue' RETURN item.whichOne" },
         { 'xpRes': 1, 'q': "FOR item IN @@cn FILTER item.`foo bar` == 'searchvalue' RETURN item.whichOne" }
       ];
-      c.ensureIndex({ type: "hash", fields: [ "foo.bar" ], sparse: true });
-      // TODO: not yet implemented:   c.ensureIndex({ type: "hash", fields: [ "`foo.bar`" ], sparse: true });
-      c.ensureIndex({ type: "hash", fields: [ "foo bar" ], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: [ "foo.bar" ], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: [ "foo bar" ], sparse: true });
 
       var j;
       for (j = 0; j < queryRes.length; j ++) {

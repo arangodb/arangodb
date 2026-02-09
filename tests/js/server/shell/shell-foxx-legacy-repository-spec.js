@@ -91,7 +91,7 @@ describe('Repository Indexes', function () {
   it('should create indexes on instantiation', function () {
     const collection = {ensureIndex: sinon.spy()};
     const indexes = Object.freeze([
-      {type: 'skiplist', xyz: 'abcdef'},
+      {type: 'persistent', xyz: 'abcdef'},
       {type: 'geo', more: 'args'},
       {type: 'foo', bar: 'qux'}
     ]);
@@ -112,7 +112,7 @@ describe('Repository Indexes', function () {
     expect(FoxxRepository.prototype).not.to.have.a.property('range');
     const TestRepository = FoxxRepository.extend({
       indexes: [
-        {type: 'skiplist'}
+        {type: 'persistent'}
       ]
     });
 

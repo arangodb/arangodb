@@ -367,20 +367,20 @@ Result createSystemStatisticsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
-                        false, false, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"time"}, false, false, collections);
     if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
@@ -394,8 +394,8 @@ Result createSystemCollectionsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                        true, true, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"user"}, true, true, collections);
     if (!res.ok()) {
       return res;
     }
@@ -412,20 +412,20 @@ Result createSystemCollectionsIndices(
   }
 
   res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
-                      true, collections);
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX, {"mount"},
+                      true, true, collections);
   if (!res.ok()) {
     return res;
   }
   res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
                       {"queue", "status", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {
     return res;
   }
   res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
                       {"status", "queue", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {

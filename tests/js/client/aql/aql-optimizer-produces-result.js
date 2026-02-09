@@ -42,9 +42,9 @@ function optimizerProducesResultTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "hash", fields: ["a", "b"] });
-      c.ensureIndex({ type: "hash", fields: ["c"] });
-      c.ensureIndex({ type: "skiplist", fields: ["x"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      c.ensureIndex({ type: "persistent", fields: ["c"] });
+      c.ensureIndex({ type: "persistent", fields: ["x"] });
     },
 
     tearDownAll : function () {
