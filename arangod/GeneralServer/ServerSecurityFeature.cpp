@@ -32,8 +32,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ServerSecurityFeature::ServerSecurityFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ServerSecurityFeature::ServerSecurityFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

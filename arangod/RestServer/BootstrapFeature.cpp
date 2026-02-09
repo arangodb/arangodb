@@ -61,8 +61,9 @@ class Query;
 using namespace arangodb;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(Server& server)
-    : ArangodFeature{server, *this}, _isReady(false) {
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();

@@ -51,7 +51,8 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
+AqlFeature::AqlFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<QueryRegistryFeature>();

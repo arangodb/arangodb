@@ -101,7 +101,7 @@ class IResearchFeatureTest
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
     server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
   }

@@ -187,8 +187,9 @@ class LogAppenderMetricsCounter final : public LogAppender {
   metrics::Counter& _droppedMessagesCounter;
 };
 
-LogBufferFeature::LogBufferFeature(Server& server)
-    : ArangodFeature{server, *this} {
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<LoggerFeature>();
 

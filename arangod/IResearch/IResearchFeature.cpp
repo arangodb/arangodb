@@ -603,7 +603,8 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 }
 
 template<typename T>
-void registerSingleFactory(IndexTypeFactory& factory, ArangodServer& server) {
+void registerSingleFactory(IndexTypeFactory& factory,
+                           application_features::ApplicationServer& server) {
   if (!server.hasFeature<T>()) {
     return;
   }
@@ -669,7 +670,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerUpgradeTasks(ArangodServer& server) {
+void registerUpgradeTasks(application_features::ApplicationServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
              // applied)
@@ -714,7 +715,7 @@ void registerUpgradeTasks(ArangodServer& server) {
   }
 }
 
-void registerViewFactory(ArangodServer& server) {
+void registerViewFactory(application_features::ApplicationServer& server) {
   Result r;
   auto check = [&] {
     if (!r.ok()) {
@@ -862,8 +863,9 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
   return func.implementation == &offsetInfoFunc;
 }
 
-IResearchFeature::IResearchFeature(Server& server)
-    : ArangodFeature{server, *this},
+IResearchFeature::IResearchFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_num_out_of_sync_links{})),

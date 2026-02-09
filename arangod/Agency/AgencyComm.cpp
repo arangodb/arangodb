@@ -656,7 +656,7 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
-AgencyComm::AgencyComm(ArangodServer& server)
+AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : AgencyComm(server, server.getFeature<ClusterFeature>(),
                  server.getFeature<EngineSelectorFeature>(),
                  server.getFeature<DatabaseFeature>()) {}

@@ -153,10 +153,7 @@ void ArangodServer::addFeatures(
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>();
-  auto& rocksdbOption =
-      addFeatureFactory<RocksDBOptionFeature>([this, &agency]() {
-        return RocksDBOptionFeature::construct(*this, &agency);
-      });
+  auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
   auto& rocksdbRecovery = addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>();
@@ -179,14 +176,12 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchFeature>();
   addFeature<ClusterEngine>();
 
-  addFeatureFactory<RocksDBEngine>([&, this]() {
-    return RocksDBEngine::construct(
-        *this, rocksdbOption, metrics, databasePath, vectorIndex, flush,
-        dumpLimits, scheduler,
-        replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
-                                         : nullptr,
-        rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
-  });
+  addFeature<RocksDBEngine>(
+      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
+      scheduler,
+      replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
+                                       : nullptr,
+      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

@@ -63,8 +63,8 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-std::vector<std::string> Databases::list(ArangodServer& server,
-                                         std::string const& user) {
+std::vector<std::string> Databases::list(
+    application_features::ApplicationServer& server, std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -337,9 +337,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes).result();
 }
 
-Result Databases::create(ArangodServer& server, ExecContext const& exec,
-                         std::string const& dbName, velocypack::Slice users,
-                         velocypack::Slice options) {
+Result Databases::create(application_features::ApplicationServer& server,
+                         ExecContext const& exec, std::string const& dbName,
+                         velocypack::Slice users, velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
     Result res;
 

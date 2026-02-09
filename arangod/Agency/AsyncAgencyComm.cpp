@@ -571,9 +571,12 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint,
   }
 }
 
-ArangodServer& AsyncAgencyCommManager::server() { return _server; }
+application_features::ApplicationServer& AsyncAgencyCommManager::server() {
+  return _server;
+}
 
-AsyncAgencyCommManager::AsyncAgencyCommManager(ArangodServer& server)
+AsyncAgencyCommManager::AsyncAgencyCommManager(
+    application_features::ApplicationServer& server)
     : _server(server) {}
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(

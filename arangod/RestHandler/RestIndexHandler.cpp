@@ -56,9 +56,9 @@ using namespace arangodb::basics;
 using namespace arangodb::futures;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestIndexHandler::RestIndexHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {

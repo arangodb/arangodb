@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestTimeHandler : public arangodb::RestBaseHandler {
  public:
-  RestTimeHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestTimeHandler(application_features::ApplicationServer&, GeneralRequest*,
+                  GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTimeHandler"; }

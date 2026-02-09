@@ -122,8 +122,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
 }  // namespace
 
-Inception::Inception(Agent& agent)
-    : Thread(agent.server(), "Inception"), _agent(agent) {}
+Inception::Inception(Agent& agent) : Thread("Inception"), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() { shutdown(); }

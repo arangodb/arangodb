@@ -25,6 +25,7 @@
 
 #include "CommTask.h"
 
+#include "ActivityRegistry/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -66,8 +67,8 @@ constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
-VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
-                                     GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(
+    application_features::ApplicationServer& server, GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -80,7 +81,8 @@ VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
+bool resolveRequestContext(application_features::ApplicationServer& server,
+                           GeneralRequest& req) {
   auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
@@ -451,6 +453,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
+
+  auto activityGuard =
+      activity_registry::Registry::ScopedCurrentlyExecutingActivity(
+          handler->_activity->id());
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase

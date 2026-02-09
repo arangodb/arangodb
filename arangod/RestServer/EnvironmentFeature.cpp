@@ -86,8 +86,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-EnvironmentFeature::EnvironmentFeature(Server& server)
-    : ArangodFeature{server, *this} {
+EnvironmentFeature::EnvironmentFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 

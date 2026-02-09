@@ -57,8 +57,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _request(request),
       _response(response),
       _server(server),
