@@ -127,7 +127,13 @@
     options:
       priority: 250
       parallelity: 2
-      buckets: 3
+      buckets: 2
+      type: single
+
+- shell_client_large:
+    options:
+      priority: 250
+      parallelity: 2
       type: single
       size: medium
 
@@ -409,8 +415,16 @@
     options:
       priority: 500
       type: cluster
+      size: small
+      buckets: 6
+    args:
+      dumpAgencyOnError: true
+- shell_client_large:
+    options:
+      priority: 500
+      type: cluster
       size: medium+
-      buckets: 12
+      buckets: 6
     args:
       dumpAgencyOnError: true
 - shell_client_transaction:
