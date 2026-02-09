@@ -703,18 +703,14 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
 void IndexNode::prepareProjections() { recalculateProjections(plan()); }
 
 bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
-  auto idx = getSingleIndex();
-  if (idx == nullptr) {
-    // by default, we do not use projections for the filter condition
-    _projections.clear();
-    _filterProjections.clear();
-    return false;
-  }
-
   // this call will clear _projections and _filterProjections
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  updateProjectionsIndexInfo();
+  auto idx = getSingleIndex();
+  if (idx != nullptr) {
+    // covering index optimization only works with a single index
+    updateProjectionsIndexInfo();
+  }
 
   return wasUpdated;
 }
