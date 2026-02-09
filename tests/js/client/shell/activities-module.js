@@ -34,8 +34,7 @@ function activityRegistryModuleSuite() {
       const lines = activitiesModule.pretty_print([
         {
           "id" : "0x7a1c8743c780", 
-          "name" : "ActivityRegistryRestHandler", 
-          "state" : "Active", 
+          "type" : "ActivityRegistryRestHandler", 
           "parent" : {id: "0x0"}, 
           "metadata" : { 
             "method" : "GET", 
@@ -49,8 +48,7 @@ function activityRegistryModuleSuite() {
       const lines = activitiesModule.pretty_print([
         {
           "id" : "0x7a1c8743c780", 
-          "name" : "ActivityRegistryRestHandler", 
-          "state" : "Active", 
+          "type" : "ActivityRegistryRestHandler", 
           "parent" : {id: "0x0"}, 
           "metadata" : { 
             "method" : "GET", 
@@ -59,8 +57,7 @@ function activityRegistryModuleSuite() {
         },
         {
           "id": "0x7b9050e26140",
-          "name": "RestDumpHandler",
-          "state": "Active",
+          "type": "RestDumpHandler",
           "parent": {id: "0x0"},
           "metadata": {
             "method": "POST",
@@ -77,8 +74,7 @@ function activityRegistryModuleSuite() {
       const activities = [
         {
           "id": "0x76620a63b140",
-          "name": "RestDumpHandler",
-          "state": "Active",
+          "type": "RestDumpHandler",
           "parent": {id: "0x0"},
           "metadata": {
             "method": "POST",
@@ -87,8 +83,7 @@ function activityRegistryModuleSuite() {
         },
         {
           "id": "0x766238412000",
-          "name": "dump context",
-          "state": "Active",
+          "type": "dump context",
           "parent": {id: "0x76620a63b140"},
           "metadata": {
             "database": "_system",
@@ -107,36 +102,31 @@ function activityRegistryModuleSuite() {
       const activities = [
         {
           "id": "1",
-          "name": "1",
-          "state": "Active",
+          "type": "1",
           "parent": {id: "0"},
           "metadata": {}
         },
         {
           "id": "2",
-          "name": "2",
-          "state": "Active",
+          "type": "2",
           "parent": {id: "1"},
           "metadata": {}
         },
         {
           "id": "3",
-          "name": "3",
-          "state": "Active",
+          "type": "3",
           "parent": {id: "1"},
           "metadata": {}
         },
          {
           "id": "4",
-          "name": "4",
-          "state": "Active",
+          "type": "4",
           "parent": {id: "2"},
           "metadata": {}
         },
          {
           "id": "5",
-          "name": "5",
-          "state": "Active",
+          "type": "5",
           "parent": {id: "2"},
           "metadata": {}
         }
@@ -154,57 +144,49 @@ function activityRegistryModuleSuite() {
       const activities = [
         {
           "id": "1",
-          "name": "1",
-          "state": "Active",
+          "type": "1",
           "parent": {id: "0"},
           "metadata": {}
         },
         {
           "id": "2",
-          "name": "2",
-          "state": "Active",
+          "type": "2",
           "parent": {id: "1"},
           "metadata": {}
         },
         {
           "id": "3",
-          "name": "3",
-          "state": "Active",
+          "type": "3",
           "parent": {id: "1"},
           "metadata": {}
         },
         {
           "id": "4",
-          "name": "4",
-          "state": "Active",
+          "type": "4",
           "parent": {id: "2"},
           "metadata": {}
         },
         {
           "id": "5",
-          "name": "5",
-          "state": "Active",
+          "type": "5",
           "parent": {id: "3"},
           "metadata": {}
         },
         {
           "id": "6",
-          "name": "6",
-          "state": "Active",
+          "type": "6",
           "parent": {id: "3"},
           "metadata": {}
         },
         {
           "id": "7",
-          "name": "7",
-          "state": "Active",
+          "type": "7",
           "parent": {id: "6"},
           "metadata": {}
         },
         {
           "id": "8",
-          "name": "8",
-          "state": "Active",
+          "type": "8",
           "parent": {id: "1"},
           "metadata": {}
         }
