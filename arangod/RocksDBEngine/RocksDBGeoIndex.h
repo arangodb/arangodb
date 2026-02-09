@@ -45,7 +45,11 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   IndexType type() const override { return TRI_IDX_TYPE_GEO_INDEX; }
 
-  bool pointsOnly() const { return (_typeName != "geo"); }
+  bool pointsOnly() const {
+    // If the index is INDIVIDUAL_LAT_LON or COMBINED_LAT_LON,
+    // it is ONE point per document => pointsOnly is true
+    return variant() != geo_index::Index::Variant::GEOJSON;
+  }
 
   char const* typeName() const override { return _typeName.c_str(); }
 
