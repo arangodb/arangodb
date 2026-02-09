@@ -1,6 +1,9 @@
 4.0
 ---
 
+* Remove the deprecated `algorithm: "legacy"` option from K_SHORTEST_PATHS queries.
+  Yen's algorithm is now the only implementation and is used by default.
+
 * arangorestore now automatically converts deprecated `hash` and `skiplist` index
   types to `persistent` when restoring dumps from older versions.
 
