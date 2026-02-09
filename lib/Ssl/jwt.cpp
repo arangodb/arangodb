@@ -65,20 +65,26 @@ std::string generateUserToken(std::string_view secret,
   bodyBuilder.add("iss", velocypack::Value("arangodb"));
   bodyBuilder.add("iat", velocypack::Value(static_cast<uint64_t>(iss.count())));
   if (validFor.count() > 0) {
-    bodyBuilder.add("exp", velocypack::Value(static_cast<uint64_t>((iss + validFor).count())));
+    bodyBuilder.add(
+        "exp",
+        velocypack::Value(static_cast<uint64_t>((iss + validFor).count())));
   }
   bodyBuilder.close();
   return generateRawJwt(secret, bodyBuilder.slice());
 }
 
-std::string generateRawJwt(std::string_view secret, velocypack::Slice bodySlice) {
+std::string generateRawJwt(std::string_view secret,
+                           velocypack::Slice bodySlice) {
   // Detect if the secret is an ES256 private key by trying to parse it as PEM
   bool isES256 = false;
-  if (secret.size() > 26 && secret.find("-----BEGIN") != std::string_view::npos) {
+  if (secret.size() > 26 &&
+      secret.find("-----BEGIN") != std::string_view::npos) {
     // Try to parse as EC private key
-    BIO* keybio = BIO_new_mem_buf(secret.data(), static_cast<int>(secret.size()));
+    BIO* keybio =
+        BIO_new_mem_buf(secret.data(), static_cast<int>(secret.size()));
     if (keybio != nullptr) {
-      EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+      EVP_PKEY* pKey =
+          PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
       if (pKey != nullptr) {
         if (EVP_PKEY_base_id(pKey) == EVP_PKEY_EC) {
           isES256 = true;
@@ -115,19 +121,20 @@ std::string generateRawJwt(std::string_view secret, velocypack::Slice bodySlice)
   auto fullMessage = absl::StrCat(headerBase64, ".", bodyBase64);
 
   std::string signature;
-  
+
   if (isES256) {
     // Use ES256 signing
     std::string error;
-    if (arangodb::rest::SslInterface::signES256(secret, fullMessage, signature, error) != 0) {
+    if (arangodb::rest::SslInterface::signES256(secret, fullMessage, signature,
+                                                error) != 0) {
       // If ES256 signing fails, return empty string
       return "";
     }
   } else {
     // Use HMAC-SHA256
     signature = arangodb::rest::SslInterface::sslHMAC(
-        secret.data(), secret.size(), fullMessage.data(),
-        fullMessage.size(), Algorithm::ALGORITHM_SHA256);
+        secret.data(), secret.size(), fullMessage.data(), fullMessage.size(),
+        Algorithm::ALGORITHM_SHA256);
   }
 
   return absl::StrCat(fullMessage, ".", absl::WebSafeBase64Escape(signature));
