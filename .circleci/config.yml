@@ -68,7 +68,7 @@ parameters:
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:18"
+    default: "arangodb/ubuntubuildarangodb-devel:19"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:

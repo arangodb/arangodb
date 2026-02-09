@@ -92,7 +92,7 @@ TEST_F(ActivityRegistryTest,
   auto specific =
       std::find(std::begin(all_activities), std::end(all_activities),
                 ActivityInRegistrySnapshot{
-                    .name = "test activity",
+                    .type = "test activity",
                     .state = State::Active,
                     .id = activity.id(),
                     .parent = ActivityRoot,
@@ -108,12 +108,12 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
                 (ActivityInRegistrySnapshot{
-                    .name = "child activity",
+                    .type = "child activity",
                     .state = State::Active,
                     .id = child_activity.id(),
                     .parent = ActivityId{parent_activity.id()},
                     .metadata = {}}),
-                (ActivityInRegistrySnapshot{.name = "parent activity",
+                (ActivityInRegistrySnapshot{.type = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
                                             .parent = {ActivityRoot}})}));
@@ -131,21 +131,21 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
   EXPECT_EQ(get_all_activities(),
             (std::vector<ActivityInRegistrySnapshot>{
                 (ActivityInRegistrySnapshot{
-                    .name = "child of child activity",
+                    .type = "child of child activity",
                     .state = State::Active,
                     .id = child_of_first_child_activity.id(),
                     .parent = ActivityId{first_child_activity.id()}}),
                 (ActivityInRegistrySnapshot{
-                    .name = "second child activity",
+                    .type = "second child activity",
                     .state = State::Active,
                     .id = second_child_activity.id(),
                     .parent = ActivityId{parent_activity.id()}}),
                 (ActivityInRegistrySnapshot{
-                    .name = "first child activity",
+                    .type = "first child activity",
                     .state = State::Active,
                     .id = first_child_activity.id(),
                     .parent = ActivityId{parent_activity.id()}}),
-                (ActivityInRegistrySnapshot{.name = "parent activity",
+                (ActivityInRegistrySnapshot{.type = "parent activity",
                                             .state = State::Active,
                                             .id = parent_activity.id(),
                                             .parent = ActivityRoot})}));

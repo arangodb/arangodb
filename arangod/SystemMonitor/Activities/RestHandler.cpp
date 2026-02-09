@@ -52,6 +52,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("activities", _feature.getData().slice());
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }
