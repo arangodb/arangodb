@@ -1133,62 +1133,6 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureGeo_1 : function() {
-      let check = function(r, expected) {
-        assertEqual("object", typeof r);
-        assertTrue(r.hasOwnProperty("legacyPolygons"));
-        assertEqual(expected, r.legacyPolygons);
-        let i = collection.indexes();
-        let found = false;
-        for (let j = 0; j < i.length; ++j) {
-          if (i[j].id === r.id) {
-            found = true;
-            assertEqual(expected, r.legacyPolygons);
-          }
-        }
-        assertTrue(found);
-        assertTrue(collection.dropIndex(r.id));
-      };
-
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"] }), false);
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
-                                     legacyPolygons: true }), true);
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
-                                     legacyPolygons: false }), false);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: geo indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnsureGeo_2 : function() {
-      let check = function(r, expected) {
-        assertEqual("object", typeof r);
-        assertTrue(r.hasOwnProperty("legacyPolygons"));
-        assertEqual(expected, r.legacyPolygons);
-        let i = collection.indexes();
-        let found = false;
-        for (let j = 0; j < i.length; ++j) {
-          if (i[j].id === r.id) {
-            found = true;
-            assertEqual(expected, r.legacyPolygons);
-          }
-        }
-        assertTrue(found);
-        assertTrue(collection.dropIndex(r.id));
-      };
-
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"] }), false);
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
-                                     legacyPolygons: true }), true);
-      check(collection.ensureIndex({ type: "geo", fields: ["pos"],
-                                     legacyPolygons: false }), false);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: geo1 index type is no longer supported
 ////////////////////////////////////////////////////////////////////////////////
 
