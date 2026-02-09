@@ -6936,8 +6936,7 @@ struct GeoIndexInfo {
 // latitude and longitude attribute of the geo index.
 // distance(a,b,c,d) - possible pairs are (a,b) and (c,d)
 static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
-                                 AstNode const* lngArg, bool supportLegacy,
-                                 GeoIndexInfo& info) {
+                                 AstNode const* lngArg, GeoIndexInfo& info) {
   // note: this only modifies "info" if the function returns true
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccess1;
@@ -7025,15 +7024,14 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
 
 // checks parameter of GEO_* function
 static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
-                            bool supportLegacy, GeoIndexInfo& info) {
+                            GeoIndexInfo& info) {
   // note: this only modifies "info" if the function returns true
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccess;
   // "arg" is either `[doc.lat, doc.lng]` or `doc.geometry`
   if (args->isArray() && args->numMembers() == 2) {
     return distanceFuncArgCheck(plan, /*lat*/ args->getMemberUnchecked(1),
-                                /*lng*/ args->getMemberUnchecked(0),
-                                supportLegacy, info);
+                                /*lng*/ args->getMemberUnchecked(0), info);
   } else if (!args->isAttributeAccessForVariable(attributeAccess, true)) {
     return false;  // no attribute access, no index check
   }
@@ -7105,7 +7103,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
-                              bool legacy, GeoIndexInfo& info) {
+                              GeoIndexInfo& info) {
   // note: this only modifies "info" if the function returns true
   if (funcNode->type == NODE_TYPE_REFERENCE) {
     // FOR x IN cc LET d = DISTANCE(...) FILTER d > 10 RETURN x
@@ -7133,7 +7131,7 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
     if (isValidGeoArg(info.distCenterLatExpr, fargs->getMemberUnchecked(2)) &&
         isValidGeoArg(info.distCenterLngExpr, fargs->getMemberUnchecked(3)) &&
         distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0),
-                             fargs->getMemberUnchecked(1), legacy, info)) {
+                             fargs->getMemberUnchecked(1), info)) {
       info.distCenterLatExpr = fargs->getMemberUnchecked(2);
       info.distCenterLngExpr = fargs->getMemberUnchecked(3);
       return true;
@@ -7142,8 +7140,7 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
                isValidGeoArg(info.distCenterLngExpr,
                              fargs->getMemberUnchecked(1)) &&
                distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2),
-                                    fargs->getMemberUnchecked(3), legacy,
-                                    info)) {
+                                    fargs->getMemberUnchecked(3), info)) {
       info.distCenterLatExpr = fargs->getMemberUnchecked(0);
       info.distCenterLngExpr = fargs->getMemberUnchecked(1);
       return true;
@@ -7153,13 +7150,12 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
       return false;  // do not allow mixing of DISTANCE and GEO_DISTANCE
     }
     if (isValidGeoArg(info.distCenterExpr, fargs->getMemberUnchecked(1)) &&
-        geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), legacy, info)) {
+        geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), info)) {
       info.distCenterExpr = fargs->getMemberUnchecked(1);
       return true;
     } else if (isValidGeoArg(info.distCenterExpr,
                              fargs->getMemberUnchecked(0)) &&
-               geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), legacy,
-                               info)) {
+               geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), info)) {
       info.distCenterExpr = fargs->getMemberUnchecked(0);
       return true;
     }
@@ -7186,7 +7182,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   }
 
   AstNode* arg = fargs->getMemberUnchecked(1);
-  if (geoFuncArgCheck(plan, arg, /*legacy*/ true, info)) {
+  if (geoFuncArgCheck(plan, arg, info)) {
     TRI_ASSERT(contains || intersect);
     info.filterMode =
         contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
@@ -7207,7 +7203,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
                   bool lessequal) -> bool {
     if (second->type == NODE_TYPE_VALUE &&  // only constants allowed
         info.maxDistanceExpr == nullptr &&  // max distance is not yet set
-        checkDistanceFunc(plan, first, /*legacy*/ true, info)) {
+        checkDistanceFunc(plan, first, info)) {
       TRI_ASSERT(info.index);
       info.maxDistanceExpr = second;
       info.maxInclusive = info.maxInclusive && lessequal;
@@ -7216,7 +7212,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node,
     } else if (first->type == NODE_TYPE_VALUE &&  // only constants allowed
                info.minDistanceExpr ==
                    nullptr &&  // min distance is not yet set
-               checkDistanceFunc(plan, second, /*legacy*/ true, info)) {
+               checkDistanceFunc(plan, second, info)) {
       info.minDistanceExpr = first;
       info.minInclusive = info.minInclusive && lessequal;
       info.nodesToRemove.insert(node);
@@ -7274,8 +7270,7 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort,
   }
 
   // info will only be modified if the function returns true
-  bool legacy = elements[0].ascending;  // DESC is only supported on S2 index
-  if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
+  if (!info.sorted && checkDistanceFunc(plan, expr->node(), info)) {
     info.sorted = true;  // do not parse another SORT
     info.ascending = elements[0].ascending;
     if (!ServerState::instance()->isCoordinator()) {
