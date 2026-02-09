@@ -35,7 +35,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 
 namespace arangodb {
 

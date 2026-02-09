@@ -38,9 +38,9 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Ssl/SslInterface.h"
+#include "Ssl/jwt.h"
 
 #include <absl/strings/escaping.h>
-#include <fuerte/jwt.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -539,6 +539,7 @@ void auth::TokenCache::generateSuperToken() {
     _jwtSuperToken = fullMessage + "." + signatureBase64;
   } else {
     // Use existing HS256 token generation
-    _jwtSuperToken = fuerte::jwt::generateInternalToken(_jwtActiveSecret, sid);
+    _jwtSuperToken = arangodb::rest::SslInterface::jwt::generateInternalToken(
+        _jwtActiveSecret, sid);
   }
 }
