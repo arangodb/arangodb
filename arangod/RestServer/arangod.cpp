@@ -103,14 +103,8 @@ void ArangodServer::addFeatures(
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
-#ifdef USE_V8
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>();
-#endif
   addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature,
-                               &v8DealerFeature);
+                               &systemDatabaseFeature, &clusterUpgradeFeature);
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>();
