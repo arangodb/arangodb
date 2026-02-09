@@ -217,7 +217,7 @@
       # TODO: BTS-2283
       encryptionAtRest: false
 
-- shell_client_aqllarge:
+- shell_client_aql_large:
     options:
       buckets: 5
       priority: 250
@@ -401,7 +401,7 @@
       dumpAgencyOnError: true
       # TODO: BTS-2283
       encryptionAtRest: false
-- shell_client_aqllarge:
+- shell_client_aql_large:
     options:
       priority: 1000
       size: medium+
