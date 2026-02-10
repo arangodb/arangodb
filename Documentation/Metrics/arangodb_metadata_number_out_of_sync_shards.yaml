@@ -11,25 +11,39 @@ exposedBy:
 description: |
   Number of shards that are out of sync across collections of all databases.
 troubleshoot: |
-  **Configuration:**
-  - Max per collection: `--cluster.max-number-of-shards` (default: 1000)
-  - Exceeding limit returns `TRI_ERROR_CLUSTER_TOO_MANY_SHARDS`
-  - Query limit: `--query.max-collections-per-query` affects total shards in queries
-  - Queries exceeding this fail with "too many collections/shards" error
-  - Practical cluster limit: ~50,000 total shards across all collections
+  This metric indicates shards where the Plan (expected state) differs from Current
+  (actual state). This includes shards with missing or extra servers, or shards that
+  exist in one but not the other. It's a broad indicator of cluster state synchronization
+  issues.
+
+  **Common Causes:**
+  - Collection lifecycle transitions: Shards being created or deleted (Plan vs Current mismatch)
+  - Replication issues: Followers not created or removed when they should be
+  - DBServer failures: Servers going down or becoming unreachable
+  - Network issues: Connectivity problems preventing supervision from updating Current
+  - Supervision delays: The supervision process may need time to reconcile Plan and Current
+  - Leader election: Temporary mismatches during leader changes
+  - Manual interventions: Agency or cluster state modifications
 
   **Impact:**
-  - High shard counts increase cluster coordination overhead
-  - Affects query performance, memory usage, leader election, and rebalancing
+  - Reduced data resilience: Missing followers reduce redundancy
+  - Potential data inconsistency: Mismatched server assignments
+  - Cluster coordination overhead: Supervision must work to reconcile differences
+  - May indicate broader cluster health issues if persistent
 
   **Recommendations:**
-  - Choose shard count based on data volume, query patterns, and DB-Server count
-  - Use rebalancing to ensure even distribution
-
-  **Note:**
-  - Approaching 50k shards may cause performance degradation
+  - During normal operations: Wait and observe, as supervision should reconcile differences automatically
+  - During collection creation/deletion: Temporary non-zero values are expected
+  - If persistent: Check DBServer health and availability
+  - Verify network connectivity between all cluster components
+  - Check supervision logs for errors preventing state reconciliation
+  - During upgrades or restarts: Temporary non-zero values are expected
+  - Monitor related metrics for more specific issues:
+    - `arangodb_metadata_number_not_replicated_shards` (missing followers)
+    - `arangodb_metadata_shard_followers_out_of_sync_number` (follower sync state)
+  - If the situation persists: Investigate supervision issues or contact ArangoDB support
 
   **See also:**
-  - Cluster limitations: https://docs.arango.ai/arangodb/stable/deploy/cluster/limitations/
-  - Query limits: https://github.com/arangodb/arangodb/issues/10787
-  - Operational factors: https://docs.arango.ai/arangodb/stable/develop/operational-factors/
+  - Related metrics: `arangodb_metadata_number_not_replicated_shards` (replication state),
+    `arangodb_metadata_shard_followers_out_of_sync_number` (follower sync details)
+  - DBServer perspective: `arangodb_shards_out_of_sync` (leader's view of replication)

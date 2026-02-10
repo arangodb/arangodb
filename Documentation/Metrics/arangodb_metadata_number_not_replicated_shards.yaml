@@ -11,25 +11,31 @@ exposedBy:
 description: |
   Number of shards that are not replicated across collections of all databases.
 troubleshoot: |
-  **Configuration:**
-  - Max per collection: `--cluster.max-number-of-shards` (default: 1000)
-  - Exceeding limit returns `TRI_ERROR_CLUSTER_TOO_MANY_SHARDS`
-  - Query limit: `--query.max-collections-per-query` affects total shards in queries
-  - Queries exceeding this fail with "too many collections/shards" error
-  - Practical cluster limit: ~50,000 total shards across all collections
+  This metric indicates shards that should have followers according to the Plan
+  (replicationFactor > 1) but only have a leader (or no servers) in Current. This
+  represents a single point of failure and reduced resilience.
+
+  **Common Causes:**
+  - Collection creation in progress: Followers may not yet be created by supervision
+  - DBServer failures: Followers may be missing if their DBServers are down or unreachable
+  - Network issues: Connectivity problems preventing follower creation or synchronization
+  - Supervision delays: The supervision process may need time to create missing followers
+  - Collection deletion in progress: Shards may be in transition during deletion
 
   **Impact:**
-  - High shard counts increase cluster coordination overhead
-  - Affects query performance, memory usage, leader election, and rebalancing
+  - Reduced data resilience: Data loss risk if the leader fails
+  - Single point of failure: No redundancy for affected shards
+  - May indicate cluster health issues if persistent
 
   **Recommendations:**
-  - Choose shard count based on data volume, query patterns, and DB-Server count
-  - Use rebalancing to ensure even distribution
-
-  **Note:**
-  - Approaching 50k shards may cause performance degradation
+  - During normal operations: Wait and observe, as supervision should create followers automatically
+  - If persistent: Check DBServer health and availability
+  - Verify network connectivity between DBServers
+  - Check supervision logs for errors preventing follower creation
+  - During upgrades or restarts: Temporary non-zero values are expected
+  - If the situation persists: Investigate supervision issues or contact ArangoDB support
 
   **See also:**
-  - Cluster limitations: https://docs.arango.ai/arangodb/stable/deploy/cluster/limitations/
-  - Query limits: https://github.com/arangodb/arangodb/issues/10787
-  - Operational factors: https://docs.arango.ai/arangodb/stable/develop/operational-factors/
+  - Related metrics: `arangodb_metadata_number_out_of_sync_shards` (broader sync issues),
+    `arangodb_metadata_shard_followers_out_of_sync_number` (follower sync state)
+  - DBServer perspective: `arangodb_shards_not_replicated` (leader's view)

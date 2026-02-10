@@ -1,7 +1,7 @@
 name: arangodb_metadata_shard_followers_out_of_sync_number
 introducedIn: "3.12.8"
 help: |
-  Number of follower shards on this machine that are out of sync with their leader.
+  Number of follower shards across the cluster that are out of sync with their leader.
 unit: number
 type: gauge
 category: Replication
@@ -9,17 +9,21 @@ complexity: simple
 exposedBy:
   - coordinator
 description: |
-  Number of follower shards on this machine that are not in sync with their leader.
-  This is the follower-perspective counterpart to arangodb_shards_out_of_sync, which
-  reports from the leader's perspective. A follower shard is out of sync when it has
-  not caught up with the latest data from its leader.
+  Number of follower shards across the cluster that are not in sync with their leader.
+  This metric is computed by the coordinator by comparing the Plan (expected state) with
+  Current (actual state). A follower shard is counted as out of sync when it is expected
+  in the Plan but missing from Current, indicating it has not caught up with the latest
+  data from its leader. This is the follower-perspective counterpart to arangodb_shards_out_of_sync,
+  which reports from the leader's perspective on each DBServer.
 troubleshoot: |
   If this metric shows a non-zero value for an extended period, it indicates that
-  some follower shards on this DBServer are lagging behind their leaders. This could be due to:
-  - Network issues between this DBServer and the leaders
-  - This DBServer being overloaded or slow
+  some follower shards across the cluster are lagging behind their leaders. This could be due to:
+  - Network issues between DBServers hosting followers and their leaders
+  - DBServers hosting followers being overloaded or slow
   - Large amounts of data being replicated
-  - Collection locks (write or exclusive) preventing the follower from getting in sync
+  - Collection locks (write or exclusive) preventing followers from getting in sync
+  - DBServer restarts or failures during replication
 
-  Investigate the replication logs and check the server's resource utilization.
-  If the problem persists, contact ArangoDB customer support.
+  Investigate the replication logs on the affected DBServers and check their resource utilization.
+  Compare this metric with arangodb_shards_out_of_sync (leader perspective) to identify
+  which shards are affected. If the problem persists, contact ArangoDB customer support.

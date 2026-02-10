@@ -433,7 +433,7 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 // Shards metric is cluster-specific (databases and collections metrics are
 // declared in DatabaseFeature.h)
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
-              "Number of leader shards");  // NUmber of Leader shards
+              "Number of leader shards");  // Number of Leader shards
 
 // New coordinator-level shard metrics
 DECLARE_GAUGE(
@@ -453,7 +453,7 @@ DECLARE_GAUGE(
 DECLARE_GAUGE(
     arangodb_metadata_number_follower_shards, std::uint64_t,
     "Total number of follower replicas observed in Current");  // Number of
-                                                               // Folloers =
+                                                               // Followers =
                                                                // Total Number
                                                                // of Shards -
                                                                // Leaders
@@ -2282,12 +2282,11 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
   }
 
   // Update coordinator-specific shard metrics computed from Current.
-  // We only need a read-lock on `_currentProt.lock` for the metrics
-  // computation to avoid holding the write lock for the duration of the
-  // comparison with Plan (which would risk deadlocks). Acquire a read lock
-  // here and call the metrics helper which expects a read lock.
+  // Do not hold `_currentProt.lock` here to avoid acquiring `_planProt.lock`
+  // while already holding `_currentProt.lock`, which would invert the
+  // established Plan->Current lock ordering used elsewhere in this file.
+  // The helper acquires the necessary locks internally in the correct order.
   if (_metadataMetrics.has_value()) {
-    READ_LOCKER(readLocker, _currentProt.lock);
     updateCoordinatorCurrentShardMetrics();
   }
 
@@ -6411,9 +6410,10 @@ ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
 }
 
 // Update coordinator-level current metrics.
-// Caller is expected to hold _currentProt.lock (write) when invoked.
-// This routine will read Plan maps under a read-lock to compare planned vs
-// actual state.
+// This routine acquires read-locks on _planProt.lock and _currentProt.lock
+// in the correct order (Plan->Current) to maintain consistent lock ordering
+// with the rest of the codebase. It compares Plan (expected state) with
+// Current (actual state) to compute shard metrics.
 void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
   if (!_metadataMetrics.has_value()) {
     return;
@@ -6427,8 +6427,10 @@ void ClusterInfo::updateCoordinatorCurrentShardMetrics() {
   uint64_t followersOutOfSync =
       0;  // Count of individual planned followers missing from Current
 
-  // read plan under read lock to compare leaders/replication factors
-  READ_LOCKER(readLocker, _planProt.lock);
+  // Acquire locks in the correct order (Plan->Current) to maintain consistent
+  // lock ordering with the rest of the codebase.
+  READ_LOCKER(planLocker, _planProt.lock);
+  READ_LOCKER(currentLocker, _currentProt.lock);
 
   // Iterate over Plan shards (source of truth) and compare to Current. This
   // avoids counting stale entries that may remain in Current for deleted

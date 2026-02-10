@@ -26,7 +26,6 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const internal = require('internal');
 const { getCoordinators, moveShard, getDBServers, eventuallyAssertMetric } = require("@arangodb/test-helper");
 
 function metadataCoordinatorMetricsSuite() {
@@ -127,7 +126,7 @@ function metadataCoordinatorMetricsSuite() {
 
         const query = `
           FOR i IN @from..@to
-            RETURN { key: CONCAT('key', i), shardId: SHARD_ID(@collection, { _key: CONCAT('test', i) }) }
+            RETURN { key: CONCAT('key', i), shardId: SHARD_ID(@collection, { _key: CONCAT('key', i) }) }
         `;
         const results = db._query(query, {
           'from': keyIndex,
@@ -297,7 +296,7 @@ function metadataCoordinatorMetricsSuite() {
         replicationFactor: 2,
       });
       // Data is necessary to trigger replication
-      db._query(`FOR i IN 0..10 INSERT {} IN ${testCollectionName}`);
+      db._query(`FOR i IN 0..10 INSERT {} INTO ${testCollectionName}`);
 
       // Calculate expected counts after setup
       const expectedTotalShards = getTotalShardCount();

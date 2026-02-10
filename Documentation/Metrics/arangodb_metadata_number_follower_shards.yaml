@@ -9,7 +9,7 @@ complexity: simple
 exposedBy:
   - coordinator
 description: |
-  Number of follower shards that across collections of all databases.
+  Number of follower shards that exist across collections of all databases.
 troubleshoot: |
   **Configuration:**
   - Max per collection: `--cluster.max-number-of-shards` (default: 1000)
