@@ -27,7 +27,9 @@
 #include "RestServer/BootstrapFeatureOptions.h"
 
 namespace arangodb {
+#ifdef USE_V8
 class V8DealerFeature;
+#endif
 class ClusterUpgradeFeature;
 class SystemDatabaseFeature;
 class DatabaseFeature;
@@ -43,8 +45,12 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
                             EngineSelectorFeature& engineSelectorFeature,
                             DatabaseFeature& databaseFeature,
                             SystemDatabaseFeature* systemDatabaseFeature,
-                            ClusterUpgradeFeature* clusterUpgradeFeature,
-                            V8DealerFeature* v8DealerFeature);
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
+  );
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -70,7 +76,9 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   DatabaseFeature& _databaseFeature;
   SystemDatabaseFeature* _systemDatabaseFeature{};
   ClusterUpgradeFeature* _clusterUpgradeFeature{};
+#ifdef USE_V8
   V8DealerFeature* _v8DealerFeature{};
+#endif
 
   BootstrapFeatureOptions _options;
   bool _isReady;
