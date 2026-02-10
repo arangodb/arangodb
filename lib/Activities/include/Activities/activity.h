@@ -133,6 +133,7 @@ struct Activity {
   ~Activity();
 
   auto id() const noexcept -> ActivityId;
+  auto parentId() const noexcept -> ActivityId;
 
   template<typename F>
   requires MetadataAccessor<F>
