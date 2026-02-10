@@ -121,6 +121,11 @@ class instanceManager {
       this.JWT = options.jwtSecret;
       addArgs['server.jwt-secret'] = this.JWT;
     }
+    if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(addArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
+    }
     if (this.options.encryptionAtRest) {
       if (this.options.hasOwnProperty('jwtFiles')) {
         this.JWT = fs.read(this.options.jwtFiles[0]);
@@ -931,10 +936,15 @@ class instanceManager {
         }
       });
     }
+    if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+    }
 
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpAuthOptions, this.httpJWTAuthOptions, this.JWT);
+      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
     });
 
     let success = true;

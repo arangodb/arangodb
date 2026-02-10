@@ -58,9 +58,9 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
-#include <fuerte/jwt.h>
 #include <fuerte/requests.h>
 #include <fuerte/helper.h>
+#include "Ssl/jwt.h"
 #include <v8.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -614,8 +614,8 @@ void V8ClientConnection::prepareConnection() {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(
-        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
+    _builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
+        _client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
