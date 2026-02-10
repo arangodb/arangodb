@@ -65,6 +65,66 @@ using basics::VelocyPackHelper;
 
 namespace {
 
+arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
+                                  arangodb::LogicalCollection& collection,
+                                  arangodb::RocksDBIndex* oldIndex) {
+  IndexId iid = oldIndex->id();
+
+  VPackBuilder oldDesc;
+  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
+  VPackBuilder overw;
+
+  overw.openObject();
+  overw.add(arangodb::StaticStrings::IndexType,
+            arangodb::velocypack::Value(
+                arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+  overw.close();
+
+  VPackBuilder newDesc =
+      VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
+  arangodb::Result res = collection.dropIndex(iid);
+
+  if (res.fail()) {
+    return res;
+  }
+
+  bool created = false;
+  auto newIndex = collection.getPhysical()
+                      ->createIndex(newDesc.slice(), /*restore*/ true, created)
+                      .waitAndGet();
+
+  if (!created) {
+    res.reset(TRI_ERROR_INTERNAL);
+  }
+
+  TRI_ASSERT(newIndex->id() == iid);  // will break cluster otherwise
+  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
+
+  return res;
+}
+
+Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
+  auto collections = vocbase.collections(false);
+
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (!index->needsLegacyGeoUpgrade()) continue;
+      auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
+      if (!rIndex) continue;
+      LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
+          << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
+      auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
+      if (res.fail()) {
+        LOG_TOPIC("5550a", ERR, Logger::STARTUP)
+            << "Error upgrading geo indexes " << res.errorMessage();
+        return res;
+      }
+    }
+  }
+  return {};
+}
+
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
@@ -270,6 +330,11 @@ Result createSystemCollectionsIndices(
     if (!res.ok()) {
       return res;
     }
+  }
+
+  res = ::upgradeGeoIndexes(vocbase);
+  if (!res.ok()) {
+    return res;
   }
 
   res = ::createIndex(StaticStrings::AppsCollection,

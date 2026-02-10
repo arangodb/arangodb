@@ -644,7 +644,10 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()),
       geo_index::Index(info, _fields),
-      _typeName(typeName) {
+      _typeName(typeName),
+      _needsLegacyGeoUpgrade(
+        basics::VelocyPackHelper::getBooleanValue(info, "_legacyGeoUpgrade", false)
+      ) {
   TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = true;

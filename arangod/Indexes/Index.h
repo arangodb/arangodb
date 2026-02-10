@@ -201,6 +201,10 @@ class Index {
   /// storage rollback
   virtual bool needsReversal() const { return false; }
 
+  /// @brief true if index was loaded from legacy geo1/geo2 definition and
+  /// should be recreated as "geo" to persist the normalized type
+  virtual bool needsLegacyGeoUpgrade() const { return false; }
+
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
