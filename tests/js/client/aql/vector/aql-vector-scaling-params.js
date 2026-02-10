@@ -169,10 +169,28 @@ function VectorIndexScalingTestSuite() {
             }
         },
 
-        testFactoryWithScalingNListsFails: function() {
+        testFactoryWithScalingNListsAndPlaceholder: function() {
+            collection.ensureIndex({
+                name: "vector_factory_scaling",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: { factor: 1, function: "sqrt" },
+                    factory: "IVF{nLists},Flat",
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === "vector_factory_scaling");
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{nLists},Flat", idx.params.factory);
+            collection.dropIndex("vector_factory_scaling");
+        },
+
+        testFactoryWithScalingNListsMissingPlaceholderFails: function() {
             try {
                 collection.ensureIndex({
-                    name: "vector_factory",
+                    name: "vector_factory_no_ph",
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
@@ -180,62 +198,6 @@ function VectorIndexScalingTestSuite() {
                         metric: "l2", dimension,
                         nLists: { factor: 1, function: "sqrt" },
                         factory: "IVF10,Flat",
-                    },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-            }
-        },
-
-        testScalingFactory: function() {
-            collection.ensureIndex({
-                name: "vector_sfactory",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    nLists: { factor: 1, function: "sqrt" },
-                    scalingFactory: "IVF{nLists},Flat",
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === "vector_sfactory");
-            assertTrue(idx !== undefined);
-            assertEqual("IVF{nLists},Flat", idx.params.scalingFactory);
-            collection.dropIndex("vector_sfactory");
-        },
-
-        testScalingFactoryRequiresScalingNLists: function() {
-            try {
-                collection.ensureIndex({
-                    name: "vector_sfactory_fixed",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: 5,
-                        scalingFactory: "IVF{nLists},Flat",
-                    },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
-            }
-        },
-
-        testScalingFactoryMissingPlaceholderFails: function() {
-            try {
-                collection.ensureIndex({
-                    name: "vector_sfactory_noplaceholder",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: { factor: 1, function: "sqrt" },
-                        scalingFactory: "IVF10,Flat",
                     },
                 });
                 fail();
