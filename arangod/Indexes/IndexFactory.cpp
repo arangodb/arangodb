@@ -353,15 +353,36 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Index type 'geo1' and 'geo2' are no longer "
-                                   "supported. Please use 'geo' instead.");
+  std::string typeStr = type.copyString();
+  velocypack::Slice definitionToUse = definition;
+  VPackBuilder normalizedBuilder;
+  bool isLegacyGeo = (type.isEqualString("geo1") || type.isEqualString("geo2"));
+  if (isLegacyGeo) {
+    if (!isClusterConstructor) {  // Creating a new index
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "Index type 'geo1' and 'geo2' are no longer "
+          "supported. Please use 'geo' instead.");
+    }
+    // Loading from disk, normalize to 'geo'
+    typeStr = "geo";
+    normalizedBuilder.openObject();
+    for (auto it : VPackObjectIterator(definition)) {
+      if (it.key.isEqualString(StaticStrings::IndexType)) {
+        normalizedBuilder.add(StaticStrings::IndexType, VPackValue("geo"));
+      } else {
+        normalizedBuilder.add(it.key);
+        normalizedBuilder.add(it.value);
+      }
+    }
+    normalizedBuilder.add("_legacyGeoUpgrade", VPackValue(true));
+    normalizedBuilder.close();
+    definitionToUse = normalizedBuilder.slice();
   }
 
-  auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index =
-      factory.instantiate(collection, definition, id, isClusterConstructor);
+  auto& factory = IndexFactory::factory(typeStr);
+  std::shared_ptr<Index> index = factory.instantiate(
+      collection, definitionToUse, id, isClusterConstructor);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
