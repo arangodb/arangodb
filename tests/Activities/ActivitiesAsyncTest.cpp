@@ -263,3 +263,40 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 }
+
+TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
+  auto a = [&]() -> async<void> {
+    auto coro_activity = activities::Activity("ATestActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    co_await this->wait;
+    throw std::runtime_error("TEST!");
+  }();
+
+  auto b = [&]() -> async<void> {
+    auto coro_activity = activities::Activity("BTestActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    try {
+      co_await std::move(a);
+      EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+                coro_activity.id());
+      co_return;
+    } catch (std::runtime_error const&) {
+      // catching an exception should not bypass activity settings
+      EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+                coro_activity.id());
+      co_return;
+    }
+  }();
+
+  this->wait.resume();
+  EXPECT_TRUE(b.valid());
+  EXPECT_FALSE(a.valid());
+  auto awaitable = std::move(b).operator co_await();
+  this->wait.await();
+  EXPECT_TRUE(awaitable.await_ready());
+  awaitable.await_resume();
+}
