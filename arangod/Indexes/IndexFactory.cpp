@@ -943,7 +943,32 @@ Result IndexFactory::enhanceJsonIndexVector(
         isScaling(vectorIndexDefinition.nLists)) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'factory' requires a fixed 'nLists' value, not a scaling "
-              "specification."};
+              "specification. Use 'scalingFactory' with a '{nLists}' "
+              "placeholder instead."};
+    }
+
+    // factory and scalingFactory are mutually exclusive
+    if (vectorIndexDefinition.factory.has_value() &&
+        vectorIndexDefinition.scalingFactory.has_value()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Cannot specify both 'factory' and 'scalingFactory'."};
+    }
+
+    // scalingFactory requires scaling nLists
+    if (vectorIndexDefinition.scalingFactory.has_value() &&
+        !isScaling(vectorIndexDefinition.nLists)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "'scalingFactory' requires a scaling 'nLists' specification."};
+    }
+
+    // scalingFactory must contain {nLists} placeholder
+    if (vectorIndexDefinition.scalingFactory.has_value()) {
+      if (vectorIndexDefinition.scalingFactory->find("{nLists}") ==
+          std::string::npos) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "'scalingFactory' must contain the '{nLists}' placeholder. "
+                "Example: \"IVF{nLists}_HNSW10,Flat\""};
+      }
     }
 
     if (auto const res =

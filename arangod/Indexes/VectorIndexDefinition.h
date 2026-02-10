@@ -172,6 +172,21 @@ inline std::int64_t resolveParameter(ScalableParameter const& p,
   return getFixed(p);
 }
 
+/// @brief Resolve a scaling factory string by replacing {nLists} with the
+/// computed nLists value.
+/// Example: "IVF{nLists}_HNSW10,Flat" with nLists=1500
+///       -> "IVF1500_HNSW10,Flat"
+inline std::string resolveScalingFactory(std::string const& factoryTemplate,
+                                         std::int64_t nLists) {
+  std::string result = factoryTemplate;
+  std::string const placeholder = "{nLists}";
+  auto pos = result.find(placeholder);
+  if (pos != std::string::npos) {
+    result.replace(pos, placeholder.size(), std::to_string(nLists));
+  }
+  return result;
+}
+
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
@@ -179,7 +194,12 @@ struct UserVectorIndexDefinition {
   std::uint64_t trainingIterations;
   ScalableParameter defaultNProbe;
 
+  // Fixed mode factory string (requires fixed nLists).
   std::optional<std::string> factory;
+
+  // Scaling mode factory string template with {nLists} placeholder.
+  // Requires scaling nLists. Example: "IVF{nLists}_HNSW10,Flat"
+  std::optional<std::string> scalingFactory;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
 
@@ -204,6 +224,7 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("factory", x.factory),
+        f.field("scalingFactory", x.scalingFactory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
