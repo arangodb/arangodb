@@ -79,11 +79,9 @@ if(USE_V8)
     DIRECTORY
       ${PROJECT_SOURCE_DIR}/js/actions
       ${PROJECT_SOURCE_DIR}/js/apps
-      ${PROJECT_SOURCE_DIR}/js/server
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
     REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
     REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
-    REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
     REGEX       "^.*/.bin"                                   EXCLUDE
   )
 
