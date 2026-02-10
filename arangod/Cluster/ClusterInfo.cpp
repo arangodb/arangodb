@@ -2856,42 +2856,6 @@ void ClusterInfo::updateMetadataMetricsFromPlan() {
   _metadataMetrics->numberOfCollections.store(numCollections,
                                               std::memory_order_relaxed);
   _metadataMetrics->numberOfShards.store(numShards, std::memory_order_relaxed);
-
-  // Update coordinator-specific shard metrics computed from Plan
-  // Note: Plan-only path no longer updates per-shard coordinator metrics
-  // (these are derived from Current). Keep iteration for consistency checks
-  // but do not accumulate plan-derived follower/total counts here.
-
-  // iterate planned shards map. Caller should hold _planProt.lock
-  for (auto const& entry : _shards) {
-    auto const& shardVecPtr = entry.second;
-    if (!shardVecPtr) {
-      continue;
-    }
-    for (auto const& shard : *shardVecPtr) {
-      auto it = _shardsToPlanServers.find(shard);
-      if (it == _shardsToPlanServers.end() || !it->second) {
-        // This can happen during transient states when _shards and
-        // _shardsToPlanServers are not perfectly synchronized (e.g., during
-        // collection creation/deletion or test setup). Handle gracefully.
-        LOG_TOPIC("c0abc", DEBUG, Logger::CLUSTER)
-            << "Inconsistent cluster state: no plan servers recorded for shard "
-               "'"
-            << shard << "' while iterating _shards";
-        // We cannot reliably determine `notReplicated` from Plan alone here;
-        // leave the metric update to the Current-derived update routine.
-        continue;
-      }
-      auto const& servers = *it->second;
-      TRI_ASSERT(!servers.empty());
-    }
-  }
-
-  // The following coordinator-level shard metrics are only reliably
-  // determined from Current (actual reported state) and are updated by the
-  // Current-derived metrics updater. For Plan-only updates we skip updating
-  // them here to avoid double-reporting.
-  // (These metrics are updated by updateCoordinatorCurrentShardMetrics())
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
