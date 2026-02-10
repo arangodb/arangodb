@@ -184,3 +184,82 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 }
+
+TYPED_TEST(ActivitiesAsyncTest,
+           current_activity_persists_multiple_suspension_points) {
+  auto coro = [&]() -> async<void> {
+    auto coro_activity = activities::Activity("TestActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_await this->wait;
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_await this->wait;
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    // currentlyExecutingActivity survives suspend/resume
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+    co_return;
+  }();
+
+  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      outer_activity.id());
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  this->wait.resume();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  this->wait.await();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+}
+
+TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
+  auto coro_inner = [&]() -> async<void> {
+    auto coro_activity = activities::Activity("InnerCoroActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+    co_await this->wait;
+  };
+
+  auto coro = [&]() -> async<void> {
+    auto coro_activity = activities::Activity("TestActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    co_await coro_inner();
+
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_return;
+  }();
+
+  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      outer_activity.id());
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  this->wait.resume();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  this->wait.await();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+}
