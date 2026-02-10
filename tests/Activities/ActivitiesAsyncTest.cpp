@@ -42,10 +42,7 @@ struct WaitSlot {
     _continuation.resume();
   }
 
-  void await() {
-    std::cerr << "activity in await: "
-              << Registry::currentlyExecutingActivity().id << std::endl;
-  }
+  void await() {}
 
   std::coroutine_handle<> _continuation;
 
@@ -126,8 +123,6 @@ struct ActivitiesAsyncTest : ::testing::Test {
   void TearDown() override {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
-    // EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
-    // EXPECT_EQ(promise_count_in_registry(), 0);
     EXPECT_TRUE(std::holds_alternative<
                 arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
         *arangodb::async_registry::get_current_coroutine()));
@@ -139,8 +134,13 @@ struct ActivitiesAsyncTest : ::testing::Test {
 using MyTypes = ::testing::Types<NoWait, WaitSlot, ConcurrentNoWait>;
 TYPED_TEST_SUITE(ActivitiesAsyncTest, MyTypes);
 
-TYPED_TEST(ActivitiesAsyncTest, current_activity_persists) {
+TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
+  ASSERT_EQ((activities::Registry::currentlyExecutingActivity()), ActivityRoot);
+
   auto coro = [&]() -> async<void> {
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              ActivityRoot);
+
     auto coro_activity = activities::Activity("TestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
@@ -172,6 +172,56 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists) {
   this->wait.await();
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
+}
+
+TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
+  ASSERT_EQ((activities::Registry::currentlyExecutingActivity()), ActivityRoot);
+
+  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      outer_activity.id());
+
+  ASSERT_EQ((activities::Registry::currentlyExecutingActivity()),
+            outer_activity.id());
+
+  auto coro = [&]() -> async<void> {
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              outer_activity.id());
+
+    auto coro_activity = activities::Activity("TestActivity", {});
+
+    EXPECT_EQ(coro_activity.parentId(), outer_activity.id());
+
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_await this->wait;
+
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_return;
+  }();
+
+  auto next_outer_activity = activities::Activity("OuterTestActivity", {});
+  auto next_guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      next_outer_activity.id());
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            next_outer_activity.id());
+
+  this->wait.resume();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            next_outer_activity.id());
+
+  std::ignore = std::move(coro).operator co_await();
+  this->wait.await();
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            next_outer_activity.id());
 }
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
