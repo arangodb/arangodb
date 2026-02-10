@@ -324,6 +324,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'schema' : true,
     'isDisjoint': false,
     'groupId': false,
+    'useRBAC': true,
   };
 
   let requestResult;
