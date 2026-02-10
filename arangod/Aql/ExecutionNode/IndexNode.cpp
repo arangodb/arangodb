@@ -241,6 +241,17 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       "indexCoversFilterProjections",
       VPackValue(hasFilter() && _filterProjections.usesCoveringIndex()));
 
+  // per-index covering info for multi-index queries
+  if (_indexes.size() > 1 && !hasFilter() && !projections().empty()) {
+    builder.add(VPackValue("perIndexCovering"));
+    builder.openArray();
+    for (auto const& idx : _indexes) {
+      Projections copy = projections();
+      builder.add(VPackValue(idx->covers(copy)));
+    }
+    builder.close();
+  }
+
   builder.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&builder);
@@ -471,12 +482,52 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto registerInfos =
       createRegisterInfos({}, std::move(writableOutputRegisters));
 
+  // compute per-index covering for multi-index queries without post-filter
+  std::vector<Strategy> perIndexStrategies;
+  std::vector<Projections> perIndexProjections;
+  std::vector<Projections> perIndexProjectionsForRegisters;
+  if (_indexes.size() > 1 && !hasFilter() && !projections().empty() &&
+      isProduceResult()) {
+    bool anyCovers = false;
+    auto const& indexes = getIndexes();
+    size_t const numIndexes = indexes.size();
+    perIndexStrategies.resize(numIndexes, Strategy::kDocument);
+    perIndexProjections.resize(numIndexes);
+    perIndexProjectionsForRegisters.resize(numIndexes);
+    for (size_t i = 0; i < numIndexes; ++i) {
+      Projections copy = projections();
+      if (indexes[i]->covers(copy)) {
+        copy.setCoveringContext(collection()->id(), indexes[i]);
+        Projections copyForRegs = copy;
+        copyForRegs.erase(
+            [](Projections::Projection& p) { return p.variable == nullptr; });
+        perIndexStrategies[i] = Strategy::kCovering;
+        perIndexProjections[i] = std::move(copy);
+        perIndexProjectionsForRegisters[i] = std::move(copyForRegs);
+        anyCovers = true;
+      } else {
+        Projections baseForRegs = projections();
+        baseForRegs.erase(
+            [](Projections::Projection& p) { return p.variable == nullptr; });
+        perIndexProjections[i] = projections();
+        perIndexProjectionsForRegisters[i] = std::move(baseForRegs);
+      }
+    }
+    if (!anyCovers) {
+      perIndexStrategies.clear();
+      perIndexProjections.clear();
+      perIndexProjectionsForRegisters.clear();
+    }
+  }
+
   auto executorInfos = IndexExecutorInfos(
       strategy(), outRegister, engine.getQuery(), collection(), _outVariable,
       filter(), projections(), filterProjections(), std::move(filterVarsToRegs),
       std::move(nonConstExpressions), canReadOwnWrites(), _condition->root(),
       _allCoveredByOneIndex, getIndexes(), _plan->getAst(), this->options(),
-      std::move(filterCoveringVars));
+      std::move(filterCoveringVars), std::move(perIndexStrategies),
+      std::move(perIndexProjections),
+      std::move(perIndexProjectionsForRegisters));
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

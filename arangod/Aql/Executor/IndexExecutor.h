@@ -75,7 +75,10 @@ class IndexExecutorInfos {
       bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
-      IndexNode::IndexFilterCoveringVars filterCoveringVars);
+      IndexNode::IndexFilterCoveringVars filterCoveringVars,
+      std::vector<IndexNode::Strategy> perIndexStrategies = {},
+      std::vector<aql::Projections> perIndexProjections = {},
+      std::vector<aql::Projections> perIndexProjectionsForRegisters = {});
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -126,6 +129,11 @@ class IndexExecutorInfos {
 
   bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
+  bool hasPerIndexCovering() const noexcept;
+  IndexNode::Strategy perIndexStrategy(size_t idx) const;
+  aql::Projections const& perIndexProjections(size_t idx) const;
+  aql::Projections const& perIndexProjectionsForRegisters(size_t idx) const;
+
  private:
   IndexNode::Strategy const _strategy;
 
@@ -170,6 +178,11 @@ class IndexExecutorInfos {
   bool const _oneIndexCondition;
 
   ReadOwnWrites const _readOwnWrites;
+
+  /// per-index covering data (only populated when at least one index covers)
+  std::vector<IndexNode::Strategy> _perIndexStrategies;
+  std::vector<aql::Projections> _perIndexProjections;
+  std::vector<aql::Projections> _perIndexProjectionsForRegisters;
 };
 
 /**
@@ -199,7 +212,8 @@ class IndexExecutor {
     CursorReader(transaction::Methods& trx, IndexExecutorInfos& infos,
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
-                 CursorStats& cursorStats, bool checkUniqueness);
+                 CursorStats& cursorStats, bool checkUniqueness,
+                 IndexNode::Strategy strategyOverride);
     bool readIndex(OutputAqlItemRow& output,
                    DocumentProducingFunctionContext const&
                        documentProducingFunctionContext);

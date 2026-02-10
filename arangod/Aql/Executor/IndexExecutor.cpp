@@ -186,7 +186,10 @@ IndexExecutorInfos::IndexExecutorInfos(
     bool oneIndexCondition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
-    IndexNode::IndexFilterCoveringVars filterCoveringVars)
+    IndexNode::IndexFilterCoveringVars filterCoveringVars,
+    std::vector<IndexNode::Strategy> perIndexStrategies,
+    std::vector<aql::Projections> perIndexProjections,
+    std::vector<aql::Projections> perIndexProjectionsForRegisters)
     : _strategy(strategy),
       _indexes(std::move(indexes)),
       _condition(condition),
@@ -204,7 +207,11 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outputRegisterId(outputRegister),
       _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
       _oneIndexCondition(oneIndexCondition),
-      _readOwnWrites(readOwnWrites) {
+      _readOwnWrites(readOwnWrites),
+      _perIndexStrategies(std::move(perIndexStrategies)),
+      _perIndexProjections(std::move(perIndexProjections)),
+      _perIndexProjectionsForRegisters(
+          std::move(perIndexProjectionsForRegisters)) {
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -318,6 +325,27 @@ bool IndexExecutorInfos::hasNonConstParts() const {
   return !_nonConstExpressions._expressions.empty();
 }
 
+bool IndexExecutorInfos::hasPerIndexCovering() const noexcept {
+  return !_perIndexStrategies.empty();
+}
+
+IndexNode::Strategy IndexExecutorInfos::perIndexStrategy(size_t idx) const {
+  TRI_ASSERT(idx < _perIndexStrategies.size());
+  return _perIndexStrategies[idx];
+}
+
+aql::Projections const& IndexExecutorInfos::perIndexProjections(
+    size_t idx) const {
+  TRI_ASSERT(idx < _perIndexProjections.size());
+  return _perIndexProjections[idx];
+}
+
+aql::Projections const& IndexExecutorInfos::perIndexProjectionsForRegisters(
+    size_t idx) const {
+  TRI_ASSERT(idx < _perIndexProjectionsForRegisters.size());
+  return _perIndexProjectionsForRegisters[idx];
+}
+
 void IndexExecutor::CursorStats::incrCursorsCreated(
     std::uint64_t value) noexcept {
   cursorsCreated += value;
@@ -356,7 +384,7 @@ IndexExecutor::CursorReader::CursorReader(
     transaction::Methods& trx, IndexExecutorInfos& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
     DocumentProducingFunctionContext& context, CursorStats& cursorStats,
-    bool checkUniqueness)
+    bool checkUniqueness, IndexNode::Strategy strategyOverride)
     : _trx(trx),
       _infos(infos),
       _condition(condition),
@@ -367,7 +395,7 @@ IndexExecutor::CursorReader::CursorReader(
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _cursorStats(cursorStats),
-      _strategy(infos.strategy()),
+      _strategy(strategyOverride),
       _checkUniqueness(checkUniqueness) {
   TRI_ASSERT(
       (_strategy != IndexNode::Strategy::kCoveringFilterOnly &&
@@ -782,10 +810,20 @@ bool IndexExecutor::advanceCursor() {
   }
   while (_currentIndex < numTotal) {
     TRI_ASSERT(_currentIndex <= _cursors.size());
+    size_t infoIndex =
+        _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
+
+    // Per-cursor covering: switch projections BEFORE cursor creation/reset.
+    // buildDocumentCallback asserts !usesCoveringIndex() for kDocument,
+    // so we must set the right projections before the CursorReader ctor runs.
+    if (_infos.hasPerIndexCovering()) {
+      _documentProducingFunctionContext.setActiveProjections(
+          &_infos.perIndexProjections(infoIndex),
+          &_infos.perIndexProjectionsForRegisters(infoIndex));
+    }
+
     if (_currentIndex == _cursors.size() && _currentIndex < numTotal) {
       // First access to this index. Let's create it.
-      size_t infoIndex =
-          _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
       AstNode const* conditionNode = nullptr;
       if (_infos.getCondition() != nullptr) {
         if (_infos.isOneIndexCondition()) {
@@ -798,10 +836,13 @@ bool IndexExecutor::advanceCursor() {
           conditionNode = _infos.getCondition()->getMember(infoIndex);
         }
       }
+      auto cursorStrategy = _infos.hasPerIndexCovering()
+                                ? _infos.perIndexStrategy(infoIndex)
+                                : _infos.strategy();
       _cursors.emplace_back(_trx, _infos, conditionNode,
                             _infos.getIndexes()[infoIndex],
                             _documentProducingFunctionContext, _cursorStats,
-                            needsUniquenessCheck());
+                            needsUniquenessCheck(), cursorStrategy);
     } else {
       // Next index exists, need a reset.
       getCursor().reset();
