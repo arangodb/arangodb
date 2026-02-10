@@ -29,13 +29,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include "Ssl/jwt.h"
 
 namespace arangodb {
 
