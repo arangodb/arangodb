@@ -2,6 +2,21 @@
 ---
 * Remove arangodb/foxx related code
 
+* Changed the default value of `--rocksdb.format-version` from 5 to 6. This invalidates
+  hotbackups from earlier versions.
+
+* Remove the deprecated `algorithm: "legacy"` option from K_SHORTEST_PATHS queries.
+  Yen's algorithm is now the only implementation and is used by default.
+
+* arangorestore now automatically converts deprecated `hash` and `skiplist` index
+  types to `persistent` when restoring dumps from older versions.
+
+* Remove support for creating deprecated index types. The following index types
+  can no longer be created but existing indexes are still supported for upgrades:
+
+  - `hash`: Use `persistent` index type instead.
+  - `skiplist`: Use `persistent` index type instead.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 

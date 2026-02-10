@@ -58,11 +58,11 @@ function range_querySuite () {
 
       // create index;
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "i" ] };
+      let body = { "type" : "persistent", "unique" : true, "fields" : [ "i" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201, doc);
-      assertEqual(doc.parsedBody['type'], "skiplist");
+      assertEqual(doc.parsedBody['type'], "persistent");
       assertTrue(doc.parsedBody['unique']);
 
       // range;
@@ -108,7 +108,7 @@ function range_querySuite () {
 
       // create index;
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : false, "fields" : [ "i" ] };
+      let body = { "type" : "persistent", "unique" : false, "fields" : [ "i" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
