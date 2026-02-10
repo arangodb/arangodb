@@ -118,44 +118,6 @@ function CursorSyncSuite (databaseName) {
         db._dropDatabase(databaseName);
       }
     },
-
-    testCursorForwardingBasicPut: function() {
-      let url = baseCursorUrl;
-      const query = {
-        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
-        count: true,
-        batchSize: 2,
-        bindVars: {
-          "@coll": cns[0]
-        }
-      };
-      let result = sendRequest('POST', url, query, true);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertFalse(result.error, result);
-      assertEqual(result.code, 201, result);
-      assertTrue(result.hasMore, result);
-      assertEqual(result.count, 4, result);
-      assertEqual(result.result.length, 2, result);
-
-      const cursorId = result.id;
-      url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest('PUT', url, {}, false);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertFalse(result.error, result);
-      assertEqual(result.code, 200, result);
-      assertFalse(result.hasMore, result);
-      assertEqual(result.count, 4, result);
-      assertEqual(result.result.length, 2, result);
-
-      url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest('PUT', url, {}, false);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertTrue(result.error, result);
-      assertEqual(result.code, 404, result);
-    },
     
     testCursorForwardingBasicPost: function() {
       let url = baseCursorUrl;
@@ -194,41 +156,6 @@ function CursorSyncSuite (databaseName) {
       assertEqual(result.code, 404, result);
     },
 
-    testCursorForwardingDeletionPut: function() {
-      let url = baseCursorUrl;
-      const query = {
-        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
-        count: true,
-        batchSize: 2,
-        bindVars: {
-          "@coll": cns[0]
-        }
-      };
-      let result = sendRequest('POST', url, query, true);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertFalse(result.error, result);
-      assertEqual(result.code, 201, result);
-      assertTrue(result.hasMore, result);
-      assertEqual(result.count, 4, result);
-      assertEqual(result.result.length, 2, result);
-
-      const cursorId = result.id;
-      url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest('DELETE', url, {}, false);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertFalse(result.error, result);
-      assertEqual(result.code, 202, result);
-
-      url = `${baseCursorUrl}/${cursorId}`;
-      result = sendRequest('PUT', url, {}, false);
-
-      assertFalse(result === undefined || result === {}, result);
-      assertTrue(result.error, result);
-      assertEqual(result.code, 404, result);
-    },
-    
     testCursorForwardingDeletionPost: function() {
       let url = baseCursorUrl;
       const query = {

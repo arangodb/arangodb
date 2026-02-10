@@ -506,16 +506,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
         if (!opts->useWeight()) {
           // Non-Weighted Variant
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<YenEnumeratorWithProvider<Provider>,
-                                           Provider,
-                                           SingleServerBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
-          return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
+          return _makeExecutionBlockImpl<YenEnumeratorWithProvider<Provider>,
                                          Provider,
                                          SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
@@ -551,17 +542,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 return previousWeight + weight;
               });
 
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                WeightedYenEnumeratorWithProvider<Provider>, Provider,
-                SingleServerBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<Provider>, Provider,
+              WeightedYenEnumeratorWithProvider<Provider>, Provider,
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
@@ -620,17 +602,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
         if (!opts->useWeight()) {
           // Non-Weighted Variant
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
-                ClusterBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+              YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
@@ -665,17 +638,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 return previousWeight + weight;
               });
 
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                WeightedYenEnumeratorWithProvider<ClusterProvider>,
-                ClusterProvider, ClusterBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<ClusterProvider>,
+              WeightedYenEnumeratorWithProvider<ClusterProvider>,
               ClusterProvider, ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
