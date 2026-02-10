@@ -974,7 +974,7 @@ void replicated_log::LogLeader::GuardedLeaderData::
     ss << follower->logContext;
     ss << " ";
     auto description =
-        fmt::format("{} Trigger update of safe reboot id", ss.str());
+        std::format("{} Trigger update of safe reboot id", ss.str());
 
     auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
     follower->rebootIdCallbackGuard =
@@ -1051,7 +1051,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
         // update-snapshot-status right after handling the append entries
         // request with that id, but the append entries response arrived here
         // after the update-snapshot-status.
-        LOG_CTX("cf587", DEBUG, follower.logContext) << fmt::format(
+        LOG_CTX("cf587", DEBUG, follower.logContext) << std::format(
             "Ignoring snapshot status from append entries response. The "
             "current status ({}) was set with message id {}, while the "
             "response (with status {}) currently being handled has message id "
@@ -1509,7 +1509,7 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
     // NOTE that '==' instead of '>' *must not* be ignored: An
     // AppendEntriesResponse can have the same MessageId as an
     // "update-snapshot-status", but is always less recent.
-    LOG_CTX("62dc4", DEBUG, _logContext) << fmt::format(
+    LOG_CTX("62dc4", DEBUG, _logContext) << std::format(
         "Ignoring outdated 'snapshot available' message from {} follower. "
         "This was reported with message id {}, but we already have a report "
         "from {}. The current status is {}.",

@@ -162,11 +162,12 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   WaitType wait;
 };
 
-using MyTypes = ::testing::Types<
-    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    std::pair<ConcurrentNoWait, MoveOnlyValue>,
-    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    std::pair<ConcurrentNoWait, CopyOnlyValue>>;
+using MyTypes = ::testing::Types<std::pair<NoWait, CopyOnlyValue>,            //
+                                 std::pair<NoWait, MoveOnlyValue>,            //
+                                 std::pair<WaitSlot, CopyOnlyValue>,          //
+                                 std::pair<WaitSlot, MoveOnlyValue>,          //
+                                 std::pair<ConcurrentNoWait, CopyOnlyValue>,  //
+                                 std::pair<ConcurrentNoWait, MoveOnlyValue>>;
 TYPED_TEST_SUITE(AsyncTest, MyTypes);
 
 using namespace arangodb;
