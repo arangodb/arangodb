@@ -26,6 +26,7 @@
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
+#include "Basics/Guarded.h"
 
 #include <atomic>
 #include <format>
@@ -101,7 +102,7 @@ struct ActivityInRegistry {
   std::string const type;
   std::atomic<State> state;
   ActivityId parent;
-  Metadata metadata;
+  Guarded<Metadata> metadata;
 };
 
 /**
@@ -122,6 +123,8 @@ struct Activity {
   ~Activity();
 
   auto id() const noexcept -> ActivityId;
+
+  auto metadata() noexcept -> Guarded<Metadata>&;
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by
