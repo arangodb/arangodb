@@ -2,6 +2,9 @@
 ---
 * Remove PUT method in /_api/cursor/<cursor-id>
 
+* Changed the default value of `--rocksdb.format-version` from 5 to 6. This invalidates
+  hotbackups from earlier versions.
+
 * Remove the deprecated `algorithm: "legacy"` option from K_SHORTEST_PATHS queries.
   Yen's algorithm is now the only implementation and is used by default.
 
