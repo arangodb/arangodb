@@ -116,6 +116,16 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
                                       /*minValue*/ 1))
       .setLongDescription(
           R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+
+  options
+      ->addOption(
+          "--activities.only-superuser-enabled",
+          "Whether only superusers can request the API or all admin users",
+          new options::BooleanParameter(&_options.isOnlySuperUserEnabled),
+          options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      .setLongDescription(
+          R"(Switched on, only superuser is allowed to query this endpoint.
+      Default is that admin users are allowed to query the endpoint.)");
 }
 
 struct ActivityOutput {
