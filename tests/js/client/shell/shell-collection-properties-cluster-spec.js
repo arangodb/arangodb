@@ -281,3 +281,84 @@ describe('Replication factor constraints', function() {
     });
     */
 });
+
+describe('useRBAC property', function() {
+    const cnTest = "UnitTestUseRBAC";
+
+    beforeEach(function() {
+        db._useDatabase("_system");
+    });
+
+    afterEach(function() {
+        db._useDatabase("_system");
+        try {
+            db._drop(cnTest);
+        } catch (e) {}
+    });
+
+    it('should have useRBAC=true by default', function() {
+        db._create(cnTest);
+        const coll = db._collection(cnTest);
+        const props = coll.properties();
+        expect(props.useRBAC).to.equal(true);
+    });
+
+    it('should allow creating collection with useRBAC=false', function() {
+        db._create(cnTest, {useRBAC: false});
+        const coll = db._collection(cnTest);
+        const props = coll.properties();
+        expect(props.useRBAC).to.equal(false);
+    });
+
+    it('should allow creating collection with useRBAC=true', function() {
+        db._create(cnTest, {useRBAC: true});
+        const coll = db._collection(cnTest);
+        const props = coll.properties();
+        expect(props.useRBAC).to.equal(true);
+    });
+
+    it('should allow updating useRBAC to false', function() {
+        db._create(cnTest, {useRBAC: true});
+        const coll = db._collection(cnTest);
+        
+        let props = coll.properties({useRBAC: false});
+        expect(props.useRBAC).to.equal(false);
+        
+        // Verify it persists
+        props = coll.properties();
+        expect(props.useRBAC).to.equal(false);
+    });
+
+    it('should allow updating useRBAC to true', function() {
+        db._create(cnTest, {useRBAC: false});
+        const coll = db._collection(cnTest);
+        
+        let props = coll.properties({useRBAC: true});
+        expect(props.useRBAC).to.equal(true);
+        
+        // Verify it persists
+        props = coll.properties();
+        expect(props.useRBAC).to.equal(true);
+    });
+
+    it('should reject invalid values for useRBAC', function() {
+        try {
+            db._create(cnTest, {useRBAC: "invalid"});
+            expect.fail("Should have thrown an error");
+        } catch (e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+    });
+
+    it('should reject invalid values when updating useRBAC', function() {
+        db._create(cnTest);
+        const coll = db._collection(cnTest);
+        
+        try {
+            coll.properties({useRBAC: 123});
+            expect.fail("Should have thrown an error");
+        } catch (e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+    });
+});
