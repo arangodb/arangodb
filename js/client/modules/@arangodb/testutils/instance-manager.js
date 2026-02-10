@@ -944,7 +944,7 @@ class instanceManager {
 
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpAuthOptions, this.httpJWTAuthOptions, this.JWT);
+      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
     });
 
     let success = true;
