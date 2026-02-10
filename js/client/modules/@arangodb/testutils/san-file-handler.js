@@ -206,3 +206,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     }
   });
 };
+
+exports.sanHandler = sanHandler;
