@@ -30,7 +30,7 @@ let internal = require("internal");
 let db = arangodb.db;
 
 const {
-  waitForShardsInSync, getUrlById, eventuallyAssertMetric
+  waitForShardsInSync, getUrlById, eventuallyAssertMetric, getAllMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
