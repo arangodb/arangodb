@@ -1634,12 +1634,13 @@ class instanceManager {
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
+      const ct = require('@arangodb/testutils/client-tools');
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
-      let args = pu.makeArgs.arangosh(this.options);
+      let args = ct.makeArgs.arangosh(this.options);
       args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
@@ -1673,6 +1674,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     const search = 'MemTotal:';
     let pos = f.search(search);
     memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+    print(`defaulting memory to ${memory}`);
   }
   tu.CopyIntoObject(optionsDefaults, {
     'memory': memory,
