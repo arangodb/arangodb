@@ -151,9 +151,9 @@ function testSuite() {
       const parts = token.split('.');
       // Corrupt the signature by changing the last character
       if (parts.length === 3) {
-        const lastChar = parts[2].charAt(parts[2].length - 1);
-        const newLastChar = lastChar === 'a' ? 'b' : 'a';
-        parts[2] = parts[2].substring(0, parts[2].length - 1) + newLastChar;
+        const firstChar = parts[2].charAt(0);
+        const newFirstChar = firstChar === 'a' ? 'b' : 'a';
+        parts[2] = newFirstChar + parts[2].substring(1, parts[2].length - 1);
       }
       const corruptedToken = parts.join('.');
 
