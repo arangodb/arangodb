@@ -116,6 +116,29 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
                                       /*minValue*/ 1))
       .setLongDescription(
           R"(Each thread that is involved in the activity-registry needs to garbage collect its finished activities regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+
+  options
+      ->addOption(
+          "--activities.only-superuser-enabled",
+          "Whether only superusers can request the API or all admin users",
+          new options::BooleanParameter(&_options.isOnlySuperUserEnabled),
+          options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+      .setLongDescription(
+          R"(Switched on, only superuser is allowed to query this endpoint.
+      Default is that admin users are allowed to query the endpoint.)");
+}
+
+struct ActivityOutput {
+  std::string type;
+  ActivityId id;
+  ActivityId parent;
+  Metadata metadata;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ActivityOutput& x) {
+  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type),
+                            f.field("parent", x.parent),
+                            f.field("metadata", x.metadata));
 }
 
 velocypack::Builder Feature::getData() const {
@@ -123,7 +146,11 @@ velocypack::Builder Feature::getData() const {
   builder.openArray();
   registry.for_node([&](ActivityInRegistrySnapshot activity) {
     if (activity.state != activities::State::Deleted) {
-      velocypack::serialize(builder, activity);
+      auto a = ActivityOutput{.type = std::move(activity.type),
+                              .id = std::move(activity.id),
+                              .parent = std::move(activity.parent),
+                              .metadata = std::move(activity.metadata)};
+      velocypack::serialize(builder, a);
     }
   });
   builder.close();
