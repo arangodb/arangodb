@@ -112,6 +112,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
  private:
   UserVectorIndexDefinition _definition;
+  // The actual nLists value used for FAISS operations.
+  // In fixed mode this equals getFixed(_definition.nLists).
+  // In scaling mode this is computed at training time via ScalingSpec::compute.
+  std::int64_t _resolvedNLists{0};
+  // The actual defaultNProbe value used at query time.
+  // Resolved at training time if in scaling mode.
+  std::int64_t _resolvedDefaultNProbe{0};
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
   StoredValues const _storedValues;

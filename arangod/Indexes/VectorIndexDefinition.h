@@ -23,11 +23,15 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
+#include <variant>
 #include <vector>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 namespace arangodb {
 
@@ -73,12 +77,107 @@ struct TrainedData {
   }
 };
 
+/// @brief Scaling functions for document-count-dependent parameters.
+enum class ScalingFunction : std::uint8_t {
+  kSqrt,
+  kLog,
+  kCbrt,
+  kLinear,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, ScalingFunction& x) {
+  return f.enumeration(x).values(
+      ScalingFunction::kSqrt, "sqrt", ScalingFunction::kLog, "log",
+      ScalingFunction::kCbrt, "cbrt", ScalingFunction::kLinear, "linear");
+}
+
+/// @brief A scaling specification: computes factor * func(N) where N is the
+/// document count.
+struct ScalingSpec {
+  double factor{1.0};
+  ScalingFunction function{ScalingFunction::kSqrt};
+
+  bool operator==(ScalingSpec const&) const noexcept = default;
+
+  std::int64_t compute(std::int64_t docCount) const {
+    double raw;
+    switch (function) {
+      case ScalingFunction::kSqrt:
+        raw = std::sqrt(static_cast<double>(docCount));
+        break;
+      case ScalingFunction::kLog:
+        raw = std::log(static_cast<double>(docCount));
+        break;
+      case ScalingFunction::kCbrt:
+        raw = std::cbrt(static_cast<double>(docCount));
+        break;
+      case ScalingFunction::kLinear:
+        raw = static_cast<double>(docCount);
+        break;
+    }
+    return std::max<std::int64_t>(1, static_cast<std::int64_t>(factor * raw));
+  }
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, ScalingSpec& x) {
+    return f.object(x).fields(
+        f.field("factor", x.factor)
+            .invariant([](auto value) -> inspection::Status {
+              if (value <= 0.0) {
+                return {"factor must be greater than 0!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("function", x.function));
+  }
+};
+
+/// @brief A parameter that is either a fixed integer or a scaling spec.
+/// JSON: 100  OR  { "factor": 15, "function": "sqrt" }
+using ScalableParameter = std::variant<std::int64_t, ScalingSpec>;
+
+template<class Inspector>
+inline auto inspect(Inspector& f, ScalableParameter& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::int64_t>(), insp::inlineType<ScalingSpec>());
+}
+
+/// @brief Check if a ScalableParameter is in scaling mode.
+inline bool isScaling(ScalableParameter const& p) {
+  return std::holds_alternative<ScalingSpec>(p);
+}
+
+/// @brief Get the fixed value from a ScalableParameter.
+/// Asserts that it is in fixed mode.
+inline std::int64_t getFixed(ScalableParameter const& p) {
+  return std::get<std::int64_t>(p);
+}
+
+/// @brief Get the ScalingSpec from a ScalableParameter.
+/// Asserts that it is in scaling mode.
+inline ScalingSpec const& getScaling(ScalableParameter const& p) {
+  return std::get<ScalingSpec>(p);
+}
+
+/// @brief Resolve a ScalableParameter to a concrete value.
+/// In fixed mode, returns the fixed value.
+/// In scaling mode, computes factor * func(docCount).
+inline std::int64_t resolveParameter(ScalableParameter const& p,
+                                     std::int64_t docCount) {
+  if (isScaling(p)) {
+    return getScaling(p).compute(docCount);
+  }
+  return getFixed(p);
+}
+
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
-  std::int64_t nLists;
+  ScalableParameter nLists;
   std::uint64_t trainingIterations;
-  std::uint64_t defaultNProbe;
+  ScalableParameter defaultNProbe;
 
   std::optional<std::string> factory;
 
@@ -96,9 +195,11 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
-            .invariant([](auto value) -> inspection::Status {
-              if (value < 1) {
-                return {"nLists must be 1 or greater!"};
+            .invariant([](auto const& value) -> inspection::Status {
+              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+                if (*fixed < 1) {
+                  return {"nLists must be 1 or greater!"};
+                }
               }
               return inspection::Status::Success{};
             }),
@@ -106,10 +207,13 @@ struct UserVectorIndexDefinition {
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
-            .fallback(kdefaultNProbe)
-            .invariant([](auto value) -> inspection::Status {
-              if (value == 0) {
-                return {"defaultNProbe must be 1 or greater!"};
+            .fallback(
+                ScalableParameter{static_cast<std::int64_t>(kdefaultNProbe)})
+            .invariant([](auto const& value) -> inspection::Status {
+              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+                if (*fixed < 1) {
+                  return {"defaultNProbe must be 1 or greater!"};
+                }
               }
               return inspection::Status::Success{};
             }));

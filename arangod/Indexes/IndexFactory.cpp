@@ -938,6 +938,14 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
+    // factory requires fixed nLists (not scaling mode)
+    if (vectorIndexDefinition.factory.has_value() &&
+        isScaling(vectorIndexDefinition.nLists)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "'factory' requires a fixed 'nLists' value, not a scaling "
+              "specification."};
+    }
+
     if (auto const res =
             processIndexStoredValues(definition, builder, 1, 32, create,
                                      /*allowSubAttributes*/ true,
