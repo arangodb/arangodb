@@ -2821,6 +2821,10 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
 /// holding the _planProt write lock (or after data has been swapped in
 /// loadPlan)
 void ClusterInfo::updateMetadataMetricsFromPlan() {
+  // Caller must hold _planProt.lock (at least for read) so that
+  // _plannedDatabases, _plannedCollections, and _shards are stable.
+  TRI_ASSERT(_planProt.lock.isLocked());
+
   // Only update on coordinators
   if (!_metadataMetrics.has_value()) {
     return;
