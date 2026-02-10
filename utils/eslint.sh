@@ -6,11 +6,9 @@ if [ -z "$*" ] ; then
   JAVASCRIPT_JSLINT="\
     $(find "${WD}/js/common/bootstrap" -name "*.js") \
     $(find "${WD}/js/client/bootstrap" -name "*.js") \
-    $(find "${WD}/js/server/bootstrap" -name "*.js") \
     \
     $(find "${WD}/js/common/modules/@arangodb" -name "*.js") \
     $(find "${WD}/js/client/modules/@arangodb" -name "*.js") \
-    $(find "${WD}/js/server/modules/@arangodb" -name "*.js") \
     $(find "${WD}/tests/js/server" -name "*.js" -o -name "*.inc" | grep -v "ranges-combined") \
     $(find "${WD}/tests/js/common" -name "*.js" -o -name "*.inc" | grep -v "test-data") \
     $(find "${WD}/tests/js/client" -name "*.js" -o -name "*.inc") \
@@ -21,7 +19,6 @@ if [ -z "$*" ] ; then
     ${WD}/js/common/modules/jsunity.js \
     ${WD}/js/client/client.js \
     ${WD}/js/client/inspector.js \
-    ${WD}/js/server/initialize.js \
     \
   "
   if [ -d "${WD}/enterprise" ] ; then
