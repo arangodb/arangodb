@@ -315,9 +315,10 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   return rsaPrivSign(ctx, pKey, msg, sign, error);
 }
 
-bool verifyES256Signature(std::string_view publicKeyPem,
-                          std::string_view message,
-                          std::string_view signature) {
+namespace {
+
+// Helper function to load EC key from PEM (accepts both public and private keys)
+bool loadECKeyForVerification(std::string_view publicKeyPem, EVP_PKEY*& pKey) {
   BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(),
                                 static_cast<int>(publicKeyPem.size()));
   if (keybio == nullptr) {
@@ -326,7 +327,7 @@ bool verifyES256Signature(std::string_view publicKeyPem,
   auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
 
   // Try to read as a public key first
-  EVP_PKEY* pKey = PEM_read_bio_PUBKEY(keybio, nullptr, nullptr, nullptr);
+  pKey = PEM_read_bio_PUBKEY(keybio, nullptr, nullptr, nullptr);
   if (pKey == nullptr) {
     // If that fails, try to read as a private key (which also contains the
     // public key)
@@ -336,73 +337,83 @@ bool verifyES256Signature(std::string_view publicKeyPem,
       return false;
     }
   }
-  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
   // Verify that this is an EC key
   if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    EVP_PKEY_free(pKey);
+    pKey = nullptr;
     return false;
   }
 
+  return true;
+}
+
+// Helper function to convert JWT raw R||S signature to DER format
+bool convertRawToDERSignature(std::string_view rawSignature,
+                               std::string& derSignature) {
   // JWT ES256 signatures are in raw R||S format (IEEE P1363), but OpenSSL
   // expects DER-encoded ECDSA-Sig-Value. For P-256, R and S are 32 bytes each.
-  std::string derSignature;
-  if (signature.size() == 64) {
-    // Convert from raw R||S to DER format
-    unsigned char const* sigBytes =
-        reinterpret_cast<unsigned char const*>(signature.data());
-
-    // Create ECDSA_SIG structure
-    ECDSA_SIG* ecdsaSig = ECDSA_SIG_new();
-    if (ecdsaSig == nullptr) {
-      LOG_TOPIC("8f3a1", DEBUG, Logger::AUTHENTICATION)
-          << "Failed to create ECDSA_SIG structure for ES256 signature "
-             "verification";
-      return false;
-    }
-    auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
-
-    // Set R and S from the raw signature
-    BIGNUM* r = BN_bin2bn(sigBytes, 32, nullptr);
-    BIGNUM* s = BN_bin2bn(sigBytes + 32, 32, nullptr);
-    if (r == nullptr || s == nullptr) {
-      LOG_TOPIC("8f3a2", DEBUG, Logger::AUTHENTICATION)
-          << "Failed to convert R and S components to BIGNUM for ES256 "
-             "signature";
-      if (r != nullptr) BN_free(r);
-      if (s != nullptr) BN_free(s);
-      return false;
-    }
-
-    // ECDSA_SIG_set0 takes ownership of r and s
-    if (ECDSA_SIG_set0(ecdsaSig, r, s) != 1) {
-      LOG_TOPIC("8f3a3", DEBUG, Logger::AUTHENTICATION)
-          << "Failed to set R and S in ECDSA_SIG structure";
-      BN_free(r);
-      BN_free(s);
-      return false;
-    }
-
-    // Convert to DER format
-    int derLen = i2d_ECDSA_SIG(ecdsaSig, nullptr);
-    if (derLen <= 0) {
-      LOG_TOPIC("8f3a4", DEBUG, Logger::AUTHENTICATION)
-          << "Failed to get DER signature length for ES256";
-      return false;
-    }
-
-    derSignature.resize(derLen);
-    unsigned char* derPtr =
-        reinterpret_cast<unsigned char*>(derSignature.data());
-    if (i2d_ECDSA_SIG(ecdsaSig, &derPtr) != derLen) {
-      LOG_TOPIC("8f3a5", DEBUG, Logger::AUTHENTICATION)
-          << "Failed to encode ES256 signature to DER format";
-      return false;
-    }
-
-    // Use the DER signature for verification
-    signature = std::string_view(derSignature);
+  if (rawSignature.size() != 64) {
+    return false;
   }
 
+  unsigned char const* sigBytes =
+      reinterpret_cast<unsigned char const*>(rawSignature.data());
+
+  // Create ECDSA_SIG structure
+  ECDSA_SIG* ecdsaSig = ECDSA_SIG_new();
+  if (ecdsaSig == nullptr) {
+    LOG_TOPIC("8f3a1", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to create ECDSA_SIG structure for ES256 signature "
+           "verification";
+    return false;
+  }
+  auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
+
+  // Set R and S from the raw signature
+  BIGNUM* r = BN_bin2bn(sigBytes, 32, nullptr);
+  BIGNUM* s = BN_bin2bn(sigBytes + 32, 32, nullptr);
+  if (r == nullptr || s == nullptr) {
+    LOG_TOPIC("8f3a2", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to convert R and S components to BIGNUM for ES256 "
+           "signature";
+    if (r != nullptr) BN_free(r);
+    if (s != nullptr) BN_free(s);
+    return false;
+  }
+
+  // ECDSA_SIG_set0 takes ownership of r and s
+  if (ECDSA_SIG_set0(ecdsaSig, r, s) != 1) {
+    LOG_TOPIC("8f3a3", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to set R and S in ECDSA_SIG structure";
+    BN_free(r);
+    BN_free(s);
+    return false;
+  }
+
+  // Convert to DER format
+  int derLen = i2d_ECDSA_SIG(ecdsaSig, nullptr);
+  if (derLen <= 0) {
+    LOG_TOPIC("8f3a4", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to get DER signature length for ES256";
+    return false;
+  }
+
+  derSignature.resize(derLen);
+  unsigned char* derPtr =
+      reinterpret_cast<unsigned char*>(derSignature.data());
+  if (i2d_ECDSA_SIG(ecdsaSig, &derPtr) != derLen) {
+    LOG_TOPIC("8f3a5", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to encode ES256 signature to DER format";
+    return false;
+  }
+
+  return true;
+}
+
+// Helper function to perform the actual signature verification
+bool performES256Verification(EVP_PKEY* pKey, std::string_view message,
+                               std::string_view signature) {
   EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
   if (mdctx == nullptr) {
     return false;
@@ -429,8 +440,33 @@ bool verifyES256Signature(std::string_view publicKeyPem,
   return result == 1;
 }
 
-int signES256(std::string_view privateKeyPem, std::string_view message,
-              std::string& signature, std::string& error) {
+}  // namespace
+
+bool verifyES256Signature(std::string_view publicKeyPem,
+                          std::string_view message,
+                          std::string_view signature) {
+  EVP_PKEY* pKey = nullptr;
+  if (!loadECKeyForVerification(publicKeyPem, pKey)) {
+    return false;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  std::string derSignature;
+  if (signature.size() == 64) {
+    if (!convertRawToDERSignature(signature, derSignature)) {
+      return false;
+    }
+    signature = std::string_view(derSignature);
+  }
+
+  return performES256Verification(pKey, message, signature);
+}
+
+namespace {
+
+// Helper function to load EC private key from PEM format
+int loadECPrivateKey(std::string_view privateKeyPem, EVP_PKEY*& pKey,
+                     std::string& error) {
   BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(),
                                 static_cast<int>(privateKeyPem.size()));
   if (keybio == nullptr) {
@@ -439,20 +475,27 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
   }
   auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
 
-  EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+  pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
   if (pKey == nullptr) {
     error.append("Failed to read private key from PEM: ")
         .append(ERR_error_string(ERR_get_error(), nullptr));
     return 1;
   }
-  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
   // Verify that this is an EC key
   if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    EVP_PKEY_free(pKey);
+    pKey = nullptr;
     error.append("Key is not an EC key");
     return 1;
   }
 
+  return 0;
+}
+
+// Helper function to create DER signature from message using EVP API
+int createDERSignature(EVP_PKEY* pKey, std::string_view message,
+                       std::string& derSignature, std::string& error) {
   EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
   if (mdctx == nullptr) {
     error.append("EVP_MD_CTX_new failed: ")
@@ -480,7 +523,6 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
     return 1;
   }
 
-  std::string derSignature;
   derSignature.resize(derSignatureLen);
   if (EVP_DigestSignFinal(mdctx,
                           reinterpret_cast<unsigned char*>(derSignature.data()),
@@ -491,7 +533,12 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
   }
   derSignature.resize(derSignatureLen);
 
-  // Convert DER signature to raw R||S format for JWT compatibility
+  return 0;
+}
+
+// Helper function to convert DER signature to raw R||S format for JWT
+int convertDERToRawSignature(std::string_view derSignature,
+                              std::string& rawSignature, std::string& error) {
   unsigned char const* derPtr =
       reinterpret_cast<unsigned char const*>(derSignature.data());
   ECDSA_SIG* ecdsaSig = d2i_ECDSA_SIG(nullptr, &derPtr, derSignature.size());
@@ -511,8 +558,9 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
   }
 
   // For P-256, R and S should be 32 bytes each
-  signature.resize(64);
-  unsigned char* sigBytes = reinterpret_cast<unsigned char*>(signature.data());
+  rawSignature.resize(64);
+  unsigned char* sigBytes =
+      reinterpret_cast<unsigned char*>(rawSignature.data());
 
   // Pad R to 32 bytes
   int rLen = BN_num_bytes(r);
@@ -533,6 +581,26 @@ int signES256(std::string_view privateKeyPem, std::string_view message,
   BN_bn2bin(s, sigBytes + 32 + (32 - sLen));
 
   return 0;
+}
+
+}  // namespace
+
+int signES256(std::string_view privateKeyPem, std::string_view message,
+              std::string& signature, std::string& error) {
+  EVP_PKEY* pKey = nullptr;
+  if (int result = loadECPrivateKey(privateKeyPem, pKey, error);
+      result != 0) {
+    return result;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  std::string derSignature;
+  if (int result = createDERSignature(pKey, message, derSignature, error);
+      result != 0) {
+    return result;
+  }
+
+  return convertDERToRawSignature(derSignature, signature, error);
 }
 
 int extractPublicKeyFromPrivateKey(std::string_view privateKeyPem,
