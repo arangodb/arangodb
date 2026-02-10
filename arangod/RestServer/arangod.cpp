@@ -123,8 +123,12 @@ void ArangodServer::addFeatures(
   addFeature<V8SecurityFeature>();
 #endif
   addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature,
-                               &v8DealerFeature);
+                               &systemDatabaseFeature, &clusterUpgradeFeature
+#ifdef USE_V8
+                               ,
+                               &v8DealerFeature
+#endif
+  );
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>();
