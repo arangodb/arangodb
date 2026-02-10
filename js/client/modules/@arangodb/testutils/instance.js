@@ -358,7 +358,6 @@ class instance {
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
-      this.args['foxx.queues'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
@@ -465,8 +464,7 @@ class instance {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'COORDINATOR',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
-        'foxx.force-update-on-startup': true
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
