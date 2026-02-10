@@ -29,8 +29,7 @@
 
 #include <array>
 #include <cstdint>
-#include <string_view>
-#include <vector>
+#include <span>
 
 namespace arangodb {
 
@@ -64,15 +63,9 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  // Note: This includes FulltextIndex (removed in 4.0) to keep array indices
-  // aligned with Family enum values
   static constexpr size_t numberOfColumnFamilies = 11;
 
   static void initialize();
-
-  /// @brief Convert a column family name (internal name) to Family enum.
-  /// Returns Family::Invalid if the name is not recognized.
-  static Family fromString(std::string_view name);
 
   static rocksdb::ColumnFamilyHandle* get(Family family);
   static void set(Family family, rocksdb::ColumnFamilyHandle* handle);
@@ -81,10 +74,9 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  /// @brief Returns all non-null column family handles.
-  /// Handles that are nullptr (e.g., FulltextIndex which was removed in 4.0)
-  /// are filtered out.
-  static std::vector<rocksdb::ColumnFamilyHandle*> allHandles();
+  /// We purposefully cut off the handles still set to nullptr, since they were
+  /// not initialized
+  static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;

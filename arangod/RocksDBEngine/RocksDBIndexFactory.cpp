@@ -499,8 +499,6 @@ struct DeprecatedFulltextIndexFactory : public DefaultIndexFactory {
       bool /*isClusterConstructor*/) const override {
     // Create a minimal fulltext index stub as a placeholder.
     // This allows the index to be loaded and dropped during upgrade.
-    // The actual fulltext data is in the FulltextIndex column family
-    // which will be dropped separately.
     LOG_TOPIC("d4e3e", WARN, Logger::ENGINES)
         << "loading deprecated fulltext index '" << id.id()
         << "' - fulltext indexes are no longer supported since ArangoDB 4.0 "

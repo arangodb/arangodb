@@ -60,7 +60,6 @@ namespace rocksdb {
 class EncryptionProvider;
 class Env;
 class TransactionDB;
-struct TransactionDBOptions;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -561,12 +560,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
-
-  /// @brief Drop the obsolete FulltextIndex column family if it exists.
-  /// Fulltext indexes were removed in ArangoDB 4.0.
-  void dropObsoleteFulltextColumnFamily(
-      rocksdb::TransactionDBOptions const& transactionOptions);
-
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);

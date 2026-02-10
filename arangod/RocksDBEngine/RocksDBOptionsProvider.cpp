@@ -69,13 +69,9 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
 
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
+    case RocksDBColumnFamilyManager::Family::FulltextIndex:
     case RocksDBColumnFamilyManager::Family::MdiIndex:
-    case RocksDBColumnFamilyManager::Family::VectorIndex:
-    // Fulltext indexes were removed in 4.0, but we still need to provide
-    // options to open old databases that have this column family so we can
-    // drop it during upgrade. The fulltext column family used a fixed 8 byte
-    // object id prefix (same as primary/geo) and the default comparator.
-    case RocksDBColumnFamilyManager::Family::FulltextIndex: {
+    case RocksDBColumnFamilyManager::Family::VectorIndex: {
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));

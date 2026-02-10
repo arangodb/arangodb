@@ -24,29 +24,33 @@
 
 #include "RocksDBColumnFamilyManager.h"
 
+#include <span>
 #include <rocksdb/db.h>
 
 #include "Basics/debugging.h"
 
 namespace arangodb {
 
-// Note: Array indices must match Family enum values.
-// FulltextIndex (index 6) is kept as a placeholder even though it was removed
-// in 4.0. "ZkdIndex" is the old name for MdiIndex, kept for backwards compat.
+// `Zkd` is the old designation for an unprefix mdi
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",        "Documents", "PrimaryIndex", "EdgeIndex",
-        "VPackIndex",     "GeoIndex",
-        "FulltextIndex",  // removed in 4.0, kept for index alignment
-        "ReplicatedLogs", "ZkdIndex",  "MdiPrefixed",  "VectorIndex"};
+        "default", "Documents", "PrimaryIndex", "EdgeIndex", "VPackIndex",
+        "GeoIndex", "FulltextIndex",
+        "ReplicatedLogs",  // Fulltext indexes are removed in 4.0,
+                           // but the column family is kept.
+        "ZkdIndex", "MdiPrefixed", "VectorIndex"};  // We have to keep
+                                                    // `ZkdIndex` cf
+                                                    // name for
+                                                    // backwards
+                                                    // compatibility.
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
-        "definitions",     "documents", "primary",      "edge",  "vpack", "geo",
-        "fulltext",  // removed in 4.0, kept for index alignment
-        "replicated-logs", "mdi",       "mdi-prefixed", "vector"};
+        "definitions", "documents",    "primary",  "edge",
+        "vpack",       "geo",          "fulltext", "replicated-logs",
+        "mdi",         "mdi-prefixed", "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
@@ -118,34 +122,14 @@ char const* RocksDBColumnFamilyManager::name(
   return "unknown";
 }
 
-std::vector<rocksdb::ColumnFamilyHandle*>
+std::span<rocksdb::ColumnFamilyHandle*>
 RocksDBColumnFamilyManager::allHandles() {
-  // Some column families are null, we need to filter them out.
-  std::vector<rocksdb::ColumnFamilyHandle*> result;
-  result.reserve(_handles.size());
-  for (auto* handle : _handles) {
-    if (handle != nullptr) {
-      result.push_back(handle);
-    }
-  }
-  return result;
-}
-
-RocksDBColumnFamilyManager::Family RocksDBColumnFamilyManager::fromString(
-    std::string_view name) {
-  // Check for default column family
-  if (name == "default" || name == rocksdb::kDefaultColumnFamilyName) {
-    return Family::Definitions;
+  std::size_t valid_size{_handles.size()};
+  while (valid_size > 0 && _handles[valid_size - 1] == nullptr) {
+    --valid_size;
   }
 
-  // Search in internal names array
-  for (std::size_t i = 0; i < _internalNames.size(); ++i) {
-    if (name == _internalNames[i]) {
-      return static_cast<Family>(i);
-    }
-  }
-
-  return Family::Invalid;
+  return std::span(_handles.data(), valid_size);
 }
 
 }  // namespace arangodb
