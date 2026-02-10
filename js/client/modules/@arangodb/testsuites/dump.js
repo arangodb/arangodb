@@ -140,23 +140,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
         return helper.extractResults();
       }
     }
-
-    if (tstFiles.hasOwnProperty("foxxTest")) {
-      const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-      if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
-        helper.adjustRestoreToDump();
-        helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
-      }
-      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-        helper.destructor(true);
-        return helper.extractResults();
-      }
-    }
   } catch (ex) {
     print("Caught exception during testrun: " + ex + ex.stack);
     helper.destructor(false);
@@ -183,8 +166,7 @@ function dump (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
@@ -206,8 +188,7 @@ function dumpMixedClusterSingle (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-mixed' + singleStrings.cluster + '.js',
     dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
@@ -233,8 +214,7 @@ function dumpMixedSingleCluster (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-mixed' + clusterStrings.cluster + '.js',
     dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
@@ -371,8 +351,7 @@ function dumpAuthentication (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
-    dumpTearDown: 'dump-teardown.js',
-    foxxTest: 'check-foxx.js'
+    dumpTearDown: 'dump-teardown.js'
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
@@ -435,8 +414,7 @@ function dumpEncrypted (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    foxxTest: 'check-foxx.js'
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js'
   };
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
@@ -457,8 +435,7 @@ function dumpNonParallel (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_non_parallel', tstFiles, function(){}, []);

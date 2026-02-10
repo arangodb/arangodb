@@ -4,7 +4,6 @@
 WD=$(pwd)
 if [ -z "$*" ] ; then
   JAVASCRIPT_JSLINT="\
-    $(find "${WD}/js/actions" -name "*.js") \
     $(find "${WD}/js/common/bootstrap" -name "*.js") \
     $(find "${WD}/js/client/bootstrap" -name "*.js") \
     $(find "${WD}/js/server/bootstrap" -name "*.js") \
@@ -17,14 +16,11 @@ if [ -z "$*" ] ; then
     $(find "${WD}/tests/js/client" -name "*.js" -o -name "*.inc") \
     $(find "${WD}/3rdParty/rta-makedata/test_data" -name "*.js" -o -name "*.inc") \
     \
-    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/" -name "*.js") \
-    \
     $(find "${WD}/scripts" -name "*.js") \
     \
     ${WD}/js/common/modules/jsunity.js \
     ${WD}/js/client/client.js \
     ${WD}/js/client/inspector.js \
-    ${WD}/js/server/server.js \
     ${WD}/js/server/initialize.js \
     \
   "

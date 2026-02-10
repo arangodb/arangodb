@@ -1125,13 +1125,8 @@ class instanceManager {
           print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.name);
         }
         let url = arangod.url;
-        if (!this.options.skipServerJS && arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_api/foxx';
-          httpOptions.method = 'GET';
-        } else {
-          url += '/_api/version';
-          httpOptions.method = 'POST';
-        }
+        url += '/_api/version';
+        httpOptions.method = 'POST';
         const reply = download(url, '', httpOptions);
         if (!this.options.noStartStopLogs) {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);

@@ -1,5 +1,8 @@
 4.0
 ---
+* Remove arangodb/foxx related code.
+
+* Remove PUT method in /_api/cursor/<cursor-id>.
 
 * Changed the default value of `--rocksdb.format-version` from 5 to 6. This invalidates
   hotbackups from earlier versions.
