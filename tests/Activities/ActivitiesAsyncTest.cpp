@@ -31,90 +31,10 @@
 #include <thread>
 #include <deque>
 
-#include "Async/async.h"
+#include "Async/WaitTypes.h"
 
 using namespace arangodb;
 using namespace arangodb::activities;
-
-struct WaitSlot {
-  void resume() {
-    ready = true;
-    _continuation.resume();
-  }
-
-  void await() {}
-
-  std::coroutine_handle<> _continuation;
-
-  bool await_ready() { return ready; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> continuation) {
-    _continuation = continuation;
-  }
-
-  void stop() {}
-
-  bool ready = false;
-};
-
-struct NoWait {
-  void resume() {}
-  void await() {}
-
-  auto operator co_await() { return std::suspend_never{}; }
-  void stop() {}
-};
-
-struct ConcurrentNoWait {
-  void resume() {}
-  void await() {
-    await_suspend(std::noop_coroutine());
-    _thread.join();
-  }
-
-  bool await_ready() { return false; }
-  void await_resume() {}
-  void await_suspend(std::coroutine_handle<> handle) {
-    {
-      std::unique_lock guard(_mutex);
-      _coro.emplace_back(handle);
-    }
-    _cv.notify_one();
-  }
-  ConcurrentNoWait()
-      : _thread([&] {
-          bool stopping = false;
-          while (true) {
-            std::coroutine_handle<> handle;
-            {
-              std::unique_lock guard(_mutex);
-              if (_coro.empty() && stopping) {
-                break;
-              }
-              _cv.wait(guard, [&] { return !_coro.empty(); });
-              handle = _coro.front();
-              _coro.pop_front();
-            }
-            if (handle == std::noop_coroutine()) {
-              stopping = true;
-            }
-            handle.resume();
-          }
-        }) {}
-
-  auto stop() -> void {
-    if (_thread.joinable()) {
-      await_suspend(std::noop_coroutine());
-      _thread.join();
-    }
-  }
-
-  std::mutex _mutex;
-  std::condition_variable_any _cv;
-  std::deque<std::coroutine_handle<>> _coro;
-
-  std::jthread _thread;
-};
 
 template<typename WaitType>
 struct ActivitiesAsyncTest : ::testing::Test {
@@ -131,7 +51,8 @@ struct ActivitiesAsyncTest : ::testing::Test {
   WaitType wait;
 };
 
-using MyTypes = ::testing::Types<NoWait, WaitSlot, ConcurrentNoWait>;
+using MyTypes = ::testing::Types<async_tests::NoWait, async_tests::WaitSlot,
+                                 async_tests::ConcurrentNoWait>;
 TYPED_TEST_SUITE(ActivitiesAsyncTest, MyTypes);
 
 TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
