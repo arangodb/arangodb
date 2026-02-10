@@ -37,7 +37,12 @@ exports.checker = class {
     this.taskCount = 0;
   }
   filterTasksList(taskList) {
-    return taskList.filter(task => !task.hasOwnProperty('id') || task.id !== 'foxx-queue-manager');
+     // Need to re-review with the team.
+     return taskList.filter(
+      task => !task.hasOwnProperty('id') || (
+        task.id !== 'foxx-queue-manager' &&
+        task.id !== 'self-heal'
+      ));
   }
   setUp (te) {
     try {

@@ -57,8 +57,8 @@ function StreamCursorSuite() {
 
     setUp: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: 'skiplist', fields: ["value1"] });
-      c.ensureIndex({ type: 'skiplist', fields: ["value2"] });
+      c.ensureIndex({ type: 'persistent', fields: ["value1"] });
+      c.ensureIndex({ type: 'persistent', fields: ["value2"] });
 
       let docs = [];
       for (let i = 0; i < 5000; i++) {

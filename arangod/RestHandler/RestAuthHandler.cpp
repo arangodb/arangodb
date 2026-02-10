@@ -23,11 +23,10 @@
 
 #include "RestAuthHandler.h"
 
-#include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

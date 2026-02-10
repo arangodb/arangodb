@@ -37,7 +37,6 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Queues/WeightedQueue.h"
@@ -146,7 +145,7 @@ class WeightedShortestPathTest
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::ShortestPath;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     auto forwardProviderOptions =

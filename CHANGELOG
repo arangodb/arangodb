@@ -1,5 +1,23 @@
 4.0
 ---
+* Remove arangodb/foxx related code.
+
+* Remove PUT method in /_api/cursor/<cursor-id>.
+
+* Changed the default value of `--rocksdb.format-version` from 5 to 6. This invalidates
+  hotbackups from earlier versions.
+
+* Remove the deprecated `algorithm: "legacy"` option from K_SHORTEST_PATHS queries.
+  Yen's algorithm is now the only implementation and is used by default.
+
+* arangorestore now automatically converts deprecated `hash` and `skiplist` index
+  types to `persistent` when restoring dumps from older versions.
+
+* Remove support for creating deprecated index types. The following index types
+  can no longer be created but existing indexes are still supported for upgrades:
+
+  - `hash`: Use `persistent` index type instead.
+  - `skiplist`: Use `persistent` index type instead.
 
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
@@ -38,6 +56,9 @@ devel
 
 * Fixed changing writeConcern on a collection
   could cause subsequent writes to fail due to a stale internal write flag.
+
+* Fixed BTS-2298: Supervision cleanup job now correctly removes shadow collections
+  when deleting broken smart edge collections after a coordinator dies.
 
 * Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
   least three levels of subqueries it could happen that the executor ended up in a

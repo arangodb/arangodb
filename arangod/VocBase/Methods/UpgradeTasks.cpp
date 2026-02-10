@@ -328,8 +328,8 @@ Result createSystemCollectionsIndices(
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
-                        arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                        true, true, collections);
+                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
+                        {"user"}, true, true, collections);
     if (!res.ok()) {
       return res;
     }
@@ -341,20 +341,20 @@ Result createSystemCollectionsIndices(
   }
 
   res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"}, true,
-                      true, collections);
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX, {"mount"},
+                      true, true, collections);
   if (!res.ok()) {
     return res;
   }
   res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
                       {"queue", "status", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {
     return res;
   }
   res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
                       {"status", "queue", "delayUntil"}, false, false,
                       collections);
   if (!res.ok()) {

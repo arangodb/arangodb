@@ -595,8 +595,6 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 
 StatisticsFeature::StatisticsFeature(Server& server)
     : ArangodFeature{server, *this},
-      _statistics(true),
-      _statisticsAllDatabases(true),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
           server.getFeature<metrics::MetricsFeature>().add(
@@ -664,7 +662,7 @@ void StatisticsFeature::collectOptions(
   options
       ->addOption("--server.statistics",
                   "Whether to enable statistics gathering and statistics APIs.",
-                  new BooleanParameter(&_statistics))
+                  new BooleanParameter(&_options.statistics))
       .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
 statistics gathering is turned off. Statistics gathering causes regular
 background CPU activity, memory usage, and writes to the storage engine, so
@@ -679,7 +677,7 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
       ->addOption(
           "--server.statistics-all-databases",
           "Provide cluster statistics in the web interface for all databases.",
-          new BooleanParameter(&_statisticsAllDatabases),
+          new BooleanParameter(&_options.statisticsAllDatabases),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
@@ -688,7 +686,7 @@ server statistics at `/_admin/statistics` returns HTTP 404.)");
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_statistics) {
+  if (_options.statistics) {
     // initialize counters for all HTTP request types
     ConnectionStatistics::initialize();
     RequestStatistics::initialize();

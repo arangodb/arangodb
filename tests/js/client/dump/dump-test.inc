@@ -419,7 +419,7 @@
         assertEqual("edge", c.indexes()[1].type);
         if (args.edgesIndexCount > 2) {
           // Backup and restore:
-          assertEqual("hash", c.indexes()[2].type);
+          assertEqual("persistent", c.indexes()[2].type);
         }
         assertEqual(10, c.count());
 
@@ -515,32 +515,32 @@
         assertEqual(args.indexesCount, c.indexes().length, `We found following indexes: ${JSON.stringify(c.indexes())}`);
         assertEqual("primary", c.indexes()[0].type);
 
-        assertEqual("hash", c.indexes()[1].type);
+        assertEqual("persistent", c.indexes()[1].type);
         assertTrue(c.indexes()[1].unique);
         assertFalse(c.indexes()[1].sparse);
         assertEqual(["a_uc"], c.indexes()[1].fields);
 
-        assertEqual("skiplist", c.indexes()[2].type);
+        assertEqual("persistent", c.indexes()[2].type);
         assertFalse(c.indexes()[2].unique);
         assertFalse(c.indexes()[2].sparse);
         assertEqual(["a_s1", "a_s2"], c.indexes()[2].fields);
 
-        assertEqual("hash", c.indexes()[3].type);
+        assertEqual("persistent", c.indexes()[3].type);
         assertFalse(c.indexes()[3].unique);
         assertFalse(c.indexes()[3].sparse);
         assertEqual(["a_h1", "a_h2"], c.indexes()[3].fields);
 
-        assertEqual("skiplist", c.indexes()[4].type);
+        assertEqual("persistent", c.indexes()[4].type);
         assertTrue(c.indexes()[4].unique);
         assertFalse(c.indexes()[4].sparse);
         assertEqual(["a_su"], c.indexes()[4].fields);
 
-        assertEqual("hash", c.indexes()[5].type);
+        assertEqual("persistent", c.indexes()[5].type);
         assertFalse(c.indexes()[5].unique);
         assertTrue(c.indexes()[5].sparse);
         assertEqual(["a_hs1", "a_hs2"], c.indexes()[5].fields);
 
-        assertEqual("skiplist", c.indexes()[6].type);
+        assertEqual("persistent", c.indexes()[6].type);
         assertFalse(c.indexes()[6].unique);
         assertTrue(c.indexes()[6].sparse);
         assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
@@ -554,7 +554,7 @@
         assertFalse(c.indexes()[8].unique);
 
         if (args.indexesCount > 9) {
-          assertEqual("hash", c.indexes()[9].type);
+          assertEqual("persistent", c.indexes()[9].type);
           assertEqual(["abc"], c.indexes()[9].fields);
           assertFalse(c.indexes()[9].unique);
         }

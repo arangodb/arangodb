@@ -493,10 +493,10 @@ bool IndexExecutor::CursorReader::readIndex(
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
-  // For the edge, hash or skiplists indexes, initIndexes creates an iterator
-  // and read*Index just reads from the iterator until it is done.
-  // Then initIndexes is read again and so on. This is to avoid reading the
-  // entire index when we only want a small number of documents.
+  // For the edge, hash/skiplist/persistent indexes, initIndexes creates an
+  // iterator and read*Index just reads from the iterator until it is done. Then
+  // initIndexes is read again and so on. This is to avoid reading the entire
+  // index when we only want a small number of documents.
   TRI_ASSERT(_cursor->hasMore());
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

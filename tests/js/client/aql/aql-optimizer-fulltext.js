@@ -88,7 +88,7 @@ function optimizerRuleTestSuite() {
     },
 
     testRuleBasics : function () {
-      fulltext.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+      fulltext.ensureIndex({ type: "persistent", fields: [ "y", "z" ], unique: false });
 
       let checkQuery = function(q, r) {
         ["t1", "t2", "t3.e.x"].forEach(field => {

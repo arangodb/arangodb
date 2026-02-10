@@ -35,7 +35,7 @@ function runSetup () {
   db._drop('UnitTestsRecovery2');
 
   let c = db._create('UnitTestsRecovery1');
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "persistent", fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 100000; i++) {
@@ -95,7 +95,7 @@ function recoverySuite () {
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
-          case 'hash':
+          case 'persistent':
             assertEqual(i.selectivityEstimate, 1, JSON.stringify(indexes));
             break;
           default:

@@ -430,7 +430,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
 
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-      opts->getMinDepth(), opts->getMaxDepth(), pathType()};
+      opts->getMinDepth(), opts->getMaxDepth(), pathType(), opts->query()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 
@@ -474,13 +474,14 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache());
+        opts->produceVertices(), opts->useCache(), opts->query());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     switch (pathType()) {
@@ -505,16 +506,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
         if (!opts->useWeight()) {
           // Non-Weighted Variant
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<YenEnumeratorWithProvider<Provider>,
-                                           Provider,
-                                           SingleServerBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
-          return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
+          return _makeExecutionBlockImpl<YenEnumeratorWithProvider<Provider>,
                                          Provider,
                                          SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
@@ -550,17 +542,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 return previousWeight + weight;
               });
 
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                WeightedYenEnumeratorWithProvider<Provider>, Provider,
-                SingleServerBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<Provider>, Provider,
+              WeightedYenEnumeratorWithProvider<Provider>, Provider,
               SingleServerBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
@@ -576,11 +559,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   } else {  // Cluster case (on coordinator)
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
-    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices());
+    ClusterBaseProviderOptions forwardProviderOptions(
+        cache, engines(), false, opts->produceVertices(), opts->query());
     forwardProviderOptions.setClearEdgeCacheOnClear(false);
-    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices());
+    ClusterBaseProviderOptions backwardProviderOptions(
+        cache, engines(), true, opts->produceVertices(), opts->query());
     backwardProviderOptions.setClearEdgeCacheOnClear(false);
     // A comment is in order here: For all cases covered here
     // (k-shortest-paths, all shortest paths, k-paths) we do not need to
@@ -619,17 +602,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
         if (!opts->useWeight()) {
           // Non-Weighted Variant
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
-                ClusterBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+              YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
@@ -664,17 +638,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 return previousWeight + weight;
               });
 
-          if (opts->getAlgorithm() != StaticStrings::Legacy) {
-            return _makeExecutionBlockImpl<
-                WeightedYenEnumeratorWithProvider<ClusterProvider>,
-                ClusterProvider, ClusterBaseProviderOptions>(
-                opts, std::move(forwardProviderOptions),
-                std::move(backwardProviderOptions), enumeratorOptions,
-                validatorOptions, outputRegister, engine, sourceInput,
-                targetInput, registerInfos);
-          }
           return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<ClusterProvider>,
+              WeightedYenEnumeratorWithProvider<ClusterProvider>,
               ClusterProvider, ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,

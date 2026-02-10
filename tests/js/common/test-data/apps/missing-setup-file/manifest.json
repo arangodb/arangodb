@@ -1,7 +1,0 @@
-{
-  "name": "missing-setup-file",
-  "version": "0.0.0",
-  "scripts": {
-    "setup": "this-file-is-missing.js"
-  }
-}

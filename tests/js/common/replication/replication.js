@@ -557,19 +557,19 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexHash1 : function () {
+    testLoggerCreateIndexPersistent1 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(false, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
@@ -579,18 +579,18 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexHash2 : function () {
+    testLoggerCreateIndexPersistent2 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a"] });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(false, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
@@ -600,12 +600,12 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseHash1 : function () {
+    testLoggerCreateIndexSparsePersistent1 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true, sparse: true });
 
       var idx = c.indexes()[1];
 
@@ -613,7 +613,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
@@ -623,19 +623,19 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseHash2 : function () {
+    testLoggerCreateIndexSparsePersistent2 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
 
       var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("hash", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
@@ -645,12 +645,12 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSkiplist1 : function () {
+    testLoggerCreateIndexPersistent3 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -658,7 +658,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(false, entry.data.sparse);
       assertEqual([ "a", "b", "c" ], entry.data.fields);
@@ -668,19 +668,19 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSkiplist2 : function () {
+    testLoggerCreateIndexPersistent4 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(false, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
@@ -690,12 +690,12 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseSkiplist1 : function () {
+    testLoggerCreateIndexSparsePersistent3 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"], sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b", "c"], sparse: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
@@ -703,7 +703,7 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(false, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b", "c" ], entry.data.fields);
@@ -713,19 +713,19 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerCreateIndexSparseSkiplist2 : function () {
+    testLoggerCreateIndexSparsePersistent4 : function () {
       var c = db._create(cn);
 
       var tick = getLastLogTick();
 
-      c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
+      c.ensureIndex({ type: "persistent", fields: ["a"], unique: true, sparse: true });
 
       var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("skiplist", entry.data.type);
+      assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
@@ -870,7 +870,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerDropIndex : function () {
       var c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
       
       var tick = getLastLogTick();
 

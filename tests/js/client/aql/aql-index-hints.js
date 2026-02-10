@@ -67,17 +67,19 @@ function indexHintCollectionSuite () {
       db._drop(cn);
       collection = db._create(cn);
 
-      collection.ensureIndex({type: 'hash', name: 'hash_a', fields: ['a']});
-      collection.ensureIndex({type: 'hash', name: 'hash_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'hash', name: 'hash_b_a', fields: ['b', 'a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a', fields: ['a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
+      // All indexes are now persistent type. Since we can't create duplicate indexes
+      // with same fields, we use a single set of indexes and update test expectations.
+      // The original tests tested hash vs skiplist with same fields but different types.
+      collection.ensureIndex({type: 'persistent', name: 'pers_a', fields: ['a']});
+      collection.ensureIndex({type: 'persistent', name: 'pers_a_b', fields: ['a', 'b']});
+      collection.ensureIndex({type: 'persistent', name: 'pers_b_a', fields: ['b', 'a']});
 
-      defaultEqualityIndex = 'hash_a';
-      alternateEqualityIndex = 'skip_a';
-      defaultSortingIndex = 'hash_a';
-      alternateSortingIndex = 'skip_a_b';
+      // defaultEqualityIndex and alternateEqualityIndex now point to different indexes
+      // that can both satisfy equality queries on 'a'
+      defaultEqualityIndex = 'pers_a';
+      alternateEqualityIndex = 'pers_a_b';  // Can also satisfy filter on 'a' (partial coverage)
+      defaultSortingIndex = 'pers_a';
+      alternateSortingIndex = 'pers_a_b';
 
       db._drop(cn2);
       collection = db._create(cn2);
@@ -157,7 +159,7 @@ function indexHintCollectionSuite () {
         const usedIndexes = getIndexNames(query);
         assertEqual(usedIndexes.length, 1, query);
         assertEqual(usedIndexes[0].length, 2, query);
-        assertEqual(["hash_a", "primary"], usedIndexes[0].sort(), query);
+        assertEqual(["pers_a", "primary"], usedIndexes[0].sort(), query);
       });
     },
 
@@ -171,7 +173,7 @@ function indexHintCollectionSuite () {
         const usedIndexes = getIndexNames(query);
         assertEqual(usedIndexes.length, 1, query);
         assertEqual(usedIndexes[0].length, 2, query);
-        assertEqual(["hash_a", "hash_b_a"], usedIndexes[0].sort(), query);
+        assertEqual(["pers_a", "pers_b_a"], usedIndexes[0].sort(), query);
       });
     },
 
@@ -238,7 +240,7 @@ function indexHintCollectionSuite () {
 
     testFilterUnusableHint: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b_a'}
+        FOR doc IN ${cn} OPTIONS {indexHint: 'pers_b_a'}
           FILTER doc.a == 1
           RETURN doc
       `;
@@ -250,7 +252,7 @@ function indexHintCollectionSuite () {
 
     testFilterUnusableHintForced: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'hash_b_a', forceIndexHint: true}
+        FOR doc IN ${cn} OPTIONS {indexHint: 'pers_b_a', forceIndexHint: true}
           FILTER doc.a == 1
           RETURN doc
       `;
@@ -262,7 +264,8 @@ function indexHintCollectionSuite () {
       }
     },
 
-    testFilterTypeHint: function () {
+    testFilterAlternateIndexHint: function () {
+      // Test that we can hint to use an alternate index that can satisfy the filter
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
@@ -274,33 +277,9 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterPartialCoverageHint: function () {
+    testFilterListHint: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'skip_a_b'}
-          FILTER doc.a == 1
-          RETURN doc
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 1);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], 'skip_a_b');
-    },
-
-    testFilterListFirstHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_a_b', '${alternateEqualityIndex}']}
-          FILTER doc.a == 1
-          RETURN doc
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 1);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], `skip_a_b`);
-    },
-
-    testFilterListLastHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', '${alternateEqualityIndex}']}
+        FOR doc IN ${cn} OPTIONS {indexHint: ['pers_b_a', '${alternateEqualityIndex}']}
           FILTER doc.a == 1
           RETURN doc
       `;
@@ -310,11 +289,12 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
     },
 
-    testFilterNestedMatchedHint: function () {
+    testFilterNestedHint: function () {
+      // Test that nested loops can have independent index hints
       const query = `
         FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
           FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
+          FOR sub IN ${cn} OPTIONS {indexHint: '${defaultEqualityIndex}'}
             FILTER sub.a == 2
             RETURN [doc, sub]
       `;
@@ -323,23 +303,7 @@ function indexHintCollectionSuite () {
       assertEqual(usedIndexes[0].length, 1);
       assertEqual(usedIndexes[0][0], alternateEqualityIndex);
       assertEqual(usedIndexes[1].length, 1);
-      assertEqual(usedIndexes[1][0], alternateEqualityIndex);
-    },
-
-    testFilterNestedUnmatchedHint: function () {
-      const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: '${alternateEqualityIndex}'}
-          FILTER doc.a == 1
-          FOR sub IN ${cn} OPTIONS {indexHint: 'skip_a_b'}
-            FILTER sub.a == 2
-            RETURN [doc, sub]
-      `;
-      const usedIndexes = getIndexNames(query);
-      assertEqual(usedIndexes.length, 2);
-      assertEqual(usedIndexes[0].length, 1);
-      assertEqual(usedIndexes[0][0], alternateEqualityIndex);
-      assertEqual(usedIndexes[1].length, 1);
-      assertEqual(usedIndexes[1][0], 'skip_a_b');
+      assertEqual(usedIndexes[1][0], defaultEqualityIndex);
     },
 
     testSortNoHint: function () {
@@ -406,7 +370,7 @@ function indexHintCollectionSuite () {
 
     testSortUnusableHint: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'skip_b_a'}
+        FOR doc IN ${cn} OPTIONS {indexHint: 'pers_b_a'}
           SORT doc.a
           RETURN doc
       `;
@@ -418,7 +382,7 @@ function indexHintCollectionSuite () {
 
     testSortUnusableHintForced: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: 'skip_b_a', forceIndexHint: true}
+        FOR doc IN ${cn} OPTIONS {indexHint: 'pers_b_a', forceIndexHint: true}
           SORT doc.a
           RETURN doc
       `;
@@ -456,7 +420,7 @@ function indexHintCollectionSuite () {
 
     testSortListLastHint: function () {
       const query = `
-        FOR doc IN ${cn} OPTIONS {indexHint: ['skip_b_a', '${alternateSortingIndex}']}
+        FOR doc IN ${cn} OPTIONS {indexHint: ['pers_b_a', '${alternateSortingIndex}']}
           SORT doc.a
           RETURN doc
       `;
@@ -469,25 +433,17 @@ function indexHintCollectionSuite () {
     testUpsertWithIndexHint: function () {
       const prefix = " UPSERT { a: 1234 } INSERT { a: 1234 } UPDATE {} IN " + cn + " OPTIONS ";
       const indexHints = [
-        [{}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
-        [{indexHint: 'foo'}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
-        [{indexHint: ['hash_a'], forceIndexHint: true}, ['hash_a']],
-        [{indexHint: ['hash_a']}, ['hash_a']],
-        [{indexHint: ['hash_a_b'], forceIndexHint: true}, ['hash_a_b']],
-        [{indexHint: ['hash_a_b']}, ['hash_a_b']],
-        [{indexHint: ['skip_a'], forceIndexHint: true}, ['skip_a']],
-        [{indexHint: ['skip_a']}, ['skip_a']],
-        [{indexHint: ['skip_a_b'], forceIndexHint: true}, ['skip_a_b']],
-        [{indexHint: ['skip_a_b']}, ['skip_a_b']],
-        [{indexHint: ['foo', 'bar', 'hash_a'], forceIndexHint: true}, ['hash_a']],
-        [{indexHint: 'hash_a', forceIndexHint: true}, ['hash_a']],
-        [{indexHint: 'hash_a'}, ['hash_a']],
-        [{indexHint: 'hash_a_b', forceIndexHint: true}, ['hash_a_b']],
-        [{indexHint: 'hash_a_b'}, ['hash_a_b']],
-        [{indexHint: 'skip_a', forceIndexHint: true}, ['skip_a']],
-        [{indexHint: 'skip_a'}, ['skip_a']],
-        [{indexHint: 'skip_a_b', forceIndexHint: true}, ['skip_a_b']],
-        [{indexHint: 'skip_a_b'}, ['skip_a_b']],
+        [{}, ["pers_a", "pers_a_b"]],
+        [{indexHint: 'foo'}, ["pers_a", "pers_a_b"]],
+        [{indexHint: ['pers_a'], forceIndexHint: true}, ['pers_a']],
+        [{indexHint: ['pers_a']}, ['pers_a']],
+        [{indexHint: ['pers_a_b'], forceIndexHint: true}, ['pers_a_b']],
+        [{indexHint: ['pers_a_b']}, ['pers_a_b']],
+        [{indexHint: ['foo', 'bar', 'pers_a'], forceIndexHint: true}, ['pers_a']],
+        [{indexHint: 'pers_a', forceIndexHint: true}, ['pers_a']],
+        [{indexHint: 'pers_a'}, ['pers_a']],
+        [{indexHint: 'pers_a_b', forceIndexHint: true}, ['pers_a_b']],
+        [{indexHint: 'pers_a_b'}, ['pers_a_b']],
       ];
       indexHints.forEach((indexHint, index) => {
         let queryExplain = db._createStatement(prefix + JSON.stringify(indexHint[0])).explain().plan.nodes;

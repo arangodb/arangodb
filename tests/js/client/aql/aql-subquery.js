@@ -424,7 +424,7 @@ function ahuacatlSubqueryTestSuite () {
         }
         // Second with Index
         {
-          col.ensureIndex({ type: "hash", fields: ["mod100"] });
+          col.ensureIndex({ type: "persistent", fields: ["mod100"] });
 
           const cursor = db._query(query);
           const actual = cursor.toArray();

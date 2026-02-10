@@ -10,7 +10,6 @@ set(MAN_NAMES
   man1/arangosh.1
   man8/rcarangod.8
   man8/arangod.8
-  man8/foxx-manager.8
   )
 
 set(MAN_FILES "") #empty list

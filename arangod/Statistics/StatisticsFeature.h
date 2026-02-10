@@ -24,11 +24,11 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Basics/system-functions.h"
 #include "Metrics/Fwd.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
+#include "Statistics/StatisticsFeatureOptions.h"
 #include "Statistics/figures.h"
 
 #include <array>
@@ -127,6 +127,7 @@ class StatisticsFeature final : public ArangodFeature {
                               bool ensureWhitespace);
   bool _statistics;
   bool _statisticsAllDatabases;
+  StatisticsFeatureOptions _options;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
