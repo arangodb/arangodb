@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
 results when condition optimization is turned off.
 
