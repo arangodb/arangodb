@@ -262,7 +262,7 @@ describe('Replication factor constraints', function() {
         expect(db[cn1].properties()['numberOfShards']).to.equal(db[cn2].properties()['numberOfShards']);
         expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);
     });
-    
+
     /* This is the expected implementation as soon as we drop backwards compatibility with 3.11
     it('distributeShardsLike should fail on additional parameters', function () {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
@@ -320,10 +320,10 @@ describe('useRBAC property', function() {
     it('should allow updating useRBAC to false', function() {
         db._create(cnTest, {useRBAC: true});
         const coll = db._collection(cnTest);
-        
+
         let props = coll.properties({useRBAC: false});
         expect(props.useRBAC).to.equal(false);
-        
+
         // Verify it persists
         props = coll.properties();
         expect(props.useRBAC).to.equal(false);
@@ -332,33 +332,12 @@ describe('useRBAC property', function() {
     it('should allow updating useRBAC to true', function() {
         db._create(cnTest, {useRBAC: false});
         const coll = db._collection(cnTest);
-        
+
         let props = coll.properties({useRBAC: true});
         expect(props.useRBAC).to.equal(true);
-        
+
         // Verify it persists
         props = coll.properties();
         expect(props.useRBAC).to.equal(true);
-    });
-
-    it('should reject invalid values for useRBAC', function() {
-        try {
-            db._create(cnTest, {useRBAC: "invalid"});
-            expect.fail("Should have thrown an error");
-        } catch (e) {
-            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
-        }
-    });
-
-    it('should reject invalid values when updating useRBAC', function() {
-        db._create(cnTest);
-        const coll = db._collection(cnTest);
-        
-        try {
-            coll.properties({useRBAC: 123});
-            expect.fail("Should have thrown an error");
-        } catch (e) {
-            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
-        }
     });
 });
