@@ -65,8 +65,7 @@ function hotBackup (options) {
     dumpMoveShard: 'dump-move-shard.js',
     dumpRecheck: 'dump-modified.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    // do we need this? dumpCheckGraph: 'check-graph.js',
-    // todo foxxTest: 'check-foxx.js'
+    // do we need this? dumpCheckGraph: 'check-graph.js'
   };
 
   let which = "hot_backup";
@@ -129,19 +128,6 @@ function hotBackup (options) {
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
       if (!helper.restoreOld(restoreDir) ||
           !helper.testRestoreOld(oldTestFile)) {
-        helper.destructor(true);
-        return helper.extractResults();
-      }
-    }
-
-    if (tstFiles.hasOwnProperty("foxxTest") && !options.skipServerJS) {
-      const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
         helper.destructor(true);
         return helper.extractResults();
       }

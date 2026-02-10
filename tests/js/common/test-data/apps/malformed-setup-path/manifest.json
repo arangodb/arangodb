@@ -1,7 +1,0 @@
-{
-  "name": "malformed-setup-path",
-  "version": "0.0.0",
-  "scripts": {
-    "setup": "/illegal/file/name/"
-  }
-}

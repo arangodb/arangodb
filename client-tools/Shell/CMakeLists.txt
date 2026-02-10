@@ -74,15 +74,6 @@ endif ()
 add_dependencies(${BIN_ARANGOSH} man)
 
 ################################################################################
-## foxx-manager
-################################################################################
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  foxx-manager)
-
-install_config(foxx-manager)
-
-################################################################################
 ## arangoinspect
 ################################################################################
 install_command_alias(${BIN_ARANGOSH}
