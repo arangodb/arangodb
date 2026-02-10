@@ -39,8 +39,6 @@
 #include "Basics/BoundedChannel.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
@@ -101,8 +99,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   }
 
   if (_trainedData) {
-    // Restore from previously trained data (works for both fixed and scaling
-    // modes). The FAISS index already contains the correct nlist from training.
     faiss::VectorIOReader reader;
     // TODO prevent this copy, but instead implement own IOReader, reading
     // directly from the training data.
@@ -112,32 +108,16 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     ADB_PROD_ASSERT(_faissIndex != nullptr);
 
     _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    // For defaultNProbe, if fixed use the value; if scaling it was already
-    // resolved at training time and we don't have docCount here, so use
-    // a sensible default (nProbe = 1 or the stored value in _faissIndex).
-    if (!isScaling(_definition.defaultNProbe)) {
-      _resolvedDefaultNProbe = getFixed(_definition.defaultNProbe);
-    } else {
-      // In scaling mode for defaultNProbe, resolve based on the resolved
-      // nLists as a proxy for the original doc count.
-      _resolvedDefaultNProbe =
-          getScaling(_definition.defaultNProbe).compute(_resolvedNLists);
-    }
+    // The definition of defaultNProbe must be recalcualted since it is not
+    // written with index definition.
+    _resolvedDefaultNProbe =
+        resolveParameter(_definition.defaultNProbe, _resolvedNLists);
+
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-  } else if (isScaling(_definition.nLists)) {
-    // Scaling mode — defer FAISS index creation to prepareIndex() where we
-    // can count documents and compute the actual nLists value.
-    // _faissIndex remains nullptr until prepareIndex() is called.
-    // _resolvedDefaultNProbe will be set in prepareIndex().
   } else {
-    // Fixed mode — nLists is known at construction time.
-    _resolvedNLists = getFixed(_definition.nLists);
-    _resolvedDefaultNProbe =
-        resolveParameter(_definition.defaultNProbe, _resolvedNLists);
-
     if (_definition.factory) {
       std::shared_ptr<faiss::Index> index;
       index.reset(faiss::index_factory(
@@ -159,7 +139,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
             _faissIndex->nlist);
       }
 
-      _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
     } else {
       auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
         switch (_definition.metric) {
@@ -407,35 +386,18 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
-                                      RocksDBMethods* methods) {
+                                      RocksDBMethods* methods,
+                                      std::uint64_t numDocsHint) {
   // In normal replication code this can be called multiple times
   // so to stop retraining of vector index we ignore this part
   if (_faissIndex && _faissIndex->is_trained) {
     return;
   }
 
-  // Scaling mode: count documents, compute nLists, create the FAISS index.
+  // Scaling mode: compute nLists from document count, create the FAISS index.
   if (isScaling(_definition.nLists) && !_faissIndex) {
     auto const& scaling = getScaling(_definition.nLists);
-    std::int64_t docCount = 0;
-
-    LOG_VECTOR_INDEX("c161b", INFO, Logger::FIXME)
-        << "Scaling mode: counting documents for nLists computation.";
-
-    while (it->Valid()) {
-      TRI_ASSERT(it->key().compare(upper) < 0);
-      if (_sparse) {
-        auto doc =
-            VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-        VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-        if (value.isNone()) {
-          it->Next();
-          continue;
-        }
-      }
-      ++docCount;
-      it->Next();
-    }
+    auto const docCount = static_cast<std::int64_t>(numDocsHint);
 
     if (docCount == 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -450,7 +412,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
         resolveParameter(_definition.defaultNProbe, docCount);
 
     LOG_VECTOR_INDEX("c162b", INFO, Logger::FIXME)
-        << "Scaling mode: docCount=" << docCount
+        << "Scaling mode: numDocsHint=" << docCount
         << ", computed nLists=" << _resolvedNLists
         << ", computed defaultNProbe=" << _resolvedDefaultNProbe << ".";
 
@@ -459,7 +421,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       std::string resolvedFactory =
           resolveScalingFactory(*_definition.factory, _resolvedNLists);
 
-      LOG_VECTOR_INDEX("c163b", INFO, Logger::FIXME)
+      LOG_VECTOR_INDEX("c163b", INFO, Logger::ROCKSDB)
           << "Scaling mode: using resolved factory string '" << resolvedFactory
           << "'.";
 
@@ -491,13 +453,6 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
           vector::metricToFaissMetric(_definition.metric));
       _faissIndex->own_fields = nullptr != quantizer.release();
     }
-
-    // Re-seek the iterator back to the beginning for training data collection
-    auto const* rcoll =
-        static_cast<RocksDBCollection const*>(collection().getPhysical());
-    auto const bounds =
-        RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-    it->Seek(bounds.start());
   }
 
   // Proceed with training (shared path for both fixed and scaling modes)

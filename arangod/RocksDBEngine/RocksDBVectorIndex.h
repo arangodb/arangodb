@@ -71,7 +71,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
   void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
-                    RocksDBMethods* methods) override;
+                    RocksDBMethods* methods,
+                    std::uint64_t numDocsHint = 0) override;
 
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
