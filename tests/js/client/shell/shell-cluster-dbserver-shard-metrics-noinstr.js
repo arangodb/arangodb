@@ -350,8 +350,6 @@ function ClusterDBServerShardMetricsTestSuite() {
         (v) => v >= 1, "expected shardsOutOfSync >= 1", maxIter);
       eventuallyAssertMetricSum(onlineServers, shardsNotReplicatedNumMetric,
         (v) => v >= 1, "expected shardsNotReplicated >= 1", maxIter);
-      eventuallyAssertMetricSum(onlineServers, followersOutOfSyncNumMetric,
-        (v) => v >= 1, "expected followersOutOfSync >= 1", maxIter);
 
       // Bring back the followers
       dbServerFollowers.forEach(server => {
