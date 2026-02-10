@@ -560,7 +560,7 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),
        &functions::Warn});  // not deterministic and not cacheable
 
-  // NEAR, WITHIN, and WITHIN_RECTANGLE are replaced by the AQL
+  // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
   // optimizer with collection-/index-based subqueries. they are all
   // marked as deterministic and cacheable here as they are just
   // placeholders for collection/index accesses nowaways.
@@ -569,6 +569,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable),
+       &functions::NotImplemented});
+  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
 
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",

@@ -98,6 +98,28 @@ struct NearOrWithinParams {
   }
 };
 
+// FULLTEXT(collection, "attribute", "search", 100 /*limit*/[, "distance name"])
+struct FulltextParams {
+  std::string collection;
+  std::string attribute;
+  AstNode* limit = nullptr;
+
+  explicit FulltextParams(AstNode const* node) {
+    TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
+    AstNode* arr = node->getMember(0);
+    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
+    if (arr->getMember(0)->isStringValue()) {
+      collection = arr->getMember(0)->getString();
+    }
+    if (arr->getMember(1)->isStringValue()) {
+      attribute = arr->getMember(1)->getString();
+    }
+    if (arr->numMembers() > 3) {
+      limit = arr->getMember(3);
+    }
+  }
+};
+
 AstNode* getAstNode(CalculationNode* c) noexcept {
   return c->expression()->nodeForModification();
 }
@@ -499,6 +521,66 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   return ast->createNodeReference(v);
 }
 
+AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
+                         ExecutionPlan* plan) {
+  auto* ast = plan->getAst();
+  QueryContext& query = ast->query();
+
+  TRI_ASSERT(funAstNode->type == NODE_TYPE_FCALL);
+  FulltextParams params(funAstNode);
+
+  /// index
+  //  we create this first as creation of this node is more
+  //  likely to fail than the creation of other nodes
+
+  //  index - part 1 - figure out index to use
+  std::shared_ptr<arangodb::Index> index;
+  std::vector<basics::AttributeName> field;
+  TRI_ParseAttributeString(params.attribute, field, false);
+
+  aql::Collection* coll = query.collections().get(params.collection);
+  if (!coll) {
+    coll = addCollectionToQuery(query, params.collection, "FULLTEXT");
+  }
+
+  for (auto& idx : coll->indexes()) {
+    if (idx->type() ==
+        arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      if (basics::AttributeName::isIdentical(
+              idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
+        index = idx;
+        break;
+      }
+    }
+  }
+
+  if (!index) {  // not found or error
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+                                  params.collection.c_str());
+  }
+
+  // index part 2 - get remaining vars required for index creation
+  auto* aqlCollection =
+      aql::addCollectionToQuery(query, params.collection, "FULLTEXT");
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(funAstNode);
+  condition->normalize(plan);
+  // create a fresh out variable
+  Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
+
+  ExecutionNode* eIndex = plan->createNode<IndexNode>(
+      plan, plan->nextId(), aqlCollection, indexOutVariable,
+      std::vector<transaction::Methods::IndexHandle>{
+          transaction::Methods::IndexHandle{index}},
+      false,  // here we are not using inverted index so for sure
+              // no "whole" coverage
+      std::move(condition), IndexIteratorOptions());
+
+  //// wrap plan part into subquery
+  return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex,
+                                 indexOutVariable, params.limit);
+}
+
 }  // namespace
 
 //! @brief replace legacy JS Functions with pure AQL
@@ -526,6 +608,9 @@ void arangodb::aql::replaceNearWithinFulltextRule(
           TRI_ASSERT(replacement);
         } else if (fun->name == "WITHIN_RECTANGLE") {
           replacement = replaceWithinRectangle(astnode, node, plan.get());
+          TRI_ASSERT(replacement);
+        } else if (fun->name == "FULLTEXT") {
+          replacement = replaceFullText(astnode, node, plan.get());
           TRI_ASSERT(replacement);
         }
 
