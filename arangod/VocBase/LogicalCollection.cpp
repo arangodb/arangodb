@@ -159,6 +159,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
+      _useRBAC(Helper::getBooleanValue(info, StaticStrings::UseRBAC, true)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
@@ -333,12 +334,15 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
+  props.useRBAC = useRBAC();
   return props;
 }
 
 bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
 }
+
+bool LogicalCollection::useRBAC() const noexcept { return _useRBAC.load(); }
 
 bool LogicalCollection::waitForSync() const noexcept {
   if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
@@ -758,6 +762,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
   build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
+  build.add(StaticStrings::UseRBAC, VPackValue(_useRBAC));
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -1099,6 +1104,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync);
+  _useRBAC = Helper::getBooleanValue(slice, StaticStrings::UseRBAC, _useRBAC);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 

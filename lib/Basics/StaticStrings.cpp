@@ -280,6 +280,7 @@ std::string const StaticStrings::ParsedBody("parsedBody");
 std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::ComputedValues("computedValues");
+std::string const StaticStrings::UseRBAC("useRBAC");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
