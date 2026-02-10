@@ -54,25 +54,25 @@ auto operator<<(
 }
 
 auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
-  return ActivityInRegistrySnapshot{.name = name,
+  return ActivityInRegistrySnapshot{.type = type,
                                     .state = state,
                                     .id = id(),
                                     .parent = parent,
                                     .metadata = metadata};
 }
 
-Activity::Activity(std::string name, Metadata metadata)
+Activity::Activity(std::string type, Metadata metadata)
     : _node_in_registry{get_thread_registry().add([&]() {
         return ActivityInRegistry{
-            .name = std::move(name),
+            .type = std::move(type),
             .state = State::Active,
             .parent = {Registry::currentlyExecutingActivity()},
             .metadata = metadata};
       })} {}
 
-Activity::Activity(std::string name, Metadata metadata, ActivityId parent)
+Activity::Activity(std::string type, Metadata metadata, ActivityId parent)
     : _node_in_registry{get_thread_registry().add([&]() {
-        return ActivityInRegistry{.name = std::move(name),
+        return ActivityInRegistry{.type = std::move(type),
                                   .state = State::Active,
                                   .parent = parent,
                                   .metadata = metadata};

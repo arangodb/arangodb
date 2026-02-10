@@ -4,6 +4,16 @@ devel
 * Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
   Will now try for ~2min before FATAL_ERROR_EXIT.
 
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+results when condition optimization is turned off.
+
+* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.16.
+
+* Upgraded OpenSSL to 3.5.5.
+
 * FE-954: make view validation on UI less strict.
 
 * COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
