@@ -1,6 +1,6 @@
 jobProperties:
     container_suffix: '-python:'
-    second_repo: git@github.com:arangodb/python-arango.git
+    second_repo: git@github.com:dothebart/python-arango.git
     branch: main
 tests:
 - python_driver:
