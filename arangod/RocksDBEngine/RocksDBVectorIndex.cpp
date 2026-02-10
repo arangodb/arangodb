@@ -108,16 +108,30 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     ADB_PROD_ASSERT(_faissIndex != nullptr);
 
     _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    // The definition of defaultNProbe must be recalcualted since it is not
-    // written with index definition.
-    _resolvedDefaultNProbe =
-        resolveParameter(_definition.defaultNProbe, _resolvedNLists);
+    // The resolved defaultNProbe was persisted in IndexIVF::nprobe at training
+    // time, so we read it back directly rather than recomputing it (which
+    // would incorrectly use _resolvedNLists as a proxy for the original
+    // docCount, silently changing query-time defaults after restart).
+    _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
+  } else if (isScaling(_definition.nLists)) {
+    // Scaling mode — defer FAISS index creation to prepareIndex() where we
+    // can use numDocsHint to compute the actual nLists value.
+    // _faissIndex remains nullptr until prepareIndex() is called.
   } else {
+    // Fixed mode — nLists is known at construction time.
+    _resolvedNLists = getFixed(_definition.nLists);
+    // Only resolve defaultNProbe here if it's a fixed value. If it's a
+    // scaling spec, it will be resolved in prepareIndex() using the actual
+    // document count.
+    if (!isScaling(_definition.defaultNProbe)) {
+      _resolvedDefaultNProbe = getFixed(_definition.defaultNProbe);
+    }
+
     if (_definition.factory) {
       std::shared_ptr<faiss::Index> index;
       index.reset(faiss::index_factory(
@@ -132,13 +146,15 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
       }
 
       if (std::size_t(_resolvedNLists) != _faissIndex->nlist) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
+        THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "The nLists parameter has to agree with the actual nlists implied "
-            "by the factory string (which is %zu)",
-            _faissIndex->nlist);
+            std::format(
+                "The nLists parameter has to agree with the actual nlists "
+                "implied by the factory string (which is {})",
+                _faissIndex->nlist));
       }
 
+      _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
     } else {
       auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
         switch (_definition.metric) {
@@ -394,10 +410,19 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     return;
   }
 
-  // Scaling mode: compute nLists from document count, create the FAISS index.
+  auto const docCount = static_cast<std::int64_t>(numDocsHint);
+
+  // Resolve scaling defaultNProbe using actual document count.
+  // This applies regardless of whether nLists is fixed or scaling.
+  if (isScaling(_definition.defaultNProbe) && docCount > 0) {
+    _resolvedDefaultNProbe =
+        getScaling(_definition.defaultNProbe).compute(docCount);
+  }
+
+  // Scaling nLists mode: compute nLists from document count, create FAISS
+  // index.
   if (isScaling(_definition.nLists) && !_faissIndex) {
     auto const& scaling = getScaling(_definition.nLists);
-    auto const docCount = static_cast<std::int64_t>(numDocsHint);
 
     if (docCount == 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -408,10 +433,8 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     }
 
     _resolvedNLists = scaling.compute(docCount);
-    _resolvedDefaultNProbe =
-        resolveParameter(_definition.defaultNProbe, docCount);
 
-    LOG_VECTOR_INDEX("c162b", INFO, Logger::FIXME)
+    LOG_VECTOR_INDEX("c162b", INFO, Logger::STATISTICS)
         << "Scaling mode: numDocsHint=" << docCount
         << ", computed nLists=" << _resolvedNLists
         << ", computed defaultNProbe=" << _resolvedDefaultNProbe << ".";
@@ -421,7 +444,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       std::string resolvedFactory =
           resolveScalingFactory(*_definition.factory, _resolvedNLists);
 
-      LOG_VECTOR_INDEX("c163b", INFO, Logger::ROCKSDB)
+      LOG_VECTOR_INDEX("c163b", INFO, Logger::STATISTICS)
           << "Scaling mode: using resolved factory string '" << resolvedFactory
           << "'.";
 
@@ -436,6 +459,18 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
             TRI_ERROR_BAD_PARAMETER,
             "Resolved factory definition not supported. Expected IVF index.");
       }
+
+      if (std::size_t(_resolvedNLists) != _faissIndex->nlist) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            std::format(
+                "The computed nLists parameter ({}) has to agree with the "
+                "actual nlists implied by the resolved factory string '{}' "
+                "(which is {})",
+                _resolvedNLists, resolvedFactory, _faissIndex->nlist));
+      }
+
+      _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
     } else {
       auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
         switch (_definition.metric) {
@@ -463,7 +498,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   std::vector<float> input;
   input.reserve(_definition.dimension);
 
-  LOG_VECTOR_INDEX("b161b", INFO, Logger::FIXME)
+  LOG_VECTOR_INDEX("b161b", INFO, Logger::STATISTICS)
       << "Loading " << trainingDataSize << " vectors of dimension "
       << _definition.dimension << " for training.";
 
@@ -491,7 +526,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
   }
 
-  LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
+  LOG_VECTOR_INDEX("a162b", INFO, Logger::STATISTICS)
       << "Loaded " << counter << " vectors. Start training process on "
       << _resolvedNLists << " centroids.";
 
@@ -503,7 +538,12 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
         "process.");
   }
   _faissIndex->train(counter, trainingData.data());
-  LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
+  LOG_VECTOR_INDEX("a160b", INFO, Logger::STATISTICS) << "Finished training.";
+
+  // Persist the resolved defaultNProbe into IndexIVF::nprobe so that it
+  // survives serialization and can be read back on restore without needing
+  // to recompute from the (no-longer-available) original document count.
+  _faissIndex->nprobe = _resolvedDefaultNProbe;
 
   // Update vector definition data with quantizier data
   faiss::VectorIOWriter writer;
@@ -817,7 +857,7 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
+  LOG_VECTOR_INDEX("71c45", INFO, Logger::STATISTICS)
       << "Ingesting vectors into index. Threads: num-readers=" << numReaders
       << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
 
@@ -830,14 +870,14 @@ Result RocksDBVectorIndex::ingestVectors(
   _threads.clear();
 
   if (firstError.ok()) {
-    LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
+    LOG_VECTOR_INDEX("41658", INFO, Logger::STATISTICS)
         << "Ingestion done. Encoded " << countDocuments << " vectors in "
         << countBatches
         << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
         << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
         << " " << counters.writeConsumeBlocked;
   } else {
-    LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
+    LOG_VECTOR_INDEX("96a80", ERR, Logger::STATISTICS)
         << "Ingestion failed: " << firstError;
   }
 
