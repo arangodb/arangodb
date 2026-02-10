@@ -1,6 +1,9 @@
 devel
 -----
 
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+results when condition optimization is turned off.
+
 * Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
   dependencies.
 
