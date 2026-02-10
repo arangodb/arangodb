@@ -73,50 +73,6 @@ function testSuite() {
       } 
     },
     
-    testAccessFromTransaction : function() {
-      // this executes a server-side transaction with all the operations,
-      // not using Foxx
-      let results = db._executeTransaction({
-        collections: {},
-        action: function() {
-          const ERRORS = require('@arangodb').errors;
-          let agencyCall = function(f) {
-            let result = false;
-            try {
-              f();
-            } catch (err) {
-              result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
-            }
-            return result;
-          };
-
-          let testCases = {};
-          // ArangoClusterInfo
-          testCases["AgencyClusterInfoUniqid"] = function() {
-            let testee = global.ArangoClusterInfo;
-            let result = false;
-            try {
-              testee.uniqid();
-            } catch (err) {
-              result = (err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
-            }
-            return result;
-          };
-
-          let results = {};
-          Object.keys(testCases).forEach((tc) => {
-            results[tc] = testCases[tc]();
-          });
-          return results;
-        }
-      });
-      let cases = Object.keys(results);
-      assertEqual(1, cases.length);
-      cases.forEach((c) => {
-        assertTrue(results[c], results);
-      });
-    },
-    
     testAccessFromTask : function() {
       // this executes all the operations server-side,
       // inside a JavaScript task

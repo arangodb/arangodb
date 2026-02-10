@@ -23,16 +23,11 @@
 
 #include "RestTransactionHandler.h"
 
-#include "Actions/ActionFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
@@ -42,12 +37,6 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
-#ifdef USE_V8
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8Server/V8Executor.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Transactions.h"
-#endif
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -59,7 +48,7 @@ using namespace arangodb::rest;
 RestTransactionHandler::RestTransactionHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RequestLane RestTransactionHandler::lane() const {
   if (_request->requestType() == RequestType::GET) {
@@ -115,7 +104,11 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_await executeBegin();
         co_return;
       } else if (_request->suffixes().empty()) {
-        executeJSTransaction();
+        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                      TRI_ERROR_NOT_IMPLEMENTED,
+                      "JavaScript transactions are no longer supported. "
+                      "Use streaming transactions (POST "
+                      "/_api/transaction/begin) instead.");
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
@@ -380,110 +373,6 @@ void RestTransactionHandler::generateTransactionResult(
   tmp.close();
 
   generateResult(code, std::move(buffer));
-}
-
-// ====================== V8 stuff ===================
-
-/// start a legacy JS transaction
-void RestTransactionHandler::executeJSTransaction() {
-#ifdef USE_V8
-  if (!server().isEnabled<V8DealerFeature>()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_NOT_IMPLEMENTED,
-                  "JavaScript operations are disabled");
-    return;
-  }
-
-  auto slice = _request->payload();
-  if (!slice.isObject()) {
-    generateError(
-        Result(TRI_ERROR_BAD_PARAMETER, "expecting object input data"));
-    return;
-  }
-
-  std::string portType = _request->connectionInfo().portType();
-
-  bool allowUseDatabase =
-      server().getFeature<ActionFeature>().allowUseDatabase();
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Executor* v8Context = server().getFeature<V8DealerFeature>().enterExecutor(
-      &_vocbase, securityContext);
-
-  if (!v8Context) {
-    generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
-    return;
-  }
-
-  // register a function to release the V8Executor whenever we exit from this
-  // scope
-  auto guard = scopeGuard([this]() noexcept {
-    try {
-      WRITE_LOCKER(lock, _lock);
-      if (_v8Context != nullptr) {
-        server().getFeature<V8DealerFeature>().exitExecutor(_v8Context);
-        _v8Context = nullptr;
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("1b20f", ERR, Logger::V8)
-          << "Failed to exit V8 context while executing JS transaction: "
-          << ex.what();
-    }
-  });
-
-  {
-    // make our V8Executor available to the cancel function
-    WRITE_LOCKER(lock, _lock);
-    _v8Context = v8Context;
-    if (_canceled) {
-      // if we cancel here, the shutdown function above will perform the
-      // necessary cleanup
-      lock.unlock();
-      generateCanceled();
-      return;
-    }
-  }
-
-  VPackBuilder result;
-  try {
-    Result res = executeTransaction(v8Context, _lock, _canceled, slice,
-                                    portType, result);
-    if (res.ok()) {
-      VPackSlice slice = result.slice();
-      if (slice.isNone()) {
-        generateOk(rest::ResponseCode::OK, VPackSlice::nullSlice());
-      } else {
-        generateOk(rest::ResponseCode::OK, slice);
-      }
-    } else {
-      generateError(res);
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    generateError(Result(TRI_ERROR_INTERNAL, ex.what()));
-  } catch (...) {
-    generateError(Result(TRI_ERROR_INTERNAL));
-  }
-#else
-  generateError(
-      rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-      "JavaScript operations are not available in this build of ArangoDB");
-#endif
-}
-
-void RestTransactionHandler::cancel() {
-  // cancel v8 transaction
-  WRITE_LOCKER(writeLock, _lock);
-  _canceled.store(true);
-#ifdef USE_V8
-  if (_v8Context != nullptr) {
-    v8::Isolate* isolate = _v8Context->isolate();
-    if (!isolate->IsExecutionTerminating()) {
-      isolate->TerminateExecution();
-    }
-  }
-#endif
 }
 
 /// @brief returns the short id of the server which should handle this

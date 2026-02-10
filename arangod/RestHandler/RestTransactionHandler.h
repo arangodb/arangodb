@@ -23,19 +23,13 @@
 
 #pragma once
 
-#include "Basics/ReadWriteLock.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Transaction/Status.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 namespace arangodb {
 
-class V8Executor;
-
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
-  V8Executor* _v8Context;
-  basics::ReadWriteLock _lock;
-
  public:
   RestTransactionHandler(application_features::ApplicationServer&,
                          GeneralRequest*, GeneralResponse*);
@@ -44,7 +38,6 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override final;
 
   auto executeAsync() -> futures::Future<futures::Unit> override;
-  void cancel() override final;
 
  protected:
   virtual ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -56,8 +49,5 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> executeAbort();
   void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
-
-  /// start a legacy JS transaction
-  void executeJSTransaction();
 };
 }  // namespace arangodb

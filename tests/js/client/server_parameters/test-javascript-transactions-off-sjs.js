@@ -53,19 +53,6 @@ function testSuite() {
       db._drop(cn);
     },
 
-    testJavaScriptTransaction : function() {
-      // JavaScript transactions should be affected by the setting and fail
-      try {
-        db._executeTransaction({ 
-          collections: { read: cn },
-          action: function() {},
-        });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_FORBIDDEN.code, err.errorNum);
-      }
-    },
-    
     testJavaScriptTransactionFromFoxx : function() {
       const mount = '/test';
 

@@ -53,14 +53,6 @@ function testSuite() {
       db._drop(cn);
     },
 
-    testJavaScriptTransaction : function() {
-      let res = db._executeTransaction({ 
-        collections: { read: cn },
-        action: function() { return "ok!"; },
-      });
-      assertEqual("ok!", res);
-    },
-    
     testJavaScriptTransactionFromFoxx : function() {
       const mount = '/test';
 
