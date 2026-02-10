@@ -4,6 +4,9 @@ devel
 * Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
   Will now try for ~2min before FATAL_ERROR_EXIT.
 
+* Fixed BTS-2160: Introduced the proper log message when read-only state is reached
+  because of disk-usage and not because of an expired license.
+
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
 results when condition optimization is turned off.
 
