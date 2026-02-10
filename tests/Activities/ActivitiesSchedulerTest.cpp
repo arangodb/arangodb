@@ -20,6 +20,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Activities/activity.h"
+#include "Activities/registry.h"
+#include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
 #include "Scheduler/ThreadPoolScheduler.h"
 #include "gtest/gtest.h"
@@ -89,6 +91,30 @@ TEST_F(ActivitiesSchedulerTest, multiple_queues) {
   scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
   scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
   scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
+
+  // TODO: Is there a way to know whether the queued thing ran?
+  scheduler.shutdown();
+  EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+}
+
+TEST_F(ActivitiesSchedulerTest, with_set_current_activity_works) {
+  auto outer_activity = arangodb::activities::Activity("OuterActivity", {});
+  auto guard = arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
+      outer_activity.id());
+
+  auto new_activity = arangodb::activities::Activity("NewActivity", {});
+  auto id_to_expect = new_activity.id();
+  // No guard is intentional
+
+  scheduler.queue(
+      arangodb::RequestLane::CLIENT_FAST,
+      arangodb::activities::withSetCurrentlyExecutingActivity(
+          id_to_expect, [&id_to_expect]() {
+            EXPECT_EQ(
+                arangodb::activities::Registry::currentlyExecutingActivity(),
+                id_to_expect);
+          }));
 
   // TODO: Is there a way to know whether the queued thing ran?
   scheduler.shutdown();
