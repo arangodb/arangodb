@@ -215,6 +215,8 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
+            .fallback(
+                ScalableParameter{ScalingSpec{1.0, ScalingFunction::kSqrt}})
             .invariant([](auto const& value) -> inspection::Status {
               if (auto* fixed = std::get_if<std::int64_t>(&value)) {
                 if (*fixed < 1) {
@@ -229,7 +231,7 @@ struct UserVectorIndexDefinition {
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
             .fallback(
-                ScalableParameter{static_cast<std::int64_t>(kdefaultNProbe)})
+                ScalableParameter{ScalingSpec{0.8, ScalingFunction::kSqrt}})
             .invariant([](auto const& value) -> inspection::Status {
               if (auto* fixed = std::get_if<std::int64_t>(&value)) {
                 if (*fixed < 1) {
