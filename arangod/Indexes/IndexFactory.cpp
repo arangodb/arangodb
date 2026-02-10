@@ -938,35 +938,15 @@ Result IndexFactory::enhanceJsonIndexVector(
       return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
     }
 
-    // factory requires fixed nLists (not scaling mode)
+    // When factory is used with scaling nLists, it must contain {nLists}
+    // placeholder for resolution at training time.
     if (vectorIndexDefinition.factory.has_value() &&
         isScaling(vectorIndexDefinition.nLists)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'factory' requires a fixed 'nLists' value, not a scaling "
-              "specification. Use 'scalingFactory' with a '{nLists}' "
-              "placeholder instead."};
-    }
-
-    // factory and scalingFactory are mutually exclusive
-    if (vectorIndexDefinition.factory.has_value() &&
-        vectorIndexDefinition.scalingFactory.has_value()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Cannot specify both 'factory' and 'scalingFactory'."};
-    }
-
-    // scalingFactory requires scaling nLists
-    if (vectorIndexDefinition.scalingFactory.has_value() &&
-        !isScaling(vectorIndexDefinition.nLists)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'scalingFactory' requires a scaling 'nLists' specification."};
-    }
-
-    // scalingFactory must contain {nLists} placeholder
-    if (vectorIndexDefinition.scalingFactory.has_value()) {
-      if (vectorIndexDefinition.scalingFactory->find("{nLists}") ==
+      if (vectorIndexDefinition.factory->find("{nLists}") ==
           std::string::npos) {
         return {TRI_ERROR_BAD_PARAMETER,
-                "'scalingFactory' must contain the '{nLists}' placeholder. "
+                "When 'nLists' is a scaling specification, 'factory' must "
+                "contain the '{nLists}' placeholder. "
                 "Example: \"IVF{nLists}_HNSW10,Flat\""};
       }
     }

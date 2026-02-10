@@ -30,6 +30,7 @@
 #include <variant>
 #include <vector>
 
+#include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
 
@@ -55,6 +56,7 @@ struct SearchParameters {
   }
 };
 
+/// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
   kL2,
   kCosine,
@@ -166,10 +168,14 @@ inline ScalingSpec const& getScaling(ScalableParameter const& p) {
 /// In scaling mode, computes factor * func(docCount).
 inline std::int64_t resolveParameter(ScalableParameter const& p,
                                      std::int64_t docCount) {
-  if (isScaling(p)) {
-    return getScaling(p).compute(docCount);
-  }
-  return getFixed(p);
+  return std::visit(
+      overload{
+          [](std::int64_t fixed) -> std::int64_t { return fixed; },
+          [docCount](ScalingSpec const& spec) -> std::int64_t {
+            return spec.compute(docCount);
+          },
+      },
+      p);
 }
 
 /// @brief Resolve a scaling factory string by replacing {nLists} with the
@@ -179,10 +185,10 @@ inline std::int64_t resolveParameter(ScalableParameter const& p,
 inline std::string resolveScalingFactory(std::string const& factoryTemplate,
                                          std::int64_t nLists) {
   std::string result = factoryTemplate;
-  std::string const placeholder = "{nLists}";
+  static constexpr std::string_view placeholder = "{nLists}";
   auto pos = result.find(placeholder);
   if (pos != std::string::npos) {
-    result.replace(pos, placeholder.size(), std::to_string(nLists));
+    result.replace(pos, placeholder.length(), std::to_string(nLists));
   }
   return result;
 }
@@ -194,12 +200,10 @@ struct UserVectorIndexDefinition {
   std::uint64_t trainingIterations;
   ScalableParameter defaultNProbe;
 
-  // Fixed mode factory string (requires fixed nLists).
+  // FAISS factory string. In fixed nLists mode, nLists must match the IVF
+  // number in the string. In scaling nLists mode, the string must contain a
+  // {nLists} placeholder that is resolved at training time.
   std::optional<std::string> factory;
-
-  // Scaling mode factory string template with {nLists} placeholder.
-  // Requires scaling nLists. Example: "IVF{nLists}_HNSW10,Flat"
-  std::optional<std::string> scalingFactory;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
 
@@ -226,7 +230,6 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("factory", x.factory),
-        f.field("scalingFactory", x.scalingFactory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)

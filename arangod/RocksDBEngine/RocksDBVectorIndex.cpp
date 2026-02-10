@@ -454,22 +454,43 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
         << ", computed nLists=" << _resolvedNLists
         << ", computed defaultNProbe=" << _resolvedDefaultNProbe << ".";
 
-    // Create a plain IVFFlat index with the computed nLists
-    auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-      switch (_definition.metric) {
-        case arangodb::SimilarityMetric::kL2:
-          return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-        case arangodb::SimilarityMetric::kCosine:
-          return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-        case arangodb::SimilarityMetric::kInnerProduct:
-          return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-      }
-    });
+    // Create the FAISS index with the computed nLists
+    if (_definition.factory) {
+      std::string resolvedFactory =
+          resolveScalingFactory(*_definition.factory, _resolvedNLists);
 
-    _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-        quantizer.get(), _definition.dimension, _resolvedNLists,
-        vector::metricToFaissMetric(_definition.metric));
-    _faissIndex->own_fields = nullptr != quantizer.release();
+      LOG_VECTOR_INDEX("c163b", INFO, Logger::FIXME)
+          << "Scaling mode: using resolved factory string '" << resolvedFactory
+          << "'.";
+
+      std::shared_ptr<faiss::Index> index;
+      index.reset(faiss::index_factory(
+          _definition.dimension, resolvedFactory.c_str(),
+          vector::metricToFaissMetric(_definition.metric)));
+
+      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
+      if (_faissIndex == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Resolved factory definition not supported. Expected IVF index.");
+      }
+    } else {
+      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
+        switch (_definition.metric) {
+          case arangodb::SimilarityMetric::kL2:
+            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
+          case arangodb::SimilarityMetric::kCosine:
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+          case arangodb::SimilarityMetric::kInnerProduct:
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+        }
+      });
+
+      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
+          quantizer.get(), _definition.dimension, _resolvedNLists,
+          vector::metricToFaissMetric(_definition.metric));
+      _faissIndex->own_fields = nullptr != quantizer.release();
+    }
 
     // Re-seek the iterator back to the beginning for training data collection
     auto const* rcoll =
