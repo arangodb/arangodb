@@ -59,7 +59,8 @@ namespace {
 using namespace arangodb;
 
 struct InvalidIndexFactory : public IndexTypeFactory {
-  InvalidIndexFactory(ArangodServer& server) : IndexTypeFactory(server) {}
+  InvalidIndexFactory(application_features::ApplicationServer& server)
+      : IndexTypeFactory(server) {}
 
   bool equal(velocypack::Slice, velocypack::Slice,
              std::string const&) const override {
@@ -117,7 +118,9 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
-IndexTypeFactory::IndexTypeFactory(ArangodServer& server) : _server(server) {}
+IndexTypeFactory::IndexTypeFactory(
+    application_features::ApplicationServer& server)
+    : _server(server) {}
 
 bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
@@ -240,7 +243,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   return true;
 }
 
-IndexFactory::IndexFactory(ArangodServer& server)
+IndexFactory::IndexFactory(application_features::ApplicationServer& server)
     : _server(server),
       _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
@@ -368,15 +371,18 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
+  // Note: hash and skiplist are deprecated and no longer listed here as they
+  // cannot be created anymore. Existing indexes of these types are still
+  // supported for upgrades.
   std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
-      "hash",
-      "skiplist",
+      "fulltext",
       "ttl",
       "persistent",
       "geo",
-      "fulltext",
+      "geo1",
+      "geo2",
       "mdi",
       "mdi-prefixed",
       arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};

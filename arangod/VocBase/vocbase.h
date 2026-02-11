@@ -25,7 +25,6 @@
 
 #include <atomic>
 #include <concepts>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -37,14 +36,11 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
-#include "Basics/voc-errors.h"
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
-#include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
@@ -156,7 +152,7 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
-  arangodb::ArangodServer& _server;
+  arangodb::application_features::ApplicationServer& _server;
   arangodb::StorageEngine& _engine;
   arangodb::VersionTracker& _versionTracker;
   bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
@@ -263,7 +259,9 @@ struct TRI_vocbase_t {
                                                    // replication is assessing
                                                    // the state of the vocbase
 
-  arangodb::ArangodServer& server() const noexcept { return _server; }
+  arangodb::application_features::ApplicationServer& server() const noexcept {
+    return _server;
+  }
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   decltype(auto) name() const { return _info.getName(); }

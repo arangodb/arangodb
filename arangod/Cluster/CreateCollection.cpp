@@ -322,7 +322,7 @@ Result CreateCollection::createCollectionReplication2(
     } else {
       res.reset(
           {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-           fmt::format("Leader of log {} not found while creating shard {}",
+           std::format("Leader of log {} not found while creating shard {}",
                        logId, shard)});
     }
   } else {

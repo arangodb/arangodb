@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "SystemMonitor/AsyncRegistry/Metrics.h"
-#include "RestServer/arangod.h"
-#include "Scheduler/AsyncLockWithScheduler.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Async/Registry/promise.h"
-#include "Containers/Forest/forest.h"
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
+#include "Containers/Forest/forest.h"
+#include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
 
@@ -37,7 +36,7 @@ auto all_undeleted_promises() -> containers::ForestWithRoots<PromiseSnapshot>;
 VPackBuilder serialize(
     containers::IndexedForestWithRoots<PromiseSnapshot> const& promises);
 
-class Feature final : public ArangodFeature,
+class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
@@ -45,12 +44,9 @@ class Feature final : public ArangodFeature,
 
  public:
   static constexpr std::string_view name() { return "AsyncRegistry"; }
-  auto asyncLock() -> futures::Future<AsyncLockWithScheduler::Lock> {
-    return _asyncLock.lock();
-  };
 
   Feature(
-      Server& server,
+      application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
 
   void prepare() override final;
@@ -58,6 +54,7 @@ class Feature final : public ArangodFeature,
   void stop() override final;
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
+  velocypack::Builder getData() const;
   velocypack::SharedSlice getCrashData() const override;
 
   std::string_view getDataSourceName() const override;
@@ -72,8 +69,6 @@ class Feature final : public ArangodFeature,
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;
-
-  AsyncLockWithScheduler _asyncLock{std::string{name()}};
 };
 
 }  // namespace arangodb::async_registry

@@ -1739,7 +1739,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "hash", fields: ["a", "b"]});
+          c.ensureIndex({type: "persistent", fields: ["a", "b"]});
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1764,7 +1764,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('hash', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertFalse(state.idx.unique);
           assertFalse(state.idx.sparse);
           assertEqual(['a', 'b'], state.idx.fields);
@@ -1780,7 +1780,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "hash", fields: ["a", "b"], sparse: true});
+          c.ensureIndex({type: "persistent", fields: ["a", "b"], sparse: true});
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1805,7 +1805,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('hash', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertFalse(state.idx.unique);
           assertTrue(state.idx.sparse);
           assertEqual(['a', 'b'], state.idx.fields);
@@ -1821,7 +1821,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "hash", fields: ["a"], unique: true});
+          c.ensureIndex({type: "persistent", fields: ["a"], unique: true});
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -1846,7 +1846,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('hash', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertTrue(state.idx.unique);
           assertFalse(state.idx.sparse);
           assertEqual(['a'], state.idx.fields);
@@ -1862,7 +1862,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "hash", fields: ["a"], unique: true, sparse: true});
+          c.ensureIndex({type: "persistent", fields: ["a"], unique: true, sparse: true});
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -1887,7 +1887,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('hash', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertTrue(state.idx.unique);
           assertTrue(state.idx.sparse);
           assertEqual(['a'], state.idx.fields);
@@ -1903,7 +1903,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "skiplist", fields: ["a", "b"]});
+          c.ensureIndex({type: "persistent", fields: ["a", "b"]});
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1928,7 +1928,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('skiplist', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertFalse(state.idx.unique);
           assertFalse(state.idx.sparse);
           assertEqual(['a', 'b'], state.idx.fields);
@@ -1944,7 +1944,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "skiplist", fields: ["a", "b"], sparse: true});
+          c.ensureIndex({type: "persistent", fields: ["a", "b"], sparse: true});
 
           let docs = [];
           for (let i = 0; i < 1000; ++i) {
@@ -1969,7 +1969,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('skiplist', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertFalse(state.idx.unique);
           assertTrue(state.idx.sparse);
           assertEqual(['a', 'b'], state.idx.fields);
@@ -1985,7 +1985,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "skiplist", fields: ["a"], unique: true});
+          c.ensureIndex({type: "persistent", fields: ["a"], unique: true});
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -2010,7 +2010,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('skiplist', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertTrue(state.idx.unique);
           assertFalse(state.idx.sparse);
           assertEqual(['a'], state.idx.fields);
@@ -2026,7 +2026,7 @@ function BaseTestConfig() {
       compare(
         function(state) {
           let c = db._create(cn);
-          c.ensureIndex({type: "skiplist", fields: ["a"], unique: true, sparse: true});
+          c.ensureIndex({type: "persistent", fields: ["a"], unique: true, sparse: true});
 
           for (let i = 0; i < 1000; ++i) {
             try {
@@ -2051,7 +2051,7 @@ function BaseTestConfig() {
 
           var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
-          assertEqual('skiplist', state.idx.type);
+          assertEqual('persistent', state.idx.type);
           assertTrue(state.idx.unique);
           assertTrue(state.idx.sparse);
           assertEqual(['a'], state.idx.fields);

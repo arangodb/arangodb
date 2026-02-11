@@ -37,6 +37,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
+const AsciiTable = require('ascii-table');
 
 /* Functions: */
 const {
@@ -296,6 +297,37 @@ class instance {
     this.JWT = JWT;
   }
 
+  dumpConnectionTable(force) {
+    if (this.options.extremeVerbosity || force === true) {
+      let currentHandle = arango.getConnectionHandle();
+      const tableColumnHeaders = [
+        "selected", "connected", "handle", "endpoint", "localport", "username", "password", "JWT"
+      ];
+      let resultTable = new AsciiTable("");
+      resultTable.setHeading(tableColumnHeaders);
+      let table = arango.getConnectionHandleTable();
+      try {
+        Object.keys(table).forEach(handle => {
+          let active = table[handle]['active'] || handle === currentHandle;
+          let connected = table[handle]['connected'];
+          resultTable.addRow([
+            (active)? "*": "",
+            (connected)? "*": "",
+            handle,
+            table[handle]['endpoint'],
+            table[handle]['localPort'],
+            table[handle]['username'],
+            table[handle]['password'],
+            table[handle]['jwToken']
+          ]);
+        });
+      } catch (ex) {
+        print(ex);
+      }
+      print(CYAN + resultTable.toString() + RESET);
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -358,7 +390,6 @@ class instance {
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');
       this.args['server.statistics'] = false;
-      this.args['foxx.queues'] = false;
     }
 
     if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
@@ -465,8 +496,7 @@ class instance {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'COORDINATOR',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
-        'foxx.force-update-on-startup': true
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
@@ -760,6 +790,7 @@ class instance {
                                  true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           } else {
             print(`${Date()} ${this.name} reconnecting ${this.url}`);
@@ -769,6 +800,7 @@ class instance {
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           }
           return;
@@ -801,25 +833,37 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle === arango.getConnectionHandle()) {
-        return true;
+      if (this.connectionHandle === arango.getConnectionHandle()){
+        if (this.endpoint === arango.getEndpoint()) {
+          return true;
+        } else {
+          print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
-      try {
-        return arango.connectHandle(this.connectionHandle);
-      } catch (ex) {
-        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
-        this.connectionHandle = undefined;
+      if (this.connectionHandle !== undefined) {
+        try {
+          this.dumpConnectionTable();
+          return arango.connectHandle(this.connectionHandle);
+        } catch (ex) {
+          print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
     }
     if (this.JWT) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     }
   }

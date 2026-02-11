@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>

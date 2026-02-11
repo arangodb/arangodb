@@ -308,7 +308,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         if (snapshotId.has_value()) {
           if (snapshotId != snapshotRes->snapshotId) {
-            auto err = fmt::format("Expected snapshot id {} but got {}",
+            auto err = std::format("Expected snapshot id {} but got {}",
                                    *snapshotId, snapshotRes->snapshotId);
             TRI_ASSERT(snapshotId == snapshotRes->snapshotId) << err;
             return SnapshotTransferResult{

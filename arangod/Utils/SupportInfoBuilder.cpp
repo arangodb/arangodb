@@ -69,10 +69,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std::literals;
+using application_features::ApplicationServer;
 
 void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                          VPackSlice infoSlice,
-                                         ArangodServer& server) {
+                                         ApplicationServer& server) {
   DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
 
   std::vector<std::string> databases = methods::Databases::list(server, "");
@@ -215,8 +216,8 @@ void SupportInfoBuilder::normalizeKeyForTelemetrics(std::string& key) {
 
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                                           std::string const& dbName,
-                                          ArangodServer& server, bool isLocal,
-                                          bool isTelemetricsReq) {
+                                          ApplicationServer& server,
+                                          bool isLocal, bool isTelemetricsReq) {
   bool isSingleServer = ServerState::instance()->isSingleServer();
   auto const serverId = ServerIdFeature::getId().id();
   // used for all types of responses
@@ -433,7 +434,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 }
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
-                                       ArangodServer& server,
+                                       ApplicationServer& server,
                                        bool isTelemetricsReq) {
   result.openObject();
 
@@ -571,7 +572,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
 }
 
 void SupportInfoBuilder::buildDbServerDataStoredInfo(
-    velocypack::Builder& result, ArangodServer& server) {
+    velocypack::Builder& result, ApplicationServer& server) {
   DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
   std::vector<std::string> databases = methods::Databases::list(server, "");
 
@@ -669,9 +670,9 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
             static constexpr std::array<std::string_view, 14> idxTypes = {
-                "edge",       "geo",      "hash",   "fulltext", "inverted",
-                "persistent", "skiplist", "ttl",    "mdi",      "mdi-prefixed",
-                "iresearch",  "primary",  "vector", "unknown"};
+                "edge",       "geo",     "fulltext", "inverted",
+                "persistent", "ttl",     "mdi",      "mdi-prefixed",
+                "iresearch",  "primary", "vector",   "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }

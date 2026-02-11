@@ -576,7 +576,7 @@ function BaseTestConfig () {
 
     testSecondaryIndexConflictsDocuments: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
 
       connectToFollower();
       db._flushCache();
@@ -672,7 +672,7 @@ function BaseTestConfig () {
         }
       }
 
-      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
 
       connectToFollower();
       replication.syncCollection(cn, {
@@ -702,9 +702,9 @@ function BaseTestConfig () {
     
     testUniqueConstraints: function () {
       let c = db._create(cn);
-      c.ensureIndex({type: "hash", unique: true, fields: ["x"]});
-      c.ensureIndex({type: "hash", unique: true, fields: ["y"]});
-      c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["x"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["y"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["z"]});
 
       let docs = [];
       for (let i = 0; i < docCount; ++i) {
@@ -811,9 +811,9 @@ function BaseTestConfig () {
     
     testManyUniqueConstraints: function () {
       let c = db._create(cn);
-      c.ensureIndex({type: "hash", unique: true, fields: ["x"]});
-      c.ensureIndex({type: "hash", unique: true, fields: ["y"]});
-      c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["x"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["y"]});
+      c.ensureIndex({type: "persistent", unique: true, fields: ["z"]});
 
       let docs = [];
       for (let i = 0; i < docCount; ++i) {

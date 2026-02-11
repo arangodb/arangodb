@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -46,6 +47,7 @@
 #include "VocBase/voc-types.h"
 #include "RestServer/VectorIndexFeature.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -56,7 +58,8 @@ namespace {
 struct DefaultIndexFactory : public IndexTypeFactory {
   Index::IndexType const _type;
 
-  explicit DefaultIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
+                               Index::IndexType type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -66,7 +69,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(ArangodServer& server)
+  explicit EdgeIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_EDGE_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -106,7 +109,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  explicit FulltextIndexFactory(ArangodServer& server)
+  explicit FulltextIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -135,7 +138,7 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  explicit GeoIndexFactory(ArangodServer& server)
+  explicit GeoIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -164,7 +167,7 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  explicit Geo1IndexFactory(ArangodServer& server)
+  explicit Geo1IndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -194,7 +197,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  explicit Geo2IndexFactory(ArangodServer& server)
+  explicit Geo2IndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
@@ -225,7 +228,8 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
 template<typename F, Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
-  explicit SecondaryIndexFactory(ArangodServer& server)
+  explicit SecondaryIndexFactory(
+      application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -257,8 +261,60 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+// Deprecated hash index factory - rejects creation but supports existing
+// indexes
+template<typename F, Index::IndexType type>
+struct DeprecatedSecondaryIndexFactory : public DefaultIndexFactory {
+  std::string_view const _deprecatedName;
+  std::string_view const _replacement;
+
+  explicit DeprecatedSecondaryIndexFactory(
+      application_features::ApplicationServer& server,
+      std::string_view deprecatedName, std::string_view replacement)
+      : DefaultIndexFactory(server, type),
+        _deprecatedName(deprecatedName),
+        _replacement(replacement) {}
+
+  std::shared_ptr<Index> instantiate(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<F>(id, collection, definition);
+  }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    if (isCreation) {
+      // deprecated index types cannot be created anymore
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat(_deprecatedName,
+                       " index type is deprecated and cannot be created "
+                       "anymore. Please use '",
+                       _replacement, "' index type instead."));
+    }
+
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(type)));
+
+    if (!ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+    bool est = basics::VelocyPackHelper::getBooleanValue(
+        definition, StaticStrings::IndexEstimates, true);
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(est));
+
+    return IndexFactory::enhanceJsonIndexGeneric(definition, normalized,
+                                                 isCreation);
+  }
+};
+
 struct MdiIndexFactory : public DefaultIndexFactory {
-  explicit MdiIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit MdiIndexFactory(application_features::ApplicationServer& server,
+                           Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -302,7 +358,8 @@ struct MdiIndexFactory : public DefaultIndexFactory {
 };
 
 struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
-  explicit MdiPrefixedIndexFactory(ArangodServer& server)
+  explicit MdiPrefixedIndexFactory(
+      application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -344,7 +401,8 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
 };
 
 struct VectorIndexFactory : public DefaultIndexFactory {
-  explicit VectorIndexFactory(ArangodServer& server, Index::IndexType type)
+  explicit VectorIndexFactory(application_features::ApplicationServer& server,
+                              Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
@@ -384,7 +442,8 @@ struct VectorIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  TtlIndexFactory(ArangodServer& server, Index::IndexType type)
+  TtlIndexFactory(application_features::ApplicationServer& server,
+                  Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(
@@ -414,7 +473,7 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(ArangodServer& server)
+  explicit PrimaryIndexFactory(application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -449,22 +508,23 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
+RocksDBIndexFactory::RocksDBIndexFactory(
+    application_features::ApplicationServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
   static const FulltextIndexFactory fulltextIndexFactory(server);
   static const GeoIndexFactory geoIndexFactory(server);
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBHashIndex,
-                                     Index::TRI_IDX_TYPE_HASH_INDEX>
-      hashIndexFactory(server);
+  static const DeprecatedSecondaryIndexFactory<RocksDBHashIndex,
+                                               Index::TRI_IDX_TYPE_HASH_INDEX>
+      hashIndexFactory(server, "hash", "persistent");
   static const SecondaryIndexFactory<RocksDBPersistentIndex,
                                      Index::TRI_IDX_TYPE_PERSISTENT_INDEX>
       persistentIndexFactory(server);
-  static const SecondaryIndexFactory<RocksDBSkiplistIndex,
-                                     Index::TRI_IDX_TYPE_SKIPLIST_INDEX>
-      skiplistIndexFactory(server);
+  static const DeprecatedSecondaryIndexFactory<
+      RocksDBSkiplistIndex, Index::TRI_IDX_TYPE_SKIPLIST_INDEX>
+      skiplistIndexFactory(server, "skiplist", "persistent");
   static const TtlIndexFactory ttlIndexFactory(server,
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);

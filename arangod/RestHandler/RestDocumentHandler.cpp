@@ -51,9 +51,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
-                                         GeneralRequest* request,
-                                         GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
@@ -890,7 +890,7 @@ void RestDocumentHandler::handleFillIndexCachesValue(
 
   if (!options.isSynchronousReplicationFrom.empty() &&
       !_vocbase.server()
-           .template getFeature<EngineSelectorFeature>()
+           .getFeature<EngineSelectorFeature>()
            .engine()
            .autoRefillIndexCachesOnFollowers()) {
     // do not refill caches on followers if this is intentionally turned off

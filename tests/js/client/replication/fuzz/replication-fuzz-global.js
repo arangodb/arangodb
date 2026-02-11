@@ -523,7 +523,7 @@ function ReplicationSuite() {
             let name = internal.genRandomAlphaNumbers(16) + Date.now();
             let collection = pickCollection();
             collection.ensureIndex({ 
-              type: Math.random() >= 0.5 ? "hash" : "skiplist", 
+              type: "persistent", 
               fields: [ name ],
               sparse: Math.random() > 0.5 
             }); 

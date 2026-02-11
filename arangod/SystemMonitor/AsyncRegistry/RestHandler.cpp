@@ -29,8 +29,8 @@ using namespace arangodb;
 using namespace arangodb::async_registry;
 using namespace arangodb::containers;
 
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
@@ -52,10 +52,6 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
-
-  auto promises = all_undeleted_promises().index_by_parent();
-  generateResult(rest::ResponseCode::OK,
-                 arangodb::async_registry::serialize(promises).slice());
+  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
   co_return;
 }

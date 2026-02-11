@@ -32,9 +32,9 @@
 
 namespace arangodb::crash_handler {
 
-RestCrashHandler::RestCrashHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestCrashHandler::RestCrashHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 futures::Future<futures::Unit> RestCrashHandler::executeAsync() {

@@ -49,9 +49,9 @@ const functionsDocumentation = {
   'dump_maskings': 'masked dump tests',
   'dump_multiple_same': 'restore multiple DBs at once to the same installation',
   'dump_multiple_two': 'restore multiple DBs at once to a fresh installation',
-  'dump_with_crashes': 'restore and crash the client multiple times',
-  'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
-  'dump_parallel': 'use experimental parallel dump',
+  'dump_with_crashes': 'restore and crash the client multiple times - parallel version',
+  'dump_with_crashes_non_parallel': 'restore and crash the client multiple times',
+  'dump_non_parallel': 'use dump',
 };
 
 const optionsDocumentation = [
@@ -69,8 +69,8 @@ const testPaths = {
   'dump_multiple_same': [tu.pathForTesting('client/dump')],
   'dump_multiple_two': [tu.pathForTesting('client/dump')],
   'dump_with_crashes': [tu.pathForTesting('client/dump')],
-  'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
-  'dump_parallel': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes_non_parallel': [tu.pathForTesting('client/dump')],
+  'dump_non_parallel': [tu.pathForTesting('client/dump')],
 };
 
 function dump_backend_two_instances (firstRunOptions, secondRunOptions,
@@ -140,23 +140,6 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
         return helper.extractResults();
       }
     }
-
-    if (tstFiles.hasOwnProperty("foxxTest")) {
-      const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
-      if (secondRunOptions.hasOwnProperty("multipleDumps") && secondRunOptions.multipleDumps) {
-        helper.adjustRestoreToDump();
-        helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
-      }
-      if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
-          !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxAppsBundle') ||
-          !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxBundleApps') ||
-          !helper.testFoxxAppsBundle(foxxTestFile, 'UnitTestsDumpFoxxBundleApps')) {
-        helper.destructor(true);
-        return helper.extractResults();
-      }
-    }
   } catch (ex) {
     print("Caught exception during testrun: " + ex + ex.stack);
     helper.destructor(false);
@@ -183,8 +166,7 @@ function dump (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
@@ -206,8 +188,7 @@ function dumpMixedClusterSingle (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-mixed' + singleStrings.cluster + '.js',
     dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
@@ -233,8 +214,7 @@ function dumpMixedSingleCluster (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-mixed' + clusterStrings.cluster + '.js',
     dumpTearDown: 'dump-teardown-mixed' + singleStrings.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
@@ -342,7 +322,7 @@ function dumpWithCrashesNonParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_non_parallel', tstFiles, function(){}, []);
 }
 
 function dumpAuthentication (options) {
@@ -371,8 +351,7 @@ function dumpAuthentication (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
-    dumpTearDown: 'dump-teardown.js',
-    foxxTest: 'check-foxx.js'
+    dumpTearDown: 'dump-teardown.js'
   };
 
   let opts = Object.assign({}, options, tu.testServerAuthInfo, {
@@ -435,8 +414,7 @@ function dumpEncrypted (options) {
     dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    foxxTest: 'check-foxx.js'
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js'
   };
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
@@ -457,11 +435,10 @@ function dumpNonParallel (options) {
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    dumpCheckGraph: 'check-graph.js',
-    foxxTest: 'check-foxx.js'
+    dumpCheckGraph: 'check-graph.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_non_parallel', tstFiles, function(){}, []);
 }
 
 function dumpMaskings (options) {
