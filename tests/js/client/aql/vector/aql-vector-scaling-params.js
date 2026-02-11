@@ -115,6 +115,7 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === "vector_nprobe");
             assertTrue(idx !== undefined);
+            assertEqual(5, idx.params.nLists, "nLists should be fixed at 5");
             assertEqual(0.5, idx.params.defaultNProbe.factor);
             assertEqual("sqrt", idx.params.defaultNProbe.function);
             collection.dropIndex("vector_nprobe");
@@ -134,8 +135,17 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === "vector_both");
             assertTrue(idx !== undefined);
-            assertEqual("sqrt", idx.params.nLists.function);
-            assertEqual("sqrt", idx.params.defaultNProbe.function);
+            assertEqual(1, idx.params.nLists.factor, "nLists factor should be 1");
+            assertEqual("sqrt", idx.params.nLists.function, "nLists function should be sqrt");
+            assertEqual(0.1, idx.params.defaultNProbe.factor, "defaultNProbe factor should be 0.1");
+            assertEqual("sqrt", idx.params.defaultNProbe.function, "defaultNProbe function should be sqrt");
+
+            // Query should work with both scaling params
+            const results = db._query(
+                `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) LIMIT 5 RETURN d`,
+                { qp: randomPoint }
+            ).toArray();
+            assertEqual(5, results.length);
             collection.dropIndex("vector_both");
         },
 
@@ -183,6 +193,8 @@ function VectorIndexScalingTestSuite() {
             });
             const idx = collection.getIndexes().find(i => i.name === "vector_factory_scaling");
             assertTrue(idx !== undefined);
+            assertEqual(1, idx.params.nLists.factor, "nLists factor should be 1");
+            assertEqual("sqrt", idx.params.nLists.function, "nLists function should be sqrt");
             assertEqual("IVF{nLists},Flat", idx.params.factory);
             collection.dropIndex("vector_factory_scaling");
         },
