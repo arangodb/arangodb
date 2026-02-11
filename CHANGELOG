@@ -1,5 +1,16 @@
 4.0
 ---
+* Remove fulltext indexes. Fulltext indexes are no longer supported and have
+  been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
+  will be automatically dropped during upgrade. The following functionality
+  has been removed:
+  - Fulltext index creation via `ensureFulltextIndex()` and `ensureIndex({type: "fulltext", ...})`
+  - The `FULLTEXT()` AQL function
+  - The `collection.fulltext()` JavaScript method
+  - The `PUT /_api/simple/fulltext` REST API endpoint
+  - The `lookupFulltextIndex()` method
+  Users should migrate to inverted indexes for full-text search functionality.
+
 * Remove arangodb/foxx related code.
 
 * Remove PUT method in /_api/cursor/<cursor-id>.
@@ -12,17 +23,6 @@
 
 * arangorestore now automatically converts deprecated `hash` and `skiplist` index
   types to `persistent` when restoring dumps from older versions.
-
-* Remove fulltext indexes. Fulltext indexes are no longer supported and have
-  been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
-  will be automatically dropped during upgrade. The following functionality
-  has been removed:
-  - Fulltext index creation via `ensureFulltextIndex()` and `ensureIndex({type: "fulltext", ...})`
-  - The `FULLTEXT()` AQL function
-  - The `collection.fulltext()` JavaScript method
-  - The `PUT /_api/simple/fulltext` REST API endpoint
-  - The `lookupFulltextIndex()` method
-  Users should migrate to inverted indexes for full-text search functionality.
 
 * Remove support for creating deprecated index types. The following index types
   can no longer be created but existing indexes are still supported for upgrades:
@@ -50,6 +50,20 @@
 
 devel
 -----
+
+* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.16.
+
+* Upgraded OpenSSL to 3.5.5.
+
+* FE-954: make view validation on UI less strict.
+
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
+* FE-937: fix distribution tab getting stuck on loading.
 
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
   option on collections with computed values.

@@ -568,10 +568,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread<ArangodServer> {
+class StatisticsThread final : public ServerThread {
  public:
   explicit StatisticsThread(Server& server)
-      : ServerThread<ArangodServer>(server, "Statistics") {}
+      : ServerThread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -621,8 +621,9 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(Server& server)
-    : ArangodFeature{server, *this},
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _descriptions(server),
       _requestStatisticsMemoryUsage{
           server.getFeature<metrics::MetricsFeature>().add(

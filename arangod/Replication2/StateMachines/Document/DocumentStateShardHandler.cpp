@@ -61,7 +61,7 @@ auto DocumentStateShardHandler::modifyShard(
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
-            fmt::format("Error while modifying shard: {}", col.errorMessage())};
+            std::format("Error while modifying shard: {}", col.errorMessage())};
   }
 
   auto res = _maintenance->executeModifyCollection(
@@ -76,7 +76,7 @@ auto DocumentStateShardHandler::dropShard(ShardID const& shard) noexcept
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
-            fmt::format("Error while dropping shard: {}", col.errorMessage())};
+            std::format("Error while dropping shard: {}", col.errorMessage())};
   }
 
   auto res = _maintenance->executeDropCollection(std::move(*col));
@@ -90,7 +90,7 @@ auto DocumentStateShardHandler::dropAllShards() noexcept -> Result {
       basics::catchToResultT([&]() { return getAvailableShards(); });
   if (collections.fail()) {
     return {collections.errorNumber(),
-            fmt::format("Replicated log {} failed to get available shards: {}",
+            std::format("Replicated log {} failed to get available shards: {}",
                         _gid, collections.errorMessage())};
   }
 
@@ -108,7 +108,7 @@ auto DocumentStateShardHandler::dropAllShards() noexcept -> Result {
   if (res.fail()) {
     res.reset(
         res.errorNumber(),
-        fmt::format("Replicated log {} failed to drop shards: {} (error: {})",
+        std::format("Replicated log {} failed to drop shards: {} (error: {})",
                     _gid, err.str(), res.errorMessage()));
   }
   return res;
@@ -130,7 +130,7 @@ auto DocumentStateShardHandler::ensureIndex(
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
-            fmt::format("Error while ensuring index: {}", col.errorMessage())};
+            std::format("Error while ensuring index: {}", col.errorMessage())};
   }
 
   auto res = _maintenance->executeCreateIndex(std::move(col).get(), properties,
@@ -141,7 +141,7 @@ auto DocumentStateShardHandler::ensureIndex(
   if (res.fail()) {
     res.reset(
         res.errorNumber(),
-        fmt::format(
+        std::format(
             "Error: {}! Replicated log {} failed to ensure index on shard {}! "
             "Index: {}",
             res.errorMessage(), _gid, shard, properties.toJson()));
@@ -154,7 +154,7 @@ auto DocumentStateShardHandler::dropIndex(ShardID shard,
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
-            fmt::format("Error while dropping index: {}", col.errorMessage())};
+            std::format("Error while dropping index: {}", col.errorMessage())};
   }
 
   auto res = _maintenance->executeDropIndex(std::move(col).get(), indexId);
@@ -162,7 +162,7 @@ auto DocumentStateShardHandler::dropIndex(ShardID shard,
 
   if (res.fail()) {
     res = Result{res.errorNumber(),
-                 fmt::format("Error: {}! Replicated log {} failed to drop "
+                 std::format("Error: {}! Replicated log {} failed to drop "
                              "index on shard {}! Index: {}",
                              res.errorMessage(), _gid, shard, indexId.id())};
   }
@@ -174,7 +174,7 @@ auto DocumentStateShardHandler::lookupShard(ShardID const& shard) noexcept
   auto col = _vocbase.lookupCollection(std::string{shard});
   if (col == nullptr) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  fmt::format("Replicated log {} failed to lookup shard {}",
+                  std::format("Replicated log {} failed to lookup shard {}",
                               _gid, shard)};
   }
   return col;
@@ -187,7 +187,7 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
   auto col = lookupShard(shard);
   if (col.fail()) {
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  fmt::format("Failed to lookup shard {} in database {} while "
+                  std::format("Failed to lookup shard {} in database {} while "
                               "locking it for operation {}",
                               shard, _vocbase.name(), origin.description)};
   }
@@ -203,7 +203,7 @@ auto DocumentStateShardHandler::lockShard(ShardID const& shard,
   Result res = trx->begin();
   if (res.fail()) {
     return Result{res.errorNumber(),
-                  fmt::format("Failed to lock shard {} in database "
+                  std::format("Failed to lock shard {} in database "
                               "{} for operation {}. Error: {}",
                               shard, _vocbase.name(), origin.description,
                               res.errorMessage())};

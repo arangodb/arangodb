@@ -37,8 +37,8 @@ namespace aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature::AqlFunctionFeature(Server& server)
-    : ArangodFeature{server, *this} {
+AqlFunctionFeature::AqlFunctionFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<AqlFeature>();

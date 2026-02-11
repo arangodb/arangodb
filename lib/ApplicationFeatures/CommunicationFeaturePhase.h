@@ -34,8 +34,8 @@ class CommunicationFeaturePhase : public ApplicationFeaturePhase {
     return "CommunicationPhase";
   }
 
-  template<typename Server>
-  explicit CommunicationFeaturePhase(Server& server)
+  explicit CommunicationFeaturePhase(
+      application_features::ApplicationServer& server)
       : ApplicationFeaturePhase(server, typeid(CommunicationFeaturePhase),
                                 name()) {
     setOptional(false);

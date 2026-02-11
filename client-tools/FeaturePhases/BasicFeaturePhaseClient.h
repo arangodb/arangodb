@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Ssl/SslFeature.h"
@@ -41,8 +42,8 @@ class BasicFeaturePhaseClient : public ApplicationFeaturePhase {
     return "BasicsPhaseClient";
   }
 
-  template<typename Server>
-  explicit BasicFeaturePhaseClient(Server& server)
+  explicit BasicFeaturePhaseClient(
+      application_features::ApplicationServer& server)
       : ApplicationFeaturePhase(server, *this) {
     setOptional(false);
     if (server.template hasFeature<GreetingsFeaturePhase>()) {

@@ -585,8 +585,8 @@ Collections::create(         // create collection
       collections, ",",
       [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
 
-  activity_registry::Activity activity("createCollections",
-                                       {{"collectionNames", collectionNames}});
+  activities::Activity activity("createCollections",
+                                {{"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
@@ -857,7 +857,7 @@ void Collections::applySystemCollectionProperties(
   bool isMock = false;
   if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
     StorageEngine& engine =
-        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
     isMock = (engine.typeName() == "Mock");
   } else {

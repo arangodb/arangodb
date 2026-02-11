@@ -21,11 +21,12 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 Registry registry;
+thread_local ActivityId Registry::_currentlyExecutingActivity;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
@@ -40,4 +41,4 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
   return *registry_guard._registry;
 }
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

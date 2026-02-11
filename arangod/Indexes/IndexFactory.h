@@ -54,7 +54,7 @@ std::string_view extractName(velocypack::Slice slice) noexcept;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
-  explicit IndexTypeFactory(ArangodServer& server);
+  explicit IndexTypeFactory(application_features::ApplicationServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
@@ -82,12 +82,12 @@ struct IndexTypeFactory {
   }
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 };
 
 class IndexFactory {
  public:
-  IndexFactory(ArangodServer&);
+  IndexFactory(application_features::ApplicationServer&);
   virtual ~IndexFactory() = default;
 
   /// @brief returns if 'factory' for 'type' was added successfully
@@ -223,7 +223,7 @@ class IndexFactory {
                                bool isClusterConstructor);
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
 };

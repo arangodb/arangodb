@@ -25,7 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeatureOptions.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/operating-system.h"
+#include "Logger/LoggerFeature.h"
 
 #include <string>
 
@@ -44,8 +46,8 @@ class BumpFileDescriptorsFeature
     return "BumpFileDescriptors";
   }
 
-  template<typename Server>
-  explicit BumpFileDescriptorsFeature(Server& server, std::string optionName)
+  explicit BumpFileDescriptorsFeature(
+      application_features::ApplicationServer& server, std::string optionName)
       : application_features::ApplicationFeature{server, *this},
         _optionName(std::move(optionName)) {
     setOptional(false);

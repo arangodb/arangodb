@@ -102,6 +102,10 @@ if(USE_JEMALLOC)
   target_link_libraries(arangodbtests-iresearch jemalloc)
 endif()
 
+if (USE_JEMALLOC)
+  target_link_libraries(arangodbtests-iresearch jemalloc)
+endif ()
+
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
   ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}

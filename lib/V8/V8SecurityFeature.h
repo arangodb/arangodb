@@ -29,6 +29,8 @@
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeatureOptions.h"
 
 namespace v8 {
@@ -53,8 +55,7 @@ class V8SecurityFeature final
  public:
   static constexpr std::string_view name() noexcept { return "V8Security"; }
 
-  template<typename Server>
-  explicit V8SecurityFeature(Server& server)
+  explicit V8SecurityFeature(application_features::ApplicationServer& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
     startsAfter<TempFeature>();

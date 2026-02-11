@@ -29,7 +29,8 @@
 
 namespace arangodb::application_features {
 
-FinalFeaturePhase::FinalFeaturePhase(ArangodServer& server)
+FinalFeaturePhase::FinalFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
   startsAfter<AgencyFeaturePhase>();

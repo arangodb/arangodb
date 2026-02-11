@@ -22,10 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
-#include <chrono>
 #include <limits>
 #include <memory>
-#include <thread>
 
 #include "SchedulerFeature.h"
 
@@ -85,9 +83,10 @@ struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-SchedulerFeature::SchedulerFeature(Server& server,
-                                   metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
+SchedulerFeature::SchedulerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : ApplicationFeature{server, *this},
       _scheduler(nullptr),
       _metricsFeature(metrics),
       _asioHandler(std::make_unique<AsioHandler>()) {

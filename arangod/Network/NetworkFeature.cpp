@@ -64,12 +64,12 @@ namespace {
 // pushing retry operations to the scheduler needs to use the correct
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
-class RetryThread : public ServerThread<ArangodServer> {
+class RetryThread : public Thread {
   static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
-  explicit RetryThread(ArangodServer& server)
-      : ServerThread<ArangodServer>(server, "NetworkRetry"),
+  explicit RetryThread()
+      : Thread("NetworkRetry"),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {
@@ -311,9 +311,10 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
-NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               metrics::MetricsFeature& metrics,
                                network::ConnectionPool::Config config)
-    : ArangodFeature{server, *this},
+    : application_features::ApplicationFeature{server, *this},
       _options(config),
       _prepared(false),
       _forwardedRequests(
@@ -542,7 +543,7 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
-  _retryThread = std::make_unique<RetryThread>(server());
+  _retryThread = std::make_unique<RetryThread>();
   if (!_retryThread->start()) {
     LOG_TOPIC("9b1a2", FATAL, arangodb::Logger::COMMUNICATION)
         << "unable to start network request retry thread";

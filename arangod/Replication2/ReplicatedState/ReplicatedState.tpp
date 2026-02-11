@@ -118,7 +118,7 @@ auto ReplicatedState<S>::buildCore(
     if (!coreParameter.has_value()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Cannot find core parameter for replicated state with "
+          std::format("Cannot find core parameter for replicated state with "
                       "ID {}, created in database {}, for {} state",
                       gid.id, gid.database, S::NAME));
     }

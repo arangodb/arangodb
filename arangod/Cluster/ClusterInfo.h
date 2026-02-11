@@ -267,7 +267,8 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+  explicit ClusterInfo(application_features::ApplicationServer& server,
+                       AgencyCache& agencyCache,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode,
                        metrics::MetricsFeature& metrics);
@@ -1013,7 +1014,7 @@ class ClusterInfo final {
     return timeout;
   }
 
-  ArangodServer& server() const;
+  application_features::ApplicationServer& server() const;
 
   AgencyCallbackRegistry& agencyCallbackRegistry() const;
 
@@ -1069,7 +1070,7 @@ class ClusterInfo final {
   void triggerBackgroundGetIds();
 
   /// underlying application server
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   ClusterFeature& _clusterFeature;
 
   //////////////////////////////////////////////////////////////////////////////

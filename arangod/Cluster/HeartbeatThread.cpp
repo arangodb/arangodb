@@ -204,12 +204,12 @@ DECLARE_COUNTER(arangodb_heartbeat_failures_total,
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale,
                   "Time required to send heartbeat [ms]");
 
-HeartbeatThread::HeartbeatThread(Server& server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry,
-                                 std::chrono::microseconds interval,
-                                 uint64_t maxFailsBeforeWarning,
-                                 double noHeartbeatDelayBeforeShutdown)
-    : arangodb::ServerThread<Server>(server, "Heartbeat"),
+HeartbeatThread::HeartbeatThread(
+    application_features::ApplicationServer& server,
+    AgencyCallbackRegistry* agencyCallbackRegistry,
+    std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
+    double noHeartbeatDelayBeforeShutdown)
+    : arangodb::ServerThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),

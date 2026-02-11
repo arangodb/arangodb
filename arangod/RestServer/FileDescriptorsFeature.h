@@ -24,9 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/operating-system.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "RestServer/FileDescriptorsFeatureOptions.h"
 
 #include <chrono>
@@ -35,13 +33,14 @@
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
-class FileDescriptorsFeature : public ArangodFeature {
+class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "FileDescriptors";
   }
 
-  explicit FileDescriptorsFeature(Server& server);
+  explicit FileDescriptorsFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

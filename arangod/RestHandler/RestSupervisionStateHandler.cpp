@@ -42,7 +42,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestSupervisionStateHandler::RestSupervisionStateHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {

@@ -386,9 +386,9 @@ static Result restoreDataParser(std::string_view currentLine,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1891,7 +1891,7 @@ Result RestReplicationHandler::processRestoreIndexes(
 
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << fmt::format(
+        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << std::format(
             "Discarding the vector index: `{}` since the feature is not "
             "enabled.",
             name);
@@ -2035,7 +2035,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
         !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
       auto const indexName = arangodb::basics::VelocyPackHelper::getStringValue(
           parameters, "name", "");
-      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << fmt::format(
+      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << std::format(
           "Discarding the vector index: `{}` since the feature is not enabled.",
           indexName);
       continue;

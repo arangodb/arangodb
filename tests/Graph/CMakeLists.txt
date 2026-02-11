@@ -22,8 +22,7 @@ target_link_libraries(arango_tests_graph
         PRIVATE
         arango_lightweight
         arango_tests_basics
-        velocypack
-        fmt)
+        velocypack)
 
 add_executable(arangodbtests_graph
         EXCLUDE_FROM_ALL)

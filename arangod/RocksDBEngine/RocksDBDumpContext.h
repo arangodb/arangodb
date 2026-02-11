@@ -32,7 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
 #include "Inspection/Types.h"
@@ -124,8 +124,7 @@ class RocksDBDumpContext {
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
                      DatabaseFeature& databaseFeature, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
-                     std::string database, bool useVPack,
-                     activity_registry::ActivityId parentActivity);
+                     std::string database, bool useVPack);
 
   ~RocksDBDumpContext();
 
@@ -164,6 +163,9 @@ class RocksDBDumpContext {
   // determine whether the given document should be included in the
   // dump
   bool applyFilter(velocypack::Slice const& documentSlice) const;
+
+  // get the activityId of this dump context
+  activities::ActivityId activityId() const noexcept;
 
   // Contains the data for a batch
   struct Batch {
@@ -351,7 +353,7 @@ class RocksDBDumpContext {
 
   std::atomic_bool _stopped{false};
 
-  activity_registry::Activity _activity;
+  activities::Activity _activity;
 };
 
 }  // namespace arangodb

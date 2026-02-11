@@ -23,12 +23,15 @@
 
 #include "v8-globals.h"
 
-#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "V8/V8SecurityFeature.h"
 
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
@@ -212,6 +215,22 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(
 
   return std::pair<SharedPtrPersistent&, bool>(entry.first->second,
                                                entry.second);
+}
+
+TRI_v8_global_t::TRI_v8_global_t(
+    arangodb::application_features::ApplicationServer& server,
+    v8::Isolate* isolate, size_t id)
+    : TRI_v8_global_t{
+          server,
+          server.getFeature<arangodb::V8SecurityFeature>(),
+          server.getFeature<arangodb::HttpEndpointProvider>(),
+          server.getFeature<
+              arangodb::application_features::CommunicationFeaturePhase>(),
+#ifdef USE_ENTERPRISE
+          server.getFeature<arangodb::EncryptionFeature>(),
+#endif
+          isolate,
+          id} {
 }
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;

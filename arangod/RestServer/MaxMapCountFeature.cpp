@@ -34,8 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MaxMapCountFeature::MaxMapCountFeature(Server& server)
-    : ArangodFeature{server, *this} {
+MaxMapCountFeature::MaxMapCountFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
