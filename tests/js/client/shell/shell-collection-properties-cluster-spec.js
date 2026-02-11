@@ -282,8 +282,8 @@ describe('Replication factor constraints', function() {
     */
 });
 
-describe('useRBAC property', function() {
-    const cnTest = "UnitTestUseRBAC";
+describe('SupportsRBAC property', function() {
+    const cnTest = "UnitTestSupportsRBAC";
 
     beforeEach(function() {
         db._useDatabase("_system");
@@ -296,48 +296,48 @@ describe('useRBAC property', function() {
         } catch (e) {}
     });
 
-    it('should have useRBAC=true by default', function() {
+    it('should have supportsRBAC=true by default', function() {
         db._create(cnTest);
         const coll = db._collection(cnTest);
         const props = coll.properties();
-        expect(props.useRBAC).to.equal(true);
+        expect(props.supportsRBAC).to.equal(true);
     });
 
-    it('should allow creating collection with useRBAC=false', function() {
-        db._create(cnTest, {useRBAC: false});
+    it('should allow creating collection with supportsRBAC=false', function() {
+        db._create(cnTest, {supportsRBAC: false});
         const coll = db._collection(cnTest);
         const props = coll.properties();
-        expect(props.useRBAC).to.equal(false);
+        expect(props.supportsRBAC).to.equal(false);
     });
 
-    it('should allow creating collection with useRBAC=true', function() {
-        db._create(cnTest, {useRBAC: true});
+    it('should allow creating collection with supportsRBAC=true', function() {
+        db._create(cnTest, {supportsRBAC: true});
         const coll = db._collection(cnTest);
         const props = coll.properties();
-        expect(props.useRBAC).to.equal(true);
+        expect(props.supportsRBAC).to.equal(true);
     });
 
-    it('should allow updating useRBAC to false', function() {
-        db._create(cnTest, {useRBAC: true});
+    it('should allow updating supportsRBAC to false', function() {
+        db._create(cnTest, {supportsRBAC: true});
         const coll = db._collection(cnTest);
 
-        let props = coll.properties({useRBAC: false});
-        expect(props.useRBAC).to.equal(false);
+        let props = coll.properties({supportsRBAC: false});
+        expect(props.supportsRBAC).to.equal(false);
 
         // Verify it persists
         props = coll.properties();
-        expect(props.useRBAC).to.equal(false);
+        expect(props.supportsRBAC).to.equal(false);
     });
 
-    it('should allow updating useRBAC to true', function() {
-        db._create(cnTest, {useRBAC: false});
+    it('should allow updating supportsRBAC to true', function() {
+        db._create(cnTest, {supportsRBAC: false});
         const coll = db._collection(cnTest);
 
-        let props = coll.properties({useRBAC: true});
-        expect(props.useRBAC).to.equal(true);
+        let props = coll.properties({supportsRBAC: true});
+        expect(props.supportsRBAC).to.equal(true);
 
         // Verify it persists
         props = coll.properties();
-        expect(props.useRBAC).to.equal(true);
+        expect(props.supportsRBAC).to.equal(true);
     });
 });

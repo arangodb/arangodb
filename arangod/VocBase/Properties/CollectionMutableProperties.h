@@ -48,7 +48,7 @@ struct CollectionMutableProperties {
   std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
 
   bool cacheEnabled = false;
-  bool useRBAC = true;
+  bool supportsRBAC = true;
 
   bool operator==(CollectionMutableProperties const&) const;
 };
@@ -66,7 +66,8 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
           .fallback(f.keep()),
-      f.field(StaticStrings::UseRBAC, props.useRBAC).fallback(f.keep()));
+      f.field(StaticStrings::SupportsRBAC, props.supportsRBAC)
+          .fallback(f.keep()));
 }
 
 }  // namespace arangodb

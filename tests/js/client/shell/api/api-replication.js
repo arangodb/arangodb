@@ -140,7 +140,7 @@ const getDefaultProps = () => {
       "syncByRevision": true,
       "schema": null,
       "isDisjoint": false,
-      "useRBAC": true
+      "supportsRBAC": true
     };
   } else {
     return {
@@ -156,7 +156,7 @@ const getDefaultProps = () => {
       "computedValues": null,
       "syncByRevision": true,
       "schema": null,
-      "useRBAC": true
+      "supportsRBAC": true
     };
   }
 };

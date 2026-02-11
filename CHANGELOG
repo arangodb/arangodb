@@ -14,8 +14,8 @@ devel
   `arangodb_metadata_number_not_replicated_shards`, and
   `arangodb_metadata_shard_followers_out_of_sync_number`.
 
-* Add flag `useRBAC` to collections. This is in preparation for RBAC support.
-  Collections which have `useRBAC` set to `false` will not be subject to RBAC
+* Add flag `supportsRBAC` to collections. This is in preparation for RBAC support.
+  Collections which have `supportsRBAC` set to `false` will not be subject to RBAC
   policies and will always follow the old permission model.
 
 * Added functionality for the ES256 signature scheme for JWT tokens.
