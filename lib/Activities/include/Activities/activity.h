@@ -107,7 +107,11 @@ struct ActivityInRegistry {
 };
 
 template<typename F>
-concept MetadataAccessor = requires(F f, Metadata&& m) {
+concept MetadataAccessor = requires(F f, Metadata& m) {
+  {f(m)};
+};
+template<typename F>
+concept MetadataConstAccessor = requires(F f, Metadata const& m) {
   {f(m)};
 };
 
@@ -132,7 +136,12 @@ struct Activity {
 
   template<typename F>
   requires MetadataAccessor<F>
-  auto withMetadata(F&& f) noexcept {
+  auto updateMetadata(F&& f) {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
+  template<typename F>
+  requires MetadataConstAccessor<F>
+  auto getMetadata(F&& f) const {
     return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
   }
 
