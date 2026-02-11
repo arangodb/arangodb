@@ -394,9 +394,7 @@ TYPED_TEST(AsyncTest, coroutine_is_deleted_earlier_than_registry_entry) {
     EXPECT_EQ(promise_count_in_registry(), 2);
   }
   {
-    {
-      std::ignore = coro();
-    }
+    { std::ignore = coro(); }
 
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
     EXPECT_EQ(promise_count_in_registry(), 3);
