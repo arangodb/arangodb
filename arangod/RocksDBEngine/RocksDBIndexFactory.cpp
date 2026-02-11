@@ -498,7 +498,8 @@ class DeprecatedFulltextIndex final : public RocksDBVPackIndex {
 /// and dropping of legacy fulltext indexes during upgrade from pre-4.0.
 /// Fulltext indexes are no longer supported since ArangoDB 4.0.
 struct DeprecatedFulltextIndexFactory : public DefaultIndexFactory {
-  explicit DeprecatedFulltextIndexFactory(ArangodServer& server)
+  explicit DeprecatedFulltextIndexFactory(
+      application_features::ApplicationServer& server)
       : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<Index> instantiate(
