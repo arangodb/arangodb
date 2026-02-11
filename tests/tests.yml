@@ -10,10 +10,6 @@
       - BackupAuthSysTests
       - BackupNoAuthSysTests
       - arangosh
-- single_server_only_part2:
-    options:
-      type: single
-    suites:
       - permissions
       - paths_server
       - version
@@ -260,12 +256,16 @@
     args:
       dumpAgencyOnError: true
 
-- deadlock_audit_secrets:
+- arangobench_deadlock_audit:
     options:
       priority: 1000
       type: mixed
     suites:
       - deadlock:
+          args:
+            dumpAgencyOnError: true
+            cluster: true
+      - arangobench:
           args:
             dumpAgencyOnError: true
             cluster: true
