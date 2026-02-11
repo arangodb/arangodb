@@ -24,10 +24,14 @@
 
 #include "GeneralRequest.h"
 
+#include <cctype>
+#include <limits>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Logger/LogMacros.h"
 #include "Rest/RequestContext.h"
 
@@ -64,6 +68,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
+      _apiVersion(defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -383,6 +388,94 @@ velocypack::Options const* GeneralRequest::validationOptions(
     return &basics::VelocyPackHelper::strictRequestValidationOptions;
   }
   return &basics::VelocyPackHelper::looseRequestValidationOptions;
+}
+
+Result GeneralRequest::detectAndStripApiVersion() {
+  constexpr std::string_view arangoPrefix = "/_arango/";
+  constexpr std::string_view experimentalSuffix = "experimental";
+
+  // Check if path starts with /_arango/
+  if (!_requestPath.starts_with(arangoPrefix)) {
+    // No /_arango/ prefix, this is fine
+    return Result();
+  }
+
+  // Get the part after /_arango/
+  std::string_view remainder =
+      std::string_view(_requestPath).substr(arangoPrefix.size());
+
+  // Check for empty remainder (path is exactly "/_arango/" or "/_arango")
+  if (remainder.empty()) {
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid API version prefix: expected '/_arango/vX' or "
+                  "'/_arango/experimental'");
+  }
+
+  // Check for /_arango/experimental
+  if (remainder.starts_with(experimentalSuffix)) {
+    size_t suffixEnd = experimentalSuffix.size();
+    // Make sure it's followed by / or is end of string
+    if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
+      _apiVersion = std::numeric_limits<uint32_t>::max();
+
+      // Strip the prefix, keep the rest of the path
+      if (suffixEnd < remainder.size()) {
+        // There's more path after /experimental
+        setRequestPath(std::string(remainder.substr(suffixEnd)));
+      } else {
+        // Path is exactly /_arango/experimental
+        setRequestPath("/");
+      }
+      return Result();
+    }
+  }
+
+  // Check for /_arango/vX where X is a decimal number
+  if (remainder.starts_with('v')) {
+    std::string_view afterV = remainder.substr(1);
+
+    // Parse decimal number
+    size_t numEnd = 0;
+    while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
+      ++numEnd;
+    }
+
+    if (numEnd > 0) {
+      // We found at least one digit
+      // Make sure it's followed by / or is end of string
+      if (numEnd == afterV.size() || afterV[numEnd] == '/') {
+        // Parse the version number
+        std::string versionStr(afterV.substr(0, numEnd));
+        try {
+          uint64_t version = std::stoull(versionStr);
+          if (version <= std::numeric_limits<uint32_t>::max()) {
+            _apiVersion = static_cast<uint32_t>(version);
+
+            // Strip the prefix, keep the rest of the path
+            if (numEnd < afterV.size()) {
+              // There's more path after /vX
+              setRequestPath(std::string(afterV.substr(numEnd)));
+            } else {
+              // Path is exactly /_arango/vX
+              setRequestPath("/");
+            }
+            return Result();
+          } else {
+            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "invalid API version: version number too large");
+          }
+        } catch (...) {
+          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "invalid API version: failed to parse version number");
+        }
+      }
+    }
+  }
+
+  // If we get here, we have /_arango/ but it's not followed by a valid format
+  return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                "invalid API version prefix: expected '/_arango/vX' where X "
+                "is a decimal number, or '/_arango/experimental'");
 }
 
 }  // namespace arangodb

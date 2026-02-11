@@ -38,6 +38,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#include "Basics/Result.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
@@ -59,6 +60,11 @@ class GeneralRequest {
   explicit GeneralRequest(ConnectionInfo const& connectionInfo, uint64_t mid);
 
   virtual ~GeneralRequest() = default;
+
+  // Default API version (configurable)
+  // If you change this, you must also update the unit test in
+  // tests/Rest/GeneralRequestTest.cpp !
+  static constexpr uint32_t defaultApiVersion = 0;
 
   // translate an RequestType enum value into an "HTTP method string"
   static std::string_view translateMethod(RequestType);
@@ -203,6 +209,14 @@ class GeneralRequest {
     _authenticationMethod = method;
   }
 
+  /// @brief get the requested API version
+  uint32_t apiVersion() const noexcept { return _apiVersion; }
+
+  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix from
+  /// the request path
+  /// @return Result::OK if successful, error if /_arango prefix is invalid
+  Result detectAndStripApiVersion();
+
  protected:
   static RequestType findRequestType(char const*, size_t const);
   void setValue(std::string key, std::string value);
@@ -246,6 +260,9 @@ class GeneralRequest {
   size_t _memoryUsage;
 
   rest::AuthenticationMethod _authenticationMethod;
+
+  // API version requested (0 by default, max for experimental)
+  uint32_t _apiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..
