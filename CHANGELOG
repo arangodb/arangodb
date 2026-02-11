@@ -14,6 +14,9 @@ devel
   `arangodb_metadata_number_not_replicated_shards`, and
   `arangodb_metadata_shard_followers_out_of_sync_number`.
 
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
 * Added functionality for the ES256 signature scheme for JWT tokens.
   Moved JWT handling code from fuerte to core libs and removed code
   duplication.
