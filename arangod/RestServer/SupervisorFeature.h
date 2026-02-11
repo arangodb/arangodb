@@ -25,9 +25,9 @@
 
 #include <memory>
 
-#include "Basics/threads.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/threads-posix.h"
 #include "RestServer/SupervisorFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -37,11 +37,12 @@ namespace options {
 class ProgramOptions;
 }
 
-class SupervisorFeature final : public ArangodFeature {
+class SupervisorFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Supervisor"; }
 
-  explicit SupervisorFeature(Server& server);
+  explicit SupervisorFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

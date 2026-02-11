@@ -429,7 +429,7 @@ class IResearchAnalyzerFeatureTest
     arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(
-        false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        false, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.addFeature<arangodb::AqlFeature>(true);
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 

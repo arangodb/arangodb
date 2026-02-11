@@ -53,8 +53,9 @@ void queueShutdownChecker(std::mutex& mutex,
 
 namespace arangodb {
 
-SoftShutdownFeature::SoftShutdownFeature(Server& server)
-    : ArangodFeature{server, *this} {
+SoftShutdownFeature::SoftShutdownFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
@@ -78,7 +79,9 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(ArangodServer& server)
+using application_features::ApplicationServer;
+
+SoftShutdownTracker::SoftShutdownTracker(ApplicationServer& server)
     : _server(server), _softShutdownOngoing(false) {
   _checkFunc = [this](bool /*cancelled*/) {
     if (_server.isStopping()) {

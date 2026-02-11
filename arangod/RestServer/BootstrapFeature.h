@@ -25,15 +25,24 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/BootstrapFeatureOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
+class ClusterUpgradeFeature;
+class SystemDatabaseFeature;
+class DatabaseFeature;
+class EngineSelectorFeature;
+class ClusterFeature;
 
-class BootstrapFeature final : public ArangodFeature {
+class BootstrapFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Bootstrap"; }
 
-  explicit BootstrapFeature(Server& server);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            EngineSelectorFeature& engineSelectorFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -42,11 +51,23 @@ class BootstrapFeature final : public ArangodFeature {
 
   bool isReady() const;
 
+  ClusterFeature& clusterFeature();
+  EngineSelectorFeature& engineSelectorFeature();
+  DatabaseFeature& databaseFeature();
+  SystemDatabaseFeature* systemDatabaseFeature();
+  ClusterUpgradeFeature* clusterUpgradeFeature();
+
  private:
   void killRunningQueries();
   void waitForHealthEntry();
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
+
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  DatabaseFeature& _databaseFeature;
+  SystemDatabaseFeature* _systemDatabaseFeature{};
+  ClusterUpgradeFeature* _clusterUpgradeFeature{};
 
   BootstrapFeatureOptions _options;
   bool _isReady;

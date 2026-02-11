@@ -24,14 +24,12 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
 #include <unordered_set>
@@ -60,7 +58,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   static std::string const Revisions;

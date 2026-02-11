@@ -38,7 +38,7 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchRocksDBInvertedIndexFactory::IResearchRocksDBInvertedIndexFactory(
-    ArangodServer& server)
+    application_features::ApplicationServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBInvertedIndexFactory::equal(

@@ -24,8 +24,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -44,7 +42,7 @@ enum BACKUP_ENGINE { ROCKSDB, CLUSTER };
 
 class HotBackup {
  public:
-  explicit HotBackup(ArangodServer& server);
+  explicit HotBackup(application_features::ApplicationServer& server);
   virtual ~HotBackup() = default;
 
   /**
@@ -75,7 +73,7 @@ class HotBackup {
                                       VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 #endif
   BACKUP_ENGINE _engine;
 

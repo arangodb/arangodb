@@ -121,7 +121,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "SystemMonitor/ActivityRegistry/RestHandler.h"
+#include "SystemMonitor/Activities/RestHandler.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
@@ -152,9 +152,10 @@ DECLARE_COUNTER(arangodb_http2_connections_total,
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
-GeneralServerFeature::GeneralServerFeature(Server& server,
-                                           metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : ApplicationFeature{server, *this},
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
@@ -787,9 +788,8 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
-      "/_admin/activity-registry",
-      RestHandlerCreator<
-          arangodb::activity_registry::RestHandler>::createNoData);
+      "/_admin/activities",
+      RestHandlerCreator<arangodb::activities::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

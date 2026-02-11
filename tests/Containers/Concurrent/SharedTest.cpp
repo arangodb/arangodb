@@ -23,6 +23,7 @@
 #include "Containers/Concurrent/shared.h"
 #include "Inspection/Format.h"
 
+#include <format>
 #include <gtest/gtest.h>
 #include <variant>
 
@@ -46,7 +47,7 @@ TEST(SharedTest, shared_reference_extends_lifetime) {
 
 TEST(SharedTest, inspection_of_shared_reference_gives_shared_object) {
   auto ref = SharedPtr<int>{4};
-  EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(ref)), "4");
+  EXPECT_EQ(std::format("{}", arangodb::inspection::json(ref)), "4");
 }
 
 struct MyStruct {
@@ -112,18 +113,18 @@ TEST(SharedTest, inspection_of_variant) {
   {
     auto ptr = new MyStruct{"abcde"};
     auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
-    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)),
-              fmt::format("{}", arangodb::inspection::json(*ptr)));
+    EXPECT_EQ(std::format("{}", arangodb::inspection::json(variant)),
+              std::format("{}", arangodb::inspection::json(*ptr)));
   }
   {
     auto ref = SharedPtr<MyStruct>{"abcde"};
     auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
-    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)),
-              fmt::format("{}", arangodb::inspection::json(ref)));
+    EXPECT_EQ(std::format("{}", arangodb::inspection::json(variant)),
+              std::format("{}", arangodb::inspection::json(ref)));
   }
   {
     MyStruct* ptr = nullptr;
     auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
-    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)), "null");
+    EXPECT_EQ(std::format("{}", arangodb::inspection::json(variant)), "null");
   }
 }

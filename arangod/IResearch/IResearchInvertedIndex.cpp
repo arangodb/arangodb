@@ -793,10 +793,10 @@ class IResearchInvertedIndexMergeIterator final
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and
 //  definitions are stored.
 //  - For user -> database-name qualified names. No definitions are stored.
-void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
-                                          TRI_vocbase_t const* defaultVocbase,
-                                          velocypack::Builder& builder,
-                                          bool writeAnalyzerDefinition) const {
+void IResearchInvertedIndex::toVelocyPack(
+    application_features::ApplicationServer& server,
+    TRI_vocbase_t const* defaultVocbase, velocypack::Builder& builder,
+    bool writeAnalyzerDefinition) const {
   if (!_meta.json(server, builder, writeAnalyzerDefinition, defaultVocbase)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,

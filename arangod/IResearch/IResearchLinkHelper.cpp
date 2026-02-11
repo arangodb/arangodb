@@ -622,8 +622,8 @@ VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
   return builder;
 }
 
-bool IResearchLinkHelper::equal(ArangodServer& server, velocypack::Slice lhs,
-                                velocypack::Slice rhs,
+bool IResearchLinkHelper::equal(application_features::ApplicationServer& server,
+                                velocypack::Slice lhs, velocypack::Slice rhs,
                                 std::string_view dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
