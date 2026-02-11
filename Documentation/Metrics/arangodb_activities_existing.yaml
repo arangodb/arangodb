@@ -1,4 +1,4 @@
-name: arangodb_activities_existing_activities
+name: arangodb_activities_existing
 introducedIn: "3.12.8"
 help: |
   Number of currently existing activities.

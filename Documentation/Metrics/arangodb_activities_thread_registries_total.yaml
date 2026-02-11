@@ -1,7 +1,7 @@
 name: arangodb_activities_thread_registries_total
 introducedIn: "3.12.8"
 help: |
-  Total number of threads that started activities since database creation.
+  Total number of threads that started activities since database process start.
 unit: number
 type: counter
 category: Statistics
@@ -11,4 +11,4 @@ exposedBy:
   - coordinator
   - agent
 description: |
-  Total number of threads that started activities since database creation. It can be higher than the total number of threads if a thread was restarted at some point.
+  Total number of threads that started activities since database process start. It can be higher than the total number of threads if a thread was restarted at some point.
