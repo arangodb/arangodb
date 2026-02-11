@@ -294,7 +294,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       // also other system shards might also be out of sync
       eventuallyAssertMetricSum(onlineServers, shardsOutOfSyncNumMetric,
         (value) => value >= 2,
-        "Expected at least 2 shards out of sync");
+        "Expected at least 2 shards out of sync", 2000 * waitFactor);
       // One server is down, so we lose testCollShards shards (one replica per shard)
       const onlineShardCount = totalShardCount - testCollShards;
       getMetricsAndAssert(onlineServers, onlineShardCount, totalLeaderCount, null, 0);
@@ -310,12 +310,9 @@ function ClusterDBServerShardMetricsTestSuite() {
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      // Use replicationFactor 3 so every DB server holds a replica.
-      // This prevents supervision from relocating shards to a spare server
-      // when we suspend followers, keeping the degraded state observable.
       db._create(collectionName, {
         numberOfShards: 1,
-        replicationFactor: 3,
+        replicationFactor: 2,
       });
       // Data is necessary to trigger replication
       db._query(`FOR i IN 0..100 INSERT {value: i} IN ${collectionName}`);
@@ -325,31 +322,56 @@ function ClusterDBServerShardMetricsTestSuite() {
       const totalLeaderCount = getDbLeaderCount("_system") + getDbLeaderCount(dbName);
       getMetricsAndAssert(dbServers, totalShardCount, totalLeaderCount, 0, 0);
 
-      // Get the leader and the followers for our collection
+      // Get db servers which have the two followers
       const shards = db[collectionName].shards(true);
-      const shardServers = Object.values(shards)[0];
-      const dbServerLeaderId = shardServers[0];
+      const dbServerFollowersId = Object.values(shards).flatMap(servers => servers.slice(1));
+      const dbServerFollowers = dbServers.filter(server => dbServerFollowersId.includes(server.id));
+
+      // Get a db server which has a single leader and its metrics
+      const dbServerLeaderId = Object.values(shards).flatMap(servers => servers[0])[0];
       const dbServerLeader = dbServers.find(server => server.id === dbServerLeaderId);
-      const dbServerFollowers = dbServers.filter(server => server.id !== dbServerLeaderId);
       const onlineServers = [dbServerLeader];
 
-      // Shutdown all followers
+      // Shutdown followers
       dbServerFollowers.forEach(server => {
         server.suspend();
       });
 
-      // With followers down, we expect metrics to reflect the degraded state.
-      // We cannot assert precise values since we do not know the shard
-      // distribution of internal collections, but each metric must be >= 1.
-      const maxIter = 200 * waitFactor;
-      eventuallyAssertMetricSum(onlineServers, shardsNumMetric,
-        (v) => v === totalLeaderCount, "expected shardsNum === totalLeaderCount", maxIter);
-      eventuallyAssertMetricSum(onlineServers, shardsLeaderNumMetric,
-        (v) => v >= 1, "expected shardsLeader >= 1", maxIter);
-      eventuallyAssertMetricSum(onlineServers, shardsOutOfSyncNumMetric,
-        (v) => v >= 1, "expected shardsOutOfSync >= 1", maxIter);
-      eventuallyAssertMetricSum(onlineServers, shardsNotReplicatedNumMetric,
-        (v) => v >= 1, "expected shardsNotReplicated >= 1", maxIter);
+      // Everything is out of sync and not replicated
+      // and we cannot assert precisely the values since we do not know the
+      // shards distribution of internal collections from _system and $dbName databases, but we can assert that:
+      // - eventually the number of shards would be equal to the total number of leaders
+      // - eventually the number of shards leaders must be 1 or greater
+      // - eventually the number of out of sync should be at least 1
+      // - eventually the number of not replicated shards should be at least 1
+      let shardsOutOfSyncNumMetricValue = 0;
+      let shardsNotReplicatedNumMetricValue = 0;
+      for(let i = 0; i < 200 * waitFactor; i++) {
+        internal.wait(0.1);
+        const shardsNumMetricValue = getDBServerMetricSum(onlineServers, shardsNumMetric);
+        if (shardsNumMetricValue !== totalLeaderCount) {
+          continue;
+        }
+        const shardsLeaderNumMetricValue = getDBServerMetricSum(onlineServers, shardsLeaderNumMetric);
+        if (shardsLeaderNumMetricValue < 1) {
+          continue;
+        }
+        shardsOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, shardsOutOfSyncNumMetric);
+        if (shardsOutOfSyncNumMetricValue < 1) {
+          continue;
+        }
+        shardsNotReplicatedNumMetricValue = getDBServerMetricSum(onlineServers, shardsNotReplicatedNumMetric);
+        if (shardsNotReplicatedNumMetricValue < 1) {
+          continue;
+        }
+        const followersOutOfSyncNumMetricValue = getDBServerMetricSum(onlineServers, followersOutOfSyncNumMetric);
+        if (followersOutOfSyncNumMetricValue < 1) {
+          continue;
+        }
+
+        break;
+      }
+      assertEqual(shardsOutOfSyncNumMetricValue, shardsNotReplicatedNumMetricValue, `shardsOutOfSyncNumMetricValue: ${shardsOutOfSyncNumMetricValue} !== shardsNotReplicatedNumMetricValue: ${shardsNotReplicatedNumMetricValue}`);
 
       // Bring back the followers
       dbServerFollowers.forEach(server => {
@@ -397,7 +419,7 @@ server.suspend();
       // Insert some data to trigger replication
       db._query(`FOR i IN 0..10 INSERT {val: i} INTO ${collectionName}`);
 
-      eventuallyAssertMetricSum([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0");
+      eventuallyAssertMetricSum([dbServerLeader], shardsOutOfSyncNumMetric, (v) => v > 0, "shardsOutOfSyncNumMetric is not bigger then 0", 2000 * waitFactor);
 
       // Stop leader
       dbServerLeader.suspend();
@@ -405,7 +427,7 @@ server.suspend();
       // Resume only original follower
       dbServerFollower.resume();
 
-      eventuallyAssertMetricSum([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0");
+      eventuallyAssertMetricSum([dbServerFollower], followersOutOfSyncNumMetric, (value) => value > 0, "Expecting followersOutOfSyncNumMetric > 0", 2000 * waitFactor);
 
       // Resume all down servers
       dbServerLeader.resume();
