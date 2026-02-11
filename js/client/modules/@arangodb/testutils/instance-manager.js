@@ -121,6 +121,11 @@ class instanceManager {
       this.JWT = options.jwtSecret;
       addArgs['server.jwt-secret'] = this.JWT;
     }
+    if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(addArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
+    }
     if (this.options.encryptionAtRest) {
       if (this.options.hasOwnProperty('jwtFiles')) {
         this.JWT = fs.read(this.options.jwtFiles[0]);
@@ -931,10 +936,15 @@ class instanceManager {
         }
       });
     }
+    if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+    }
 
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpAuthOptions, this.httpJWTAuthOptions, this.JWT);
+      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
     });
 
     let success = true;
@@ -1634,12 +1644,13 @@ class instanceManager {
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
+      const ct = require('@arangodb/testutils/client-tools');
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
-      let args = pu.makeArgs.arangosh(this.options);
+      let args = ct.makeArgs.arangosh(this.options);
       args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
@@ -1673,6 +1684,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     const search = 'MemTotal:';
     let pos = f.search(search);
     memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+    print(`defaulting memory to ${memory}`);
   }
   tu.CopyIntoObject(optionsDefaults, {
     'memory': memory,
