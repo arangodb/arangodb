@@ -152,7 +152,7 @@ function CommunicationSuite() {
       let tests = [
         ['simple-1', 'db._query("FOR doc IN _users RETURN doc");'],
         ['simple-2', 'db._query("FOR doc IN _users RETURN doc");'],
-        ['insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });'],
+        ['insert-remove', 'let trx = db._createTransaction({ collections: { write: "UnitTestsTemp" } }); let tc = trx.collection("UnitTestsTemp"); let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); tc.insert(docs); tc.remove(docs); trx.commit();'],
         ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");'],
       ];
 
@@ -272,49 +272,6 @@ function GenericAqlSetupPathSuite(type) {
   const exclusiveQuery = wrapQueryToJS(selectExclusiveQuery());
   const writeQuery = wrapQueryToJS(selectWriteQuery());
   const readQuery = wrapQueryToJS(selectReadQuery());
-  const jsWriteAction = `
-    function() {
-      const db = require("@arangodb").db;
-      const col = db.${twoShardColName};
-      for (let i = 0; i < ${docsPerWrite}; ++i) {
-        col.save({b: [{c: [{d: i.toString()}]}]});
-        console.log("I: " + i);
-      }
-    }
-  `;
-  const jsReadAction = `
-  function() {
-    const db = require("@arangodb").db;
-    const col = db.${twoShardColName};
-    let result = col.toArray();
-    return result;
-  }
-`;
-  const jsExclusive = `
-    db._executeTransaction({
-      collections: {
-        exclusive: "${twoShardColName}"
-      },
-      action: ${jsWriteAction}
-    });
-  `;
-  const jsWrite = `
-    db._executeTransaction({
-      collections: {
-        write: "${twoShardColName}"
-      },
-      action: ${jsWriteAction}
-    });
-  `;
-  const jsRead = `
-    db._executeTransaction({
-      collections: {
-       read: "${twoShardColName}"
-      },
-      action: ${jsReadAction}
-    });
-  `;
-
   // Note: A different test checks that the API works this way
   const apiExclusive = `
     let trx;
@@ -454,11 +411,6 @@ function GenericAqlSetupPathSuite(type) {
     ["APIRead", apiRead, false, NON_EXCLUSIVE, true],
     ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC, true]
   ];
-  if (!IM.options.skipServerJS) {
-    testCases.push(["JSExclusive", jsExclusive, true, USE_EXCLUSIVE, nCov]);
-    testCases.push(["JSWrite", jsWrite, true, NON_EXCLUSIVE, nCov]);
-    testCases.push(["JSRead", jsRead, false, NON_EXCLUSIVE, nCov]);
-  }
   const addTestCase = (suite, first, second) => {
     const [fName, fCode, fWrites, fExclusive] = first;
     const [sName, sCode, sWrites, sExclusive] = second;
@@ -648,8 +600,8 @@ function GenericAqlSetupPathSuite(type) {
     }
   };
 
-  // We only need to permuate JS and API based tests for a
-  // single tye, as they do not distinguish the different types
+  // We only need to permutate API based tests for a
+  // single type, as they do not distinguish the different types
   const lastTypeTestCase = type === "Plain" ? testCases.length : 3;
 
   // Permutate all testCases.

@@ -36,29 +36,17 @@ if (runSetup === true) {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  try {
-    db._executeTransaction({
-      collections: {
-        write: 'UnitTestsRecovery'
-      },
-      action: function () {
-        var db = require('@arangodb').db;
-
-        var i, c = db._collection('UnitTestsRecovery');
-        for (i = 0; i < 100; ++i) {
-          c.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, {
-            waitForSync: i === 99
-          });
-        }
-
-        global.instanceManager.debugSetFailAt('TransactionWriteAbortMarker');
-
-        throw 'rollback!';
-      }
+  var trx = db._createTransaction({
+    collections: { write: 'UnitTestsRecovery' }
+  });
+  var tc = trx.collection('UnitTestsRecovery');
+  for (var i = 0; i < 100; ++i) {
+    tc.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, {
+      waitForSync: i === 99
     });
-  } catch (err) {
-    // suppress error we're intentionally creating
   }
+  global.instanceManager.debugSetFailAt('TransactionWriteAbortMarker');
+  trx.abort();
   return 0;
 }
 

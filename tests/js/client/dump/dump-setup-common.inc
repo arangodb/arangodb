@@ -298,66 +298,47 @@ function createStrings() {
 }
 
 function createTransactional() {
-  if (!IM.options.skipServerJS) {
-    db._useDatabase("UnitTestsDumpSrc");
-    let c = db._create("UnitTestsDumpTransactionCommit");
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionCommit"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionCommit;
-        let docs = [];
-        for (var i = 0; i < 1000; ++i) {
-          docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-        }
-        c.save(docs);
-      }
-    });
+  db._useDatabase("UnitTestsDumpSrc");
 
-
-    c = db._create("UnitTestsDumpTransactionUpdate");
-    let docs = [];
-    for (let i = 0; i < 1000; ++i) {
-      docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-    }
-    c.save(docs);
-
-    db._executeTransaction({
-      collections: {
-        write: "UnitTestsDumpTransactionUpdate"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionUpdate;
-        for (var i = 0; i < 1000; i += 2) {
-          c.update("test" + i, {value3: i});
-        }
-      }
-    });
-
-
-    c = db._create("UnitTestsDumpTransactionAbort");
-    c.save({_key: "foo"});
-    try {
-      db._executeTransaction({
-        collections: {
-          write: "UnitTestsDumpTransactionAbort"
-        },
-        action: function (params) {
-          var c = require("internal").db.UnitTestsDumpTransactionAbort;
-          c.remove("foo");
-          let docs = [];
-          for (let i = 0; i < 1000; ++i) {
-            docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
-          }
-          c.save(docs);
-          throw "rollback!";
-        }
-      });
-      throw "unexpected!";
-    } catch (err) {
-    }
+  // Commit transaction
+  let c = db._create("UnitTestsDumpTransactionCommit");
+  let trx = db._createTransaction({ collections: { write: "UnitTestsDumpTransactionCommit" } });
+  let tc = trx.collection("UnitTestsDumpTransactionCommit");
+  let docs = [];
+  for (var i = 0; i < 1000; ++i) {
+    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
   }
+  tc.save(docs);
+  trx.commit();
+
+  // Update transaction
+  c = db._create("UnitTestsDumpTransactionUpdate");
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+  }
+  c.save(docs);
+
+  trx = db._createTransaction({ collections: { write: "UnitTestsDumpTransactionUpdate" } });
+  tc = trx.collection("UnitTestsDumpTransactionUpdate");
+  for (var i = 0; i < 1000; i += 2) {
+    tc.update("test" + i, {value3: i});
+  }
+  trx.commit();
+
+  // Abort transaction
+  c = db._create("UnitTestsDumpTransactionAbort");
+  c.save({_key: "foo"});
+
+  trx = db._createTransaction({ collections: { write: "UnitTestsDumpTransactionAbort" } });
+  tc = trx.collection("UnitTestsDumpTransactionAbort");
+  tc.remove("foo");
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+  }
+  tc.save(docs);
+  trx.abort();
 }
 
 function createPersistent() {

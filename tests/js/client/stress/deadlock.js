@@ -148,10 +148,6 @@ exports.lockCycleRaw = function (opts) {
     return -0.5 + Math.random();
   };
 
-  const transactionFunction = function () {
-    return require('internal').db.c2.any();
-  };
-
   while (true) {
     ++count;
 
@@ -181,14 +177,15 @@ exports.lockCycleRaw = function (opts) {
         }
       }
 
-      const obj = {
-        collections: {
-        read, write},
-        action: transactionFunction
-      };
-
       const s = time();
-      db._executeTransaction(obj);
+      const trx = db._createTransaction({ collections: { read, write } });
+      try {
+        trx.collection('c2').any();
+        trx.commit();
+      } catch (innerErr) {
+        trx.abort();
+        throw innerErr;
+      }
 
       if (time() - s > slowBarrier) {
         ++slow;

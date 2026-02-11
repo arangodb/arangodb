@@ -396,23 +396,21 @@ function dumpTestSuite() {
 /// @brief test committed trx
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionCommit: function() { // todo
-      if (!IM.options.skipServerJS) {
-        if (arango.getRole() === "COORDINATOR") {
-          // Only executed on single server tests.
-          return;
-        }
-        var c = db._collection("UnitTestsDumpTransactionCommit");
+    testTransactionCommit: function() {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed on single server tests.
+        return;
+      }
+      var c = db._collection("UnitTestsDumpTransactionCommit");
 
-        assertEqual(1000, c.count());
+      assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+      for (var i = 0; i < 1000; ++i) {
+        var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          assertEqual("test" + i, doc.value3);
-        }
+        assertEqual(i, doc.value1);
+        assertEqual("this is a test", doc.value2);
+        assertEqual("test" + i, doc.value3);
       }
     },
 
@@ -421,25 +419,23 @@ function dumpTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionUpdate: function() {
-      if (!IM.options.skipServerJS) {
-        if (arango.getRole() === "COORDINATOR") {
-          // Only executed on single server tests.
-          return;
-        }
-        var c = db._collection("UnitTestsDumpTransactionUpdate");
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed on single server tests.
+        return;
+      }
+      var c = db._collection("UnitTestsDumpTransactionUpdate");
 
-        assertEqual(1000, c.count());
+      assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+      for (var i = 0; i < 1000; ++i) {
+        var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          if (i % 2 === 0) {
-            assertEqual(i, doc.value3);
-          } else {
-            assertEqual("test" + i, doc.value3);
-          }
+        assertEqual(i, doc.value1);
+        assertEqual("this is a test", doc.value2);
+        if (i % 2 === 0) {
+          assertEqual(i, doc.value3);
+        } else {
+          assertEqual("test" + i, doc.value3);
         }
       }
     },
@@ -448,18 +444,16 @@ function dumpTestSuite() {
 /// @brief test aborted trx
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionAbort: function() { // todo
-      if (!IM.options.skipServerJS) {
-        if (arango.getRole() === "COORDINATOR") {
-          // Only executed on single server tests.
-          return;
-        }
-        var c = db._collection("UnitTestsDumpTransactionAbort");
-
-        assertEqual(1, c.count());
-
-        assertTrue(c.exists("foo"));
+    testTransactionAbort: function() {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed on single server tests.
+        return;
       }
+      var c = db._collection("UnitTestsDumpTransactionAbort");
+
+      assertEqual(1, c.count());
+
+      assertTrue(c.exists("foo"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

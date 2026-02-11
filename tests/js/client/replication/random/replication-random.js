@@ -369,13 +369,8 @@ function ReplicationSuite() {
 
         function(state) {
           for (let i = 0; i < 10000; ++i) {
-            if (SYS_IS_V8_BUILD) {
-              let trx = createTransaction(state);
-              db._executeTransaction(trx);
-            } else {
-              print('.');
-              executeTransaction();
-            }
+            print('.');
+            executeTransaction();
           }
 
           state.checksum = collectionChecksum(cn);

@@ -69,18 +69,6 @@ function testSuite() {
       }
     },
     
-    testRunJavaScriptTransaction : function() {
-      try {
-        db._executeTransaction({
-          collections: {},
-          action: function() { return 1; }
-        });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_NOT_IMPLEMENTED.code, err.errorNum);
-      }
-    },
-    
     testRegisterJavaScriptTask : function() {
       try {
         require('@arangodb/tasks').register({

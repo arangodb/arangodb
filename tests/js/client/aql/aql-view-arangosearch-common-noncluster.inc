@@ -237,66 +237,45 @@ return function (args) {
     },
 
     testTransactionRegistration : function () {
-      if (SYS_IS_V8_BUILD) {
-        // ensure data is synced
-        db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
+      // ensure data is synced
+      db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
 
-        // implicit read lock
-        var result = db._executeTransaction({
-          collections: { },
-          action: function () {
-            var db = require("@arangodb").db;
-            return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
-          }
-        });
-        assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
-        assertEqual(1, result.length);
+      // implicit read lock
+      var trx = db._createTransaction({ collections: {} });
+      var result = trx.query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
+      assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
+      assertEqual(1, result.length);
+      trx.commit();
 
-        // read lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            read: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            return {length: c.toArray().length, value: c.document('foo').xyz};
-          }
-        });
-        assertEqual(1, result.value);
-        assertEqual(28, result.length);
+      // read lock
+      trx = db._createTransaction({
+        collections: { allowImplicit: false, read: ["UnitTestsView"] }
+      });
+      var c = trx.collection("UnitTestsCollection");
+      result = { length: c.toArray().length, value: c.document('foo').xyz };
+      assertEqual(1, result.value);
+      assertEqual(28, result.length);
+      trx.commit();
 
-        // write lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            write: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "bar", xyz: 2 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(29, result);
+      // write lock
+      trx = db._createTransaction({
+        collections: { allowImplicit: false, write: ["UnitTestsView"] }
+      });
+      c = trx.collection("UnitTestsCollection");
+      c.save({ _key: "bar", xyz: 2 });
+      result = c.toArray().length;
+      assertEqual(29, result);
+      trx.commit();
 
-        // exclusive lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            exclusive: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "baz", xyz: 3 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(30, result);
-      }
+      // exclusive lock
+      trx = db._createTransaction({
+        collections: { allowImplicit: false, exclusive: ["UnitTestsView"] }
+      });
+      c = trx.collection("UnitTestsCollection");
+      c.save({ _key: "baz", xyz: 3 });
+      result = c.toArray().length;
+      assertEqual(30, result);
+      trx.commit();
     },
 
     testAttributeEqualityFilter : function () {

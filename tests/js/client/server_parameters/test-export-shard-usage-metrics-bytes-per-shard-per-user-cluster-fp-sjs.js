@@ -1448,7 +1448,7 @@ function BaseTestSuite(targetUser) {
       });
     },
     
-    testHasMetricsWhenUsingJavaScriptReadTrx : function () {
+    testHasMetricsWhenUsingJavaScriptReadOps : function () {
       const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {numberOfShards: 3, replicationFactor: 1});
@@ -1460,29 +1460,20 @@ function BaseTestSuite(targetUser) {
 
         db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i)} INTO ${cn}`);
 
-        db._executeTransaction({ 
-          collections: { write: cn }, 
-          params: { cn, n }, 
-          action: (params) => {
-            let db = require("internal").db;
-            let c = db._collection(params.cn);
+        for (let i = 0; i < n; ++i) {
+          c.document("test" + i);
+        }
 
-            for (let i = 0; i < params.n; ++i) {
-              c.document("test" + i);
-            }
-          }
-        });
-
-        // Write happened before the transaction
+        // Writes from the insert query above
         assertTotalWriteMetricsAreCounted(c, 1, n * 20, n * 40, true);
-        // Read within it
+        // Reads from document lookups
         assertTotalReadMetricsAreCounted(c, n * 20, n * 40);
       } finally {
         db._drop(cn);
       } 
     },
     
-    testHasMetricsWhenUsingJavaScriptWriteTrx : function () {
+    testHasMetricsWhenUsingJavaScriptWriteOps : function () {
       [1, 2].forEach((replicationFactor) => {
         const cn = getUniqueCollectionName();
 
@@ -1492,18 +1483,9 @@ function BaseTestSuite(targetUser) {
           assertEqual(3, shards.length);
 
           const n = 50;
-          db._executeTransaction({ 
-            collections: { write: cn }, 
-            params: { cn, n }, 
-            action: (params) => {
-              let db = require("internal").db;
-              let c = db._collection(params.cn);
-
-              for (let i = 0; i < params.n; ++i) {
-                c.insert({ value: i });
-              }
-            }
-          });
+          for (let i = 0; i < n; ++i) {
+            c.insert({ value: i });
+          }
 
           assertTotalWriteMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
         } finally {

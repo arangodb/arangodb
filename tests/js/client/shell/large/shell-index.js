@@ -1460,15 +1460,9 @@ function DuplicateValuesSuite() {
         }
         collection.insert(docs);
 
-        internal.db._executeTransaction({
-          collections: {write: cn},
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: {cn}
-        });
+        // need to run compaction in the rocksdb case, as the lookups
+        // may use bloom filters afterwards but not for memtables
+        collection.compact();
 
         assertEqual(2 * bound, collection.count());
 
@@ -1510,15 +1504,9 @@ function DuplicateValuesSuite() {
           i *= 2;
         }
 
-        internal.db._executeTransaction({
-          collections: {write: cn},
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: {cn}
-        });
+        // need to run compaction in the rocksdb case, as the lookups
+        // may use bloom filters afterwards but not for memtables
+        collection.compact();
 
         i = 0;
         while (i < 100000) {
