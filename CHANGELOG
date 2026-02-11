@@ -1,5 +1,9 @@
 4.0
 ---
+
+* arangorestore now automatically converts deprecated `fulltext` indexes to
+  `inverted` indexes when restoring dumps from older versions.
+
 * Remove fulltext indexes. Fulltext indexes are no longer supported and have
   been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
   will be automatically dropped during upgrade. The following functionality
