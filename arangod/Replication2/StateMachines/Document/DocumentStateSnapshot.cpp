@@ -129,7 +129,7 @@ auto Snapshot::finish() -> Result {
                      "aborted!";
               return Result{
                   TRI_ERROR_INTERNAL,
-                  fmt::format("Snapshot {} is already aborted!", getId())};
+                  std::format("Snapshot {} is already aborted!", getId())};
             },
         },
         state);
@@ -387,7 +387,7 @@ auto Snapshot::generateBatch(state::Finished const&) -> ResultT<SnapshotBatch> {
       << "Trying to fetch data from a finished snapshot!";
   return ResultT<SnapshotBatch>::error(
       TRI_ERROR_INTERNAL,
-      fmt::format("Snapshot {} is already finished!", getId()));
+      std::format("Snapshot {} is already finished!", getId()));
 }
 
 auto Snapshot::generateBatch(state::Aborted const&) -> ResultT<SnapshotBatch> {
@@ -395,7 +395,7 @@ auto Snapshot::generateBatch(state::Aborted const&) -> ResultT<SnapshotBatch> {
       << "Trying to fetch data from an aborted snapshot!";
   return ResultT<SnapshotBatch>::error(
       TRI_ERROR_INTERNAL,
-      fmt::format("Snapshot {} is already aborted!", getId()));
+      std::format("Snapshot {} is already aborted!", getId()));
 }
 
 auto Snapshot::generateDocumentBatch(ShardID shardId,

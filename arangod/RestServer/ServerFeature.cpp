@@ -52,8 +52,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-ServerFeature::ServerFeature(Server& server, int* res)
-    : ArangodFeature{server, *this}, _result(res) {
+ServerFeature::ServerFeature(ApplicationServer& server, int* res)
+    : ApplicationFeature{server, *this}, _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();

@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -36,17 +36,29 @@
 #include <vector>
 
 namespace arangodb {
+class RocksDBEngine;
+class BootstrapFeature;
+
+class ClusterFeature;
 class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
+namespace metrics {
+class MetricsFeature;
+}
+
+class RocksDBIndexCacheRefillFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "RocksDBIndexCacheRefill";
   }
 
-  explicit RocksDBIndexCacheRefillFeature(Server& server);
+  explicit RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::MetricsFeature& metricsFeature);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -91,11 +103,16 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // the method can indirectly schedule itself.
   void scheduleIndexRefillTasks();
 
+  static metrics::Counter& addTotalFullIndexRefills(
+      metrics::MetricsFeature& metrics);
+
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
 
   DatabaseFeature& _databaseFeature;
+  ClusterFeature* _clusterFeature{};
+  metrics::MetricsFeature& _metricsFeature;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
@@ -118,4 +135,5 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   size_t _currentlyRunningIndexFillTasks;
 };
+
 }  // namespace arangodb

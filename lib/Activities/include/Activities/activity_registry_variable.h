@@ -20,34 +20,28 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Metrics.h"
+#pragma once
 
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
+#include "Containers/Concurrent/Registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 
-using namespace arangodb::activity_registry;
+namespace arangodb::activities {
 
-auto RegistryMetrics::increment_total_nodes() -> void {
-  activities_total->count();
-}
-auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_activities->fetch_add(1);
-}
-auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_activities->fetch_sub(1);
-}
-auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_add(1);
-}
-auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  ready_for_deletion_activities->fetch_sub(1);
-}
-auto RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
+/**
+   Global variable that holds all active activities.
+
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
+
+/**
+   Get thread registry of all active activities on current thread.
+
+   Creates the thread registry when called for the first time and adds it to
+   the global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::activities

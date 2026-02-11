@@ -65,7 +65,8 @@ using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(server.getFeature<EngineSelectorFeature>()
                    .engine<RocksDBEngine>()

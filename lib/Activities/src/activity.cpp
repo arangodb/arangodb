@@ -20,13 +20,13 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include <atomic>
 #include <optional>
 #include <source_location>
@@ -44,36 +44,37 @@ overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 
 auto operator<<(
     std::ostream& out,
-    arangodb::activity_registry::ActivityInRegistrySnapshot const& activity)
+    arangodb::activities::ActivityInRegistrySnapshot const& activity)
     -> std::ostream& {
   return out << inspection::json(activity);
 }
 
 auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
-  return ActivityInRegistrySnapshot{.name = name,
+  return ActivityInRegistrySnapshot{.type = type,
                                     .state = state,
                                     .id = id(),
                                     .parent = parent,
                                     .metadata = metadata};
 }
 
-Activity::Activity(std::string name, Metadata metadata)
+Activity::Activity(std::string type, Metadata metadata)
     : _node_in_registry{get_thread_registry().add([&]() {
-        return ActivityInRegistry{.name = std::move(name),
-                                  .state = State::Active,
-                                  .parent = {RootActivity{}},
-                                  .metadata = metadata};
+        return ActivityInRegistry{
+            .type = std::move(type),
+            .state = State::Active,
+            .parent = {Registry::currentlyExecutingActivity()},
+            .metadata = metadata};
       })} {}
 
-Activity::Activity(std::string name, Metadata metadata, ActivityId parent)
+Activity::Activity(std::string type, Metadata metadata, ActivityId parent)
     : _node_in_registry{get_thread_registry().add([&]() {
-        return ActivityInRegistry{.name = std::move(name),
+        return ActivityInRegistry{.type = std::move(type),
                                   .state = State::Active,
-                                  .parent = {Parent{parent}},
+                                  .parent = parent,
                                   .metadata = metadata};
       })} {}
 
@@ -83,4 +84,6 @@ Activity::~Activity() {
   }
 }
 
-auto Activity::id() -> ActivityId { return _node_in_registry->data.id(); }
+auto Activity::id() const noexcept -> ActivityId {
+  return _node_in_registry->data.id();
+}

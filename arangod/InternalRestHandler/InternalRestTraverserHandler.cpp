@@ -181,8 +181,8 @@ auto InternalRestTraverserHandler::get_engine(uint64_t engineId)
 }
 
 InternalRestTraverserHandler::InternalRestTraverserHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-    aql::QueryRegistry* engineRegistry)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, aql::QueryRegistry* engineRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);

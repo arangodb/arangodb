@@ -271,10 +271,9 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 }
 
 // create the storage engine
-template<typename Server>
 RocksDBEngine::RocksDBEngine(
-    Server& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
+    application_features::ApplicationServer& server,
+    RocksDBOptionsProvider& optionsProvider, metrics::MetricsFeature& metrics,
     DatabasePathFeature const& databasePathFeature,
     VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
@@ -381,27 +380,6 @@ RocksDBEngine::RocksDBEngine(
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-template<typename Server>
-auto RocksDBEngine::construct(
-    Server& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
-    ReplicatedLogFeature* replicatedLogFeature,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine> {
-  return std::make_unique<RocksDBEngine>(
-      server, optionsProvider, metrics, databasePathFeature, vectorIndexFeature,
-      flushFeature, dumpLimitsFeature, schedulerFeature, replicatedLogFeature,
-      rocksDbRecoveryManager, databaseFeature, rocksDbIndexCacheRefillFeature,
-      cacheManagerFeature, agencyFeature);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -4340,21 +4318,5 @@ auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
 auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
   return _flushFeature;
 }
-
-// a named constructor is necessary, because a template constructor can't be
-// explicitly instantiated.
-template auto RocksDBEngine::construct<ArangodServer>(
-    ArangodServer& server, RocksDBOptionsProvider& optionsProvider,
-    metrics::MetricsFeature& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
-    ReplicatedLogFeature* replicatedLogFeature,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature) -> std::unique_ptr<RocksDBEngine>;
 
 }  // namespace arangodb

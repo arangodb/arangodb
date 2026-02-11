@@ -21,19 +21,15 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
-#include <optional>
-#include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ActivityRegistry/activity_registry_variable.h"
-#include "Inspection/VPack.h"
 
 using namespace arangodb;
-using namespace arangodb::activity_registry;
+using namespace arangodb::activities;
 using namespace arangodb::containers;
 
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
@@ -41,7 +37,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (!ExecContext::current().isAdminUser()) {
     generateError(
         rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-        "you need admin user rights for activity-registry operations");
+        "you need admin user rights for activity registry operations");
     co_return;
   }
 
@@ -56,16 +52,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  auto lock_guard = co_await _feature.asyncLock();
-
   VPackBuilder builder;
-  builder.openArray();
-  registry.for_node([&](ActivityInRegistrySnapshot activity) {
-    if (activity.state != State::Deleted) {
-      velocypack::serialize(builder, activity);
-    }
-  });
+  builder.openObject();
+  builder.add("activities", _feature.getData().slice());
   builder.close();
+
   generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }

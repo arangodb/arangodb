@@ -26,12 +26,10 @@
 #include "Agency/Store.h"
 #include "Agency/AgencyCommon.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <map>
 #include <mutex>
 

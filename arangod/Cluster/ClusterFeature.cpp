@@ -68,8 +68,8 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(Server& server)
-    : ArangodFeature{server, *this},
+ClusterFeature::ClusterFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this},
       _metrics{server.getFeature<metrics::MetricsFeature>()},
       _agency_comm_request_time_ms(
           _metrics.add(arangodb_agencycomm_request_time_msec{})) {

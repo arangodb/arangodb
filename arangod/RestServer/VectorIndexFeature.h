@@ -24,17 +24,18 @@
 #include <memory>
 #include <string_view>
 
-#include "RestServer/arangod.h"
-#include "RestServer/VectorIndexFeatureOptions.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/VectorIndexFeatureOptions.h"
 
 namespace arangodb {
 
-class VectorIndexFeature final : public ArangodFeature {
+class VectorIndexFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }
 
-  explicit VectorIndexFeature(Server& server);
+  explicit VectorIndexFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 

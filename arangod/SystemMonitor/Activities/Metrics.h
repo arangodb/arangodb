@@ -25,7 +25,7 @@
 #include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 struct RegistryMetrics : arangodb::containers::Metrics {
   RegistryMetrics(
@@ -63,4 +63,4 @@ struct RegistryMetrics : arangodb::containers::Metrics {
       existing_thread_registries = nullptr;
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

@@ -22,16 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "SystemMonitor/ActivityRegistry/Feature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "SystemMonitor/Activities/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace arangodb::activity_registry {
+namespace arangodb::activities {
 
 /**
-   Activity-registry REST handler
+   Activities REST handler
 
    GET: Returns all currently existing (non-deleted) activities in the
-   activity-registry as a dependency forest. The forest is given as a list of
+   activity registry as a dependency forest. The forest is given as a list of
    trees. Each tree is given as a list of activities, where its hierachy number
    and position inside the list defines its location in the tree. Inside one
    tree, an activity that is created by another activity sits one
@@ -39,7 +40,8 @@ namespace arangodb::activity_registry {
  */
 class RestHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
 
  public:
   char const* name() const override final {
@@ -51,4 +53,4 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   Feature& _feature;
 };
 
-}  // namespace arangodb::activity_registry
+}  // namespace arangodb::activities

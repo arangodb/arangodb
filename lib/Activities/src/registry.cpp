@@ -20,15 +20,20 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Activities/registry.h"
+#include "Activities/activity.h"
 
-namespace arangodb {
+namespace arangodb::activities {
 
-struct FoxxFeatureOptions {
-  double queuesPollInterval = 1.0;
-  bool queuesEnabled = true;
-  bool startupWaitForSelfHeal = false;
-  bool foxxEnabled = true;
-};
+Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
+    ActivityId activity) noexcept {
+  _oldExecutingActivity = Registry::currentlyExecutingActivity();
+  Registry::setCurrentlyExecutingActivity(activity);
+}
 
-}  // namespace arangodb
+Registry::ScopedCurrentlyExecutingActivity::
+    ~ScopedCurrentlyExecutingActivity() {
+  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
+}
+
+}  // namespace arangodb::activities

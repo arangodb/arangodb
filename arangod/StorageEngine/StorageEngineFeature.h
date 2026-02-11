@@ -26,18 +26,18 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
 // a stub class that other features can use to check whether a storage
 // engine (no matter what type) is ready
-class StorageEngineFeature final : public ArangodFeature {
+class StorageEngineFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "StorageEngine"; }
 
-  explicit StorageEngineFeature(Server& server)
-      : ArangodFeature(server, typeid(StorageEngineFeature), name()) {
+  explicit StorageEngineFeature(application_features::ApplicationServer& server)
+      : ApplicationFeature(server, typeid(StorageEngineFeature), name()) {
     setOptional(false);
     startsAfter<application_features::BasicFeaturePhaseServer>();
   }

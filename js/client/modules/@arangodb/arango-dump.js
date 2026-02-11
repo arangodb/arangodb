@@ -20,21 +20,35 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-const db = require('internal').db;
-const arangosh = require('@arangodb/arangosh');
-const IM = global.instanceManager;
 const internal = require('internal');
 
-const ACTIVITY_REGISTRY_URL = '/_admin/activity-registry';
+const URL = '/_api/dump';
 
-// get snapshot from coordinator or single server
-exports.get_snapshot = function (server) {
-  if (server === undefined) {
-    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
+exports.get_batch_id_from_start_response = function(response) {
+  return response.headers["x-arango-dump-id"];
+};
+
+exports.start = function (options, server) {
+  let url = `${URL}/start`;
+  if (server !== undefined) {
+    url += `?dbserver=${server}`;
   }
-  IM.rememberConnection();
-  IM.arangods.filter((x) => x.id === server)[0].connect();
-  const result = arangosh.checkRequestResult(internal.arango.GET_RAW(ACTIVITY_REGISTRY_URL)).parsedBody;
-  IM.reconnectMe();
-  return result;
+  return internal.arango.POST_RAW(url, options);
+};
+exports.next = function (dumpId, batchId, previousBatchId, server, headerOpts={}) {
+  let url = `${URL}/next/${dumpId}?batchId=${batchId}`;
+  if (previousBatchId !== undefined && previousBatchId !== null) {
+    url += `&lastBatch=${previousBatchId}`;
+  }
+  if (server !== undefined) {
+    url += `&dbserver=${server}`;
+  }
+  return internal.arango.POST_RAW(url, {}, headerOpts);
+};
+exports.delete = function (dumpId, server) {
+  let url = `${URL}/${dumpId}`;
+  if (server !== undefined) {
+    url += `?dbserver=${server}`;
+  }
+  return internal.arango.DELETE_RAW(url);
 };

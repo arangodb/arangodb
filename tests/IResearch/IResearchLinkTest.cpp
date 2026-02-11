@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <regex>
 
@@ -2270,7 +2271,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   }
 
   void setLink(bool withSegmentsMin1 = false) {
-    auto temp = fmt::format(
+    auto temp = std::format(
         R"({{
       "id": 42,
       "name": "testView",
@@ -2546,7 +2547,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    auto expectedData = fmt::format(  // clang-format off
+    auto expectedData = std::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
 arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
@@ -2625,7 +2626,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    auto expectedData = fmt::format(  // clang-format off
+    auto expectedData = std::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
 arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
@@ -2667,7 +2668,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    auto expectedData = fmt::format(  // clang-format off
+    auto expectedData = std::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
 arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
@@ -2708,7 +2709,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     insert(1, 2, 0);
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    auto expectedData = fmt::format(  // clang-format off
+    auto expectedData = std::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
 arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1
@@ -2738,7 +2739,7 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     insert(2, 3, 2);
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    auto expectedData = fmt::format(  // clang-format off
+    auto expectedData = std::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
 arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
