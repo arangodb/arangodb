@@ -42,9 +42,63 @@
 
 #include <limits>
 
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+
 using namespace arangodb::options;
 
 namespace arangodb {
+
+namespace {
+/// @brief Check if a string contains a PEM-formatted key
+bool isPemFormat(std::string const& content) {
+  return content.find("-----BEGIN") != std::string::npos &&
+         content.find("-----END") != std::string::npos;
+}
+
+/// @brief Check if a PEM file contains an EC private key
+bool isEcPrivateKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+
+/// @brief Check if a PEM file contains an EC public key
+bool isEcPublicKey(std::string const& pemContent) {
+  BIO* bio =
+      BIO_new_mem_buf(pemContent.c_str(), static_cast<int>(pemContent.size()));
+  if (!bio) {
+    return false;
+  }
+
+  EVP_PKEY* pkey = PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+  BIO_free(bio);
+
+  if (!pkey) {
+    return false;
+  }
+
+  bool isEc = EVP_PKEY_base_id(pkey) == EVP_PKEY_EC;
+  EVP_PKEY_free(pkey);
+
+  return isEc;
+}
+}  // namespace
 
 std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
@@ -226,9 +280,7 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           "--server.jwt-secret-folder",
           "A folder containing one or more JWT secret files to use for JWT "
           "authentication.",
-          new StringParameter(&_options.jwtSecretFolderProgramOption),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise))
+          new StringParameter(&_options.jwtSecretFolderProgramOption))
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
@@ -258,7 +310,10 @@ void AuthenticationFeature::validateOptions(
     }
   }
   if (!_options.jwtSecretProgramOption.empty()) {
-    if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+    // Only check length for non-PEM (HS256) secrets
+    // ES256 keys in PEM format can be longer
+    if (!_options.jwtSecretIsES256 &&
+        _options.jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << kMaxSecretLength
           << " have " << _options.jwtSecretProgramOption.length();
@@ -311,14 +366,12 @@ void AuthenticationFeature::prepare() {
       _options.jwtSecretProgramOption +=
           static_cast<char>(1 + RandomGenerator::interval(m));
     }
+    _options.jwtSecretIsES256 = false;  // generated secrets are always HS256
   }
 
-#ifdef USE_ENTERPRISE
   _authCache->setJwtSecrets(_options.jwtSecretProgramOption,
-                            _options.jwtPassiveSecrets);
-#else
-  _authCache->setJwtSecret(_options.jwtSecretProgramOption);
-#endif
+                            _options.jwtPassiveSecrets,
+                            _options.jwtSecretIsES256);
 
   INSTANCE.store(this, std::memory_order_release);
 }
@@ -384,14 +437,13 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
   return !_options.jwtSecretProgramOption.empty();
 }
 
-#ifdef USE_ENTERPRISE
 /// verification only secrets
-std::pair<std::string, std::vector<std::string>>
+std::tuple<std::string, std::vector<std::string>, bool>
 AuthenticationFeature::jwtSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets};
+  return {_options.jwtSecretProgramOption, _options.jwtPassiveSecrets,
+          _options.jwtSecretIsES256};
 }
-#endif
 
 Result AuthenticationFeature::loadJwtSecretsFromFile() {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
@@ -421,6 +473,35 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
         basics::FileUtils::slurp(_options.jwtSecretKeyfileProgramOption);
     _options.jwtSecretProgramOption =
         basics::StringUtils::trim(contents, " \t\n\r");
+
+    // Check if this is an ES256 key (PEM format)
+    if (isPemFormat(_options.jwtSecretProgramOption)) {
+      // The active secret must be a private key for signing JWT tokens
+      if (isEcPrivateKey(_options.jwtSecretProgramOption)) {
+        _options.jwtSecretIsES256 = true;
+        LOG_TOPIC("4923e", INFO, arangodb::Logger::AUTHENTICATION)
+            << "Detected ES256 private key in JWT secret keyfile (for signing "
+               "and "
+               "verification)";
+      } else if (isEcPublicKey(_options.jwtSecretProgramOption)) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "JWT secret keyfile contains an ES256 public key, but a "
+            "private key is required for signing JWT tokens needed for "
+            "intra-cluster communication");
+      } else {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "PEM file detected but does not contain a valid EC key");
+      }
+    } else {
+      // Non-PEM format, must be HS256
+      _options.jwtSecretIsES256 = false;
+      // Check length limit for HS256 secrets
+      if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Given JWT secret too long. Max length is 64");
+      }
+    }
   } catch (std::exception const& ex) {
     std::string msg("unable to read content of jwt-secret file '");
     msg.append(_options.jwtSecretKeyfileProgramOption)
@@ -476,30 +557,86 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   std::sort(std::begin(list), std::end(list));
   std::string activeSecret = slurpy(list[0]);
 
+  // Check if the active secret is in PEM format (ES256) or raw bytes (HS256)
+  bool isES256 = false;
+  if (isPemFormat(activeSecret)) {
+    // The active secret must be a private key for signing JWT tokens
+    if (isEcPrivateKey(activeSecret)) {
+      isES256 = true;
+      LOG_TOPIC("4922e", INFO, arangodb::Logger::AUTHENTICATION)
+          << "Detected ES256 private key in JWT secret file (for signing and "
+             "verification)";
+    } else if (isEcPublicKey(activeSecret)) {
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          "First JWT secret file (active secret) contains an ES256 "
+          "public key, but a private key is required for signing JWT "
+          "tokens needed for intra-cluster communication. Public keys "
+          "can only be used as passive secrets for verification.");
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "PEM file detected but does not contain a valid EC key");
+    }
+  }
+
   const std::string msg = "Given JWT secret too long. Max length is 64";
-  if (activeSecret.length() > kMaxSecretLength) {
+  if (!isES256 && activeSecret.length() > kMaxSecretLength) {
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
-#ifdef USE_ENTERPRISE
+  _options.jwtSecretIsES256 = isES256;
+
   std::vector<std::string> passiveSecrets;
   if (list.size() > 1) {
     list.erase(list.begin());
     for (auto const& file : list) {
       std::string secret = slurpy(file);
+
+      if (secret.empty()) {
+        continue;  // ignore empty files
+      }
+
+      // Check if this is a PEM file
+      if (isPemFormat(secret)) {
+        // Accept both ES256 private and public keys for verification
+        // Private keys can now be used for signature verification too
+        if (isEcPrivateKey(secret)) {
+          LOG_TOPIC("4922c", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Adding ES256 private key to passive secrets for "
+                 "verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
+          continue;
+        }
+
+        // Accept ES256 public keys for verification
+        if (isEcPublicKey(secret)) {
+          LOG_TOPIC("4922b", INFO, arangodb::Logger::AUTHENTICATION)
+              << "Adding ES256 public key to passive secrets for verification: "
+              << file;
+          passiveSecrets.push_back(std::move(secret));
+          continue;
+        }
+
+        // PEM file but not a valid EC key
+        LOG_TOPIC("4922a", WARN, arangodb::Logger::AUTHENTICATION)
+            << "Ignoring PEM file that does not contain a valid EC key: "
+            << file;
+        continue;
+      }
+
+      // For non-PEM (HS256) secrets, check the length limit
       if (secret.length() > kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
-      if (!secret.empty()) {  // ignore
-        passiveSecrets.push_back(std::move(secret));
-      }
+
+      passiveSecrets.push_back(std::move(secret));
     }
   }
   _options.jwtPassiveSecrets = std::move(passiveSecrets);
 
   LOG_TOPIC("4a34f", INFO, arangodb::Logger::AUTHENTICATION)
       << "have " << _options.jwtPassiveSecrets.size() << " passive JWT secrets";
-#endif
 
   _options.jwtSecretProgramOption = std::move(activeSecret);
 
