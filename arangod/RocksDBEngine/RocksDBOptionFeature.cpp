@@ -326,7 +326,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _partitionFilesForVPackIndexCf(false),
       _partitionFilesForMdiIndexCf(false),
       _partitionFilesForVectorIndexCf(false),
-      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
     _totalWriteBufferSize = ::defaultTotalWriteBufferSize();

@@ -241,7 +241,7 @@ batch processing.)");
 
   options->addSection("http", "HTTP server features");
 
-  // option was deprecated in 3.8 and removed in 4.0.
+  // option was deprecated in 3.8 and removed in 3.12.
   options->addObsoleteOption(
       "--http.allow-method-override",
       "Allow HTTP method override using special headers.", true);
@@ -254,7 +254,7 @@ batch processing.)");
 server automatically when the timeout is reached. A keep-alive-timeout value of
 `0` disables the keep-alive feature entirely.)");
 
-  // option was deprecated in 3.8 and removed in 4.0.
+  // option was deprecated in 3.8 and removed in 3.12.
   options->addObsoleteOption(
       "--http.hide-product-header",
       "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
