@@ -1889,6 +1889,47 @@ Result RestReplicationHandler::processRestoreIndexes(
         idxDef = rebuilder.slice();
       }
 
+      if (type.isEqualString("hash") || type.isEqualString("skiplist")) {
+        // transform deprecated "hash" or "skiplist" into "persistent"
+        rebuilder.clear();
+        rebuilder.openObject();
+        rebuilder.add(StaticStrings::IndexType, VPackValue("persistent"));
+        for (auto const& it : VPackObjectIterator(idxDef)) {
+          if (!it.key.isEqualString(StaticStrings::IndexType)) {
+            rebuilder.add(it.key);
+            rebuilder.add(it.value);
+          }
+        }
+        rebuilder.close();
+        idxDef = rebuilder.slice();
+      }
+
+      if (type.isEqualString("fulltext")) {
+        // transform deprecated "fulltext" into "inverted"
+        LOG_TOPIC("43c18", INFO, Logger::REPLICATION)
+            << "Transforming deprecated fulltext index into inverted index "
+               "for collection '"
+            << name << "'";
+        rebuilder.clear();
+        rebuilder.openObject();
+        rebuilder.add(StaticStrings::IndexType, VPackValue("inverted"));
+        for (auto const& it : VPackObjectIterator(idxDef)) {
+          // skip type (already set) and fulltext-specific properties
+          // that are not applicable to inverted indexes
+          if (it.key.isEqualString(StaticStrings::IndexType) ||
+              it.key.isEqualString("minLength") ||
+              it.key.isEqualString("sparse") ||
+              it.key.isEqualString("unique") ||
+              it.key.isEqualString("deduplicate")) {
+            continue;
+          }
+          rebuilder.add(it.key);
+          rebuilder.add(it.value);
+        }
+        rebuilder.close();
+        idxDef = rebuilder.slice();
+      }
+
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
         LOG_TOPIC("e2125", ERR, Logger::RESTORE) << std::format(
@@ -2024,11 +2065,46 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       idxDef = rebuilder.slice();
     }
 
+    if (type.isEqualString("hash") || type.isEqualString("skiplist")) {
+      // transform deprecated "hash" or "skiplist" into "persistent"
+      rebuilder.clear();
+      rebuilder.openObject();
+      rebuilder.add(StaticStrings::IndexType, VPackValue("persistent"));
+      for (auto const& it : VPackObjectIterator(idxDef)) {
+        if (!it.key.isEqualString(StaticStrings::IndexType)) {
+          rebuilder.add(it.key);
+          rebuilder.add(it.value);
+        }
+      }
+      rebuilder.close();
+      idxDef = rebuilder.slice();
+    }
+
+    // From 4.0 on, fulltext indexes are not supported and will be automatically
+    // converted to inverted indexes.
     if (type.isEqualString("fulltext")) {
-      LOG_TOPIC("43c17", WARN, Logger::REPLICATION)
-          << "Skipping fulltext index during replication - fulltext indexes "
-             "are no longer supported";
-      continue;
+      // transform deprecated "fulltext" into "inverted"
+      LOG_TOPIC("43c17", INFO, Logger::REPLICATION)
+          << "Transforming deprecated fulltext index into inverted index "
+             "for collection '"
+          << name << "'";
+      rebuilder.clear();
+      rebuilder.openObject();
+      rebuilder.add(StaticStrings::IndexType, VPackValue("inverted"));
+      for (auto const& it : VPackObjectIterator(idxDef)) {
+        // skip type (already set) and fulltext-specific properties
+        // that are not applicable to inverted indexes
+        if (it.key.isEqualString(StaticStrings::IndexType) ||
+            it.key.isEqualString("minLength") ||
+            it.key.isEqualString("sparse") || it.key.isEqualString("unique") ||
+            it.key.isEqualString("deduplicate")) {
+          continue;
+        }
+        rebuilder.add(it.key);
+        rebuilder.add(it.value);
+      }
+      rebuilder.close();
+      idxDef = rebuilder.slice();
     }
 
     if (type.isEqualString(StaticStrings::IndexNameVector) &&
