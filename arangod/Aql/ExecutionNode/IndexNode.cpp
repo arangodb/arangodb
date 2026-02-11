@@ -242,7 +242,8 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       VPackValue(hasFilter() && _filterProjections.usesCoveringIndex()));
 
   // per-index covering info for multi-index queries
-  if (_indexes.size() > 1 && !hasFilter() && !projections().empty()) {
+  if (_indexes.size() > 1 && !hasFilter() && !projections().empty() &&
+      !isLateMaterialized()) {
     builder.add(VPackValue("perIndexCovering"));
     builder.openArray();
     for (auto const& idx : _indexes) {
@@ -487,7 +488,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   std::vector<Projections> perIndexProjections;
   std::vector<Projections> perIndexProjectionsForRegisters;
   if (_indexes.size() > 1 && !hasFilter() && !projections().empty() &&
-      isProduceResult()) {
+      isProduceResult() && !isLateMaterialized()) {
     bool anyCovers = false;
     auto const& indexes = getIndexes();
     size_t const numIndexes = indexes.size();
