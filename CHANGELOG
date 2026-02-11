@@ -1,6 +1,13 @@
 devel
 -----
 
+* COR-8: Added new coordinator-level metrics for shard replication state:
+  `arangodb_metadata_total_number_of_shards`,
+  `arangodb_metadata_number_follower_shards`,
+  `arangodb_metadata_number_out_of_sync_shards`,
+  `arangodb_metadata_number_not_replicated_shards`, and
+  `arangodb_metadata_shard_followers_out_of_sync_number`.
+
 * Added functionality for the ES256 signature scheme for JWT tokens.
   Moved JWT handling code from fuerte to core libs and removed code
   duplication.

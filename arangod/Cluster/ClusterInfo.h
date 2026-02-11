@@ -522,10 +522,10 @@ class ClusterInfo final {
   /// @brief get shard statistics for all databases, split by servers.
   Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
 
-  /// @brief update metadata metrics (number of databases, collections, shards)
-  /// This should only be called on coordinators while holding _planProt write
-  /// lock
-  void updateMetadataMetrics();
+  /// @brief update metadata metrics from Plan (number of databases,
+  /// collections, shards, and coordinator-specific shard metrics) This should
+  /// only be called on coordinators while holding _planProt write lock
+  void updateMetadataMetricsFromPlan();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -1058,6 +1058,11 @@ class ClusterInfo final {
   void triggerWaiting(AssocMultiMap<uint64_t, futures::Promise<Result>>& mm,
                       uint64_t commitIndex);
 
+  // Coordinator-only metric helper for Current metrics (per-shard derived
+  // metrics). Expects the caller to hold _currentProt.lock (read) when
+  // invoked.
+  void updateCoordinatorCurrentShardMetrics();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list
   //////////////////////////////////////////////////////////////////////////////
@@ -1125,6 +1130,13 @@ class ClusterInfo final {
     metrics::Gauge<std::uint64_t>& numberOfShards;
     metrics::Gauge<std::uint64_t>& numberOfCollections;
     metrics::Gauge<std::uint64_t>& numberOfDatabases;
+
+    // New coordinator-level shard metrics
+    metrics::Gauge<std::uint64_t>& totalNumberOfShards;
+    metrics::Gauge<std::uint64_t>& numberOutOfSyncShards;
+    metrics::Gauge<std::uint64_t>& numberNotReplicatedShards;
+    metrics::Gauge<std::uint64_t>& numberFollowerShards;
+    metrics::Gauge<std::uint64_t>& shardFollowersOutOfSync;
 
     explicit MetadataMetrics(metrics::MetricsFeature& metrics);
   };

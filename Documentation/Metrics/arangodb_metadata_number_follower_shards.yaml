@@ -1,7 +1,7 @@
-name: arangodb_metadata_number_of_shards
-introducedIn: "3.12.7"
+name: arangodb_metadata_number_follower_shards
+introducedIn: "3.12.8"
 help: |
-  Number of leader shards.
+  Number of follower shards.
 unit: number
 type: gauge
 category: Statistics
@@ -9,10 +9,7 @@ complexity: simple
 exposedBy:
   - coordinator
 description: |
-  Number of leader shards in the deployment. In a cluster,
-  this is the number of leader shards across all collections.
-  For the total number of shards (including follower shards),
-  see `arangodb_metadata_total_number_of_shards`.
+  Number of follower shards that exist across collections of all databases.
 troubleshoot: |
   **Configuration:**
   - Max per collection: `--cluster.max-number-of-shards` (default: 1000)
@@ -30,8 +27,6 @@ troubleshoot: |
   - Use rebalancing to ensure even distribution
 
   **Note:**
-  - This metric counts leader shards only. For total shard count (leaders + followers),
-    see `arangodb_metadata_total_number_of_shards`
   - Approaching 50k shards may cause performance degradation
 
   **See also:**
