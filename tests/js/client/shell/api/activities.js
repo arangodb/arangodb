@@ -54,8 +54,7 @@ function activityRegistrySuite() {
   }
   function dumpContextFetchFilter() {
     return (a) => {
-      const type = a.type.toLowerCase();
-      return type.includes("rocksdbdumpnext");
+      return a.type === "RocksDBDumpNext";
     };
   }
   function assertArrayLengthLargerThan(array, length) {
