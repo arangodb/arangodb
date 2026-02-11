@@ -39,26 +39,22 @@ const c = "my_collection";
 function activityRegistrySuite() {
   function activityRestHandlerFilter() {
     return (a) => {
-      const type = a.type.toLowerCase();
-      return type.includes("activity") && type.includes("registry") && type.includes("rest");
+      return a.type === "RestHandler" && a.metadata.handler === "ActivityRegistryRestHandler";
     };
   }
   function dumpRestHandlerFilter() {
     return (a) => {
-      const type = a.type.toLowerCase();
-      return type.includes("dump") && type.includes("rest");
+      return a.type === "RestHandler" && a.metadata.handler === "RestDumpHandler";
     };
   }
   function dumpContextFilter() {
     return (a) => {
-      const type = a.type.toLowerCase();
-      return type.includes("dump") && type.includes("context");
+      return a.type === "RocksDBDump";
     };
   }
   function dumpContextFetchFilter() {
     return (a) => {
-      const type = a.type.toLowerCase();
-      return type.includes("dump") && type.includes("context") && type.includes("fetch");
+      return a.type === "RocksDBDumpNext";
     };
   }
   function assertArrayLengthLargerThan(array, length) {
