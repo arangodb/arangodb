@@ -317,7 +317,8 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
 
 namespace {
 
-// Helper function to load EC key from PEM (accepts both public and private keys)
+// Helper function to load EC key from PEM (accepts both public and private
+// keys)
 bool loadECKeyForVerification(std::string_view publicKeyPem, EVP_PKEY*& pKey) {
   BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(),
                                 static_cast<int>(publicKeyPem.size()));
@@ -350,7 +351,7 @@ bool loadECKeyForVerification(std::string_view publicKeyPem, EVP_PKEY*& pKey) {
 
 // Helper function to convert JWT raw R||S signature to DER format
 bool convertRawToDERSignature(std::string_view rawSignature,
-                               std::string& derSignature) {
+                              std::string& derSignature) {
   // JWT ES256 signatures are in raw R||S format (IEEE P1363), but OpenSSL
   // expects DER-encoded ECDSA-Sig-Value. For P-256, R and S are 32 bytes each.
   if (rawSignature.size() != 64) {
@@ -400,8 +401,7 @@ bool convertRawToDERSignature(std::string_view rawSignature,
   }
 
   derSignature.resize(derLen);
-  unsigned char* derPtr =
-      reinterpret_cast<unsigned char*>(derSignature.data());
+  unsigned char* derPtr = reinterpret_cast<unsigned char*>(derSignature.data());
   if (i2d_ECDSA_SIG(ecdsaSig, &derPtr) != derLen) {
     LOG_TOPIC("8f3a5", DEBUG, Logger::AUTHENTICATION)
         << "Failed to encode ES256 signature to DER format";
@@ -413,7 +413,7 @@ bool convertRawToDERSignature(std::string_view rawSignature,
 
 // Helper function to perform the actual signature verification
 bool performES256Verification(EVP_PKEY* pKey, std::string_view message,
-                               std::string_view signature) {
+                              std::string_view signature) {
   EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
   if (mdctx == nullptr) {
     return false;
@@ -538,7 +538,7 @@ int createDERSignature(EVP_PKEY* pKey, std::string_view message,
 
 // Helper function to convert DER signature to raw R||S format for JWT
 int convertDERToRawSignature(std::string_view derSignature,
-                              std::string& rawSignature, std::string& error) {
+                             std::string& rawSignature, std::string& error) {
   unsigned char const* derPtr =
       reinterpret_cast<unsigned char const*>(derSignature.data());
   ECDSA_SIG* ecdsaSig = d2i_ECDSA_SIG(nullptr, &derPtr, derSignature.size());
@@ -588,8 +588,7 @@ int convertDERToRawSignature(std::string_view derSignature,
 int signES256(std::string_view privateKeyPem, std::string_view message,
               std::string& signature, std::string& error) {
   EVP_PKEY* pKey = nullptr;
-  if (int result = loadECPrivateKey(privateKeyPem, pKey, error);
-      result != 0) {
+  if (int result = loadECPrivateKey(privateKeyPem, pKey, error); result != 0) {
     return result;
   }
   auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
