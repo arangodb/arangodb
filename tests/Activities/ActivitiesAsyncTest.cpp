@@ -203,9 +203,6 @@ TYPED_TEST(ActivitiesAsyncTest,
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               coro_activity.id());
 
-    // currentlyExecutingActivity survives suspend/resume
-    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
-              coro_activity.id());
     co_return;
   }();
 
@@ -232,6 +229,8 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
     co_await this->wait;
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
   };
 
   auto coro = [&]() -> async<void> {
@@ -283,6 +282,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
       co_await std::move(a);
       EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
                 coro_activity.id());
+      TRI_ASSERT(false);
       co_return;
     } catch (std::runtime_error const&) {
       // catching an exception should not bypass activity settings
