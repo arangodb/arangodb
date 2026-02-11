@@ -380,10 +380,9 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-class ClusterInfo::SyncerThread final
-    : public arangodb::ServerThread<ArangodServer> {
+class ClusterInfo::SyncerThread final : public Thread {
  public:
-  explicit SyncerThread(Server&, std::string const& section,
+  explicit SyncerThread(std::string const& section,
                         std::function<consensus::index_t()> const&,
                         AgencyCache&);
   ~SyncerThread() override;
@@ -436,7 +435,8 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
               "Global number of shards");
 
-ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
+ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
+                         AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
                          metrics::MetricsFeature& metrics)
@@ -4871,7 +4871,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
         return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                      fmt::format("Could not find servers of shard {} in "
+                      std::format("Could not find servers of shard {} in "
                                   "Current version {} (raft index {})",
                                   shardId, _currentVersion, _currentIndex)};
       }
@@ -4912,14 +4912,14 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       readLocker.unlock();
       if (!database.has_value()) {
         co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                   fmt::format("Could not find database for shard {} in Plan "
+                   std::format("Could not find database for shard {} in Plan "
                                "version {} (raft index {})",
                                shardId, planVersion, planIndex)};
       }
       if (collection.empty()) {
         co_return {
             TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            fmt::format("Could not find collection for shard {} in Plan "
+            std::format("Could not find collection for shard {} in Plan "
                         "version {} (raft index {}) (database is {})",
                         shardId, planVersion, planIndex, database.value())};
       }
@@ -4942,7 +4942,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                 if (servers.isNone()) {
                   return std::make_tuple(
                       Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                             fmt::format(
+                             std::format(
                                  "Database or collection ({}/{}) gone in "
                                  "Current "
                                  "while waiting for leader of shard {} (raft "
@@ -5866,7 +5866,9 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
       "timeout waiting for maintenance mode to be deactivated in agency");
 }
 
-ArangodServer& ClusterInfo::server() const { return _server; }
+application_features::ApplicationServer& ClusterInfo::server() const {
+  return _server;
+}
 
 AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
   return _agencyCallbackRegistry;
@@ -5874,9 +5876,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
-      _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
+      "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current",
+      "Current",
       [this] {
         TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
           using namespace std::chrono_literals;
@@ -5950,9 +5952,9 @@ void ClusterInfo::waitForSyncersToStop() {
 }
 
 ClusterInfo::SyncerThread::SyncerThread(
-    Server& server, std::string const& section,
-    std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
-    : ServerThread<Server>(server, section + "Syncer"),
+    std::string const& section, std::function<consensus::index_t()> const& f,
+    AgencyCache& agencyCache)
+    : Thread(section + "Syncer"),
       _section(section),
       _f(f),
       _agencyCache(agencyCache) {}

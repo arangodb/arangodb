@@ -23,10 +23,13 @@
 
 #include "Servers.h"
 
+#include "gmock/gmock.h"
+
 #include <algorithm>
 #include <typeindex>
 
 #include "Agency/AgencyStrings.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -36,7 +39,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Random/RandomFeature.h"
 #include "Ssl/SslFeature.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -134,7 +136,8 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
     return "HttpEndpointProviderMock";
   }
 
-  explicit HttpEndpointProviderMock(ArangodServer& server)
+  explicit HttpEndpointProviderMock(
+      application_features::ApplicationServer& server)
       : HttpEndpointProvider{server, *this} {}
 
   virtual std::vector<std::string> httpEndpoints() final { return {}; }
@@ -208,7 +211,7 @@ static void SetupAqlPhase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(
-      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
+      false, server.getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
@@ -260,7 +263,8 @@ void MockServer::init() {
   _oldApplicationServerState = _server.state();
   _oldRebootId = ServerState::instance()->getRebootId();
 
-  _server.setStateUnsafe(ApplicationServer::State::IN_WAIT);
+  _server.setStateUnsafe(
+      application_features::ApplicationServer::State::IN_WAIT);
   transaction::Methods::clearDataSourceRegistrationCallbacks();
 
   // many other places rely on the reboot id being initialized,

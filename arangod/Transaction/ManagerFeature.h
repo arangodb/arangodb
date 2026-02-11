@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "Scheduler/Scheduler.h"
-#include "RestServer/arangod.h"
 #include "Transaction/ManagerFeatureOptions.h"
+#include "Scheduler/Scheduler.h"
 
 #include <cstdint>
 #include <functional>
@@ -36,13 +36,13 @@
 namespace arangodb::transaction {
 class Manager;
 
-class ManagerFeature final : public ArangodFeature {
+class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TransactionManager";
   }
 
-  explicit ManagerFeature(Server& server);
+  explicit ManagerFeature(application_features::ApplicationServer& server);
   ~ManagerFeature();
 
   void collectOptions(

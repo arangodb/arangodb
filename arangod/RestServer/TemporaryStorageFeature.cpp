@@ -108,8 +108,9 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
   TRI_ASSERT(old >= value);
 }
 
-TemporaryStorageFeature::TemporaryStorageFeature(Server& server)
-    : ArangodFeature{server, *this}, _cleanedUpDirectory(false) {
+TemporaryStorageFeature::TemporaryStorageFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _cleanedUpDirectory(false) {
   startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<RocksDBEngine>();

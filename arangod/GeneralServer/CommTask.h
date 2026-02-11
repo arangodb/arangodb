@@ -45,6 +45,7 @@ class AuthenticationFeature;
 class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
+class GeneralServerFeature;
 class RequestStatistics;
 
 namespace rest {

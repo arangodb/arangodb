@@ -56,9 +56,10 @@ DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
 
 namespace arangodb {
 
-ReplicationFeature::ReplicationFeature(Server& server,
-                                       metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
+ReplicationFeature::ReplicationFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : application_features::ApplicationFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),

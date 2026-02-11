@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 #include <fuerte/requests.h>
@@ -52,7 +52,7 @@ struct RetryableRequest {
 };
 }  // namespace network
 
-class NetworkFeature final : public ArangodFeature {
+class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   using RequestCallback = std::function<void(
       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
@@ -60,7 +60,8 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+  NetworkFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics,
                  network::ConnectionPool::Config);
   ~NetworkFeature();
 

@@ -784,8 +784,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
  */
 auto ensureIndexCoordinatorReplication2Inner(
     LogicalCollection const& collection, IndexId iid, VPackSlice index,
-    bool create, double timeout, ArangodServer& server)
-    -> ResultT<VPackBuilder> {
+    bool create, double timeout,
+    application_features::ApplicationServer& server) -> ResultT<VPackBuilder> {
   // Get the current entry in Target for this collection
   TargetCollectionReader collectionFromTarget(collection);
   if (!collectionFromTarget.state().ok()) {
@@ -899,7 +899,7 @@ auto ensureIndexCoordinatorReplication2Inner(
                           // error
                           creationError = Result{
                               TRI_ERROR_INTERNAL,
-                              fmt::format(
+                              std::format(
                                   "Error while receiving Agency data: {}",
                                   status.error())};
                         }
@@ -951,7 +951,7 @@ auto ensureIndexCoordinatorReplication2Inner(
     // TODO: Maybe we want to catch ArangoErrors specifically?
     // Right now we can only have communications issues here.
   } catch (std::exception const& e) {
-    return Result(TRI_ERROR_INTERNAL, fmt::format("Exception while waiting on "
+    return Result(TRI_ERROR_INTERNAL, std::format("Exception while waiting on "
                                                   "index to be created: {}",
                                                   e.what()));
   } catch (...) {
@@ -975,10 +975,10 @@ auto ensureIndexCoordinatorReplication2Inner(
 // coordinator crash and failover operations.
 // Finally note that the retry loop for the case of a failed precondition
 // is outside this function here in `ensureIndexCoordinator`.
-Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
-                                   IndexId iid, VPackSlice slice, bool create,
-                                   VPackBuilder& resultBuilder, double timeout,
-                                   ArangodServer& server) {
+Result ensureIndexCoordinatorInner(
+    LogicalCollection const& collection, IndexId iid, VPackSlice slice,
+    bool create, VPackBuilder& resultBuilder, double timeout,
+    application_features::ApplicationServer& server) {
   using namespace std::chrono;
 
   double const realTimeout = getTimeout(timeout);

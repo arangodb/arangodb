@@ -24,9 +24,6 @@
 #include "AgencyMethods.h"
 
 #include <cstdint>
-#include <chrono>
-#include <functional>
-#include <memory>
 #include <string>
 #include <utility>
 
@@ -35,30 +32,17 @@
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/AgencyCache.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
-#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Inspection/VPack.h"
 
-namespace arangodb {
-class Result;
-}  // namespace arangodb
+namespace arangodb::replication2::agency::methods {
 
 using namespace std::chrono_literals;
-
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::agency;
-
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace {
@@ -83,8 +67,8 @@ auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
 }
 }  // namespace
 
-auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
-                                     DatabaseID const& database, LogId id)
+auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
   auto planPath =
       paths::plan()->replicatedLogs()->database(database)->log(id)->str();
@@ -103,7 +87,7 @@ auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
       .end();
 }
 
-auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
+auto deleteReplicatedLog(DatabaseID const& database, LogId id)
     -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
@@ -116,9 +100,8 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
   return sendAgencyWriteTransaction(std::move(trx));
 }
 
-auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
-                                     DatabaseID const& database,
-                                     LogTarget const& spec)
+auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
+                            DatabaseID const& database, LogTarget const& spec)
     -> arangodb::agency::envelope {
   auto path = paths::target()
                   ->replicatedLogs()
@@ -136,8 +119,7 @@ auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
       .end();
 }
 
-auto methods::createReplicatedLog(DatabaseID const& database,
-                                  LogTarget const& spec)
+auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
@@ -149,7 +131,7 @@ auto methods::createReplicatedLog(DatabaseID const& database,
   return sendAgencyWriteTransaction(std::move(trx));
 }
 
-auto methods::replaceReplicatedStateParticipant(
+auto replaceReplicatedStateParticipant(
     std::string const& databaseName, LogId id,
     ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
@@ -210,9 +192,9 @@ auto methods::replaceReplicatedStateParticipant(
       });
 }
 
-auto methods::replaceReplicatedSetLeader(
-    std::string const& databaseName, LogId id,
-    std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
+auto replaceReplicatedSetLeader(std::string const& databaseName, LogId id,
+                                std::optional<ParticipantId> const& leaderId)
+    -> futures::Future<Result> {
   auto path =
       paths::target()->replicatedLogs()->database(databaseName)->log(id);
 
@@ -250,3 +232,5 @@ auto methods::replaceReplicatedSetLeader(
         return resultT.result();
       });
 }
+
+}  // namespace arangodb::replication2::agency::methods

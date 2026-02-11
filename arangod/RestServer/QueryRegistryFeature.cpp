@@ -94,9 +94,9 @@ DECLARE_GAUGE(
     arangodb_aql_query_plan_cache_memory_usage, uint64_t,
     "Total memory usage of the AQL query plan cache across all databases");
 
-QueryRegistryFeature::QueryRegistryFeature(Server& server,
+QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
                                            metrics::MetricsFeature& metrics)
-    : ArangodFeature{server, *this},
+    : ApplicationFeature{server, *this},
       _queryTimes(metrics.add(arangodb_aql_query_time{})),
       _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(

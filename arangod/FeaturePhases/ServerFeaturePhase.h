@@ -24,7 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb::application_features {
 
@@ -32,7 +32,7 @@ class ServerFeaturePhase : public ApplicationFeaturePhase {
  public:
   static constexpr std::string_view name() noexcept { return "ServerPhase"; }
 
-  explicit ServerFeaturePhase(ArangodServer& server);
+  explicit ServerFeaturePhase(application_features::ApplicationServer& server);
 };
 
 }  // namespace arangodb::application_features

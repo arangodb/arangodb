@@ -29,13 +29,13 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response,
     arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}

@@ -46,6 +46,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
+#include "RestServer/arangod.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VectorIndexFeature.h"
@@ -119,8 +120,9 @@ struct dummy_scorer final : public irs::ScorerBase<void> {
 REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
-    arangodb::ArangodServer& server, bool parseOk, bool execOk,
-    std::string const& queryString, std::span<irs::Scorer::ptr const> expected,
+    arangodb::application_features::ApplicationServer& server, bool parseOk,
+    bool execOk, std::string const& queryString,
+    std::span<irs::Scorer::ptr const> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -215,8 +217,8 @@ void assertOrder(
 }
 
 void assertOrderSuccess(
-    arangodb::ArangodServer& server, std::string const& queryString,
-    std::span<const irs::Scorer::ptr> expected,
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& queryString, std::span<const irs::Scorer::ptr> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -225,7 +227,8 @@ void assertOrderSuccess(
 }
 
 void assertOrderFail(
-    arangodb::ArangodServer& server, std::string const& queryString,
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -234,7 +237,8 @@ void assertOrderFail(
 }
 
 void assertOrderExecutionFail(
-    arangodb::ArangodServer& server, std::string const& queryString,
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& queryString,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -242,8 +246,9 @@ void assertOrderExecutionFail(
                      refName);
 }
 
-void assertOrderParseFail(arangodb::ArangodServer& server,
-                          std::string const& queryString, ErrorCode parseCode) {
+void assertOrderParseFail(
+    arangodb::application_features::ApplicationServer& server,
+    std::string const& queryString, ErrorCode parseCode) {
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
@@ -299,7 +304,7 @@ class IResearchOrderTest
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for IResearchFeature

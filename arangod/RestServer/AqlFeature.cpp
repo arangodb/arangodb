@@ -35,6 +35,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -51,10 +52,12 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
+AqlFeature::AqlFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<QueryRegistryFeature>();
+  startsAfter<TemporaryStorageFeature>();
 }
 
 AqlFeature::~AqlFeature() {

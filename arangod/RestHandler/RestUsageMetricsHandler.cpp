@@ -39,9 +39,9 @@
 
 namespace arangodb {
 
-RestUsageMetricsHandler::RestUsageMetricsHandler(ArangodServer& server,
-                                                 GeneralRequest* request,
-                                                 GeneralResponse* response)
+RestUsageMetricsHandler::RestUsageMetricsHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {

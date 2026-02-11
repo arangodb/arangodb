@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
@@ -31,7 +32,6 @@
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 #include "Metrics/Fwd.h"
 
@@ -42,6 +42,7 @@
 #include <shared_mutex>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 namespace maintenance {
 enum ActionState;
@@ -78,11 +79,11 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public ArangodFeature {
+class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
-  explicit MaintenanceFeature(Server& server);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server);
 
   virtual ~MaintenanceFeature();
 
