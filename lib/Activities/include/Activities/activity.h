@@ -29,6 +29,7 @@
 #include "Basics/Guarded.h"
 
 #include <atomic>
+#include <concepts>
 #include <format>
 #include <cstdint>
 #include <optional>
@@ -105,6 +106,11 @@ struct ActivityInRegistry {
   Guarded<Metadata> metadata;
 };
 
+template<typename F>
+concept MetadataAccessor = requires(F f, Metadata&& m) {
+  {f(m)};
+};
+
 /**
    This is a scope for an active activity.
 
@@ -124,7 +130,11 @@ struct Activity {
 
   auto id() const noexcept -> ActivityId;
 
-  auto metadata() noexcept -> Guarded<Metadata>&;
+  template<typename F>
+  requires MetadataAccessor<F>
+  auto withMetadata(F&& f) noexcept {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by

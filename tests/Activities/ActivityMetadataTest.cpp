@@ -45,7 +45,7 @@ TEST_F(ActivityMetadataTest, metadata_is_set) {
                     {{"a", "one"},    //
                      {"b", "two"}});  //
 
-  a.metadata().doUnderLock([](auto&& m) {
+  a.withMetadata([](auto&& m) {
     ASSERT_EQ(m["a"], "one");
     ASSERT_EQ(m["b"], "two");
   });
@@ -55,11 +55,22 @@ TEST_F(ActivityMetadataTest, metadata_can_be_changed) {
   auto a = Activity("TestActivity",   //
                     {{"a", "one"},    //
                      {"b", "two"}});  //
-  a.metadata().doUnderLock([](auto&& m) { m["c"] = "three"; });
+  a.withMetadata([](auto&& m) { m["c"] = "three"; });
 
-  a.metadata().doUnderLock([](auto&& m) {
+  a.withMetadata([](auto&& m) {
     ASSERT_EQ(m["a"], "one");
     ASSERT_EQ(m["b"], "two");
     ASSERT_EQ(m["c"], "three");
   });
+}
+
+TEST_F(ActivityMetadataTest, metadata_mutator_returns_value) {
+  auto a = Activity("TestActivity",   //
+                    {{"a", "one"},    //
+                     {"b", "two"}});  //
+  auto v = a.withMetadata([](auto&& m) { return m["a"]; });
+  auto v2 = a.withMetadata([](auto&& m) { return m.size(); });
+
+  ASSERT_EQ(v, "one");
+  ASSERT_EQ(v2, 2);
 }
