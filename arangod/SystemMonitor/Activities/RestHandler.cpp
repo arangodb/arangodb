@@ -34,11 +34,18 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _feature(server.getFeature<Feature>()) {}
 
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-        "you need admin user rights for activity registry operations");
-    co_return;
+  if (_feature.isOnlySuperUserEnabled()) {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "You need super user rights for activities operations");
+      co_return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin user rights for activities operations");
+      co_return;
+    }
   }
 
   if (_request->requestType() != rest::RequestType::GET) {
@@ -52,6 +59,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  generateResult(rest::ResponseCode::OK, _feature.getData().slice());
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("activities", _feature.getData().slice());
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }

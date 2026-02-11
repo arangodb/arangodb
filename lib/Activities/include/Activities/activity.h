@@ -26,8 +26,10 @@
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
+#include "Basics/Guarded.h"
 
 #include <atomic>
+#include <concepts>
 #include <format>
 #include <cstdint>
 #include <optional>
@@ -67,7 +69,7 @@ auto inspect(Inspector& f, State& x) {
    A snapshot of an activity in the registry
  */
 struct ActivityInRegistrySnapshot {
-  std::string name;
+  std::string type;
   State state;
   ActivityId id;
   ActivityId parent;
@@ -81,7 +83,7 @@ struct ActivityInRegistrySnapshot {
 template<typename Inspector>
 auto inspect(Inspector& f, ActivityInRegistrySnapshot& x) {
   return f.object(x).fields(
-      f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
+      f.embedFields(x.id), f.field("type", x.type), f.field("state", x.state),
       f.field("parent", x.parent), f.field("metadata", x.metadata));
 }
 
@@ -98,10 +100,19 @@ struct ActivityInRegistry {
     state.store(State::Deleted, std::memory_order_release);
   }
 
-  std::string const name;
+  std::string const type;
   std::atomic<State> state;
   ActivityId parent;
-  Metadata metadata;
+  Guarded<Metadata> metadata;
+};
+
+template<typename F>
+concept MetadataAccessor = requires(F f, Metadata& m) {
+  {f(m)};
+};
+template<typename F>
+concept MetadataConstAccessor = requires(F f, Metadata const& m) {
+  {f(m)};
 };
 
 /**
@@ -122,6 +133,17 @@ struct Activity {
   ~Activity();
 
   auto id() const noexcept -> ActivityId;
+
+  template<typename F>
+  requires MetadataAccessor<F>
+  auto updateMetadata(F&& f) {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
+  template<typename F>
+  requires MetadataConstAccessor<F>
+  auto getMetadata(F&& f) const {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by

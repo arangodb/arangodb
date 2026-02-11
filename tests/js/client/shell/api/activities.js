@@ -39,20 +39,22 @@ const c = "my_collection";
 function activityRegistrySuite() {
   function activityRestHandlerFilter() {
     return (a) => {
-      const name = a.name.toLowerCase();
-      return name.includes("activity") && name.includes("registry") && name.includes("rest") && a.state === "Active";
+      return a.type === "RestHandler" && a.metadata.handler === "ActivityRegistryRestHandler";
+    };
+  }
+  function dumpRestHandlerFilter() {
+    return (a) => {
+      return a.type === "RestHandler" && a.metadata.handler === "RestDumpHandler";
     };
   }
   function dumpContextFilter() {
     return (a) => {
-      const name = a.name.toLowerCase();
-      return name.includes("dump") && name.includes("context") && a.state === "Active";
+      return a.type === "RocksDBDump";
     };
   }
   function dumpContextFetchFilter() {
     return (a) => {
-      const name = a.name.toLowerCase();
-      return name.includes("dump") && name.includes("context") && name.includes("fetch") && a.state === "Active";
+      return a.type === "RocksDBDumpNext";
     };
   }
   function assertArrayLengthLargerThan(array, length) {
@@ -77,7 +79,7 @@ function activityRegistrySuite() {
     testRegistryIncludesAtLeastRestRequestActivity: function () {
       const activities = activitiesModule.get_snapshot_bare(); // is one REST request
       assertArrayLengthLargerThan(activities, 0);
-      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
+      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
     },
 
     testDumpContextIsAnActivity: function () {
@@ -96,8 +98,8 @@ function activityRegistrySuite() {
       const dumpId = dump.get_batch_id_from_start_response(arangosh.checkRequestResult(createDump));
       const activities = activitiesModule.get_snapshot_bare(server);
       assertArrayLengthLargerThan(activities, 1);
-      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 0);
-      assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
+      assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
+      assertArrayLengthLargerThan(activities.filter(dumpContextFilter()), 0);
 
       // activity: fetch dump context
       try {
@@ -108,9 +110,10 @@ function activityRegistrySuite() {
         internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
 
         assertArrayLengthLargerThan(activities, 3); // includes busy dump-fetch Rest call
-        assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter), 2); // same here
-        assertArrayLengthLargerThan(activities.filter(dumpContextFilter), 0);
-        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter), 0);
+        assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
+        assertArrayLengthLargerThan(activities.filter(dumpRestHandlerFilter()), 0);
+        assertArrayLengthLargerThan(activities.filter(dumpContextFilter()), 0);
+        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter()), 0);
 
         // stop first dump-fetch Rest call with a second call
         const cursorId2 = fetchDumpAsynchronously(dumpId, server);

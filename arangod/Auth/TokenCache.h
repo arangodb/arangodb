@@ -92,13 +92,9 @@ class TokenCache {
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
 
-#ifdef USE_ENTERPRISE
-  /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecrets(std::string active, std::vector<std::string> passive);
-#else
-  /// set new jwt secret, regenerate _jwtToken
-  void setJwtSecret(std::string active);
-#endif
+  /// set new jwt secret(s), regenerate _jwtToken
+  void setJwtSecrets(std::string active, std::vector<std::string> passive,
+                     bool isES256);
 
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept;
@@ -111,10 +107,12 @@ class TokenCache {
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
 
-  bool validateJwtHeader(std::string_view headerWebBase64);
+  bool validateJwtHeader(std::string_view headerWebBase64, bool& isES256);
   TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
   bool validateJwtHMAC256Signature(std::string_view message,
                                    std::string_view signatureWebBase64);
+  bool validateJwtES256Signature(std::string_view message,
+                                 std::string_view signatureWebBase64);
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string_view str,
                                                  char const* hint);
@@ -131,11 +129,10 @@ class TokenCache {
 
   mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
 
-#ifdef USE_ENTERPRISE
   std::vector<std::string> _jwtPassiveSecrets;
-#endif
   std::string _jwtActiveSecret;
-  std::string _jwtSuperToken;  /// token for internal use
+  bool _jwtActiveSecretIsES256{false};  /// true if active secret is ES256 key
+  std::string _jwtSuperToken;           /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;

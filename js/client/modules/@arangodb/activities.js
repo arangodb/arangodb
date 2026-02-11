@@ -29,13 +29,13 @@ const ACTIVITY_REGISTRY_URL = '/_admin/activities';
 
 exports.get_snapshot_bare = function (server) {
   if (server === undefined) {
-    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL));
+    return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL)).activities;
   }
   IM.rememberConnection();
   IM.arangods.filter((x) => x.id === server)[0].connect();
   const result = arangosh.checkRequestResult(internal.arango.GET_RAW(ACTIVITY_REGISTRY_URL)).parsedBody;
   IM.reconnectMe();
-  return result;
+  return result.activities;
 };
 
 exports.get_snapshot = function (server) {
@@ -46,7 +46,7 @@ exports.get_snapshot = function (server) {
 exports.pretty_print = function (activities) {
   const forest = exports.createForest(activities);
   return Array.from(forest.iter())
-    .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.name}: ${JSON.stringify(item.metadata)}`)
+    .map(({item, hierarchy, continuations}) => `${branch_symbol(hierarchy, continuations)} ${item.type}: ${JSON.stringify(item.metadata)}`)
     .join('\n');
 };
 

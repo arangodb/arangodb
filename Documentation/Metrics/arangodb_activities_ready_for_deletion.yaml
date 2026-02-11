@@ -1,4 +1,4 @@
-name: arangodb_activity_ready_for_deletion_activities
+name: arangodb_activities_ready_for_deletion
 introducedIn: "3.12.8"
 help: |
   Number of currently existing activities that wait for their garbage collection.
