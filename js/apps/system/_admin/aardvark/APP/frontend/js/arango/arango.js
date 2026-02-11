@@ -495,11 +495,9 @@
     buildClusterSubNav: function (activeKey, disabled) {
       let enableMaintenanceMode = false;
       let enableDistribution = false;
-
-      if (frontendConfig.showMaintenanceStatus && frontendConfig.db === '_system') {
-        enableMaintenanceMode = true;
-      }
+      // TODO(aardvark-removal): `showMaintenanceStatus` is always true, condition simplified.
       if (frontendConfig.db === '_system') {
+        enableMaintenanceMode = true;
         enableDistribution = true;
       }
 

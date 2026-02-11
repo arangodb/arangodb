@@ -473,8 +473,8 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (frontendConfig.showMaintenanceStatus === false || this.currentDB.get(
-          'name') !== '_system') {
+        // TODO(aardvark-removal): `showMaintenanceStatus` is always true, condition simplified.
+        if (this.currentDB.get('name') !== '_system') {
           if (!this.isCluster) {
             this.routes[''] = 'dashboard';
             this.navigate('#dashboard', { trigger: true });
