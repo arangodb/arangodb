@@ -256,16 +256,12 @@
     args:
       dumpAgencyOnError: true
 
-- arangobench_deadlock_audit:
+- deadlock_audit_secrets:
     options:
       priority: 1000
       type: mixed
     suites:
       - deadlock:
-          args:
-            dumpAgencyOnError: true
-            cluster: true
-      - arangobench:
           args:
             dumpAgencyOnError: true
             cluster: true
