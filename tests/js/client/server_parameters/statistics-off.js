@@ -60,20 +60,6 @@ function testSuite() {
         assertEqual("Metric arangodb_http_request_statistics_total_requests_total not found", err);
       }
     },
-    
-    testStatisticsHistory : function() {
-      let count;
-      let tries = 0;
-      // wait until some document has been written into statistics collection
-      while (++tries < 4 * 10) {
-        count = db._statisticsRaw.count();
-        if (count > 0) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
-      assertEqual(0, count);
-    },
 
     testMemoryUsage : function() {
       // issue some random requests to the server

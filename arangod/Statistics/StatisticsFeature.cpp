@@ -57,7 +57,6 @@
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
-#include "Statistics/StatisticsWorker.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -79,33 +78,6 @@ using namespace arangodb::statistics;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
-
-namespace {
-std::string const stats15Query =
-    "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER "
-    "s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId "
-    "INTO clientConnections = s.client.httpConnections LET "
-    "clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE "
-    "clientConnections15M = SUM(clientConnectionsCurrent) RETURN "
-    "{clientConnections15M: clientConnections15M || 0}";
-
-std::string const statsSamplesQuery =
-    "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER "
-    "s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, "
-    "physicalMemory: s.server.physicalMemory, residentSizeCurrent: "
-    "s.system.residentSize, clientConnectionsCurrent: "
-    "s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, "
-    "bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: "
-    "s.client.bytesReceivedPerSecond, http: { optionsPerSecond: "
-    "s.http.requestsOptionsPerSecond, putsPerSecond: "
-    "s.http.requestsPutPerSecond, headsPerSecond: "
-    "s.http.requestsHeadPerSecond, postsPerSecond: "
-    "s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, "
-    "deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: "
-    "s.http.requestsOptionsPerSecond, patchesPerSecond: "
-    "s.http.requestsPatchPerSecond } }";
-
-}  // namespace
 
 namespace arangodb {
 namespace statistics {
@@ -703,24 +675,6 @@ shown in the dashboard of ArangoDB's web interface, and that the REST API for
 server statistics at `/_admin/statistics` returns HTTP 404.)");
 
   options
-      ->addOption("--server.statistics-history",
-                  "Whether to store statistics in the database.",
-                  new BooleanParameter(&_options.statisticsHistory),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Dynamic))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-If set to `false`, no statistics are shown in the dashboard of ArangoDB's
-web interface, but the current statistics are available and can be queried
-using the REST API for server statistics at `/_admin/statistics`.
-This is less intrusive than setting the `--server.statistics` option to
-`false`.)");
-
-  options
       ->addOption(
           "--server.statistics-all-databases",
           "Provide cluster statistics in the web interface for all databases.",
@@ -741,9 +695,6 @@ void StatisticsFeature::validateOptions(
     // turn ourselves off
     disable();
   }
-
-  _statisticsHistoryTouched =
-      options->processingResult().touched("--server.statistics-history");
 }
 
 void StatisticsFeature::start() {
@@ -775,28 +726,6 @@ void StatisticsFeature::start() {
       FATAL_ERROR_EXIT();
     }
   }
-
-  // force history disable on Agents
-  if (arangodb::ServerState::instance()->isAgent() &&
-      !_statisticsHistoryTouched) {
-    _options.statisticsHistory = false;
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    // the StatisticsWorker runs queries against the _statistics
-    // collections, so it does not work on DB servers
-    _options.statisticsHistory = false;
-  }
-
-  if (_options.statisticsHistory) {
-    _statisticsWorker = std::make_unique<StatisticsWorker>(*vocbase);
-
-    if (!_statisticsWorker->start()) {
-      LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
-          << "could not start statistics worker";
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 void StatisticsFeature::stop() {
@@ -808,16 +737,7 @@ void StatisticsFeature::stop() {
     }
   }
 
-  if (_statisticsWorker != nullptr) {
-    _statisticsWorker->beginShutdown();
-
-    while (_statisticsWorker->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
-    }
-  }
-
   _statisticsThread.reset();
-  _statisticsWorker.reset();
 }
 
 VPackBuilder StatisticsFeature::fillDistribution(
@@ -1106,89 +1026,4 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                  std::to_string(connectionStats.totalRequestsUser.get()),
                  "httpReqsUser", globals, ensureWhitespace);
   }
-}
-
-Result StatisticsFeature::getClusterSystemStatistics(
-    TRI_vocbase_t& vocbase, double start,
-    arangodb::velocypack::Builder& result) const {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
-  }
-
-  if (!isEnabled()) {
-    return {TRI_ERROR_DISABLED, "statistics are disabled"};
-  }
-
-  if (!vocbase.isSystem() && !_options.statisticsAllDatabases) {
-    return {TRI_ERROR_FORBIDDEN,
-            "statistics only available for system database"};
-  }
-
-  // we need to access the system database here...
-  ExecContextSuperuserScope exscope;
-
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
-  // build bind variables for query
-  auto bindVars = std::make_shared<VPackBuilder>();
-
-  auto buildBindVars = [&](std::string const& collection) {
-    bindVars->clear();
-    bindVars->openObject();
-    bindVars->add("@collection", VPackValue(collection));
-    bindVars->add("start", VPackValue(start));
-    bindVars->add("clusterIds", VPackValue(VPackValueType::Array));
-    for (auto const& coordinator : ci.getCurrentCoordinators()) {
-      bindVars->add(VPackValue(coordinator));
-    }
-    bindVars->close();  // clusterIds
-    bindVars->close();
-  };
-
-  auto origin =
-      transaction::OperationOriginInternal{"retrieving cluster statistics"};
-
-  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
-  auto sysVocbase = sysDbFeature.use();
-
-  result.openObject();
-  {
-    buildBindVars(StaticStrings::Statistics15Collection);
-    auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::create(*sysVocbase, origin),
-        arangodb::aql::QueryString(stats15Query), bindVars);
-
-    query->queryOptions().cache = false;
-    query->queryOptions().skipAudit = true;
-
-    aql::QueryResult queryResult = query->executeSync();
-
-    if (queryResult.result.fail()) {
-      return queryResult.result;
-    }
-
-    result.add("stats15", queryResult.data->slice());
-  }
-
-  {
-    buildBindVars(StaticStrings::StatisticsCollection);
-    auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::create(*sysVocbase, origin),
-        arangodb::aql::QueryString(statsSamplesQuery), bindVars);
-
-    query->queryOptions().cache = false;
-    query->queryOptions().skipAudit = true;
-
-    aql::QueryResult queryResult = query->executeSync();
-
-    if (queryResult.result.fail()) {
-      return queryResult.result;
-    }
-
-    result.add("statsSamples", queryResult.data->slice());
-  }
-
-  result.close();
-
-  return {};
 }
