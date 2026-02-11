@@ -288,6 +288,30 @@
     args:
       dumpAgencyOnError: true
 
+- deadlock_audit_secrets:
+    options:
+      priority: 1000
+      type: mixed
+    suites:
+      - deadlock:
+          args:
+            dumpAgencyOnError: true
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: cluster
+            dumpAgencyOnError: true
+            cluster: true
+      - audit_client:
+          args:
+            cluster: true
+      - audit_server:
+          args:
+            cluster: true
+      - server_secrets:
+          args:
+            suffix: single
+
 - restart:
     options:
       priority: 1000
