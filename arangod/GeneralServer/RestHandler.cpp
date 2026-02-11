@@ -50,7 +50,7 @@
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
 
 using namespace arangodb;
@@ -288,7 +288,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + fuerte::jwt::generateUserToken(
+            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                             auth->tokenCache().jwtSecret(), username));
       }
     }

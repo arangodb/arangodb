@@ -18,33 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <chrono>
 #include <string>
-#include <vector>
+#include <string_view>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 
-struct AuthenticationOptions {
-  bool authenticationUnixSockets = true;
-  bool authenticationSystemOnly = true;
-  bool active = true;
-  double authenticationTimeout = 0.0;
-  double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
-  double minimalJwtExpiryTime = 10.0;                     // 10 seconds
-  double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
+namespace rest::SslInterface::jwt {
 
-  std::string jwtSecretProgramOption;
-  std::string jwtSecretKeyfileProgramOption;
-  std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
+/// Generate JWT token as used by internal arangodb communication
+std::string generateInternalToken(std::string_view secret, std::string_view id);
 
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
-};
+/// Generate JWT token as used for 'users' in arangodb
+std::string generateUserToken(
+    std::string_view secret, std::string_view username,
+    std::chrono::seconds validFor = std::chrono::seconds{0});
 
+std::string generateRawJwt(std::string_view secret, velocypack::Slice body);
+
+}  // namespace rest::SslInterface::jwt
 }  // namespace arangodb

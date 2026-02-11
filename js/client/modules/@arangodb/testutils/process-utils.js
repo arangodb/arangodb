@@ -250,9 +250,16 @@ function makeAuthorizationHeaders (options, args, JWT) {
   }
 
   if (jwtSecret) {
-    let jwt = crypto.jwtEncode(jwtSecret,
+    let jwt;
+    if (jwtSecret.startsWith("-----BEGIN PRIVATE KEY-----")) {
+      jwt = crypto.jwtEncode(jwtSecret,
+                             {'server_id': 'none',
+                              'iss': 'arangodb'}, 'ES256');
+    } else {
+      jwt = crypto.jwtEncode(jwtSecret,
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
+    }
     if (options.extremeVerbosity) {
       print(Date() + ' Using jw token:     ' + jwt);
     }
@@ -345,7 +352,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   }
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-  
+
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
   let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
