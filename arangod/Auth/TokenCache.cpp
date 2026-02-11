@@ -38,13 +38,15 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Ssl/SslInterface.h"
+#include "Ssl/jwt.h"
 
 #include <absl/strings/escaping.h>
-#include <fuerte/jwt.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -53,6 +55,7 @@ using namespace arangodb::rest;
 
 namespace {
 constexpr std::string_view hs256String("HS256");
+constexpr std::string_view es256String("ES256");
 constexpr std::string_view jwtString("JWT");
 }  // namespace
 
@@ -75,19 +78,26 @@ auth::TokenCache::~TokenCache() {
   }
 }
 
-#ifndef USE_ENTERPRISE
-
-void auth::TokenCache::setJwtSecret(std::string jwtSecret) {
+void auth::TokenCache::setJwtSecrets(std::string active,
+                                     std::vector<std::string> passive,
+                                     bool isES256) {
   {
     WRITE_LOCKER(writeLocker, _jwtSecretLock);
     LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
-        << "Setting jwt secret of size " << jwtSecret.size();
-    _jwtActiveSecret = jwtSecret;
+        << "Setting active jwt secret of size " << active.size()
+        << ", additionally setting (" << passive.size() << ") passive secret(s)"
+        << " (ES256: " << (isES256 ? "yes" : "no") << ")";
+
+    _jwtActiveSecret = std::move(active);
+    _jwtPassiveSecrets = std::move(passive);
+    _jwtActiveSecretIsES256 = isES256;
+  }
+  {
+    std::lock_guard<std::mutex> guard(_jwtCacheMutex);
+    _jwtCache.clear();
   }
   generateSuperToken();
 }
-
-#endif
 
 std::string const& auth::TokenCache::jwtToken() const noexcept {
   TRI_ASSERT(!_jwtSuperToken.empty());
@@ -225,14 +235,23 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   std::string const& body = parts[1];
   std::string const& signature = parts[2];
 
-  if (!validateJwtHeader(header)) {
+  bool isES256 = false;
+  if (!validateJwtHeader(header, isES256)) {
     LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt header: SENSITIVE_DETAILS_HIDDEN";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   std::string const message = header + "." + body;
-  if (!validateJwtHMAC256Signature(message, signature)) {
+
+  bool signatureValid = false;
+  if (isES256) {
+    signatureValid = validateJwtES256Signature(message, signature);
+  } else {
+    signatureValid = validateJwtHMAC256Signature(message, signature);
+  }
+
+  if (!signatureValid) {
     LOG_TOPIC("176c4", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt signature against given secret";
     return auth::TokenCache::Entry::Unauthenticated();
@@ -273,7 +292,8 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string_view str,
   return result;
 }
 
-bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64) {
+bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64,
+                                         bool& isES256) {
   std::string header;
   absl::WebSafeBase64Unescape(headerWebBase64, &header);
   std::shared_ptr<VPackBuilder> headerBuilder = parseJson(header, "jwt header");
@@ -293,7 +313,11 @@ bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64) {
     return false;
   }
 
-  if (!algSlice.isEqualString(::hs256String)) {
+  if (algSlice.isEqualString(::es256String)) {
+    isES256 = true;
+  } else if (algSlice.isEqualString(::hs256String)) {
+    isES256 = false;
+  } else {
     return false;
   }
 
@@ -398,23 +422,124 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   return authResult;
 }
 
-#ifndef USE_ENTERPRISE
 bool auth::TokenCache::validateJwtHMAC256Signature(
     std::string_view message, std::string_view signatureWebBase64) {
   std::string signature;
   absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
-  READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(
-      _jwtActiveSecret.data(), _jwtActiveSecret.size(),
-      message.data(),                    // cppcheck-suppress invalidLifetime
-      message.size(), signature.data(),  // cppcheck-suppress invalidLifetime
-      signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  READ_LOCKER(readLocker, _jwtSecretLock);
+
+  bool good =
+      verifyHMAC(_jwtActiveSecret.data(), _jwtActiveSecret.size(),
+                 message.data(), message.size(), signature.data(),
+                 signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
+  if (good) {
+    return good;
+  }
+
+  // check all the passive secrets
+  for (auto const& passive : _jwtPassiveSecrets) {
+    good = verifyHMAC(passive.data(), passive.size(), message.data(),
+                      message.size(), signature.data(), signature.size(),
+                      SslInterface::Algorithm::ALGORITHM_SHA256);
+    if (good) {
+      return good;
+    }
+  }
+  return false;
 }
-#endif
+
+bool auth::TokenCache::validateJwtES256Signature(
+    std::string_view message, std::string_view signatureWebBase64) {
+  std::string signature;
+  absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
+
+  READ_LOCKER(readLocker, _jwtSecretLock);
+
+  // First try the active secret - it can be either a private key or a public
+  // key. verifyES256Signature handles both cases.
+  if (!_jwtActiveSecret.empty()) {
+    bool good = SslInterface::verifyES256Signature(_jwtActiveSecret, message,
+                                                   signature);
+    if (good) {
+      return true;
+    }
+  }
+
+  // check all the passive certificates
+  for (auto const& passive : _jwtPassiveSecrets) {
+    bool good = SslInterface::verifyES256Signature(passive, message, signature);
+    if (good) {
+      return good;
+    }
+  }
+  return false;
+}
 
 /// generate a JWT token for internal cluster communication
 void auth::TokenCache::generateSuperToken() {
   std::string sid = ServerState::instance()->getId();
-  _jwtSuperToken = fuerte::jwt::generateInternalToken(jwtSecret(), sid);
+
+  READ_LOCKER(guard, _jwtSecretLock);
+
+  if (_jwtActiveSecretIsES256) {
+    // Generate ES256 JWT token manually
+    std::chrono::seconds iss = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+
+    VPackBuilder headerBuilder;
+    {
+      VPackObjectBuilder h(&headerBuilder);
+      headerBuilder.add("alg", VPackValue("ES256"));
+      headerBuilder.add("typ", VPackValue("JWT"));
+    }
+
+    VPackBuilder bodyBuilder;
+    bodyBuilder.openObject();
+    bodyBuilder.add("server_id", VPackValue(sid));
+    bodyBuilder.add("iss", VPackValue("arangodb"));
+    bodyBuilder.add("iat", VPackValue(static_cast<uint64_t>(iss.count())));
+    bodyBuilder.close();
+
+    auto header = headerBuilder.toJson();
+    auto body = bodyBuilder.toJson();
+    std::string headerBase64;
+    std::string bodyBase64;
+
+    absl::WebSafeBase64Escape(header, &headerBase64);
+    absl::WebSafeBase64Escape(body, &bodyBase64);
+
+    // Remove padding from base64
+    auto removePadding = [](std::string& s) {
+      while (!s.empty() && s.back() == '=') {
+        s.pop_back();
+      }
+    };
+    removePadding(headerBase64);
+    removePadding(bodyBase64);
+
+    std::string fullMessage = headerBase64 + "." + bodyBase64;
+
+    std::string signature;
+    std::string error;
+    int result = SslInterface::signES256(_jwtActiveSecret, fullMessage,
+                                         signature, error);
+
+    if (result != 0) {
+      LOG_TOPIC("71a77", ERR, Logger::AUTHENTICATION)
+          << "Failed to sign JWT token with ES256: " << error;
+      _jwtSuperToken.clear();
+      return;
+    }
+
+    std::string signatureBase64;
+    absl::WebSafeBase64Escape(signature, &signatureBase64);
+    removePadding(signatureBase64);
+
+    _jwtSuperToken = fullMessage + "." + signatureBase64;
+  } else {
+    // Use existing HS256 token generation
+    _jwtSuperToken = arangodb::rest::SslInterface::jwt::generateInternalToken(
+        _jwtActiveSecret, sid);
+  }
 }

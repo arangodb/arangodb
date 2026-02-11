@@ -4,6 +4,10 @@ devel
 * Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
   Will now try for ~2min before FATAL_ERROR_EXIT.
 
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
 * Fixed BTS-2160: Introduced the proper log message when read-only state is reached
   because of disk-usage and not because of an expired license.
 
