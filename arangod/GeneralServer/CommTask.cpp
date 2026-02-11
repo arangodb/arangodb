@@ -695,7 +695,9 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
-      << handler->request()->requestPath() << " on lane " << lane;
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", apiVersion=" << handler->request()->apiVersion();
+  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -740,6 +742,12 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   handler->trackQueueStart();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+
+  LOG_TOPIC("ecd0b", DEBUG, Logger::REQUESTS)
+      << "Handling async request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", apiVersion=" << handler->request()->apiVersion();
+  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();

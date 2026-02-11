@@ -618,7 +618,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
         << "\"h2-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(req->requestType()) << "\",\""
-        << url(req.get()) << "\",apiVersion=" << req->apiVersion();
+        << url(req.get()) << "\"";
 
     std::string_view body = req->rawPayload();
     this->_generalServerFeature.countHttp2Request(body.size());
