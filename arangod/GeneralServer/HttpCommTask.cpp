@@ -575,7 +575,7 @@ void HttpCommTask<T>::doProcessRequest() {
       << "\"http-request-begin\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
       << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-      << url() << "\", apiVersion=" << _request->apiVersion();
+      << url() << "\",apiVersion=" << _request->apiVersion();
 
   bool isTraceLoggingEnabled =
       Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
