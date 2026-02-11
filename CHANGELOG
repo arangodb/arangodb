@@ -5,6 +5,10 @@ devel
   Collections which have `useRBAC` set to `false` will not be subject to RBAC
   policies and will always follow the old permission model.
 
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
 * Fixed BTS-2160: Introduced the proper log message when read-only state is reached
   because of disk-usage and not because of an expired license.
 
