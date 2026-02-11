@@ -151,18 +151,6 @@ inline bool isScaling(ScalableParameter const& p) {
   return std::holds_alternative<ScalingSpec>(p);
 }
 
-/// @brief Get the fixed value from a ScalableParameter.
-/// Asserts that it is in fixed mode.
-inline std::int64_t getFixed(ScalableParameter const& p) {
-  return std::get<std::int64_t>(p);
-}
-
-/// @brief Get the ScalingSpec from a ScalableParameter.
-/// Asserts that it is in scaling mode.
-inline ScalingSpec const& getScaling(ScalableParameter const& p) {
-  return std::get<ScalingSpec>(p);
-}
-
 /// @brief Resolve a ScalableParameter to a concrete value.
 /// In fixed mode, returns the fixed value.
 /// In scaling mode, computes factor * func(docCount).

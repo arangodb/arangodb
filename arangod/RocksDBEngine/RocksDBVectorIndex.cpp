@@ -57,13 +57,9 @@
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/DocumentExpressionContext.h"
 
-#include "faiss/IndexFlat.h"
-#include "faiss/IndexIVFFlat.h"
+#include "faiss/IndexIVF.h"
 #include "faiss/MetricType.h"
-#include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
-#include "faiss/index_io.h"
-#include "faiss/impl/io.h"
 
 namespace arangodb {
 
@@ -98,80 +94,18 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     velocypack::deserialize(data, _trainedData.emplace());
   }
 
+  // If no trained data prepareIndex must be called
   if (_trainedData) {
-    faiss::VectorIOReader reader;
-    // TODO prevent this copy, but instead implement own IOReader, reading
-    // directly from the training data.
-    reader.data = _trainedData->codeData;
-    _faissIndex = std::unique_ptr<faiss::IndexIVF>{
-        dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
-    ADB_PROD_ASSERT(_faissIndex != nullptr);
-
-    _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    // The resolved defaultNProbe was persisted in IndexIVF::nprobe at training
-    // time, so we read it back directly rather than recomputing it (which
-    // would incorrectly use _resolvedNLists as a proxy for the original
-    // docCount, silently changing query-time defaults after restart).
-    _resolvedDefaultNProbe = static_cast<std::int64_t>(_faissIndex->nprobe);
+    auto restored =
+        vector::VectorIndexTrainer::restoreFromTrainedData(*_trainedData);
+    _faissIndex = std::move(restored.faissIndex);
+    _resolvedNLists = restored.resolvedNLists;
+    _resolvedDefaultNProbe = restored.resolvedDefaultNProbe;
 
     _faissIndex->replace_invlists(
         new vector::RocksDBInvertedLists(this, &coll, _resolvedNLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-  } else if (isScaling(_definition.nLists)) {
-    // Scaling mode — defer FAISS index creation to prepareIndex() where we
-    // can use numDocsHint to compute the actual nLists value.
-    // _faissIndex remains nullptr until prepareIndex() is called.
-  } else {
-    // Fixed mode — nLists is known at construction time.
-    _resolvedNLists = getFixed(_definition.nLists);
-    // Only resolve defaultNProbe here if it's a fixed value. If it's a
-    // scaling spec, it will be resolved in prepareIndex() using the actual
-    // document count.
-    if (!isScaling(_definition.defaultNProbe)) {
-      _resolvedDefaultNProbe = getFixed(_definition.defaultNProbe);
-    }
-
-    if (_definition.factory) {
-      std::shared_ptr<faiss::Index> index;
-      index.reset(faiss::index_factory(
-          _definition.dimension, _definition.factory->c_str(),
-          vector::metricToFaissMetric(_definition.metric)));
-
-      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-      if (_faissIndex == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "Index definition not supported. Expected IVF index.");
-      }
-
-      if (std::size_t(_resolvedNLists) != _faissIndex->nlist) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            std::format(
-                "The nLists parameter has to agree with the actual nlists "
-                "implied by the factory string (which is {})",
-                _faissIndex->nlist));
-      }
-
-      _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    } else {
-      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-        switch (_definition.metric) {
-          case arangodb::SimilarityMetric::kL2:
-            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-          case arangodb::SimilarityMetric::kCosine:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-          case arangodb::SimilarityMetric::kInnerProduct:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-        }
-      });
-
-      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-          quantizer.get(), _definition.dimension, _resolvedNLists,
-          vector::metricToFaissMetric(_definition.metric));
-      _faissIndex->own_fields = nullptr != quantizer.release();
-    }
   }
 }
 
@@ -289,59 +223,8 @@ RocksDBVectorIndex::readBatch(
 
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& output) {
-  TRI_ASSERT(_fields.size() == 1);
-
-  try {
-    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-
-    // this fails if index is not sparse
-    if (value.isNone()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
-    }
-
-    if (!value.isArray()) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
-    }
-
-    if (value.length() != _definition.dimension) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format(
-                  "provided vector is not of matching dimension for document "
-                  "{}, index dimension: {}, document dimension: {}",
-                  transaction::helpers::extractKeyFromDocument(doc)
-                      .copyString()
-                      .c_str(),
-                  _definition.dimension, value.length())};
-    }
-
-    // We don't make assumptions here if output contains one or more vectors
-    for (auto const d : VPackArrayIterator(value)) {
-      if (not d.isNumber<double>()) {
-        return {
-            TRI_ERROR_TYPE_ERROR,
-            std::format("vector contains data not representable as double for "
-                        "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc)
-                            .copyString()
-                            .c_str())};
-      }
-      output.push_back(d.getNumericValue<double>());
-    }
-
-    return {};
-  } catch (velocypack::Exception const& e) {
-    return {TRI_ERROR_TYPE_ERROR,
-            std::format("deserialization error when accessing a document: {}",
-                        e.what())};
-  }
+  return vector::readDocumentVectorData(doc, _fields, _definition.dimension,
+                                        output);
 }
 
 /// @brief inserts a document into the index
@@ -410,145 +293,14 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     return;
   }
 
-  auto const docCount = static_cast<std::int64_t>(numDocsHint);
+  vector::VectorIndexTrainer trainer(_definition, _sparse, _fields,
+                                     _collection.name(), _iid.id());
+  auto result = trainer.train(*it, upper, numDocsHint);
 
-  // Resolve scaling defaultNProbe using actual document count.
-  // This applies regardless of whether nLists is fixed or scaling.
-  if (isScaling(_definition.defaultNProbe) && docCount > 0) {
-    _resolvedDefaultNProbe =
-        getScaling(_definition.defaultNProbe).compute(docCount);
-  }
-
-  // Scaling nLists mode: compute nLists from document count, create FAISS
-  // index.
-  if (isScaling(_definition.nLists) && !_faissIndex) {
-    auto const& scaling = getScaling(_definition.nLists);
-
-    if (docCount == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "For the vector index to be created documents "
-          "must be present in the respective collection for the training "
-          "process.");
-    }
-
-    _resolvedNLists = scaling.compute(docCount);
-
-    LOG_VECTOR_INDEX("c162b", INFO, Logger::STATISTICS)
-        << "Scaling mode: numDocsHint=" << docCount
-        << ", computed nLists=" << _resolvedNLists
-        << ", computed defaultNProbe=" << _resolvedDefaultNProbe << ".";
-
-    // Create the FAISS index with the computed nLists
-    if (_definition.factory) {
-      std::string resolvedFactory =
-          resolveScalingFactory(*_definition.factory, _resolvedNLists);
-
-      LOG_VECTOR_INDEX("c163b", INFO, Logger::STATISTICS)
-          << "Scaling mode: using resolved factory string '" << resolvedFactory
-          << "'.";
-
-      std::shared_ptr<faiss::Index> index;
-      index.reset(faiss::index_factory(
-          _definition.dimension, resolvedFactory.c_str(),
-          vector::metricToFaissMetric(_definition.metric)));
-
-      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
-      if (_faissIndex == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "Resolved factory definition not supported. Expected IVF index.");
-      }
-
-      if (std::size_t(_resolvedNLists) != _faissIndex->nlist) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            std::format(
-                "The computed nLists parameter ({}) has to agree with the "
-                "actual nlists implied by the resolved factory string '{}' "
-                "(which is {})",
-                _resolvedNLists, resolvedFactory, _faissIndex->nlist));
-      }
-
-      _resolvedNLists = static_cast<std::int64_t>(_faissIndex->nlist);
-    } else {
-      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-        switch (_definition.metric) {
-          case arangodb::SimilarityMetric::kL2:
-            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-          case arangodb::SimilarityMetric::kCosine:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-          case arangodb::SimilarityMetric::kInnerProduct:
-            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-        }
-      });
-
-      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-          quantizer.get(), _definition.dimension, _resolvedNLists,
-          vector::metricToFaissMetric(_definition.metric));
-      _faissIndex->own_fields = nullptr != quantizer.release();
-    }
-  }
-
-  // Proceed with training (shared path for both fixed and scaling modes)
-  std::int64_t counter{0};
-  std::int64_t trainingDataSize =
-      _faissIndex->cp.max_points_per_centroid * _resolvedNLists;
-  std::vector<float> trainingData;
-  std::vector<float> input;
-  input.reserve(_definition.dimension);
-
-  LOG_VECTOR_INDEX("b161b", INFO, Logger::STATISTICS)
-      << "Loading " << trainingDataSize << " vectors of dimension "
-      << _definition.dimension << " for training.";
-
-  while (counter < trainingDataSize && it->Valid()) {
-    TRI_ASSERT(it->key().compare(upper) < 0);
-    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    // TODO Don't use input array only trainingData array
-    if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
-        it->Next();
-        continue;
-      }
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                     "invalid index type definition");
-    }
-
-    trainingData.insert(trainingData.end(), input.begin(), input.end());
-    input.clear();
-
-    it->Next();
-    ++counter;
-  }
-
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
-  }
-
-  LOG_VECTOR_INDEX("a162b", INFO, Logger::STATISTICS)
-      << "Loaded " << counter << " vectors. Start training process on "
-      << _resolvedNLists << " centroids.";
-
-  if (trainingData.size() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
-  }
-  _faissIndex->train(counter, trainingData.data());
-  LOG_VECTOR_INDEX("a160b", INFO, Logger::STATISTICS) << "Finished training.";
-
-  // Persist the resolved defaultNProbe into IndexIVF::nprobe so that it
-  // survives serialization and can be read back on restore without needing
-  // to recompute from the (no-longer-available) original document count.
-  _faissIndex->nprobe = _resolvedDefaultNProbe;
-
-  // Update vector definition data with quantizier data
-  faiss::VectorIOWriter writer;
-  faiss::write_index(_faissIndex.get(), &writer);
-  _trainedData.emplace().codeData = std::move(writer.data);
+  _faissIndex = std::move(result.faissIndex);
+  _resolvedNLists = result.resolvedNLists;
+  _resolvedDefaultNProbe = result.resolvedDefaultNProbe;
+  _trainedData = std::move(result.trainedData);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _resolvedNLists,

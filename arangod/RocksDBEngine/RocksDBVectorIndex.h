@@ -27,6 +27,7 @@
 #include "RocksDBIndex.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexTraining.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -114,8 +115,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
  private:
   UserVectorIndexDefinition _definition;
   // The actual nLists value used for FAISS operations.
-  // In fixed mode this equals getFixed(_definition.nLists).
-  // In scaling mode this is computed at training time via ScalingSpec::compute.
+  // Resolved at training time via resolveParameter(_definition.nLists, ...).
   std::int64_t _resolvedNLists{0};
   // The actual defaultNProbe value used at query time.
   // Resolved at training time if in scaling mode.
