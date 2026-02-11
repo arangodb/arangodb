@@ -36,21 +36,22 @@
 using namespace arangodb::activities;
 using namespace arangodb;
 
-DECLARE_COUNTER(arangodb_activity_activities_total,
-                "Total number of created activities since database creation");
+DECLARE_COUNTER(
+    arangodb_activities_total,
+    "Total number of created activities since database process start");
 
-DECLARE_GAUGE(arangodb_activity_existing_activities, std::uint64_t,
+DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
               "Number of currently existing activities");
 
-DECLARE_GAUGE(arangodb_activity_ready_for_deletion_activities, std::uint64_t,
+DECLARE_GAUGE(arangodb_activities_ready_for_deletion, std::uint64_t,
               "Number of currently existing activities that wait "
               "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_activity_thread_registries_total,
+DECLARE_COUNTER(arangodb_activities_thread_registries_total,
                 "Total number of threads that started actities "
-                "since database creation");
+                "since database process start");
 
-DECLARE_GAUGE(arangodb_activity_existing_thread_registries, std::uint64_t,
+DECLARE_GAUGE(arangodb_activities_existing_thread_registries, std::uint64_t,
               "Number of currently existing activity thread registries");
 
 Feature::Feature(
@@ -64,13 +65,12 @@ Feature::Feature(
 auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_activity_activities_total{}),
-      metrics_feature.addShared(arangodb_activity_existing_activities{}),
+      metrics_feature.addShared(arangodb_activities_total{}),
+      metrics_feature.addShared(arangodb_activities_existing{}),
+      metrics_feature.addShared(arangodb_activities_ready_for_deletion{}),
+      metrics_feature.addShared(arangodb_activities_thread_registries_total{}),
       metrics_feature.addShared(
-          arangodb_activity_ready_for_deletion_activities{}),
-      metrics_feature.addShared(arangodb_activity_thread_registries_total{}),
-      metrics_feature.addShared(
-          arangodb_activity_existing_thread_registries{}));
+          arangodb_activities_existing_thread_registries{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)

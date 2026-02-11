@@ -1,4 +1,4 @@
-name: arangodb_activity_existing_thread_registries
+name: arangodb_activities_existing_thread_registries
 introducedIn: "3.12.8"
 help: |
   Number of currently existing activity thread registries.
