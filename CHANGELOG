@@ -5,7 +5,7 @@ devel
   object `{ "factor": N, "function": "sqrt"|"log"|"cbrt"|"linear" }` to
   compute the value as `factor * func(docCount)` per shard at training time.
   Added `scalingFactory` for factory string templates with `{nLists}` placeholder.
-  This is usefule in cluster setting when data sharding might be unequal.
+  This is useful in cluster setting when data sharding might be unequal.
 
 * Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
   dependencies.
