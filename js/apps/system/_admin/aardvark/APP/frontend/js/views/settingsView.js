@@ -200,14 +200,13 @@
                 this.truncateCollection.bind(this)
               )
             );
-            if (frontendConfig.engine === 'rocksdb') {
-              buttons.push(
-                window.modalView.createNotificationButton(
-                  'Load Indexes into Memory',
-                  this.warmupCollection.bind(this)
-                )
-              );
-            }
+            // TODO(aardvark-removal): `engine` is always "rocksdb" since 3.7, condition simplified.
+            buttons.push(
+              window.modalView.createNotificationButton(
+                'Load Indexes into Memory',
+                this.warmupCollection.bind(this)
+              )
+            );
 
             buttons.push(
               window.modalView.createSuccessButton(
