@@ -353,3 +353,95 @@ TEST_F(ApiVersionDetectionTest, VersionExceedsUint32Max) {
   // Verify the error message mentions the version is too large
   EXPECT_NE(std::string::npos, res.errorMessage().find("too large"));
 }
+
+// Test: Version with leading zero should be rejected (v01)
+TEST_F(ApiVersionDetectionTest, InvalidVersionLeadingZeroV01) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v01/path");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ("/_arango/v01/path", request.requestPath());
+  // Verify the error message mentions leading zeros
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version with leading zero should be rejected (v007)
+TEST_F(ApiVersionDetectionTest, InvalidVersionLeadingZeroV007) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v007/path");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ("/_arango/v007/path", request.requestPath());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version with leading zero should be rejected (v0123)
+TEST_F(ApiVersionDetectionTest, InvalidVersionLeadingZeroV0123) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v0123/_api/version");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version v00 should be rejected
+TEST_F(ApiVersionDetectionTest, InvalidVersionV00) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v00/path");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version v000 should be rejected
+TEST_F(ApiVersionDetectionTest, InvalidVersionV000) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v000");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version v010 should be rejected
+TEST_F(ApiVersionDetectionTest, InvalidVersionV010) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v010");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}
+
+// Test: Version v0100 should be rejected
+TEST_F(ApiVersionDetectionTest, InvalidVersionV0100) {
+  HttpRequest request(ci, 1);
+  request.setRequestPath("/_arango/v0100/path");
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
+}

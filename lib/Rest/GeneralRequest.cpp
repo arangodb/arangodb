@@ -444,6 +444,14 @@ Result GeneralRequest::detectAndStripApiVersion() {
       // We found at least one digit
       // Make sure it's followed by / or is end of string
       if (numEnd == afterV.size() || afterV[numEnd] == '/') {
+        // Check for leading zeros: reject if version starts with '0' and has
+        // more than one digit
+        if (afterV[0] == '0' && numEnd > 1) {
+          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "invalid API version: version number must not have "
+                        "leading zeros");
+        }
+
         // Parse the version number
         std::string versionStr(afterV.substr(0, numEnd));
         try {
