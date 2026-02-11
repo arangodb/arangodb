@@ -1,5 +1,9 @@
 devel
 -----
+* Added activities API which shows currently on-going high-level processes in the
+  database and their possible dependencies on each other. Until now only a couple
+  of activities are implemented, e.g. a rest handler is called, an aql query is
+  executed, a collection or an index is created or a dump is on-going.
 
 * FE-972: fix sparse option not being sent in vector index creation payload.
 
