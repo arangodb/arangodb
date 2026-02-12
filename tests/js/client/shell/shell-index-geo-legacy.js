@@ -66,7 +66,7 @@ function geoLegacySingleServerSuite() {
       if (isCluster) {
         return;
       }
-      const c = db._collection(cn);
+      const c = db._create(cn);
       try {
         c.ensureIndex({type: 'geo2', fields: ['lat', 'lon']});
         fail();
@@ -111,7 +111,7 @@ function geoLegacyClusterRejectionSuite() {
       if (!isCluster) {
         return;
       }
-      const c = db._collection(cn);
+      const c = db._create(cn);
       try {
         c.ensureIndex({type: 'geo2', fields: ['lat', 'lon']});
         fail();
