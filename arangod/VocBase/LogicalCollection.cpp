@@ -159,6 +159,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
+      _supportsRBAC(
+          Helper::getBooleanValue(info, StaticStrings::SupportsRBAC, true)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
@@ -333,11 +335,16 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
+  props.supportsRBAC = supportsRBAC();
   return props;
 }
 
 bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
+}
+
+bool LogicalCollection::supportsRBAC() const noexcept {
+  return _supportsRBAC.load();
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
@@ -758,6 +765,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
   build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
+  build.add(StaticStrings::SupportsRBAC, VPackValue(_supportsRBAC));
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -1099,6 +1107,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync);
+  _supportsRBAC = Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
+                                          _supportsRBAC);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
