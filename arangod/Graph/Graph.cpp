@@ -58,12 +58,8 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
-  if (slice.hasKey(StaticStrings::WriteConcern)) {
-    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
-                                             serverDefaults.writeConcern);
-  }
-  return Helper::getNumericValue<uint64_t>(
-      slice, StaticStrings::MinReplicationFactor, serverDefaults.writeConcern);
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
+                                           serverDefaults.writeConcern);
 }
 }  // namespace
 
@@ -396,8 +392,6 @@ void Graph::toPersistence(VPackBuilder& builder) const {
     } else {
       builder.add(StaticStrings::ReplicationFactor,
                   VPackValue(_replicationFactor));
-      builder.add(StaticStrings::MinReplicationFactor,
-                  VPackValue(_writeConcern));  // deprecated
       builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
     }
     builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
@@ -808,8 +802,6 @@ void Graph::createCollectionOptions(VPackBuilder& builder,
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
 
   if (!isSatellite()) {
-    builder.add(StaticStrings::MinReplicationFactor,
-                VPackValue(writeConcern()));  // deprecated
     builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
     TRI_ASSERT(replicationFactor() > 0);
   } else {

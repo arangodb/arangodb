@@ -1062,8 +1062,6 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
       temp.add(StaticStrings::ReplicationFactor,
                VPackValue(col.replicationFactor()));
     }
-    temp.add(StaticStrings::MinReplicationFactor,
-             VPackValue(col.writeConcern()));  // deprecated in 3.6
     temp.add(StaticStrings::WriteConcern, VPackValue(col.writeConcern()));
     temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(col.usesRevisionsAsDocumentIds()));

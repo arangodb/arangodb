@@ -27,6 +27,9 @@
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
 
+* Remove `minReplicationFactor` collection property, which is superseded by
+  `writeConcern`.
+
 * Make `vector-index` flag obsolete.
 
 * Remove endpoints to load/unload collections.
