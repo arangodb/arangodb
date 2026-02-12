@@ -24,15 +24,52 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
 #include "RestVersionHandler.h"
 
 #include <velocypack/Builder.h>
 
+#include <algorithm>
+#include <vector>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+static void addApiVersions(VPackBuilder& result) {
+  // Collect all supported versions and sort in descending order
+  std::vector<uint32_t> versions;
+  for (size_t i = 0; i < ApiVersion::numSupportedApiVersions(); ++i) {
+    versions.push_back(ApiVersion::supportedApiVersions[i]);
+  }
+  std::sort(versions.begin(), versions.end(), std::greater<uint32_t>());
+
+  // Add apiVersions array
+  result.add("apiVersions", VPackValue(VPackValueType::Array));
+  for (uint32_t version : versions) {
+    result.add(VPackValue("v" + std::to_string(version)));
+  }
+  result.close();
+
+  // Collect deprecated versions and sort in descending order
+  std::vector<uint32_t> deprecatedVersions;
+  constexpr size_t numDeprecated = sizeof(ApiVersion::deprecatedApiVersions) /
+                                   sizeof(ApiVersion::deprecatedApiVersions[0]);
+  for (size_t i = 0; i < numDeprecated; ++i) {
+    deprecatedVersions.push_back(ApiVersion::deprecatedApiVersions[i]);
+  }
+  std::sort(deprecatedVersions.begin(), deprecatedVersions.end(),
+            std::greater<uint32_t>());
+
+  // Add deprecatedApiVersions array
+  result.add("deprecatedApiVersions", VPackValue(VPackValueType::Array));
+  for (uint32_t version : deprecatedVersions) {
+    result.add(VPackValue("v" + std::to_string(version)));
+  }
+  result.close();
+}
 
 static void addVersionDetails(application_features::ApplicationServer& server,
                               VPackBuilder& result) {
@@ -81,6 +118,10 @@ void RestVersionHandler::getVersion(
       addVersionDetails(server, result);
     }
   }
+
+  // Add API version information (both in short and long form)
+  addApiVersions(result);
+
   result.close();
 }
 
