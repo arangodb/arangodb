@@ -58,8 +58,7 @@ function ReplicationLoggerSuite () {
     getLastLogTick();
   
     var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' || 
-              name === '_apps' ||
+      return (name === '_apps' ||
               name === '_foxxlog' ||
               name === '_jobs' ||
               name === '_queues' ||

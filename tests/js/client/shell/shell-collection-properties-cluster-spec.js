@@ -243,7 +243,7 @@ describe('Replication factor constraints', function() {
     it('check replication factor of system collections', function() {
         ["_appbundles", "_apps", "_aqlfunctions", "_frontend", "_graphs",
          "_jobs", "_modules", "_queues", "_routing",
-         "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
+         "_users"
         ].forEach(name => {
           if(name === "_users"){
             expect(db[name].properties()['replicationFactor']).to.equal(2);
