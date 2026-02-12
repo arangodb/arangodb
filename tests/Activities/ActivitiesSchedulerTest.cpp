@@ -44,7 +44,11 @@ struct ActivitiesSchedulerTest : ::testing::Test {
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
         scheduler(mockApplicationServer.server(), 4, metrics) {}
-  void SetUp() override { scheduler.start(); }
+  void SetUp() override {
+    arangodb::activities::Registry::setCurrentlyExecutingActivity(
+        arangodb::activities::ActivityRoot);
+    scheduler.start();
+  }
 
   void TearDown() override {
     arangodb::activities::get_thread_registry().garbage_collect();
@@ -54,17 +58,6 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
   arangodb::ThreadPoolScheduler scheduler;
-
-  std::function<void()> functionToQueue = []() -> void {
-    auto activity = arangodb::activities::Activity("TestActivity", {});
-    auto guard =
-        arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
-            activity.id());
-
-    EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
-              activity.id());
-    EXPECT_EQ(activity.parentId(), arangodb::activities::ActivityRoot);
-  };
 };
 
 TEST_F(ActivitiesSchedulerTest, current_activity_persists) {
@@ -75,7 +68,17 @@ TEST_F(ActivitiesSchedulerTest, current_activity_persists) {
   EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 
-  scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
+  scheduler.queue(
+      arangodb::RequestLane::CLIENT_FAST, [&outer_activity]() -> void {
+        auto activity = arangodb::activities::Activity("TestActivity", {});
+        auto guard =
+            arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
+                activity.id());
+
+        EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
+                  activity.id());
+        EXPECT_EQ(activity.parentId(), outer_activity.id());
+      });
 
   // TODO: Is there a way to know whether the queued thing ran?
   scheduler.shutdown();
@@ -90,6 +93,17 @@ TEST_F(ActivitiesSchedulerTest, multiple_queues) {
 
   EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
+
+  auto functionToQueue = [&outer_activity]() -> void {
+    auto activity = arangodb::activities::Activity("TestActivity", {});
+    auto guard =
+        arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
+            activity.id());
+
+    EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
+              activity.id());
+    EXPECT_EQ(activity.parentId(), outer_activity.id());
+  };
 
   scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
   scheduler.queue(arangodb::RequestLane::CLIENT_FAST, functionToQueue);
