@@ -28,14 +28,17 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const errors = internal.errors;
 const db = require("internal").db;
+const print = internal.print;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 
 const dbName = "vectorScalingDB";
 const collName = "coll";
+const idxName = "vector_scaling_test";
 const dimension = 50;
-const seed = 98765432;
+const seed = randomInteger();
 const insertedDocsCount = 200;
 
 function VectorIndexScalingTestSuite() {
@@ -44,6 +47,7 @@ function VectorIndexScalingTestSuite() {
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -53,7 +57,7 @@ function VectorIndexScalingTestSuite() {
             let gen = randomNumberGeneratorFloat(seed);
             for (let i = 0; i < insertedDocsCount; ++i) {
                 const vector = Array.from({ length: dimension }, () => gen());
-                if (i === 50) {
+                if (i === Math.floor(insertedDocsCount / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({ vector });
@@ -66,32 +70,60 @@ function VectorIndexScalingTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        testFixedNListsStillWorks: function() {
-            collection.ensureIndex({
-                name: "vector_fixed",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: { metric: "l2", dimension, nLists: 5 },
-            });
-            const idx = collection.getIndexes().find(i => i.name === "vector_fixed");
-            assertTrue(idx !== undefined);
-            assertEqual(5, idx.params.nLists);
-            collection.dropIndex("vector_fixed");
+        tearDown: function() {
+            try {
+                collection.dropIndex(idxName);
+            } catch (_) {}
         },
 
-        testScalingNListsSqrt: function() {
+        testDefaultNListsScalingSpec: function() {
             collection.ensureIndex({
-                name: "vector_sqrt",
+                name: idxName,
                 type: "vector",
                 fields: ["vector"],
                 inBackground: false,
-                params: { metric: "l2", dimension, nLists: { factor: 1, function: "sqrt" } },
+                params: { metric: "l2", dimension },
             });
-            const idx = collection.getIndexes().find(i => i.name === "vector_sqrt");
+            const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
-            assertEqual(1, idx.params.nLists.factor);
-            assertEqual("sqrt", idx.params.nLists.function);
+            // When nLists is omitted, the default scaling spec should be used
+            assertEqual(8, idx.params.nLists.multiplier, "default multiplier should be 8");
+            assertEqual(32, idx.params.nLists.minNLists, "default minNLists should be 32");
+            assertEqual(3, idx.params.nLists.tiers.length, "default should have 3 tiers");
+
+            assertEqual(100000000, idx.params.nLists.tiers[0].min_n);
+            assertEqual(1048576, idx.params.nLists.tiers[0].fixed_value);
+            assertEqual(10000000, idx.params.nLists.tiers[1].min_n);
+            assertEqual(262144, idx.params.nLists.tiers[1].fixed_value);
+            assertEqual(1000000, idx.params.nLists.tiers[2].min_n);
+            assertEqual(65536, idx.params.nLists.tiers[2].fixed_value);
+        },
+
+        testScalingNListsWithTiersAndExplicitNProbe: function() {
+            const params = {
+                metric: "l2", dimension,
+                nLists: {
+                    multiplier: 4,
+                    minNLists: 2,
+                    tiers: [
+                        { min_n: 50000000, fixed_value: 500000 },
+                        { min_n: 5000000, fixed_value: 50000 },
+                        { min_n: 500000, fixed_value: 5000 },
+                    ],
+                },
+                defaultNProbe: 10,
+                trainingIterations: 25,
+            };
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params,
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(params, idx.params);
 
             // Query should work
             const results = db._query(
@@ -99,64 +131,19 @@ function VectorIndexScalingTestSuite() {
                 { qp: randomPoint }
             ).toArray();
             assertEqual(5, results.length);
-            collection.dropIndex("vector_sqrt");
         },
 
-        testScalingDefaultNProbe: function() {
-            collection.ensureIndex({
-                name: "vector_nprobe",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension, nLists: 5,
-                    defaultNProbe: { factor: 0.5, function: "sqrt" },
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === "vector_nprobe");
-            assertTrue(idx !== undefined);
-            assertEqual(5, idx.params.nLists, "nLists should be fixed at 5");
-            assertEqual(0.5, idx.params.defaultNProbe.factor);
-            assertEqual("sqrt", idx.params.defaultNProbe.function);
-            collection.dropIndex("vector_nprobe");
-        },
-
-        testBothScaling: function() {
-            collection.ensureIndex({
-                name: "vector_both",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2", dimension,
-                    nLists: { factor: 1, function: "sqrt" },
-                    defaultNProbe: { factor: 0.1, function: "sqrt" },
-                },
-            });
-            const idx = collection.getIndexes().find(i => i.name === "vector_both");
-            assertTrue(idx !== undefined);
-            assertEqual(1, idx.params.nLists.factor, "nLists factor should be 1");
-            assertEqual("sqrt", idx.params.nLists.function, "nLists function should be sqrt");
-            assertEqual(0.1, idx.params.defaultNProbe.factor, "defaultNProbe factor should be 0.1");
-            assertEqual("sqrt", idx.params.defaultNProbe.function, "defaultNProbe function should be sqrt");
-
-            // Query should work with both scaling params
-            const results = db._query(
-                `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) LIMIT 5 RETURN d`,
-                { qp: randomPoint }
-            ).toArray();
-            assertEqual(5, results.length);
-            collection.dropIndex("vector_both");
-        },
-
-        testInvalidFunctionNameFails: function() {
+        testZeroMultiplierFails: function() {
             try {
                 collection.ensureIndex({
-                    name: "vector_bad",
+                    name: idxName,
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
-                    params: { metric: "l2", dimension, nLists: { factor: 1, function: "bad" } },
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 0, minNLists: 1, tiers: [] },
+                    },
                 });
                 fail();
             } catch (e) {
@@ -164,14 +151,17 @@ function VectorIndexScalingTestSuite() {
             }
         },
 
-        testZeroFactorFails: function() {
+        testInvalidMinNListsFails: function() {
             try {
                 collection.ensureIndex({
-                    name: "vector_zero",
+                    name: idxName,
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
-                    params: { metric: "l2", dimension, nLists: { factor: 0, function: "sqrt" } },
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
+                    },
                 });
                 fail();
             } catch (e) {
@@ -181,34 +171,33 @@ function VectorIndexScalingTestSuite() {
 
         testFactoryWithScalingNListsAndPlaceholder: function() {
             collection.ensureIndex({
-                name: "vector_factory_scaling",
+                name: idxName,
                 type: "vector",
                 fields: ["vector"],
                 inBackground: false,
                 params: {
                     metric: "l2", dimension,
-                    nLists: { factor: 1, function: "sqrt" },
+                    nLists: { multiplier: 4, minNLists: 2, tiers: [] },
                     factory: "IVF{nLists},Flat",
                 },
             });
-            const idx = collection.getIndexes().find(i => i.name === "vector_factory_scaling");
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+
             assertTrue(idx !== undefined);
-            assertEqual(1, idx.params.nLists.factor, "nLists factor should be 1");
-            assertEqual("sqrt", idx.params.nLists.function, "nLists function should be sqrt");
+            assertEqual(4, idx.params.nLists.multiplier, `nLists multiplier should be 4, got ${idx.params.nLists.multiplier}`);
             assertEqual("IVF{nLists},Flat", idx.params.factory);
-            collection.dropIndex("vector_factory_scaling");
         },
 
         testFactoryWithScalingNListsMissingPlaceholderFails: function() {
             try {
                 collection.ensureIndex({
-                    name: "vector_factory_no_ph",
+                    name: idxName,
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
                     params: {
                         metric: "l2", dimension,
-                        nLists: { factor: 1, function: "sqrt" },
+                        nLists: { multiplier: 4, minNLists: 2, tiers: [] },
                         factory: "IVF10,Flat",
                     },
                 });

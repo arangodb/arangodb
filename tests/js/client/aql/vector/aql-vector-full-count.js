@@ -294,7 +294,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             const query = `
                 FOR i in 0..3
                     FOR d IN ${collection.name()}
-                    SORT APPROX_NEAR_L2(@qp, d.vector)
+                    SORT APPROX_NEAR_L2(@qp, d.vector, {nProbe: 1})
                 LIMIT 10
                 RETURN {k: d._key}
             `;
