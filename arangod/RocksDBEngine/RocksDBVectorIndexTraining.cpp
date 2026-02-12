@@ -190,19 +190,22 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
 
 std::int64_t VectorIndexTrainer::resolveNLists(
     std::uint64_t numDocsHint) const {
-  if (isScaling(_definition.nLists) && numDocsHint == 0) {
+  if (isNListsScaling(_definition.nLists) && numDocsHint == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "For the vector index to be created documents "
         "must be present in the respective collection for the training "
         "process.");
   }
-  return resolveParameter(_definition.nLists, numDocsHint);
+  return resolveNListsParameter(_definition.nLists, numDocsHint);
 }
 
 std::int64_t VectorIndexTrainer::resolveDefaultNProbe(
-    std::uint64_t numDocsHint) const {
-  return resolveParameter(_definition.defaultNProbe, numDocsHint);
+    std::int64_t resolvedNLists) const {
+  if (_definition.defaultNProbe.has_value()) {
+    return *_definition.defaultNProbe;
+  }
+  return computeDefaultNProbe(resolvedNLists);
 }
 
 std::vector<float> VectorIndexTrainer::collectTrainingDataset(
@@ -258,9 +261,9 @@ TrainingResult VectorIndexTrainer::train(rocksdb::Iterator& it,
                                          rocksdb::Slice upper,
                                          std::uint64_t numDocsHint) const {
   auto const resolvedNLists = resolveNLists(numDocsHint);
-  auto const resolvedDefaultNProbe = resolveDefaultNProbe(numDocsHint);
+  auto const resolvedDefaultNProbe = resolveDefaultNProbe(resolvedNLists);
 
-  if (isScaling(_definition.nLists)) {
+  if (isNListsScaling(_definition.nLists)) {
     LOG_TOPIC("c162b", INFO, Logger::STATISTICS)
         << "[shard=" << _shardName << ", index=" << _indexId << "] "
         << "Scaling mode: numDocsHint=" << numDocsHint

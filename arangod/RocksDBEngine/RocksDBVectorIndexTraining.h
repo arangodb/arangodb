@@ -98,9 +98,9 @@ class VectorIndexTrainer {
   /// scaling mode.
   std::int64_t resolveNLists(std::uint64_t numDocsHint) const;
 
-  /// Resolve the defaultNProbe value from the definition, using numDocsHint
-  /// for scaling mode.
-  std::int64_t resolveDefaultNProbe(std::uint64_t numDocsHint) const;
+  /// Resolve the defaultNProbe value. Uses the explicit value from the
+  /// definition if set, otherwise computes sqrt(resolvedNLists) with min 1.
+  std::int64_t resolveDefaultNProbe(std::int64_t resolvedNLists) const;
 
   UserVectorIndexDefinition const& _definition;
   bool _isSparse;

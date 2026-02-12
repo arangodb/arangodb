@@ -941,7 +941,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     // When factory is used with scaling nLists, it must contain {nLists}
     // placeholder for resolution at training time.
     if (vectorIndexDefinition.factory.has_value() &&
-        isScaling(vectorIndexDefinition.nLists)) {
+        isNListsScaling(vectorIndexDefinition.nLists)) {
       if (vectorIndexDefinition.factory->find("{nLists}") ==
           std::string::npos) {
         return {TRI_ERROR_BAD_PARAMETER,

@@ -79,91 +79,117 @@ struct TrainedData {
   }
 };
 
-/// @brief Scaling functions for document-count-dependent parameters.
-enum class ScalingFunction : std::uint8_t {
-  kSqrt,
-  kLog,
-  kCbrt,
-  kLinear,
-};
+/// @brief A single tier in the NLists scaling specification.
+/// If the document count N >= minN, use fixedValue for nLists.
+struct NListsTier {
+  std::int64_t minN{0};
+  std::int64_t fixedValue{1};
 
-template<class Inspector>
-inline auto inspect(Inspector& f, ScalingFunction& x) {
-  return f.enumeration(x).values(
-      ScalingFunction::kSqrt, "sqrt", ScalingFunction::kLog, "log",
-      ScalingFunction::kCbrt, "cbrt", ScalingFunction::kLinear, "linear");
-}
-
-/// @brief A scaling specification: computes factor * func(N) where N is the
-/// document count.
-struct ScalingSpec {
-  double factor{1.0};
-  ScalingFunction function{ScalingFunction::kSqrt};
-
-  bool operator==(ScalingSpec const&) const noexcept = default;
-
-  std::int64_t compute(std::int64_t docCount) const {
-    double raw;
-    switch (function) {
-      case ScalingFunction::kSqrt:
-        raw = std::sqrt(static_cast<double>(docCount));
-        break;
-      case ScalingFunction::kLog:
-        raw = std::log(static_cast<double>(docCount));
-        break;
-      case ScalingFunction::kCbrt:
-        raw = std::cbrt(static_cast<double>(docCount));
-        break;
-      case ScalingFunction::kLinear:
-        raw = static_cast<double>(docCount);
-        break;
-    }
-    return std::max<std::int64_t>(1, static_cast<std::int64_t>(factor * raw));
-  }
+  bool operator==(NListsTier const&) const noexcept = default;
 
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, ScalingSpec& x) {
+  friend inline auto inspect(Inspector& f, NListsTier& x) {
     return f.object(x).fields(
-        f.field("factor", x.factor)
+        f.field("min_n", x.minN)
             .invariant([](auto value) -> inspection::Status {
-              if (value <= 0.0) {
-                return {"factor must be greater than 0!"};
+              if (value < 1) {
+                return {"min_n must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }),
-        f.field("function", x.function));
+        f.field("fixed_value", x.fixedValue)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"fixed_value must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }));
   }
 };
 
-/// @brief A parameter that is either a fixed integer or a scaling spec.
-/// JSON: 100  OR  { "factor": 15, "function": "sqrt" }
-using ScalableParameter = std::variant<std::int64_t, ScalingSpec>;
+/// @brief Tiered NLists scaling specification.
+/// For small N: nLists = max(minNLists, multiplier * sqrt(N))
+/// For large N: uses fixed values from tiers (first tier whose min_n <= N).
+/// Tiers should be provided in descending order of min_n.
+struct NListsScalingSpec {
+  double multiplier{8.0};
+  std::int64_t minNLists{32};
+  std::vector<NListsTier> tiers;
+
+  bool operator==(NListsScalingSpec const&) const noexcept = default;
+
+  std::int64_t compute(std::int64_t docCount) const {
+    // Sort tiers by minN descending to match the highest threshold first.
+    auto sortedTiers = tiers;
+    std::sort(sortedTiers.begin(), sortedTiers.end(),
+              [](auto const& a, auto const& b) { return a.minN > b.minN; });
+    for (auto const& tier : sortedTiers) {
+      if (docCount >= tier.minN) {
+        return tier.fixedValue;
+      }
+    }
+    // No tier matched: use multiplier * sqrt(N), at least minNLists.
+    auto raw = static_cast<std::int64_t>(
+        multiplier * std::sqrt(static_cast<double>(docCount)));
+    return std::max(minNLists, raw);
+  }
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, NListsScalingSpec& x) {
+    return f.object(x).fields(
+        f.field("multiplier", x.multiplier)
+            .invariant([](auto value) -> inspection::Status {
+              if (value <= 0.0) {
+                return {"multiplier must be greater than 0!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("minNLists", x.minNLists)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"minNLists must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("tiers", x.tiers));
+  }
+};
+
+/// @brief NLists parameter: either a fixed integer or a tiered scaling spec.
+/// JSON: 100  OR  { "multiplier": 8, "minNLists": 32, "tiers": [...] }
+using NListsParameter = std::variant<std::int64_t, NListsScalingSpec>;
 
 template<class Inspector>
-inline auto inspect(Inspector& f, ScalableParameter& x) {
+inline auto inspect(Inspector& f, NListsParameter& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::inlineType<std::int64_t>(), insp::inlineType<ScalingSpec>());
+      insp::inlineType<std::int64_t>(), insp::inlineType<NListsScalingSpec>());
 }
 
-/// @brief Check if a ScalableParameter is in scaling mode.
-inline bool isScaling(ScalableParameter const& p) {
-  return std::holds_alternative<ScalingSpec>(p);
+/// @brief Check if an NListsParameter is in scaling mode.
+inline bool isNListsScaling(NListsParameter const& p) {
+  return std::holds_alternative<NListsScalingSpec>(p);
 }
 
-/// @brief Resolve a ScalableParameter to a concrete value.
+/// @brief Resolve an NListsParameter to a concrete value.
 /// In fixed mode, returns the fixed value.
-/// In scaling mode, computes factor * func(docCount).
-inline std::int64_t resolveParameter(ScalableParameter const& p,
-                                     std::int64_t docCount) {
+/// In scaling mode, evaluates tiers or computes multiplier * sqrt(docCount).
+inline std::int64_t resolveNListsParameter(NListsParameter const& p,
+                                           std::int64_t docCount) {
   return std::visit(
       overload{
           [](std::int64_t fixed) -> std::int64_t { return fixed; },
-          [docCount](ScalingSpec const& spec) -> std::int64_t {
+          [docCount](NListsScalingSpec const& spec) -> std::int64_t {
             return spec.compute(docCount);
           },
       },
       p);
+}
+
+/// @brief Compute default nProbe from resolved nLists: sqrt(nLists), min 1.
+inline std::int64_t computeDefaultNProbe(std::int64_t resolvedNLists) {
+  return std::max<std::int64_t>(1, static_cast<std::int64_t>(std::sqrt(
+                                       static_cast<double>(resolvedNLists))));
 }
 
 /// @brief Resolve a scaling factory string by replacing {nLists} with the
@@ -184,9 +210,12 @@ inline std::string resolveScalingFactory(std::string const& factoryTemplate,
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
-  ScalableParameter nLists;
+  NListsParameter nLists;
   std::uint64_t trainingIterations;
-  ScalableParameter defaultNProbe;
+
+  // Optional explicit defaultNProbe override. When not set (nullopt),
+  // defaultNProbe is computed as sqrt(resolvedNLists) with a minimum of 1.
+  std::optional<std::int64_t> defaultNProbe;
 
   // FAISS factory string. In fixed nLists mode, nLists must match the IVF
   // number in the string. In scaling nLists mode, the string must contain a
@@ -207,8 +236,10 @@ struct UserVectorIndexDefinition {
             }),
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
-            .fallback(
-                ScalableParameter{ScalingSpec{1.0, ScalingFunction::kSqrt}})
+            .fallback(NListsParameter{NListsScalingSpec{
+                8.0,
+                32,
+                {{100000000, 1048576}, {10000000, 262144}, {1000000, 65536}}}})
             .invariant([](auto const& value) -> inspection::Status {
               if (auto* fixed = std::get_if<std::int64_t>(&value)) {
                 if (*fixed < 1) {
@@ -221,13 +252,9 @@ struct UserVectorIndexDefinition {
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
-            .fallback(
-                ScalableParameter{ScalingSpec{0.8, ScalingFunction::kSqrt}})
             .invariant([](auto const& value) -> inspection::Status {
-              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
-                if (*fixed < 1) {
-                  return {"defaultNProbe must be 1 or greater!"};
-                }
+              if (value.has_value() && *value < 1) {
+                return {"defaultNProbe must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));
