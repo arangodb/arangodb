@@ -35,6 +35,7 @@ struct WaitSlot {
   bool await_ready() { return ready; }
   void await_resume() {}
   void await_suspend(std::coroutine_handle<> continuation) {
+    TRI_ASSERT(not _continuation);
     _continuation = continuation;
   }
 
