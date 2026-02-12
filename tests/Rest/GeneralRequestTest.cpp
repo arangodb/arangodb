@@ -183,7 +183,7 @@ TEST_F(ApiVersionDetectionTest, InvalidVWithoutNumber) {
 
   EXPECT_TRUE(res.fail());
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requrestedApiVersion());
+  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
   EXPECT_EQ("/_arango/v/path", request.requestPath());
 }
 
@@ -462,7 +462,7 @@ TEST_F(ApiVersionDetectionTest, VersionExceedsUint64Max) {
 
   EXPECT_TRUE(res.fail());
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
   EXPECT_EQ(path, request.requestPath());
   // Verify the error message mentions the parsing failure
   EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
@@ -480,7 +480,7 @@ TEST_F(ApiVersionDetectionTest, VersionAtUint64Max) {
   // This should succeed in parsing but fail because it exceeds uint32_t max
   EXPECT_TRUE(res.fail());
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
   EXPECT_EQ(path, request.requestPath());
   EXPECT_NE(std::string::npos, res.errorMessage().find("too large"));
 }
@@ -496,7 +496,7 @@ TEST_F(ApiVersionDetectionTest, VersionSlightlyAboveUint64Max) {
 
   EXPECT_TRUE(res.fail());
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
   EXPECT_EQ(path, request.requestPath());
   // Should trigger stoull exception for out_of_range
   EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
@@ -514,7 +514,7 @@ TEST_F(ApiVersionDetectionTest, VersionExcessivelyLongNumber) {
 
   EXPECT_TRUE(res.fail());
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.requestedApiVersion());
+  EXPECT_EQ(ApiVersion::defaultApiVersion, request.requestedApiVersion());
   EXPECT_EQ(path, request.requestPath());
   EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
 }
