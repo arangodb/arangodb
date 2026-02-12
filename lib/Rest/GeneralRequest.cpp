@@ -465,8 +465,9 @@ Result GeneralRequest::detectAndStripApiVersion() {
 
         // Parse the version number
         std::string versionStr(afterV.substr(0, numEnd));
+        uint64_t version;
         try {
-          uint64_t version = std::stoull(versionStr);
+          version = std::stoull(versionStr);
         } catch (std::exception& e) {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                         absl::StrCat("invalid API version: failed to parse "
