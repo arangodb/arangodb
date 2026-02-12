@@ -1155,26 +1155,12 @@
 
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
+    // TODO(aardvark-removal): `statisticsEnabled` is always false, dead branches removed
     checkEnabledStatistics: function () {
-      if (frontendConfig.statisticsEnabled && frontendConfig.db !== '_system') {
-        $(this.el).html('');
-        if (this.server) {
-          $(this.el).append(
-            '<div style="color: red">Server statistics for node (' + this.server + ') are disabled in this database. Log into "_system" database to show statistics.</div>'
-          );
-        } else {
-          $(this.el).append(
-            '<div style="color: red">Server statistics are disabled in this database. Log into "_system" database to show statistics.</div>'
-          );
-        }
-      } else if (!frontendConfig.statisticsEnabled) {
-        $(this.el).html('');
-        $(this.el).append(
-          '<div style="color: red">Server statistics are currently disabled. They can be enabled with startup option "--server.statistics".</div>'
-        );
-      } else {
-        return true;
-      }
+      $(this.el).html('');
+      $(this.el).append(
+        '<div style="color: red">Server statistics are currently disabled.</div>'
+      );
     },
 
     render: function (modalView) {
