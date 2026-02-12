@@ -375,7 +375,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
         normalizedBuilder.add(it.value);
       }
     }
-    normalizedBuilder.add("_legacyGeoUpgrade", VPackValue(true));
+    normalizedBuilder.add("_legacyGeoDrop", VPackValue(true));
     normalizedBuilder.close();
     definitionToUse = normalizedBuilder.slice();
   }

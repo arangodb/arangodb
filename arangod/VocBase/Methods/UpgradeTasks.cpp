@@ -70,7 +70,7 @@ Result dropLegacyGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
-      if (index->needsLegacyGeoUpgrade()) {
+      if (index->needsLegacyGeoDrop()) {
         auto* dropIndex = basics::downCast<RocksDBIndex>(index.get());
         if (!dropIndex) continue;
         auto res = collection->dropIndex(dropIndex->id());
