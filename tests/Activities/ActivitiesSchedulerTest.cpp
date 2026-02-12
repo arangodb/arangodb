@@ -63,6 +63,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
 
     EXPECT_EQ(arangodb::activities::Registry::currentlyExecutingActivity(),
               activity.id());
+    EXPECT_EQ(activity.parentId(), arangodb::activities::ActivityRoot);
   };
 };
 
