@@ -346,10 +346,92 @@ function CORS_requestSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////;
+// checking API versioning;
+////////////////////////////////////////////////////////////////////////////////;
+function API_versioningSuite () {
+  return {
+
+    test_checks_version_endpoint_without_prefix: function() {
+      let cmd = "/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_v1_prefix: function() {
+      let cmd = "/_arango/v1/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_v0_prefix: function() {
+      let cmd = "/_arango/v0/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_invalid_prefix_no_version_number: function() {
+      let cmd = "/_arango/v/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      // Should error because version number is missing
+      assertEqual(doc.code, 400);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_invalid_prefix_invalid_version_format: function() {
+      let cmd = "/_arango/vX/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      // Should error because version number is not numeric
+      assertEqual(doc.code, 400);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_invalid_prefix_wrong_path: function() {
+      let cmd = "/_arango/version/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      // Should error because prefix format is wrong (should be /vN, not /version)
+      assertEqual(doc.code, 400);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_v1_prefix_POST: function() {
+      let cmd = "/_arango/v1/_api/version";
+      let doc = arango.POST_RAW(cmd, {});
+
+      // POST should also work with versioned prefix
+      assertEqual(doc.code, 200);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_v1_prefix_HEAD: function() {
+      let cmd = "/_arango/v1/_api/version";
+      let doc = arango.HEAD_RAW(cmd);
+
+      // HEAD should also work with versioned prefix
+      assertEqual(doc.code, 200);
+      assertCspHeaders(doc);
+    },
+
+  };
+}
+
 jsunity.run(head_requestsSuite);
 if (!IM.options.skipServerJS) {
   jsunity.run(get_requestSuite);
 }
 jsunity.run(options_requestSuite);
 jsunity.run(CORS_requestSuite);
+jsunity.run(API_versioningSuite);
 return jsunity.done();
