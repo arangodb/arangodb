@@ -266,6 +266,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
+  VocBase/UpgradeTasksGeoTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
 )

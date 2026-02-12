@@ -434,6 +434,10 @@ Result createSystemCollectionsIndices(
 
 }  // namespace
 
+Result UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
+  return ::upgradeGeoIndexes(vocbase);
+}
+
 Result UpgradeTasks::createSystemCollectionsAndIndices(
     TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   // after the call to ::createSystemCollections this vector should contain
