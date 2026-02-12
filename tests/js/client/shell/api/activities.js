@@ -105,18 +105,28 @@ function activityRegistrySuite() {
       try {
         IM.debugSetFailAt("RestDumpHandler::fetch-delay");
         
-        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call is keps busy with failure point
-        const activities = activitiesModule.get_snapshot_bare(server);
-        internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
+        const cursorId = fetchDumpAsynchronously(dumpId, server); // Rest call is kept busy with failure point
 
-        assertArrayLengthLargerThan(activities, 3); // includes busy dump-fetch Rest call
+        // make sure that dump context fetch activity is created before activities are requested
+        let maxWait = 5;
+        let activities;
+        while (maxWait > 0) {
+          activities = activitiesModule.get_snapshot_bare(server);
+          if (activities.filter(dumpContextFetchFilter()).length > 0) {
+            break;
+          }
+          internal.wait(1);
+          maxWait--;
+        }
+        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter()), 0);
+        assertArrayLengthLargerThan(activities, 3);
         assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
         assertArrayLengthLargerThan(activities.filter(dumpRestHandlerFilter()), 0);
         assertArrayLengthLargerThan(activities.filter(dumpContextFilter()), 0);
-        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter()), 0);
 
         // stop first dump-fetch Rest call with a second call
         const cursorId2 = fetchDumpAsynchronously(dumpId, server);
+        internal.arango.DELETE_RAW(`/_api/job/${cursorId}`);
         internal.arango.DELETE_RAW(`/_api/job/${cursorId2}`);
 
       } finally {
