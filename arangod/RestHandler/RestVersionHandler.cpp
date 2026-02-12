@@ -102,7 +102,7 @@ RestVersionHandler::RestVersionHandler(
 
 void RestVersionHandler::getVersion(
     application_features::ApplicationServer& server, bool allowInfo,
-    bool includeDetails, VPackBuilder& result) {
+    bool includeDetails, VPackBuilder& result, uint32_t requestedApiVersion) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE
@@ -122,6 +122,10 @@ void RestVersionHandler::getVersion(
   // Add API version information (both in short and long form)
   addApiVersions(result);
 
+  // Add the requested API version that was used to call this handler
+  result.add("requestedApiVersion",
+             VPackValue("v" + std::to_string(requestedApiVersion)));
+
   result.close();
 }
 
@@ -133,7 +137,8 @@ RestStatus RestVersionHandler::execute() {
 
   bool const allowInfo = security.canAccessHardenedApi();
   bool const includeDetails = _request->parsedValue("details", false);
-  getVersion(server(), allowInfo, includeDetails, result);
+  getVersion(server(), allowInfo, includeDetails, result,
+             _request->requestedApiVersion());
 
   response()->setAllowCompression(
       rest::ResponseCompressionType::kAllowCompression);

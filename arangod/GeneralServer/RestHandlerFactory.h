@@ -30,6 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -53,9 +55,11 @@ class RestHandlerFactory {
   explicit RestHandlerFactory(uint32_t maxApiVersion);
 
   // creates a new handler
+  // if nullptr is returned, errorBuilder will contain error information
   std::shared_ptr<RestHandler> createHandler(
       application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>) const;
+      std::unique_ptr<GeneralResponse>,
+      velocypack::Builder& errorBuilder) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr,

@@ -487,6 +487,67 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
+    test_checks_version_endpoint_reports_requested_api_version_v0: function() {
+      let cmd = "/_arango/v0/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
+      assertEqual(doc.parsedBody.requestedApiVersion, "v0");
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_reports_requested_api_version_v1: function() {
+      let cmd = "/_arango/v1/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
+      assertEqual(doc.parsedBody.requestedApiVersion, "v1");
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_reports_requested_api_version_default: function() {
+      let cmd = "/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
+      // Default API version is v0
+      assertEqual(doc.parsedBody.requestedApiVersion, "v0");
+      assertCspHeaders(doc);
+    },
+
+    test_checks_unsupported_api_version_returns_404: function() {
+      let cmd = "/_arango/v42/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      // Unsupported API version should return 404
+      assertEqual(doc.code, 404);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_another_unsupported_api_version_returns_404: function() {
+      let cmd = "/_arango/v999/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      // Another unsupported API version should return 404
+      assertEqual(doc.code, 404);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
+    test_checks_unsupported_api_version_with_different_endpoint: function() {
+      let cmd = "/_arango/v100/_api/collection";
+      let doc = arango.GET_RAW(cmd);
+
+      // Unsupported API version should return 404 on any endpoint
+      assertEqual(doc.code, 404);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
+
   };
 }
 

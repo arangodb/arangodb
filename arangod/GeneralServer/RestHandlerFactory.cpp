@@ -48,8 +48,8 @@ RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req,
-    std::unique_ptr<GeneralResponse> res) const {
+    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res,
+    velocypack::Builder& errorBuilder) const {
   TRI_ASSERT(_sealed);
 
   uint32_t apiVersion = req->requestedApiVersion();
@@ -59,6 +59,16 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
         << "requested API version " << apiVersion
         << " is not supported (max: " << (_constructors.size() - 1) << ")";
+
+    // Build error response
+    errorBuilder.add(VPackValue(VPackValueType::Object));
+    errorBuilder.add("error", VPackValue(true));
+    errorBuilder.add("code", VPackValue(404));
+    errorBuilder.add("errorNum", VPackValue(404));
+    errorBuilder.add("errorMessage", VPackValue("unknown API version '" +
+                                                req->fullUrl() + "'"));
+    errorBuilder.close();
+
     return nullptr;
   }
 
