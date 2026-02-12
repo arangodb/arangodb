@@ -54,6 +54,7 @@ struct ActivitiesAsyncTest : ::testing::Test {
   void TearDown() override {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
+    wait2.stop();
     EXPECT_EQ(promise_count_in_registry(), 0);
     EXPECT_TRUE(std::holds_alternative<
                 arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
@@ -69,8 +70,8 @@ struct ActivitiesAsyncTest : ::testing::Test {
   auto makeActivity(std::string name, Metadata md) -> Activity {
     return Activity(this->activityName(name), md);
   }
-
   WaitType wait;
+  WaitType wait2;
 };
 
 using MyTypes = ::testing::Types<async_tests::NoWait, async_tests::WaitSlot,
@@ -172,9 +173,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
 }
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
-  using WaitType = decltype(this->wait);
-  WaitType wait2;
-  auto coro = [&](WaitType& wait) -> async<void> {
+  auto coro = [&](auto& wait) -> async<void> {
     auto coro_activity = activities::Activity("TestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
@@ -191,7 +190,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
   };
 
   auto coro1 = coro(this->wait);
-  auto coro2 = coro(wait2);
+  auto coro2 = coro(this->wait2);
 
   auto outer_activity = activities::Activity("OuterTestActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
@@ -199,24 +198,22 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 
+  this->wait2.resume();
   this->wait.resume();
-  wait2.resume();
 
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 
   auto awaitable = std::move(coro1).operator co_await();
-  auto awaitable2 = std::move(coro2).operator co_await();
-
   this->wait.await();
-  wait2.await();
-
   awaitable.await_resume();
+
+  auto awaitable2 = std::move(coro2).operator co_await();
+  this->wait2.await();
   awaitable2.await_resume();
 
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
-  wait2.stop();
 }
 
 TYPED_TEST(ActivitiesAsyncTest,
