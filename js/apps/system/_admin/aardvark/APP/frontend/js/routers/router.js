@@ -9,7 +9,8 @@
     dbServers: [],
     isCluster: undefined,
     foxxApiEnabled: undefined,
-    statisticsInAllDatabases: undefined,
+    // TODO(aardvark-removal): `statisticsInAllDatabases` is always false
+    statisticsInAllDatabases: false,
     lastRoute: undefined,
 
     routes: {
@@ -237,9 +238,7 @@
       if (typeof frontendConfig.foxxApiEnabled === 'boolean') {
         this.foxxApiEnabled = frontendConfig.foxxApiEnabled;
       }
-      if (typeof frontendConfig.statisticsInAllDatabases === 'boolean') {
-        this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
-      }
+      // TODO(aardvark-removal): `statisticsInAllDatabases` is always false, assignment from frontendConfig removed
 
       document.addEventListener('keyup', this.listener, false);
 
@@ -380,8 +379,8 @@
           }
           return;
         }
-        if (this.currentDB.get('name') !== '_system' &&
-          !this.statisticsInAllDatabases) {
+        // TODO(aardvark-removal): `statisticsInAllDatabases` is always false, condition simplified
+        if (this.currentDB.get('name') !== '_system') {
           this.navigate('#nodes', { trigger: true });
           return;
         }
