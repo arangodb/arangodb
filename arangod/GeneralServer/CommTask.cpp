@@ -199,6 +199,13 @@ CommTask::Flow CommTask::prepareExecution(
            !ServerState::isDBServerId(_requestSource);
   });
 
+  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
+  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
+    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
+                      req.messageId(), res.errorNumber(), res.errorMessage());
+    return Flow::Abort;
+  }
+
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
@@ -688,7 +695,9 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
-      << handler->request()->requestPath() << " on lane " << lane;
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -733,6 +742,12 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   handler->trackQueueStart();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+
+  LOG_TOPIC("ecd0b", DEBUG, Logger::REQUESTS)
+      << "Handling async request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
