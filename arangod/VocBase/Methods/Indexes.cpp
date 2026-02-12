@@ -490,6 +490,17 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   }
 
+  if (create) {
+    VPackSlice typeSlice = input.get(StaticStrings::IndexType);
+    if (typeSlice.isString() &&
+        (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+      ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
+      co_return Result(TRI_ERROR_BAD_PARAMETER,
+                       "Index type 'geo1' and 'geo2' are no longer supported. "
+                       "Please use 'geo' instead.");
+    }
+  }
+
   VPackBuilder normalized;
   StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
@@ -818,10 +829,10 @@ std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
 }
 
 template<typename IndexSpec>
-requires std::is_same_v<IndexSpec, IndexId> or
-    std::is_same_v<IndexSpec, velocypack::Slice>
-        futures::Future<arangodb::Result> Indexes::dropDBServer(
-            LogicalCollection& col, IndexSpec indexSpec) {
+  requires std::is_same_v<IndexSpec, IndexId> or
+           std::is_same_v<IndexSpec, velocypack::Slice>
+futures::Future<arangodb::Result> Indexes::dropDBServer(LogicalCollection& col,
+                                                        IndexSpec indexSpec) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // we have one index less now, so we should flush all cached query execution
