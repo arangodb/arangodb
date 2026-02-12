@@ -62,6 +62,12 @@ struct AstNode;
 struct Collection;
 struct NonConstExpression;
 
+struct PerIndexCovering {
+  IndexNode::Strategy strategy = IndexNode::Strategy::kDocument;
+  aql::Projections projections;
+  aql::Projections projectionsForRegisters;
+};
+
 class IndexExecutorInfos {
  public:
   IndexExecutorInfos(
@@ -76,9 +82,7 @@ class IndexExecutorInfos {
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexFilterCoveringVars filterCoveringVars,
-      std::vector<IndexNode::Strategy> perIndexStrategies = {},
-      std::vector<aql::Projections> perIndexProjections = {},
-      std::vector<aql::Projections> perIndexProjectionsForRegisters = {});
+      std::vector<PerIndexCovering> perIndexCovering = {});
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -130,9 +134,7 @@ class IndexExecutorInfos {
   bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
   bool hasPerIndexCovering() const noexcept;
-  IndexNode::Strategy perIndexStrategy(size_t idx) const;
-  aql::Projections const& perIndexProjections(size_t idx) const;
-  aql::Projections const& perIndexProjectionsForRegisters(size_t idx) const;
+  PerIndexCovering const& perIndexCoveringAt(size_t idx) const;
 
  private:
   IndexNode::Strategy const _strategy;
@@ -180,9 +182,7 @@ class IndexExecutorInfos {
   ReadOwnWrites const _readOwnWrites;
 
   /// per-index covering data (only populated when at least one index covers)
-  std::vector<IndexNode::Strategy> _perIndexStrategies;
-  std::vector<aql::Projections> _perIndexProjections;
-  std::vector<aql::Projections> _perIndexProjectionsForRegisters;
+  std::vector<PerIndexCovering> _perIndexCovering;
 };
 
 /**
