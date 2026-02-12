@@ -186,7 +186,8 @@
           contentDiv: contentDiv
         });
         this.currentLogView.render(true);
-      } else if (id === 'metrics' && frontendConfig.metricsEnabled) {
+      // TODO(aardvark-removal): `metricsEnabled` is always true, condition simplified
+      } else if (id === 'metrics') {
         let contentDiv = '#nodeMetricsContentView';
         let endpoint = this.serverInfo.target;
 
@@ -733,7 +734,8 @@
           }
         });
 
-        if (this.serverInfo.isDBServer && frontendConfig.metricsEnabled) {
+        // TODO(aardvark-removal): `metricsEnabled` is always true, condition simplified
+        if (this.serverInfo.isDBServer) {
           this.fetchAdditionalDBStatistics();
         }
       } else {

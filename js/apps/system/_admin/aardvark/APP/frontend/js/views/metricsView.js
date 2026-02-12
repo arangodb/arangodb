@@ -70,24 +70,12 @@
     render: function () {
       var self = this;
 
-      if (!frontendConfig.metricsEnabled) {
-        let disabled = {
-          title: "Metrics",
-          message: "Metrics are disabled."
-        };
-
-        if (this.metricsel) {
-          $(this.metricsel).html(this.infoTemplate.render(disabled));
-        } else {
-          this.$el.html(this.infoTemplate.render(disabled));
+      // TODO(aardvark-removal): `metricsEnabled` is always true, disabled branch removed
+      this.collection.fetch({
+        success: function () {
+          self.continueRender();
         }
-      } else {
-        this.collection.fetch({
-          success: function () {
-            self.continueRender();
-          }
-        });
-      }
+      });
     },
 
     continueRender: function () {
