@@ -52,7 +52,11 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _random(base.get("random").getBoolean()),
-      _hint(base) {}
+      _hint(base) {
+
+  LOG_DEVEL << "KKDBG: EnumerateCollectionNode::EnumerateCollectionNode: indexHint (" <<
+    base.get("indexHint").toJson() << ")";
+}
 
 ExecutionNode::NodeType EnumerateCollectionNode::getType() const {
   return ENUMERATE_COLLECTION;

@@ -39,7 +39,8 @@
 #include "Logger/LogMacros.h"
 
 #include <absl/strings/str_cat.h>
-
+#include "Logger/LogMacros.h"
+// #include "Logger/Logger.h"
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
@@ -213,6 +214,11 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(!_rules.empty());
 
+  // {
+  //   std::ostringstream oss;
+  //   oss << "KKDBG: Optimizer::addPlanInternal: _ast (" << plan->getAst() << "), rule (" << rule.name << ")";
+  //   LOG_DEVEL << oss.str();
+  // }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto checker = PlanChecker{*plan};
   plan->root()->walk(checker);
@@ -455,7 +461,7 @@ void Optimizer::checkForcedIndexHints() {
       // we are the last plan and cannot satisfy the index hint -> fail
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-          absl::StrCat("could not use index hint to serve query; ",
+          absl::StrCat("1 could not use index hint to serve query; ",
                        hint.toString()));
     }
 

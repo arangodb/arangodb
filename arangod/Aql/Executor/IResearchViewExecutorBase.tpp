@@ -699,6 +699,16 @@ template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
   _ctx._inputRow = _inputRow;
 
+  {
+    VPackBuilder b;
+    {
+      VPackObjectBuilder x(&b);
+      _inputRow.toVelocyPack(nullptr, b);
+    }
+    auto logEntry = b.toJson();
+    LOG_DEVEL << "KKDBG: IResearchViewExecutorBase<Impl, ExecutionTraits>::reset: " << logEntry;
+  }
+
   // `_volatileSort` implies `_volatileFilter`
   if (_isInitialized && !infos().volatileFilter()) {
     return;

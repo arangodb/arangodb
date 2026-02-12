@@ -63,7 +63,20 @@ bytes_view numeric_token_stream::numeric_term::value(byte_type* buf,
         traits_t::size() <=
         std::size(decltype(numeric_token_stream::numeric_term::data_){}));
 
-      return {buf, traits_t::encode(val.i64, buf, shift)};
+      bytes_view ret = {buf, traits_t::encode(val.i64, buf, shift)};
+      {
+        std::ostringstream oss;
+        size_t index = 0;
+        for (auto data = ret.data(); index < ret.size(); index++) {
+          oss << std::hex << (int)data[index];
+        }
+        std::string sval = oss.str();
+        oss.str("");
+        oss << "KKDBG: numeric_term::value: returning (" << sval << ")";
+        IRS_LOG_INFO(oss.str());
+      }
+
+      return ret;
     }
     case NT_INT: {
       using traits_t = numeric_utils::numeric_traits<int32_t>;

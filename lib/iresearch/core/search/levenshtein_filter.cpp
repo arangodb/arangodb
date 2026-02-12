@@ -225,9 +225,12 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);
 
+  std::ostringstream oss;
+  oss << "levenshtein(" << std::string(field) << ")";
+
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
                                               std::move(stats), ctx.boost,
-                                              ScoreMergeType::kMax, size_t{1});
+                                              ScoreMergeType::kMax, size_t{1}, oss.str());
 }
 
 }  // namespace

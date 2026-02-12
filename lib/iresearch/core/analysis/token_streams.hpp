@@ -222,6 +222,12 @@ class numeric_token_stream final : public basic_token_stream,
 #endif
 
     void reset(double_t value, uint32_t step) {
+      {
+        std::ostringstream oss;
+        oss << "KKDBG: numeric_term::reset(" << value << ", " << step << ")";
+        IRS_LOG_INFO(oss.str());
+      }
+
       val_.i64 = numeric_utils::numeric_traits<double_t>::integral(value);
       type_ = NT_DBL;
       step_ = step;

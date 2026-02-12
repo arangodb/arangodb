@@ -23,6 +23,7 @@
 #include "numeric_utils.hpp"
 
 #include <cmath>
+#include <sstream>
 
 #include "bit_utils.hpp"
 #include "shared.hpp"
@@ -123,6 +124,20 @@ size_t encode(typename EncodeTraits::type value, byte_type* out, size_t shift) {
   *out = static_cast<byte_type>(shift) + EncodeTraits::TYPE_MAGIC;
   std::memcpy(out + 1, reinterpret_cast<const void*>(&value), size);
   return size + 1;
+}
+
+std::string dbg_encode(double_t value, size_t shift) {
+  irs::bstring buf;
+  buf.resize(sizeof(int64_t) + 1);
+  encode<double_t>(value, &buf[0], shift);
+  std::ostringstream oss;
+
+  oss << "KKDBG: ";
+  auto data = buf.data();
+  for (size_t index = 0; index < buf.size(); index++) {
+    oss << std::hex << (int)data[index];
+  }
+  return oss.str();
 }
 
 template<typename T, typename EncodeTraits = encode_traits<T>>

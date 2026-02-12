@@ -36,12 +36,13 @@ class MultiTermQuery : public filter::prepared {
   using Stats = ManagedVector<bstring>;
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
-                          ScoreMergeType merge_type, size_t min_match)
+                          ScoreMergeType merge_type, size_t min_match, const std::string& logInfo = "")
     : states_{std::move(states)},
       stats_{std::move(stats)},
       boost_{boost},
       merge_type_{merge_type},
-      min_match_{min_match} {}
+      min_match_{min_match},
+      logInfo_(logInfo) {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
@@ -56,6 +57,7 @@ class MultiTermQuery : public filter::prepared {
   score_t boost_;
   ScoreMergeType merge_type_;
   size_t min_match_;
+  std::string logInfo_;
 };
 
 }  // namespace irs

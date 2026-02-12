@@ -148,9 +148,12 @@ filter::prepared::ptr by_terms::Prepare(const PrepareContext& ctx,
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
+  std::ostringstream oss;
+  oss << "by_terms(" << std::string(field) << ")";
+
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
                                               std::move(stats), ctx.boost,
-                                              merge_type, min_match);
+                                              merge_type, min_match, oss.str());
 }
 
 filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {

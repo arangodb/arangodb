@@ -196,7 +196,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             if (forced && !picked) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
                   TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                  absl::StrCat("could not use index hint to serve query; ",
+                  absl::StrCat("4 could not use index hint to serve query; ",
                                hint.toString()));
             }
           }
@@ -307,7 +307,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (forced && !picked) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                absl::StrCat("could not use index hint to serve query; ",
+                absl::StrCat("5 could not use index hint to serve query; ",
                              hint.toString()));
           }
         }

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <sstream>
 #include "formats/seek_cookie.hpp"
 #include "index/index_features.hpp"
 #include "shared.hpp"
@@ -47,6 +48,9 @@ namespace irs {
 struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   using ptr = memory::managed_ptr<doc_iterator>;
 
+  doc_iterator() {
+  }
+
   // Return an empty iterator
   [[nodiscard]] static doc_iterator::ptr empty();
 
@@ -70,6 +74,16 @@ struct doc_iterator : iterator<doc_id_t, attribute_provider> {
     seek(target);
     return doc_limits::eof();
   }
+
+  virtual void setIdentifier(const std::string& logMsg) {
+    identifier_ = logMsg;
+  }
+
+  virtual std::string getIdentifier() {
+    return identifier_;
+  }
+
+  std::string identifier_ { "<no-identifier>" };
 };
 
 // Same as `doc_iterator` but also support `reset()` operation
@@ -191,5 +205,19 @@ bool skip(Iterator& itr, size_t count) {
 
   return true;
 }
+
+class MyDocIterator : public doc_iterator {
+public:
+  MyDocIterator(doc_iterator::ptr&& incl, const std::string& logMsg) noexcept;
+  doc_id_t value() const final;
+  bool next() final;
+  doc_id_t seek(doc_id_t target) final;
+  attribute* get_mutable(type_info::type_id type) noexcept final;
+  virtual std::string getIdentifier() override;
+
+ private:
+  doc_iterator::ptr docItr_;
+  std::string logMsg_;
+};
 
 }  // namespace irs
