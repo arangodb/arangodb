@@ -199,47 +199,6 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
             outer_activity.id());
 }
 
-#if 0
-TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
-  auto coro = [&](std::string name) -> async<void> {
-    auto coro_activity = this->makeActivity(name, {});
-    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
-        coro_activity.id());
-
-    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
-              coro_activity.id());
-
-    co_await this->wait;
-
-    // currentlyExecutingActivity survives suspend/resume
-    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
-              coro_activity.id());
-    LOG_DEVEL << "coro " << name << " done";
-    co_return;
-  };
-
-  auto coro1 = coro("TestActivity1");
-  auto coro2 = coro("TestActivity2");
-
-  auto outer_activity = this->makeActivity("OuterActivity", {});
-  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
-      outer_activity.id());
-  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
-            outer_activity.id());
-
-  this->wait.resume();
-  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
-            outer_activity.id());
-
-  auto awaitable2 = std::move(coro2).operator co_await();
-  awaitable2.await_resume();
-  this->wait.await();
-
-  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
-            outer_activity.id());
-}
-#endif
-
 TYPED_TEST(ActivitiesAsyncTest,
            current_activity_persists_multiple_suspension_points) {
   auto coro = [&]() -> async<void> {
