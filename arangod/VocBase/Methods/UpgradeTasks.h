@@ -45,10 +45,9 @@ struct UpgradeTasks {
   static Result dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
                                               velocypack::Slice slice);
   static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
-                                            velocypack::Slice slice);
-
-  /// Upgrade legacy geo1/geo2 indexes to geo. Exposed for testing.
-  static Result upgradeGeoIndexes(TRI_vocbase_t& vocbase);
+                                            velocypack::Slice slice);                                          
+  static Result dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+                                     velocypack::Slice slice);
 };
 
 }  // namespace arangodb::methods

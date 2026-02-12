@@ -244,6 +244,12 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createSystemCollectionsAndIndices);
+  addTask(upgradeFeature, "dropLegacyGeoIndexes",
+          "drop legacy geo1/geo2 indexes",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE, // For now single server only
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING | DATABASE_ONLY_ONCE,
+          &UpgradeTasks::dropLegacyGeoIndexes);
   addTask(upgradeFeature, "createSystemStatisticsDBServer",
           "creates the statistics system collections including their indices",
           /*system*/ Flags::DATABASE_SYSTEM,
