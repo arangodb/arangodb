@@ -360,6 +360,69 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
+    test_checks_version_endpoint_includes_apiVersions: function() {
+      let cmd = "/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('apiVersions'));
+      assertTrue(Array.isArray(doc.parsedBody.apiVersions));
+      assertTrue(doc.parsedBody.apiVersions.length > 0);
+      
+      // Check that all entries start with 'v' followed by a number
+      doc.parsedBody.apiVersions.forEach(version => {
+        assertTrue(version.match(/^v\d+$/), `Version ${version} should match pattern v<number>`);
+      });
+      
+      // Check that versions are sorted in descending order
+      for (let i = 0; i < doc.parsedBody.apiVersions.length - 1; i++) {
+        let current = parseInt(doc.parsedBody.apiVersions[i].substring(1));
+        let next = parseInt(doc.parsedBody.apiVersions[i + 1].substring(1));
+        assertTrue(current > next, 
+          `Versions should be in descending order: ${doc.parsedBody.apiVersions[i]} > ${doc.parsedBody.apiVersions[i + 1]}`);
+      }
+      
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_includes_deprecatedApiVersions: function() {
+      let cmd = "/_api/version";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('deprecatedApiVersions'));
+      assertTrue(Array.isArray(doc.parsedBody.deprecatedApiVersions));
+      
+      // Check that all entries start with 'v' followed by a number
+      doc.parsedBody.deprecatedApiVersions.forEach(version => {
+        assertTrue(version.match(/^v\d+$/), `Version ${version} should match pattern v<number>`);
+      });
+      
+      // Check that versions are sorted in descending order
+      for (let i = 0; i < doc.parsedBody.deprecatedApiVersions.length - 1; i++) {
+        let current = parseInt(doc.parsedBody.deprecatedApiVersions[i].substring(1));
+        let next = parseInt(doc.parsedBody.deprecatedApiVersions[i + 1].substring(1));
+        assertTrue(current > next, 
+          `Deprecated versions should be in descending order: ${doc.parsedBody.deprecatedApiVersions[i]} > ${doc.parsedBody.deprecatedApiVersions[i + 1]}`);
+      }
+      
+      assertCspHeaders(doc);
+    },
+
+    test_checks_version_endpoint_with_details_includes_apiVersions: function() {
+      let cmd = "/_api/version?details=true";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('apiVersions'));
+      assertTrue(Array.isArray(doc.parsedBody.apiVersions));
+      assertTrue(doc.parsedBody.apiVersions.length > 0);
+      assertTrue(doc.parsedBody.hasOwnProperty('deprecatedApiVersions'));
+      assertTrue(Array.isArray(doc.parsedBody.deprecatedApiVersions));
+      
+      assertCspHeaders(doc);
+    },
+
     test_checks_version_endpoint_with_v1_prefix: function() {
       let cmd = "/_arango/v1/_api/version";
       let doc = arango.GET_RAW(cmd);
