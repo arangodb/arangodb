@@ -48,6 +48,16 @@ struct ActivitiesAsyncTest : ::testing::Test {
         *arangodb::async_registry::get_current_coroutine()));
   }
 
+  auto activityName(std::string n) -> std::string {
+    return std::string{::testing::UnitTest::GetInstance()
+                           ->current_test_info()
+                           ->name()} +
+           n;
+  }
+  auto makeActivity(std::string name, Metadata md) -> Activity {
+    return Activity(this->activityName(name), md);
+  }
+
   WaitType wait;
 };
 
@@ -62,7 +72,7 @@ TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               ActivityRoot);
 
-    auto coro_activity = activities::Activity("TestActivity", {});
+    auto coro_activity = this->makeActivity("CoroActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 
@@ -77,7 +87,7 @@ TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
     co_return;
   }();
 
-  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto outer_activity = this->makeActivity("OuterActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       outer_activity.id());
 
@@ -98,7 +108,7 @@ TYPED_TEST(ActivitiesAsyncTest, root_activity_persists) {
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
   ASSERT_EQ((activities::Registry::currentlyExecutingActivity()), ActivityRoot);
 
-  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto outer_activity = this->makeActivity("OuterActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       outer_activity.id());
 
@@ -109,7 +119,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               outer_activity.id());
 
-    auto coro_activity = activities::Activity("TestActivity", {});
+    auto coro_activity = this->makeActivity("TestActivity", {});
 
     EXPECT_EQ(coro_activity.parentId(), outer_activity.id());
 
@@ -127,7 +137,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
     co_return;
   }();
 
-  auto next_outer_activity = activities::Activity("OuterTestActivity", {});
+  auto next_outer_activity = this->makeActivity("OuterActivity", {});
   auto next_guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       next_outer_activity.id());
 
@@ -146,8 +156,53 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_parenting_works) {
 }
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
-  auto coro = [&]() -> async<void> {
+  using WaitType = decltype(this->wait);
+  WaitType wait2;
+  auto coro = [&](WaitType& wait) -> async<void> {
     auto coro_activity = activities::Activity("TestActivity", {});
+    auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+        coro_activity.id());
+
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+
+    co_await wait;
+
+    // currentlyExecutingActivity survives suspend/resume
+    EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
+              coro_activity.id());
+    co_return;
+  };
+
+  auto coro1 = coro(this->wait);
+  auto coro2 = coro(wait2);
+
+  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      outer_activity.id());
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  this->wait.resume();
+  wait2.resume();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+
+  std::ignore = std::move(coro1).operator co_await();
+  std::ignore = std::move(coro2).operator co_await();
+
+  this->wait.await();
+  wait2.await();
+
+  EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
+            outer_activity.id());
+}
+
+#if 0
+TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
+  auto coro = [&](std::string name) -> async<void> {
+    auto coro_activity = this->makeActivity(name, {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 
@@ -159,36 +214,36 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_multiple_coros) {
     // currentlyExecutingActivity survives suspend/resume
     EXPECT_EQ((activities::Registry::currentlyExecutingActivity()),
               coro_activity.id());
+    LOG_DEVEL << "coro " << name << " done";
     co_return;
   };
 
-  auto coro1 = coro();
-  auto coro2 = coro();
+  auto coro1 = coro("TestActivity1");
+  auto coro2 = coro("TestActivity2");
 
-  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto outer_activity = this->makeActivity("OuterActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       outer_activity.id());
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 
   this->wait.resume();
-
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 
-  std::ignore = std::move(coro1).operator co_await();
-  std::ignore = std::move(coro2).operator co_await();
-
+  auto awaitable2 = std::move(coro2).operator co_await();
+  awaitable2.await_resume();
   this->wait.await();
 
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
             outer_activity.id());
 }
+#endif
 
 TYPED_TEST(ActivitiesAsyncTest,
            current_activity_persists_multiple_suspension_points) {
   auto coro = [&]() -> async<void> {
-    auto coro_activity = activities::Activity("TestActivity", {});
+    auto coro_activity = this->makeActivity("TestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 
@@ -206,7 +261,7 @@ TYPED_TEST(ActivitiesAsyncTest,
     co_return;
   }();
 
-  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto outer_activity = this->makeActivity("OuterActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       outer_activity.id());
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
@@ -225,7 +280,7 @@ TYPED_TEST(ActivitiesAsyncTest,
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
   auto coro_inner = [&]() -> async<void> {
-    auto coro_activity = activities::Activity("InnerCoroActivity", {});
+    auto coro_activity = this->makeActivity("InnerCoroActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
     co_await this->wait;
@@ -234,7 +289,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
   };
 
   auto coro = [&]() -> async<void> {
-    auto coro_activity = activities::Activity("TestActivity", {});
+    auto coro_activity = this->makeActivity("TestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 
@@ -246,7 +301,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
     co_return;
   }();
 
-  auto outer_activity = activities::Activity("OuterTestActivity", {});
+  auto outer_activity = this->makeActivity("OuterTestActivity", {});
   auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
       outer_activity.id());
   EXPECT_EQ(activities::Registry::currentlyExecutingActivity(),
@@ -265,7 +320,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_persists_nested_coroutines) {
 
 TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
   auto a = [&]() -> async<void> {
-    auto coro_activity = activities::Activity("ATestActivity", {});
+    auto coro_activity = this->makeActivity("ATestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 
@@ -274,7 +329,7 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
   }();
 
   auto b = [&]() -> async<void> {
-    auto coro_activity = activities::Activity("BTestActivity", {});
+    auto coro_activity = this->makeActivity("BTestActivity", {});
     auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
         coro_activity.id());
 

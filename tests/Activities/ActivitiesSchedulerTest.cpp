@@ -21,6 +21,7 @@
 
 #include "Activities/activity.h"
 #include "Activities/registry.h"
+#include "Activities/activity_registry_variable.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
 #include "Scheduler/ThreadPoolScheduler.h"
@@ -45,7 +46,9 @@ struct ActivitiesSchedulerTest : ::testing::Test {
         scheduler(mockApplicationServer.server(), 4, metrics) {}
   void SetUp() override { scheduler.start(); }
 
-  void TearDown() override {}
+  void TearDown() override {
+    arangodb::activities::get_thread_registry().garbage_collect();
+  }
 
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
