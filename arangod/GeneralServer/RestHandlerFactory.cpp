@@ -33,7 +33,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
+RestHandlerFactory::RestHandlerFactory() : _sealed(false) {
+  // Initialize with 2 API versions (0 and 1)
+  _constructors.resize(2);
+  _prefixes.resize(2);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
@@ -41,15 +45,17 @@ RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req,
-    std::unique_ptr<GeneralResponse> res) const {
+    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res,
+    uint32_t apiVersion) const {
   TRI_ASSERT(_sealed);
+  TRI_ASSERT(apiVersion < _constructors.size());
 
   std::string const& path = req->requestPath();
 
-  auto it = _constructors.find(path);
+  auto const& constructors = _constructors[apiVersion];
+  auto it = constructors.find(path);
 
-  if (it != _constructors.end()) {
+  if (it != constructors.end()) {
     // direct match!
     LOG_TOPIC("f397b", TRACE, arangodb::Logger::FIXME)
         << "found direct handler for path '" << path << "'";
@@ -66,7 +72,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // find longest match
   size_t const pathLength = path.size();
   // prefixes are sorted by length descending
-  for (auto const& p : _prefixes) {
+  auto const& prefixes = _prefixes[apiVersion];
+  for (auto const& p : prefixes) {
     size_t const pSize = p.size();
     if (pSize >= pathLength) {
       // prefix too long
@@ -89,20 +96,20 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     LOG_TOPIC("7c476", TRACE, arangodb::Logger::FIXME)
         << "no prefix handler found, using catch all";
 
-    it = _constructors.find("/");
+    it = constructors.find("/");
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
     LOG_TOPIC("516d1", TRACE, arangodb::Logger::FIXME)
         << "found prefix match '" << *prefix << "'";
 
-    it = _constructors.find(*prefix);
+    it = constructors.find(*prefix);
     l = prefix->size() + 1;
   }
 
   // we must have found a handler - at least the catch-all handler must be
   // present
-  TRI_ASSERT(it != _constructors.end());
+  TRI_ASSERT(it != constructors.end());
 
   size_t n = path.find('/', l);
 
@@ -129,15 +136,20 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
+                                    std::initializer_list<uint32_t> apiVersions,
                                     void* data) {
   TRI_ASSERT(!_sealed);
 
-  if (!_constructors.try_emplace(path, func, data).second) {
-    // there should only be one handler for each path
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("attempt to register duplicate path handler for '") + path +
-            "'");
+  for (uint32_t apiVersion : apiVersions) {
+    TRI_ASSERT(apiVersion < _constructors.size());
+    auto& constructors = _constructors[apiVersion];
+    if (!constructors.try_emplace(path, func, data).second) {
+      // there should only be one handler for each path
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("attempt to register duplicate path handler for '") +
+              path + "' in API version " + std::to_string(apiVersion));
+    }
   }
 }
 
@@ -145,23 +157,29 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addPrefixHandler(std::string const& path,
-                                          create_fptr func, void* data) {
+void RestHandlerFactory::addPrefixHandler(
+    std::string const& path, create_fptr func,
+    std::initializer_list<uint32_t> apiVersions, void* data) {
   TRI_ASSERT(!_sealed);
 
-  addHandler(path, func, data);
+  addHandler(path, func, apiVersions, data);
 
-  _prefixes.emplace_back(path);
+  for (uint32_t apiVersion : apiVersions) {
+    TRI_ASSERT(apiVersion < _prefixes.size());
+    _prefixes[apiVersion].emplace_back(path);
+  }
 }
 
 void RestHandlerFactory::seal() {
   TRI_ASSERT(!_sealed);
 
-  // sort prefixes by their lengths
-  std::sort(_prefixes.begin(), _prefixes.end(),
-            [](std::string const& a, std::string const& b) {
-              return a.size() > b.size();
-            });
+  // sort prefixes by their lengths for each API version
+  for (auto& prefixes : _prefixes) {
+    std::sort(prefixes.begin(), prefixes.end(),
+              [](std::string const& a, std::string const& b) {
+                return a.size() > b.size();
+              });
+  }
 
   _sealed = true;
 }

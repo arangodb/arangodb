@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -53,24 +55,28 @@ class RestHandlerFactory {
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
       application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>) const;
+      std::unique_ptr<GeneralResponse>, uint32_t apiVersion = 0) const;
 
   // adds a path and constructor to the factory
-  void addHandler(std::string const& path, create_fptr, void* data = nullptr);
+  void addHandler(std::string const& path, create_fptr,
+                  std::initializer_list<uint32_t> apiVersions,
+                  void* data = nullptr);
 
   // adds a prefix path and constructor to the factory
   void addPrefixHandler(std::string const& path, create_fptr,
+                        std::initializer_list<uint32_t> apiVersions,
                         void* data = nullptr);
 
   // make the factory read-only (i.e. no new handlers can be added)
   void seal();
 
  private:
-  // list of constructors
-  std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
+  // list of constructors per API version
+  std::vector<std::unordered_map<std::string, std::pair<create_fptr, void*>>>
+      _constructors;
 
-  // list of prefix handlers
-  std::vector<std::string> _prefixes;
+  // list of prefix handlers per API version
+  std::vector<std::vector<std::string>> _prefixes;
 
   // whether or not handlers can be added (sealed = false)
   bool _sealed;
