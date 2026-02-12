@@ -58,7 +58,7 @@ auto ActivityInRegistry::snapshot() -> ActivityInRegistrySnapshot {
                                     .state = state,
                                     .id = id(),
                                     .parent = parent,
-                                    .metadata = metadata};
+                                    .metadata = metadata.copy()};
 }
 
 Activity::Activity(std::string type, Metadata metadata)
@@ -67,7 +67,7 @@ Activity::Activity(std::string type, Metadata metadata)
             .type = std::move(type),
             .state = State::Active,
             .parent = {Registry::currentlyExecutingActivity()},
-            .metadata = metadata};
+            .metadata = Guarded<Metadata>(metadata)};
       })} {}
 
 Activity::Activity(std::string type, Metadata metadata, ActivityId parent)
@@ -75,7 +75,7 @@ Activity::Activity(std::string type, Metadata metadata, ActivityId parent)
         return ActivityInRegistry{.type = std::move(type),
                                   .state = State::Active,
                                   .parent = parent,
-                                  .metadata = metadata};
+                                  .metadata = Guarded<Metadata>(metadata)};
       })} {}
 
 Activity::~Activity() {
@@ -86,4 +86,8 @@ Activity::~Activity() {
 
 auto Activity::id() const noexcept -> ActivityId {
   return _node_in_registry->data.id();
+}
+
+auto Activity::parentId() const noexcept -> ActivityId {
+  return _node_in_registry->data.parent;
 }
