@@ -1,5 +1,11 @@
 devel
 -----
+
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.17.
+
 * Added activities API which shows currently on-going high-level processes in the
   database and their possible dependencies on each other. Until now only a couple
   of activities are implemented, e.g. a rest handler is called, an aql query is
@@ -14,6 +20,9 @@ devel
   `arangodb_metadata_number_not_replicated_shards`, and
   `arangodb_metadata_shard_followers_out_of_sync_number`.
 
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
 * Added functionality for the ES256 signature scheme for JWT tokens.
   Moved JWT handling code from fuerte to core libs and removed code
   duplication.
@@ -22,12 +31,7 @@ devel
   because of disk-usage and not because of an expired license.
 
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
-results when condition optimization is turned off.
-
-* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
-  dependencies.
-
-* Updated ArangoDB Starter to v0.19.16.
+  results when condition optimization is turned off.
 
 * Upgraded OpenSSL to 3.5.5.
 
