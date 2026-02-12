@@ -293,7 +293,7 @@ On ARM, disable the `USE_LIBUNWIND` option:
 
 To build specific targets instead of all, you can specify them like shown below:
 
-    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangobench arangovpack frontend
+    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangovpack frontend
 
 You can find the output files at `build-presets/<preset-name>/`,
 with the compiled executables in the `bin/` subfolder.

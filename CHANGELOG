@@ -19,6 +19,8 @@
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
 
+* Remove arangobench.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 

@@ -794,7 +794,7 @@ function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, 
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
+// / @brief runs arangobackup
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
@@ -827,30 +827,6 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   return pu.executeAndWait(pu.ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(pu.CONFIG_DIR, 'arangobench.conf'),
-    'log.foreground-tty': 'true',
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    'server.connection-timeout': 10 // 5s default
-  };
-
-  args = Object.assign(args, cmds);
-
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-    args['flatCommands'] = ['--quiet'];
-  }
-
-  return pu.executeAndWait(pu.ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
-}
-
 exports.makeArgs = {
   arangosh: makeArgsArangosh
 };
@@ -869,7 +845,6 @@ exports.run = {
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
-  arangoBenchmark: runArangoBenchmark,
   arangoBackup: runArangoBackup,
   rtaWaitShardsInSync: rtaWaitShardsInSync,
   rtaMakedata: rtaMakedata
