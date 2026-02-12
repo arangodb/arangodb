@@ -26,7 +26,7 @@
 
 TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   {
-    NoWait wait;
+    async_tests::NoWait wait;
     auto coro = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
@@ -44,7 +44,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   }
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
-    WaitSlot wait;
+    async_tests::WaitSlot wait;
     auto coro = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
@@ -71,7 +71,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   }
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
-    ConcurrentNoWait wait;
+    async_tests::ConcurrentNoWait wait;
     auto coro = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
