@@ -445,3 +445,74 @@ TEST_F(ApiVersionDetectionTest, InvalidVersionV0100) {
   EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
   EXPECT_NE(std::string::npos, res.errorMessage().find("leading zeros"));
 }
+
+// Test: Version number that exceeds uint64_t max should trigger stoull
+// exception
+TEST_F(ApiVersionDetectionTest, VersionExceedsUint64Max) {
+  HttpRequest request(ci, 1);
+  // Create a version number that's way too large for uint64_t
+  // uint64_t max is 18446744073709551615 (20 digits)
+  // Let's use a number with many more digits
+  std::string path = "/_arango/v99999999999999999999999999999999/path";
+  request.setRequestPath(path);
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ(path, request.requestPath());
+  // Verify the error message mentions the parsing failure
+  EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
+}
+
+// Test: Version number at uint64_t max boundary
+TEST_F(ApiVersionDetectionTest, VersionAtUint64Max) {
+  HttpRequest request(ci, 1);
+  // uint64_t max is 18446744073709551615
+  std::string path = "/_arango/v18446744073709551615/path";
+  request.setRequestPath(path);
+
+  Result res = request.detectAndStripApiVersion();
+
+  // This should succeed in parsing but fail because it exceeds uint32_t max
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ(path, request.requestPath());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("too large"));
+}
+
+// Test: Version number slightly above uint64_t max
+TEST_F(ApiVersionDetectionTest, VersionSlightlyAboveUint64Max) {
+  HttpRequest request(ci, 1);
+  // uint64_t max is 18446744073709551615, let's use 18446744073709551616
+  std::string path = "/_arango/v18446744073709551616/path";
+  request.setRequestPath(path);
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ(path, request.requestPath());
+  // Should trigger stoull exception for out_of_range
+  EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
+}
+
+// Test: Very long string of digits that would cause stoull to throw
+TEST_F(ApiVersionDetectionTest, VersionExcessivelyLongNumber) {
+  HttpRequest request(ci, 1);
+  // Create a version with 100 digits
+  std::string hugeNumber(100, '9');
+  std::string path = "/_arango/v" + hugeNumber + "/path";
+  request.setRequestPath(path);
+
+  Result res = request.detectAndStripApiVersion();
+
+  EXPECT_TRUE(res.fail());
+  EXPECT_EQ(TRI_ERROR_HTTP_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(GeneralRequest::defaultApiVersion, request.apiVersion());
+  EXPECT_EQ(path, request.requestPath());
+  EXPECT_NE(std::string::npos, res.errorMessage().find("failed to parse"));
+}
