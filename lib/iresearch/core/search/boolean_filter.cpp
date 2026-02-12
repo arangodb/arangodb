@@ -204,6 +204,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
     // single node case
     return incl.front()->prepare(sub_ctx);
   }
+
   auto q = memory::make_tracked<AndQuery>(sub_ctx.memory);
   q->prepare(sub_ctx, merge_type(), incl, excl);
   return q;

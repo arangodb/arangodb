@@ -109,6 +109,24 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
       return (*begin)->execute(ctx);
   }
 
+  {
+    auto itrs = MakeScoreAdapters<true>(ctx, begin, end);
+    if (itrs.empty()) {
+      return irs::doc_iterator::empty();
+    }
+
+    IRS_LOG_INFO(std::string("Conjunction iterators: Total: ") + std::to_string(itrs.size()));
+    int index = 0;
+    for (auto& itr : itrs) {
+      std::ostringstream oss;
+      oss << "#" << index++ << "(" << itr->getIdentifier() << "): ";
+      while (itr->next()) {
+        oss << itr->value() << ", ";
+      }
+      IRS_LOG_INFO(oss.str());
+    }
+  }
+
   auto itrs = MakeScoreAdapters<true>(ctx, begin, end);
   if (itrs.empty()) {
     return irs::doc_iterator::empty();

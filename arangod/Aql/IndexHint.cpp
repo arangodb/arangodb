@@ -36,6 +36,7 @@
 #include <velocypack/Slice.h>
 
 #include <ostream>
+#include "Logger/LogMacros.h"
 
 namespace arangodb::aql {
 namespace {
@@ -240,6 +241,7 @@ IndexHint::IndexHint(velocypack::Slice slice) {
   std::string_view type{kTypeNone};
 
   VPackSlice s = slice.get(kFieldContainer);
+
   if (s.isObject()) {
     _lookahead = basics::VelocyPackHelper::getNumericValue(
         s, StaticStrings::IndexLookahead, _lookahead);

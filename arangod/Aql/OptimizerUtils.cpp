@@ -473,7 +473,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     if (hint.isForced() && bestIndex == nullptr && failOnForcedHint) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-          absl::StrCat("could not use index hint to serve query; ",
+          absl::StrCat("2 could not use index hint to serve query; ",
                        hint.toString()));
     }
   }
@@ -1363,7 +1363,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
         if (hint.isForced() && bestIndex == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-              "could not use index hint to serve query; " + hint.toString());
+              "3 could not use index hint to serve query; " + hint.toString());
         }
       }
 

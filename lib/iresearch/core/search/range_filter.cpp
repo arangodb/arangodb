@@ -145,9 +145,11 @@ filter::prepared::ptr by_range::prepare(const PrepareContext& ctx,
   MultiTermQuery::Stats stats{{ctx.memory}};
   collector.score(ctx.index, ctx.scorers, stats);
 
+  std::ostringstream oss;
+  oss << "by_range(" << std::string(field) << ")";
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
                                               std::move(stats), ctx.boost,
-                                              ScoreMergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1}, oss.str());
 }
 
 void by_range::visit(const SubReader& segment, const term_reader& reader,

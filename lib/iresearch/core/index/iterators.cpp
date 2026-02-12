@@ -155,4 +155,49 @@ column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<column_iterator>(kEmptyColumnIterator);
 }
 
+MyDocIterator::MyDocIterator(doc_iterator::ptr&& incl, const std::string& logMsg) noexcept
+  : docItr_(std::move(incl)), logMsg_(logMsg) {
+    setIdentifier(logMsg_);
+}
+
+doc_id_t MyDocIterator::value() const {
+  auto val = docItr_->value();
+  std::ostringstream oss;
+  oss << "KDOCITR " << docItr_.get() << "->value(): " << logMsg_ << ": " << val;
+  IRS_LOG_INFO(oss.str());
+  return val;
+}
+
+bool MyDocIterator::next() {
+  auto ret = docItr_->next();
+  if (ret) {
+    std::ostringstream oss;
+    oss << "KDOCITR " << docItr_.get() << "->next(): " << logMsg_ << ": " << docItr_->value();
+    IRS_LOG_INFO(oss.str());
+  }
+
+  return ret;
+}
+
+std::string MyDocIterator::getIdentifier() {
+  std::ostringstream oss;
+  if (identifier_.empty()) {
+    oss << "(EMPTY) (" << typeid(*docItr_.get()).name() << ")";
+    return oss.str();
+  }
+  return identifier_;
+}
+
+doc_id_t MyDocIterator::seek(doc_id_t target) {
+  auto val = docItr_->seek(target);
+  std::ostringstream oss;
+  oss << "KDOCITR " << docItr_.get() << "->seek(from " << docItr_->value() << " to " << target << "): " << logMsg_ << ": " << val;
+  IRS_LOG_INFO(oss.str());
+  return val;
+}
+
+attribute* MyDocIterator::get_mutable(type_info::type_id type) noexcept {
+  return docItr_->get_mutable(type);
+}
+
 }  // namespace irs

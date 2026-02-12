@@ -96,6 +96,12 @@ bool IResearchViewExecutor<ExecutionTraits>::readSegment(
     // try to read a document PK from iresearch
     bool const iteratorExhausted = !readPK(documentId, reader);
 
+    {
+      std::ostringstream oss;
+      oss << "IResearchViewExecutor<ExecutionTraits>::readSegment: result: " << documentId;
+      IRS_LOG_INFO(oss.str());
+    }
+
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next
       // reader.
@@ -352,6 +358,12 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator(
   TRI_ASSERT(reader.itr);
   reader.doc = irs::get<irs::document>(*reader.itr);
   TRI_ASSERT(reader.doc);
+
+  {
+    std::ostringstream oss;
+    oss << "KKDBG: IResearchViewExecutor<ExecutionTraits>::resetIterator: reader.itr = " << reader.doc->value;
+    IRS_LOG_INFO(oss.str());
+  }
 
   if constexpr (ExecutionTraits::Ordered) {
     reader.scr = irs::get<irs::score>(*reader.itr);

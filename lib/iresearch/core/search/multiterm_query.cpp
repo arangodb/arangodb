@@ -169,7 +169,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
 
   itrs.erase(it, std::end(itrs));
 
-  return ResoveMergeType(
+  auto ret = ResoveMergeType(
     merge_type_, ord.buckets().size(),
     [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
       using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
@@ -178,6 +178,12 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
                                                 std::move(aggregator),
                                                 state->estimation());
     });
+
+    std::ostringstream oss;
+    oss << "MultiTermQuery(" << logInfo_ << ")";
+    auto mdi = memory::make_managed<MyDocIterator>(
+      std::move(ret), oss.str());
+    return mdi;
 }
 
 }  // namespace irs

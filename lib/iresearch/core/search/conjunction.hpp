@@ -176,29 +176,62 @@ class Conjunction : public ConjunctionBase<DocIterator, Merger> {
       this->PrepareScore(score, Base::Score2, Base::ScoreN,
                          ScoreFunction::DefaultMin);
     }
+
+    {
+      std::ostringstream oss;
+      oss << "KKDBG: Conjunction::Conjunction: front_doc_: " << *front_doc_;
+      IRS_LOG_INFO(oss.str());
+    }
   }
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const final { return *front_doc_; }
+  doc_id_t value() const final {
+    {
+      std::ostringstream oss;
+      oss << "KKDBG: Conjunction::value: value: " << *front_doc_;
+      IRS_LOG_INFO(oss.str());
+    }
+    return *front_doc_;
+  }
 
   bool next() override {
     if (IRS_UNLIKELY(!front_->next())) {
       return false;
     }
 
-    return !doc_limits::eof(converge(*front_doc_));
+    auto prev = *front_doc_;
+    auto ret = converge(*front_doc_);
+
+    {
+      std::ostringstream oss;
+      oss << "KKDBG: Conjunction::next: converge(" << prev << ") returned " << ret;
+      IRS_LOG_INFO(oss.str());
+    }
+
+    return !doc_limits::eof(ret);
   }
 
   doc_id_t seek(doc_id_t target) override {
+    std::ostringstream oss;
+    oss << "KKDBG: Conjunction::seek(itrs[0] = " << this->itrs_[0]->value() << ", itrs[1] = " << this->itrs_[1]->value() << "), ";
+    oss << "seeking conjunction (from " << *front_doc_ << " to " << target << "), front_->seek(" << target << ") returned newTarget(";
+
     target = front_->seek(target);
+    oss << target << ")";
     if (IRS_UNLIKELY(doc_limits::eof(target))) {
+      IRS_LOG_INFO(oss.str());
       return doc_limits::eof();
     }
 
-    return converge(target);
+    auto ret = converge(target);
+
+    oss << ", converge(" << target << ") returned " << ret;
+    IRS_LOG_INFO(oss.str());
+
+    return ret;
   }
 
  private:

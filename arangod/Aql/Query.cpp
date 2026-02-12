@@ -418,6 +418,8 @@ bool Query::tryLoadPlanFromCache() {
 }
 
 async<void> Query::prepareQuery() {
+  LOG_DEVEL << "KKDBG: prepareQuery: query (" << _queryString.string() << ")";
+
   try {
     if (tryLoadPlanFromCache()) {
       auto const querySlice = _planSliceCopy.slice();

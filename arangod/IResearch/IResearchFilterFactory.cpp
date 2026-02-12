@@ -703,6 +703,15 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
       return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
     }
   }
+
+  {
+    std::ostringstream oss;
+    double dval;
+    value.getDouble(dval);
+    oss << "KKDBG: " << aql::AstNode::getTypeString(node.cmp) << ": " << dval;
+    IRS_LOG_INFO(oss.str());
+  }
+
   return byRange<Min>(filter, name, value, incl, filterCtx);
 }
 
@@ -4214,6 +4223,15 @@ Result FilterFactory::filter(irs::boolean_filter* filter,
   if (node.willUseV8()) {
     return {TRI_ERROR_NOT_IMPLEMENTED,
             "using V8 dependent function is not allowed in SEARCH statement"};
+  }
+
+  {
+    VPackBuilder builder;
+    node.toVelocyPack(builder, true);
+    std::ostringstream oss;
+    oss << "KKDBG: FilterFactory::filter: iresearch AST: " << builder.toJson();
+    auto logEntry = oss.str();
+    LOG_TOPIC("dfa16", INFO, TOPIC) << logEntry;
   }
 
   const auto res = makeFilter(filter, filterCtx, node);
