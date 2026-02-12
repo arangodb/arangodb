@@ -985,8 +985,11 @@ void GeneralServerFeature::defineRemainingHandlers(
   // actions defined in v8
   // ...........................................................................
 
+  // Note that the catchall handler must be added for every API version
+  // (including the currently unused experimental one), or else requests to
+  // unknown endpoints (Foxx) might run into a crash.
   f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData,
-                     {0, 1});
+                     {0, 1, 2});
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
