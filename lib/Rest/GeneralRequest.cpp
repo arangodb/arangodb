@@ -33,6 +33,7 @@
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Logger/LogMacros.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/RequestContext.h"
 
 using namespace arangodb;
@@ -68,7 +69,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _apiVersion(defaultApiVersion),
+      _apiVersion(ApiVersion::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -416,7 +417,7 @@ Result GeneralRequest::detectAndStripApiVersion() {
     size_t suffixEnd = experimentalSuffix.size();
     // Make sure it's followed by / or is end of string
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _apiVersion = std::numeric_limits<uint32_t>::max();
+      _apiVersion = ApiVersion::experimentalApiVersion;
 
       // Strip the prefix, keep the rest of the path
       if (suffixEnd < remainder.size()) {

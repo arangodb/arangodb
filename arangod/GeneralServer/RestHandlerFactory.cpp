@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
@@ -33,10 +34,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandlerFactory::RestHandlerFactory() : _sealed(false) {
-  // Initialize with 2 API versions (0 and 1)
-  _constructors.resize(2);
-  _prefixes.resize(2);
+RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
+    : _sealed(false) {
+  // Initialize with space for API versions 0 through maxApiVersion (inclusive)
+  size_t numVersions = static_cast<size_t>(maxApiVersion) + 1;
+  _constructors.resize(numVersions);
+  _prefixes.resize(numVersions);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -50,7 +50,7 @@ class RestHandlerFactory {
       application_features::ApplicationServer&, GeneralRequest*,
       GeneralResponse*, void* data);
 
-  RestHandlerFactory();
+  explicit RestHandlerFactory(uint32_t maxApiVersion);
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
