@@ -108,9 +108,6 @@ class StaticStrings {
   static std::string const AppBundlesCollection;
   static std::string const FrontendCollection;
   static std::string const QueriesCollection;
-  static std::string const StatisticsCollection;
-  static std::string const Statistics15Collection;
-  static std::string const StatisticsRawCollection;
 
   // analyzers names
   static std::string const AnalyzersRevision;

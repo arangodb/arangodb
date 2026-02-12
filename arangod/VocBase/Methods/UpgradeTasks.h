@@ -36,8 +36,6 @@ namespace arangodb::methods {
 struct UpgradeTasks {
   static Result createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                   velocypack::Slice slice);
-  static Result createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                      velocypack::Slice slice);
   static Result addDefaultUserOther(TRI_vocbase_t& vocbase,
                                     velocypack::Slice slice);
   static Result renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,

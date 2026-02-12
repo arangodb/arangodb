@@ -359,7 +359,9 @@ function VectorIndexTestCreationWithVectors() {
             let gen = randomNumberGeneratorFloat(seed);
 
             let docs = [];
-            for (let i = 0; i < 20; ++i) {
+            // Insert enough documents with vectors to ensure each shard has at least one
+            // With 3 shards, we need at least 3 documents with vectors, but use more for safety
+            for (let i = 0; i < 30; ++i) {
                 if (i > 10) {
                   const vector = Array.from({
                       length: dimension

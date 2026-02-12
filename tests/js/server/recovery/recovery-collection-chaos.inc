@@ -220,7 +220,7 @@ function recoverySuite () {
         assertTrue(ver.equal, c.name());
       }
 
-      ["_queues", "_statistics", "_statistics15", "_statisticsRaw"].forEach((colName) => {
+      ["_queues"].forEach((colName) => {
         let c = db._collection(colName);
         assertEqual(c.count(), toArray(c));
         assertEqual(c._revisionTreeSummary().count, c.count());
