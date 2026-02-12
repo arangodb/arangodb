@@ -68,7 +68,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool canBeDropped() const override { return true; }
 
-  bool needsLegacyGeoUpgrade() const override { return _needsLegacyGeoUpgrade; }
+  bool needsLegacyGeoDrop() const override { return _needsLegacyGeoDrop; }
 
   bool isSorted() const override { return false; }
 
@@ -99,6 +99,6 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
  private:
   std::string const _typeName;
-  bool const _needsLegacyGeoUpgrade;
+  bool const _needsLegacyGeoDrop;
 };
 }  // namespace arangodb
