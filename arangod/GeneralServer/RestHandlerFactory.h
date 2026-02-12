@@ -55,7 +55,7 @@ class RestHandlerFactory {
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
       application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
-      std::unique_ptr<GeneralResponse>, uint32_t apiVersion = 0) const;
+      std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr,

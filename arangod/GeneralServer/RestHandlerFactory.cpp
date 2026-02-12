@@ -48,9 +48,20 @@ RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res,
-    uint32_t apiVersion) const {
+    std::unique_ptr<GeneralRequest> req,
+    std::unique_ptr<GeneralResponse> res) const {
   TRI_ASSERT(_sealed);
+
+  uint32_t apiVersion = req->requestedApiVersion();
+
+  // Check if the requested API version is valid
+  if (apiVersion >= _constructors.size()) {
+    LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
+        << "requested API version " << apiVersion
+        << " is not supported (max: " << (_constructors.size() - 1) << ")";
+    return nullptr;
+  }
+
   TRI_ASSERT(apiVersion < _constructors.size());
 
   std::string const& path = req->requestPath();
