@@ -68,7 +68,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _apiVersion(defaultApiVersion),
+      _requestedApiVersion(defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -423,7 +423,7 @@ Result GeneralRequest::detectAndStripApiVersion() {
     size_t suffixEnd = experimentalSuffix.size();
     // Make sure it's followed by / or is end of string
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _apiVersion = std::numeric_limits<uint32_t>::max();
+      _requestedApiVersion = std::numeric_limits<uint32_t>::max();
 
       // Strip the prefix, keep the rest of the path
       if (suffixEnd < remainder.size()) {
@@ -468,7 +468,7 @@ Result GeneralRequest::detectAndStripApiVersion() {
         try {
           uint64_t version = std::stoull(versionStr);
           if (version <= std::numeric_limits<uint32_t>::max()) {
-            _apiVersion = static_cast<uint32_t>(version);
+            _requestedApiVersion = static_cast<uint32_t>(version);
 
             // Strip the prefix, keep the rest of the path
             if (numEnd < afterV.size()) {
