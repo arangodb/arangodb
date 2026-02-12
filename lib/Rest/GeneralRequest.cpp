@@ -467,30 +467,30 @@ Result GeneralRequest::detectAndStripApiVersion() {
         std::string versionStr(afterV.substr(0, numEnd));
         try {
           uint64_t version = std::stoull(versionStr);
-          if (version <= std::numeric_limits<uint32_t>::max()) {
-            _requestedApiVersion = static_cast<uint32_t>(version);
-
-            // Strip the prefix, keep the rest of the path
-            if (numEnd < afterV.size()) {
-              // There's more path after /vX
-              setRequestPath(std::string(afterV.substr(numEnd)));
-            } else {
-              // Path is exactly /_arango/vX
-              setRequestPath("/");
-            }
-            return Result();
-          } else {
-            return Result(
-                TRI_ERROR_HTTP_BAD_PARAMETER,
-                absl::StrCat(
-                    "invalid API version: version number too large, got path: ",
-                    _requestPath));
-          }
         } catch (std::exception& e) {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                         absl::StrCat("invalid API version: failed to parse "
                                      "version number: ",
                                      e.what(), ", got path: ", _requestPath));
+        }
+        if (version <= std::numeric_limits<uint32_t>::max()) {
+          _requestedApiVersion = static_cast<uint32_t>(version);
+
+          // Strip the prefix, keep the rest of the path
+          if (numEnd < afterV.size()) {
+            // There's more path after /vX
+            setRequestPath(std::string(afterV.substr(numEnd)));
+          } else {
+            // Path is exactly /_arango/vX
+            setRequestPath("/");
+          }
+          return Result();
+        } else {
+          return Result(
+              TRI_ERROR_HTTP_BAD_PARAMETER,
+              absl::StrCat(
+                  "invalid API version: version number too large, got path: ",
+                  _requestPath));
         }
       }
     }
