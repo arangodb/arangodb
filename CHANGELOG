@@ -1,5 +1,16 @@
 devel
 -----
+
+* COR-231: Vector index `nLists` now supports a tiered scaling specification
+  alongside fixed integer values. The scaling spec uses
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists
+  based on document count per shard at training time: tiers provide fixed
+  values for large collections, while smaller collections use
+  `max(minNLists, multiplier * sqrt(docCount))`. The `defaultNProbe` is now
+  automatically computed as `sqrt(resolvedNLists)` (minimum 1) when not
+  explicitly set. Factory string templates with `{nLists}` placeholder are
+  supported for scaling mode.
+
 * Added activities API which shows currently on-going high-level processes in the
   database and their possible dependencies on each other. Until now only a couple
   of activities are implemented, e.g. a rest handler is called, an aql query is
@@ -26,12 +37,6 @@ devel
 
 * OASIS-26699: Fixed a bug in arangosearch that returned incorrect
 results when condition optimization is turned off.
-
-* COR-231: Vector index `nLists` and `defaultNProbe` now accept a scaling
-  object `{ "factor": N, "function": "sqrt"|"log"|"cbrt"|"linear" }` to
-  compute the value as `factor * func(docCount)` per shard at training time.
-  Added `scalingFactory` for factory string templates with `{nLists}` placeholder.
-  This is useful in cluster setting when data sharding might be unequal.
 
 * Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
   dependencies.
