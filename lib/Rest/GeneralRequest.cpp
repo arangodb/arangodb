@@ -69,7 +69,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _apiVersion(ApiVersion::defaultApiVersion),
+      _requestedApiVersion(ApiVersion::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -405,11 +405,18 @@ Result GeneralRequest::detectAndStripApiVersion() {
   std::string_view remainder =
       std::string_view(_requestPath).substr(arangoPrefix.size());
 
+  // Prepare generic error message:
+  auto genericErrorMsgMaker = [&]() {
+    return Result(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        absl::StrCat("invalid API version prefix: expected '/_arango/vX' or "
+                     "'/_arango/experimental', got instead: ",
+                     _requestPath));
+  };
+
   // Check for empty remainder (path is exactly "/_arango/" or "/_arango")
   if (remainder.empty()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid API version prefix: expected '/_arango/vX' or "
-                  "'/_arango/experimental'");
+    return genericErrorMsgMaker();
   }
 
   // Check for /_arango/experimental
@@ -417,7 +424,7 @@ Result GeneralRequest::detectAndStripApiVersion() {
     size_t suffixEnd = experimentalSuffix.size();
     // Make sure it's followed by / or is end of string
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _apiVersion = ApiVersion::experimentalApiVersion;
+      _requestedApiVersion = ApiVersion::experimentalApiVersion;
 
       // Strip the prefix, keep the rest of the path
       if (suffixEnd < remainder.size()) {
@@ -428,6 +435,8 @@ Result GeneralRequest::detectAndStripApiVersion() {
         setRequestPath("/");
       }
       return Result();
+    } else {
+      return genericErrorMsgMaker();
     }
   }
 
@@ -448,9 +457,11 @@ Result GeneralRequest::detectAndStripApiVersion() {
         // Check for leading zeros: reject if version starts with '0' and has
         // more than one digit
         if (afterV[0] == '0' && numEnd > 1) {
-          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "invalid API version: version number must not have "
-                        "leading zeros");
+          return Result(
+              TRI_ERROR_HTTP_BAD_PARAMETER,
+              absl::StrCat("invalid API version: version number must not have "
+                           "leading zeros, got path: ",
+                           _requestPath));
         }
 
         // Parse the version number
@@ -458,7 +469,7 @@ Result GeneralRequest::detectAndStripApiVersion() {
         try {
           uint64_t version = std::stoull(versionStr);
           if (version <= std::numeric_limits<uint32_t>::max()) {
-            _apiVersion = static_cast<uint32_t>(version);
+            _requestedApiVersion = static_cast<uint32_t>(version);
 
             // Strip the prefix, keep the rest of the path
             if (numEnd < afterV.size()) {
@@ -470,21 +481,24 @@ Result GeneralRequest::detectAndStripApiVersion() {
             }
             return Result();
           } else {
-            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "invalid API version: version number too large");
+            return Result(
+                TRI_ERROR_HTTP_BAD_PARAMETER,
+                absl::StrCat(
+                    "invalid API version: version number too large, got path: ",
+                    _requestPath));
           }
-        } catch (...) {
+        } catch (std::exception& e) {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "invalid API version: failed to parse version number");
+                        absl::StrCat("invalid API version: failed to parse "
+                                     "version number: ",
+                                     e.what(), ", got path: ", _requestPath));
         }
       }
     }
   }
 
   // If we get here, we have /_arango/ but it's not followed by a valid format
-  return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                "invalid API version prefix: expected '/_arango/vX' where X "
-                "is a decimal number, or '/_arango/experimental'");
+  return genericErrorMsgMaker();
 }
 
 }  // namespace arangodb

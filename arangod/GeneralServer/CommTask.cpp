@@ -696,7 +696,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
-      << ", apiVersion=" << handler->request()->apiVersion();
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
   ;
 
   ContentType respType = handler->request()->contentTypeResponse();
@@ -746,7 +746,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   LOG_TOPIC("ecd0b", DEBUG, Logger::REQUESTS)
       << "Handling async request " << (void*)this << " on path "
       << handler->request()->requestPath() << " on lane " << lane
-      << ", apiVersion=" << handler->request()->apiVersion();
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
   ;
 
   if (jobId != nullptr) {

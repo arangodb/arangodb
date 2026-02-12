@@ -205,7 +205,7 @@ class GeneralRequest {
   }
 
   /// @brief get the requested API version
-  uint32_t apiVersion() const noexcept { return _apiVersion; }
+  uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
 
   /// @brief detect and strip /_arango/vX or /_arango/experimental prefix from
   /// the request path
@@ -257,7 +257,7 @@ class GeneralRequest {
   rest::AuthenticationMethod _authenticationMethod;
 
   // API version requested (0 by default, max for experimental)
-  uint32_t _apiVersion;
+  uint32_t _requestedApiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..
