@@ -51,7 +51,6 @@ class IOHeartbeatThread;
 class LogicalCollection;
 class ReplicationFeature;
 class StorageEngine;
-class V8DealerFeature;
 
 namespace metrics {
 class MetricsFeature;
