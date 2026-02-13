@@ -123,7 +123,3 @@ target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
 )
 
 target_link_libraries(arangodbtests-iresearch v8_interface)
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/devel

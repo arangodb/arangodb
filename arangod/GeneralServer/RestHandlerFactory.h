@@ -58,12 +58,8 @@ class RestHandlerFactory {
   // if nullptr is returned, errorBuilder will contain error information
   std::shared_ptr<RestHandler> createHandler(
       application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
-<<<<<<< HEAD
-      std::unique_ptr<GeneralResponse>) const;
-=======
       std::unique_ptr<GeneralResponse>,
       velocypack::Builder& errorBuilder) const;
->>>>>>> origin/devel
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr,

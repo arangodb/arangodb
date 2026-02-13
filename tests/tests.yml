@@ -57,7 +57,6 @@
     args:
       extraArgs:log.level: replication=trace
 
-
 - authentication_audit_endpoints_import_export_agency:
     options:
       type: single
@@ -126,9 +125,6 @@
     options:
       priority: 250
       parallelity: 2
-<<<<<<< HEAD
-      buckets: 3
-=======
       buckets: 2
       type: single
 
@@ -136,7 +132,6 @@
     options:
       priority: 250
       parallelity: 2
->>>>>>> origin/devel
       type: single
       size: medium
 
@@ -205,8 +200,6 @@
 - shell_client_aql:
     options:
       buckets: 10
-<<<<<<< HEAD
-=======
       priority: 250
       type: single
     args:
@@ -225,7 +218,6 @@
 - shell_client_aql_large:
     options:
       buckets: 5
->>>>>>> origin/devel
       priority: 250
       type: single
     args:
@@ -408,11 +400,7 @@
       priority: 1000
       size: medium+
       type: cluster
-<<<<<<< HEAD
-      buckets: 17
-=======
       buckets: 4
->>>>>>> origin/devel
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
@@ -430,11 +418,7 @@
       priority: 500
       type: cluster
       size: medium+
-<<<<<<< HEAD
-      buckets: 12
-=======
       buckets: 6
->>>>>>> origin/devel
     args:
       dumpAgencyOnError: true
 - shell_client_transaction:

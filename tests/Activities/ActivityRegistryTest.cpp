@@ -75,11 +75,7 @@ TEST_F(ActivityRegistryTest, creates_activity) {
 TEST_F(ActivityRegistryTest, sets_current_activity) {
   EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
-<<<<<<< HEAD
-  Registry::setCurrentlyExecutingActivity(a.id());
-=======
   auto guard = Registry::ScopedCurrentlyExecutingActivity(a.id());
->>>>>>> origin/devel
 
   auto current = Registry::currentlyExecutingActivity();
 

@@ -100,11 +100,7 @@ RestVersionHandler::RestVersionHandler(
 
 void RestVersionHandler::getVersion(
     application_features::ApplicationServer& server, bool allowInfo,
-<<<<<<< HEAD
-    bool includeDetails, VPackBuilder& result) {
-=======
     bool includeDetails, VPackBuilder& result, uint32_t requestedApiVersion) {
->>>>>>> origin/devel
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE

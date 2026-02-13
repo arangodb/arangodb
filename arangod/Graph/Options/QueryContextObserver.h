@@ -24,53 +24,29 @@
 
 #pragma once
 
-<<<<<<<<HEAD : arangod / Graph / Options / QueryContextObserver.h
 #include "Aql/QueryContext.h"
-        == == == ==
-#include "Basics/Thread.h"
-        >>>>>>>> origin /
-        devel : arangod / RestServer / ConsoleThread.h
 
-    // This class serves as a wrapper around QueryContext to explicitly track
-    // where query killing is being used in the graph traversal code. It
-    // provides a single point of access to check if a query has been killed,
-    // making it easier to maintain and modify the query killing behavior if
-    // needed.
-    //
-    // While this adds a small layer of indirection, it helps with code clarity
-    // and maintainability. If profiling shows this wrapper causes significant
-    // overhead, we can remove it and use QueryContext directly.
-    //
-    // We can change this or discuss if this approach is not liked.
+// This class serves as a wrapper around QueryContext to explicitly track where
+// query killing is being used in the graph traversal code. It provides a single
+// point of access to check if a query has been killed, making it easier to
+// maintain and modify the query killing behavior if needed.
+//
+// While this adds a small layer of indirection, it helps with code clarity and
+// maintainability. If profiling shows this wrapper causes significant overhead,
+// we can remove it and use QueryContext directly.
+//
+// We can change this or discuss if this approach is not liked.
 
-    < < < < < < < < HEAD : arangod / Graph / Options /
-                           QueryContextObserver.h namespace arangodb::graph {
-  == == == == struct TRI_vocbase_t;
+namespace arangodb::graph {
 
-  namespace arangodb {
-  class V8ExecutorGuard;
-  class V8LineEditor;
-  }  // namespace arangodb
+class QueryContextObserver {
+ public:
+  explicit QueryContextObserver(aql::QueryContext& query) : _query(query) {}
 
-  namespace arangodb {
-  namespace application_features {
-  class ApplicationServer;
-  }
+  [[nodiscard]] bool isKilled() const { return _query.killed(); }
 
-  class ConsoleThread final : public ServerThread {
-    ConsoleThread(const ConsoleThread&) = delete;
-    ConsoleThread& operator=(const ConsoleThread&) = delete;
-    >>>>>>>> origin / devel : arangod / RestServer /
-                              ConsoleThread.h
+ private:
+  aql::QueryContext& _query;
+};
 
-                              class QueryContextObserver {
-     public:
-      explicit QueryContextObserver(aql::QueryContext& query) : _query(query) {}
-
-      [[nodiscard]] bool isKilled() const { return _query.killed(); }
-
-     private:
-      aql::QueryContext& _query;
-    };
-
-  }  // namespace arangodb::graph
+}  // namespace arangodb::graph
