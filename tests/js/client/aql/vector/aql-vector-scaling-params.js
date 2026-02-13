@@ -87,6 +87,7 @@ function VectorIndexScalingTestSuite() {
             const idx = collection.getIndexes().find(i => i.name === idxName);
             assertTrue(idx !== undefined);
             // When nLists is omitted, the default scaling spec should be used
+            assertEqual("autoSqrt", idx.params.nLists.strategy, "default strategy should be autoSqrt");
             assertEqual(8, idx.params.nLists.multiplier, "default multiplier should be 8");
             assertEqual(32, idx.params.nLists.minNLists, "default minNLists should be 32");
             assertEqual(3, idx.params.nLists.tiers.length, "default should have 3 tiers");
@@ -97,12 +98,14 @@ function VectorIndexScalingTestSuite() {
             assertEqual(262144, idx.params.nLists.tiers[1].fixed_value);
             assertEqual(1000000, idx.params.nLists.tiers[2].min_n);
             assertEqual(65536, idx.params.nLists.tiers[2].fixed_value);
+            assertEqual("autoSqrt", idx.params.defaultNProbe, "default defaultNProbe should be autoSqrt");
         },
 
         testScalingNListsWithTiersAndExplicitNProbe: function() {
             const params = {
                 metric: "l2", dimension,
                 nLists: {
+                    strategy: "autoSqrt",
                     multiplier: 4,
                     minNLists: 2,
                     tiers: [

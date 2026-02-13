@@ -202,10 +202,7 @@ std::int64_t VectorIndexTrainer::resolveNLists(
 
 std::int64_t VectorIndexTrainer::resolveDefaultNProbe(
     std::int64_t resolvedNLists) const {
-  if (_definition.defaultNProbe.has_value()) {
-    return *_definition.defaultNProbe;
-  }
-  return computeDefaultNProbe(resolvedNLists);
+  return resolveNProbeParameter(_definition.defaultNProbe, resolvedNLists);
 }
 
 std::vector<float> VectorIndexTrainer::collectTrainingDataset(

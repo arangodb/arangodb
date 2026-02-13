@@ -81,6 +81,16 @@ struct TrainedData {
   }
 };
 
+/// @brief Strategy for computing nLists from document count.
+enum class NListsStrategy : std::uint8_t {
+  kAutoSqrt,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, NListsStrategy& x) {
+  return f.enumeration(x).values(NListsStrategy::kAutoSqrt, "autoSqrt");
+}
+
 /// @brief A single tier in the NLists scaling specification.
 /// If the document count N >= minN, use fixedValue for nLists.
 struct NListsTier {
@@ -110,11 +120,12 @@ struct NListsTier {
 };
 
 /// @brief Tiered NLists scaling specification.
-/// For small N: nLists = max(minNLists, multiplier * sqrt(N))
+/// For small N: nLists = max(minNLists, multiplier * func(N))
 /// For large N: uses fixed values from tiers (first tier whose min_n <= N).
 /// Tiers should be provided in descending order of min_n.
 struct NListsScalingSpec {
-  double multiplier{8.0};
+  NListsStrategy strategy{NListsStrategy::kAutoSqrt};
+  std::int64_t multiplier{8};
   std::int64_t minNLists{10};
   std::vector<NListsTier> tiers;
 
@@ -130,19 +141,24 @@ struct NListsScalingSpec {
         return tier.fixedValue;
       }
     }
-    // No tier matched: use multiplier * sqrt(N), at least minNLists.
-    auto raw = static_cast<std::int64_t>(
-        multiplier * std::sqrt(static_cast<double>(docCount)));
-    return std::max(minNLists, raw);
+
+    // No tier matched: apply strategy.
+    switch (strategy) {
+      case NListsStrategy::kAutoSqrt: {
+        return std::max(minNLists, static_cast<std::int64_t>(
+                                       multiplier * std::sqrt(docCount)));
+      }
+    }
   }
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, NListsScalingSpec& x) {
     return f.object(x).fields(
+        f.field("strategy", x.strategy).fallback(NListsStrategy::kAutoSqrt),
         f.field("multiplier", x.multiplier)
             .invariant([](auto value) -> inspection::Status {
-              if (value <= 0.0) {
-                return {"multiplier must be greater than 0!"};
+              if (value < 1) {
+                return {"multiplier must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }),
@@ -188,10 +204,34 @@ inline std::int64_t resolveNListsParameter(NListsParameter const& p,
       p);
 }
 
-/// @brief Compute default nProbe from resolved nLists: sqrt(nLists), min 1.
-inline std::int64_t computeDefaultNProbe(std::int64_t resolvedNLists) {
-  return std::max<std::int64_t>(1, static_cast<std::int64_t>(std::sqrt(
-                                       static_cast<double>(resolvedNLists))));
+/// @brief NProbe parameter: either a fixed integer or a strategy.
+/// JSON: 10  OR  "autoSqrt"
+using NProbeParameter = std::variant<std::int64_t, NListsStrategy>;
+
+template<class Inspector>
+inline auto inspect(Inspector& f, NProbeParameter& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::int64_t>(), insp::inlineType<NListsStrategy>());
+}
+
+/// @brief Resolve an NProbeParameter to a concrete value.
+/// Fixed mode returns the value directly.
+/// Strategy mode computes from resolvedNLists (autoSqrt → sqrt(nLists), min 1).
+inline std::int64_t resolveNProbeParameter(NProbeParameter const& p,
+                                           std::int64_t resolvedNLists) {
+  return std::visit(
+      overload{
+          [](std::int64_t fixed) -> std::int64_t { return fixed; },
+          [resolvedNLists](NListsStrategy strategy) -> std::int64_t {
+            switch (strategy) {
+              case NListsStrategy::kAutoSqrt:
+                return std::max<std::int64_t>(
+                    1, static_cast<std::int64_t>(std::sqrt(resolvedNLists)));
+            }
+          },
+      },
+      p);
 }
 
 /// @brief Resolve a scaling factory string by replacing {nLists} with the
@@ -215,9 +255,9 @@ struct UserVectorIndexDefinition {
   NListsParameter nLists;
   std::uint64_t trainingIterations;
 
-  // Optional explicit defaultNProbe override. When not set (nullopt),
-  // defaultNProbe is computed as sqrt(resolvedNLists) with a minimum of 1.
-  std::optional<std::int64_t> defaultNProbe;
+  // Default nProbe: either a fixed integer or a strategy like "autoSqrt"
+  // which computes sqrt(resolvedNLists) at training time.
+  NProbeParameter defaultNProbe;
 
   // FAISS factory string. In fixed nLists mode, nLists must match the IVF
   // number in the string. In scaling nLists mode, the string must contain a
@@ -239,7 +279,8 @@ struct UserVectorIndexDefinition {
         f.field("metric", x.metric),
         f.field("nLists", x.nLists)
             .fallback(NListsParameter{NListsScalingSpec{
-                8.0,
+                NListsStrategy::kAutoSqrt,
+                8,
                 32,
                 {{100000000, 1048576}, {10000000, 262144}, {1000000, 65536}}}})
             .invariant([](auto const& value) -> inspection::Status {
@@ -254,9 +295,12 @@ struct UserVectorIndexDefinition {
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
+            .fallback(NProbeParameter{NListsStrategy::kAutoSqrt})
             .invariant([](auto const& value) -> inspection::Status {
-              if (value.has_value() && *value < 1) {
-                return {"defaultNProbe must be 1 or greater!"};
+              if (auto* fixed = std::get_if<std::int64_t>(&value)) {
+                if (*fixed < 1) {
+                  return {"defaultNProbe must be 1 or greater!"};
+                }
               }
               return inspection::Status::Success{};
             }));

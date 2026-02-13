@@ -235,8 +235,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   if (_faissIndex == nullptr) {
-    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "vector index has not been trained yet"};
+    LOG_TOPIC("v1d0a", WARN, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping insert";
+    return {};
   }
   std::vector<float> input;
   input.reserve(_definition.dimension);
@@ -319,8 +320,9 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   if (_faissIndex == nullptr) {
-    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-            "vector index has not been trained yet"};
+    LOG_TOPIC("v1d0b", WARN, Logger::ENGINES)
+        << "vector index " << _iid.id() << " not yet trained, skipping remove";
+    return {};
   }
   std::vector<float> input;
   input.reserve(_definition.dimension);
