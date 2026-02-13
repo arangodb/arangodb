@@ -26,7 +26,7 @@
 
 if (getOptions === true) {
   return {
-    'auth.useRBAC': 'true',
+    'auth.use-rbac': 'true',
   };
 }
 
@@ -38,8 +38,8 @@ function testSuite() {
     testAuthUseRBACOption : function() {
       let res = JSON.parse(request.get("/_admin/options").body);
 
-      assertTrue(res.hasOwnProperty("auth.useRBAC"), "auth.useRBAC should be present in options");
-      assertEqual(true, res["auth.useRBAC"], "auth.useRBAC should be true");
+      assertTrue(res.hasOwnProperty("auth.use-rbac"), "auth.use-rbac should be present in options");
+      assertEqual(true, res["auth.use-rbac"], "auth.use-rbac should be true");
     },
   };
 }

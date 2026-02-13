@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add switch `--server.use-rbac` to enable role-based access control.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 

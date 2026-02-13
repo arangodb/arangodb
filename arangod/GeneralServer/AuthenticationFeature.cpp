@@ -198,7 +198,7 @@ requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth
 endpoint. Requests with expiry times above this value will be rejected.)");
 
   options
-      ->addOption("--auth.useRBAC", "Enable role-based access control (RBAC).",
+      ->addOption("--auth.use-rbac", "Enable role-based access control (RBAC).",
                   new BooleanParameter(&_options.useRBAC),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
