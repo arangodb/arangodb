@@ -234,7 +234,7 @@ const helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help
   '  _name()                               name of the current database      ' + '\n' +
   '                                                                          ' + '\n' +
   'Query / Transaction Functions:                                            ' + '\n' +
-  '  _executeTransaction(<transaction>)    execute transaction               ' + '\n' +
+  '  _createTransaction(<options>)          create a streaming transaction    ' + '\n' +
   '  _query(<query>)                       execute AQL query                 ' + '\n' +
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +

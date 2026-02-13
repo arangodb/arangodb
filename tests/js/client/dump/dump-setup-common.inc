@@ -305,7 +305,7 @@ function createTransactional() {
   let trx = db._createTransaction({ collections: { write: "UnitTestsDumpTransactionCommit" } });
   let tc = trx.collection("UnitTestsDumpTransactionCommit");
   let docs = [];
-  for (var i = 0; i < 1000; ++i) {
+  for (let i = 0; i < 1000; ++i) {
     docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
   }
   tc.save(docs);
@@ -321,7 +321,7 @@ function createTransactional() {
 
   trx = db._createTransaction({ collections: { write: "UnitTestsDumpTransactionUpdate" } });
   tc = trx.collection("UnitTestsDumpTransactionUpdate");
-  for (var i = 0; i < 1000; i += 2) {
+  for (let i = 0; i < 1000; i += 2) {
     tc.update("test" + i, {value3: i});
   }
   trx.commit();
