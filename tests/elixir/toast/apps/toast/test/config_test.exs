@@ -10,6 +10,10 @@ defmodule Toast.ConfigTest do
     TOAST_SHOW_SERVER_LOGS
     TOAST_STARTUP_TIMEOUT
     TOAST_SHUTDOWN_TIMEOUT
+    TOAST_CLUSTER_AGENTS
+    TOAST_CLUSTER_DBSERVERS
+    TOAST_CLUSTER_COORDINATORS
+    TOAST_CLUSTER_REPLICATION_FACTOR
   )
 
   setup do
@@ -141,6 +145,38 @@ defmodule Toast.ConfigTest do
       config = Config.load(server_args: args)
 
       assert config.server_args == %{"log.level" => "debug"}
+    end
+  end
+
+  describe "cluster fields" do
+    test "defaults" do
+      config = Config.load()
+
+      assert config.cluster_agents == 3
+      assert config.cluster_dbservers == 3
+      assert config.cluster_coordinators == 1
+      assert config.cluster_replication_factor == 2
+    end
+
+    test "env var overrides" do
+      System.put_env("TOAST_CLUSTER_AGENTS", "5")
+      System.put_env("TOAST_CLUSTER_DBSERVERS", "2")
+      System.put_env("TOAST_CLUSTER_COORDINATORS", "3")
+      System.put_env("TOAST_CLUSTER_REPLICATION_FACTOR", "4")
+
+      config = Config.load()
+
+      assert config.cluster_agents == 5
+      assert config.cluster_dbservers == 2
+      assert config.cluster_coordinators == 3
+      assert config.cluster_replication_factor == 4
+    end
+
+    test "keyword overrides" do
+      config = Config.load(cluster_agents: 10, cluster_dbservers: 5)
+
+      assert config.cluster_agents == 10
+      assert config.cluster_dbservers == 5
     end
   end
 end

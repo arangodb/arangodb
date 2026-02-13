@@ -30,7 +30,7 @@ defmodule Toast.Deployment.CommandBuilder do
 
   @spec role_args(role()) :: [String.t()]
   def role_args(:single), do: ["--server.storage-engine", "rocksdb"]
-  def role_args(:agent), do: ["--agency.activate", "true", "--agency.size", "3", "--agency.supervision", "true"]
+  def role_args(:agent), do: ["--agency.activate", "true", "--agency.supervision", "true"]
   def role_args(role) when role in [:coordinator, :dbserver] do
     ["--cluster.create-waits-for-sync-replication", "false", "--cluster.write-concern", "1"]
   end

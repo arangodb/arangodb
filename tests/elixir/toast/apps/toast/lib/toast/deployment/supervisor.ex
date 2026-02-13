@@ -14,6 +14,13 @@ defmodule Toast.Deployment.Supervisor do
     DynamicSupervisor.start_child(supervisor, {Toast.Deployment.Controller, opts})
   end
 
+  @doc "Start a ClusterController under this supervisor."
+  @spec start_cluster_controller(GenServer.server(), keyword()) ::
+          DynamicSupervisor.on_start_child()
+  def start_cluster_controller(supervisor \\ __MODULE__, opts) do
+    DynamicSupervisor.start_child(supervisor, {Toast.Deployment.ClusterController, opts})
+  end
+
   @impl true
   def init(_opts) do
     DynamicSupervisor.init(strategy: :one_for_one)

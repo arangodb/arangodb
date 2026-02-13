@@ -33,8 +33,6 @@ defmodule Toast.Deployment.CommandBuilderTest do
       assert CommandBuilder.role_args(:agent) == [
                "--agency.activate",
                "true",
-               "--agency.size",
-               "3",
                "--agency.supervision",
                "true"
              ]

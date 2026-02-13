@@ -48,6 +48,15 @@ defmodule Toast.PortAllocator do
     end
   end
 
+  @doc """
+  Allocate `count` ports atomically in a single GenServer call.
+  """
+  @spec allocate_batch(GenServer.server(), pos_integer()) ::
+          {:ok, [pos_integer()]} | {:error, :no_ports_available}
+  def allocate_batch(server \\ __MODULE__, count) do
+    GenServer.call(server, {:allocate_batch, count})
+  end
+
   # Server callbacks
 
   @impl true
@@ -63,6 +72,25 @@ defmodule Toast.PortAllocator do
 
       :error ->
         {:reply, {:error, :no_ports_available}, state}
+    end
+  end
+
+  def handle_call({:allocate_batch, count}, _from, state) do
+    case allocate_ports(state.next_port, count, []) do
+      {:ok, ports, next_port} ->
+        {:reply, {:ok, ports}, %{state | next_port: next_port}}
+
+      :error ->
+        {:reply, {:error, :no_ports_available}, state}
+    end
+  end
+
+  defp allocate_ports(next_port, 0, acc), do: {:ok, Enum.reverse(acc), next_port}
+
+  defp allocate_ports(port, remaining, acc) do
+    case find_available_port(port, 0) do
+      {:ok, found} -> allocate_ports(found + 1, remaining - 1, [found | acc])
+      :error -> :error
     end
   end
 

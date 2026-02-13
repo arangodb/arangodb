@@ -8,7 +8,11 @@ defmodule Toast.Config do
           show_server_logs: boolean(),
           server_args: %{String.t() => String.t() | [String.t()]},
           startup_timeout: pos_integer(),
-          shutdown_timeout: pos_integer()
+          shutdown_timeout: pos_integer(),
+          cluster_agents: pos_integer(),
+          cluster_dbservers: pos_integer(),
+          cluster_coordinators: pos_integer(),
+          cluster_replication_factor: pos_integer()
         }
 
   defstruct [
@@ -18,7 +22,11 @@ defmodule Toast.Config do
     show_server_logs: false,
     server_args: %{},
     startup_timeout: 60_000,
-    shutdown_timeout: 30_000
+    shutdown_timeout: 30_000,
+    cluster_agents: 3,
+    cluster_dbservers: 3,
+    cluster_coordinators: 1,
+    cluster_replication_factor: 2
   ]
 
   @spec load() :: t()
@@ -33,7 +41,11 @@ defmodule Toast.Config do
       show_server_logs: opt_or(opts, :show_server_logs, read_show_server_logs()),
       server_args: Keyword.get(opts, :server_args, %{}),
       startup_timeout: opt_or(opts, :startup_timeout, read_timeout("TOAST_STARTUP_TIMEOUT", 60_000)),
-      shutdown_timeout: opt_or(opts, :shutdown_timeout, read_timeout("TOAST_SHUTDOWN_TIMEOUT", 30_000))
+      shutdown_timeout: opt_or(opts, :shutdown_timeout, read_timeout("TOAST_SHUTDOWN_TIMEOUT", 30_000)),
+      cluster_agents: opt_or(opts, :cluster_agents, read_pos_int("TOAST_CLUSTER_AGENTS", 3)),
+      cluster_dbservers: opt_or(opts, :cluster_dbservers, read_pos_int("TOAST_CLUSTER_DBSERVERS", 3)),
+      cluster_coordinators: opt_or(opts, :cluster_coordinators, read_pos_int("TOAST_CLUSTER_COORDINATORS", 1)),
+      cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2))
     }
   end
 
@@ -54,7 +66,9 @@ defmodule Toast.Config do
     env("TOAST_SHOW_SERVER_LOGS") == "true"
   end
 
-  defp read_timeout(var, default) do
+  defp read_timeout(var, default), do: read_pos_int(var, default)
+
+  defp read_pos_int(var, default) do
     case env(var) do
       nil -> default
       val -> String.to_integer(val)

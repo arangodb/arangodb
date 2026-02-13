@@ -96,4 +96,54 @@ defmodule Toast.PortAllocatorTest do
       assert port >= 41_100
     end
   end
+
+  describe "allocate_batch/2" do
+    test "returns correct count", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, base_port: 42_000})
+
+      assert {:ok, ports} = PortAllocator.allocate_batch(pid, 5)
+      assert length(ports) == 5
+    end
+
+    test "all ports are unique", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, base_port: 42_100})
+
+      {:ok, ports} = PortAllocator.allocate_batch(pid, 5)
+
+      assert MapSet.size(MapSet.new(ports)) == length(ports)
+    end
+
+    test "ports are >= base_port", context do
+      name = unique_name(context)
+      base_port = 42_200
+      pid = start_supervised!({PortAllocator, name: name, base_port: base_port})
+
+      {:ok, ports} = PortAllocator.allocate_batch(pid, 5)
+
+      Enum.each(ports, fn port ->
+        assert port >= base_port
+      end)
+    end
+
+    test "single port batch", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, base_port: 42_300})
+
+      assert {:ok, [port]} = PortAllocator.allocate_batch(pid, 1)
+      assert is_integer(port)
+      assert port >= 42_300
+    end
+
+    test "subsequent allocations don't overlap", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, base_port: 42_400})
+
+      {:ok, batch_ports} = PortAllocator.allocate_batch(pid, 3)
+      {:ok, next_port} = PortAllocator.allocate(pid)
+
+      refute next_port in batch_ports
+    end
+  end
 end
