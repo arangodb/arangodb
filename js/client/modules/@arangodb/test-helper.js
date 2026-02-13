@@ -95,7 +95,7 @@ exports.clearAllFailurePoints = function () {
       exports.debugClearFailAt(exports.getEndpointById(server.id));
     }
   } finally {
-    // need to restore original database, as debugFailAt() can 
+    // need to restore original database, as debugFailAt() can
     // change into a different database...
     db._useDatabase(old);
   }
@@ -106,7 +106,7 @@ exports.debugCanUseFailAt = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    
+
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
@@ -226,17 +226,37 @@ exports.getMetric = function (endpoint, name) {
   return getMetricName(text, name);
 };
 
-exports.eventuallyAssertEqual = function (fn, expectedValue, maxRetries = 60) {
-  let value;
-  for (let i = 0; i < maxRetries; ++i) {
-    value = fn();
-    if (value === expectedValue) {
+// Eventually assert a metric from a single server endpoint.
+// compareFn takes the metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = exports.getMetric(endpoint, metricName);
+    if (compareFn(metricValue)) {
       break;
     }
-    internal.sleep(0.5);
   }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
+};
 
-  assertEqual(expectedValue, value, `eventuallyAssertEqual timed out after ${maxRetries * 0.5}s: expected ${expectedValue}, got ${value}`);
+// Eventually assert the sum of a metric across multiple servers.
+// compareFn takes the summed metric value and returns true if the assertion should pass.
+exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, errorMessage, maxIterations = 200) {
+  let metricValue;
+  for (let i = 0; i < maxIterations; i++) {
+    internal.wait(0.1);
+    metricValue = 0;
+    for (let server of servers) {
+      metricValue += exports.getMetric(server.endpoint, metricName);
+    }
+    if (compareFn(metricValue)) {
+      break;
+    }
+  }
+  assertTrue(compareFn(metricValue), `${errorMessage}: got ${metricValue}`);
+  return metricValue;
 };
 
 exports.getMetricSingle = function (name) {
@@ -250,7 +270,7 @@ exports.getMetricSingle = function (name) {
 // Function for getting metric/metrics from either cluster or single server deployments.
 // - 'name' - can be either string or array of strings.
 //    If 'name' is string, we want to get the only one metric value with name 'name'
-//    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
+//    If 'name' is array of strings, we want to get values for every metric which is defined in this array
 // - 'roles' - string
 //    Specify which roles of arangod should be queried for particular metric/metrics.
 //    This argument will be used in function getAllMetricsFromEndpoints.
@@ -269,7 +289,7 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
   if (typeof name === "string") {
     // In case of "string", 'metrics' variable is an array with values of metric from each server
 
-    // It may happen that some db servers will not have required metric. 
+    // It may happen that some db servers will not have required metric.
     // But if all of them don't have it - throw a error.
     if (metrics.every( (val) => Number.isNaN(val) === true )) {
       // If we have got NaN from every endpoint - throw error
@@ -296,7 +316,7 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
       let row = m[i]; // Every row represents values for this metric from all servers.
       // Now assert that at least one dbserver returned real value. Throw exception otherwise
       assertFalse(row.every((val) => Number.isNaN(val) === true), `Metric ${name[i]} not found`);
-      
+
       let accumulated = 0;
       row.forEach(v => {
         if (!Number.isNaN(v)) {
@@ -374,7 +394,7 @@ const runShell = function(args, prefix, sanHnd) {
 };
 
 const buildCode = function(dbname, key, command, cn, duration) {
-  
+
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
@@ -407,7 +427,7 @@ while (++saveTries < 100) {
 
   let sanHnd = new sanHandler(pu.ARANGOSH_BIN, global.instanceManager.options);
   let tmpMgr = new tmpDirMngr(fs.join(`chaos_${key}`), global.instanceManager.options);
-  
+
   let args = {'javascript.execute': file};
   args["--server.database"] = dbname;
   sanHnd.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
@@ -421,7 +441,7 @@ const abortSignal = 6;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
   assertTrue(fs.isFile(pu.ARANGOSH_BIN), "arangosh executable not found!");
-  
+
   assertFalse(db[cn].exists("stop"));
   let clients = [];
   debug(`starting ${tests.length} test clients`);
@@ -471,7 +491,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     // clear failure points
     debug("clearing all potential failure points");
     global.instanceManager.debugClearFailAt();
-  
+
     debug("stopping all test clients");
     // broad cast stop signal
     assertFalse(db[cn].exists("stop"));
@@ -542,7 +562,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
             debug(`forcefully killing test client with pid ${client.pid}`);
             internal.killExternal(client.pid, 9 /*SIGKILL*/);
             let status = internal.statusExternal(client.pid).status;
-            debug(`killed test client with pid ${client.pid}: ${status}`);            
+            debug(`killed test client with pid ${client.pid}: ${status}`);
           }
         } catch (err) { }
       }
@@ -670,7 +690,7 @@ exports.activateFailure = function (name) {
   } else {
     roles.push("single");
   }
-  
+
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
   });
@@ -694,10 +714,10 @@ exports.deactivateFailure = function (name) {
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
   const isCluster = require("internal").isCluster();
-  
+
   let res = [];
   let endpoints = [];
-  
+
   if (isCluster) {
     exports.triggerMetrics();
 
@@ -744,7 +764,7 @@ exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
       result.push(res);
     } else {
       throw Error(`Unsupported ${typeof name} type`);
-    }   
+    }
   });
   return result;
 };
@@ -772,7 +792,7 @@ const shardIdToLogId = function (shardId) {
 
 const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
   const IM = exports.getInstanceInfo();
-  
+
   const colPlan = IM.agencyMgr.getAt(`Plan/Collections/${dbName}/${colId}`);
   let mapping = {};
   if (colPlan.hasOwnProperty("groupId")) {
@@ -842,7 +862,7 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
   };
 };
 
-exports.insertManyDocumentsIntoCollection 
+exports.insertManyDocumentsIntoCollection
   = function(db, coll, maker, limit, batchSize, abortFunc = () => false) {
   // This function uses the asynchronous API of `arangod` to quickly
   // insert a lot of documents into a collection. You can control which
@@ -850,21 +870,21 @@ exports.insertManyDocumentsIntoCollection
   //  db - name of the database (string)
   //  coll - name of the collection, must already exist (string)
   //  maker - a callback function to produce documents, it is called
-  //          with a single integer, the first time with 0, then with 1 
-  //          and so on. The callback function should return an object 
+  //          with a single integer, the first time with 0, then with 1
+  //          and so on. The callback function should return an object
   //          or a list of objects, which will be inserted into the
-  //          collection. You can either specify the `_key` attribute or 
-  //          not. Once you return either `null` or `false`, no more 
+  //          collection. You can either specify the `_key` attribute or
+  //          not. Once you return either `null` or `false`, no more
   //          callbacks will be done.
-  //  limit - an integer, if `limit` documents have been received, no more 
+  //  limit - an integer, if `limit` documents have been received, no more
   //          callbacks are issued.
-  //  batchSize - an integer, this function will use this number as batch 
+  //  batchSize - an integer, this function will use this number as batch
   //              size.
   // Example:
   //   insertManyDocumentsIntoCollection("_system", "coll",
   //       i => {Hallo:i}, 1000000, 1000);
-  // will insert 1000000 documents into the collection "coll" in the 
-  // `_system` database in batches of 1000. The documents will all have 
+  // will insert 1000000 documents into the collection "coll" in the
+  // `_system` database in batches of 1000. The documents will all have
   // the `Hallo` attribute set to one of the numbers from 0 to 999999.
   // This is useful to quickly generate test data. Be careful, this can
   // create a lot of parallel load!
@@ -876,7 +896,7 @@ exports.insertManyDocumentsIntoCollection
   while (true) {
     if (!done) {
       while (l.length < batchSize) {
-        let d = maker(counter); 
+        let d = maker(counter);
         if (d === null || d === false || d === undefined) {
           done = true;
           break;

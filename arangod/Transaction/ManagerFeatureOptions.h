@@ -22,21 +22,35 @@
 
 #pragma once
 
+<<<<<<<<HEAD : arangod / Transaction / ManagerFeatureOptions.h
 #include <cstddef>
+        == == == ==
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+        >>>>>>>> origin /
+    devel : arangod / FeaturePhases /
+            V8FeaturePhase.h
 
-namespace arangodb::transaction {
+            namespace arangodb::transaction {
 
-struct ManagerFeatureOptions {
-  static constexpr double maxStreamingIdleTimeout = 120.0;
+  struct ManagerFeatureOptions {
+    static constexpr double maxStreamingIdleTimeout = 120.0;
 
-  // max size (in bytes) of streaming transactions
-  size_t streamingMaxTransactionSize = 512 * 1024 * 1024;  // 512 MiB
+    < < < < < < < < HEAD : arangod / Transaction /
+                           ManagerFeatureOptions.h
+                               // max size (in bytes) of streaming transactions
+                               size_t streamingMaxTransactionSize =
+        512 * 1024 * 1024;  // 512 MiB
 
-  // lock time in seconds
-  double streamingLockTimeout = 8.0;
+    // lock time in seconds
+    double streamingLockTimeout = 8.0;
 
-  // idle timeout for streaming transactions, in seconds
-  double streamingIdleTimeout = 60.0;
-};
+    // idle timeout for streaming transactions, in seconds
+    double streamingIdleTimeout = 60.0;
+    == == == ==
+        explicit V8FeaturePhase(
+            application_features::ApplicationServer& server);
+    >>>>>>>> origin / devel : arangod / FeaturePhases / V8FeaturePhase.h
+  };
 
 }  // namespace arangodb::transaction

@@ -56,7 +56,24 @@ class AllIterator : public doc_iterator {
   irs::doc_id_t seek(irs::doc_id_t target) noexcept final {
     auto& doc = std::get<document>(attrs_);
 
-    doc.value = target <= max_doc_ ? target : doc_limits::eof();
+    //
+    //  c = current, t = target, m = max_doc_
+    //
+    //  [1, 2, 3, 4, 5, 6]
+    //         c  t     m      Result = t
+    //
+    //  [1, 2, 3, 4, 5, 6]
+    //      t  c        m      Result = c
+    //
+    //  [1, 2, 3, 4, 5, 6] 7
+    //         c        m  t   Result = eof()
+    if (target > max_doc_) {
+      doc.value = doc_limits::eof();
+    } else {
+      if (doc.value <= target) {
+        doc.value = target;
+      }
+    }
 
     return doc.value;
   }

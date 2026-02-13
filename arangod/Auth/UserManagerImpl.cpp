@@ -28,13 +28,13 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
+#include "Basics/application-exit.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
@@ -184,14 +184,45 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
   }
 
   namespace chrono = std::chrono;
-  LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
-  auto start = chrono::system_clock::now();
-  while (loadFromDB() == 0) {
-    auto const now = chrono::system_clock::now();
-    if ((now - start) > std::chrono::seconds(3)) {
-      start = chrono::system_clock::now();
-      LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
-          << "Preloading user cache is still in progress.";
+  using namespace std::chrono_literals;
+  {
+    // We want to see if the initial load takes longer,
+    // but we do not want to spam it on every retry. One log every 3 seconds
+    // seems sensible.
+    auto constexpr LogAfterSeconds = std::chrono::seconds(3);
+    // 133 tries are about 2min.
+    uint32_t constexpr MaxRetries = 133;
+
+    LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
+    auto start = chrono::system_clock::now();
+    uint32_t tries = 0;
+    while (loadFromDB() == 0) {
+      if (tries >= MaxRetries) {
+        // If after this we still are not able to load
+        // anything from the _users collections, we should stop. We cant recover
+        // and we are useless without users.
+        LOG_TOPIC("ef78d", ERR, Logger::AUTHENTICATION)
+            << "Preloading user cache failed.";
+        FATAL_ERROR_EXIT();
+      }
+      tries++;
+      auto const now = chrono::system_clock::now();
+      if ((now - start) > LogAfterSeconds) {
+        start = chrono::system_clock::now();
+        LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
+            << "Preloading user cache is still in progress. Tried " << tries
+            << " times";
+      }
+      auto mutex = std::mutex{};
+      auto cv = std::condition_variable{};
+      auto lock = std::unique_lock(mutex);
+      // This will try ~20 times in the first second, then will reduce to 1 try
+      // per second
+      uint32_t const multiplier = 1u << std::min(tries, 20u);
+      cv.wait_for(lock, 1us * multiplier);
+      if (_server.isStopping()) {
+        return;
+      }
     }
   }
 
@@ -220,7 +251,6 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             // The wait time between retries get longer and longer up until a
             // maximum of ~10sec in between tries.
             uint32_t const multiplier = 1u << std::min(tries, 20u);
-            using namespace std::chrono_literals;
             {  // sleep for "10us * multiplier", but interruptible by the stop
               // token.
               auto mutex = std::mutex{};

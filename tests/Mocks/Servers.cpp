@@ -207,6 +207,19 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
   // This phase is empty...
 }
 
+<<<<<<< HEAD
+=======
+static void SetupV8Phase(MockServer& server) {
+  SetupCommunicationFeaturePhase(server);
+#ifdef USE_V8
+  server.addFeature<application_features::V8FeaturePhase>(false);
+  server.addFeature<V8DealerFeature>(
+      false, server.getFeature<arangodb::metrics::MetricsFeature>());
+  server.addFeature<V8SecurityFeature>(false);
+#endif
+}
+
+>>>>>>> origin/devel
 static void SetupAqlPhase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
   server.addFeature<application_features::AqlFeaturePhase>(false);

@@ -34,9 +34,9 @@
 
 #include <thread>
 
-DECLARE_COUNTER(
-    arangodb_async_promises_total,
-    "Total number of created asynchronous operations since database creation");
+DECLARE_COUNTER(arangodb_async_promises_total,
+                "Total number of created asynchronous operations since "
+                "database process start");
 
 DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
               "Number of currently existing asynchronous operations");
@@ -47,7 +47,7 @@ DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
 
 DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "Total number of threads that started asynchronous operations "
-                "since database creation");
+                "since database process start");
 
 DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
               "Number of currently existing async thread registries");

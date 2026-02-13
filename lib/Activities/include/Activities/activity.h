@@ -26,8 +26,10 @@
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
+#include "Basics/Guarded.h"
 
 #include <atomic>
+#include <concepts>
 #include <format>
 #include <cstdint>
 #include <optional>
@@ -101,7 +103,20 @@ struct ActivityInRegistry {
   std::string const type;
   std::atomic<State> state;
   ActivityId parent;
+<<<<<<< HEAD
   Metadata metadata;
+=======
+  Guarded<Metadata> metadata;
+};
+
+template<typename F>
+concept MetadataAccessor = requires(F f, Metadata& m) {
+  {f(m)};
+};
+template<typename F>
+concept MetadataConstAccessor = requires(F f, Metadata const& m) {
+  {f(m)};
+>>>>>>> origin/devel
 };
 
 /**
@@ -122,6 +137,21 @@ struct Activity {
   ~Activity();
 
   auto id() const noexcept -> ActivityId;
+<<<<<<< HEAD
+=======
+  auto parentId() const noexcept -> ActivityId;
+
+  template<typename F>
+  requires MetadataAccessor<F>
+  auto updateMetadata(F&& f) {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
+  template<typename F>
+  requires MetadataConstAccessor<F>
+  auto getMetadata(F&& f) const {
+    return _node_in_registry->data.metadata.doUnderLock(std::forward<F>(f));
+  }
+>>>>>>> origin/devel
 
  private:
   // no automatic deletion when unique_ptr is destroyed, deletion is done by

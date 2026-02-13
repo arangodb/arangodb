@@ -1,29 +1,29 @@
 #!/bin/env python3
-""" the testing runner actually manages launching the processes, creating reports, etc. """
-from datetime import datetime
+"""the testing runner actually manages launching the processes, creating reports, etc."""
+
 import json
-import os
-from pathlib import Path
-import pprint
 import logging
+import os
+import pprint
 import re
 import shutil
 import signal
 import sys
 import time
-from threading import Thread, Lock
 import traceback
-from multiprocessing import Process
 import zipfile
+from datetime import datetime
+from multiprocessing import Process
+from pathlib import Path
+from threading import Lock, Thread
 
 import psutil
 
-from socket_counter import get_socket_count
-
 # pylint: disable=line-too-long disable=broad-except
 from arangosh import ArangoshExecutor
-from test_config import get_priority, TestConfig
 from site_config import TEMP, get_workspace
+from socket_counter import get_socket_count
+from test_config import TestConfig, get_priority
 from tools.killall import list_all_processes
 
 MAX_COREFILES_SINGLE = 4
@@ -91,7 +91,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        logging.info("done with %s - %s", {this.name_enum} , str(ret["rc_exit"]))
+        logging.info("done with %s - %s", {this.name_enum}, str(ret["rc_exit"]))
         this.crashed = (
             not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         )
@@ -139,8 +139,14 @@ def testing_runner(testing_instance, this, arangosh):
         this.delta_seconds = this.delta.total_seconds()
     finally:
         with arangosh.slot_lock:
-            with open((testing_instance.cfg.run_root / "job_to_pids.jsonl"), "a+", encoding="utf-8")  as jsonl_file:
-                jsonl_file.write(f'{json.dumps({"pid": ret["pid"], "logfile": str(this.log_file)})}\n')
+            with open(
+                (testing_instance.cfg.run_root / "job_to_pids.jsonl"),
+                "a+",
+                encoding="utf-8",
+            ) as jsonl_file:
+                jsonl_file.write(
+                    f"{json.dumps({'pid': ret['pid'], 'logfile': str(this.log_file)})}\n"
+                )
             testing_instance.running_suites.remove(this.name_enum)
         testing_instance.done_job(this.parallelity)
 
@@ -422,7 +428,7 @@ class TestingRunner:
 
     # pylint: disable=too-many-arguments disable=logging-fstring-interpolation
     def mp_zip_tar(self, fnlist, zip_dir, tarfile, verb, filetype):
-        """ use full machine to compress files in zip-tar """
+        """use full machine to compress files in zip-tar"""
         zip_slots = psutil.cpu_count(logical=False) * 2
         count = 0
         zip_slot_array = []
@@ -450,11 +456,9 @@ class TestingRunner:
         logging.info(f"creating {filetype}: {str(tarfile)} with {str(fnlist)}.tar")
         sys.stdout.flush()
         try:
-            shutil.make_archive(str(tarfile),
-                                'tar',
-                                (zip_dir / '..').resolve(),
-                                zip_dir.name,
-                                True)
+            shutil.make_archive(
+                str(tarfile), "tar", (zip_dir / "..").resolve(), zip_dir.name, True
+            )
         except Exception as ex:
             logging.info(f"Failed to create {verb} zip: {str(ex)}")
             self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
@@ -571,8 +575,16 @@ class TestingRunner:
             logging.info(
                 "creating crashreport binary support zip: %s", str(binary_report_file)
             )
-            bin_files_list = [f for f in self.cfg.bin_dir.glob('*') if not f.is_symlink()]
-            self.mp_zip_tar(bin_files_list, self.cfg.bin_dir, binary_report_file, 'binary support', 'binreport')
+            bin_files_list = [
+                f for f in self.cfg.bin_dir.glob("*") if not f.is_symlink()
+            ]
+            self.mp_zip_tar(
+                bin_files_list,
+                self.cfg.bin_dir,
+                binary_report_file,
+                "binary support",
+                "binreport",
+            )
 
     def generate_test_report(self):
         """regular testresults zip"""

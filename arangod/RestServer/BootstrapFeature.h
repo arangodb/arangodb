@@ -68,6 +68,11 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   DatabaseFeature& _databaseFeature;
   SystemDatabaseFeature* _systemDatabaseFeature{};
   ClusterUpgradeFeature* _clusterUpgradeFeature{};
+<<<<<<< HEAD
+=======
+#ifdef USE_V8 V8DealerFeature* _v8DealerFeature{};
+#endif
+>>>>>>> origin/devel
 
   BootstrapFeatureOptions _options;
   bool _isReady;

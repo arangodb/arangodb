@@ -126,7 +126,17 @@
     options:
       priority: 250
       parallelity: 2
+<<<<<<< HEAD
       buckets: 3
+=======
+      buckets: 2
+      type: single
+
+- shell_client_large:
+    options:
+      priority: 250
+      parallelity: 2
+>>>>>>> origin/devel
       type: single
       size: medium
 
@@ -195,6 +205,27 @@
 - shell_client_aql:
     options:
       buckets: 10
+<<<<<<< HEAD
+=======
+      priority: 250
+      type: single
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
+
+- shell_client_aql:
+    options:
+      buckets: 5
+      priority: 250
+      type: single
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
+
+- shell_client_aql_large:
+    options:
+      buckets: 5
+>>>>>>> origin/devel
       priority: 250
       type: single
     args:
@@ -365,9 +396,23 @@
 - shell_client_aql:
     options:
       priority: 1000
+      size: small
+      type: cluster
+      buckets: 6
+    args:
+      dumpAgencyOnError: true
+      # TODO: BTS-2283
+      encryptionAtRest: false
+- shell_client_aql_large:
+    options:
+      priority: 1000
       size: medium+
       type: cluster
+<<<<<<< HEAD
       buckets: 17
+=======
+      buckets: 4
+>>>>>>> origin/devel
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
@@ -376,8 +421,20 @@
     options:
       priority: 500
       type: cluster
+      size: small
+      buckets: 5
+    args:
+      dumpAgencyOnError: true
+- shell_client_large:
+    options:
+      priority: 500
+      type: cluster
       size: medium+
+<<<<<<< HEAD
       buckets: 12
+=======
+      buckets: 6
+>>>>>>> origin/devel
     args:
       dumpAgencyOnError: true
 - shell_client_transaction:
@@ -684,4 +741,3 @@
     suites:
       - communication
       - communication_ssl
-

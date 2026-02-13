@@ -76,4 +76,3 @@ exports.checker = class {
     return true;
   }
 };
-

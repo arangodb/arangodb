@@ -47,13 +47,13 @@ auto get_all_activities() -> std::vector<ActivityInRegistrySnapshot> {
 }  // namespace
 
 struct ActivityRegistryTest : ::testing::Test {
-  ActivityRegistryTest() {
-    Registry::setCurrentlyExecutingActivity(ActivityRoot);
-  }
+  ActivityRegistryTest() : scope(ActivityRoot) {}
   void TearDown() override {
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_activities().size(), 0);
   }
+
+  Registry::ScopedCurrentlyExecutingActivity scope;
 };
 
 TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
@@ -75,7 +75,11 @@ TEST_F(ActivityRegistryTest, creates_activity) {
 TEST_F(ActivityRegistryTest, sets_current_activity) {
   EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
   auto a = Activity("test activity", {{"test", "bla"}});
+<<<<<<< HEAD
   Registry::setCurrentlyExecutingActivity(a.id());
+=======
+  auto guard = Registry::ScopedCurrentlyExecutingActivity(a.id());
+>>>>>>> origin/devel
 
   auto current = Registry::currentlyExecutingActivity();
 

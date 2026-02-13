@@ -240,6 +240,12 @@ void BootstrapFeature::start() {
   arangodb::SystemDatabaseFeature::ptr vocbase =
       _systemDatabaseFeature != nullptr ? _systemDatabaseFeature->use()
                                         : nullptr;
+<<<<<<< HEAD
+=======
+#ifdef USE_V8 bool const v8Enabled =
+      _v8DealerFeature != nullptr && _v8DealerFeature->isEnabled();
+#endif
+>>>>>>> origin/devel
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum const role = ServerState::instance()->getRole();
@@ -274,6 +280,25 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
+<<<<<<< HEAD
+=======
+    std::string const myId =
+        ServerState::instance()->getId();  // local cluster UUID
+
+    // become leader before running server.js to ensure the leader
+    // is the foxxmaster. Everything else is handled in heartbeat
+    ServerState::instance()->setFoxxmaster(
+        myId);        // could be empty, but set anyway
+#ifdef USE_V8
+    if (v8Enabled) {  // runs the single server bootstrap JS
+      // will run foxx/manager.js::_startup() and more (start queues, load
+      // routes, etc)
+      LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
+      _v8DealerFeature->loadJavaScriptFileInAllExecutors(
+          vocbase.get(), "server/server.js", nullptr);
+    }
+#endif
+>>>>>>> origin/devel
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on

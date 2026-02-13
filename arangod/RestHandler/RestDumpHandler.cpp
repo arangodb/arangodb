@@ -200,7 +200,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
 
-  activities::Activity fetch{"dump context fetching", {{"id", id}}};
+  activities::Activity fetch{"RocksDBDumpNext", {{"id", id}}};
 
   context->extendLifetime();
 

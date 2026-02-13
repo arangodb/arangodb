@@ -23,12 +23,20 @@
 #include "Activities/registry.h"
 #include "Activities/activity.h"
 
-namespace arangodb::activities {
+< < < < < < < <
+    HEAD : lib / Activities / src / registry.cpp namespace arangodb::activities{
+      == == == ==
+#include "ApplicationFeatures/ApplicationFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+      >>>>>>>> origin / devel : arangod / FeaturePhases /
+                   FoxxFeaturePhase.h
 
-Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
-    ActivityId activity) noexcept {
-  _oldExecutingActivity = Registry::currentlyExecutingActivity();
-  Registry::setCurrentlyExecutingActivity(activity);
+                       Registry::ScopedCurrentlyExecutingActivity::
+                           ScopedCurrentlyExecutingActivity(
+                               ActivityId activity) noexcept {
+                               _oldExecutingActivity =
+                                   Registry::currentlyExecutingActivity();
+Registry::setCurrentlyExecutingActivity(activity);
 }
 
 Registry::ScopedCurrentlyExecutingActivity::
@@ -36,4 +44,13 @@ Registry::ScopedCurrentlyExecutingActivity::
   Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
 }
 
+< < < < < < < < HEAD : lib / Activities / src / registry.cpp
 }  // namespace arangodb::activities
+== == == ==
+    explicit FoxxFeaturePhase(application_features::ApplicationServer& server);
+}
+;
+
+}  // namespace application_features
+}  // namespace arangodb
+>>>>>>>> origin / devel : arangod / FeaturePhases / FoxxFeaturePhase.h
