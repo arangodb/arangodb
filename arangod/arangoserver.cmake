@@ -116,6 +116,7 @@ add_library(arangoserver STATIC
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestOpenApiHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp

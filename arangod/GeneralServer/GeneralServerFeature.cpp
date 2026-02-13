@@ -118,6 +118,7 @@
 #include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
@@ -600,6 +601,8 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
+  f.addHandler("/_api/openapi.json",
+               RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/status",
                RestHandlerCreator<RestStatusHandler>::createNoData, {0, 1});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
