@@ -458,15 +458,19 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  auto handler =
-      factory->createHandler(server, std::move(request), std::move(response));
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder errorBuilder(buffer);
+  auto handler = factory->createHandler(server, std::move(request),
+                                        std::move(response), errorBuilder);
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
+
+    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       VPackBuffer<uint8_t>());
+                       std::move(buffer));
     return;
   }
 
