@@ -115,7 +115,7 @@ struct NListsTier {
 /// Tiers should be provided in descending order of min_n.
 struct NListsScalingSpec {
   double multiplier{8.0};
-  std::int64_t minNLists{32};
+  std::int64_t minNLists{10};
   std::vector<NListsTier> tiers;
 
   bool operator==(NListsScalingSpec const&) const noexcept = default;

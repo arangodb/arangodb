@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <functional>
 #include <cstring>
+#include <faiss/index_factory.h>
 #include <omp.h>
 
 #include "Aql/AstNode.h"
@@ -94,7 +95,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     velocypack::deserialize(data, _trainedData.emplace());
   }
 
-  // If no trained data prepareIndex must be called
   if (_trainedData) {
     auto restored =
         vector::VectorIndexTrainer::restoreFromTrainedData(*_trainedData);
@@ -234,6 +234,10 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
+  if (_faissIndex == nullptr) {
+    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+            "vector index has not been trained yet"};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -314,6 +318,10 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
+  if (_faissIndex == nullptr) {
+    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+            "vector index has not been trained yet"};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {

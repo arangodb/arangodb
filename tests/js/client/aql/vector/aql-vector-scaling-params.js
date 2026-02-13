@@ -39,7 +39,7 @@ const collName = "coll";
 const idxName = "vector_scaling_test";
 const dimension = 50;
 const seed = randomInteger();
-const insertedDocsCount = 200;
+const insertedDocsCount = 2000;
 
 function VectorIndexScalingTestSuite() {
     let collection;
