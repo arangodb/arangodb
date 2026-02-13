@@ -243,7 +243,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   // per-index covering info for multi-index queries
   if (_indexes.size() > 1 && !hasFilter() && !projections().empty() &&
-      !isLateMaterialized()) {
+      isProduceResult() && !isLateMaterialized()) {
     builder.add(VPackValue("perIndexCovering"));
     VPackArrayBuilder guard(&builder);
     for (auto const& idx : _indexes) {
