@@ -138,7 +138,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   template<typename Hasher>
   std::shared_ptr<Cache> createCache(
-      CacheType type, bool enableWindowedStats = false,
+    CacheType type, std::string const& name, bool enableWindowedStats = false, 
       std::uint64_t maxSize = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////

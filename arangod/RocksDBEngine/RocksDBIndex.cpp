@@ -345,7 +345,7 @@ bool RocksDBIndex::canWarmup() const noexcept { return useCache() != nullptr; }
 std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::BinaryKeyHasher>(
-      cache::CacheType::Transactional);
+      cache::CacheType::Transactional, _collection.name());
 }
 
 // banish given key from transactional cache

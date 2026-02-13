@@ -50,7 +50,7 @@ template<typename Hasher>
 class PlainCache final : public Cache {
  public:
   PlainCache(Cache::ConstructionGuard guard, Manager* manager, std::uint64_t id,
-             Metadata&& metadata, std::shared_ptr<Table> table,
+             std::string const& name, Metadata&& metadata, std::shared_ptr<Table> table,
              bool enableWindowedStats);
   ~PlainCache();
 
@@ -104,6 +104,7 @@ class PlainCache final : public Cache {
   friend class MigrateTask;
 
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
+                                       std::string const& name,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);

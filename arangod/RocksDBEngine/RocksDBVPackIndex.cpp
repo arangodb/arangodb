@@ -2843,7 +2843,7 @@ Result RocksDBVPackIndex::drop() {
 std::shared_ptr<cache::Cache> RocksDBVPackIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::VPackKeyHasher>(
-      cache::CacheType::Transactional);
+      cache::CacheType::Transactional, _collection.name());
 }
 
 RocksDBCuckooIndexEstimatorType* RocksDBVPackIndex::estimator() {

@@ -140,6 +140,7 @@ Manager::~Manager() {
 
 template<typename Hasher>
 std::shared_ptr<Cache> Manager::createCache(CacheType type,
+                                            std::string const& name,
                                             bool enableWindowedStats,
                                             std::uint64_t maxSize) {
   std::shared_ptr<Cache> result;
@@ -182,12 +183,12 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
 
       switch (type) {
         case CacheType::Plain:
-          result = PlainCache<Hasher>::create(this, id, std::move(metadata),
+          result = PlainCache<Hasher>::create(this, id, name, std::move(metadata),
                                               table, enableWindowedStats);
           break;
         case CacheType::Transactional:
           result = TransactionalCache<Hasher>::create(
-              this, id, std::move(metadata), table, enableWindowedStats);
+              this, id, name, std::move(metadata), table, enableWindowedStats);
           break;
         default:
           ADB_UNREACHABLE;
@@ -1129,9 +1130,9 @@ bool Manager::pastRebalancingGracePeriod() const {
 
 // template instantiations for createCache()
 template std::shared_ptr<Cache> Manager::createCache<BinaryKeyHasher>(
-    CacheType type, bool enableWindowedStats, std::uint64_t maxSize);
+  CacheType type, std::string const& name, bool enableWindowedStats, std::uint64_t maxSize);
 
 template std::shared_ptr<Cache> Manager::createCache<VPackKeyHasher>(
-    CacheType type, bool enableWindowedStats, std::uint64_t maxSize);
+  CacheType type, std::string const& name, bool enableWindowedStats, std::uint64_t maxSize);
 
 }  // namespace arangodb::cache
