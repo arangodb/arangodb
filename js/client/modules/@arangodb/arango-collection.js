@@ -699,67 +699,53 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief gets a random element from the collection
 // //////////////////////////////////////////////////////////////////////////////
+
 ArangoCollection.prototype.any = function () {
-  let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
-  let cursor = this._database._query(query, {"@coll": this.name()});
-  if (cursor.hasNext()) {
-    return cursor.next();
+    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
+    let cursor = require('internal').db._query(query, {"@coll": this.name()});
+    if (cursor.hasNext()) {
+      return cursor.next();
+    }
+    return null;
+  };
+
+// //////////////////////////////////////////////////////////////////////////////
+// / arangod/RestHandler/RestSimpleQueryHandler.cpp::buildExampleQuery
+// //////////////////////////////////////////////////////////////////////////////
+
+let buildExampleQuery = function(col, exampleDoc, skip, limit) {
+  let bindVars = {'@collection': col};
+  let query = "FOR doc IN @@collection";
+  let count = 0;
+  for (const [key, value] of Object.entries(exampleDoc)) {
+    if (count > 0) {
+      query += " and ";
+    } else {
+      query += " FILTER ";
+    }
+    let bVName = `value${count}`;
+    let attName = `att${count}`;
+        query += ` doc.@${attName} == @${bVName}`;
+    bindVars[bVName] = value;
+    bindVars[attName] = key;
+    count += 1;
   }
-  return null;
+  if (limit > 0 || skip > 0) {
+    query += ` LIMIT ${skip}, ${(limit > 0) ? limit : "null"}`;
+  }
+  return {
+    query,
+    bindVars
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructs a query-by-example for a collection
 // //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.firstExample = function (example) {
-  let e;
-  if (arguments.length === 1) {
-    // example is given as only argument
-    e = example;
-  } else {
-    // example is given as list
-    e = {};
-
-    for (let i = 0;  i < arguments.length;  i += 2) {
-      e[arguments[i]] = arguments[i + 1];
-    }
-  }
-
-  if (e === null || typeof e !== 'object' || Array.isArray(e)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for example"
-    });
-  }
-
-  let bindVars = { '@collection': this.name() };
-  let filters = [];
-  Object.keys(e).forEach(function (key) {
-    let value = e[key];
-    // Ensure key is a string and process it safely
-    let keyStr = String(key);
-    if (keyStr.length === 0) {
-      // Skip empty keys
-      return;
-    }
-    // Remove backticks, split on dots, and join with backtick-dot-backtick
-    // Filter out empty parts to avoid issues with keys starting with dots
-    let processedKey = keyStr.replace(/\`/g, '').split('.').filter(function(part) { return part.length > 0; }).join('`.`');
-    if (processedKey.length === 0) {
-      // Skip if processing results in empty string
-      return;
-    }
-    filters.push('doc.`' + processedKey + '` == ' + JSON.stringify(value));
-  });
-
-  let query = 'FOR doc IN @@collection';
-  if (filters.length > 0) {
-    query += ' FILTER ' + filters.join(' AND ') + ' ';
-  }
-  query += 'LIMIT 1 RETURN doc';
-
-  let cursor = this._database._query(query, bindVars);
+  let query = buildExampleQuery(this.name(), example, 0, 1);
+  query.query += " RETURN doc";
+  let cursor = require('internal').db._query(query);
   if (cursor.hasNext()) {
     return cursor.next();
   }
@@ -1266,63 +1252,13 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example,
-                                                       waitForSync, limit) {
-  let options = {};
-  if (typeof waitForSync === 'object') {
-    if (typeof limit !== 'undefined') {
-      throw 'too many parameters';
-    }
-    options = waitForSync;
-  } else {
-    if (waitForSync !== undefined) {
-      options.waitForSync = waitForSync;
-    }
-    if (limit !== undefined) {
-      options.limit = limit;
-    }
-  }
-
-  if (example === null || typeof example !== 'object' || Array.isArray(example)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for example"
-    });
-  }
-
-  let collectionName = this.name();
-  // Escape backticks in collection name for use in query
-  let escapedCollectionName = collectionName.replace(/`/g, '``');
-  let bindVars = {};
-  let filters = [];
-  Object.keys(example).forEach(function (key) {
-    let value = example[key];
-    // Ensure key is a string and process it safely
-    let keyStr = String(key);
-    if (keyStr.length === 0) {
-      // Skip empty keys
-      return;
-    }
-    // Remove backticks, split on dots, and join with backtick-dot-backtick
-    // Filter out empty parts to avoid issues with keys starting with dots
-    let processedKey = keyStr.replace(/\`/g, '').split('.').filter(function(part) { return part.length > 0; }).join('`.`');
-    if (processedKey.length === 0) {
-      // Skip if processing results in empty string
-      return;
-    }
-    filters.push('doc.`' + processedKey + '` == ' + JSON.stringify(value));
-  });
-
-  let query = 'FOR doc IN `' + escapedCollectionName + '`';
-  if (filters.length > 0) {
-    query += ' FILTER ' + filters.join(' AND ') + ' ';
-  }
-  if (options.limit > 0) {
-    query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
-  }
-  query += 'REMOVE doc IN `' + escapedCollectionName + '`';
-
-  let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.writesExecuted || 0;
+                                                        waitForSync, limit) {
+  let query = buildExampleQuery(this.name(), example, 0, limit);
+  var opts = {
+  waitForSync: waitForSync
+};
+  query['query'] += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);
+  return require('internal').db._query(query).getExtra().stats.writesExecuted;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1330,147 +1266,47 @@ ArangoCollection.prototype.removeByExample = function (example,
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example,
-                                                        newValue, waitForSync, limit) {
-  let options = {};
-  if (typeof waitForSync === 'object') {
-    if (typeof limit !== 'undefined') {
-      throw 'too many parameters';
-    }
-    options = waitForSync;
-  } else {
-    if (waitForSync !== undefined) {
-      options.waitForSync = waitForSync;
-    }
-    if (limit !== undefined) {
-      options.limit = limit;
-    }
-  }
-
-  if (example === null || typeof example !== 'object' || Array.isArray(example)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for example"
-    });
-  }
-
-  if (newValue === null || typeof newValue !== 'object' || Array.isArray(newValue)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for newValue"
-    });
-  }
-
-  let collectionName = this.name();
-  // Escape backticks in collection name for use in query
-  let escapedCollectionName = collectionName.replace(/`/g, '``');
-  let bindVars = { 'newValue': newValue };
-  let filters = [];
-  Object.keys(example).forEach(function (key) {
-    let value = example[key];
-    filters.push('doc.`' + key.replace(/\`/g, '').split('.').join('`.`') + '` == ' + JSON.stringify(value));
-  });
-
-  let query = 'FOR doc IN `' + escapedCollectionName + '`';
-  if (filters.length > 0) {
-    query += ' FILTER ' + filters.join(' AND ') + ' ';
-  }
-  if (options.limit > 0) {
-    query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
-  }
-  query += 'REPLACE doc WITH @newValue IN `' + escapedCollectionName + '`';
-
-  let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.writesExecuted || 0;
+                                                         newValue, waitForSync, limit) {
+  let query = buildExampleQuery(this.name(), example, 0, limit);
+  var opts = {
+    waitForSync: waitForSync,
+    mergeObjects: false
+  };
+  query['query'] += ' REPLACE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
+  query.bindVars['newValue'] = newValue;
+  return require('internal').db._query(query).getExtra().stats.writesExecuted;
 };
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief updates documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example,
                                                        newValue, keepNull, waitForSync, limit) {
-  let options = {};
-  if (typeof keepNull === 'object') {
-    if (typeof waitForSync !== 'undefined') {
-      throw 'too many parameters';
-    }
-    options = keepNull;
-  } else {
-    if (keepNull !== undefined) {
-      options.keepNull = keepNull;
-    }
-    if (waitForSync !== undefined) {
-      options.waitForSync = waitForSync;
-    }
-    if (limit !== undefined) {
-      options.limit = limit;
-    }
-  }
-
-  if (example === null || typeof example !== 'object' || Array.isArray(example)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for example"
-    });
-  }
-
-  if (newValue === null || typeof newValue !== 'object' || Array.isArray(newValue)) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-      errorMessage: "invalid document type for newValue"
-    });
-  }
-
-  let collectionName = this.name();
-  // Escape backticks in collection name for use in query
-  let escapedCollectionName = collectionName.replace(/`/g, '``');
-  let bindVars = { 'newValue': newValue };
-  let filters = [];
-  Object.keys(example).forEach(function (key) {
-    let value = example[key];
-    filters.push('doc.`' + key.replace(/\`/g, '').split('.').join('`.`') + '` == ' + JSON.stringify(value));
-  });
-
-  let query = 'FOR doc IN `' + escapedCollectionName + '`';
-  if (filters.length > 0) {
-    query += ' FILTER ' + filters.join(' AND ') + ' ';
-  }
-  if (options.limit > 0) {
-    query += ' LIMIT ' + parseInt(options.limit, 10) + ' ';
-  }
-  query += 'UPDATE doc WITH @newValue IN `' + escapedCollectionName + '`';
-  if (options.keepNull !== undefined) {
-    query += ' OPTIONS { keepNull: ' + (options.keepNull ? 'true' : 'false') + ' }';
-  }
-
-  let cursor = this._database._query(query, bindVars, options);
-  return cursor.getExtra().stats.writesExecuted || 0;
+  let query = buildExampleQuery(this.name(), example, 0, limit);
+  var opts = {
+    waitForSync: waitForSync,
+    keepNull: keepNull,
+    mergeObjects: false
+  };
+  query['query'] += ' UPDATE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
+  query.bindVars['newValue'] = newValue;
+  return require('internal').db._query(query).getExtra().stats.writesExecuted;
 };
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief looks up documents by keys
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.documents = function (keys) {
-  if (!Array.isArray(keys) || keys.length === 0) {
-    return { documents: [] };
-  }
+  let data = {
+    collection: this._name,
+    keys: keys || []
+  };
 
-  // Convert keys to document IDs
-  let docIds = keys.map(key => {
-    if (typeof key === 'string' && key.includes('/')) {
-      return key; // Already a document ID
-    }
-    return this._name + '/' + key;
-  });
-
-  // Use the document API to lookup documents
-  let url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
-  let requestResult = this._database._connection.PUT(url, docIds);
+  let requestResult = this._database._connection.PUT(
+    this._prefixurl('/_api/simple/lookup-by-keys'), data);
   arangosh.checkRequestResult(requestResult);
-  
   return {
-    documents: Array.isArray(requestResult) ? requestResult : []
+    documents: requestResult.documents
   };
 };
 
@@ -1482,37 +1318,18 @@ ArangoCollection.prototype.lookupByKeys = ArangoCollection.prototype.documents;
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByKeys = function (keys) {
-  if (!Array.isArray(keys) || keys.length === 0) {
-    return { removed: 0, ignored: 0 };
-  }
+  let data = {
+    collection: this._name,
+    keys: keys || []
+  };
 
-  // Convert keys to document IDs
-  let docIds = keys.map(key => {
-    if (typeof key === 'string' && key.includes('/')) {
-      return key; // Already a document ID
-    }
-    return this._name + '/' + key;
-  });
-
-  // Use the document API to remove documents
-  let url = this._documentcollectionurl();
-  let requestResult = this._database._connection.DELETE(url, docIds);
+  let requestResult = this._database._connection.PUT(
+    this._prefixurl('/_api/simple/remove-by-keys'), data);
   arangosh.checkRequestResult(requestResult);
-  
-  // Count removed and ignored from the result
-  let removed = 0;
-  let ignored = 0;
-  if (Array.isArray(requestResult)) {
-    requestResult.forEach(result => {
-      if (result.error) {
-        ignored++;
-      } else {
-        removed++;
-      }
-    });
-  }
-  
-  return { removed, ignored };
+  return {
+    removed: requestResult.removed,
+    ignored: requestResult.ignored
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1574,4 +1391,3 @@ ArangoCollection.prototype._revisionTreeRebuild = function() {
   arangosh.checkRequestResult(requestResult);
   return { result: true };
 };
-
