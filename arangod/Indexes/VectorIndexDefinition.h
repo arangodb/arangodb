@@ -174,7 +174,7 @@ struct NListsScalingSpec {
 };
 
 /// @brief NLists parameter: either a fixed integer or a tiered scaling spec.
-/// JSON: 100  OR  { "multiplier": 8, "minNLists": 32, "tiers": [...] }
+/// JSON: 100  OR  { "multiplier": 8, "minNLists": 10, "tiers": [...] }
 using NListsParameter = std::variant<std::int64_t, NListsScalingSpec>;
 
 template<class Inspector>
@@ -281,7 +281,7 @@ struct UserVectorIndexDefinition {
             .fallback(NListsParameter{NListsScalingSpec{
                 NListsStrategy::kAutoSqrt,
                 8,
-                32,
+                10,
                 {{100000000, 1048576}, {10000000, 262144}, {1000000, 65536}}}})
             .invariant([](auto const& value) -> inspection::Status {
               if (auto* fixed = std::get_if<std::int64_t>(&value)) {

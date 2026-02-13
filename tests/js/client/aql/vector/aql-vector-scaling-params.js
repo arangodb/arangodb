@@ -89,7 +89,7 @@ function VectorIndexScalingTestSuite() {
             // When nLists is omitted, the default scaling spec should be used
             assertEqual("autoSqrt", idx.params.nLists.strategy, "default strategy should be autoSqrt");
             assertEqual(8, idx.params.nLists.multiplier, "default multiplier should be 8");
-            assertEqual(32, idx.params.nLists.minNLists, "default minNLists should be 32");
+            assertEqual(10, idx.params.nLists.minNLists, "default minNLists should be 10");
             assertEqual(3, idx.params.nLists.tiers.length, "default should have 3 tiers");
 
             assertEqual(100000000, idx.params.nLists.tiers[0].min_n);
