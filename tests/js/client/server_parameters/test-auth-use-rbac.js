@@ -31,11 +31,12 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const request = require('@arangodb/request');
 
 function testSuite() {
   return {
     testAuthUseRBACOption : function() {
-      let res = arango.GET("/_admin/options");
+      let res = JSON.parse(request.get("/_admin/options").body);
 
       assertTrue(res.hasOwnProperty("auth.useRBAC"), "auth.useRBAC should be present in options");
       assertEqual(true, res["auth.useRBAC"], "auth.useRBAC should be true");
