@@ -197,6 +197,17 @@ endpoint. Requests with expiry times below this value will be rejected.)");
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
 
+  options
+      ->addOption("--auth.useRBAC", "Enable role-based access control (RBAC).",
+                  new BooleanParameter(&_options.useRBAC),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(When enabled, the server will use role-based
+access control (RBAC) for authorization decisions.)");
+
   options->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
@@ -418,6 +429,10 @@ bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
 
 bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
+}
+
+bool AuthenticationFeature::useRBAC() const noexcept {
+  return _options.useRBAC;
 }
 
 /// @return Cache to deal with authentication tokens
