@@ -50,7 +50,9 @@ class ExecContext : public RequestContext {
  public:
   ExecContext(ConstructorToken, ExecContext::Type type, std::string const& user,
               std::string const& database, auth::Level systemLevel,
-              auth::Level dbLevel, bool isAdminUser);
+              auth::Level dbLevel, bool isAdminUser,
+              std::vector<std::string> const& roles = {},
+              std::string const& jwtToken = "");
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -102,7 +104,14 @@ class ExecContext : public RequestContext {
   /// @brief current database
   std::string const& database() const { return _database; }
 
-  // std::string const& database() const { return _database; }
+  /// @brief roles from JWT token (if authenticated via JWT)
+  std::vector<std::string> const& roles() const { return _roles; }
+
+  /// @brief JWT token string (if authenticated via JWT)
+  std::string const& jwtToken() const { return _jwtToken; }
+
+  /// @brief returns true if authenticated via JWT
+  bool hasJwtToken() const { return !_jwtToken.empty(); }
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }
 
@@ -152,6 +161,10 @@ class ExecContext : public RequestContext {
   std::string const _user;
   /// current database to use, superuser db is empty
   std::string const _database;
+  /// roles from JWT token (if authenticated via JWT)
+  std::vector<std::string> const _roles;
+  /// JWT token string (if authenticated via JWT)
+  std::string const _jwtToken;
 
   Type _type;
   /// Flag if admin user access (not regarding cluster RO mode)

@@ -39,9 +39,12 @@ namespace arangodb {
 VocbaseContext::VocbaseContext(ConstructorToken, GeneralRequest& req,
                                TRI_vocbase_t& vocbase, ExecContext::Type type,
                                auth::Level systemLevel, auth::Level dbLevel,
-                               bool isAdminUser)
+                               bool isAdminUser,
+                               std::vector<std::string> const& roles,
+                               std::string const& jwtToken)
     : ExecContext(ExecContext::ConstructorToken{}, type, req.user(),
-                  req.databaseName(), systemLevel, dbLevel, isAdminUser),
+                  req.databaseName(), systemLevel, dbLevel, isAdminUser, roles,
+                  jwtToken),
 #ifdef USE_ENTERPRISE
       _request(req),
 #endif
@@ -66,10 +69,10 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
   bool isSuperUser = req.authenticated() && req.user().empty() &&
                      req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
-    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                            ExecContext::Type::Internal,
-                                            /*sysLevel*/ auth::Level::RW,
-                                            /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(
+        ConstructorToken{}, req, vocbase, ExecContext::Type::Internal,
+        /*sysLevel*/ auth::Level::RW,
+        /*dbLevel*/ auth::Level::RW, true, req.roles(), req.jwtToken());
   }
 
   AuthenticationFeature* auth = AuthenticationFeature::instance();
@@ -80,21 +83,21 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
       return std::make_shared<VocbaseContext>(
           ConstructorToken{}, req, vocbase, ExecContext::Type::Internal,
           /*sysLevel*/ auth::Level::RO,
-          /*dbLevel*/ auth::Level::RO, true);
+          /*dbLevel*/ auth::Level::RO, true, req.roles(), req.jwtToken());
     }
-    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                            req.user().empty()
-                                                ? ExecContext::Type::Internal
-                                                : ExecContext::Type::Default,
-                                            /*sysLevel*/ auth::Level::RW,
-                                            /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(
+        ConstructorToken{}, req, vocbase,
+        req.user().empty() ? ExecContext::Type::Internal
+                           : ExecContext::Type::Default,
+        /*sysLevel*/ auth::Level::RW,
+        /*dbLevel*/ auth::Level::RW, true, req.roles(), req.jwtToken());
   }
 
   if (!req.authenticated()) {
     return std::make_shared<VocbaseContext>(
         ConstructorToken{}, req, vocbase, ExecContext::Type::Default,
         /*sysLevel*/ auth::Level::NONE,
-        /*dbLevel*/ auth::Level::NONE, false);
+        /*dbLevel*/ auth::Level::NONE, false, req.roles(), req.jwtToken());
   }
 
   if (req.user().empty()) {
@@ -126,10 +129,10 @@ std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
                               true) == auth::Level::RW;
   }
 
-  return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
-                                          ExecContext::Type::Default,
-                                          /*sysLevel*/ sysLvl,
-                                          /*dbLevel*/ dbLvl, isAdminUser);
+  return std::make_shared<VocbaseContext>(
+      ConstructorToken{}, req, vocbase, ExecContext::Type::Default,
+      /*sysLevel*/ sysLvl,
+      /*dbLevel*/ dbLvl, isAdminUser, req.roles(), req.jwtToken());
 }
 
 void VocbaseContext::forceSuperuser() {
