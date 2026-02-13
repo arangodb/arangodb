@@ -9,4 +9,6 @@ target_link_libraries(arango_thread_owning_list
 add_library(arango_shared INTERFACE
   shared.h)
 # TODO need to have include dir and include ${CMAKE_CURRENT_SOURCE_DIR}/include
-target_include_directories(arango_shared INTERFACE ${PROJECT_SOURCE_DIR}/lib)
+target_include_directories(arango_shared INTERFACE
+  ${PROJECT_SOURCE_DIR}/lib
+  ${PROJECT_BINARY_DIR}/lib)
