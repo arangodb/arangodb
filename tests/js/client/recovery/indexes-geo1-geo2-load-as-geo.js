@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
+var internal = require('internal');
 var simple = require('@arangodb/simple-query');
 var jsunity = require('jsunity');
 
@@ -48,6 +49,61 @@ if (runSetup === true) {
     }
   }
   c.insert(docs);
+
+  // geo1 with geoJson: true (single field, [lon, lat] or GeoJSON object).
+  db._drop('UnitTestsRecoveryGeo1GeoJson');
+  c = db._create('UnitTestsRecoveryGeo1GeoJson');
+  c.ensureIndex({ type: "geo1", fields: ["a.loc"], geoJson: true, sparse: true });
+
+  docs = [];
+  for (let i = -40; i < 40; ++i) {
+    for (let j = -40; j < 40; ++j) {
+      docs.push({ a: { loc: [ i, j ] } });
+    }
+  }
+  c.insert(docs);
+
+  // geo2 on nested paths (a.lat, a.lon).
+  db._drop('UnitTestsRecoveryGeo2Nested');
+  c = db._create('UnitTestsRecoveryGeo2Nested');
+  c.ensureIndex({ type: "geo2", fields: ["a.lat", "a.lon"], geoJson: false });
+
+  docs = [];
+  for (let i = -40; i < 40; ++i) {
+    for (let j = -40; j < 40; ++j) {
+      docs.push({ a: { lat: i, lon: j } });
+    }
+  }
+  c.insert(docs);
+
+  // --- Explicit verification: geo1/geo2 must be saved in DB before server restart ---
+  // The server serializes indexes via the same path that persists the collection
+  // document, so if collection.indexes() reports type "geo1"/"geo2", they are persisted.
+
+  let idx1 = db._collection('UnitTestsRecoveryGeo1Geo2').indexes();
+  let geo1Saved = false, geo2Saved = false;
+  for (let i = 1; i < idx1.length; ++i) {
+    if (idx1[i].type === 'geo1' && idx1[i].fields && idx1[i].fields[0] === 'loc') geo1Saved = true;
+    if (idx1[i].type === 'geo2' && idx1[i].fields && idx1[i].fields[0] === 'lat' && idx1[i].fields[1] === 'lon') geo2Saved = true;
+  }
+  if (!geo1Saved) throw new Error("geo1 index must be saved in DB before restart (server reports type for persisted indexes)");
+  if (!geo2Saved) throw new Error("geo2 index must be saved in DB before restart (server reports type for persisted indexes)");
+
+  let idx2 = db._collection('UnitTestsRecoveryGeo1GeoJson').indexes();
+  let geo1GeoJsonSaved = false;
+  for (let i = 1; i < idx2.length; ++i) {
+    if (idx2[i].type === 'geo1' && idx2[i].fields && idx2[i].fields[0] === 'a.loc') { geo1GeoJsonSaved = true; break; }
+  }
+  if (!geo1GeoJsonSaved) throw new Error("geo1 (a.loc) index must be saved in DB before restart");
+
+  let idx3 = db._collection('UnitTestsRecoveryGeo2Nested').indexes();
+  let geo2NestedSaved = false;
+  for (let i = 1; i < idx3.length; ++i) {
+    if (idx3[i].type === 'geo2' && idx3[i].fields && idx3[i].fields[0] === 'a.lat' && idx3[i].fields[1] === 'a.lon') { geo2NestedSaved = true; break; }
+  }
+  if (!geo2NestedSaved) throw new Error("geo2 (a.lat, a.lon) index must be saved in DB before restart");
+
+  internal.print("Verified: geo1/geo2 indexes are saved in database before server restart (setup will now kill and restart server).");
 
   db._drop('test');
   c = db._create('test');
@@ -100,6 +156,49 @@ function recoverySuite () {
       // Verify geo queries work (on-disk format is compatible after routing).
       assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoSingle.id).limit(100).toArray().length);
       assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoDouble.id).limit(100).toArray().length);
+    },
+
+    // ////////////////////////////////////////////////////////////////////////////
+    // / @brief geo1 with geoJson: true (nested path a.loc) loads as geo; queries work.
+    // ////////////////////////////////////////////////////////////////////////////
+
+    testGeo1GeoJsonLoadedAsGeo: function () {
+      var c = db._collection('UnitTestsRecoveryGeo1GeoJson');
+      var idx = c.indexes();
+      var geoIdx = null;
+      for (var i = 1; i < idx.length; ++i) {
+        if (idx[i].fields.length === 1 && idx[i].fields[0] === 'a.loc') {
+          geoIdx = idx[i];
+          break;
+        }
+      }
+      assertNotNull(geoIdx, "geo1 geoJson index (a.loc) should exist");
+      assertTrue(geoIdx.geoJson);
+      assertTrue(geoIdx.sparse);
+      assertEqual([ 'a.loc' ], geoIdx.fields);
+      assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoIdx.id).limit(100).toArray().length);
+    },
+
+    // ////////////////////////////////////////////////////////////////////////////
+    // / @brief geo2 on nested paths (a.lat, a.lon) loads as geo; queries work.
+    // ////////////////////////////////////////////////////////////////////////////
+
+    testGeo2NestedPathsLoadedAsGeo: function () {
+      var c = db._collection('UnitTestsRecoveryGeo2Nested');
+      var idx = c.indexes();
+      var geoIdx = null;
+      for (var i = 1; i < idx.length; ++i) {
+        if (idx[i].fields.length === 2 &&
+            idx[i].fields[0] === 'a.lat' && idx[i].fields[1] === 'a.lon') {
+          geoIdx = idx[i];
+          break;
+        }
+      }
+      assertNotNull(geoIdx, "geo2 nested index (a.lat, a.lon) should exist");
+      assertFalse(geoIdx.geoJson);
+      assertTrue(geoIdx.sparse);
+      assertEqual([ 'a.lat', 'a.lon' ], geoIdx.fields);
+      assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoIdx.id).limit(100).toArray().length);
     }
 
   };

@@ -54,6 +54,8 @@
 #include <regex>
 #include <string_view>
 
+#include "Logger/LogMacros.h"
+
 namespace {
 
 using namespace arangodb;
@@ -360,6 +362,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   // identical; this allows loading old databases without separate factories).
   std::string typeStr = type.copyString();
   if (typeStr == "geo1" || typeStr == "geo2") {
+    LOG_DEVEL << "Routing legacy geo1/geo2 to geo when loading: "<< typeStr;
     typeStr = "geo";
   }
 

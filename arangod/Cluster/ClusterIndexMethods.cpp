@@ -1405,12 +1405,12 @@ Result ClusterIndexMethods::ensureIndexCoordinator(
     iid = IndexId{clusterInfo.uniqid()};
   }
 
-  VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
-  if (!typeSlice.isString() ||
-      (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
-    // geo1 and geo2 are disallowed here. Only "geo" should be used
-    return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
-  }
+  // VPackSlice const typeSlice = slice.get(StaticStrings::IndexType);
+  // if (!typeSlice.isString() ||
+  //     (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+  //   // geo1 and geo2 are disallowed here. Only "geo" should be used
+  //   return Result(TRI_ERROR_BAD_PARAMETER, "invalid index type");
+  // }
 
   Result res;
 

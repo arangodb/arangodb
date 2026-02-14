@@ -142,7 +142,15 @@ struct GeoIndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
+    std::string typeName = "geo";
+    if (VPackSlice t = definition.get(StaticStrings::IndexType); t.isString()) {
+      LOG_DEVEL << "t: " << t.toString();
+      std::string s = t.copyString();
+      if (s == "geo1" || s == "geo2") {
+        typeName = std::move(s);
+      }
+    }
+    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, typeName);
   }
 
   virtual Result normalize(velocypack::Builder& normalized,
@@ -181,7 +189,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -211,7 +219,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(
         StaticStrings::IndexType,
-        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+        velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {

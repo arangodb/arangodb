@@ -34,6 +34,7 @@ const db = arangodb.db;
 const _ = require('lodash');
 
 const replication = require('@arangodb/replication');
+const simple = require('@arangodb/simple-query');
 const internal = require('internal');
 
 const cn = 'UnitTestsReplication';
@@ -1306,6 +1307,68 @@ exports.BaseTestConfig = function () {
         },
         true
       );
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief Replication Path 2: leader has geo1/geo2 indexes; follower receives
+    // / index definitions with type geo1/geo2 and createIndex(restore=true) calls
+    // / prepareIndexFromSlice. Routing geo1/geo2 -> geo must work so indexes load
+    // / and geo queries return correct results.
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndexesGeo1Geo2ReplicatedAsGeo: function () {
+      const geoCn = cn + 'Geo';
+      connectToLeader();
+      db._drop(geoCn);
+      let c = db._create(geoCn);
+      c.ensureIndex({ type: "geo1", fields: ["loc"], geoJson: false });
+      c.ensureIndex({ type: "geo2", fields: ["lat", "lon"] });
+      let docs = [];
+      for (let i = -40; i < 40; ++i) {
+        for (let j = -40; j < 40; ++j) {
+          docs.push({ loc: [i, j], lat: i, lon: j });
+        }
+      }
+      c.insert(docs);
+      const expectedCount = c.count();
+
+      connectToFollower();
+      db._drop(geoCn);
+      replication.syncCollection(geoCn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: false,
+        username: "root",
+        password: "",
+      });
+      db._flushCache();
+
+      c = db._collection(geoCn);
+      assertEqual(expectedCount, c.count());
+
+      let idx = c.indexes();
+      let geoSingle = null;
+      let geoDouble = null;
+      for (let i = 1; i < idx.length; ++i) {
+        if (idx[i].fields.length === 1 && idx[i].fields[0] === 'loc') {
+          geoSingle = idx[i];
+        } else if (idx[i].fields.length === 2 &&
+                   idx[i].fields[0] === 'lat' && idx[i].fields[1] === 'lon') {
+          geoDouble = idx[i];
+        }
+      }
+      assertNotNull(geoSingle, "single-field geo index (was geo1) should exist on follower");
+      assertNotNull(geoDouble, "two-field geo index (was geo2) should exist on follower");
+
+      // Path 2: index was created via createIndex(restore=true) -> prepareIndexFromSlice
+      // with definition type geo1/geo2; routing to geo must allow correct read/query.
+      assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoSingle.id).limit(100).toArray().length);
+      assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geoDouble.id).limit(100).toArray().length);
+
+      connectToLeader();
+      db._drop(geoCn);
+      connectToFollower();
+      db._drop(geoCn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
