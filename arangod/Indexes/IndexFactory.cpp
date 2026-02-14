@@ -358,13 +358,9 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
-  // Route legacy geo1/geo2 to unified geo when loading (on-disk format is
-  // identical; this allows loading old databases without separate factories).
+
   std::string typeStr = type.copyString();
-  if (typeStr == "geo1" || typeStr == "geo2") {
-    LOG_DEVEL << "Routing legacy geo1/geo2 to geo when loading: "<< typeStr;
-    typeStr = "geo";
-  }
+  LOG_DEVEL << "IndexFactory::prepareIndexFromSlice: type: " << typeStr;
 
   auto& factory = IndexFactory::factory(typeStr);
   std::shared_ptr<Index> index =

@@ -142,15 +142,8 @@ struct GeoIndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
-    std::string typeName = "geo";
-    if (VPackSlice t = definition.get(StaticStrings::IndexType); t.isString()) {
-      LOG_DEVEL << "t: " << t.toString();
-      std::string s = t.copyString();
-      if (s == "geo1" || s == "geo2") {
-        typeName = std::move(s);
-      }
-    }
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, typeName);
+    LOG_DEVEL << "Creating a geo index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
+    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo");
   }
 
   virtual Result normalize(velocypack::Builder& normalized,
@@ -179,6 +172,7 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
+    LOG_DEVEL << "Creating a geo1 index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo1");
   }
@@ -209,6 +203,7 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
   std::shared_ptr<Index> instantiate(
       LogicalCollection& collection, velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
+    LOG_DEVEL << "Creating a geo2 index. definition.type: " << definition.get(StaticStrings::IndexType).toString();
     return std::make_shared<RocksDBGeoIndex>(id, collection, definition,
                                              "geo2");
   }

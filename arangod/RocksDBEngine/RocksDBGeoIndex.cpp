@@ -656,7 +656,6 @@ void RocksDBGeoIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
-  LOG_DEVEL << "RocksDBGeoIndex::toVelocyPack _typeName: " << _typeName;  // or LOG_TOPIC(..., ERR, ...) so it always shows
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
