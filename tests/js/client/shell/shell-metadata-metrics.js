@@ -106,7 +106,7 @@ function metadataMetricsSuite() {
       }
       assertTrue(endpoints.length > 0);
 
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsChangeWithCreatingAndDroppingDatabase: function() {
@@ -117,14 +117,14 @@ function metadataMetricsSuite() {
         endpoints = getEndpointsByType('single');
       }
       assertTrue(endpoints.length > 0);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
 
       db._createDatabase(testDbName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsChangeWithCreatingAndDroppingCollection: function() {
@@ -139,14 +139,14 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
       db._create(testCollectionName, {numberOfShards: 3});
-      assertMetrics(endpoints, 2, 21, 23);
+      assertMetrics(endpoints, 2, 18, 20);
 
       db._drop(testCollectionName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsChangeWithCreatingAndDroppingCollectionWithReplication: function() {
@@ -161,14 +161,14 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
       db._create(testCollectionName, {numberOfShards: 5, replicationFactor: 3});
-      assertMetrics(endpoints, 2, 21, 25);
+      assertMetrics(endpoints, 2, 18, 22);
 
       db._drop(testCollectionName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsWithSingleShardDatabase: function() {
@@ -183,14 +183,14 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName, {sharding: "single"});
       db._useDatabase(testDbName);
       db._create(testCollectionName, {numberOfShards: 3});
-      assertMetrics(endpoints, 2, 21, 21);
+      assertMetrics(endpoints, 2, 18, 18);
 
       db._drop(testCollectionName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsWithSatelliteCollection: function() {
@@ -205,7 +205,7 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
       db._create(testCollectionName, {replicationFactor: "satellite"});
-      assertMetrics(endpoints, 2, 21, 21);
+      assertMetrics(endpoints, 2, 18, 18);
     },
 
     testMetricsSwitchLeaderFollower: function() {
@@ -221,7 +221,7 @@ function metadataMetricsSuite() {
       db._useDatabase(testDbName);
       const col = db._create(testCollectionName, {numberOfShards: 3});
       
-      assertMetrics(endpoints, 2, 21, 23);
+      assertMetrics(endpoints, 2, 18, 20);
 
       // Get shard information - shards(true) returns server IDs
       const shards = col.shards(true);
@@ -237,15 +237,15 @@ function metadataMetricsSuite() {
       const moveResult = moveShard(testDbName, testCollectionName, shardId, 
                                    fromServer, toServer, false);
       assertTrue(moveResult);
-      assertMetrics(endpoints, 2, 21, 23);
+      assertMetrics(endpoints, 2, 18, 20);
 
       // Cleanup
       db._drop(testCollectionName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
 
     testMetricsMoveToNewServer: function() {
@@ -261,7 +261,7 @@ function metadataMetricsSuite() {
       db._useDatabase(testDbName);
       const col = db._create(testCollectionName, {numberOfShards: 2});
       
-      assertMetrics(endpoints, 2, 21, 22);
+      assertMetrics(endpoints, 2, 18, 19);
 
       const health = arango.GET("/_admin/cluster/health");
       const allDbServers = Object.keys(health.Health).filter(s => s.startsWith('PRMR-'));
@@ -281,15 +281,15 @@ function metadataMetricsSuite() {
       const moveResult = moveShard(testDbName, testCollectionName, shardId, 
                                    fromServer, toServer, false);
       assertTrue(moveResult);
-      assertMetrics(endpoints, 2, 21, 22);
+      assertMetrics(endpoints, 2, 18, 19);
 
       // Cleanup
       db._drop(testCollectionName);
-      assertMetrics(endpoints, 2, 20, 20);
+      assertMetrics(endpoints, 2, 17, 17);
 
       db._useDatabase("_system");
       db._dropDatabase(testDbName);
-      assertMetrics(endpoints, 1, 12, 12);
+      assertMetrics(endpoints, 1, 9, 9);
     },
   };
 }

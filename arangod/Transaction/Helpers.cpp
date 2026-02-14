@@ -673,10 +673,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
   *p++ = 0xf3;  // custom type for _id
 
   if (trx.state()->isDBServer() && !collection.system()) {
-    // db server in cluster, note: the local collections _statistics,
-    // _statisticsRaw and _statistics15 (which are the only system
-    // collections)
-    // must not be treated as shards but as local collections
+    // db server in cluster
     encoding::storeNumber<uint64_t>(p, collection.planId().id(),
                                     sizeof(uint64_t));
   } else {

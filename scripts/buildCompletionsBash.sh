@@ -35,7 +35,7 @@ EOF
 
 echo "" > $out
 
-progs="arangobench arangosh arangoimport arangodump arangorestore arangod"
+progs="arangosh arangoimport arangodump arangorestore arangod"
 
 for progname in $progs
   do

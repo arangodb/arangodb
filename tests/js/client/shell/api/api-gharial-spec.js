@@ -105,7 +105,6 @@ describe('_api/gharial', () => {
         name: Joi.string().required(),
         numberOfShards: Joi.number().integer().min(1).required(),
         replicationFactor: Joi.number().integer().min(1).required(),
-        minReplicationFactor: Joi.number().integer().min(1).required(),
         writeConcern: Joi.number().integer().min(1).required(),
         isSmart: Joi.boolean().required(),
         isSatellite: Joi.boolean().required(),
