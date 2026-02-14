@@ -77,12 +77,6 @@ BootstrapFeature::BootstrapFeature(
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
-  startsAfter<SystemDatabaseFeature>();
-
-  startsAfter<application_features::ServerFeaturePhase>();
-
-  // If this is Sorted out we can go down to ServerPhase
-  // And activate the following dependencies:
   /*
   startsAfter("Endpoint");
   startsAfter("GeneralServer");

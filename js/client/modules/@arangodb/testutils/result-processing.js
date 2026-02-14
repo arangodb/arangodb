@@ -678,6 +678,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
             layer = layer[attribute];
           }
         });
+        layer = JSON.stringify(layer);
         if (Array.isArray(layer)) {
           resultLine.push('n/a');
         } else {

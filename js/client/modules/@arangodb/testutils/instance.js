@@ -284,7 +284,7 @@ class instance {
     }
     return true;
   }
-  
+
   _disconnect() {
     if (this.connectionHandle !== undefined) {
       arango.disconnectHandle(this.connectionHandle);
@@ -517,10 +517,14 @@ class instance {
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
+    } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(this.args['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(this.args['server.jwt-secret-folder'], files[0]));
     }
     this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief make this instance an issue of the past.
   // //////////////////////////////////////////////////////////////////////////////
@@ -552,6 +556,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -646,13 +654,17 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
     this._disconnect();
-    
+
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
     this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
@@ -1327,7 +1339,7 @@ class instance {
           processStats[x[0]] = parseInt(x[1]);
         }
       }
-      /* 
+      /*
        * sockets: used 1272
        * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
        * UDP: inuse 19 mem 17
@@ -1546,7 +1558,7 @@ class instance {
       }
       return false;
     }
-    return reply.parsedBody === true;   
+    return reply.parsedBody === true;
   }
 
   checkDebugTerminated(waitForExit) {

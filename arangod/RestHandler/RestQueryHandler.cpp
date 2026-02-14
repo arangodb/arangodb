@@ -45,8 +45,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
+#include "Ssl/jwt.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -141,7 +141,7 @@ void RestQueryHandler::dumpQueryRegistry() {
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + fuerte::jwt::generateUserToken(
+              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,

@@ -1,7 +1,3 @@
-find_package(GTestLocal
-  REQUIRED
-  )
-
 SOURCE_GROUP("analysis" ./analysis/*)
 SOURCE_GROUP("store" ./store/*)
 SOURCE_GROUP("index" ./index/*)
@@ -88,6 +84,7 @@ set(IReSearch_tests_sources
   ./search/same_position_filter_tests.cpp
   ./search/ngram_similarity_filter_tests.cpp
   ./search/top_terms_collector_test.cpp
+  ./search/all_iterator_tests.cpp
   ./search/proxy_filter_test.cpp
   ./utils/async_utils_tests.cpp
   ./utils/automaton_test.cpp
@@ -198,6 +195,7 @@ target_link_libraries(iresearch-tests-static
   iresearch-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
+  gtest
   )
 
 # setup CRT
