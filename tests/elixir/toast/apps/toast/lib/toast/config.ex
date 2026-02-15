@@ -1,8 +1,10 @@
 defmodule Toast.Config do
   @moduledoc "Framework configuration from TOAST_* environment variables."
 
+  require Logger
+
   @type t :: %__MODULE__{
-          bin_dir: Path.t() | nil,
+          build_dir: Path.t() | nil,
           work_dir: Path.t(),
           deployment_mode: :single_server | :cluster,
           show_server_logs: boolean(),
@@ -17,7 +19,7 @@ defmodule Toast.Config do
         }
 
   defstruct [
-    :bin_dir,
+    :build_dir,
     :work_dir,
     deployment_mode: :single_server,
     show_server_logs: false,
@@ -36,8 +38,8 @@ defmodule Toast.Config do
 
   @spec load(keyword()) :: t()
   def load(opts) do
-    %__MODULE__{
-      bin_dir: opt_or(opts, :bin_dir, env("TOAST_BIN_DIR")),
+    config = %__MODULE__{
+      build_dir: opt_or(opts, :build_dir, env("TOAST_BUILD_DIR")),
       work_dir: opt_or(opts, :work_dir, env("TOAST_WORK_DIR")) || default_work_dir(),
       deployment_mode: opt_or(opts, :deployment_mode, read_deployment_mode()),
       show_server_logs: opt_or(opts, :show_server_logs, read_show_server_logs()),
@@ -50,6 +52,13 @@ defmodule Toast.Config do
       cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2)),
       sanitizer: opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect())
     }
+
+    Logger.debug(
+      "[Toast.Config] build_dir=#{inspect(config.build_dir)} work_dir=#{config.work_dir} " <>
+        "mode=#{config.deployment_mode} sanitizer=#{inspect(MapSet.to_list(config.sanitizer))}"
+    )
+
+    config
   end
 
   defp opt_or(opts, key, env_fallback) do

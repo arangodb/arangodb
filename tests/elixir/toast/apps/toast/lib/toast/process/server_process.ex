@@ -229,6 +229,15 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, state}
   end
 
+  def handle_info({port, {:exit_status, _}}, state) when is_port(port) do
+    # Late exit_status from an already-cleared port — safe to ignore
+    {:noreply, state}
+  end
+
+  def handle_info({port, {:data, _}}, state) when is_port(port) do
+    {:noreply, state}
+  end
+
   # --- Internal ---
 
   defp do_launch(state) do
@@ -241,9 +250,23 @@ defmodule Toast.Process.ServerProcess do
 
     try do
       port = Port.open({:spawn_executable, executable}, port_opts)
-      {:os_pid, os_pid} = Port.info(port, :os_pid)
 
-      Logger.debug("[Toast] Launched #{state.id} (pid=#{os_pid}): #{state.executable}")
+      # Port.info returns nil if the port has already closed (process exited instantly).
+      # We still track the port so handle_info can process the exit_status message.
+      os_pid =
+        case Port.info(port, :os_pid) do
+          {:os_pid, pid} -> pid
+          nil -> nil
+        end
+
+      cmd_line = Enum.join([state.executable | state.args], " ")
+
+      Logger.debug(
+        "[Toast] Launched #{state.id} (os_pid=#{os_pid})\n" <>
+          "  cmd: #{cmd_line}\n" <>
+          "  working_dir: #{state.working_dir}" <>
+          if(state.env != [], do: "\n  env: #{inspect(state.env)}", else: "")
+      )
 
       {:ok,
        %{
@@ -299,7 +322,12 @@ defmodule Toast.Process.ServerProcess do
           timestamp: DateTime.utc_now()
         }
 
-        Logger.error("[Toast] #{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})")
+        output = IO.iodata_to_binary(state.output_buffer)
+
+        Logger.error(
+          "[Toast] #{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})" <>
+            if(output != "", do: "\n  output: #{String.slice(output, 0, 2000)}", else: "")
+        )
 
         notify_listener(state.listener, state.id, crash_info)
 

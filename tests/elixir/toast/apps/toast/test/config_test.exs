@@ -4,7 +4,7 @@ defmodule Toast.ConfigTest do
   alias Toast.Config
 
   @env_vars ~w(
-    TOAST_BIN_DIR
+    TOAST_BUILD_DIR
     TOAST_WORK_DIR
     TOAST_DEPLOYMENT_MODE
     TOAST_SHOW_SERVER_LOGS
@@ -38,7 +38,7 @@ defmodule Toast.ConfigTest do
       config = Config.load()
 
       assert %Config{} = config
-      assert config.bin_dir == nil
+      assert config.build_dir == nil
       assert config.deployment_mode == :single_server
       assert config.show_server_logs == false
       assert config.server_args == %{}
@@ -54,11 +54,11 @@ defmodule Toast.ConfigTest do
     end
   end
 
-  describe "TOAST_BIN_DIR env var" do
-    test "reads bin_dir from environment" do
-      System.put_env("TOAST_BIN_DIR", "/custom/bin")
+  describe "TOAST_BUILD_DIR env var" do
+    test "reads build_dir from environment" do
+      System.put_env("TOAST_BUILD_DIR", "/custom/build")
 
-      assert Config.load().bin_dir == "/custom/bin"
+      assert Config.load().build_dir == "/custom/build"
     end
   end
 
@@ -116,7 +116,7 @@ defmodule Toast.ConfigTest do
 
   describe "keyword overrides" do
     test "take precedence over env vars" do
-      System.put_env("TOAST_BIN_DIR", "/env/bin")
+      System.put_env("TOAST_BUILD_DIR", "/env/build")
       System.put_env("TOAST_WORK_DIR", "/env/work")
       System.put_env("TOAST_DEPLOYMENT_MODE", "cluster")
       System.put_env("TOAST_SHOW_SERVER_LOGS", "true")
@@ -124,14 +124,14 @@ defmodule Toast.ConfigTest do
 
       config =
         Config.load(
-          bin_dir: "/opt/bin",
+          build_dir: "/opt/build",
           work_dir: "/opt/work",
           deployment_mode: :single_server,
           show_server_logs: false,
           startup_timeout: 5_000
         )
 
-      assert config.bin_dir == "/opt/bin"
+      assert config.build_dir == "/opt/build"
       assert config.work_dir == "/opt/work"
       assert config.deployment_mode == :single_server
       assert config.show_server_logs == false

@@ -1,6 +1,8 @@
 defmodule Toast.Deployment.Factory do
   @moduledoc "Build complete server launch specifications from configuration."
 
+  require Logger
+
   alias Toast.Config
   alias Toast.PortAllocator
   alias Toast.Utils.Filesystem
@@ -21,24 +23,31 @@ defmodule Toast.Deployment.Factory do
   @spec build_single_server(Config.t(), String.t(), pos_integer()) ::
           {:ok, launch_spec()} | {:error, term()}
   def build_single_server(config, server_id, port) do
-    with {:ok, executable} <- Filesystem.find_arangod(config.bin_dir),
-         {:ok, repo_root} <- Filesystem.find_repository_root(config.bin_dir),
+    with {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
+         {:ok, repo_root} <- Filesystem.find_repository_root(config.build_dir),
          {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
       server_spec = %{role: :single, port: port, args: build_server_args(config)}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
-      {:ok,
-       %{
-         id: server_id,
-         executable: executable,
-         args: args,
-         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
-         # Run from repo root so relative config paths (etc/testing/...) resolve correctly
-         working_dir: repo_root,
-         server_dir: paths.base_dir,
-         port: port,
-         log_file: paths.log_file
-       }}
+      spec = %{
+        id: server_id,
+        executable: executable,
+        args: args,
+        env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
+        # Run from repo root so relative config paths (etc/testing/...) resolve correctly
+        working_dir: repo_root,
+        server_dir: paths.base_dir,
+        port: port,
+        log_file: paths.log_file
+      }
+
+      Logger.debug(
+        "[Toast.Factory] Built single server spec: executable=#{spec.executable} " <>
+          "port=#{port} working_dir=#{repo_root} server_dir=#{paths.base_dir}\n" <>
+          "  args: #{Enum.join(args, " ")}"
+      )
+
+      {:ok, spec}
     end
   end
 
@@ -53,8 +62,8 @@ defmodule Toast.Deployment.Factory do
     total_count =
       config.cluster_agents + config.cluster_dbservers + config.cluster_coordinators
 
-    with {:ok, executable} <- Filesystem.find_arangod(config.bin_dir),
-         {:ok, repo_root} <- Filesystem.find_repository_root(config.bin_dir),
+    with {:ok, executable} <- Filesystem.find_arangod(config.build_dir),
+         {:ok, repo_root} <- Filesystem.find_repository_root(config.build_dir),
          {:ok, ports} <- PortAllocator.allocate_batch(total_count) do
       {agent_ports, rest} = Enum.split(ports, config.cluster_agents)
       {dbserver_ports, coordinator_ports} = Enum.split(rest, config.cluster_dbservers)
@@ -82,6 +91,11 @@ defmodule Toast.Deployment.Factory do
       with {:ok, agents} <- agents,
            {:ok, dbservers} <- dbservers,
            {:ok, coordinators} <- coordinators do
+        Logger.debug(
+          "[Toast.Factory] Built cluster topology: " <>
+            "#{length(agents)} agents, #{length(dbservers)} dbservers, #{length(coordinators)} coordinators"
+        )
+
         {:ok, %{agents: agents, dbservers: dbservers, coordinators: coordinators}}
       end
     end

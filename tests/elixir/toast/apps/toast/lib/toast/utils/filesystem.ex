@@ -1,6 +1,8 @@
 defmodule Toast.Utils.Filesystem do
   @moduledoc "Temp directory management and ArangoDB build detection."
 
+  require Logger
+
   @type server_dirs :: %{
           base_dir: Path.t(),
           data_dir: Path.t(),
@@ -30,36 +32,45 @@ defmodule Toast.Utils.Filesystem do
   @spec find_arangod(Path.t() | nil) :: {:ok, Path.t()} | {:error, String.t()}
   def find_arangod(nil) do
     case System.find_executable("arangod") do
-      nil -> {:error, "arangod not found in PATH"}
-      path -> {:ok, path}
+      nil ->
+        Logger.debug("[Toast.Filesystem] arangod not found in PATH")
+        {:error, "arangod not found in PATH"}
+
+      path ->
+        Logger.debug("[Toast.Filesystem] Found arangod in PATH: #{path}")
+        {:ok, path}
     end
   end
 
-  def find_arangod(bin_dir) do
-    path = Path.join(bin_dir, "arangod")
+  def find_arangod(build_dir) do
+    path = Path.join([Path.expand(build_dir), "bin", "arangod"])
 
-    if File.exists?(path),
-      do: {:ok, path},
-      else: {:error, "arangod not found at #{path}"}
+    if File.exists?(path) do
+      Logger.debug("[Toast.Filesystem] Found arangod: #{path}")
+      {:ok, path}
+    else
+      Logger.debug("[Toast.Filesystem] arangod not found at #{path}")
+      {:error, "arangod not found at #{path}"}
+    end
   end
 
   @spec find_repository_root(Path.t() | nil, keyword()) :: {:ok, Path.t()} | {:error, String.t()}
-  def find_repository_root(bin_dir, opts \\ []) do
-    with :no_match <- find_from_bin_dir(bin_dir),
+  def find_repository_root(build_dir, opts \\ []) do
+    with :no_match <- find_from_build_dir(build_dir),
          :no_match <- find_from_cwd(opts) do
+      Logger.debug("[Toast.Filesystem] Repository root not found")
       {:error, "repository root not found"}
+    else
+      {:ok, root} = result ->
+        Logger.debug("[Toast.Filesystem] Repository root: #{root}")
+        result
     end
   end
 
-  defp find_from_bin_dir(nil), do: :no_match
+  defp find_from_build_dir(nil), do: :no_match
 
-  defp find_from_bin_dir(bin_dir) do
-    candidate =
-      if Path.basename(bin_dir) == "bin" do
-        bin_dir |> Path.dirname() |> Path.dirname()
-      else
-        Path.dirname(bin_dir)
-      end
+  defp find_from_build_dir(build_dir) do
+    candidate = build_dir |> Path.expand() |> Path.dirname()
 
     if repository_root?(candidate),
       do: {:ok, candidate},

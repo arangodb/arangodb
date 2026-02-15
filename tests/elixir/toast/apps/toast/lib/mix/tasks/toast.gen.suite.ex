@@ -47,7 +47,7 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
 
     Run its tests with:
 
-        TOAST_BIN_DIR=/path/to/bin mix test #{apps_dir}
+        TOAST_BUILD_DIR=/path/to/build mix test #{apps_dir}
     """)
   end
 

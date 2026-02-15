@@ -58,13 +58,16 @@ defmodule Toast.Utils.FilesystemTest do
   end
 
   describe "find_arangod/1" do
-    test "finds arangod in given bin_dir" do
+    test "finds arangod in given build_dir" do
       dir = unique_tmp_dir()
-      arangod_path = Path.join(dir, "arangod")
+      bin_dir = Path.join(dir, "bin")
+      File.mkdir_p!(bin_dir)
+      arangod_path = Path.join(bin_dir, "arangod")
       File.touch!(arangod_path)
       File.chmod!(arangod_path, 0o755)
 
-      assert {:ok, ^arangod_path} = Filesystem.find_arangod(dir)
+      expected_path = Path.join([dir, "bin", "arangod"])
+      assert {:ok, ^expected_path} = Filesystem.find_arangod(dir)
     end
 
     test "returns error with nil when arangod is not in PATH" do
@@ -92,10 +95,10 @@ defmodule Toast.Utils.FilesystemTest do
       File.mkdir_p!(Path.join(root, "js"))
       File.mkdir_p!(Path.join(root, "etc"))
 
-      bin_dir = Path.join(root, "mybuild")
-      File.mkdir_p!(bin_dir)
+      build_dir = Path.join(root, "mybuild")
+      File.mkdir_p!(build_dir)
 
-      assert {:ok, ^root} = Filesystem.find_repository_root(bin_dir)
+      assert {:ok, ^root} = Filesystem.find_repository_root(build_dir)
     end
 
     test "finds root from bin_dir in build/bin/ structure" do
@@ -103,19 +106,19 @@ defmodule Toast.Utils.FilesystemTest do
       File.mkdir_p!(Path.join(root, "js"))
       File.mkdir_p!(Path.join(root, "etc"))
 
-      bin_dir = Path.join([root, "build", "bin"])
-      File.mkdir_p!(bin_dir)
+      build_dir = Path.join(root, "build")
+      File.mkdir_p!(build_dir)
 
-      assert {:ok, ^root} = Filesystem.find_repository_root(bin_dir)
+      assert {:ok, ^root} = Filesystem.find_repository_root(build_dir)
     end
 
-    test "returns error when bin_dir candidate has no js/ and etc/ and cwd has none either" do
+    test "returns error when build_dir candidate has no js/ and etc/ and cwd has none either" do
       empty_dir = unique_tmp_dir()
-      sub_dir = Path.join(empty_dir, "sub")
-      File.mkdir_p!(sub_dir)
+      build_dir = Path.join(empty_dir, "sub")
+      File.mkdir_p!(build_dir)
 
       assert {:error, "repository root not found"} =
-               Filesystem.find_repository_root(sub_dir, cwd: empty_dir)
+               Filesystem.find_repository_root(build_dir, cwd: empty_dir)
     end
   end
 end

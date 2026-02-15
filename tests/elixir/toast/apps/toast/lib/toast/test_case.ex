@@ -11,7 +11,7 @@ defmodule Toast.TestCase do
   In `test_helper.exs`:
 
       ExUnit.start()
-      Toast.TestCase.setup_suite(:single_server)
+      Toast.TestCase.setup_suite()
 
   In test modules:
 
@@ -56,9 +56,14 @@ defmodule Toast.TestCase do
   @doc """
   Start a deployment and register it for test modules. Raises on failure.
   Call from test_helper.exs after ExUnit.start().
+
+  When called without arguments, reads the deployment mode from
+  `TOAST_DEPLOYMENT_MODE` (via `Toast.Config`).
   """
   @spec setup_suite!(atom(), keyword()) :: Toast.Deployment.t()
-  def setup_suite!(mode \\ :single_server, opts \\ []) do
+  def setup_suite!(mode \\ nil, opts \\ []) do
+    mode = mode || Toast.Config.load(opts).deployment_mode
+
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
         register_deployment(deployment)
@@ -74,9 +79,14 @@ defmodule Toast.TestCase do
   Start a deployment and register it. On failure, marks deployment as
   unavailable so tests are skipped gracefully.
   Returns {:ok, deployment} or {:error, reason}.
+
+  When called without arguments, reads the deployment mode from
+  `TOAST_DEPLOYMENT_MODE` (via `Toast.Config`).
   """
   @spec setup_suite(atom(), keyword()) :: {:ok, Toast.Deployment.t()} | {:error, term()}
-  def setup_suite(mode \\ :single_server, opts \\ []) do
+  def setup_suite(mode \\ nil, opts \\ []) do
+    mode = mode || Toast.Config.load(opts).deployment_mode
+
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
         register_deployment(deployment)
@@ -107,7 +117,7 @@ defmodule Toast.TestCase do
   end
 
   defp register_after_suite(deployment) do
-    maybe_register_formatter()
+    register_formatters()
 
     ExUnit.after_suite(fn _stats ->
       diagnostics = Toast.Deployment.stop_and_collect(deployment)
@@ -116,14 +126,24 @@ defmodule Toast.TestCase do
     end)
   end
 
-  defp maybe_register_formatter do
-    if System.get_env("TOAST_RESULT_DIR") do
-      current = Application.get_env(:ex_unit, :formatters, [ExUnit.CLIFormatter])
+  defp register_formatters do
+    current = Application.get_env(:ex_unit, :formatters, [ExUnit.CLIFormatter])
 
-      unless Toast.ResultFormatter in current do
-        ExUnit.configure(formatters: current ++ [Toast.ResultFormatter])
-      end
-    end
+    # Replace ExUnit.CLIFormatter with Toast.CLIFormatter
+    formatters = List.delete(current, ExUnit.CLIFormatter)
+
+    formatters =
+      if Toast.CLIFormatter in formatters,
+        do: formatters,
+        else: [Toast.CLIFormatter | formatters]
+
+    # Add ResultFormatter when result export is configured
+    formatters =
+      if System.get_env("TOAST_RESULT_DIR") && Toast.ResultFormatter not in formatters,
+        do: formatters ++ [Toast.ResultFormatter],
+        else: formatters
+
+    ExUnit.configure(formatters: formatters)
   end
 
   defp format_crash_message(:no_crash) do

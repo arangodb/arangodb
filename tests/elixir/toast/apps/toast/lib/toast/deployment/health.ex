@@ -39,9 +39,15 @@ defmodule Toast.Deployment.Health do
     url = endpoint <> "/_api/version"
 
     case Req.get(url, receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false) do
-      {:ok, %{status: status}} when status in 200..299 -> :ok
-      {:ok, %{status: status}} -> {:error, {:unexpected_status, status}}
-      {:error, reason} -> {:error, reason}
+      {:ok, %{status: status}} when status in 200..299 ->
+        Logger.debug("[Toast.Health] #{endpoint} responded with status #{status}")
+        :ok
+
+      {:ok, %{status: status}} ->
+        {:error, {:unexpected_status, status}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -118,6 +124,7 @@ defmodule Toast.Deployment.Health do
     process_check_fn = Keyword.get(opts, :process_check_fn)
 
     if process_check_fn && !process_check_fn.() do
+      Logger.debug("[Toast.Health] #{endpoint}: OS process is no longer running")
       {:error, :process_died}
     else
       case check_once(endpoint, opts) do
@@ -126,13 +133,15 @@ defmodule Toast.Deployment.Health do
           :ok
 
         {:error, reason} ->
+          now = System.monotonic_time(:millisecond)
+          remaining = max(0, deadline - now)
+
           if first_attempt do
-            Logger.debug("[Toast.Health] First check for #{endpoint} failed: #{inspect(reason)}")
+            Logger.debug("[Toast.Health] #{endpoint}: first check failed (#{inspect(reason)}), #{remaining}ms remaining")
           end
 
-          now = System.monotonic_time(:millisecond)
-
           if now >= deadline do
+            Logger.debug("[Toast.Health] #{endpoint}: timed out waiting for ready")
             {:error, :timeout}
           else
             Process.sleep(poll_interval)
