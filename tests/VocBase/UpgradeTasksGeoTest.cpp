@@ -303,3 +303,93 @@ TEST_F(UpgradeTasksGeoTest, dropLegacyGeoIndexes_removes_legacy_geo_index) {
   EXPECT_EQ(indexesAfter.size(), indexesBefore.size() - 1u)
       << "One index (the legacy geo) should be gone";
 }
+
+TEST_F(UpgradeTasksGeoTest,
+       index_factory_reroutes_geo1_and_geo2_to_geo_with_legacy_flags) {
+  // Build a mocked "old" collection definition containing geo1 and geo2.
+  // Loading must succeed, both legacy entries must be represented as geo
+  // indexes, and both must carry needsLegacyGeoDrop().
+  TRI_vocbase_t& vocbase = createVocbase("testDbLegacyBoth", 4);
+
+  velocypack::Builder def;
+  def.openObject();
+  def.add("id", velocypack::Value("102"));
+  def.add(StaticStrings::DataSourcePlanId, velocypack::Value("102"));
+  def.add(StaticStrings::DataSourceName, velocypack::Value("testColLegacyBoth"));
+  def.add(StaticStrings::DataSourceGuid,
+          velocypack::Value("testColLegacyBothGuid"));
+  def.add(StaticStrings::Version,
+          velocypack::Value(static_cast<uint32_t>(
+              LogicalCollection::currentVersion())));
+  def.add(StaticStrings::DataSourceType,
+          velocypack::Value(TRI_COL_TYPE_DOCUMENT));
+  def.add(StaticStrings::ObjectId, velocypack::Value("12346"));
+  def.add(VPackValue(StaticStrings::Indexes));
+  {
+    velocypack::ArrayBuilder ab(&def);
+    def.openObject();
+    def.add(StaticStrings::IndexType, velocypack::Value("primary"));
+    def.add(StaticStrings::IndexId, velocypack::Value("1"));
+    def.add(VPackValue(StaticStrings::IndexFields));
+    { velocypack::ArrayBuilder fb(&def); def.add(VPackValue("_key")); }
+    def.close();
+
+    def.openObject();
+    def.add(StaticStrings::IndexType, velocypack::Value("geo1"));
+    def.add(StaticStrings::IndexId, velocypack::Value("2"));
+    def.add(VPackValue(StaticStrings::IndexFields));
+    { velocypack::ArrayBuilder fb(&def); def.add(VPackValue("loc")); }
+    def.close();
+
+    def.openObject();
+    def.add(StaticStrings::IndexType, velocypack::Value("geo2"));
+    def.add(StaticStrings::IndexId, velocypack::Value("3"));
+    def.add(VPackValue(StaticStrings::IndexFields));
+    {
+      velocypack::ArrayBuilder fb(&def);
+      def.add(VPackValue("lat"));
+      def.add(VPackValue("lon"));
+    }
+    def.close();
+  }
+  def.close();
+
+  std::shared_ptr<LogicalCollection> col =
+      vocbase.createCollectionObject(def.slice(), false);
+  ASSERT_NE(col, nullptr);
+
+  auto indexes = col->getPhysical()->getReadyIndexes();
+  size_t legacyGeoCount = 0;
+  size_t legacyGeo1FieldCount = 0;
+  size_t legacyGeo2FieldCount = 0;
+
+  for (auto const& idx : indexes) {
+    if (!idx->needsLegacyGeoDrop()) {
+      continue;
+    }
+    ++legacyGeoCount;
+    EXPECT_EQ(idx->type(), Index::TRI_IDX_TYPE_GEO_INDEX)
+        << "Legacy geo1/geo2 definitions must load as geo indexes";
+    EXPECT_FALSE(idx->unique()) << "Geo indexes must be non-unique";
+    EXPECT_TRUE(idx->sparse()) << "Geo indexes must be sparse";
+
+    if (idx->fields().size() == 1 &&
+        idx->fields()[0].size() == 1 &&
+        idx->fields()[0][0].name == "loc") {
+      ++legacyGeo1FieldCount;
+    } else if (idx->fields().size() == 2 &&
+               idx->fields()[0].size() == 1 &&
+               idx->fields()[1].size() == 1 &&
+               idx->fields()[0][0].name == "lat" &&
+               idx->fields()[1][0].name == "lon") {
+      ++legacyGeo2FieldCount;
+    }
+  }
+
+  EXPECT_EQ(legacyGeoCount, 2u)
+      << "Expected both geo1 and geo2 mocked definitions to be loaded";
+  EXPECT_EQ(legacyGeo1FieldCount, 1u)
+      << "Expected exactly one legacy single-field geo definition";
+  EXPECT_EQ(legacyGeo2FieldCount, 1u)
+      << "Expected exactly one legacy two-field geo definition";
+}

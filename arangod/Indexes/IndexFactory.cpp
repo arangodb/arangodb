@@ -54,6 +54,8 @@
 #include <regex>
 #include <string_view>
 
+#include "Logger/LogMacros.h"
+
 namespace {
 
 using namespace arangodb;
@@ -369,6 +371,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
     normalizedBuilder.openObject();
     for (auto it : VPackObjectIterator(definition)) {
       if (it.key.isEqualString(StaticStrings::IndexType)) {
+        LOG_DEVEL << "definition: key: " << it.key.toString() << ", value: " << it.value.toString();
         normalizedBuilder.add(StaticStrings::IndexType, VPackValue("geo"));
       } else {
         normalizedBuilder.add(it.key);
