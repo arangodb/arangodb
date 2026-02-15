@@ -5,6 +5,7 @@ defmodule Toast.Deployment.Factory do
   alias Toast.PortAllocator
   alias Toast.Utils.Filesystem
   alias Toast.Deployment.CommandBuilder
+  alias Toast.Diagnostics.Sanitizer
 
   @type launch_spec :: %{
           id: String.t(),
@@ -31,7 +32,7 @@ defmodule Toast.Deployment.Factory do
          id: server_id,
          executable: executable,
          args: args,
-         env: [],
+         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
          # Run from repo root so relative config paths (etc/testing/...) resolve correctly
          working_dir: repo_root,
          server_dir: paths.base_dir,
@@ -116,7 +117,7 @@ defmodule Toast.Deployment.Factory do
          id: server_id,
          executable: executable,
          args: args,
-         env: [],
+         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
          working_dir: repo_root,
          server_dir: paths.base_dir,
          port: port,

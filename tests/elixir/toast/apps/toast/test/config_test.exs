@@ -139,6 +139,32 @@ defmodule Toast.ConfigTest do
     end
   end
 
+  describe "pos_int validation" do
+    test "zero raises ArgumentError" do
+      System.put_env("TOAST_STARTUP_TIMEOUT", "0")
+
+      assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
+        Config.load()
+      end
+    end
+
+    test "negative value raises ArgumentError" do
+      System.put_env("TOAST_CLUSTER_AGENTS", "-1")
+
+      assert_raise ArgumentError, ~r/must be a positive integer/, fn ->
+        Config.load()
+      end
+    end
+
+    test "non-numeric value raises ArgumentError" do
+      System.put_env("TOAST_STARTUP_TIMEOUT", "abc")
+
+      assert_raise ArgumentError, fn ->
+        Config.load()
+      end
+    end
+  end
+
   describe "server_args" do
     test "passes through from opts" do
       args = %{"log.level" => "debug"}

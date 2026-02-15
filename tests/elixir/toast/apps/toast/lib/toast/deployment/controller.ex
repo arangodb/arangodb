@@ -8,6 +8,7 @@ defmodule Toast.Deployment.Controller do
   alias Toast.Config
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health}
+  alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
   alias Toast.PortAllocator
 
   @type status :: :stopped | :starting | :ready | :stopping | :failed
@@ -65,7 +66,8 @@ defmodule Toast.Deployment.Controller do
       endpoint: nil,
       log_file: nil,
       server_dir: nil,
-      error: nil
+      error: nil,
+      diagnostics: nil
     }
 
     {:ok, state}
@@ -119,7 +121,8 @@ defmodule Toast.Deployment.Controller do
       endpoint: state.endpoint,
       port: state.port,
       log_file: state.log_file,
-      error: state.error
+      error: state.error,
+      diagnostics: state.diagnostics
     }
 
     {:reply, info, state}
@@ -191,23 +194,31 @@ defmodule Toast.Deployment.Controller do
 
   defp do_cleanup(state, timeout) do
     stop_server(state, timeout)
+    diagnostics = collect_diagnostics(state)
     cleanup_dirs(state)
-    %{state | status: :stopped, server_pid: nil}
+    %{state | status: :stopped, server_pid: nil, diagnostics: diagnostics}
+  end
+
+  defp collect_diagnostics(%{server_dir: nil}), do: nil
+
+  defp collect_diagnostics(state) do
+    sanitizer_errors = Sanitizer.collect_errors(state.server_dir, state.id)
+    log_content = Toast.Utils.Filesystem.read_file_or_nil(state.log_file)
+
+    %{
+      sanitizer_errors: sanitizer_errors,
+      server_log: if(log_content, do: ServerLog.scan(log_content)),
+      crash_report: if(log_content, do: CrashLogParser.parse(log_content))
+    }
   end
 
   defp stop_server(%{server_pid: nil}, _timeout), do: :ok
 
   defp stop_server(%{server_pid: pid}, timeout) do
-    if Process.alive?(pid) do
-      ServerProcess.stop(pid, timeout)
-      terminate_server_genserver(pid)
-    end
-  end
-
-  defp terminate_server_genserver(pid) do
+    ServerProcess.stop(pid, timeout)
     DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
-  rescue
-    _ -> :ok
+  catch
+    :exit, _ -> :ok
   end
 
   defp cleanup_dirs(%{server_dir: nil}), do: :ok

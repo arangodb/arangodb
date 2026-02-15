@@ -82,7 +82,9 @@ defmodule Toast.Deployment.Health do
     end
   end
 
-  defp analyze_agency_status(results) do
+  @doc false
+  @spec analyze_agency_status([{:ok, map()} | {:error, term()}]) :: :ready | {:not_ready, atom()}
+  def analyze_agency_status(results) do
     configs = for {:ok, body} <- results, do: body
 
     if length(configs) != length(results) do

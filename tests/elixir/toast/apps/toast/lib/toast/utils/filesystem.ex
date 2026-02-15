@@ -43,10 +43,10 @@ defmodule Toast.Utils.Filesystem do
       else: {:error, "arangod not found at #{path}"}
   end
 
-  @spec find_repository_root(Path.t() | nil) :: {:ok, Path.t()} | {:error, String.t()}
-  def find_repository_root(bin_dir) do
+  @spec find_repository_root(Path.t() | nil, keyword()) :: {:ok, Path.t()} | {:error, String.t()}
+  def find_repository_root(bin_dir, opts \\ []) do
     with :no_match <- find_from_bin_dir(bin_dir),
-         :no_match <- find_from_cwd() do
+         :no_match <- find_from_cwd(opts) do
       {:error, "repository root not found"}
     end
   end
@@ -66,8 +66,8 @@ defmodule Toast.Utils.Filesystem do
       else: :no_match
   end
 
-  defp find_from_cwd do
-    File.cwd!()
+  defp find_from_cwd(opts) do
+    Keyword.get_lazy(opts, :cwd, &File.cwd!/0)
     |> walk_up()
     |> Enum.find_value(:no_match, fn dir ->
       if repository_root?(dir), do: {:ok, dir}
@@ -81,6 +81,17 @@ defmodule Toast.Utils.Filesystem do
         parent = Path.dirname(dir)
         if parent == dir, do: {dir, nil}, else: {dir, parent}
     end)
+  end
+
+  @doc false
+  @spec read_file_or_nil(Path.t() | nil) :: String.t() | nil
+  def read_file_or_nil(nil), do: nil
+
+  def read_file_or_nil(path) do
+    case File.read(path) do
+      {:ok, content} -> content
+      {:error, _} -> nil
+    end
   end
 
   defp repository_root?(path) do

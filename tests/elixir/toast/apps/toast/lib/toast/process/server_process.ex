@@ -213,6 +213,22 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, state}
   end
 
+  def handle_info(:kill_group_escalation, %{status: :stopping} = state) do
+    Logger.warning("[Toast] #{state.id} (pid=#{state.os_pid}) did not exit after SIGKILL, killing process group")
+
+    Signal.kill_group(state.os_pid)
+
+    if state.stop_from do
+      GenServer.reply(state.stop_from, :ok)
+    end
+
+    {:noreply, %{state | status: :stopped, port: nil, os_pid: nil, stop_timer: nil, stop_from: nil}}
+  end
+
+  def handle_info(:kill_group_escalation, state) do
+    {:noreply, state}
+  end
+
   # --- Internal ---
 
   defp do_launch(state) do

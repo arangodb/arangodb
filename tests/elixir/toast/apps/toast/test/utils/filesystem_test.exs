@@ -114,11 +114,8 @@ defmodule Toast.Utils.FilesystemTest do
       sub_dir = Path.join(empty_dir, "sub")
       File.mkdir_p!(sub_dir)
 
-      original_cwd = File.cwd!()
-      File.cd!(empty_dir)
-      on_exit(fn -> File.cd!(original_cwd) end)
-
-      assert {:error, "repository root not found"} = Filesystem.find_repository_root(sub_dir)
+      assert {:error, "repository root not found"} =
+               Filesystem.find_repository_root(sub_dir, cwd: empty_dir)
     end
   end
 end

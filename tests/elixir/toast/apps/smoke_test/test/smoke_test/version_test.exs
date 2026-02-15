@@ -1,0 +1,13 @@
+defmodule SmokeTest.VersionTest do
+  use Toast.TestCase
+
+  test "returns arango server info", %{client: client} do
+    assert {:ok, body} = Client.version(client)
+    assert body["server"] == "arango"
+    assert is_binary(body["version"])
+  end
+
+  test "endpoint is accessible via raw HTTP", %{endpoint: endpoint} do
+    assert {:ok, %{status: 200}} = Req.get(endpoint <> "/_api/version", retry: false)
+  end
+end

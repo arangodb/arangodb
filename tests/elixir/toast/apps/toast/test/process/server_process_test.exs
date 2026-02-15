@@ -133,18 +133,18 @@ defmodule Toast.Process.ServerProcessTest do
   end
 
   describe "output capture" do
-    test "captures stdout from the process", %{id: id} do
+    test "captures stdout into output_buffer", %{id: id} do
       pid = start_server(id)
       ServerProcess.launch(pid)
 
       # Give the process time to write its startup message
       Process.sleep(500)
 
-      ServerProcess.stop(pid, 5_000)
+      state = :sys.get_state(pid)
+      output = IO.iodata_to_binary(state.output_buffer)
+      assert output =~ "STARTED port="
 
-      # The output_buffer is not exposed via the public API,
-      # but we can verify the process ran and produced output by
-      # checking it started and stopped without errors
+      ServerProcess.stop(pid, 5_000)
       assert ServerProcess.status(pid) == :stopped
     end
   end
@@ -157,6 +157,27 @@ defmodule Toast.Process.ServerProcessTest do
       assert_receive {:server_crashed, ^id, _crash_info}, 5_000
       assert ServerProcess.status(pid) == :crashed
       assert ServerProcess.stop(pid, 5_000) == :ok
+    end
+  end
+
+  describe "kill escalation" do
+    @unkillable_server Path.expand("../support/unkillable_server.sh", __DIR__)
+
+    test "escalates to SIGKILL when SIGTERM is ignored", %{id: id} do
+      pid = start_server(id, executable: @unkillable_server, args: [])
+      ServerProcess.launch(pid)
+      os_pid = ServerProcess.os_pid(pid)
+      assert Signal.alive?(os_pid)
+
+      # Use a short SIGTERM timeout (1s) so kill escalation fires quickly.
+      # GenServer.call timeout inside stop/2 is timeout + 5_000 = 6_000ms,
+      # which is plenty for SIGTERM wait (1s) + SIGKILL to take effect.
+      assert ServerProcess.stop(pid, 1_000) == :ok
+      assert ServerProcess.status(pid) == :stopped
+
+      # OS process should be dead after SIGKILL
+      Process.sleep(100)
+      refute Signal.alive?(os_pid)
     end
   end
 end

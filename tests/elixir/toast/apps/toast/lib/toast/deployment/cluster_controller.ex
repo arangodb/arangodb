@@ -8,6 +8,7 @@ defmodule Toast.Deployment.ClusterController do
   alias Toast.Config
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health}
+  alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
 
   @type status :: :stopped | :starting | :ready | :stopping | :failed
 
@@ -58,7 +59,8 @@ defmodule Toast.Deployment.ClusterController do
       agents: [],
       dbservers: [],
       coordinators: [],
-      error: nil
+      error: nil,
+      diagnostics: nil
     }
 
     {:ok, state}
@@ -110,7 +112,7 @@ defmodule Toast.Deployment.ClusterController do
 
     server_info =
       Map.new(state.servers, fn {id, s} ->
-        {id, %{role: s.role, port: s.port, endpoint: s.endpoint}}
+        {id, %{role: s.role, port: s.port, endpoint: s.endpoint, log_file: s.log_file}}
       end)
 
     info = %{
@@ -118,7 +120,8 @@ defmodule Toast.Deployment.ClusterController do
       status: state.status,
       coordinator_endpoint: coordinator_endpoint,
       servers: server_info,
-      error: state.error
+      error: state.error,
+      diagnostics: state.diagnostics
     }
 
     {:reply, info, state}
@@ -283,9 +286,25 @@ defmodule Toast.Deployment.ClusterController do
     stop_servers(state.coordinators, state, timeout)
     stop_servers(state.dbservers, state, timeout)
     stop_servers(state.agents, state, timeout)
+    diagnostics = collect_all_diagnostics(state)
     cleanup_all_dirs(state)
 
-    %{state | status: :stopped, servers: clear_server_pids(state.servers)}
+    %{state | status: :stopped, servers: clear_server_pids(state.servers), diagnostics: diagnostics}
+  end
+
+  defp collect_all_diagnostics(state) do
+    Map.new(state.servers, fn {server_id, server} ->
+      sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server_id)
+      log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
+
+      diagnostics = %{
+        sanitizer_errors: sanitizer_errors,
+        server_log: if(log_content, do: ServerLog.scan(log_content)),
+        crash_report: if(log_content, do: CrashLogParser.parse(log_content))
+      }
+
+      {server_id, diagnostics}
+    end)
   end
 
   defp stop_servers(server_ids, state, timeout) do
@@ -294,21 +313,19 @@ defmodule Toast.Deployment.ClusterController do
       fn server_id ->
         server = state.servers[server_id]
 
-        if server.server_pid && Process.alive?(server.server_pid) do
-          ServerProcess.stop(server.server_pid, timeout)
-          terminate_server_genserver(server.server_pid)
+        if server.server_pid do
+          try do
+            ServerProcess.stop(server.server_pid, timeout)
+            DynamicSupervisor.terminate_child(Toast.Process.Supervisor, server.server_pid)
+          catch
+            :exit, _ -> :ok
+          end
         end
       end,
       ordered: false,
       timeout: timeout + 5_000
     )
     |> Stream.run()
-  end
-
-  defp terminate_server_genserver(pid) do
-    DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
-  rescue
-    _ -> :ok
   end
 
   defp cleanup_all_dirs(state) do

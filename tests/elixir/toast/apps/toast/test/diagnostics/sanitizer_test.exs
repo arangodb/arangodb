@@ -1,0 +1,149 @@
+defmodule Toast.Diagnostics.SanitizerTest do
+  use ExUnit.Case, async: false
+
+  alias Toast.Diagnostics.Sanitizer
+
+  @sanitizer_vars ["ASAN_OPTIONS", "LSAN_OPTIONS", "UBSAN_OPTIONS", "TSAN_OPTIONS"]
+
+  describe "detect/0" do
+    setup do
+      saved = Map.new(@sanitizer_vars, fn var -> {var, System.get_env(var)} end)
+      for var <- @sanitizer_vars, do: System.delete_env(var)
+
+      on_exit(fn ->
+        for {var, val} <- saved do
+          if val, do: System.put_env(var, val), else: System.delete_env(var)
+        end
+      end)
+
+      :ok
+    end
+
+    test "returns empty set when no sanitizer env vars" do
+      assert MapSet.size(Sanitizer.detect()) == 0
+    end
+
+    test "detects ASAN_OPTIONS" do
+      System.put_env("ASAN_OPTIONS", "halt_on_error=0")
+
+      result = Sanitizer.detect()
+      assert MapSet.member?(result, "ASAN_OPTIONS")
+    end
+
+    test "detects TSAN_OPTIONS" do
+      System.put_env("TSAN_OPTIONS", "halt_on_error=0")
+
+      result = Sanitizer.detect()
+      assert MapSet.member?(result, "TSAN_OPTIONS")
+    end
+
+    test "detects multiple sanitizers" do
+      System.put_env("ASAN_OPTIONS", "halt_on_error=0")
+      System.put_env("LSAN_OPTIONS", "halt_on_error=0")
+
+      result = Sanitizer.detect()
+      assert MapSet.member?(result, "ASAN_OPTIONS")
+      assert MapSet.member?(result, "LSAN_OPTIONS")
+    end
+  end
+
+  describe "build_env/3" do
+    test "returns empty list for empty set" do
+      assert Sanitizer.build_env(MapSet.new(), "/tmp/log", "/repo") == []
+    end
+
+    test "generates ASAN_OPTIONS with log_path" do
+      active = MapSet.new(["ASAN_OPTIONS"])
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
+
+      assert [{"ASAN_OPTIONS", value}] = env
+      assert String.contains?(value, "log_path=/tmp/server1/alubsan.log")
+      assert String.contains?(value, "log_exe_name=true")
+    end
+
+    test "generates TSAN_OPTIONS with tsan log path" do
+      active = MapSet.new(["TSAN_OPTIONS"])
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
+
+      assert [{"TSAN_OPTIONS", value}] = env
+      assert String.contains?(value, "log_path=/tmp/server1/tsan.log")
+      assert String.contains?(value, "log_exe_name=true")
+    end
+
+    test "preserves existing env var options" do
+      saved = System.get_env("ASAN_OPTIONS")
+      System.put_env("ASAN_OPTIONS", "halt_on_error=0:detect_leaks=1")
+
+      on_exit(fn ->
+        if saved, do: System.put_env("ASAN_OPTIONS", saved), else: System.delete_env("ASAN_OPTIONS")
+      end)
+
+      active = MapSet.new(["ASAN_OPTIONS"])
+      env = Sanitizer.build_env(active, "/tmp/server1", "/repo")
+
+      assert [{"ASAN_OPTIONS", value}] = env
+      assert String.contains?(value, "halt_on_error=0")
+      assert String.contains?(value, "detect_leaks=1")
+      assert String.contains?(value, "log_path=")
+    end
+
+    test "includes suppression file when present" do
+      tmp_dir = Path.join(System.tmp_dir!(), "toast_san_supp_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(tmp_dir)
+      supp_file = Path.join(tmp_dir, "lsan_arangodb_suppressions.txt")
+      File.write!(supp_file, "leak:some_function\n")
+
+      on_exit(fn -> File.rm_rf!(tmp_dir) end)
+
+      active = MapSet.new(["LSAN_OPTIONS"])
+      env = Sanitizer.build_env(active, "/tmp/server1", tmp_dir)
+
+      assert [{"LSAN_OPTIONS", value}] = env
+      assert String.contains?(value, "suppressions=")
+      assert String.contains?(value, "lsan_arangodb_suppressions.txt")
+    end
+  end
+
+  describe "collect_errors/2" do
+    setup do
+      dir = Path.join(System.tmp_dir!(), "toast_san_test_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      on_exit(fn -> File.rm_rf!(dir) end)
+      %{dir: dir}
+    end
+
+    test "returns empty list when no log files", %{dir: dir} do
+      assert Sanitizer.collect_errors(dir, "server-1") == []
+    end
+
+    test "reads sanitizer log files", %{dir: dir} do
+      content = String.duplicate("==12345==ERROR: AddressSanitizer: heap-buffer-overflow\n", 3)
+      File.write!(Path.join(dir, "alubsan.log.arangod.12345"), content)
+
+      errors = Sanitizer.collect_errors(dir, "server-1")
+      assert length(errors) == 1
+
+      [error] = errors
+      assert error.content == content
+      assert error.sanitizer_type == :alubsan
+      assert error.server_id == "server-1"
+      assert String.contains?(error.file_path, "alubsan.log.arangod.12345")
+    end
+
+    test "skips small files", %{dir: dir} do
+      File.write!(Path.join(dir, "alubsan.log.arangod.99999"), "tiny")
+
+      assert Sanitizer.collect_errors(dir, "server-1") == []
+    end
+
+    test "collects both alubsan and tsan errors", %{dir: dir} do
+      File.write!(Path.join(dir, "alubsan.log.arangod.111"), String.duplicate("ASAN error\n", 5))
+      File.write!(Path.join(dir, "tsan.log.arangod.222"), String.duplicate("TSAN warning\n", 5))
+
+      errors = Sanitizer.collect_errors(dir, "server-1")
+      assert length(errors) == 2
+      types = Enum.map(errors, & &1.sanitizer_type) |> MapSet.new()
+      assert MapSet.equal?(types, MapSet.new([:alubsan, :tsan]))
+    end
+  end
+end

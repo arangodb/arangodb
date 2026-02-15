@@ -70,23 +70,114 @@ defmodule Toast.Deployment do
   end
 
   @spec stop(t(), keyword()) :: :ok | {:error, term()}
-  def stop(deployment, opts \\ [])
+  def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
+    mod = controller_module(deployment)
+    timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
-  def stop(%__MODULE__{mode: :single_server, controller: pid}, opts) do
-    timeout = Keyword.get(opts, :timeout, 30_000)
-
-    with :ok <- Controller.shutdown(pid, timeout) do
+    with :ok <- mod.shutdown(pid, timeout) do
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
       :ok
     end
   end
 
-  def stop(%__MODULE__{mode: :cluster, controller: pid}, opts) do
-    timeout = Keyword.get(opts, :timeout, 60_000)
+  @doc """
+  Stop the deployment and return collected diagnostics.
 
-    with :ok <- ClusterController.shutdown(pid, timeout) do
+  Diagnostics are collected during shutdown (between server stop and directory cleanup).
+  This function retrieves them before terminating the controller process.
+  """
+  @spec stop_and_collect(t(), keyword()) :: map() | nil
+  def stop_and_collect(%__MODULE__{controller: pid} = deployment, opts \\ []) do
+    mod = controller_module(deployment)
+    timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
+
+    with :ok <- mod.shutdown(pid, timeout) do
+      diagnostics = mod.get_info(pid)[:diagnostics]
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-      :ok
+      diagnostics
+    else
+      _ -> nil
     end
+  end
+
+  @doc "Query the current deployment status."
+  @spec status(t()) :: Controller.status()
+  def status(deployment) do
+    controller_call(deployment, :get_status, :stopped)
+  end
+
+  @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
+  @spec crash_info(t()) :: {:ok, map()} | :no_crash
+  def crash_info(%__MODULE__{mode: :single_server} = d) do
+    case controller_call(d, :get_info, nil) do
+      nil -> :no_crash
+      info -> extract_crash_info(info.error, info.log_file)
+    end
+  end
+
+  def crash_info(%__MODULE__{mode: :cluster} = d) do
+    case controller_call(d, :get_info, nil) do
+      nil -> :no_crash
+      info -> extract_cluster_crash_info(info.error, info.servers)
+    end
+  end
+
+  @doc "Retrieve diagnostics collected during shutdown."
+  @spec diagnostics(t()) :: map() | nil
+  def diagnostics(deployment) do
+    case controller_call(deployment, :get_info, nil) do
+      nil -> nil
+      info -> info[:diagnostics]
+    end
+  end
+
+  defp extract_crash_info({:server_crashed, crash_info}, log_file) do
+    log_report = read_and_parse_log(log_file)
+
+    {:ok,
+     %{
+       server_id: nil,
+       server_crash_info: crash_info,
+       log_report: log_report,
+       log_file: log_file
+     }}
+  end
+
+  defp extract_crash_info(_error, _log_file), do: :no_crash
+
+  defp extract_cluster_crash_info({:server_crashed, server_id, crash_info}, servers) do
+    log_file = get_in(servers, [server_id, :log_file])
+    log_report = read_and_parse_log(log_file)
+
+    {:ok,
+     %{
+       server_id: server_id,
+       server_crash_info: crash_info,
+       log_report: log_report,
+       log_file: log_file
+     }}
+  end
+
+  defp extract_cluster_crash_info(_error, _servers), do: :no_crash
+
+  defp read_and_parse_log(nil), do: nil
+
+  defp read_and_parse_log(log_file) do
+    case File.read(log_file) do
+      {:ok, content} -> Toast.Diagnostics.CrashLogParser.parse(content)
+      {:error, _} -> nil
+    end
+  end
+
+  defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
+  defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
+
+  defp controller_module(%__MODULE__{mode: :single_server}), do: Controller
+  defp controller_module(%__MODULE__{mode: :cluster}), do: ClusterController
+
+  defp controller_call(%__MODULE__{controller: pid} = deployment, function, default) do
+    apply(controller_module(deployment), function, [pid])
+  catch
+    :exit, _ -> default
   end
 end

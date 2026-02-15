@@ -12,7 +12,8 @@ defmodule Toast.Config do
           cluster_agents: pos_integer(),
           cluster_dbservers: pos_integer(),
           cluster_coordinators: pos_integer(),
-          cluster_replication_factor: pos_integer()
+          cluster_replication_factor: pos_integer(),
+          sanitizer: MapSet.t(String.t())
         }
 
   defstruct [
@@ -26,7 +27,8 @@ defmodule Toast.Config do
     cluster_agents: 3,
     cluster_dbservers: 3,
     cluster_coordinators: 1,
-    cluster_replication_factor: 2
+    cluster_replication_factor: 2,
+    sanitizer: MapSet.new()
   ]
 
   @spec load() :: t()
@@ -45,7 +47,8 @@ defmodule Toast.Config do
       cluster_agents: opt_or(opts, :cluster_agents, read_pos_int("TOAST_CLUSTER_AGENTS", 3)),
       cluster_dbservers: opt_or(opts, :cluster_dbservers, read_pos_int("TOAST_CLUSTER_DBSERVERS", 3)),
       cluster_coordinators: opt_or(opts, :cluster_coordinators, read_pos_int("TOAST_CLUSTER_COORDINATORS", 1)),
-      cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2))
+      cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2)),
+      sanitizer: opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect())
     }
   end
 
@@ -70,8 +73,17 @@ defmodule Toast.Config do
 
   defp read_pos_int(var, default) do
     case env(var) do
-      nil -> default
-      val -> String.to_integer(val)
+      nil ->
+        default
+
+      val ->
+        int = String.to_integer(val)
+
+        if int > 0 do
+          int
+        else
+          raise ArgumentError, "#{var} must be a positive integer, got: #{val}"
+        end
     end
   end
 
