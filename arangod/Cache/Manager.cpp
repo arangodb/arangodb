@@ -65,8 +65,7 @@ DECLARE_GAUGE(rocksdb_cache_labeled_allocated, uint64_t,
               "Labeled cache allocated size");
 DECLARE_GAUGE(rocksdb_cache_labeled_deserved, uint64_t,
               "Labeled cache deserved size");
-DECLARE_GAUGE(rocksdb_cache_labeled_usage, uint64_t,
-              "Labeled cache usage");
+DECLARE_GAUGE(rocksdb_cache_labeled_usage, uint64_t, "Labeled cache usage");
 DECLARE_GAUGE(rocksdb_cache_labeled_hard_limit, uint64_t,
               "Labeled cache hard limit");
 DECLARE_GAUGE(rocksdb_cache_labeled_soft_limit, uint64_t,
@@ -734,21 +733,32 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
       for (auto& pair : cacheList) {
         std::shared_ptr<Cache>& cache = pair.first;
         Metadata const& md = cache->metadata();
-        cacheStats.push_back(
-          {cache->name(),
-           {md.fixedSize, md.tableSize, md.maxSize,
-                                  md.allocatedSize, md.deservedSize, md.usage,
-                                  md.softUsageLimit, md.hardUsageLimit}});
+        cacheStats.push_back({cache->name(),
+                              {md.fixedSize, md.tableSize, md.maxSize,
+                               md.allocatedSize, md.deservedSize, md.usage,
+                               md.softUsageLimit, md.hardUsageLimit}});
       }
     } catch (std::exception const& ex) {
-        // we must not throw an exception from here without cleaning up
-        // the _rebalancing attribute
-        LOG_TOPIC("c0109", WARN, Logger::CACHE)
-            << "Caught exception during cache metrics collection: "
-            << ex.what();
+      // we must not throw an exception from here without cleaning up
+      // the _rebalancing attribute
+      LOG_TOPIC("c0109", WARN, Logger::CACHE)
+          << "Caught exception during cache metrics collection: " << ex.what();
     }
   }
-  
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+  for (auto pair : cacheStats) {
+    auto name = pair.first;
+    auto vals = pair.second;
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_fixed>(name)) = vals[0];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_tables>(name)) = vals[1];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_max>(name)) = vals[2];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_allocated>(name)) = vals[3];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_deserved>(name)) = vals[4];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_usage>(name)) = vals[5];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_hard_limit>(name)) = vals[6];
+    mf.addDynamic(getMetric<rocksdb_cache_labeled_soft_limit>(name)) = vals[7];
+  }
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
