@@ -45,10 +45,10 @@
 devel
 -----
 
-* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
   dependencies.
 
-* Updated ArangoDB Starter to v0.19.17.
+* Updated ArangoDB Starter to v0.19.16.
 
 * Added activities API which shows currently on-going high-level processes in the
   database and their possible dependencies on each other. Until now only a couple
