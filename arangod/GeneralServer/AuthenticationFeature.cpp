@@ -154,9 +154,8 @@ endpoint. Requests with expiry times above this value will be rejected.)");
                   new BooleanParameter(&_options.authenticationSystemOnly))
       .setLongDescription(R"(If you set this option to `true`, then HTTP
 authentication is only required for requests going to URLs starting with `/_`,
-but not for other endpoints. You can thus use this option to expose custom APIs
-of Foxx microservices without HTTP authentication to the outside world, but
-prevent unauthorized access of ArangoDB APIs and the admin interface.
+but not for other endpoints. You can thus use this option to prevent unauthorized access 
+of ArangoDB APIs and the admin interface.
 
 Note that checking the URL is performed after any database name prefix has been
 removed. That means, if the request URL is `/_db/_system/myapp/myaction`, the

@@ -38,14 +38,8 @@ let coordinator = instanceManager.arangods.filter(arangod => {
   return arangod.instanceRole === 'coordinator';
 })[0];
 
-const expectedSystemCollections = [
-  "_analyzers",
-  "_appbundles",
-  "_apps",
-  "_aqlfunctions",
+const expectedSystemCollections = [  "_analyzers",
   "_graphs",
-  "_jobs",
-  "_queues"
 ];
 
 ////////////////////////////////////////////////////////////////////////////////

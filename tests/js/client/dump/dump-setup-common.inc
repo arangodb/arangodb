@@ -539,37 +539,6 @@ function createReplicationFactors() {
   db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2, numberOfShards: getNoShards(6)});
 }
 
-function createJobs() {
-  db._useDatabase("UnitTestsDumpSrc");
-  // insert an entry into _jobs collection
-  try {
-    db._jobs.remove("test");
-  } catch (err) {
-  }
-  db._jobs.insert({_key: "test", status: "completed"});
-
-  // insert an entry into _queues collection
-  try {
-    db._queues.remove("test");
-  } catch (err) {
-  }
-  db._queues.insert({_key: "test"});
-}
-
-function createFoxx() {
-  if (!IM.options.skipServerJS) {
-
-    db._useDatabase("UnitTestsDumpSrc");
-    // Install Foxx
-    const fs = require('fs');
-    const SERVICE_PATH = fs.makeAbsolute(fs.join(
-      require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
-    ));
-    const FoxxManager = require('@arangodb/foxx/manager');
-    FoxxManager.install(SERVICE_PATH, '/test');
-  }
-}
-
 function createAnalyzers() {
   db._useDatabase("UnitTestsDumpDst");
   const countBeforeInDst = db._analyzers.count();
@@ -1455,7 +1424,5 @@ exports.createView = createView;
 exports.createSearch = createSearch;
 exports.createInvertedIndex = createInvertedIndex;
 exports.createReplicationFactors = createReplicationFactors;
-exports.createJobs = createJobs;
-exports.createFoxx = createFoxx;
 exports.createAnalyzers = createAnalyzers;
 exports.extendedName = extendedName;

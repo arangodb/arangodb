@@ -169,17 +169,11 @@ Result createSystemCollections(
 
   systemCollections.push_back(StaticStrings::GraphsCollection);
   systemCollections.push_back(StaticStrings::AnalyzersCollection);
-  systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
-  systemCollections.push_back(StaticStrings::QueuesCollection);
-  systemCollections.push_back(StaticStrings::JobsCollection);
-  systemCollections.push_back(StaticStrings::AppsCollection);
-  systemCollections.push_back(StaticStrings::AppBundlesCollection);
-  systemCollections.push_back(StaticStrings::FrontendCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     std::vector<CreateCollectionBody> testSystemCollectionsToCreate;
     std::vector<std::string> testSystemCollections = {
-        StaticStrings::GraphsCollection, StaticStrings::AqlFunctionsCollection};
+        StaticStrings::GraphsCollection};
 
     auto config = vocbase.getDatabaseConfiguration();
     // Override lookup for leading CollectionName
@@ -336,27 +330,6 @@ Result createSystemCollectionsIndices(
   }
 
   res = upgradeGeoIndexes(vocbase);
-  if (!res.ok()) {
-    return res;
-  }
-
-  res = ::createIndex(StaticStrings::AppsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX, {"mount"},
-                      true, true, collections);
-  if (!res.ok()) {
-    return res;
-  }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                      {"queue", "status", "delayUntil"}, false, false,
-                      collections);
-  if (!res.ok()) {
-    return res;
-  }
-  res = ::createIndex(StaticStrings::JobsCollection,
-                      arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                      {"status", "queue", "delayUntil"}, false, false,
-                      collections);
   if (!res.ok()) {
     return res;
   }

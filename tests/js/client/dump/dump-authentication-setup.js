@@ -41,7 +41,6 @@ const setup = require(base);
   setup.createMany();
   setup.createOrder();
   setup.createSmartGraph3_11_compat();
-  setup.createFoxx();
 })();
 
 return {

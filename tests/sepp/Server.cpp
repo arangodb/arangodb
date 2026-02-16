@@ -45,7 +45,6 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
-               ArangodServer::id<FoxxFeature>(),
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),

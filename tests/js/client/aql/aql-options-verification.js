@@ -275,7 +275,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ method: 'hash' } RETURN x"],
         [prefix + "{ disableIndex: true } RETURN x"],
 
-        [prefix + "{ method: 'foxx' } RETURN x", "method"],
         [prefix + "{ waitForSync: false } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: true } RETURN x", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN x", "waitForSync"],

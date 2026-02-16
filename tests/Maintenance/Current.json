@@ -1,5 +1,4 @@
-R"=(
-{
+R"=({
   "Singles": {},
   "Databases": {
     "_system": {
@@ -1826,54 +1825,6 @@ R"=(
           "errorMessage": ""
         }
       }
-    }
-  },
-  "Foxxmaster": "CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6",
-  "FoxxmasterQueueupdate": false,
-  "Coordinators": {
-    "CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6": "none",
-    "CRDN-067429e5-38b7-4917-8b51-0eb170d73079": "none"
-  },
-  "Version": 157,
-  "AsyncReplication": {},
-  "NewServers": {},
-  "Lock": "UNLOCKED",
-  "ServersRegistered": {
-    "CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6": {
-      "advertisedEndpoint": "",
-      "endpoint": "tcp://[::1]:11097",
-      "host": "0cbe86cef70f4e50a024274ac9d90a7f",
-      "engine": "rocksdb",
-      "version": 30500
-    },
-    "Version": 1,
-    "CRDN-067429e5-38b7-4917-8b51-0eb170d73079": {
-      "advertisedEndpoint": "",
-      "endpoint": "tcp://[::1]:11098",
-      "host": "0cbe86cef70f4e50a024274ac9d90a7f",
-      "engine": "rocksdb",
-      "version": 30500
-    },
-    "PRMR-62940941-7b13-4333-86a4-819deacff9e3": {
-      "advertisedEndpoint": "",
-      "endpoint": "tcp://[::1]:11196",
-      "host": "0cbe86cef70f4e50a024274ac9d90a7f",
-      "engine": "rocksdb",
-      "version": 30500
-    },
-    "PRMR-3418c83d-0201-4742-a8cd-7d3894811cc2": {
-      "advertisedEndpoint": "",
-      "endpoint": "tcp://[::1]:11197",
-      "host": "0cbe86cef70f4e50a024274ac9d90a7f",
-      "engine": "rocksdb",
-      "version": 30500
-    },
-    "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5": {
-      "advertisedEndpoint": "",
-      "endpoint": "tcp://[::1]:11198",
-      "host": "0cbe86cef70f4e50a024274ac9d90a7f",
-      "engine": "rocksdb",
-      "version": 30500
     }
   }
 }

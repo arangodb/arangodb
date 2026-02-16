@@ -174,13 +174,11 @@ mkdir -p %{buildroot}%{_piddir}
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangodump.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangorestore.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangobench.conf
-%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/foxx-manager.conf
 %{_bindir}/arangosh
 %{_bindir}/arangoimport
 %{_bindir}/arangodump
 %{_bindir}/arangorestore
 %{_bindir}/arangobench
-%{_bindir}/foxx-manager
 %{_mandir}/*/arangosh*
 %{_mandir}/*/arangorestore*
 %{_mandir}/*/arangobench*
@@ -262,7 +260,7 @@ echo "run 'arango-secure-installation' to set a root password"
 echo "the current password is '$ARANGODB_DEFAULT_ROOT_PASSWORD'"
 echo "(You should do this for a FRESH install! For an UPGRADE the password does not need to be changed)"
 
-/usr/sbin/arango-init-database --uid arangodb --gid arangodb --server.rest-server false --server.statistics false --foxx.queues false || true
+/usr/sbin/arango-init-database --uid arangodb --gid arangodb --server.rest-server false --server.statistics false || true
 
 exit 0
 

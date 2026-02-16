@@ -49,8 +49,7 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst,
 }
 
 bool TRI_ExcludeCollectionReplication(std::string const& name,
-                                      bool includeSystem,
-                                      bool includeFoxxQueues) {
+                                      bool includeSystem) {
   if (name.empty()) {
     // should not happen...
     return true;
@@ -63,16 +62,6 @@ bool TRI_ExcludeCollectionReplication(std::string const& name,
 
   if (!includeSystem) {
     // do not include any system collections
-    return true;
-  }
-
-  if (name == "_routing") {
-    // this system collection will always be excluded
-    return true;
-  }
-
-  if (!includeFoxxQueues && (name == StaticStrings::JobsCollection ||
-                             name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

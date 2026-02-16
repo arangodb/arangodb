@@ -154,14 +154,6 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
         coll == StaticStrings::UsersCollection) {
       // _users (only present in _system database)
       return auth::Level::NONE;
-    }
-    if (coll == StaticStrings::QueuesCollection) {
-      // _queues
-      return auth::Level::RO;
-    }
-    if (coll == StaticStrings::FrontendCollection) {
-      // _frontend
-      return auth::Level::RW;
     }  // intentional fall through
   }
 

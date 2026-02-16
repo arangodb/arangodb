@@ -82,7 +82,6 @@ jsunity.run(function dump_single_testsuite() {
       "testKeygenUuid",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
-      "testJobsAndQueues",
       "testReplicationFactor",
 
       // enterprise graph tests:
