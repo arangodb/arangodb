@@ -107,6 +107,10 @@ class PhysicalCollection {
 
   virtual void prepareIndexes(velocypack::Slice indexesSlice);
 
+  /// @brief called after initial sync when documents are present.
+  /// Calls postIndexCreation on each index (e.g. to train vector indexes).
+  virtual void postIndexCreation() {}
+
   /// @brief determines order of index execution on collection
   struct IndexOrder {
     bool operator()(std::shared_ptr<Index> const& left,

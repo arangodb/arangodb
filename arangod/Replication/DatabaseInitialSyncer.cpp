@@ -1257,6 +1257,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
           ", waited for dump: ", cumulativeStats.waitedForDump, " s",
           ", apply time: ", cumulativeStats.waitedForDumpApply, " s",
           ", total time: ", (TRI_microtime() - startTime), " s"));
+      coll->getPhysical()->postIndexCreation();
       return Result();
     }
 
@@ -2564,7 +2565,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
     url += "&includeFoxxQueues=true";
   }
 
-  // use an optmization here for shard synchronization: only fetch the
+  // use an optimization here for shard synchronization: only fetch the
   // inventory including a single shard. this can greatly reduce the size of
   // the response.
   if (ServerState::instance()->isDBServer() && !_config.isChild() &&

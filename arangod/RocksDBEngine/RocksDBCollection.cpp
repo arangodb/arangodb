@@ -53,6 +53,8 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -451,6 +453,40 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id().isPrimary());
     _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
+  }
+}
+
+void RocksDBCollection::postIndexCreation() {
+  TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  auto& engine = vocbase.engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
+
+  auto& metric = vocbase.server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  RocksDBMethodsMemoryTracker memoryTracker(
+      nullptr, &metric, RocksDBMethodsMemoryTracker::kDefaultGranularity);
+
+  rocksdb::WriteBatch batch;
+  RocksDBBatchedMethods methods(&batch, memoryTracker);
+
+  auto const bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
+  rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions ro(false, false);
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+
+  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  for (auto const& idx : _indexes) {
+    auto* rocksIdx = static_cast<RocksDBIndex*>(idx.get());
+    std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, docCF));
+    it->Seek(bounds.start());
+    rocksIdx->postIndexCreation(db, std::move(it), upper, &methods);
   }
 }
 
