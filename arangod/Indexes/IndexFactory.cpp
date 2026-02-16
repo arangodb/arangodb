@@ -356,9 +356,20 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
                                    "invalid index type definition");
   }
 
+  if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+    if (!isClusterConstructor) {  // Version 4.* wants to reject new creation of geo1/geo2
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "Index type 'geo1' and 'geo2' are no longer "
+          "supported. Please use 'geo' instead.");
+    }
+    // Otherwise (loading from disk), Version 4.* accepts geo1/geo2,
+    // but will be dropped during upgrade tasks
+  }
+
   auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index =
-      factory.instantiate(collection, definition, id, isClusterConstructor);
+  std::shared_ptr<Index> index = factory.instantiate(
+      collection, definition, id, isClusterConstructor);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
