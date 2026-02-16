@@ -7,22 +7,27 @@ defmodule Toast.ResultExporter do
 
   @results_key :__test_results__
   @diagnostics_key :__test_diagnostics__
+  @default_result_dir "toast-results"
 
   @doc """
   Export test results to JSON and JUnit XML files.
 
   Reads results and diagnostics from Application env (populated by
   ResultFormatter and TestCase after_suite callback respectively).
-  Writes files to the directory specified by TOAST_RESULT_DIR.
+  Writes files to the directory specified by TOAST_RESULT_DIR env var,
+  defaulting to `toast-results` in the current working directory.
 
-  No-op if TOAST_RESULT_DIR is not set or no results were collected.
+  No-op if no results were collected.
   """
   @spec export() :: :ok
   def export do
-    case System.get_env("TOAST_RESULT_DIR") do
-      nil -> :ok
-      result_dir -> do_export(result_dir)
-    end
+    do_export(result_dir())
+  end
+
+  @doc false
+  @spec result_dir() :: Path.t()
+  def result_dir do
+    System.get_env("TOAST_RESULT_DIR") || @default_result_dir
   end
 
   defp do_export(result_dir) do
@@ -39,6 +44,8 @@ defmodule Toast.ResultExporter do
       File.write!(xml_path, JUnitXML.render(results, diagnostics))
 
       Logger.info("[Toast.ResultExporter] Results written to #{result_dir}")
+    else
+      Logger.info("[Toast.ResultExporter] No results!")
     end
 
     :ok

@@ -27,10 +27,11 @@ defmodule Toast.Deployment.Health do
   def wait_until_ready(endpoint, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, 60_000)
     poll_interval = Keyword.get(opts, :poll_interval, 500)
+    process_check_fn = Keyword.get(opts, :process_check_fn)
     deadline = System.monotonic_time(:millisecond) + timeout
 
     Logger.debug("[Toast.Health] Waiting for #{endpoint} to become ready")
-    poll_loop(endpoint, opts, poll_interval, deadline, _first_attempt = true)
+    poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, _first_attempt = true)
   end
 
   @spec check_once(String.t(), keyword()) :: :ok | {:error, term()}
@@ -120,9 +121,7 @@ defmodule Toast.Deployment.Health do
     end
   end
 
-  defp poll_loop(endpoint, opts, poll_interval, deadline, first_attempt) do
-    process_check_fn = Keyword.get(opts, :process_check_fn)
-
+  defp poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, first_attempt) do
     if process_check_fn && !process_check_fn.() do
       Logger.debug("[Toast.Health] #{endpoint}: OS process is no longer running")
       {:error, :process_died}
@@ -145,7 +144,7 @@ defmodule Toast.Deployment.Health do
             {:error, :timeout}
           else
             Process.sleep(poll_interval)
-            poll_loop(endpoint, opts, poll_interval, deadline, false)
+            poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, false)
           end
       end
     end

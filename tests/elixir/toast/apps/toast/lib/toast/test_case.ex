@@ -144,11 +144,10 @@ defmodule Toast.TestCase do
         do: formatters,
         else: [Toast.CLIFormatter | formatters]
 
-    # Add ResultFormatter when result export is configured
     formatters =
-      if System.get_env("TOAST_RESULT_DIR") && Toast.ResultFormatter not in formatters,
-        do: formatters ++ [Toast.ResultFormatter],
-        else: formatters
+      if Toast.ResultFormatter in formatters,
+        do: formatters,
+        else: formatters ++ [Toast.ResultFormatter]
 
     ExUnit.configure(formatters: formatters)
   end

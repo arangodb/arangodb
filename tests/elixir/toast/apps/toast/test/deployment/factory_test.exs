@@ -10,8 +10,7 @@ defmodule Toast.Deployment.FactoryTest do
     arangod = Path.join([repo_root, "build", "bin", "arangod"])
 
     File.mkdir_p!(Path.join([repo_root, "build", "bin"]))
-    File.mkdir_p!(Path.join(repo_root, "js"))
-    File.mkdir_p!(Path.join(repo_root, "etc"))
+    for dir <- ~w(arangod js etc), do: File.mkdir_p!(Path.join(repo_root, dir))
     File.write!(arangod, "#!/bin/sh\n")
     File.chmod!(arangod, 0o755)
 
@@ -185,7 +184,7 @@ defmodule Toast.Deployment.FactoryTest do
       end
     end
 
-    test "dbserver specs include cluster args", %{tmp_dir: tmp_dir} do
+    test "dbserver specs include cluster args with all agency endpoints", %{tmp_dir: tmp_dir} do
       %{build_dir: build_dir} = create_fake_repo(tmp_dir)
       work_dir = Path.join(tmp_dir, "work")
 
@@ -198,8 +197,6 @@ defmodule Toast.Deployment.FactoryTest do
 
       assert {:ok, topology} = Factory.build_cluster(config, "test-cluster")
 
-      first_agent_port = hd(topology.agents).port
-
       for dbserver <- topology.dbservers do
         args = dbserver.args
 
@@ -207,8 +204,14 @@ defmodule Toast.Deployment.FactoryTest do
         assert "PRIMARY" in args
         assert "--cluster.my-address" in args
         assert "tcp://127.0.0.1:#{dbserver.port}" in args
-        assert "--cluster.agency-endpoint" in args
-        assert "tcp://127.0.0.1:#{first_agent_port}" in args
+
+        # All agency endpoints should be passed (3 agents = 3 entries)
+        endpoint_count =
+          args
+          |> Enum.chunk_every(2, 1, :discard)
+          |> Enum.count(fn [flag, _val] -> flag == "--cluster.agency-endpoint" end)
+
+        assert endpoint_count == 3
       end
     end
 

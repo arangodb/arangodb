@@ -44,7 +44,9 @@ defmodule Toast.Diagnostics.CrashLogParser do
   end
 
   defp maybe_collect_fatal(report, line) do
-    if String.contains?(line, "] FATAL [") do
+    # Collect FATAL lines that are NOT in {crash} topic — crash-specific fatals
+    # are handled separately as crash_header / backtrace.
+    if String.contains?(line, "] FATAL [") and not String.contains?(line, "{crash}") do
       content = extract_after_prefix(line)
       %{report | fatal_lines: [content | report.fatal_lines]}
     else

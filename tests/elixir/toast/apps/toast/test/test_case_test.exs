@@ -116,22 +116,21 @@ defmodule Toast.TestCaseTest do
       assert Toast.ResultFormatter in formatters
     end
 
-    test "when TOAST_RESULT_DIR is not set, formatters remain unchanged" do
+    test "ResultFormatter is always added regardless of TOAST_RESULT_DIR" do
       System.delete_env("TOAST_RESULT_DIR")
       base_formatters = [ExUnit.CLIFormatter]
       ExUnit.configure(formatters: base_formatters)
 
-      # Replicate the conditional — TOAST_RESULT_DIR nil means skip
-      if System.get_env("TOAST_RESULT_DIR") do
-        current = Application.get_env(:ex_unit, :formatters, [ExUnit.CLIFormatter])
+      # Replicate the logic from register_formatters — always add ResultFormatter
+      current = Application.get_env(:ex_unit, :formatters, [ExUnit.CLIFormatter])
 
-        unless Toast.ResultFormatter in current do
-          ExUnit.configure(formatters: current ++ [Toast.ResultFormatter])
-        end
+      unless Toast.ResultFormatter in current do
+        ExUnit.configure(formatters: current ++ [Toast.ResultFormatter])
       end
 
       formatters = Application.get_env(:ex_unit, :formatters)
-      assert formatters == [ExUnit.CLIFormatter]
+      assert ExUnit.CLIFormatter in formatters
+      assert Toast.ResultFormatter in formatters
     end
 
     test "does not duplicate ResultFormatter if already present" do

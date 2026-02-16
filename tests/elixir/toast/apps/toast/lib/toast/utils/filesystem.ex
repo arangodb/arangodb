@@ -106,6 +106,10 @@ defmodule Toast.Utils.Filesystem do
   end
 
   defp repository_root?(path) do
-    File.dir?(Path.join(path, "js")) and File.dir?(Path.join(path, "etc"))
+    # Check for ArangoDB-specific directories to avoid false positives.
+    # "arangod/" is the server source dir — unlikely to exist elsewhere.
+    File.dir?(Path.join(path, "arangod")) and
+      File.dir?(Path.join(path, "js")) and
+      File.dir?(Path.join(path, "etc"))
   end
 end

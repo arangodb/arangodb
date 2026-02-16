@@ -92,8 +92,7 @@ defmodule Toast.Utils.FilesystemTest do
   describe "find_repository_root/1" do
     test "finds root via non-bin directory one level below root" do
       root = unique_tmp_dir()
-      File.mkdir_p!(Path.join(root, "js"))
-      File.mkdir_p!(Path.join(root, "etc"))
+      for dir <- ~w(arangod js etc), do: File.mkdir_p!(Path.join(root, dir))
 
       build_dir = Path.join(root, "mybuild")
       File.mkdir_p!(build_dir)
@@ -103,8 +102,7 @@ defmodule Toast.Utils.FilesystemTest do
 
     test "finds root from bin_dir in build/bin/ structure" do
       root = unique_tmp_dir()
-      File.mkdir_p!(Path.join(root, "js"))
-      File.mkdir_p!(Path.join(root, "etc"))
+      for dir <- ~w(arangod js etc), do: File.mkdir_p!(Path.join(root, dir))
 
       build_dir = Path.join(root, "build")
       File.mkdir_p!(build_dir)

@@ -5,9 +5,25 @@ defmodule Toast.Client do
 
   @type t :: %__MODULE__{req: Req.Request.t()}
 
+  @doc """
+  Create a new client for the given endpoint.
+
+  ## Options
+    * `:database` - target database name (default: `_system`)
+    * All other options are passed through to `Req.new/1`
+  """
   @spec new(String.t(), keyword()) :: t()
   def new(endpoint, opts \\ []) do
-    req_opts = [base_url: endpoint, retry: false] ++ opts
+    {database, req_opts} = Keyword.pop(opts, :database)
+
+    base_url =
+      case database do
+        nil -> endpoint
+        "_system" -> endpoint
+        db -> endpoint <> "/_db/" <> db
+      end
+
+    req_opts = [base_url: base_url, retry: false] ++ req_opts
     %__MODULE__{req: Req.new(req_opts)}
   end
 

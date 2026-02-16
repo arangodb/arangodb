@@ -6,6 +6,7 @@ defmodule Toast.Config do
   @type t :: %__MODULE__{
           build_dir: Path.t() | nil,
           work_dir: Path.t(),
+          result_dir: Path.t(),
           deployment_mode: :single_server | :cluster,
           show_server_logs: boolean(),
           server_args: %{String.t() => String.t() | [String.t()]},
@@ -15,12 +16,16 @@ defmodule Toast.Config do
           cluster_dbservers: pos_integer(),
           cluster_coordinators: pos_integer(),
           cluster_replication_factor: pos_integer(),
+          explicit_sanitizer: String.t() | nil,
           sanitizer: MapSet.t(String.t())
         }
+
+  @default_result_dir "toast-results"
 
   defstruct [
     :build_dir,
     :work_dir,
+    result_dir: @default_result_dir,
     deployment_mode: :single_server,
     show_server_logs: false,
     server_args: %{},
@@ -30,6 +35,7 @@ defmodule Toast.Config do
     cluster_dbservers: 3,
     cluster_coordinators: 1,
     cluster_replication_factor: 2,
+    explicit_sanitizer: nil,
     sanitizer: MapSet.new()
   ]
 
@@ -38,9 +44,16 @@ defmodule Toast.Config do
 
   @spec load(keyword()) :: t()
   def load(opts) do
+    build_dir = opt_or(opts, :build_dir, env("TOAST_BUILD_DIR"))
+
+    explicit_sanitizer =
+      opt_or(opts, :explicit_sanitizer, env("TOAST_SANITIZER")) ||
+        Toast.Diagnostics.Sanitizer.detect_from_build_dir(build_dir)
+
     config = %__MODULE__{
-      build_dir: opt_or(opts, :build_dir, env("TOAST_BUILD_DIR")),
+      build_dir: build_dir,
       work_dir: opt_or(opts, :work_dir, env("TOAST_WORK_DIR")) || default_work_dir(),
+      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR")) || @default_result_dir,
       deployment_mode: opt_or(opts, :deployment_mode, read_deployment_mode()),
       show_server_logs: opt_or(opts, :show_server_logs, read_show_server_logs()),
       server_args: Keyword.get(opts, :server_args, %{}),
@@ -50,7 +63,8 @@ defmodule Toast.Config do
       cluster_dbservers: opt_or(opts, :cluster_dbservers, read_pos_int("TOAST_CLUSTER_DBSERVERS", 3)),
       cluster_coordinators: opt_or(opts, :cluster_coordinators, read_pos_int("TOAST_CLUSTER_COORDINATORS", 1)),
       cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2)),
-      sanitizer: opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect())
+      explicit_sanitizer: explicit_sanitizer,
+      sanitizer: opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect(explicit_sanitizer))
     }
 
     Logger.debug(
@@ -86,12 +100,12 @@ defmodule Toast.Config do
         default
 
       val ->
-        int = String.to_integer(val)
+        case Integer.parse(val) do
+          {int, ""} when int > 0 ->
+            int
 
-        if int > 0 do
-          int
-        else
-          raise ArgumentError, "#{var} must be a positive integer, got: #{val}"
+          _ ->
+            raise ArgumentError, "#{var} must be a positive integer, got: #{inspect(val)}"
         end
     end
   end

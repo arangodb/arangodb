@@ -33,7 +33,7 @@ defmodule Toast.Deployment.Factory do
         id: server_id,
         executable: executable,
         args: args,
-        env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
+        env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root, config.explicit_sanitizer),
         # Run from repo root so relative config paths (etc/testing/...) resolve correctly
         working_dir: repo_root,
         server_dir: paths.base_dir,
@@ -131,7 +131,7 @@ defmodule Toast.Deployment.Factory do
          id: server_id,
          executable: executable,
          args: args,
-         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root),
+         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root, config.explicit_sanitizer),
          working_dir: repo_root,
          server_dir: paths.base_dir,
          port: port,
@@ -152,7 +152,7 @@ defmodule Toast.Deployment.Factory do
     %{
       "cluster.my-role" => "PRIMARY",
       "cluster.my-address" => "tcp://127.0.0.1:#{port}",
-      "cluster.agency-endpoint" => List.first(agency_endpoints)
+      "cluster.agency-endpoint" => agency_endpoints
     }
   end
 
@@ -160,7 +160,7 @@ defmodule Toast.Deployment.Factory do
     %{
       "cluster.my-role" => "COORDINATOR",
       "cluster.my-address" => "tcp://127.0.0.1:#{port}",
-      "cluster.agency-endpoint" => List.first(agency_endpoints),
+      "cluster.agency-endpoint" => agency_endpoints,
       "cluster.default-replication-factor" => to_string(config.cluster_replication_factor),
       "foxx.force-update-on-startup" => "true"
     }

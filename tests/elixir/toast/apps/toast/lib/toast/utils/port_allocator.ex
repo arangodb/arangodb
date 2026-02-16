@@ -9,7 +9,8 @@ defmodule Toast.PortAllocator do
 
   use GenServer
 
-  @default_base_port 8529
+  @min_port 8529
+  @max_port 59_999
   @max_attempts 1000
 
   # Client API
@@ -18,13 +19,13 @@ defmodule Toast.PortAllocator do
   Start the port allocator.
 
   ## Options
-    * `:base_port` - starting port number (default: #{@default_base_port})
+    * `:base_port` - starting port number (default: random in #{@min_port}..#{@max_port})
     * `:name` - GenServer name (default: `__MODULE__`)
   """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
-    base_port = Keyword.get(opts, :base_port, @default_base_port)
+    base_port = Keyword.get(opts, :base_port, random_base_port())
     GenServer.start_link(__MODULE__, base_port, name: name)
   end
 
@@ -106,7 +107,7 @@ defmodule Toast.PortAllocator do
   end
 
   defp port_available?(port) do
-    case :gen_tcp.listen(port, [:binary]) do
+    case :gen_tcp.listen(port, [:binary, {:reuseaddr, true}]) do
       {:ok, socket} ->
         :gen_tcp.close(socket)
         true
@@ -114,5 +115,9 @@ defmodule Toast.PortAllocator do
       {:error, _} ->
         false
     end
+  end
+
+  defp random_base_port do
+    Enum.random(@min_port..@max_port)
   end
 end

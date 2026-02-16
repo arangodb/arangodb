@@ -194,11 +194,11 @@ defmodule Toast.Deployment do
 
   defp crash_monitor_loop do
     receive do
-      {:server_crashed, _id, _info} ->
+      {:server_crashed, id, info} ->
         # Abort suite, then propagate exit to all linked test processes
         ExUnit.configure(max_failures: 1)
         Process.flag(:trap_exit, false)
-        exit({:server_crashed, :deployment_failed})
+        exit({:server_crashed, id, info})
 
       {:EXIT, _pid, _reason} ->
         crash_monitor_loop()

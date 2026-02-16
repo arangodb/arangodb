@@ -235,6 +235,50 @@ defmodule Toast.ResultFormatterTest do
       assert failure.message == ":badarg"
       assert is_binary(failure.stacktrace)
     end
+
+    test "server crash EXIT failure includes crash details" do
+      {:ok, state} = ResultFormatter.init([])
+      pid = spawn(fn -> :ok end)
+      crash_info = %{exit_status: 134, signal: 6}
+
+      test =
+        make_test(%{
+          name: :"test server crash",
+          state: {:failed, [{{:EXIT, pid}, {:server_crashed, "srv-1", crash_info}, []}]},
+          time: 5_000
+        })
+
+      {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
+
+      assert [result] = new_state.tests
+      assert result.outcome == :failed
+      assert [failure] = result.failure
+      assert failure.kind == "server_crashed"
+      assert failure.message =~ "srv-1"
+      assert failure.message =~ "exit_status=134"
+      assert failure.message =~ "signal=6"
+    end
+
+    test "generic linked process EXIT failure is extracted correctly" do
+      {:ok, state} = ResultFormatter.init([])
+      pid = spawn(fn -> :ok end)
+
+      test =
+        make_test(%{
+          name: :"test linked crash",
+          state: {:failed, [{{:EXIT, pid}, :some_reason, []}]},
+          time: 5_000
+        })
+
+      {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
+
+      assert [result] = new_state.tests
+      assert result.outcome == :failed
+      assert [failure] = result.failure
+      assert failure.kind == "EXIT"
+      assert failure.message =~ "linked process"
+      assert is_binary(failure.stacktrace)
+    end
   end
 
   describe "handle_cast with unhandled messages" do

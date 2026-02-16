@@ -41,7 +41,8 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
       assert report.crash_header =~ "caught unexpected signal 11"
       assert length(report.backtrace) == 3
       assert Enum.any?(report.backtrace, &(&1 =~ "SomeFunction"))
-      assert length(report.fatal_lines) == 2
+      # fatal_lines excludes {crash} topic lines — those are captured as crash_header/backtrace
+      assert report.fatal_lines == []
     end
 
     test "parses SIGABRT crash" do

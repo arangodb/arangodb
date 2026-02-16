@@ -59,23 +59,15 @@ defmodule Toast.ResultExporterTest do
     path
   end
 
-  describe "export/0 when TOAST_RESULT_DIR is not set" do
-    test "is a no-op and returns :ok" do
-      System.delete_env("TOAST_RESULT_DIR")
-      Application.put_env(:toast, @results_key, sample_results())
-
-      assert :ok = ResultExporter.export()
+  describe "result_dir/0" do
+    test "returns TOAST_RESULT_DIR when set" do
+      System.put_env("TOAST_RESULT_DIR", "/custom/result/path")
+      assert ResultExporter.result_dir() == "/custom/result/path"
     end
 
-    test "does not create any files" do
+    test "returns default when TOAST_RESULT_DIR is not set" do
       System.delete_env("TOAST_RESULT_DIR")
-      tmp = make_tmp_dir()
-      Application.put_env(:toast, @results_key, sample_results())
-
-      ResultExporter.export()
-
-      # The tmp dir we created should still be empty since TOAST_RESULT_DIR is unset
-      assert File.ls!(tmp) == []
+      assert ResultExporter.result_dir() == "toast-results"
     end
   end
 

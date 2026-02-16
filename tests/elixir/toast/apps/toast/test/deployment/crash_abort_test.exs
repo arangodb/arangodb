@@ -204,28 +204,32 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "crash_monitor exits when receiving server_crashed" do
       # Spawn a process that behaves like crash_monitor
+      crash_info = %{exit_status: 139, signal: 11}
+
       monitor = spawn(fn ->
         Process.flag(:trap_exit, true)
         receive do
-          {:server_crashed, _id, _info} ->
+          {:server_crashed, id, info} ->
             Process.flag(:trap_exit, false)
-            exit({:server_crashed, :deployment_failed})
+            exit({:server_crashed, id, info})
         end
       end)
 
       ref = Process.monitor(monitor)
-      send(monitor, {:server_crashed, "test", %{}})
-      assert_receive {:DOWN, ^ref, :process, ^monitor, {:server_crashed, :deployment_failed}}, 1_000
+      send(monitor, {:server_crashed, "test-srv", crash_info})
+      assert_receive {:DOWN, ^ref, :process, ^monitor, {:server_crashed, "test-srv", ^crash_info}}, 1_000
     end
 
     test "crash_monitor kills linked processes on crash" do
       # Spawn a crash_monitor-like process
+      crash_info = %{exit_status: 139, signal: 11}
+
       monitor = spawn(fn ->
         Process.flag(:trap_exit, true)
         receive do
-          {:server_crashed, _id, _info} ->
+          {:server_crashed, id, info} ->
             Process.flag(:trap_exit, false)
-            exit({:server_crashed, :deployment_failed})
+            exit({:server_crashed, id, info})
         end
       end)
 
@@ -241,10 +245,10 @@ defmodule Toast.Deployment.CrashAbortTest do
       ref = Process.monitor(test_proc)
 
       # Trigger crash notification
-      send(monitor, {:server_crashed, "test", %{}})
+      send(monitor, {:server_crashed, "test-srv", crash_info})
 
-      # The linked test process should die
-      assert_receive {:DOWN, ^ref, :process, ^test_proc, {:server_crashed, :deployment_failed}},
+      # The linked test process should die with the crash details
+      assert_receive {:DOWN, ^ref, :process, ^test_proc, {:server_crashed, "test-srv", ^crash_info}},
                      1_000
     end
 
@@ -252,9 +256,9 @@ defmodule Toast.Deployment.CrashAbortTest do
       monitor = spawn(fn ->
         Process.flag(:trap_exit, true)
         receive do
-          {:server_crashed, _id, _info} ->
+          {:server_crashed, id, info} ->
             Process.flag(:trap_exit, false)
-            exit({:server_crashed, :deployment_failed})
+            exit({:server_crashed, id, info})
         end
       end)
 

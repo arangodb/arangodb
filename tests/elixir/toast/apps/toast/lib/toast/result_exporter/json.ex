@@ -18,7 +18,7 @@ defmodule Toast.ResultExporter.JSON do
     }
   end
 
-  @doc "Render test results and diagnostics as a pretty-printed JSON string."
+  @doc "Render test results and diagnostics as a JSON string."
   @spec render(map(), map() | nil) :: String.t()
   def render(test_results, diagnostics) do
     test_results

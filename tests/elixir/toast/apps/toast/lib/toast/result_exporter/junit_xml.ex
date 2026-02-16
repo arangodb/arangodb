@@ -162,13 +162,12 @@ defmodule Toast.ResultExporter.JUnitXML do
   defp format_sanitizer_section([]), do: nil
 
   defp format_sanitizer_section(errors) do
-    lines =
-      Enum.map_join(errors, "\n", fn e ->
-        first_line = e.content |> String.split("\n") |> hd()
-        "  #{e.file_path}: #{first_line}..."
+    sections =
+      Enum.map_join(errors, "\n\n", fn e ->
+        "--- #{e.file_path} (#{e.sanitizer_type}) ---\n#{e.content}"
       end)
 
-    "Sanitizer Errors:\n#{lines}"
+    "Sanitizer Errors:\n#{sections}"
   end
 
   defp format_crash_section(nil), do: nil

@@ -289,13 +289,14 @@ defmodule Toast.Deployment.ClusterController do
   defp do_shutdown(state, timeout) do
     Logger.debug("[Toast.ClusterController] Shutting down cluster #{state.id}")
     state = %{state | status: :stopping}
+    deadline = System.monotonic_time(:millisecond) + timeout
 
     Logger.debug("[Toast.ClusterController] #{state.id}: stopping coordinators")
-    stop_servers(state.coordinators, state, timeout)
+    stop_servers(state.coordinators, state, remaining_ms(deadline))
     Logger.debug("[Toast.ClusterController] #{state.id}: stopping dbservers")
-    stop_servers(state.dbservers, state, timeout)
+    stop_servers(state.dbservers, state, remaining_ms(deadline))
     Logger.debug("[Toast.ClusterController] #{state.id}: stopping agents")
-    stop_servers(state.agents, state, timeout)
+    stop_servers(state.agents, state, remaining_ms(deadline))
     diagnostics = collect_all_diagnostics(state)
     Logger.debug("[Toast.ClusterController] #{state.id}: diagnostics collected")
     cleanup_all_dirs(state)
