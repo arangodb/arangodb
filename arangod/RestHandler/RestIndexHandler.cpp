@@ -519,6 +519,17 @@ async<void> RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
+  
+  // If geo1/geo2 index is requested, reject it
+  VPackSlice typeSlice = indexInfo.slice().get(StaticStrings::IndexType);
+  if (typeSlice.isString() &&
+      (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "Index type 'geo1' and 'geo2' are no longer supported. "
+                  "Please use 'geo' instead.");
+  }
+  
+
   Result result;
   try {
     arangodb::velocypack::Builder response;
