@@ -1592,7 +1592,8 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   VPackBuilder builder;
-  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder);
+  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder,
+                                           ApiVersion::defaultApiVersion);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END

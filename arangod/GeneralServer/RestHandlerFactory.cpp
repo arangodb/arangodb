@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
@@ -33,7 +34,13 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
+RestHandlerFactory::RestHandlerFactory(uint32_t maxApiVersion)
+    : _sealed(false) {
+  // Initialize with space for API versions 0 through maxApiVersion (inclusive)
+  size_t numVersions = static_cast<size_t>(maxApiVersion) + 1;
+  _constructors.resize(numVersions);
+  _prefixes.resize(numVersions);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
@@ -41,15 +48,38 @@ RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
 
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     application_features::ApplicationServer& server,
-    std::unique_ptr<GeneralRequest> req,
-    std::unique_ptr<GeneralResponse> res) const {
+    std::unique_ptr<GeneralRequest> req, std::unique_ptr<GeneralResponse> res,
+    velocypack::Builder& errorBuilder) const {
   TRI_ASSERT(_sealed);
+
+  uint32_t apiVersion = req->requestedApiVersion();
+
+  // Check if the requested API version is valid
+  if (apiVersion >= _constructors.size()) {
+    LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
+        << "requested API version " << apiVersion
+        << " is not supported (max: " << (_constructors.size() - 1) << ")";
+
+    // Build error response
+    errorBuilder.add(VPackValue(VPackValueType::Object));
+    errorBuilder.add("error", VPackValue(true));
+    errorBuilder.add("code", VPackValue(404));
+    errorBuilder.add("errorNum", VPackValue(404));
+    errorBuilder.add("errorMessage", VPackValue("unknown API version '" +
+                                                req->fullUrl() + "'"));
+    errorBuilder.close();
+
+    return nullptr;
+  }
+
+  TRI_ASSERT(apiVersion < _constructors.size());
 
   std::string const& path = req->requestPath();
 
-  auto it = _constructors.find(path);
+  auto const& constructors = _constructors[apiVersion];
+  auto it = constructors.find(path);
 
-  if (it != _constructors.end()) {
+  if (it != constructors.end()) {
     // direct match!
     LOG_TOPIC("f397b", TRACE, arangodb::Logger::FIXME)
         << "found direct handler for path '" << path << "'";
@@ -66,7 +96,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // find longest match
   size_t const pathLength = path.size();
   // prefixes are sorted by length descending
-  for (auto const& p : _prefixes) {
+  auto const& prefixes = _prefixes[apiVersion];
+  for (auto const& p : prefixes) {
     size_t const pSize = p.size();
     if (pSize >= pathLength) {
       // prefix too long
@@ -89,20 +120,20 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     LOG_TOPIC("7c476", TRACE, arangodb::Logger::FIXME)
         << "no prefix handler found, using catch all";
 
-    it = _constructors.find("/");
+    it = constructors.find("/");
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
     LOG_TOPIC("516d1", TRACE, arangodb::Logger::FIXME)
         << "found prefix match '" << *prefix << "'";
 
-    it = _constructors.find(*prefix);
+    it = constructors.find(*prefix);
     l = prefix->size() + 1;
   }
 
   // we must have found a handler - at least the catch-all handler must be
   // present
-  TRI_ASSERT(it != _constructors.end());
+  TRI_ASSERT(it != constructors.end());
 
   size_t n = path.find('/', l);
 
@@ -129,15 +160,20 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
+                                    std::initializer_list<uint32_t> apiVersions,
                                     void* data) {
   TRI_ASSERT(!_sealed);
 
-  if (!_constructors.try_emplace(path, func, data).second) {
-    // there should only be one handler for each path
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("attempt to register duplicate path handler for '") + path +
-            "'");
+  for (uint32_t apiVersion : apiVersions) {
+    TRI_ASSERT(apiVersion < _constructors.size());
+    auto& constructors = _constructors[apiVersion];
+    if (!constructors.try_emplace(path, func, data).second) {
+      // there should only be one handler for each path
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("attempt to register duplicate path handler for '") +
+              path + "' in API version " + std::to_string(apiVersion));
+    }
   }
 }
 
@@ -145,23 +181,29 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandlerFactory::addPrefixHandler(std::string const& path,
-                                          create_fptr func, void* data) {
+void RestHandlerFactory::addPrefixHandler(
+    std::string const& path, create_fptr func,
+    std::initializer_list<uint32_t> apiVersions, void* data) {
   TRI_ASSERT(!_sealed);
 
-  addHandler(path, func, data);
+  addHandler(path, func, apiVersions, data);
 
-  _prefixes.emplace_back(path);
+  for (uint32_t apiVersion : apiVersions) {
+    TRI_ASSERT(apiVersion < _prefixes.size());
+    _prefixes[apiVersion].emplace_back(path);
+  }
 }
 
 void RestHandlerFactory::seal() {
   TRI_ASSERT(!_sealed);
 
-  // sort prefixes by their lengths
-  std::sort(_prefixes.begin(), _prefixes.end(),
-            [](std::string const& a, std::string const& b) {
-              return a.size() > b.size();
-            });
+  // sort prefixes by their lengths for each API version
+  for (auto& prefixes : _prefixes) {
+    std::sort(prefixes.begin(), prefixes.end(),
+              [](std::string const& a, std::string const& b) {
+                return a.size() > b.size();
+              });
+  }
 
   _sealed = true;
 }

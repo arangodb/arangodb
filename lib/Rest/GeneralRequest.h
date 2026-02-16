@@ -61,11 +61,6 @@ class GeneralRequest {
 
   virtual ~GeneralRequest() = default;
 
-  // Default API version (configurable)
-  // If you change this, you must also update the unit test in
-  // tests/Rest/GeneralRequestTest.cpp !
-  static constexpr uint32_t defaultApiVersion = 0;
-
   // translate an RequestType enum value into an "HTTP method string"
   static std::string_view translateMethod(RequestType);
 
