@@ -65,6 +65,8 @@ DECLARE_GAUGE(rocksdb_cache_labeled_allocated, uint64_t,
               "Labeled cache allocated size");
 DECLARE_GAUGE(rocksdb_cache_labeled_deserved, uint64_t,
               "Labeled cache deserved size");
+DECLARE_GAUGE(rocksdb_cache_labeled_usage, uint64_t,
+              "Labeled cache usage");
 DECLARE_GAUGE(rocksdb_cache_labeled_hard_limit, uint64_t,
               "Labeled cache hard limit");
 DECLARE_GAUGE(rocksdb_cache_labeled_soft_limit, uint64_t,
@@ -138,6 +140,8 @@ Manager::Manager(application_features::ApplicationServer& server,
           rocksdb_cache_labeled_allocated{})),
       _cacheLabeledDeserved(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_labeled_deserved{})),
+      _cacheLabeledUsage(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_usage{})),
       _cacheLabeledHardLimit(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_labeled_hard_limit{})),
       _cacheLabeledSoftLimit(server.getFeature<metrics::MetricsFeature>().add(
@@ -720,7 +724,31 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment,
 /// Then, given the pool of memory, and the expressed needs of each cache,
 /// attempt to allocate memory evenly, up to the additional amount requested.
 ErrorCode Manager::rebalance(bool onlyCalculate) {
-  { SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate); }
+  PriorityList cacheList;
+  std::vector<std::pair<std::string_view, std::vector<uint64_t>>> cacheStats{};
+
+  {
+    SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
+    try {
+      cacheList = priorityList();
+      for (auto& pair : cacheList) {
+        std::shared_ptr<Cache>& cache = pair.first;
+        Metadata const& md = cache->metadata();
+        cacheStats.push_back(
+          {cache->name(),
+           {md.fixedSize, md.tableSize, md.maxSize,
+                                  md.allocatedSize, md.deservedSize, md.usage,
+                                  md.softUsageLimit, md.hardUsageLimit}});
+      }
+    } catch (std::exception const& ex) {
+        // we must not throw an exception from here without cleaning up
+        // the _rebalancing attribute
+        LOG_TOPIC("c0109", WARN, Logger::CACHE)
+            << "Caught exception during cache metrics collection: "
+            << ex.what();
+    }
+  }
+  
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
@@ -738,8 +766,6 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
     // start rebalancing
     _rebalancing = true;
   }
-
-  PriorityList cacheList;
 
   // adjust deservedSize for each cache
   try {

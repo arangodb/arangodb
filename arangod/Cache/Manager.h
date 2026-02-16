@@ -318,6 +318,7 @@ class Manager {
   metrics::Gauge<uint64_t>& _cacheLabeledMax;
   metrics::Gauge<uint64_t>& _cacheLabeledAllocated;
   metrics::Gauge<uint64_t>& _cacheLabeledDeserved;
+  metrics::Gauge<uint64_t>& _cacheLabeledUsage;
   metrics::Gauge<uint64_t>& _cacheLabeledHardLimit;
   metrics::Gauge<uint64_t>& _cacheLabeledSoftLimit;
 

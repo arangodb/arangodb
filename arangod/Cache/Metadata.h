@@ -137,8 +137,6 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   void toggleResizing() noexcept { _resizing = !_resizing; }
 
-  void updateMetrics(uint64_t) noexcept {}
-
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkInvariants() const noexcept;

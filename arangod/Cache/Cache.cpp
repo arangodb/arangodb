@@ -598,4 +598,8 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   return true;
 }
 
+std::string_view Cache::name() const noexcept {
+  return _name;
+}
+
 }  // namespace arangodb::cache

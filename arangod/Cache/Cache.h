@@ -253,6 +253,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // management
   Metadata& metadata();
+  std::string_view name() const noexcept;
   std::shared_ptr<Table> table() const;
   void shutdown();
   [[nodiscard]] bool canResize() noexcept;
