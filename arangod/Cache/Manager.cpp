@@ -73,6 +73,18 @@ DECLARE_GAUGE(rocksdb_cache_labeled_soft_limit, uint64_t,
 
 using namespace arangodb::application_features;
 
+namespace {
+// build a dynamic shard-access metric
+template<typename T>
+T getMetric(std::string_view name) {
+  T metric;
+  metric.reserveSpaceForLabels(4 + name.size());
+  metric.addLabel("name", name);
+  return metric;
+}
+
+}  // namespace
+
 namespace arangodb::cache {
 
 using SpinLocker = ::arangodb::basics::SpinLocker;
@@ -129,7 +141,7 @@ Manager::Manager(application_features::ApplicationServer& server,
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
                           rebalancingGracePeriod),
-      _mf(server.getFeature<metrics::MetricsFeature>());
+      _mf(server.getFeature<metrics::MetricsFeature>()),
       _cacheLabeledFixed(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_labeled_fixed{})),
       _cacheLabeledTables(server.getFeature<metrics::MetricsFeature>().add(
@@ -727,40 +739,6 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
   PriorityList cacheList;
   std::vector<std::pair<std::string_view, std::vector<uint64_t>>> cacheStats{};
 
-  {
-    SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
-    try {
-      cacheList = priorityList();
-      for (auto& pair : cacheList) {
-        std::shared_ptr<Cache>& cache = pair.first;
-        Metadata const& md = cache->metadata();
-        cacheStats.push_back({cache->name(),
-                              {md.fixedSize, md.tableSize, md.maxSize,
-                               md.allocatedSize, md.deservedSize, md.usage,
-                               md.softUsageLimit, md.hardUsageLimit}});
-      }
-    } catch (std::exception const& ex) {
-      // we must not throw an exception from here without cleaning up
-      // the _rebalancing attribute
-      LOG_TOPIC("c0109", WARN, Logger::CACHE)
-          << "Caught exception during cache metrics collection: " << ex.what();
-    }
-  }
-
-  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
-  for (auto pair : cacheStats) {
-    auto name = pair.first;
-    auto vals = pair.second;
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_fixed>(name)) = vals[0];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_tables>(name)) = vals[1];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_max>(name)) = vals[2];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_allocated>(name)) = vals[3];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_deserved>(name)) = vals[4];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_usage>(name)) = vals[5];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_hard_limit>(name)) = vals[6];
-    _mf.addDynamic(getMetric<rocksdb_cache_labeled_soft_limit>(name)) = vals[7];
-  }
-
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
   if (!onlyCalculate) {
@@ -797,18 +775,39 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
       }
 #endif
       Metadata& metadata = cache->metadata();
-      SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+      std::vector<uint64_t> vals{};
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      std::uint64_t fixed =
-          metadata.fixedSize + metadata.tableSize + kCacheRecordOverhead;
-      if (newDeserved < fixed) {
-        LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
-            << "Setting deserved cache size " << newDeserved
-            << " below usage: " << fixed << " ; Using weight  " << weight;
-      }
+        std::uint64_t fixed =
+            metadata.fixedSize + metadata.tableSize + kCacheRecordOverhead;
+        if (newDeserved < fixed) {
+          LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
+              << "Setting deserved cache size " << newDeserved
+              << " below usage: " << fixed << " ; Using weight  " << weight;
+        }
 #endif
-      metadata.adjustDeserved(newDeserved);
+        metadata.adjustDeserved(newDeserved);
+        vals = {metadata.fixedSize,      metadata.tableSize,
+                metadata.maxSize,        metadata.allocatedSize,
+                metadata.deservedSize,   metadata.usage,
+                metadata.softUsageLimit, metadata.hardUsageLimit};
+      }
+      std::string_view name = cache->name();
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_fixed>(name)) = vals[0];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_tables>(name)) = vals[1];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_max>(name)) = vals[2];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_allocated>(name)) =
+          vals[3];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_deserved>(name)) = vals[4];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_usage>(name)) = vals[5];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_hard_limit>(name)) =
+          vals[6];
+      _mf.addDynamic(getMetric<rocksdb_cache_labeled_soft_limit>(name)) =
+          vals[7];
     }
+
   } catch (std::exception const& ex) {
     // we must not throw an exception from here without cleaning up
     // the _rebalancing attribute
