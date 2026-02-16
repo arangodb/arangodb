@@ -367,6 +367,68 @@ var removeEdge = function (graphs, edgeCollection, edgeId, self) {
   );
 };
 
+function executeGraphRemoveTransaction(db, writeCollections, ids, options, vertexId) {
+  const idList = Array.isArray(ids) ? ids : Object.keys(ids);
+  const useStreaming = typeof db._createTransaction === 'function';
+  if (useStreaming) {
+    const trx = db._createTransaction({ collections: { write: writeCollections } });
+    try {
+      idList.forEach(function (edgeId) {
+        const coll = edgeId.split('/')[0];
+        if (options) {
+          trx.collection(coll).remove(edgeId, options);
+        } else {
+          trx.collection(coll).remove(edgeId);
+        }
+      });
+      if (vertexId) {
+        const vColl = vertexId.split('/')[0];
+        if (options) {
+          trx.collection(vColl).remove(vertexId, options);
+        } else {
+          trx.collection(vColl).remove(vertexId);
+        }
+      }
+      trx.commit();
+    } catch (e) {
+      try {
+        trx.abort();
+      } catch (abortErr) {
+      }
+      throw e;
+    }
+  } else {
+    db._executeTransaction({
+      collections: { write: writeCollections },
+      embed: true,
+      action: function (params) {
+        const internalDb = require('internal').db;
+        params.ids.forEach(
+          function (edgeId) {
+            if (params.options) {
+              internalDb._remove(edgeId, params.options);
+            } else {
+              internalDb._remove(edgeId);
+            }
+          }
+        );
+        if (params.vertexId) {
+          if (params.options) {
+            internalDb._remove(params.vertexId, params.options);
+          } else {
+            internalDb._remove(params.vertexId);
+          }
+        }
+      },
+      params: {
+        ids: idList,
+        options: options,
+        vertexId: vertexId || undefined
+      }
+    });
+  }
+}
+
 var bindEdgeCollections = function (self, edgeCollections) {
   _.each(edgeCollections, function (key) {
     var obj = db._collection(key);
@@ -433,28 +495,13 @@ var bindEdgeCollections = function (self, edgeCollections) {
       removeEdge(graphs, edgeCollection, edgeId, self);
 
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options
-          }
-        });
+        executeGraphRemoveTransaction(
+          db,
+          Object.keys(self.__collectionsToLock),
+          self.__idsToRemove,
+          options,
+          undefined
+        );
       } catch (e) {
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
@@ -509,34 +556,13 @@ var bindVertexCollections = function (self, vertexCollections) {
       );
 
       try {
-        db._executeTransaction({
-          collections: {
-            write: Object.keys(self.__collectionsToLock)
-          },
-          embed: true,
-          action: function (params) {
-            var db = require('internal').db;
-            params.ids.forEach(
-              function (edgeId) {
-                if (params.options) {
-                  db._remove(edgeId, params.options);
-                } else {
-                  db._remove(edgeId);
-                }
-              }
-            );
-            if (params.options) {
-              db._remove(params.vertexId, params.options);
-            } else {
-              db._remove(params.vertexId);
-            }
-          },
-          params: {
-            ids: Object.keys(self.__idsToRemove),
-            options: options,
-            vertexId: vertexId
-          }
-        });
+        executeGraphRemoveTransaction(
+          db,
+          Object.keys(self.__collectionsToLock),
+          self.__idsToRemove,
+          options,
+          vertexId
+        );
       } catch (e) {
         self.__idsToRemove = {};
         self.__collectionsToLock = {};
