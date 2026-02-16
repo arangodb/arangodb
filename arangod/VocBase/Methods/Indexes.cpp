@@ -492,17 +492,6 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   }
 
-  if (create) {
-    VPackSlice typeSlice = input.get(StaticStrings::IndexType);
-    if (typeSlice.isString() &&
-        (typeSlice.isEqualString("geo1") || typeSlice.isEqualString("geo2"))) {
-      ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
-      co_return Result(TRI_ERROR_BAD_PARAMETER,
-                       "Index type 'geo1' and 'geo2' are no longer supported. "
-                       "Please use 'geo' instead.");
-    }
-  }
-
   VPackBuilder normalized;
   StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
