@@ -1,5 +1,7 @@
 4.0
 ---
+* Remove _fishBowl collection.
+
 * Remove arangodb/foxx related code.
 
 * Remove PUT method in /_api/cursor/<cursor-id>.
