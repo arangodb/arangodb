@@ -206,23 +206,23 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 
   if (typeof lon === 'boolean') {
     return this.ensureIndex({
-      type: 'geo1',
-      fields: [lat],
+      type: 'geo',
+      fields: [ lat ],
       geoJson: lon
     });
   }
 
   if (lon === undefined) {
     return this.ensureIndex({
-      type: 'geo1',
-      fields: [lat],
+      type: 'geo',
+      fields: [ lat ],
       geoJson: false
     });
   }
 
   return this.ensureIndex({
-    type: 'geo2',
-    fields: [lat, lon]
+    type: 'geo',
+    fields: [ lat, lon ]
   });
 };
 
