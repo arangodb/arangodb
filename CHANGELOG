@@ -11,6 +11,8 @@ devel
   of activities are implemented, e.g. a rest handler is called, an aql query is
   executed, a collection or an index is created or a dump is on-going.
 
+* Fixes BTS-2309: Treat empty object in schema definition as null.
+
 * FE-972: fix sparse option not being sent in vector index creation payload.
 
 * COR-8: Added new coordinator-level metrics for shard replication state:
