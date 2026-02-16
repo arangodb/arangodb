@@ -890,9 +890,9 @@ function unknown_collection_nameSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////;
-// known collection identifier, overwrite = true;
+// known collection identifier, overwriteMode = replace;
 ////////////////////////////////////////////////////////////////////////////////;
-function known_collection_identifier__overwrite_EQ_trueSuite () {
+function known_collection_identifier__overwriteMode_EQ_replaceSuite () {
   let cn = "UnitTestsCollectionUnsynced";
   let cid;
   return {
@@ -934,7 +934,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&waitForSync=false&returnOld=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&waitForSync=false&returnOld=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -989,7 +989,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -1054,7 +1054,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `[{ "_key" : "${key}",  "Hallo" : "ULF" }, { "_key" : "${key}",  "Hallo" : "ULFINE" }]`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -1100,5 +1100,5 @@ jsunity.run(known_collection_identifier__waitForSync_EQ_trueSuite);
 jsunity.run(known_collection_identifier__waitForSync_EQ_falseSuite);
 jsunity.run(known_collection_nameSuite);
 jsunity.run(unknown_collection_nameSuite);
-jsunity.run(known_collection_identifier__overwrite_EQ_trueSuite);
+jsunity.run(known_collection_identifier__overwriteMode_EQ_replaceSuite);
 return jsunity.done();

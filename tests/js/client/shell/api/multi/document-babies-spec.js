@@ -1088,9 +1088,9 @@ describe('babies collection document', function () {
     });
   });
 
-  describe('overwrite', function () {
+  describe('overwriteMode replace', function () {
     let base_url = '/_api/document/' + cn;
-    it('overwrite once', function () {
+    it('overwriteMode replace once', function () {
       let url1 = base_url;
       let req1 = arango.POST_RAW(url1, [{
         'Hallo': 12
@@ -1098,7 +1098,7 @@ describe('babies collection document', function () {
       let b1 = req1.parsedBody;
       let res1 = b1[0];
 
-      let url2 = base_url + '?overwrite=true&returnOld=true';
+      let url2 = base_url + '?overwriteMode=replace&returnOld=true';
       let req2 = arango.POST_RAW(url2, [{
         '_key': res1._key,
         'ulf': 42
@@ -1114,7 +1114,7 @@ describe('babies collection document', function () {
 
     });
 
-    it('overwrite multi', function () {
+    it('overwriteMode replace multi', function () {
       let url1 = base_url;
       let req1 = arango.POST_RAW(url1, [{
         'Hallo': 12
@@ -1123,7 +1123,7 @@ describe('babies collection document', function () {
       let res1 = b1[0];
       let key1 = res1._key;
 
-      let url2 = base_url + '?overwrite=true&returnOld=true&returnNew=true';
+      let url2 = base_url + '?overwriteMode=replace&returnOld=true&returnNew=true';
       let req2 = arango.POST_RAW(url2, [
         {
           '_key': key1,
@@ -1155,5 +1155,5 @@ describe('babies collection document', function () {
       expect(b2[2].new.ulf).to.equal(undefined);
 
     });
-  }); // overwrite - end
+  }); // overwriteMode replace - end
 });

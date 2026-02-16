@@ -245,7 +245,7 @@ function ReplicationSuite() {
           let insertOverwrite = function() {
             let collection = pickCollection();
             emit("insertOverwrite " + db._name() + " " + collection.name());
-            collection.insert({ _key: "test", value: Date.now() }, { overwrite: true });
+            collection.insert({ _key: "test", value: Date.now() }, { overwriteMode: "replace" });
           };
           
           let remove = function() {

@@ -1808,18 +1808,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                        .FromMaybe(v8::Local<v8::Value>()));
     }
 
-    TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
-      bool overwrite =
-          TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey)
-                                           .FromMaybe(v8::Local<v8::Value>()));
-      if (overwrite) {
-        // this is the default mode in case only "overwrite" is set.
-        TRI_ASSERT(!options.isOverwriteModeSet());
-        options.overwriteMode = OperationOptions::OverwriteMode::Replace;
-      }
-    }
-
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(

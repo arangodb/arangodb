@@ -289,7 +289,7 @@ INSTANTIATE_TEST_CASE_P(
                                         1000, 1000, 900, 10, 100}));
 
 // OLD is a keyword, but only sometimes. In particular in insert queries it
-// isn't unless overwrite: true. Yes, really.
+// isn't unless overwriteMode is set. Yes, really.
 TEST_F(InsertExecutorTest, insert_return_old) {
   std::string query = std::string("FOR i IN 1..1 INSERT { value: i } INTO ") +
                       collectionName + " RETURN OLD";
@@ -313,15 +313,15 @@ TEST_P(InsertExecutorTestCount, insert_with_key) {
   AssertQueryHasResult(vocbase, query, builder.slice());
 }
 
-TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
+TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite_mode_replace) {
   // Write
   {
     std::string query =
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN [OLD.value, "
-        "NEW.value]";
+        " OPTIONS { overwriteMode: 'replace' } SORT NEW.value RETURN "
+        "[OLD.value, NEW.value]";
 
     VPackBuilder builder;
     builder.openArray();
@@ -341,7 +341,7 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: -i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN NEW.value";
+        " OPTIONS { overwriteMode: 'replace' } SORT NEW.value RETURN NEW.value";
 
     VPackBuilder builder;
     builder.openArray();
