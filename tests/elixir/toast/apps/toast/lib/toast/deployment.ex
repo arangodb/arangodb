@@ -24,7 +24,7 @@ defmodule Toast.Deployment do
   def start(mode \\ :single_server, opts \\ [])
 
   def start(:single_server, opts) do
-    Logger.debug("[Toast.Deployment] Starting single_server deployment")
+    Logger.debug("Starting single_server deployment")
     config = Config.load(opts)
     crash_monitor = spawn_crash_monitor()
 
@@ -50,7 +50,7 @@ defmodule Toast.Deployment do
   end
 
   def start(:cluster, opts) do
-    Logger.debug("[Toast.Deployment] Starting cluster deployment")
+    Logger.debug("Starting cluster deployment")
     config = Config.load(opts)
     crash_monitor = spawn_crash_monitor()
 
@@ -103,13 +103,13 @@ defmodule Toast.Deployment do
     mod = controller_module(deployment)
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
-    Logger.debug("[Toast.Deployment] Stopping deployment #{deployment.id} and collecting diagnostics")
+    Logger.debug("Stopping deployment #{deployment.id} and collecting diagnostics")
 
     with :ok <- mod.shutdown(pid, timeout) do
       diagnostics = mod.get_info(pid)[:diagnostics]
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
       stop_crash_monitor(deployment.crash_monitor)
-      Logger.debug("[Toast.Deployment] Deployment #{deployment.id} stopped, diagnostics collected")
+      Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
       diagnostics
     else
       _ -> nil

@@ -131,7 +131,7 @@ defmodule Toast.Deployment.ClusterController do
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error(
-      "[Toast.ClusterController] Server #{server_id} crashed: #{inspect(crash_info)}"
+      "Server #{server_id} crashed: #{inspect(crash_info)}"
     )
 
     notify_crash_monitor(state.crash_monitor, server_id, crash_info)
@@ -139,42 +139,42 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   def handle_info(msg, state) do
-    Logger.debug("[Toast.ClusterController] Unexpected message: #{inspect(msg)}")
+    Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 
   # --- Deploy sequence ---
 
   defp do_deploy(state, timeout) do
-    Logger.debug("[Toast.ClusterController] Starting deploy for cluster #{state.id} (timeout=#{timeout}ms)")
+    Logger.debug("Starting deploy for cluster #{state.id} (timeout=#{timeout}ms)")
     state = %{state | status: :starting}
     deadline = System.monotonic_time(:millisecond) + timeout
 
     with {:ok, topology} <- Factory.build_cluster(state.config, state.id),
          state = init_servers_from_topology(state, topology),
          {:ok, state} <- start_all_server_processes(state, topology),
-         _ = Logger.debug("[Toast.ClusterController] #{state.id}: all server processes started, launching agents"),
+         _ = Logger.debug("#{state.id}: all server processes started, launching agents"),
          :ok <- launch_servers(state.agents, state, timeout: remaining_ms(deadline)),
-         _ = Logger.debug("[Toast.ClusterController] #{state.id}: agents launched, waiting for agency consensus"),
+         _ = Logger.debug("#{state.id}: agents launched, waiting for agency consensus"),
          :ok <- wait_for_agency(state, deadline),
-         _ = Logger.debug("[Toast.ClusterController] #{state.id}: agency ready, launching dbservers"),
+         _ = Logger.debug("#{state.id}: agency ready, launching dbservers"),
          :ok <-
            launch_servers(state.dbservers, state,
              health_check: true,
              timeout: remaining_ms(deadline)
            ),
-         _ = Logger.debug("[Toast.ClusterController] #{state.id}: dbservers ready, launching coordinators"),
+         _ = Logger.debug("#{state.id}: dbservers ready, launching coordinators"),
          :ok <-
            launch_servers(state.coordinators, state,
              health_check: true,
              timeout: remaining_ms(deadline)
            ) do
-      Logger.info("[Toast.ClusterController] Cluster #{state.id} ready")
+      Logger.info("Cluster #{state.id} ready")
       {:ok, %{state | status: :ready}}
     else
       {:error, reason} ->
         Logger.error(
-          "[Toast.ClusterController] Deploy failed for #{state.id}: #{inspect(reason)}"
+          "Deploy failed for #{state.id}: #{inspect(reason)}"
         )
 
         failed_state = rollback(state, reason)
@@ -287,18 +287,18 @@ defmodule Toast.Deployment.ClusterController do
   # --- Shutdown sequence ---
 
   defp do_shutdown(state, timeout) do
-    Logger.debug("[Toast.ClusterController] Shutting down cluster #{state.id}")
+    Logger.debug("Shutting down cluster #{state.id}")
     state = %{state | status: :stopping}
     deadline = System.monotonic_time(:millisecond) + timeout
 
-    Logger.debug("[Toast.ClusterController] #{state.id}: stopping coordinators")
+    Logger.debug("#{state.id}: stopping coordinators")
     stop_servers(state.coordinators, state, remaining_ms(deadline))
-    Logger.debug("[Toast.ClusterController] #{state.id}: stopping dbservers")
+    Logger.debug("#{state.id}: stopping dbservers")
     stop_servers(state.dbservers, state, remaining_ms(deadline))
-    Logger.debug("[Toast.ClusterController] #{state.id}: stopping agents")
+    Logger.debug("#{state.id}: stopping agents")
     stop_servers(state.agents, state, remaining_ms(deadline))
     diagnostics = collect_all_diagnostics(state)
-    Logger.debug("[Toast.ClusterController] #{state.id}: diagnostics collected")
+    Logger.debug("#{state.id}: diagnostics collected")
     cleanup_all_dirs(state)
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers), diagnostics: diagnostics}
@@ -349,7 +349,7 @@ defmodule Toast.Deployment.ClusterController do
   # --- Rollback on deploy failure ---
 
   defp rollback(state, reason) do
-    Logger.debug("[Toast.ClusterController] Rolling back #{state.id} due to: #{inspect(reason)}")
+    Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
     all_ids = state.agents ++ state.dbservers ++ state.coordinators
     stop_servers(all_ids, state, 5_000)
     cleanup_all_dirs(state)

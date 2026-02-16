@@ -43,15 +43,15 @@ defmodule Toast.ResultExporter do
       xml_path = Path.join(result_dir, "results.xml")
       File.write!(xml_path, JUnitXML.render(results, diagnostics))
 
-      Logger.info("[Toast.ResultExporter] Results written to #{result_dir}")
+      Logger.info("Results written to #{result_dir}")
     else
-      Logger.info("[Toast.ResultExporter] No results!")
+      Logger.info("No results!")
     end
 
     :ok
   rescue
     error ->
-      Logger.warning("[Toast.ResultExporter] Failed to export: #{Exception.message(error)}")
+      Logger.warning("Failed to export: #{Exception.message(error)}")
       :ok
   end
 

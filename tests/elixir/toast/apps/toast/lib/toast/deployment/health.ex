@@ -17,7 +17,7 @@ defmodule Toast.Deployment.Health do
     deadline = System.monotonic_time(:millisecond) + timeout
 
     Logger.debug(
-      "[Toast.Health] Waiting for agency consensus across #{length(agent_endpoints)} agents"
+      "Waiting for agency consensus across #{length(agent_endpoints)} agents"
     )
 
     agency_poll_loop(agent_endpoints, opts, poll_interval, deadline)
@@ -30,7 +30,7 @@ defmodule Toast.Deployment.Health do
     process_check_fn = Keyword.get(opts, :process_check_fn)
     deadline = System.monotonic_time(:millisecond) + timeout
 
-    Logger.debug("[Toast.Health] Waiting for #{endpoint} to become ready")
+    Logger.debug("Waiting for #{endpoint} to become ready")
     poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, _first_attempt = true)
   end
 
@@ -41,7 +41,7 @@ defmodule Toast.Deployment.Health do
 
     case Req.get(url, receive_timeout: http_timeout, pool_timeout: http_timeout, retry: false) do
       {:ok, %{status: status}} when status in 200..299 ->
-        Logger.debug("[Toast.Health] #{endpoint} responded with status #{status}")
+        Logger.debug("#{endpoint} responded with status #{status}")
         :ok
 
       {:ok, %{status: status}} ->
@@ -57,7 +57,7 @@ defmodule Toast.Deployment.Health do
 
     case analyze_agency_status(results) do
       :ready ->
-        Logger.debug("[Toast.Health] Agency consensus reached")
+        Logger.debug("Agency consensus reached")
         :ok
 
       {:not_ready, reason} ->
@@ -66,7 +66,7 @@ defmodule Toast.Deployment.Health do
         if now >= deadline do
           {:error, :timeout}
         else
-          Logger.debug("[Toast.Health] Agency not ready: #{inspect(reason)}, retrying...")
+          Logger.debug("Agency not ready: #{inspect(reason)}, retrying...")
           Process.sleep(poll_interval)
           agency_poll_loop(agent_endpoints, opts, poll_interval, deadline)
         end
@@ -123,12 +123,12 @@ defmodule Toast.Deployment.Health do
 
   defp poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, first_attempt) do
     if process_check_fn && !process_check_fn.() do
-      Logger.debug("[Toast.Health] #{endpoint}: OS process is no longer running")
+      Logger.debug("#{endpoint}: OS process is no longer running")
       {:error, :process_died}
     else
       case check_once(endpoint, opts) do
         :ok ->
-          Logger.debug("[Toast.Health] #{endpoint} is ready")
+          Logger.debug("#{endpoint} is ready")
           :ok
 
         {:error, reason} ->
@@ -136,11 +136,11 @@ defmodule Toast.Deployment.Health do
           remaining = max(0, deadline - now)
 
           if first_attempt do
-            Logger.debug("[Toast.Health] #{endpoint}: first check failed (#{inspect(reason)}), #{remaining}ms remaining")
+            Logger.debug("#{endpoint}: first check failed (#{inspect(reason)}), #{remaining}ms remaining")
           end
 
           if now >= deadline do
-            Logger.debug("[Toast.Health] #{endpoint}: timed out waiting for ready")
+            Logger.debug("#{endpoint}: timed out waiting for ready")
             {:error, :timeout}
           else
             Process.sleep(poll_interval)

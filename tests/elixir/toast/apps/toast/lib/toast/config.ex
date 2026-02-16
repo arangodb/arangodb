@@ -68,7 +68,7 @@ defmodule Toast.Config do
     }
 
     Logger.debug(
-      "[Toast.Config] build_dir=#{inspect(config.build_dir)} work_dir=#{config.work_dir} " <>
+      "build_dir=#{inspect(config.build_dir)} work_dir=#{config.work_dir} " <>
         "mode=#{config.deployment_mode} sanitizer=#{inspect(MapSet.to_list(config.sanitizer))}"
     )
 

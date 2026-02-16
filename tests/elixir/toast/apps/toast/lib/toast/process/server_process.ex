@@ -183,7 +183,7 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_info(:stop_timeout, %{status: :stopping} = state) do
-    Logger.warning("[Toast] #{state.id} (pid=#{state.os_pid}) stop timed out, sending SIGKILL")
+    Logger.warning("#{state.id} (pid=#{state.os_pid}) stop timed out, sending SIGKILL")
 
     if state.os_pid, do: :exec.kill(state.os_pid, 9)
 
@@ -193,7 +193,7 @@ defmodule Toast.Process.ServerProcess do
   end
 
   def handle_info(:kill_timeout, %{status: :stopping} = state) do
-    Logger.error("[Toast] #{state.id} (pid=#{state.os_pid}) did not exit after SIGKILL, giving up")
+    Logger.error("#{state.id} (pid=#{state.os_pid}) did not exit after SIGKILL, giving up")
 
     if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
 
@@ -211,7 +211,7 @@ defmodule Toast.Process.ServerProcess do
   def handle_info({:DOWN, _os_pid, :process, _pid, _reason}, state), do: {:noreply, state}
 
   def handle_info(msg, state) do
-    Logger.debug("[Toast] #{state.id}: unexpected message: #{inspect(msg)}")
+    Logger.debug("#{state.id}: unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 
@@ -241,7 +241,7 @@ defmodule Toast.Process.ServerProcess do
         cmd_line = Enum.join([state.executable | state.args], " ")
 
         Logger.debug(
-          "[Toast] Launched #{state.id} (os_pid=#{os_pid})\n" <>
+          "Launched #{state.id} (os_pid=#{os_pid})\n" <>
             "  cmd: #{cmd_line}\n" <>
             "  working_dir: #{state.working_dir}" <>
             if(state.env != [], do: "\n  env: #{inspect(state.env)}", else: "")
@@ -256,13 +256,13 @@ defmodule Toast.Process.ServerProcess do
          }}
 
       {:error, reason} ->
-        Logger.error("[Toast] Failed to launch #{state.id}: #{inspect(reason)}")
+        Logger.error("Failed to launch #{state.id}: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
   defp do_stop(state, timeout, from) do
-    Logger.debug("[Toast] Stopping #{state.id} (pid=#{state.os_pid}) with SIGTERM")
+    Logger.debug("Stopping #{state.id} (pid=#{state.os_pid}) with SIGTERM")
 
     # Non-blocking: initiates SIGTERM, then SIGKILL after kill_timeout (5s)
     :exec.stop(state.exec_pid)
@@ -280,7 +280,7 @@ defmodule Toast.Process.ServerProcess do
 
     case state.status do
       :stopping ->
-        Logger.debug("[Toast] #{state.id} exited during stop (status=#{exit_status})")
+        Logger.debug("#{state.id} exited during stop (status=#{exit_status})")
 
         if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
 
@@ -301,7 +301,7 @@ defmodule Toast.Process.ServerProcess do
         }
 
         Logger.error(
-          "[Toast] #{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})"
+          "#{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})"
         )
 
         notify_listener(state.listener, state.id, crash_info)

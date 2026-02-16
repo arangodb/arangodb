@@ -131,38 +131,38 @@ defmodule Toast.Deployment.Controller do
 
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    Logger.error("[Toast.Controller] Server #{server_id} crashed: #{inspect(crash_info)}")
+    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     notify_crash_monitor(state.crash_monitor, server_id, crash_info)
     {:noreply, %{state | status: :failed, error: {:server_crashed, crash_info}}}
   end
 
   def handle_info(msg, state) do
-    Logger.debug("[Toast.Controller] Unexpected message: #{inspect(msg)}")
+    Logger.debug("Unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 
   # --- Deploy sequence ---
 
   defp do_deploy(state, timeout) do
-    Logger.debug("[Toast.Controller] Starting deploy for #{state.id} (timeout=#{timeout}ms)")
+    Logger.debug("Starting deploy for #{state.id} (timeout=#{timeout}ms)")
     state = %{state | status: :starting}
 
     with {:ok, port} <- PortAllocator.allocate(),
-         _ = Logger.debug("[Toast.Controller] #{state.id}: allocated port #{port}"),
+         _ = Logger.debug("#{state.id}: allocated port #{port}"),
          state = %{state | port: port, endpoint: "http://127.0.0.1:#{port}"},
          {:ok, launch_spec} <- Factory.build_single_server(state.config, state.id, port),
          state = %{state | log_file: launch_spec.log_file, server_dir: launch_spec.server_dir},
          {:ok, server_pid} <- start_server_process(launch_spec),
-         _ = Logger.debug("[Toast.Controller] #{state.id}: server process started (#{inspect(server_pid)})"),
+         _ = Logger.debug("#{state.id}: server process started (#{inspect(server_pid)})"),
          state = %{state | server_pid: server_pid},
          :ok <- ServerProcess.launch(server_pid),
-         _ = Logger.debug("[Toast.Controller] #{state.id}: OS process launched, waiting for health check"),
+         _ = Logger.debug("#{state.id}: OS process launched, waiting for health check"),
          :ok <- wait_for_ready(state, timeout) do
-      Logger.info("[Toast.Controller] Deployment #{state.id} ready at #{state.endpoint}")
+      Logger.info("Deployment #{state.id} ready at #{state.endpoint}")
       {:ok, %{state | status: :ready}}
     else
       {:error, reason} ->
-        Logger.error("[Toast.Controller] Deploy failed for #{state.id}: #{inspect(reason)}")
+        Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
         failed_state = rollback(state, reason)
         {:error, reason, failed_state}
     end
@@ -193,16 +193,16 @@ defmodule Toast.Deployment.Controller do
   # --- Shutdown sequence ---
 
   defp do_shutdown(state, timeout) do
-    Logger.debug("[Toast.Controller] Shutting down deployment #{state.id}")
+    Logger.debug("Shutting down deployment #{state.id}")
     state = %{state | status: :stopping}
     do_cleanup(state, timeout)
   end
 
   defp do_cleanup(state, timeout) do
-    Logger.debug("[Toast.Controller] Cleaning up #{state.id}")
+    Logger.debug("Cleaning up #{state.id}")
     stop_server(state, timeout)
     diagnostics = collect_diagnostics(state)
-    Logger.debug("[Toast.Controller] #{state.id}: diagnostics collected")
+    Logger.debug("#{state.id}: diagnostics collected")
     cleanup_dirs(state)
     %{state | status: :stopped, server_pid: nil, diagnostics: diagnostics}
   end
@@ -238,7 +238,7 @@ defmodule Toast.Deployment.Controller do
   # --- Rollback on deploy failure ---
 
   defp rollback(state, reason) do
-    Logger.debug("[Toast.Controller] Rolling back #{state.id} due to: #{inspect(reason)}")
+    Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
     stop_server(state, 5_000)
     cleanup_dirs(state)
     %{state | status: :failed, server_pid: nil, error: reason}

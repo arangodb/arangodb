@@ -33,11 +33,11 @@ defmodule Toast.Utils.Filesystem do
   def find_arangod(nil) do
     case System.find_executable("arangod") do
       nil ->
-        Logger.debug("[Toast.Filesystem] arangod not found in PATH")
+        Logger.debug("arangod not found in PATH")
         {:error, "arangod not found in PATH"}
 
       path ->
-        Logger.debug("[Toast.Filesystem] Found arangod in PATH: #{path}")
+        Logger.debug("Found arangod in PATH: #{path}")
         {:ok, path}
     end
   end
@@ -46,10 +46,10 @@ defmodule Toast.Utils.Filesystem do
     path = Path.join([Path.expand(build_dir), "bin", "arangod"])
 
     if File.exists?(path) do
-      Logger.debug("[Toast.Filesystem] Found arangod: #{path}")
+      Logger.debug("Found arangod: #{path}")
       {:ok, path}
     else
-      Logger.debug("[Toast.Filesystem] arangod not found at #{path}")
+      Logger.debug("arangod not found at #{path}")
       {:error, "arangod not found at #{path}"}
     end
   end
@@ -58,11 +58,11 @@ defmodule Toast.Utils.Filesystem do
   def find_repository_root(build_dir, opts \\ []) do
     with :no_match <- find_from_build_dir(build_dir),
          :no_match <- find_from_cwd(opts) do
-      Logger.debug("[Toast.Filesystem] Repository root not found")
+      Logger.debug("Repository root not found")
       {:error, "repository root not found"}
     else
       {:ok, root} = result ->
-        Logger.debug("[Toast.Filesystem] Repository root: #{root}")
+        Logger.debug("Repository root: #{root}")
         result
     end
   end

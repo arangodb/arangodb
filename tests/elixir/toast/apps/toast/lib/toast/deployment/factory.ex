@@ -42,7 +42,7 @@ defmodule Toast.Deployment.Factory do
       }
 
       Logger.debug(
-        "[Toast.Factory] Built single server spec: executable=#{spec.executable} " <>
+        "Built single server spec: executable=#{spec.executable} " <>
           "port=#{port} working_dir=#{repo_root} server_dir=#{paths.base_dir}\n" <>
           "  args: #{Enum.join(args, " ")}"
       )
@@ -92,7 +92,7 @@ defmodule Toast.Deployment.Factory do
            {:ok, dbservers} <- dbservers,
            {:ok, coordinators} <- coordinators do
         Logger.debug(
-          "[Toast.Factory] Built cluster topology: " <>
+          "Built cluster topology: " <>
             "#{length(agents)} agents, #{length(dbservers)} dbservers, #{length(coordinators)} coordinators"
         )
 
