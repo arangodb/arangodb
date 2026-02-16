@@ -26,6 +26,7 @@
 #include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
+#include "Metrics/GaugeBuilder.h"
 
 #include <algorithm>
 

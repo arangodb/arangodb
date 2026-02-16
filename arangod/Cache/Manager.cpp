@@ -53,7 +53,24 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/SharedPRNGFeature.h"
+
+DECLARE_GAUGE(rocksdb_cache_labeled_fixed, uint64_t, "Labled cache fixed size");
+DECLARE_GAUGE(rocksdb_cache_labeled_tables, uint64_t,
+              "Labled cache table size");
+DECLARE_GAUGE(rocksdb_cache_labeled_max, uint64_t, "Labled cache max size");
+DECLARE_GAUGE(rocksdb_cache_labeled_allocated, uint64_t,
+              "Labeled cache allocated size");
+DECLARE_GAUGE(rocksdb_cache_labeled_deserved, uint64_t,
+              "Labeled cache deserved size");
+DECLARE_GAUGE(rocksdb_cache_labeled_hard_limit, uint64_t,
+              "Labeled cache hard limit");
+DECLARE_GAUGE(rocksdb_cache_labeled_soft_limit, uint64_t,
+              "Labeled cache hard limit");
+
+using namespace arangodb::application_features;
 
 namespace arangodb::cache {
 
@@ -69,7 +86,8 @@ std::uint64_t const Manager::minCacheAllocation =
              TransactionalCache<BinaryKeyHasher>::allocationSize()) +
     kCacheRecordOverhead;
 
-Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
+Manager::Manager(application_features::ApplicationServer& server,
+                 SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
                  CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
       _options(options),
@@ -109,7 +127,23 @@ Manager::Manager(SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
       _rebalancingTasks(0),
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
-                          rebalancingGracePeriod) {
+                          rebalancingGracePeriod),
+      _cacheLabeledFixed(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_fixed{})),
+      _cacheLabeledTables(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_tables{})),
+      _cacheLabeledMax(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_max{})),
+      _cacheLabeledAllocated(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_allocated{})),
+      _cacheLabeledDeserved(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_deserved{})),
+      _cacheLabeledHardLimit(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_hard_limit{})),
+      _cacheLabeledSoftLimit(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_labeled_soft_limit{}))
+
+{
   TRI_ASSERT(_globalAllocation < _globalSoftLimit);
   TRI_ASSERT(_globalAllocation < _globalHardLimit);
   if (_options.enableWindowedStats) {
@@ -140,7 +174,7 @@ Manager::~Manager() {
 
 template<typename Hasher>
 std::shared_ptr<Cache> Manager::createCache(CacheType type,
-                                            std::string const& name,
+                                            std::string_view name,
                                             bool enableWindowedStats,
                                             std::uint64_t maxSize) {
   std::shared_ptr<Cache> result;
@@ -183,8 +217,8 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
 
       switch (type) {
         case CacheType::Plain:
-          result = PlainCache<Hasher>::create(this, id, name, std::move(metadata),
-                                              table, enableWindowedStats);
+          result = PlainCache<Hasher>::create(
+              this, id, name, std::move(metadata), table, enableWindowedStats);
           break;
         case CacheType::Transactional:
           result = TransactionalCache<Hasher>::create(
@@ -686,6 +720,8 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment,
 /// Then, given the pool of memory, and the expressed needs of each cache,
 /// attempt to allocate memory evenly, up to the additional amount requested.
 ErrorCode Manager::rebalance(bool onlyCalculate) {
+  { SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate); }
+
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);
 
   if (!onlyCalculate) {
@@ -1130,9 +1166,11 @@ bool Manager::pastRebalancingGracePeriod() const {
 
 // template instantiations for createCache()
 template std::shared_ptr<Cache> Manager::createCache<BinaryKeyHasher>(
-  CacheType type, std::string const& name, bool enableWindowedStats, std::uint64_t maxSize);
+    CacheType type, std::string_view name, bool enableWindowedStats,
+    std::uint64_t maxSize);
 
 template std::shared_ptr<Cache> Manager::createCache<VPackKeyHasher>(
-  CacheType type, std::string const& name, bool enableWindowedStats, std::uint64_t maxSize);
+    CacheType type, std::string_view name, bool enableWindowedStats,
+    std::uint64_t maxSize);
 
 }  // namespace arangodb::cache

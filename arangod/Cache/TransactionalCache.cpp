@@ -250,8 +250,9 @@ std::string_view TransactionalCache<Hasher>::hasherName() const noexcept {
 
 template<typename Hasher>
 std::shared_ptr<Cache> TransactionalCache<Hasher>::create(
-    Manager* manager, std::uint64_t id, std::string const& name, Metadata&& metadata,
-    std::shared_ptr<Table> table, bool enableWindowedStats) {
+    Manager* manager, std::uint64_t id, std::string_view name,
+    Metadata&& metadata, std::shared_ptr<Table> table,
+    bool enableWindowedStats) {
   return std::make_shared<TransactionalCache<Hasher>>(
       Cache::ConstructionGuard(), manager, id, name, std::move(metadata),
       std::move(table), enableWindowedStats);
@@ -260,7 +261,7 @@ std::shared_ptr<Cache> TransactionalCache<Hasher>::create(
 template<typename Hasher>
 TransactionalCache<Hasher>::TransactionalCache(
     Cache::ConstructionGuard /*guard*/, Manager* manager, std::uint64_t id,
-    std::string const& name, Metadata&& metadata, std::shared_ptr<Table> table,
+    std::string_view name, Metadata&& metadata, std::shared_ptr<Table> table,
     bool enableWindowedStats)
     : Cache(manager, id, name, std::move(metadata), std::move(table),
             enableWindowedStats, TransactionalCache::bucketClearer,

@@ -49,7 +49,7 @@ using SpinLocker = ::arangodb::basics::SpinLocker;
 using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
 Cache::Cache(
-    Manager* manager, std::uint64_t id, std::string const& name,
+    Manager* manager, std::uint64_t id, std::string_view name,
     Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
     std::function<Table::BucketClearer(Cache*, Metadata*)> bucketClearer,
     std::size_t slotsPerBucket)
