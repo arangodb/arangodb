@@ -75,6 +75,7 @@ defmodule Toast.PortAllocator do
     end
   end
 
+  @impl true
   def handle_call({:allocate_batch, count}, _from, state) do
     case allocate_ports(state.next_port, count, []) do
       {:ok, ports, next_port} ->

@@ -97,7 +97,7 @@ defmodule Toast.Config do
   end
 
   defp default_work_dir do
-    Path.join(System.tmp_dir!(), "toast_#{System.unique_integer([:positive])}")
+    Path.join([System.tmp_dir!(), "toast", "run_#{System.unique_integer([:positive])}"])
   end
 
   defp env(name), do: System.get_env(name)

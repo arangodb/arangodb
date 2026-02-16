@@ -24,7 +24,8 @@ defmodule Toast.MixProject do
 
   defp deps do
     [
-      {:req, "~> 0.5"}
+      {:req, "~> 0.5"},
+      {:erlexec, "~> 2.0"}
     ]
   end
 end

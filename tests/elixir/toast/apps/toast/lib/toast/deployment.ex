@@ -13,11 +13,12 @@ defmodule Toast.Deployment do
           mode: :single_server | :cluster,
           endpoint: String.t(),
           controller: pid(),
+          crash_monitor: pid(),
           servers: %{String.t() => server_info()} | nil
         }
 
   @enforce_keys [:id, :mode, :endpoint, :controller]
-  defstruct [:id, :mode, :endpoint, :controller, :servers]
+  defstruct [:id, :mode, :endpoint, :controller, :crash_monitor, :servers]
 
   @spec start(atom(), keyword()) :: {:ok, t()} | {:error, term()}
   def start(mode \\ :single_server, opts \\ [])
@@ -25,8 +26,9 @@ defmodule Toast.Deployment do
   def start(:single_server, opts) do
     Logger.debug("[Toast.Deployment] Starting single_server deployment")
     config = Config.load(opts)
+    crash_monitor = spawn_crash_monitor()
 
-    controller_opts = [config: config] ++ Keyword.take(opts, [:id])
+    controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
          :ok <- Controller.deploy(pid, config.startup_timeout) do
@@ -37,10 +39,12 @@ defmodule Toast.Deployment do
          id: info.id,
          mode: :single_server,
          endpoint: info.endpoint,
-         controller: pid
+         controller: pid,
+         crash_monitor: crash_monitor
        }}
     else
       {:error, _reason} = error ->
+        stop_crash_monitor(crash_monitor)
         error
     end
   end
@@ -48,8 +52,9 @@ defmodule Toast.Deployment do
   def start(:cluster, opts) do
     Logger.debug("[Toast.Deployment] Starting cluster deployment")
     config = Config.load(opts)
+    crash_monitor = spawn_crash_monitor()
 
-    controller_opts = [config: config] ++ Keyword.take(opts, [:id])
+    controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_cluster_controller(controller_opts),
          :ok <- ClusterController.deploy(pid, config.startup_timeout) do
@@ -61,10 +66,12 @@ defmodule Toast.Deployment do
          mode: :cluster,
          endpoint: info.coordinator_endpoint,
          controller: pid,
+         crash_monitor: crash_monitor,
          servers: info.servers
        }}
     else
       {:error, _reason} = error ->
+        stop_crash_monitor(crash_monitor)
         error
     end
   end
@@ -80,6 +87,7 @@ defmodule Toast.Deployment do
 
     with :ok <- mod.shutdown(pid, timeout) do
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
+      stop_crash_monitor(deployment.crash_monitor)
       :ok
     end
   end
@@ -100,6 +108,7 @@ defmodule Toast.Deployment do
     with :ok <- mod.shutdown(pid, timeout) do
       diagnostics = mod.get_info(pid)[:diagnostics]
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
+      stop_crash_monitor(deployment.crash_monitor)
       Logger.debug("[Toast.Deployment] Deployment #{deployment.id} stopped, diagnostics collected")
       diagnostics
     else
@@ -175,6 +184,29 @@ defmodule Toast.Deployment do
       {:error, _} -> nil
     end
   end
+
+  defp spawn_crash_monitor do
+    spawn(fn ->
+      Process.flag(:trap_exit, true)
+      crash_monitor_loop()
+    end)
+  end
+
+  defp crash_monitor_loop do
+    receive do
+      {:server_crashed, _id, _info} ->
+        # Abort suite, then propagate exit to all linked test processes
+        ExUnit.configure(max_failures: 1)
+        Process.flag(:trap_exit, false)
+        exit({:server_crashed, :deployment_failed})
+
+      {:EXIT, _pid, _reason} ->
+        crash_monitor_loop()
+    end
+  end
+
+  defp stop_crash_monitor(pid) when is_pid(pid), do: Process.exit(pid, :kill)
+  defp stop_crash_monitor(_), do: :ok
 
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000

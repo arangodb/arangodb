@@ -5,6 +5,7 @@ defmodule SmokeTest.VersionTest do
     assert {:ok, body} = Client.version(client)
     assert body["server"] == "arango"
     assert is_binary(body["version"])
+    Process.sleep 100000
   end
 
   test "endpoint is accessible via raw HTTP", %{endpoint: endpoint} do

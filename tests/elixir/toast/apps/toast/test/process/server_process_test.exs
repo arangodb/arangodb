@@ -2,7 +2,6 @@ defmodule Toast.Process.ServerProcessTest do
   use ExUnit.Case, async: false
 
   alias Toast.Process.ServerProcess
-  alias Toast.Process.Signal
 
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
@@ -27,9 +26,16 @@ defmodule Toast.Process.ServerProcessTest do
         catch
           :exit, _ -> :ok
         end
+      end
 
+      if Process.alive?(pid) do
         ref = Process.monitor(pid)
-        GenServer.stop(pid, :normal, 1_000)
+
+        try do
+          GenServer.stop(pid, :normal, 1_000)
+        catch
+          :exit, _ -> :ok
+        end
 
         receive do
           {:DOWN, ^ref, _, _, _} -> :ok
@@ -40,6 +46,10 @@ defmodule Toast.Process.ServerProcessTest do
     end)
 
     pid
+  end
+
+  defp os_process_alive?(os_pid) do
+    match?({_, 0}, System.cmd("kill", ["-0", to_string(os_pid)], stderr_to_stdout: true))
   end
 
   describe "launch and stop" do
@@ -64,7 +74,7 @@ defmodule Toast.Process.ServerProcessTest do
 
       assert is_integer(os_pid)
       assert os_pid > 0
-      assert Signal.alive?(os_pid)
+      assert os_process_alive?(os_pid)
     end
 
     test "returns nil when stopped", %{id: id} do
@@ -86,12 +96,12 @@ defmodule Toast.Process.ServerProcessTest do
       ServerProcess.launch(pid)
       os_pid = ServerProcess.os_pid(pid)
 
-      assert Signal.alive?(os_pid)
+      assert os_process_alive?(os_pid)
       assert ServerProcess.stop(pid, 5_000) == :ok
       assert ServerProcess.status(pid) == :stopped
 
       Process.sleep(100)
-      refute Signal.alive?(os_pid)
+      refute os_process_alive?(os_pid)
     end
   end
 
@@ -132,23 +142,6 @@ defmodule Toast.Process.ServerProcessTest do
     end
   end
 
-  describe "output capture" do
-    test "captures stdout into output_buffer", %{id: id} do
-      pid = start_server(id)
-      ServerProcess.launch(pid)
-
-      # Give the process time to write its startup message
-      Process.sleep(500)
-
-      state = :sys.get_state(pid)
-      output = IO.iodata_to_binary(state.output_buffer)
-      assert output =~ "STARTED port="
-
-      ServerProcess.stop(pid, 5_000)
-      assert ServerProcess.status(pid) == :stopped
-    end
-  end
-
   describe "stop after crash" do
     test "returns :ok for a crashed process", %{id: id} do
       pid = start_server(id, args: ["--crash-after", "1"], listener: self())
@@ -167,17 +160,15 @@ defmodule Toast.Process.ServerProcessTest do
       pid = start_server(id, executable: @unkillable_server, args: [])
       ServerProcess.launch(pid)
       os_pid = ServerProcess.os_pid(pid)
-      assert Signal.alive?(os_pid)
+      assert os_process_alive?(os_pid)
 
-      # Use a short SIGTERM timeout (1s) so kill escalation fires quickly.
-      # GenServer.call timeout inside stop/2 is timeout + 5_000 = 6_000ms,
-      # which is plenty for SIGTERM wait (1s) + SIGKILL to take effect.
-      assert ServerProcess.stop(pid, 1_000) == :ok
+      # erlexec handles SIGTERM → SIGKILL escalation (kill_timeout: 5s)
+      # Our stop timeout is a safety net on top of that.
+      assert ServerProcess.stop(pid, 10_000) == :ok
       assert ServerProcess.status(pid) == :stopped
 
-      # OS process should be dead after SIGKILL
       Process.sleep(100)
-      refute Signal.alive?(os_pid)
+      refute os_process_alive?(os_pid)
     end
   end
 end

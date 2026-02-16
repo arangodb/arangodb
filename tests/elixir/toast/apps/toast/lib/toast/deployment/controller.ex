@@ -67,7 +67,8 @@ defmodule Toast.Deployment.Controller do
       log_file: nil,
       server_dir: nil,
       error: nil,
-      diagnostics: nil
+      diagnostics: nil,
+      crash_monitor: Keyword.get(opts, :crash_monitor)
     }
 
     {:ok, state}
@@ -131,6 +132,7 @@ defmodule Toast.Deployment.Controller do
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error("[Toast.Controller] Server #{server_id} crashed: #{inspect(crash_info)}")
+    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
     {:noreply, %{state | status: :failed, error: {:server_crashed, crash_info}}}
   end
 
@@ -243,6 +245,9 @@ defmodule Toast.Deployment.Controller do
   end
 
   # --- Helpers ---
+
+  defp notify_crash_monitor(nil, _id, _info), do: :ok
+  defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
 
   defp generate_id do
     "toast-#{System.unique_integer([:positive])}"

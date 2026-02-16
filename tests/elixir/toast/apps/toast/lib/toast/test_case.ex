@@ -39,12 +39,19 @@ defmodule Toast.TestCase do
   setup _context do
     deployment = get_deployment()
 
+    # Link to crash monitor — if a server crashes mid-test, this test process
+    # is killed immediately rather than continuing against a dead server.
+    if is_pid(deployment.crash_monitor) and Process.alive?(deployment.crash_monitor) do
+      Process.link(deployment.crash_monitor)
+    end
+
     case Toast.Deployment.status(deployment) do
       :ready ->
         client = Toast.Client.new(deployment.endpoint)
         %{deployment: deployment, endpoint: deployment.endpoint, client: client}
 
       :failed ->
+        ExUnit.configure(max_failures: 1)
         message = format_crash_message(Toast.Deployment.crash_info(deployment))
         raise message
 

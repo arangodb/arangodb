@@ -60,7 +60,8 @@ defmodule Toast.Deployment.ClusterController do
       dbservers: [],
       coordinators: [],
       error: nil,
-      diagnostics: nil
+      diagnostics: nil,
+      crash_monitor: Keyword.get(opts, :crash_monitor)
     }
 
     {:ok, state}
@@ -133,6 +134,7 @@ defmodule Toast.Deployment.ClusterController do
       "[Toast.ClusterController] Server #{server_id} crashed: #{inspect(crash_info)}"
     )
 
+    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
     {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
   end
 
@@ -358,6 +360,9 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   # --- Helpers ---
+
+  defp notify_crash_monitor(nil, _id, _info), do: :ok
+  defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
 
   defp generate_id do
     "toast-cluster-#{System.unique_integer([:positive])}"

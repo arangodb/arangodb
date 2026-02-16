@@ -181,6 +181,101 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
   end
 
+  describe "crash_monitor" do
+    test "controller forwards crash to crash_monitor" do
+      monitor = self()
+      {:ok, pid} = Controller.start_link(config: Toast.Config.load(), crash_monitor: monitor)
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "test-server", crash_info})
+
+      assert_receive {:server_crashed, "test-server", ^crash_info}, 1_000
+    end
+
+    test "cluster controller forwards crash to crash_monitor" do
+      monitor = self()
+      {:ok, pid} = ClusterController.start_link(config: Toast.Config.load(), crash_monitor: monitor)
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "dbserver-1", crash_info})
+
+      assert_receive {:server_crashed, "dbserver-1", ^crash_info}, 1_000
+    end
+
+    test "crash_monitor exits when receiving server_crashed" do
+      # Spawn a process that behaves like crash_monitor
+      monitor = spawn(fn ->
+        Process.flag(:trap_exit, true)
+        receive do
+          {:server_crashed, _id, _info} ->
+            Process.flag(:trap_exit, false)
+            exit({:server_crashed, :deployment_failed})
+        end
+      end)
+
+      ref = Process.monitor(monitor)
+      send(monitor, {:server_crashed, "test", %{}})
+      assert_receive {:DOWN, ^ref, :process, ^monitor, {:server_crashed, :deployment_failed}}, 1_000
+    end
+
+    test "crash_monitor kills linked processes on crash" do
+      # Spawn a crash_monitor-like process
+      monitor = spawn(fn ->
+        Process.flag(:trap_exit, true)
+        receive do
+          {:server_crashed, _id, _info} ->
+            Process.flag(:trap_exit, false)
+            exit({:server_crashed, :deployment_failed})
+        end
+      end)
+
+      # Spawn a "test process" linked to the monitor
+      test_proc = spawn(fn ->
+        Process.link(monitor)
+        Process.sleep(:infinity)
+      end)
+
+      # Give time for the link to be established
+      Process.sleep(10)
+
+      ref = Process.monitor(test_proc)
+
+      # Trigger crash notification
+      send(monitor, {:server_crashed, "test", %{}})
+
+      # The linked test process should die
+      assert_receive {:DOWN, ^ref, :process, ^test_proc, {:server_crashed, :deployment_failed}},
+                     1_000
+    end
+
+    test "crash_monitor survives linked process exits" do
+      monitor = spawn(fn ->
+        Process.flag(:trap_exit, true)
+        receive do
+          {:server_crashed, _id, _info} ->
+            Process.flag(:trap_exit, false)
+            exit({:server_crashed, :deployment_failed})
+        end
+      end)
+
+      # Spawn and kill a linked process
+      linked = spawn(fn ->
+        Process.link(monitor)
+        Process.sleep(:infinity)
+      end)
+
+      Process.sleep(10)
+      Process.exit(linked, :kill)
+      Process.sleep(10)
+
+      # Monitor should still be alive
+      assert Process.alive?(monitor)
+
+      # Clean up
+      Process.exit(monitor, :kill)
+    end
+  end
+
   defp poll_until(condition, timeout_ms \\ 5_000, interval_ms \\ 50) do
     deadline = System.monotonic_time(:millisecond) + timeout_ms
     do_poll_until(condition, deadline, interval_ms)
