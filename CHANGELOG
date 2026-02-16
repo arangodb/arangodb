@@ -1,6 +1,10 @@
 devel
 -----
 
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. The follower now trains and populates
+  the vector index from local documents after initial sync.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 
