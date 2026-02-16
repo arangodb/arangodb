@@ -471,7 +471,7 @@ class TestingRunner:
             "arangoimport",
             "arangoimp",
             "arangorestore",
-            "arangobench",
+            "snowball",
             # 'arangodbtests', we do not need arangodbtests since these tests are executed in a separate job
             "arangod",
             "arangodump",

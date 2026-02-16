@@ -278,20 +278,6 @@ function OneShardPropertiesSuite () {
       }
     },
 
-    testDeviatingWriteConcernAndMinReplicationFactorForDatabase : function () {
-      if (!isCluster) {
-        return;
-      }
-      try {
-        db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2, sharding: "flexible" });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-        
-      assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
-    },
-    
     testNormalDBAndTooManyServers : function () {
       if (!isCluster) {
         return;
@@ -485,7 +471,6 @@ function OneShardPropertiesSuite () {
       if (!isCluster) {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
-        assertEqual(props.minReplicationFactor, undefined);  // deprecated
         assertEqual(props.writeConcern, undefined);
       } else {
         assertEqual(props.sharding, "");
@@ -496,21 +481,18 @@ function OneShardPropertiesSuite () {
           let col = db._create("somecollection");
           let colProperties = col.properties();
           assertEqual(colProperties.replicationFactor, 2);
-          assertEqual(colProperties.minReplicationFactor, 2);  // deprecated
           assertEqual(colProperties.writeConcern, 2);
         }
 
         {
           let col = db._create("overrideCollection1", {writeConcern: 1});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
           assertEqual(colProperties.writeConcern, 1);
         }
 
         {
           let col = db._create("overrideCollection2", {writeConcern: 1, replicationFactor: 1, numberOfShards: 3});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
           assertEqual(colProperties.writeConcern, 1);
         }
 

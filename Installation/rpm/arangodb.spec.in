@@ -97,7 +97,7 @@ It is written in C/C++.
 
 
 %description client
-The ArangoDB shell as stand-alone program. It also contains the utility programs: arangobench (benchmark), arangorestore & arangodump (backup), arangoimport (import).
+The ArangoDB shell as stand-alone program. It also contains the utility programs: arangorestore & arangodump (backup), arangoimport (import).
 
 %description debuginfo
 Debug symbols for the arangodb database
@@ -173,15 +173,12 @@ mkdir -p %{buildroot}%{_piddir}
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangoimport.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangodump.conf
 %config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangorestore.conf
-%config(noreplace) %attr(-,arangodb,arangodb) %{_cfgdir}/arangobench.conf
 %{_bindir}/arangosh
 %{_bindir}/arangoimport
 %{_bindir}/arangodump
 %{_bindir}/arangorestore
-%{_bindir}/arangobench
 %{_mandir}/*/arangosh*
 %{_mandir}/*/arangorestore*
-%{_mandir}/*/arangobench*
 %{_mandir}/*/arangodump*
 %{_mandir}/*/arangoimport*
 %{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/common
