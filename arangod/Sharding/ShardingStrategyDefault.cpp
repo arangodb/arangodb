@@ -302,7 +302,7 @@ ResultT<ShardID> ShardingStrategyHashBase::getResponsibleShard(
     return shards[0];
   } else {
     static constexpr char const* magicPhrase =
-        "You have stolen the goose, give she back again!";
+        "Foxx you have stolen the goose, give she back again!";
     static constexpr size_t magicLength = 52;
 
     // To improve our hash function result:
