@@ -41,14 +41,15 @@ function orFilterProjectionsPlansSuite() {
     },
 
     testOrTwoIndexesProjections: function () {
-      // The core bug: OR across two indexes should still have projections
+      // The core bug: OR across two indexes should still have projections.
+      // Projections include all attributes accessed downstream: filter (price, name)
+      // and return (description), since the filter stays as a separate CalculationNode.
       let query = `FOR p IN ${cn} FILTER p.price > 20 OR p.name == "P1" RETURN p.description`;
       let plan = query_explain(query).plan;
       let nodes = plan.nodes.filter(function (node) { return node.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertEqual(2, nodes[0].indexes.length);
-      // projections should include description (what we return)
-      assertEqual(normalize(["description"]), normalize(nodes[0].projections), query);
+      assertEqual(normalize(["description", "name", "price"]), normalize(nodes[0].projections), query);
       assertEqual("document", nodes[0].strategy);
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
     },
@@ -59,7 +60,7 @@ function orFilterProjectionsPlansSuite() {
       let nodes = plan.nodes.filter(function (node) { return node.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertEqual(2, nodes[0].indexes.length);
-      assertEqual(normalize(["description", "extra"]), normalize(nodes[0].projections), query);
+      assertEqual(normalize(["description", "extra", "name", "price"]), normalize(nodes[0].projections), query);
       assertEqual("document", nodes[0].strategy);
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
     },
@@ -71,7 +72,7 @@ function orFilterProjectionsPlansSuite() {
       let nodes = plan.nodes.filter(function (node) { return node.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertEqual(2, nodes[0].indexes.length);
-      assertEqual(normalize(["price"]), normalize(nodes[0].projections), query);
+      assertEqual(normalize(["name", "price"]), normalize(nodes[0].projections), query);
       assertEqual("document", nodes[0].strategy);
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
     },
@@ -83,7 +84,7 @@ function orFilterProjectionsPlansSuite() {
       let nodes = plan.nodes.filter(function (node) { return node.type === 'IndexNode'; });
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].indexes.length >= 2);
-      assertEqual(normalize(["description"]), normalize(nodes[0].projections), query);
+      assertEqual(normalize(["category", "description", "name", "price"]), normalize(nodes[0].projections), query);
       assertEqual("document", nodes[0].strategy);
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
     },
