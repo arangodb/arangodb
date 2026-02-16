@@ -129,6 +129,7 @@ Manager::Manager(application_features::ApplicationServer& server,
       _resizingTasks(0),
       _rebalanceCompleted(std::chrono::steady_clock::now() -
                           rebalancingGracePeriod),
+      _mf(server.getFeature<metrics::MetricsFeature>());
       _cacheLabeledFixed(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_labeled_fixed{})),
       _cacheLabeledTables(server.getFeature<metrics::MetricsFeature>().add(
@@ -750,14 +751,14 @@ ErrorCode Manager::rebalance(bool onlyCalculate) {
   for (auto pair : cacheStats) {
     auto name = pair.first;
     auto vals = pair.second;
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_fixed>(name)) = vals[0];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_tables>(name)) = vals[1];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_max>(name)) = vals[2];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_allocated>(name)) = vals[3];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_deserved>(name)) = vals[4];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_usage>(name)) = vals[5];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_hard_limit>(name)) = vals[6];
-    mf.addDynamic(getMetric<rocksdb_cache_labeled_soft_limit>(name)) = vals[7];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_fixed>(name)) = vals[0];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_tables>(name)) = vals[1];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_max>(name)) = vals[2];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_allocated>(name)) = vals[3];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_deserved>(name)) = vals[4];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_usage>(name)) = vals[5];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_hard_limit>(name)) = vals[6];
+    _mf.addDynamic(getMetric<rocksdb_cache_labeled_soft_limit>(name)) = vals[7];
   }
 
   SpinLocker guard(SpinLocker::Mode::Write, _lock, !onlyCalculate);

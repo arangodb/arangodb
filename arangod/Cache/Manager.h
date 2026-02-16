@@ -313,6 +313,7 @@ class Manager {
   time_point _rebalanceCompleted;
 
   // cache usage detailed
+  metrics::MetricsFeature& _mf;
   metrics::Gauge<uint64_t>& _cacheLabeledFixed;
   metrics::Gauge<uint64_t>& _cacheLabeledTables;
   metrics::Gauge<uint64_t>& _cacheLabeledMax;
