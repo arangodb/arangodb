@@ -144,7 +144,7 @@ class runOnArangodRunner extends testRunnerBase{
       let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
       httpOptions.method = 'POST';
 
-      httpOptions.timeout = this.options.oneRemoteTestTimeout;
+      httpOptions.timeout = this.options.oneTestTimeout;
       if (this.options.isSan) {
         httpOptions.timeout *= 2;
       }
