@@ -899,7 +899,7 @@ auto ensureIndexCoordinatorReplication2Inner(
                           // error
                           creationError = Result{
                               TRI_ERROR_INTERNAL,
-                              fmt::format(
+                              std::format(
                                   "Error while receiving Agency data: {}",
                                   status.error())};
                         }
@@ -951,7 +951,7 @@ auto ensureIndexCoordinatorReplication2Inner(
     // TODO: Maybe we want to catch ArangoErrors specifically?
     // Right now we can only have communications issues here.
   } catch (std::exception const& e) {
-    return Result(TRI_ERROR_INTERNAL, fmt::format("Exception while waiting on "
+    return Result(TRI_ERROR_INTERNAL, std::format("Exception while waiting on "
                                                   "index to be created: {}",
                                                   e.what()));
   } catch (...) {

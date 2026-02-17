@@ -29,13 +29,11 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include <fmt/core.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <format>
 #include <optional>
-#include <type_traits>
 #include <utility>
 
 namespace arangodb::replication2::agency {
@@ -448,20 +446,20 @@ struct Log {
 }  // namespace arangodb::replication2::agency
 
 template<>
-struct fmt::formatter<arangodb::replication2::agency::ServerInstanceReference>
+struct std::formatter<arangodb::replication2::agency::ServerInstanceReference>
     : formatter<string_view> {
   // parse is inherited from formatter<string_view>.
   template<typename FormatContext>
   auto format(
       arangodb::replication2::agency::ServerInstanceReference const& inst,
       FormatContext& ctx) const {
-    return fmt::format_to(ctx.out(), "{}@{}", inst.serverId,
+    return std::format_to(ctx.out(), "{}@{}", inst.serverId,
                           inst.rebootId.value());
   }
 };
 
 template<>
-struct fmt::formatter<
+struct std::formatter<
     arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode>
     : formatter<string_view> {
   // parse is inherited from formatter<string_view>.
@@ -470,6 +468,6 @@ struct fmt::formatter<
       arangodb::replication2::agency::LogCurrentSupervisionElection::ErrorCode
           errorCode,
       FormatContext& ctx) const {
-    return fmt::format_to(ctx.out(), "{}", to_string(errorCode));
+    return std::format_to(ctx.out(), "{}", to_string(errorCode));
   }
 };

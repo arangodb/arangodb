@@ -132,7 +132,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "SystemMonitor/ActivityRegistry/RestHandler.h"
+#include "SystemMonitor/Activities/RestHandler.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -417,7 +417,7 @@ void GeneralServerFeature::prepare() {
   // this initial factory only knows a few selected RestHandlers.
   // we will later create another RestHandlerFactory that knows
   // all routes.
-  auto hf = std::make_shared<RestHandlerFactory>();
+  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
   defineInitialHandlers(*hf);
   // make handler-factory read-only
   hf->seal();
@@ -446,7 +446,7 @@ void GeneralServerFeature::start() {
   // create the full RestHandlerFactory that knows all the routes.
   // this will replace the previous, stripped-down RestHandlerFactory
   // instance.
-  auto hf = std::make_shared<RestHandlerFactory>();
+  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
 
   defineInitialHandlers(*hf);
   defineRemainingHandlers(*hf);
@@ -597,16 +597,16 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   // will still be rejected during startup, even though they are registered
   // here.
   f.addHandler("/_api/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData);
+               RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
-               RestHandlerCreator<RestVersionHandler>::createNoData);
+               RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/status",
-               RestHandlerCreator<RestStatusHandler>::createNoData);
+               RestHandlerCreator<RestStatusHandler>::createNoData, {0, 1});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler can be used to control failure points
   f.addPrefixHandler(
       "/_admin/debug",
-      RestHandlerCreator<arangodb::RestDebugHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestDebugHandler>::createNoData, {0, 1});
 #endif
 }
 
@@ -624,90 +624,102 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(                         // add handler
       RestVocbaseBaseHandler::ANALYZER_PATH,  // base URL
       RestHandlerCreator<
-          iresearch::RestAnalyzerHandler>::createNoData  // handler
-  );
+          iresearch::RestAnalyzerHandler>::createNoData,  // handler
+      {0, 1});
 
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
       RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      {0, 1}, queryRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::DATABASE_PATH,
-                     RestHandlerCreator<RestDatabaseHandler>::createNoData);
+                     RestHandlerCreator<RestDatabaseHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,
-                     RestHandlerCreator<RestDocumentHandler>::createNoData);
+                     RestHandlerCreator<RestDocumentHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::EDGES_PATH,
-                     RestHandlerCreator<RestEdgesHandler>::createNoData);
+                     RestHandlerCreator<RestEdgesHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::GHARIAL_PATH,
-                     RestHandlerCreator<RestGraphHandler>::createNoData);
+                     RestHandlerCreator<RestGraphHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::ENDPOINT_PATH,
-                     RestHandlerCreator<RestEndpointHandler>::createNoData);
+                     RestHandlerCreator<RestEndpointHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
-                     RestHandlerCreator<RestImportHandler>::createNoData);
+                     RestHandlerCreator<RestImportHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::INDEX_PATH,
-                     RestHandlerCreator<RestIndexHandler>::createNoData);
+                     RestHandlerCreator<RestIndexHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     queryRegistry);
+                     {0, 1}, queryRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     queryRegistry);
+                     {0, 1}, queryRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     queryRegistry);
+                     {0, 1}, queryRegistry);
 
   f.addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      {0, 1}, queryRegistry);
 
   f.addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      {0, 1}, queryRegistry);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
     f.addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                       RestHandlerCreator<RestTasksHandler>::createNoData);
+                       RestHandlerCreator<RestTasksHandler>::createNoData,
+                       {0, 1});
   }
 #endif
 
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
-                     RestHandlerCreator<RestUploadHandler>::createNoData);
+                     RestHandlerCreator<RestUploadHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
-                     RestHandlerCreator<RestUsersHandler>::createNoData);
+                     RestHandlerCreator<RestUsersHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::ACCESS_TOKEN_PATH,
-                     RestHandlerCreator<RestAccessTokenHandler>::createNoData);
+                     RestHandlerCreator<RestAccessTokenHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
-                     RestHandlerCreator<RestViewHandler>::createNoData);
+                     RestHandlerCreator<RestViewHandler>::createNoData, {0, 1});
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
-                       RestHandlerCreator<RestLogHandler>::createNoData);
-    f.addPrefixHandler(
-        std::string{StaticStrings::ApiLogInternal},
-        RestHandlerCreator<RestLogInternalHandler>::createNoData);
+                       RestHandlerCreator<RestLogHandler>::createNoData,
+                       {0, 1});
+    f.addPrefixHandler(std::string{StaticStrings::ApiLogInternal},
+                       RestHandlerCreator<RestLogInternalHandler>::createNoData,
+                       {0, 1});
     f.addPrefixHandler(
         std::string{StaticStrings::ApiDocumentStateExternal},
-        RestHandlerCreator<RestDocumentStateHandler>::createNoData);
+        RestHandlerCreator<RestDocumentStateHandler>::createNoData, {0, 1});
   }
 
   // This is the only handler were we need to inject
@@ -716,10 +728,11 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      {0, 1}, queryRegistry);
 
   f.addPrefixHandler("/_api/aql-builtin",
-                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData,
+                     {0, 1});
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
@@ -727,44 +740,48 @@ void GeneralServerFeature::defineRemainingHandlers(
     // enabled
     f.addPrefixHandler(
         "/_api/aqlfunction",
-        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData, {0, 1});
   }
 #endif
 
   f.addPrefixHandler(
-      "/_api/dump",
-      RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
+      "/_api/dump", RestHandlerCreator<arangodb::RestDumpHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler("/_api/explain",
-                     RestHandlerCreator<RestExplainHandler>::createNoData);
+                     RestHandlerCreator<RestExplainHandler>::createNoData,
+                     {0, 1});
 
-  f.addPrefixHandler(
-      "/_api/key-generators",
-      RestHandlerCreator<RestKeyGeneratorsHandler>::createNoData);
+  f.addPrefixHandler("/_api/key-generators",
+                     RestHandlerCreator<RestKeyGeneratorsHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler("/_api/query",
-                     RestHandlerCreator<RestQueryHandler>::createNoData);
+                     RestHandlerCreator<RestQueryHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler("/_api/query-cache",
-                     RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+                     RestHandlerCreator<RestQueryCacheHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler(
       "/_api/query-plan-cache",
-      RestHandlerCreator<RestQueryPlanCacheHandler>::createNoData);
+      RestHandlerCreator<RestQueryPlanCacheHandler>::createNoData, {0, 1});
 
   f.addPrefixHandler("/_api/wal",
-                     RestHandlerCreator<RestWalAccessHandler>::createNoData);
+                     RestHandlerCreator<RestWalAccessHandler>::createNoData,
+                     {0, 1});
 
   if (agency.isEnabled()) {
     f.addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PATH,
         RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-        agency.agent());
+        {0, 1}, agency.agent());
 
     f.addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
                        RestHandlerCreator<RestAgencyPrivHandler>::createData<
                            consensus::Agent*>,
-                       agency.agent());
+                       {0, 1}, agency.agent());
   }
 
   if (cluster.isEnabled()) {
@@ -773,23 +790,25 @@ void GeneralServerFeature::defineRemainingHandlers(
         cluster.agencyCallbacksPath(),
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
-        cluster.agencyCallbackRegistry());
+        {0, 1}, cluster.agencyCallbackRegistry());
     // add "_api/cluster" handler
     f.addPrefixHandler(cluster.clusterRestPath(),
-                       RestHandlerCreator<RestClusterHandler>::createNoData);
+                       RestHandlerCreator<RestClusterHandler>::createNoData,
+                       {0, 1});
   }
   f.addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
       RestHandlerCreator<InternalRestTraverserHandler>::createData<
           aql::QueryRegistry*>,
-      queryRegistry);
+      {0, 1}, queryRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
   f.addHandler("/_admin/actions",
-               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+               RestHandlerCreator<MaintenanceRestHandler>::createNoData,
+               {0, 1});
 
   f.addHandler("/_admin/auth/reload",
-               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
+               RestHandlerCreator<RestAuthReloadHandler>::createNoData, {0, 1});
 
 #ifdef USE_V8
   if (server().hasFeature<V8DealerFeature>() &&
@@ -797,29 +816,32 @@ void GeneralServerFeature::defineRemainingHandlers(
     // the /_admin/execute API depends on V8. only enable it if JavaScript is
     // enabled
     f.addHandler("/_admin/execute",
-                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
+                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData,
+                 {0, 1});
   }
 #endif
 
   f.addHandler("/_admin/time",
-               RestHandlerCreator<RestTimeHandler>::createNoData);
+               RestHandlerCreator<RestTimeHandler>::createNoData, {0, 1});
 
   f.addHandler("/_admin/compact",
-               RestHandlerCreator<RestCompactHandler>::createNoData);
+               RestHandlerCreator<RestCompactHandler>::createNoData, {0, 1});
 
   f.addPrefixHandler("/_api/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     _jobManager.get());
+                     {0, 1}, _jobManager.get());
 
   f.addPrefixHandler("/_api/engine",
-                     RestHandlerCreator<RestEngineHandler>::createNoData);
+                     RestHandlerCreator<RestEngineHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler("/_api/transaction",
-                     RestHandlerCreator<RestTransactionHandler>::createNoData);
+                     RestHandlerCreator<RestTransactionHandler>::createNoData,
+                     {0, 1});
 
   f.addPrefixHandler("/_api/ttl",
-                     RestHandlerCreator<RestTtlHandler>::createNoData);
+                     RestHandlerCreator<RestTtlHandler>::createNoData, {0, 1});
 
   // ...........................................................................
   // /_admin
@@ -827,58 +849,67 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(
       "/_admin/async-registry",
-      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
-      "/_admin/activity-registry",
-      RestHandlerCreator<
-          arangodb::activity_registry::RestHandler>::createNoData);
+      "/_admin/activities",
+      RestHandlerCreator<arangodb::activities::RestHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/cluster",
-      RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/crashes",
       RestHandlerCreator<
-          arangodb::crash_handler::RestCrashHandler>::createNoData);
+          arangodb::crash_handler::RestCrashHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/deployment",
-      RestHandlerCreator<arangodb::RestAdminDeploymentHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminDeploymentHandler>::createNoData,
+      {0, 1});
 
   if (_options.supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
-                 RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+                 RestHandlerCreator<RestSupportInfoHandler>::createNoData,
+                 {0, 1});
 
     f.addHandler("/_admin/telemetrics",
-                 RestHandlerCreator<RestTelemetricsHandler>::createNoData);
+                 RestHandlerCreator<RestTelemetricsHandler>::createNoData,
+                 {0, 1});
   }
 
   if (_options.optionsApiPolicy != "disabled") {
     f.addHandler("/_admin/options",
-                 RestHandlerCreator<RestOptionsHandler>::createNoData);
+                 RestHandlerCreator<RestOptionsHandler>::createNoData, {0, 1});
     f.addHandler(
         "/_admin/options-description",
-        RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData);
+        RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData,
+        {0, 1});
   }
 
   f.addHandler("/_admin/system-report",
-               RestHandlerCreator<RestSystemReportHandler>::createNoData);
+               RestHandlerCreator<RestSystemReportHandler>::createNoData,
+               {0, 1});
 
   f.addPrefixHandler("/_admin/job",
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
-                     _jobManager.get());
+                     {0, 1}, _jobManager.get());
 
   // further admin handlers
   f.addPrefixHandler(
       "/_admin/database/target-version",
-      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, {0, 1});
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
@@ -886,52 +917,59 @@ void GeneralServerFeature::defineRemainingHandlers(
     // enabled
     f.addPrefixHandler(
         "/_admin/routing",
-        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData,
+        {0, 1});
   }
 #endif
 
   f.addHandler(
       "/_admin/supervisionState",
-      RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData, {0, 1});
 
   f.addPrefixHandler(
       "/_open/auth",
-      RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAuthHandler>::createNoData, {0, 1});
 
   f.addPrefixHandler(
       "/_admin/server",
-      RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData,
+      {0, 1});
 
   f.addHandler(
       "/_admin/statistics",
-      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/metrics",
-      RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData, {0, 1});
 
   f.addPrefixHandler(
       "/_admin/usage-metrics",
-      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData,
+      {0, 1});
 
   f.addHandler(
       "/_admin/statistics-description",
-      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/license",
-      RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData);
+      RestHandlerCreator<arangodb::RestLicenseHandler>::createNoData, {0, 1});
 
 #ifdef USE_ENTERPRISE
   HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
   if (backup.isAPIEnabled()) {
     f.addPrefixHandler(
         "/_admin/backup",
-        RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+        RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData,
+        {0, 1});
   }
 #endif
 
@@ -940,14 +978,18 @@ void GeneralServerFeature::defineRemainingHandlers(
   // ...........................................................................
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   f.addPrefixHandler("/_api/test",
-                     RestHandlerCreator<RestTestHandler>::createNoData);
+                     RestHandlerCreator<RestTestHandler>::createNoData, {0, 1});
 #endif
 
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
 
-  f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+  // Note that the catchall handler must be added for every API version
+  // (including the currently unused experimental one), or else requests to
+  // unknown endpoints (Foxx) might run into a crash.
+  f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData,
+                     {0, 1, 2});
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();

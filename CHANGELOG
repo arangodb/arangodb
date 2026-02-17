@@ -1,6 +1,44 @@
 devel
 -----
 
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.17.
+
+* Added activities API which shows currently on-going high-level processes in the
+  database and their possible dependencies on each other. Until now only a couple
+  of activities are implemented, e.g. a rest handler is called, an aql query is
+  executed, a collection or an index is created or a dump is on-going.
+
+* FE-972: fix sparse option not being sent in vector index creation payload.
+
+* COR-8: Added new coordinator-level metrics for shard replication state:
+  `arangodb_metadata_total_number_of_shards`,
+  `arangodb_metadata_number_follower_shards`,
+  `arangodb_metadata_number_out_of_sync_shards`,
+  `arangodb_metadata_number_not_replicated_shards`, and
+  `arangodb_metadata_shard_followers_out_of_sync_number`.
+
+* Add flag `supportsRBAC` to collections. This is in preparation for RBAC support.
+  Collections which have `supportsRBAC` set to `false` will not be subject to RBAC
+  policies and will always follow the old permission model.
+
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
+* Fixed BTS-2160: Introduced the proper log message when read-only state is reached
+  because of disk-usage and not because of an expired license.
+
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+  results when condition optimization is turned off.
+
+* Upgraded OpenSSL to 3.5.5.
+
 * FE-954: make view validation on UI less strict.
 
 * COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being

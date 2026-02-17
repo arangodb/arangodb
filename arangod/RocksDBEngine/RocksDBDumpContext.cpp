@@ -23,8 +23,8 @@
 
 #include "RocksDBDumpContext.h"
 
-#include "ActivityRegistry/activity.h"
-#include "ActivityRegistry/registry.h"
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -215,10 +215,10 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
-      _activity{"dump context",
+      _activity{"RocksDBDump",
                 {{"id", _id}, {"user", _user}, {"database", _database}}} {
-  auto guard = activity_registry::Registry::ScopedCurrentlyExecutingActivity(
-      _activity.id());
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(_activity.id());
 
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
@@ -363,7 +363,7 @@ bool RocksDBDumpContext::applyFilter(
   });
 }
 
-activity_registry::ActivityId RocksDBDumpContext::activityId() const noexcept {
+activities::ActivityId RocksDBDumpContext::activityId() const noexcept {
   return _activity.id();
 }
 

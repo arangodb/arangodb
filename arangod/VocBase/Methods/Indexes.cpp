@@ -23,7 +23,7 @@
 
 #include "Indexes.h"
 
-#include "ActivityRegistry/activity.h"
+#include "Activities/activity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryPlanCache.h"
 #include "Basics/ReadLocker.h"
@@ -468,8 +468,8 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     LogicalCollection& collection, VPackSlice input, bool create,
     VPackBuilder& output, std::shared_ptr<ProgressTracker> progress,
     Replication2Callback replicationCb) {
-  activity_registry::Activity ensureIndexActivity(
-      "ensureIndex",
+  activities::Activity ensureIndexActivity(
+      "EnsureIndex",
       {{"collection", collection.name()}, {"parameters", input.toJson()}});
 
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
