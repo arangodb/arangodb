@@ -25,13 +25,9 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var arangosh = require('@arangodb/arangosh');
-
-var ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
 
 var sq = require('@arangodb/simple-query-common');
 
-var GeneralArrayCursor = sq.GeneralArra
+var GeneralArrayCursor = sq.GeneralArray;
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
-

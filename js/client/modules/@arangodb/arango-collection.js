@@ -740,13 +740,13 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
 };
 
 ArangoCollection.prototype.all = function () {
-  return db._query("FOR d IN @@collection RETURN d", { '@collection': this.name() });
+  return require('internal').db._query("FOR d IN @@collection RETURN d", { '@collection': this.name() });
 };
 
 ArangoCollection.prototype.byExample = function (example) {
   let query = buildExampleQuery(this.name(), example, 0, 0);
   query.query += ' RETURN doc';
-  return db._query(query);
+  return require('internal').db._query(query);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
