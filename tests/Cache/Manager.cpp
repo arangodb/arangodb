@@ -31,6 +31,7 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
@@ -64,7 +65,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -75,7 +76,8 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
     auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(0, beforeStats.activeTables);
 
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_NE(nullptr, cache);
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
@@ -96,7 +98,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_reusage) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -107,7 +109,8 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_reusage) {
     auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(0, beforeStats.activeTables);
 
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_NE(nullptr, cache);
 
     manager.destroyCache(std::move(cache));
@@ -117,7 +120,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_reusage) {
     ASSERT_EQ(1, afterStats.spareTables);
     ASSERT_LT(beforeStats.globalAllocation, afterStats.globalAllocation);
 
-    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
 
     auto afterStats2 = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(1, afterStats2.activeTables);
@@ -150,7 +153,7 @@ TEST_F(CacheManagerTest,
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -164,11 +167,12 @@ TEST_F(CacheManagerTest,
     auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail1");
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_EQ(nullptr, cache);
 
     TRI_ClearFailurePointsDebugging();
-    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_NE(nullptr, cache);
 
     manager.destroyCache(std::move(cache));
@@ -185,7 +189,7 @@ TEST_F(CacheManagerTest,
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail2");
     ASSERT_ANY_THROW(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
 
     manager.freeUnusedTablesForTesting();
 
@@ -199,7 +203,7 @@ TEST_F(CacheManagerTest,
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail3");
     ASSERT_ANY_THROW(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
 
     manager.freeUnusedTablesForTesting();
 
@@ -218,7 +222,7 @@ TEST_F(CacheManagerTest,
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -232,7 +236,8 @@ TEST_F(CacheManagerTest,
     auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail1");
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_EQ(nullptr, cache);
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
@@ -246,7 +251,7 @@ TEST_F(CacheManagerTest,
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail2");
     ASSERT_ANY_THROW(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(beforeStats.globalAllocation, afterStats.globalAllocation);
@@ -259,7 +264,7 @@ TEST_F(CacheManagerTest,
 
     TRI_AddFailurePointDebugging("CacheAllocation::fail3");
     ASSERT_ANY_THROW(
-        manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, ""));
 
     auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(beforeStats.globalAllocation, afterStats.globalAllocation);
@@ -274,7 +279,7 @@ TEST_F(CacheManagerTest, test_create_and_destroy_caches) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = requestLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -287,7 +292,8 @@ TEST_F(CacheManagerTest, test_create_and_destroy_caches) {
     auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
     ASSERT_EQ(i, beforeStats.activeTables);
 
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     ASSERT_NE(nullptr, cache);
     ASSERT_GT(cache->size(),
               40 * 1024);  // size of each cache is about 40kb without stats
@@ -338,9 +344,10 @@ TEST_F(CacheManagerTest, test_manager_shutdown) {
   co.cacheSize = requestLimit;
 
   {
-    Manager manager(sharedPRNG, postFn, co);
+    Manager manager(server.server(), sharedPRNG, postFn, co);
 
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
     // now only manager owns cache pointer
     cache.reset();
 
@@ -358,9 +365,10 @@ TEST_F(CacheManagerTest, test_manager_shutdown_with_data_and_stats) {
   co.cacheSize = requestLimit;
 
   {
-    Manager manager(sharedPRNG, postFn, co);
+    Manager manager(server.server(), sharedPRNG, postFn, co);
 
-    auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+    auto cache =
+        manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
 
     std::string key;
     std::string value;
@@ -397,7 +405,7 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = requestLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -407,7 +415,7 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
   CacheOptions co2;
   co2.cacheSize = bigRequestLimit;
-  Manager bigManager(sharedPRNG, nullptr, co2);
+  Manager bigManager(server.server(), sharedPRNG, nullptr, co2);
 
   ASSERT_EQ(bigRequestLimit, bigManager.globalLimit());
 
@@ -423,7 +431,7 @@ TEST_F(CacheManagerTest, test_memory_usage_for_data) {
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
 
   ASSERT_EQ(requestLimit, manager.globalLimit());
 
@@ -439,7 +447,8 @@ TEST_F(CacheManagerTest, test_memory_usage_for_data) {
 
   auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
 
-  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
+  auto cache =
+      manager.createCache<BinaryKeyHasher>(CacheType::Transactional, "");
 
   // clear failure point
   guard.fire();
@@ -502,13 +511,13 @@ TEST_F(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   std::size_t cacheCount = 4;
   std::size_t threadCount = 4;
   std::vector<std::shared_ptr<Cache>> caches;
   for (std::size_t i = 0; i < cacheCount; i++) {
     auto res = manager.createCache<BinaryKeyHasher>(
-        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
+        (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional, "");
     TRI_ASSERT(res);
     caches.emplace_back(res);
   }
@@ -617,7 +626,7 @@ TEST_F(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024ULL * 1024ULL * 1024ULL;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::uint64_t operationCount = 4ULL * 1024ULL;
 
@@ -630,7 +639,7 @@ TEST_F(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
       switch (r) {
         case 0: {
           auto res = manager.createCache<BinaryKeyHasher>(
-              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
+              (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional, "");
           if (res) {
             caches.emplace(res);
           }

@@ -2087,7 +2087,7 @@ void RocksDBCollection::setupCache() const {
     TRI_ASSERT(_cacheManager->options().maxCacheValueSize > 0);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
     cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
-        cache::CacheType::Transactional);
+      cache::CacheType::Transactional, _logicalCollection.name());
     std::atomic_store_explicit(&_cache, std::move(cache),
                                std::memory_order_relaxed);
   }
