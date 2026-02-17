@@ -31,6 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 
+#include <Basics/StaticStrings.h>
+
 namespace arangodb {
 
 constexpr char const* BAD_PARAMS_CREATE =
@@ -55,6 +57,7 @@ struct BackupMeta {
   bool _isAvailable;
   unsigned int _nrPiecesPresent;
   bool _countIncludesFilesOnly;
+  std::unordered_map<std::string, result::Error> _errors;
 
   static constexpr const char* ID = "id";
   static constexpr const char* VERSION = "version";
@@ -98,6 +101,17 @@ struct BackupMeta {
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
       builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
+      if (!_errors.empty()) {
+        VPackObjectBuilder errorBuilder(&builder, StaticStrings::Error);
+        for (auto const& [server, error] : _errors) {
+          VPackObjectBuilder errorBuilder2(&builder, server);
+          builder.add(arangodb::StaticStrings::ErrorMessage,
+                      VPackValue(error.errorMessage()));
+          builder.add(arangodb::StaticStrings::ErrorNum,
+                      VPackValue(error.errorNumber()));
+        }
+        builder.close();
+      }
     }
   }
 
@@ -138,6 +152,19 @@ struct BackupMeta {
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
     }
+  }
+
+  static auto fromError(std::string id, std::string server, VPackSlice slice)
+      -> BackupMeta {
+    BackupMeta meta{};
+    meta._id = std::move(id);
+    meta._isAvailable = false;
+    meta._errors.emplace(
+        std::move(server),
+        result::Error(
+            ErrorCode{slice.get(StaticStrings::ErrorNum).getNumber<int>()},
+            slice.get(StaticStrings::ErrorMessage).stringView()));
+    return meta;
   }
 
   BackupMeta(std::string const& id, std::string const& version,
