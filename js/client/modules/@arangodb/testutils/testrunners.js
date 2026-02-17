@@ -144,7 +144,7 @@ class runOnArangodRunner extends testRunnerBase{
       let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
       httpOptions.method = 'POST';
 
-      httpOptions.timeout = this.options.oneTestTimeout;
+      httpOptions.timeout = this.options.oneRemoteTestTimeout;
       if (this.options.isSan) {
         httpOptions.timeout *= 2;
       }
@@ -211,12 +211,13 @@ class runInArangoshRunner extends testRunnerBase {
   runOneTest(file) {
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
+    args['server.connection-timeout'] = this.options.httpTimeout;
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
     args['javascript.unit-test-filter'] = this.options.testCase;
 
-    args['javascript.execution-deadline'] = this.options.oneTestTimeout;
+    args['javascript.execution-deadline'] = this.options.oneRemoteTestTimeout;
 
     if (this.options.forceJson) {
       args['server.force-json'] = true;
@@ -275,6 +276,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
 
     try {
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      arango.timeout(this.options.httpTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
