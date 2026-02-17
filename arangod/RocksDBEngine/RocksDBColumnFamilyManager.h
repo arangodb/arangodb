@@ -48,7 +48,7 @@ struct RocksDBColumnFamilyManager {
     EdgeIndex = 3,
     VPackIndex = 4,  // persistent, "skiplist", "hash"
     GeoIndex = 5,
-    FulltextIndex = 6,  // removed in 4.0
+    FulltextIndex = 6,
     ReplicatedLogs = 7,
     MdiIndex = 8,
     MdiVPackIndex = 9,
@@ -76,6 +76,8 @@ struct RocksDBColumnFamilyManager {
 
   /// We purposefully cut off the handles still set to nullptr, since they were
   /// not initialized
+  /// TODO find better solution that propagates changes to how many column
+  /// families there are on start time
   static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
 
  private:

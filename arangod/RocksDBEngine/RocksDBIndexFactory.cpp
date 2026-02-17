@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
@@ -104,6 +105,35 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
         velocypack::Value(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
 
     return TRI_ERROR_INTERNAL;
+  }
+};
+
+struct FulltextIndexFactory : public DefaultIndexFactory {
+  explicit FulltextIndexFactory(application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
+
+  std::shared_ptr<Index> instantiate(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<RocksDBFulltextIndex>(id, collection, definition);
+  }
+
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(
+                       Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(StaticStrings::ObjectId,
+                     velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
+                                                  isCreation);
   }
 };
 
@@ -476,70 +506,13 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
-/// @brief Deprecated fulltext index stub - only exists to allow loading
-/// and dropping of legacy fulltext indexes during upgrade from pre-4.0.
-/// Fulltext indexes are no longer supported since ArangoDB 4.0.
-class DeprecatedFulltextIndex final : public RocksDBVPackIndex {
- public:
-  DeprecatedFulltextIndex(IndexId iid, LogicalCollection& coll,
-                          velocypack::Slice info)
-      : RocksDBVPackIndex(iid, coll, info) {}
-
-  Index::IndexType type() const override {
-    return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
-  }
-
-  char const* typeName() const override { return "fulltext"; }
-
-  bool isSorted() const override { return false; }
-};
-
-/// @brief Deprecated fulltext index factory - only exists to allow loading
-/// and dropping of legacy fulltext indexes during upgrade from pre-4.0.
-/// Fulltext indexes are no longer supported since ArangoDB 4.0.
-struct DeprecatedFulltextIndexFactory : public DefaultIndexFactory {
-  explicit DeprecatedFulltextIndexFactory(
-      application_features::ApplicationServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
-
-  std::shared_ptr<Index> instantiate(
-      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
-      bool /*isClusterConstructor*/) const override {
-    // Create a minimal fulltext index stub as a placeholder.
-    // This allows the index to be loaded and dropped during upgrade.
-    LOG_TOPIC("d4e3e", WARN, Logger::ENGINES)
-        << "loading deprecated fulltext index '" << id.id()
-        << "' - fulltext indexes are no longer supported since ArangoDB 4.0 "
-           "and will be removed during upgrade";
-    return std::make_shared<DeprecatedFulltextIndex>(id, collection,
-                                                     definition);
-  }
-
-  virtual Result normalize(velocypack::Builder& normalized,
-                           velocypack::Slice /*definition*/, bool isCreation,
-                           TRI_vocbase_t const& /*vocbase*/) const override {
-    if (isCreation) {
-      // Creating new fulltext indexes is forbidden since 4.0
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "fulltext indexes are no longer supported since ArangoDB "
-                    "4.0. Please use ArangoSearch instead.");
-    }
-
-    TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(StaticStrings::IndexType,
-                   velocypack::Value(
-                       Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
-
-    return TRI_ERROR_INTERNAL;
-  }
-};
-
 }  // namespace
 
 RocksDBIndexFactory::RocksDBIndexFactory(
     application_features::ApplicationServer& server)
     : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory(server);
+  static const FulltextIndexFactory fulltextIndexFactory(server);
   static const GeoIndexFactory geoIndexFactory(server);
   static const Geo1IndexFactory geo1IndexFactory(server);
   static const Geo2IndexFactory geo2IndexFactory(server);
@@ -564,11 +537,9 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
-  static const DeprecatedFulltextIndexFactory deprecatedFulltextIndexFactory(
-      server);
 
   emplace("edge", edgeIndexFactory);
-  emplace("fulltext", deprecatedFulltextIndexFactory);
+  emplace("fulltext", fulltextIndexFactory);
   emplace("geo", geoIndexFactory);
   emplace("geo1", geo1IndexFactory);
   emplace("geo2", geo2IndexFactory);
