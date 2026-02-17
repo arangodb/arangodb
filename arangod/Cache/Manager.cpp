@@ -78,7 +78,6 @@ namespace {
 template<typename T>
 T getMetric(std::string_view name) {
   T metric;
-  metric.reserveSpaceForLabels(4 + name.size());
   metric.addLabel("name", name);
   return metric;
 }

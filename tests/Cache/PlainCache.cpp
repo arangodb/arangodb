@@ -56,11 +56,11 @@ TEST_F(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache1 =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 256 * 1024);
-  auto cache2 =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, 512 * 1024);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache1 = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "",
+                                                     false, 256 * 1024);
+  auto cache2 = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "",
+                                                     false, 512 * 1024);
 
   ASSERT_EQ(0, cache1->usage());
   ASSERT_TRUE(256 * 1024 >= cache1->size());
@@ -76,9 +76,9 @@ TEST_F(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "", false,
+                                                    cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -130,9 +130,9 @@ TEST_F(CachePlainCacheTest, test_that_removal_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, false, cacheLimit);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "", false,
+                                                    cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -200,8 +200,8 @@ TEST_F(
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "");
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
   for (std::uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
@@ -230,10 +230,10 @@ TEST_F(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain);
+      manager.createCache<BinaryKeyHasher>(CacheType::Plain, "");
 
   std::uint64_t chunkSize = 16 * 1024 * 1024;
   std::uint64_t initialInserts = 4 * 1024 * 1024;
@@ -330,13 +330,13 @@ TEST_F(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
 
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
-  auto cacheMiss =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
-  auto cacheHit =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
-  auto cacheMixed =
-      manager.createCache<BinaryKeyHasher>(CacheType::Plain, true, cacheLimit);
+  Manager manager(server.server(), sharedPRNG, postFn, co);
+  auto cacheMiss = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "",
+                                                        true, cacheLimit);
+  auto cacheHit = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "",
+                                                       true, cacheLimit);
+  auto cacheMixed = manager.createCache<BinaryKeyHasher>(CacheType::Plain, "",
+                                                         true, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
