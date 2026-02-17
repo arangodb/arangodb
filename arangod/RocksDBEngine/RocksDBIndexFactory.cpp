@@ -121,16 +121,16 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
   virtual Result normalize(velocypack::Builder& normalized,
                            velocypack::Slice definition, bool isCreation,
                            TRI_vocbase_t const& /*vocbase*/) const override {
+    if (isCreation) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "fulltext indexes are no longer supported since ArangoDB "
+                    "4.0. Please use ArangoSearch instead.");
+    }
+
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(StaticStrings::IndexType,
                    velocypack::Value(
                        Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
-
-    if (isCreation && !ServerState::instance()->isCoordinator() &&
-        !definition.hasKey(StaticStrings::ObjectId)) {
-      normalized.add(StaticStrings::ObjectId,
-                     velocypack::Value(std::to_string(TRI_NewTickServer())));
-    }
 
     return IndexFactory::enhanceJsonIndexFulltext(definition, normalized,
                                                   isCreation);

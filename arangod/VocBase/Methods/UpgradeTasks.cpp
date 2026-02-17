@@ -574,19 +574,24 @@ Result UpgradeTasks::dropPregelQueriesCollection(
 
 Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
                                          velocypack::Slice /*upgradeParams*/) {
-  auto collections = vocbase.collections(false);
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
 
-  // First, drop all fulltext indexes from all collections
+  // Drop all fulltext indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
   for (auto const& collection : collections) {
     auto indexes = collection->getPhysical()->getReadyIndexes();
     for (auto const& index : indexes) {
       if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-        LOG_TOPIC("d4e3f", INFO, Logger::STARTUP)
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
             << "Dropping obsolete fulltext index '" << index->id().id()
             << "' from collection '" << collection->name()
             << "' - fulltext indexes are no longer supported";
 
-        auto res = collection->dropIndex(index->id());
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
 
         if (res.fail()) {
           LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
