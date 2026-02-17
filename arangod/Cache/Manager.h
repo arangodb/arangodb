@@ -116,9 +116,8 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(application_features::ApplicationServer& server,
-          SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-          CacheOptions const& options);
+  Manager(ArangodServer& server, SharedPRNGFeature& sharedPRNG,
+          PostFn schedulerPost, CacheOptions const& options);
 
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;

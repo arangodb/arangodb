@@ -98,9 +98,8 @@ std::uint64_t const Manager::minCacheAllocation =
              TransactionalCache<BinaryKeyHasher>::allocationSize()) +
     kCacheRecordOverhead;
 
-Manager::Manager(application_features::ApplicationServer& server,
-                 SharedPRNGFeature& sharedPRNG, PostFn schedulerPost,
-                 CacheOptions const& options)
+Manager::Manager(ArangodServer& server, SharedPRNGFeature& sharedPRNG,
+                 PostFn schedulerPost, CacheOptions const& options)
     : _sharedPRNG(sharedPRNG),
       _options(options),
       _shutdown(false),
