@@ -26,7 +26,6 @@
 #include "Basics/Result.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -34,7 +33,6 @@
 #include <atomic>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -90,7 +88,8 @@ class ShardingInfo {
   /// @brief validates the number of shards and the replication factor
   /// in slice against the minimum and maximum configured values
   static Result validateShardsAndReplicationFactor(
-      arangodb::velocypack::Slice slice, ArangodServer const& server,
+      arangodb::velocypack::Slice slice,
+      application_features::ApplicationServer const& server,
       bool enforceReplicationFactor);
 
   bool usesDefaultShardKeys() const noexcept;
@@ -141,8 +140,7 @@ class ShardingInfo {
   std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)
-  // Writes will be disallowed if we know we cannot fulfill
-  // minReplicationFactor.
+  // Writes will be disallowed if we know we cannot fulfill writeConcern.
   std::atomic<size_t> _writeConcern;
 
   // @brief name of other collection this collection's shards should be

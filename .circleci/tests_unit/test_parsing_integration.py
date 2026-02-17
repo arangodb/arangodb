@@ -11,7 +11,7 @@ from src.config_lib import TestDefinitionFile, DeploymentType
 
 
 TESTS_DIR = Path(__file__).parent.parent.parent / "tests"
-MAIN_TEST_DEFINITIONS = "test-definitions.yml"
+MAIN_TEST_DEFINITIONS = "tests.yml"
 
 
 class TestParsingIntegration:

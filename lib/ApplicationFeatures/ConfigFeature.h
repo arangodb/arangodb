@@ -26,6 +26,9 @@
 #include <memory>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
 #include "Assertions/ProdAssert.h"
 
@@ -42,12 +45,14 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Config"; }
 
-  template<typename Server>
-  ConfigFeature(Server& server, std::string const& progname,
+  ConfigFeature(application_features::ApplicationServer& server,
+                std::string const& progname,
                 std::string const& configFilename = "")
       : application_features::ApplicationFeature{server, *this},
         _version{[&server]() {
-          return &server.template getFeature<VersionFeature>();
+          return server.hasFeature<VersionFeature>()
+                     ? &server.getFeature<VersionFeature>()
+                     : nullptr;
         }()} {
     ADB_PROD_ASSERT(_version != nullptr);
     _options.file = configFilename;

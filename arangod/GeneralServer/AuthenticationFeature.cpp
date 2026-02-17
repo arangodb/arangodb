@@ -48,8 +48,9 @@ namespace arangodb {
 
 std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(Server& server)
-    : ArangodFeature{server, *this},
+AuthenticationFeature::AuthenticationFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _userManager(nullptr),
       _authCache(nullptr) {
   setOptional(false);

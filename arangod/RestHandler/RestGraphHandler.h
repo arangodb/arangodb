@@ -43,8 +43,8 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   enum class VertexDefinitionAction { CREATE, REMOVE };
 
  public:
-  RestGraphHandler(ArangodServer& server, GeneralRequest* request,
-                   GeneralResponse* response);
+  RestGraphHandler(application_features::ApplicationServer& server,
+                   GeneralRequest* request, GeneralResponse* response);
 
   ~RestGraphHandler() = default;
 

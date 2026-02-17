@@ -24,10 +24,10 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/AstNode.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
@@ -39,6 +39,7 @@
 #include <filesystem>
 
 namespace arangodb {
+class DatabasePathFeature;
 struct IndexTypeFactory;
 
 namespace aql {
@@ -101,11 +102,11 @@ void cleanupDatabase(TRI_vocbase_t& database);
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchFeature final : public ArangodFeature {
+class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
-  explicit IResearchFeature(Server& server);
+  explicit IResearchFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;

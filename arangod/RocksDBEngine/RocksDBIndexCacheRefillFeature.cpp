@@ -52,11 +52,15 @@ using namespace arangodb;
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
 
-RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _databaseFeature(server.getFeature<DatabaseFeature>()),
-      _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_full_index_refills_total{})),
+RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+    metrics::MetricsFeature& metricsFeature)
+    : application_features::ApplicationFeature{server, *this},
+      _databaseFeature(databaseFeature),
+      _clusterFeature(clusterFeature),
+      _metricsFeature(metricsFeature),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsFeature)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -183,7 +187,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      server(), _options.maxCapacity);
+      _databaseFeature, _metricsFeature, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -248,7 +252,8 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // get names of all databases
-  for (auto const& database : methods::Databases::list(server(), "")) {
+  for (auto const& database :
+       methods::Databases::list(_databaseFeature, _clusterFeature, "")) {
     try {
       DatabaseGuard guard(_databaseFeature, database);
 
@@ -346,9 +351,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
 
 Result RocksDBIndexCacheRefillFeature::warmupIndex(
     std::string const& database, std::string const& collection, IndexId iid) {
-  auto& df = server().getFeature<DatabaseFeature>();
-
-  DatabaseGuard guard(df, database);
+  DatabaseGuard guard(_databaseFeature, database);
 
   auto c =
       guard.database().useCollection(collection, /*checkPermissions*/ false);
@@ -375,4 +378,9 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
   }
 
   return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+}
+
+metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
+    metrics::MetricsFeature& metrics) {
+  return metrics.add(rocksdb_cache_full_index_refills_total{});
 }

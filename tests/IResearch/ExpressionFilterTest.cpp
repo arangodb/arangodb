@@ -66,6 +66,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -79,7 +80,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -272,7 +272,7 @@ struct IResearchExpressionFilterTest
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(

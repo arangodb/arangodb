@@ -23,6 +23,7 @@
 
 #include "RestDumpHandler.h"
 
+#include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -46,8 +47,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestDumpHandler::RestDumpHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
   if (ServerState::instance()->isDBServer() ||
@@ -166,8 +168,8 @@ void RestDumpHandler::handleCommandDumpStart() {
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
-  auto guard = _dumpManager->createContext(std::move(opts), user, database,
-                                           useVPack, _activity->id());
+  auto guard =
+      _dumpManager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -198,8 +200,7 @@ void RestDumpHandler::handleCommandDumpNext() {
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
 
-  activity_registry::Activity fetch{
-      "dump context fetching", {{"id", id}}, _activity->id()};
+  activities::Activity fetch{"dump context fetching", {{"id", id}}};
 
   context->extendLifetime();
 
@@ -217,7 +218,6 @@ void RestDumpHandler::handleCommandDumpNext() {
     } else {
       firstFetch.store(false);
     }
-    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
 
   if (batch == nullptr) {

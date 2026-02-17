@@ -1621,10 +1621,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     *p++ = 0xf3;  // custom type for _id
 
     if (_methods.state()->isDBServer() && !_collection.system()) {
-      // db server in cluster, note: the local collections _statistics,
-      // _statisticsRaw and _statistics15 (which are the only system
-      // collections)
-      // must not be treated as shards but as local collections
+      // db server in cluster
       encoding::storeNumber<uint64_t>(p, _collection.planId().id(),
                                       sizeof(uint64_t));
     } else {
@@ -2468,7 +2465,7 @@ Result Methods::determineReplication2TypeAndFollowers(
 
       // Fetch replicated log participants
       auto [participantsConfigQuery, raftIndex] = agencyCache.get(
-          fmt::format("Plan/ReplicatedLogs/{}/{}/participantsConfig",
+          std::format("Plan/ReplicatedLogs/{}/{}/participantsConfig",
                       vocbase.name(), stateId));
       if (participantsConfigQuery->isEmpty()) {
         LOG_TOPIC("90e43", DEBUG, Logger::REPLICATED_STATE)
@@ -3605,7 +3602,7 @@ Future<Result> Methods::replicateOperations(
   if (vocbasePtr == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-        fmt::format("Database {} deleted during transaction {}",
+        std::format("Database {} deleted during transaction {}",
                     vocbase().name(), tid().id()));
   }
   auto cb = [followerList, startTimeReplication, opName, collection, count,

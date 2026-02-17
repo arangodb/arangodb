@@ -63,7 +63,7 @@ auto rewriteStatusErrorMessage(inspection::Status const& status) -> Result {
   return Result{TRI_ERROR_BAD_PARAMETER,
                 status.error() + (status.path().empty()
                                       ? ""
-                                      : fmt::format(" (on attribute \"{}\")",
+                                      : std::format(" (on attribute \"{}\")",
                                                     status.path()))};
 }
 
@@ -100,7 +100,7 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
   return Result{TRI_ERROR_BAD_PARAMETER,
                 status.error() + (status.path().empty()
                                       ? ""
-                                      : fmt::format(" (on attribute \"{}\")",
+                                      : std::format(" (on attribute \"{}\")",
                                                     status.path()))};
 }
 
@@ -173,9 +173,8 @@ bool isEdgeCollection(VPackSlice fullBody) {
 #endif
 
 static std::unordered_set<std::string_view> knownSystemCollections = {
-    "_analyzers",  "_appbundles",   "_apps",         "_aqlfunctions",
-    "_frontend",   "_graphs",       "_jobs",         "_queues",
-    "_statistics", "_statistics15", "_statisticsRaw"};
+    "_analyzers", "_appbundles", "_apps", "_aqlfunctions",
+    "_frontend",  "_graphs",     "_jobs", "_queues"};
 
 bool isKnownSystemCollection(std::string_view name) {
   return knownSystemCollections.contains(name);

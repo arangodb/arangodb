@@ -29,13 +29,13 @@
 #include <string>
 #include <string_view>
 
+#include "Basics/RebootId.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
-#include "Cluster/ClusterTypes.h"
-#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+class ArangodServer;
 class AgencyComm;
 class Result;
 

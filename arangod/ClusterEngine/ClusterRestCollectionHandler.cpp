@@ -31,7 +31,8 @@
 using namespace arangodb;
 
 ClusterRestCollectionHandler::ClusterRestCollectionHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
 futures::Future<Result> ClusterRestCollectionHandler::handleExtraCommandPut(

@@ -75,7 +75,8 @@ class Context;
 namespace iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    ArangodServer& server, std::span<std::string const> skipRecoveryItems)
+    application_features::ApplicationServer& server,
+    std::span<std::string const> skipRecoveryItems)
     : _server{&server} {
   for (auto const& item : skipRecoveryItems) {
     if (item == "all") {

@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Exceptions.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -40,7 +39,7 @@ class TestFeatureA;
 class TestFeatureB;
 
 using TestApplicationServer = ApplicationServer;
-using TestApplicationFeature = ApplicationFeatureT<TestApplicationServer>;
+using TestApplicationFeature = ApplicationFeature;
 
 class TestFeatureA : public TestApplicationFeature {
  public:

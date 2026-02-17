@@ -30,17 +30,15 @@
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FeatureFlags.h"
-#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -62,6 +60,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
@@ -95,7 +94,8 @@ void waitUnique(std::shared_ptr<T> const& ptr) {
   std::atomic_thread_fence(std::memory_order_acquire);
 }
 
-CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
+CreateDatabaseInfo createExpressionVocbaseInfo(
+    application_features::ApplicationServer& server) {
   CreateDatabaseInfo info{server, ExecContext::current()};
   // name does not matter. We just need validity check to pass.
   auto r = info.load("Z", std::numeric_limits<uint64_t>::max());
@@ -116,10 +116,10 @@ CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
-DatabaseManagerThread::DatabaseManagerThread(Server& server,
-                                             DatabaseFeature& databaseFeature,
-                                             StorageEngine& engine)
-    : ServerThread<ArangodServer>(server, "DatabaseManager"),
+DatabaseManagerThread::DatabaseManagerThread(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, StorageEngine& engine)
+    : ServerThread(server, "DatabaseManager"),
       _databaseFeature(databaseFeature),
       _engine(engine) {}
 
@@ -253,8 +253,9 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, *this} {
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -346,12 +347,6 @@ additional databases can be created in the deployment. In order to create additi
 databases, other databases need to be removed first.")")
       .setIntroducedIn(31200);
 
-  // the following option was obsoleted in 3.9
-  options->addObsoleteOption(
-      "--database.old-system-collections",
-      "Create and use deprecated system collection (_modules, _fishbowl).",
-      false);
-
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
       "--database.throw-collection-not-loaded-error",
@@ -395,7 +390,8 @@ void DatabaseFeature::validateOptions(
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
+void DatabaseFeature::initCalculationVocbase(
+    application_features::ApplicationServer& server) {
   auto& df = server.getFeature<DatabaseFeature>();
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       createExpressionVocbaseInfo(server), df.versionTracker(),
@@ -442,7 +438,7 @@ void DatabaseFeature::start() {
        ServerState::instance()->isAgent()) &&
       _options.performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
-        server(), server().getFeature<metrics::MetricsFeature>(),
+        server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());
     if (!_ioHeartbeatThread->start()) {
       LOG_TOPIC("7eb07", FATAL, Logger::FIXME)

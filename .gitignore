@@ -28,7 +28,6 @@ build-presets
 *.diff
 *.patch
 !js/node/patches/*.patch
-!js/apps/system/_admin/aardvark/APP/react/patches/*.patch
 *.lnk
 Thumbs.db
 
@@ -96,10 +95,6 @@ test.cpp.txt
 .sass-cache
 .sass-cache/
 
-js/apps/*
-!js/apps/system/
-js/apps/system/_admin/aardvark/APP/react/node_modules/
-js/apps/system/_admin/aardvark/APP/react/build/
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
 !js/node/node_modules/**/LICENSE.md
@@ -124,7 +119,6 @@ npm-debug.log
 /log-*
 data-*
 databases
-!js/apps/system/_admin/aardvark/APP/react/src/views/databases
 cluster-init
 
 datafile-*.db

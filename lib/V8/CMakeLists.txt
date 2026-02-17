@@ -25,7 +25,6 @@ target_link_libraries(arango_v8
   absl::flat_hash_set
   absl::synchronization
   arango_async
-  fmt::fmt
   v8_interface
   velocypack
   immer
@@ -39,6 +38,6 @@ target_include_directories(arango_v8
   ${ICU64_INCLUDE_DIR})
 
 # Enterprise
-if (USE_ENTERPRISE)
+if(USE_ENTERPRISE)
   target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()

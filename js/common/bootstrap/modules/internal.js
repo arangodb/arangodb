@@ -1841,7 +1841,7 @@ global.DEFINE_MODULE('internal', (function () {
     require('internal').stopColorPrint();
   };
   
-  [ "arangobackup", "arangobench", "arangod", "arangodb", "arangodbtests",
+  [ "arangobackup", "arangod", "arangodb", "arangodbtests",
     "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
     "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
     global[executableName] = () => {

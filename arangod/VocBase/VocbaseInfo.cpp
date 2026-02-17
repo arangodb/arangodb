@@ -41,8 +41,8 @@
 
 namespace arangodb {
 
-CreateDatabaseInfo::CreateDatabaseInfo(ArangodServer& server,
-                                       ExecContext const& context)
+CreateDatabaseInfo::CreateDatabaseInfo(
+    application_features::ApplicationServer& server, ExecContext const& context)
     : _server(server), _context(context) {}
 
 ShardingPrototype CreateDatabaseInfo::shardingPrototype() const {
@@ -152,7 +152,9 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-ArangodServer& CreateDatabaseInfo::server() const { return _server; }
+application_features::ApplicationServer& CreateDatabaseInfo::server() const {
+  return _server;
+}
 
 Result CreateDatabaseInfo::extractUsers(VPackSlice users) {
   if (users.isNone() || users.isNull()) {
@@ -304,12 +306,11 @@ Result CreateDatabaseInfo::checkOptions() {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
-                                       ArangodServer& server,
-                                       ExecContext const& execContext,
-                                       std::string const& name,
-                                       std::uint64_t id,
-                                       replication::Version version)
+CreateDatabaseInfo::CreateDatabaseInfo(
+    CreateDatabaseInfo::MockConstruct,
+    application_features::ApplicationServer& server,
+    ExecContext const& execContext, std::string const& name, std::uint64_t id,
+    replication::Version version)
     : _server(server),
       _context(execContext),
       _id(id),
@@ -318,8 +319,9 @@ CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
       _valid(true) {}
 #endif
 
-VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
-                                 bool strictValidation) {
+VocbaseOptions getVocbaseOptions(
+    application_features::ApplicationServer& server, VPackSlice options,
+    bool strictValidation) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -405,7 +407,6 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
   }
 
   {
-    // simon: new API in 3.6 no need to check legacy "minReplicationFactor"
     VPackSlice writeConcernSlice = options.get(StaticStrings::WriteConcern);
     bool isNumber = (writeConcernSlice.isNumber() &&
                      writeConcernSlice.getNumber<int>() > 0);

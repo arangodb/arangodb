@@ -1,5 +1,7 @@
 4.0
 ---
+* Remove _fishBowl collection.
+
 * Remove arangodb/foxx related code.
 
 * Remove PUT method in /_api/cursor/<cursor-id>.
@@ -19,11 +21,16 @@
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
 
+* Remove arangobench.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
+
+* Remove `minReplicationFactor` collection property, which is superseded by
+  `writeConcern`.
 
 * Make `vector-index` flag obsolete.
 
@@ -39,6 +46,20 @@
 
 devel
 -----
+
+* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.16.
+
+* Upgraded OpenSSL to 3.5.5.
+
+* FE-954: make view validation on UI less strict.
+
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
+* FE-937: fix distribution tab getting stuck on loading.
 
 * Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
   option on collections with computed values.

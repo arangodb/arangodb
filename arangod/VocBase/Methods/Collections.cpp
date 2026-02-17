@@ -174,8 +174,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
   // All collections on a single server should be local collections.
   // A Coordinator should never have local collections.
   // On an Agent, all collections should be local collections.
-  // On a DBServer, the only local collections should be system collections
-  // (like _statisticsRaw). Non-local (system or not) collections are shards,
+  // On a DBServer, the only local collections should be system collections.
+  // Non-local (system or not) collections are shards,
   // so don't have system-names, even if they are system collections!
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_SINGLE:
@@ -585,8 +585,8 @@ Collections::create(         // create collection
       collections, ",",
       [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
 
-  activity_registry::Activity activity("createCollections",
-                                       {{"collectionNames", collectionNames}});
+  activities::Activity activity("createCollections",
+                                {{"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
@@ -857,7 +857,7 @@ void Collections::applySystemCollectionProperties(
   bool isMock = false;
   if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
     StorageEngine& engine =
-        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
     isMock = (engine.typeName() == "Mock");
   } else {
