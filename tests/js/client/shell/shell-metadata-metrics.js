@@ -182,7 +182,7 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName, {sharding: "single"});
       db._useDatabase(testDbName);
-      db._create(testCollectionName, {numberOfShards: 3});
+      db._create(testCollectionName, {numberOfShards: 1});
       assertMetrics(endpoints, 2, 6, 6);
 
       db._drop(testCollectionName);
