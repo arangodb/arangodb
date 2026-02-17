@@ -110,14 +110,6 @@ class RocksDBIndex : public Index {
   virtual void prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                             rocksdb::Slice upper, RocksDBMethods* methods) {}
 
-  /// @brief called after initial sync when documents are present.
-  /// Trains and fills the index from local documents.
-  /// Default is a no-op. Vector indexes override this.
-  virtual void postIndexCreation(rocksdb::DB* rootDB,
-                                 std::unique_ptr<rocksdb::Iterator> it,
-                                 rocksdb::Slice upper,
-                                 RocksDBMethods* methods) {}
-
   /// performs a preflight check for an insert operation, not carrying out any
   /// modifications to the index.
   /// the default implementation does nothing. indexes can override this and

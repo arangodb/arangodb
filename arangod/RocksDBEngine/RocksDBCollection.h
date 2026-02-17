@@ -74,8 +74,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
       Replication2Callback replicationCb = nullptr) override;
 
-  void postIndexCreation() override;
-
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(

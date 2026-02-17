@@ -73,11 +73,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
                     RocksDBMethods* methods) override;
 
-  void postIndexCreation(rocksdb::DB* rootDB,
-                         std::unique_ptr<rocksdb::Iterator> it,
-                         rocksdb::Slice upper,
-                         RocksDBMethods* methods) override;
-
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;

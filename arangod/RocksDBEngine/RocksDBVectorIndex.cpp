@@ -494,41 +494,6 @@ StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
 }
 
-void RocksDBVectorIndex::postIndexCreation(
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
-    rocksdb::Slice upper, RocksDBMethods* methods) {
-  // Train the index from local documents if not already trained
-  prepareIndex(std::move(it), upper, methods);
-
-  // Now ingest all documents into the trained index.
-  // Need a fresh iterator since prepareIndex consumed the previous one.
-  auto const* rcoll =
-      static_cast<RocksDBCollection const*>(_collection.getPhysical());
-  auto const bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-  rocksdb::Slice ingestUpper(bounds.end());
-
-  rocksdb::ReadOptions ro(false, false);
-  ro.prefix_same_as_start = true;
-  ro.iterate_upper_bound = &ingestUpper;
-
-  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::Documents);
-  std::unique_ptr<rocksdb::Iterator> docIt(rootDB->NewIterator(ro, docCF));
-  docIt->Seek(bounds.start());
-
-  LOG_VECTOR_INDEX("c161b", INFO, Logger::ENGINES)
-      << "Ingesting vectors after initial sync.";
-
-  auto res = ingestVectors(rootDB, std::move(docIt));
-  if (res.fail()) {
-    LOG_VECTOR_INDEX("c162b", ERR, Logger::ENGINES)
-        << "Vector ingestion after initial sync failed: " << res.errorMessage();
-  } else {
-    LOG_VECTOR_INDEX("c163b", INFO, Logger::ENGINES)
-        << "Vector ingestion after initial sync completed.";
-  }
-}
-
 #define LOG_INGESTION LOG_DEVEL_IF(false)
 
 Result RocksDBVectorIndex::ingestVectors(

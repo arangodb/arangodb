@@ -1257,7 +1257,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
           ", waited for dump: ", cumulativeStats.waitedForDump, " s",
           ", apply time: ", cumulativeStats.waitedForDumpApply, " s",
           ", total time: ", (TRI_microtime() - startTime), " s"));
-      coll->getPhysical()->postIndexCreation();
       return Result();
     }
 
