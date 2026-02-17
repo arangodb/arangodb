@@ -455,9 +455,10 @@ bool V8ShellFeature::printHello() {
 }
 
 // the result is wrapped in a JavaScript variable SYS_ARANGO
-void V8ShellFeature::setup(
-    v8::Local<v8::Context>& context, bool createConnection,
-    std::vector<std::string> const& positionals, bool* promptError) {
+void V8ShellFeature::setup(v8::Local<v8::Context>& context,
+                           bool createConnection,
+                           std::vector<std::string> const& positionals,
+                           bool* promptError) {
   bool haveClient = false;
   if (createConnection) {
     if (server().hasFeature<HttpEndpointProvider>()) {
