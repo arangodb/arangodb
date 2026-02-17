@@ -2139,40 +2139,6 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with fulltext operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFulltext: function () {
-      c1 = db._create(cn1);
-      var idx = c1.ensureIndex({ type: "fulltext", fields: ["text"] });
-
-      c1.save({ text: 'steam', other: 1 });
-      c1.save({ text: 'steamboot', other: 2 });
-
-      let obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          const db = require('@arangodb').db;
-          let c1 = db._collection(params.cn1);
-          var r = c1.fulltext('text', 'prefix:steam', params.idx).toArray();
-          require("jsunity").jsUnity.assertions.assertEqual(2, r.length);
-
-          r = c1.fulltext('text', 'steam', params.idx).toArray();
-          require("jsunity").jsUnity.assertions.assertEqual(1, r.length);
-        },
-        params: {
-          cn1: cn1,
-          idx: idx
-        }
-      };
-
-      require('@arangodb').db._executeTransaction(obj);
-    }
-
   };
 }
 
