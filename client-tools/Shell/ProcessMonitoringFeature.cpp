@@ -36,6 +36,7 @@
 #include "V8/V8SecurityFeature.h"
 
 #include "ProcessMonitoringFeature.h"
+#include "V8ShellFeature.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -134,6 +135,10 @@ void ProcessMonitorThread::run() {  // override
           // Its dead and gone - good
           _processMonitorFeature.moveMonitoringPIDToAttic(pid, status);
           triggerV8DeadlineNow(false, pid);
+          auto sf = server.getFeature<V8ShellFeature>();
+          if (sf) {
+            sf.resetConnection();
+          }
         }
       });
       std::this_thread::sleep_for(kTimeoutMs);
