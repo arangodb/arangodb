@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <type_traits>
 
 #include "RocksDBIndex.h"
@@ -97,6 +98,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
+  bool isTrained() const noexcept;
+
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;
@@ -111,10 +114,18 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  void triggerTraining();
+
+  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
+  bruteForceSearch(std::vector<float>& inputs, std::size_t count,
+                   std::size_t topK, transaction::Methods* trx);
+
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
   StoredValues const _storedValues;
+  std::atomic<std::int64_t> _documentCount{0};
+  std::int64_t _trainingThreshold{0};
 };
 
 }  // namespace arangodb

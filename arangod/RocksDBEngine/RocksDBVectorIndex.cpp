@@ -39,8 +39,13 @@
 #include "Basics/BoundedChannel.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
@@ -53,6 +58,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
@@ -154,6 +160,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
       _faissIndex->own_fields = nullptr != quantizer.release();
     }
   }
+
+  _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 10, 10000);
 }
 
 /// @brief Test if this index matches the definition
@@ -224,12 +232,17 @@ RocksDBVectorIndex::readBatch(
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
-  std::vector<float> distances(topK * count);
-  std::vector<faiss::idx_t> labels(topK * count);
-
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
+
+  if (!isTrained()) {
+    return bruteForceSearch(inputs, count, topK, trx);
+  }
+
+  // Trained: normal FAISS IVF search
+  std::vector<float> distances(topK * count);
+  std::vector<faiss::idx_t> labels(topK * count);
 
   // Used by the faiss iterator
   auto faissSearchContext =
@@ -347,6 +360,18 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
+  if (!isTrained()) {
+    // Untrained: just count the document. The vector is not stored in the
+    // index yet. Once the threshold is reached, triggerTraining() will
+    // snapshot all documents and build the index from scratch.
+    auto count = _documentCount.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (count >= _trainingThreshold) {
+      triggerTraining();
+    }
+    return {};
+  }
+
+  // Trained: normal FAISS path
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
@@ -428,12 +453,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       << "Loaded " << counter << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
 
-  if (trainingData.size() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "For the vector index to be created documents "
-        "must be present in the respective collection for the training "
-        "process.");
+  if (trainingData.empty()) {
+    LOG_VECTOR_INDEX("d161b", INFO, Logger::ENGINES)
+        << "Not enough documents for training (need " << _trainingThreshold
+        << "), deferring training.";
+    return;
   }
   _faissIndex->train(counter, trainingData.data());
   LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
@@ -449,12 +473,82 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       true /* faiss owns the inverted list */);
 }
 
+void RocksDBVectorIndex::triggerTraining() {
+  if (isTrained()) {
+    return;
+  }
+
+  LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
+      << "Training threshold reached (" << _trainingThreshold
+      << " documents). Starting deferred training.";
+
+  auto& engine = _collection.vocbase().engine<RocksDBEngine>();
+  rocksdb::DB* rootDB = engine.db()->GetRootDB();
+
+  // Step 1: Train (prepareIndex) — same setup as
+  // RocksDBBuilderIndex::beforeCreate
+  auto const* rcoll =
+      static_cast<RocksDBCollection const*>(_collection.getPhysical());
+  auto const bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  rocksdb::Slice upper(bounds.end());
+
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  RocksDBMethodsMemoryTracker memoryTracker(
+      nullptr, &metric, RocksDBMethodsMemoryTracker::kDefaultGranularity);
+
+  rocksdb::WriteBatch batch;
+  RocksDBBatchedMethods methods(&batch, memoryTracker);
+
+  rocksdb::ReadOptions ro(false, false);
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+
+  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+  std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+  it->Seek(bounds.start());
+
+  prepareIndex(std::move(it), upper, &methods);
+
+  if (!isTrained()) {
+    LOG_VECTOR_INDEX("e162b", WARN, Logger::ENGINES)
+        << "Training failed despite reaching threshold.";
+    return;
+  }
+
+  // Step 2: Fill (ingestVectors) — same as fillIndex in RocksDBBuilderIndex
+  LOG_VECTOR_INDEX("e163b", INFO, Logger::ENGINES)
+      << "Training complete. Ingesting vectors into trained index.";
+
+  std::unique_ptr<rocksdb::Iterator> docIt(rootDB->NewIterator(ro, docCF));
+  docIt->Seek(bounds.start());
+
+  auto res = ingestVectors(rootDB, std::move(docIt));
+  if (res.fail()) {
+    LOG_VECTOR_INDEX("e164b", ERR, Logger::ENGINES)
+        << "Vector ingestion failed: " << res.errorMessage();
+    return;
+  }
+
+  LOG_VECTOR_INDEX("e165b", INFO, Logger::ENGINES)
+      << "Deferred training and ingestion completed.";
+}
+
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
+  if (!isTrained()) {
+    // Nothing stored in the vector index yet, nothing to remove
+    return {};
+  }
+
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -468,12 +562,12 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   faiss::idx_t listId{0};
   TRI_ASSERT(_faissIndex->quantizer != nullptr);
   _faissIndex->quantizer->assign(1, input.data(), &listId);
+
   RocksDBKey rocksdbKey;
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
   auto const status = methods->Delete(_cf, rocksdbKey);
 
   if (!status.ok()) {
-    // Here we need to throw since there is no way to return the status
     auto const res = rocksutils::convertStatus(status);
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -486,12 +580,89 @@ RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
 }
 
+bool RocksDBVectorIndex::isTrained() const noexcept {
+  return _faissIndex->is_trained;
+}
+
 bool RocksDBVectorIndex::hasStoredValues() const noexcept {
   return !_storedValues.empty();
 }
 
 StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
+}
+
+std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
+RocksDBVectorIndex::bruteForceSearch(std::vector<float>& inputs,
+                                     std::size_t count, std::size_t topK,
+                                     transaction::Methods* trx) {
+  auto const dim = _definition.dimension;
+  std::vector<faiss::idx_t> labels(topK * count, -1);
+  std::vector<float> distances(topK * count, std::numeric_limits<float>::max());
+
+  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
+
+  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+                         velocypack::Slice docSlice) -> bool {
+    std::vector<float> vec;
+    vec.reserve(dim);
+    if (readDocumentVectorData(docSlice, vec).fail()) {
+      return true;  // skip, continue
+    }
+    if (_definition.metric == SimilarityMetric::kCosine) {
+      faiss::fvec_renorm_L2(dim, 1, vec.data());
+    }
+
+    for (std::size_t q = 0; q < count; ++q) {
+      float const* queryVec = inputs.data() + q * dim;
+      float dist = 0.0f;
+
+      switch (_definition.metric) {
+        case SimilarityMetric::kL2:
+          for (std::size_t d = 0; d < dim; ++d) {
+            float diff = queryVec[d] - vec[d];
+            dist += diff * diff;
+          }
+          dist = std::sqrt(dist);
+          break;
+        case SimilarityMetric::kCosine:
+        case SimilarityMetric::kInnerProduct:
+          for (std::size_t d = 0; d < dim; ++d) {
+            dist += queryVec[d] * vec[d];
+          }
+          dist = -dist;
+          break;
+      }
+
+      // Insert into top-K (insertion sort)
+      std::size_t base = q * topK;
+      if (dist < distances[base + topK - 1]) {
+        distances[base + topK - 1] = dist;
+        labels[base + topK - 1] = static_cast<faiss::idx_t>(docId.id());
+        for (std::size_t i = topK - 1; i > 0; --i) {
+          if (distances[base + i] < distances[base + i - 1]) {
+            std::swap(distances[base + i], distances[base + i - 1]);
+            std::swap(labels[base + i], labels[base + i - 1]);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    return true;  // continue
+  });
+
+  // For IP/cosine, negate back to real values
+  if (_definition.metric == SimilarityMetric::kCosine ||
+      _definition.metric == SimilarityMetric::kInnerProduct) {
+    for (auto& d : distances) {
+      if (d != std::numeric_limits<float>::max()) {
+        d = -d;
+      }
+    }
+  }
+
+  return {std::move(labels), std::move(distances)};
 }
 
 #define LOG_INGESTION LOG_DEVEL_IF(false)
