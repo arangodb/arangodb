@@ -46,6 +46,8 @@ struct UpgradeTasks {
                                               velocypack::Slice slice);
   static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
                                             velocypack::Slice slice);
+  static Result dropOldStatisticsCollections(TRI_vocbase_t& vocbase,
+                                               velocypack::Slice slice);
 };
 
 }  // namespace arangodb::methods
