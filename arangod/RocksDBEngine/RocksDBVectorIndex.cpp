@@ -70,6 +70,7 @@
 #include "faiss/MetricType.h"
 #include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
+#include "faiss/utils/Heap.h"
 #include "faiss/index_io.h"
 #include "faiss/impl/io.h"
 
@@ -220,29 +221,28 @@ std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::readBatch(
     std::vector<float>& inputs, SearchParameters const& searchParameters,
     RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-    std::shared_ptr<LogicalCollection> collection, std::size_t count,
-    std::size_t topK, aql::Expression* filterExpression,
-    aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+    std::shared_ptr<LogicalCollection> collection, std::size_t topK,
+    aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+    aql::QueryContext& queryContext,
     std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
         filterVarsToRegs,
     aql::Variable const* documentVariable, bool isCoveredByStoredValues) {
-  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
-      << "Number of components does not match vectors dimensions, topK: "
-      << topK << ", count: " << count
+  TRI_ASSERT(inputs.size() == _definition.dimension)
+      << "Number of components does not match vector dimension, topK: " << topK
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
+    faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
   if (!isTrained()) {
-    return bruteForceSearch(inputs, count, topK, trx);
+    return bruteForceSearch(inputs, topK, trx);
   }
 
   // Trained: normal FAISS IVF search
-  std::vector<float> distances(topK * count);
-  std::vector<faiss::idx_t> labels(topK * count);
+  std::vector<float> distances(topK);
+  std::vector<faiss::idx_t> labels(topK);
 
   // Used by the faiss iterator
   auto faissSearchContext =
@@ -268,8 +268,8 @@ RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(count, inputs.data(), topK, distances.data(),
-                      labels.data(), &searchParametersIvf);
+  _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
+                      &searchParametersIvf);
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -594,11 +594,25 @@ StoredValues const& RocksDBVectorIndex::storedValues() const {
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::bruteForceSearch(std::vector<float>& inputs,
-                                     std::size_t count, std::size_t topK,
+                                     std::size_t topK,
                                      transaction::Methods* trx) {
   auto const dim = _definition.dimension;
-  std::vector<faiss::idx_t> labels(topK * count, -1);
-  std::vector<float> distances(topK * count, std::numeric_limits<float>::max());
+  bool const isDescending =
+      _definition.metric == SimilarityMetric::kCosine ||
+      _definition.metric == SimilarityMetric::kInnerProduct;
+
+  std::vector<faiss::idx_t> labels(topK, -1);
+  std::vector<float> distances(topK);
+
+  // Initialize heap: max-heap for L2 (keep smallest distances),
+  // min-heap for IP/cosine (keep largest inner products)
+  if (isDescending) {
+    std::fill(distances.begin(), distances.end(),
+              -std::numeric_limits<float>::max());
+  } else {
+    std::fill(distances.begin(), distances.end(),
+              std::numeric_limits<float>::max());
+  }
 
   auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
 
@@ -607,59 +621,41 @@ RocksDBVectorIndex::bruteForceSearch(std::vector<float>& inputs,
     std::vector<float> vec;
     vec.reserve(dim);
     if (readDocumentVectorData(docSlice, vec).fail()) {
-      return true;  // skip, continue
+      return true;
     }
     if (_definition.metric == SimilarityMetric::kCosine) {
       faiss::fvec_renorm_L2(dim, 1, vec.data());
     }
 
-    for (std::size_t q = 0; q < count; ++q) {
-      float const* queryVec = inputs.data() + q * dim;
-      float dist = 0.0f;
+    auto id = static_cast<faiss::idx_t>(docId.id());
 
-      switch (_definition.metric) {
-        case SimilarityMetric::kL2:
-          for (std::size_t d = 0; d < dim; ++d) {
-            float diff = queryVec[d] - vec[d];
-            dist += diff * diff;
-          }
-          dist = std::sqrt(dist);
-          break;
-        case SimilarityMetric::kCosine:
-        case SimilarityMetric::kInnerProduct:
-          for (std::size_t d = 0; d < dim; ++d) {
-            dist += queryVec[d] * vec[d];
-          }
-          dist = -dist;
-          break;
+    if (isDescending) {
+      float dist = faiss::fvec_inner_product(inputs.data(), vec.data(), dim);
+      if (dist > distances[0]) {
+        faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
       }
-
-      // Insert into top-K (insertion sort)
-      std::size_t base = q * topK;
-      if (dist < distances[base + topK - 1]) {
-        distances[base + topK - 1] = dist;
-        labels[base + topK - 1] = static_cast<faiss::idx_t>(docId.id());
-        for (std::size_t i = topK - 1; i > 0; --i) {
-          if (distances[base + i] < distances[base + i - 1]) {
-            std::swap(distances[base + i], distances[base + i - 1]);
-            std::swap(labels[base + i], labels[base + i - 1]);
-          } else {
-            break;
-          }
-        }
+    } else {
+      float dist = faiss::fvec_L2sqr(inputs.data(), vec.data(), dim);
+      if (dist < distances[0]) {
+        faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
       }
     }
-    return true;  // continue
+    return true;
   });
 
-  // For IP/cosine, negate back to real values
-  if (_definition.metric == SimilarityMetric::kCosine ||
-      _definition.metric == SimilarityMetric::kInnerProduct) {
-    for (auto& d : distances) {
-      if (d != std::numeric_limits<float>::max()) {
-        d = -d;
-      }
-    }
+  // Reorder heap so results are sorted
+  if (isDescending) {
+    faiss::minheap_reorder(topK, distances.data(), labels.data());
+  } else {
+    faiss::maxheap_reorder(topK, distances.data(), labels.data());
+  }
+
+  // L2: fvec_L2sqr returns squared distances, take sqrt
+  if (_definition.metric == SimilarityMetric::kL2) {
+    std::ranges::transform(distances, distances.begin(),
+                           [](float d) { return std::sqrt(d); });
   }
 
   return {std::move(labels), std::move(distances)};

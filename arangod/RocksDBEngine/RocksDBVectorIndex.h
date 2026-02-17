@@ -84,9 +84,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
       std::vector<float>& inputs, SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-      std::shared_ptr<LogicalCollection> collection, std::size_t count,
-      std::size_t topK, aql::Expression* filterExpression,
-      aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+      std::shared_ptr<LogicalCollection> collection, std::size_t topK,
+      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+      aql::QueryContext& queryContext,
       std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
           filterVarsToRegs,
       aql::Variable const* documentVariable, bool isCovered);
@@ -117,8 +117,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void triggerTraining();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-  bruteForceSearch(std::vector<float>& inputs, std::size_t count,
-                   std::size_t topK, transaction::Methods* trx);
+  bruteForceSearch(std::vector<float>& inputs, std::size_t topK,
+                   transaction::Methods* trx);
 
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
