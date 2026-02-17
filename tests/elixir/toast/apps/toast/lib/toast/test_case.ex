@@ -51,7 +51,6 @@ defmodule Toast.TestCase do
         %{deployment: deployment, endpoint: deployment.endpoint, client: client}
 
       :failed ->
-        ExUnit.configure(max_failures: 1)
         message = format_crash_message(Toast.Deployment.crash_info(deployment))
         raise message
 

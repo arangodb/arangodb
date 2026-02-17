@@ -67,10 +67,33 @@ defmodule Toast.Config do
       sanitizer: opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect(explicit_sanitizer))
     }
 
-    Logger.debug(
-      "build_dir=#{inspect(config.build_dir)} work_dir=#{config.work_dir} " <>
-        "mode=#{config.deployment_mode} sanitizer=#{inspect(MapSet.to_list(config.sanitizer))}"
-    )
+    Logger.debug(fn ->
+      fields = [
+        build_dir: inspect(config.build_dir),
+        work_dir: config.work_dir,
+        result_dir: config.result_dir,
+        deployment_mode: config.deployment_mode,
+        show_server_logs: config.show_server_logs,
+        startup_timeout: "#{config.startup_timeout}ms",
+        shutdown_timeout: "#{config.shutdown_timeout}ms",
+        sanitizer: inspect(MapSet.to_list(config.sanitizer))
+      ]
+
+      fields =
+        if config.deployment_mode == :cluster do
+          fields ++
+            [
+              cluster_agents: config.cluster_agents,
+              cluster_dbservers: config.cluster_dbservers,
+              cluster_coordinators: config.cluster_coordinators,
+              cluster_replication_factor: config.cluster_replication_factor
+            ]
+        else
+          fields
+        end
+
+      "Config: " <> Enum.map_join(fields, " ", fn {k, v} -> "#{k}=#{v}" end)
+    end)
 
     config
   end

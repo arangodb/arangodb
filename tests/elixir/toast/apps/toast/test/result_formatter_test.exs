@@ -236,7 +236,7 @@ defmodule Toast.ResultFormatterTest do
       assert is_binary(failure.stacktrace)
     end
 
-    test "server crash EXIT failure includes crash details" do
+    test "server crash EXIT failure is captured as linked process exit" do
       {:ok, state} = ResultFormatter.init([])
       pid = spawn(fn -> :ok end)
       crash_info = %{exit_status: 134, signal: 6}
@@ -253,10 +253,8 @@ defmodule Toast.ResultFormatterTest do
       assert [result] = new_state.tests
       assert result.outcome == :failed
       assert [failure] = result.failure
-      assert failure.kind == "server_crashed"
-      assert failure.message =~ "srv-1"
-      assert failure.message =~ "exit_status=134"
-      assert failure.message =~ "signal=6"
+      assert failure.kind == "EXIT"
+      assert failure.message =~ "server_crashed"
     end
 
     test "generic linked process EXIT failure is extracted correctly" do

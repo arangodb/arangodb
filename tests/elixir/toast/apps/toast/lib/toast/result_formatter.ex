@@ -106,18 +106,7 @@ defmodule Toast.ResultFormatter do
     }
   end
 
-  # Server crash propagated via crash_monitor → linked test process
-  defp format_failure({{:EXIT, _pid}, {:server_crashed, server_id, crash_info}, stack}) do
-    signal_part = if crash_info[:signal], do: " signal=#{crash_info[:signal]}", else: ""
-
-    %{
-      kind: "server_crashed",
-      message: "Server #{server_id} crashed (exit_status=#{crash_info[:exit_status]}#{signal_part})",
-      stacktrace: Exception.format_stacktrace(stack)
-    }
-  end
-
-  # Other linked process exit
+  # Linked process exit (includes server crash propagated via crash_monitor)
   defp format_failure({{:EXIT, pid}, reason, stack}) do
     %{
       kind: "EXIT",

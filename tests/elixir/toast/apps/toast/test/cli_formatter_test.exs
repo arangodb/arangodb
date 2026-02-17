@@ -252,7 +252,20 @@ defmodule Toast.CLIFormatterTest do
   end
 
   describe "test_finished — excluded" do
-    test "prints EXCLUDED line" do
+    test "prints EXCLUDED line for abort-excluded tests" do
+      state = init_state()
+      test = make_test(%{state: {:excluded, "Suite aborted: Server crashed: srv-1"}})
+
+      output =
+        capture_io(fn ->
+          {:noreply, _} = CLIFormatter.handle_cast({:test_finished, test}, state)
+        end)
+
+      assert output =~ "[   EXCLUDED ]"
+      assert output =~ "Suite aborted:"
+    end
+
+    test "silently counts filter-excluded tests" do
       state = init_state()
       test = make_test(%{state: {:excluded, "requires cluster"}})
 
@@ -261,7 +274,7 @@ defmodule Toast.CLIFormatterTest do
           {:noreply, _} = CLIFormatter.handle_cast({:test_finished, test}, state)
         end)
 
-      assert output =~ "[   EXCLUDED ]"
+      assert output == ""
     end
 
     test "increments excluded counter" do

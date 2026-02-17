@@ -46,6 +46,11 @@ defmodule Toast.CLIFormatter do
     {:noreply, %{state | module_start_time: System.monotonic_time(:millisecond), module_test_count: 0}}
   end
 
+  def handle_cast({:test_started, %ExUnit.Test{state: {:excluded, _}} = _test}, state) do
+    # Don't print RUN for excluded tests (e.g., after suite abort)
+    {:noreply, state}
+  end
+
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
     name = display_name(test)
     write("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}\n")
@@ -127,9 +132,13 @@ defmodule Toast.CLIFormatter do
     write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
   end
 
-  defp print_test_result(%ExUnit.Test{state: {:excluded, _}} = test, state) do
-    name = display_name(test)
-    write("#{timestamp()} #{colorize("[   EXCLUDED ]", :yellow, state)} #{name}\n")
+  defp print_test_result(%ExUnit.Test{state: {:excluded, reason}} = test, state) do
+    # Only print excluded tests that have a meaningful reason (e.g., suite abort).
+    # Filter-excluded tests (tag-based) are silently counted.
+    if is_binary(reason) and String.starts_with?(reason, "Suite aborted:") do
+      name = display_name(test)
+      write("#{timestamp()} #{colorize("[   EXCLUDED ]", :yellow, state)} #{name} (#{reason})\n")
+    end
   end
 
   defp print_test_result(%ExUnit.Test{state: {:invalid, _}} = test, state) do

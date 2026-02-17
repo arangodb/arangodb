@@ -238,14 +238,11 @@ defmodule Toast.Process.ServerProcess do
 
     case :exec.run(cmd, exec_opts) do
       {:ok, exec_pid, os_pid} ->
-        cmd_line = Enum.join([state.executable | state.args], " ")
-
-        Logger.debug(
-          "Launched #{state.id} (os_pid=#{os_pid})\n" <>
-            "  cmd: #{cmd_line}\n" <>
-            "  working_dir: #{state.working_dir}" <>
-            if(state.env != [], do: "\n  env: #{inspect(state.env)}", else: "")
-        )
+        Logger.debug(fn ->
+          cmd_line = Enum.join([state.executable | state.args], " ")
+          env_part = if state.env != [], do: "\n  env: #{inspect(state.env)}", else: ""
+          "#{state.id} (os_pid=#{os_pid}) cmd: #{cmd_line}#{env_part}"
+        end)
 
         {:ok,
          %{

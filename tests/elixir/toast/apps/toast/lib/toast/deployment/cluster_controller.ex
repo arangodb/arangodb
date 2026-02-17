@@ -153,17 +153,17 @@ defmodule Toast.Deployment.ClusterController do
     with {:ok, topology} <- Factory.build_cluster(state.config, state.id),
          state = init_servers_from_topology(state, topology),
          {:ok, state} <- start_all_server_processes(state, topology),
-         _ = Logger.debug("#{state.id}: all server processes started, launching agents"),
+         _ = Logger.info("#{state.id}: launching agents"),
          :ok <- launch_servers(state.agents, state, timeout: remaining_ms(deadline)),
-         _ = Logger.debug("#{state.id}: agents launched, waiting for agency consensus"),
+         _ = Logger.info("#{state.id}: waiting for agency consensus"),
          :ok <- wait_for_agency(state, deadline),
-         _ = Logger.debug("#{state.id}: agency ready, launching dbservers"),
+         _ = Logger.info("#{state.id}: agency ready, launching dbservers"),
          :ok <-
            launch_servers(state.dbservers, state,
              health_check: true,
              timeout: remaining_ms(deadline)
            ),
-         _ = Logger.debug("#{state.id}: dbservers ready, launching coordinators"),
+         _ = Logger.info("#{state.id}: dbservers ready, launching coordinators"),
          :ok <-
            launch_servers(state.coordinators, state,
              health_check: true,
@@ -250,6 +250,9 @@ defmodule Toast.Deployment.ClusterController do
           server = state.servers[server_id]
 
           with :ok <- ServerProcess.launch(server.server_pid) do
+            os_pid = ServerProcess.os_pid(server.server_pid)
+            Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
+
             if health_check? do
               process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 

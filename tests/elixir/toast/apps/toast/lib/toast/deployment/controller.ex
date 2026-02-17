@@ -156,7 +156,8 @@ defmodule Toast.Deployment.Controller do
          _ = Logger.debug("#{state.id}: server process started (#{inspect(server_pid)})"),
          state = %{state | server_pid: server_pid},
          :ok <- ServerProcess.launch(server_pid),
-         _ = Logger.debug("#{state.id}: OS process launched, waiting for health check"),
+         os_pid = ServerProcess.os_pid(server_pid),
+         _ = Logger.info("#{state.id}: server started (os_pid=#{os_pid}), endpoint=#{state.endpoint}"),
          :ok <- wait_for_ready(state, timeout) do
       Logger.info("Deployment #{state.id} ready at #{state.endpoint}")
       {:ok, %{state | status: :ready}}

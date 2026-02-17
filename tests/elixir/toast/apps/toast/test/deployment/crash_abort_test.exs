@@ -181,6 +181,25 @@ defmodule Toast.Deployment.CrashAbortTest do
     end
   end
 
+  describe "Toast.Runner.abort!" do
+    setup do
+      Toast.Runner.clear_abort!()
+      on_exit(fn -> Toast.Runner.clear_abort!() end)
+    end
+
+    test "sets abort state" do
+      assert Toast.Runner.aborted?() == nil
+      Toast.Runner.abort!("Server crashed: test-srv")
+      assert Toast.Runner.aborted?() == "Server crashed: test-srv"
+    end
+
+    test "clear_abort! resets state" do
+      Toast.Runner.abort!("reason")
+      Toast.Runner.clear_abort!()
+      assert Toast.Runner.aborted?() == nil
+    end
+  end
+
   describe "crash_monitor" do
     test "controller forwards crash to crash_monitor" do
       monitor = self()

@@ -24,8 +24,8 @@ defmodule Toast.Deployment do
   def start(mode \\ :single_server, opts \\ [])
 
   def start(:single_server, opts) do
-    Logger.debug("Starting single_server deployment")
     config = Config.load(opts)
+    Logger.info("Starting single server deployment (work_dir=#{config.work_dir})")
     crash_monitor = spawn_crash_monitor()
 
     controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
@@ -50,8 +50,8 @@ defmodule Toast.Deployment do
   end
 
   def start(:cluster, opts) do
-    Logger.debug("Starting cluster deployment")
     config = Config.load(opts)
+    Logger.info("Starting cluster deployment (work_dir=#{config.work_dir})")
     crash_monitor = spawn_crash_monitor()
 
     controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
@@ -195,8 +195,7 @@ defmodule Toast.Deployment do
   defp crash_monitor_loop do
     receive do
       {:server_crashed, id, info} ->
-        # Abort suite, then propagate exit to all linked test processes
-        ExUnit.configure(max_failures: 1)
+        Toast.Runner.abort!("Server crashed: #{id}")
         Process.flag(:trap_exit, false)
         exit({:server_crashed, id, info})
 
