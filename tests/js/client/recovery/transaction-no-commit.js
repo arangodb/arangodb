@@ -46,7 +46,11 @@ if (runSetup === true) {
     });
   }
   global.instanceManager.debugSetFailAt('TransactionWriteCommitMarker');
-  trx.commit();
+  try {
+    trx.commit();
+  } catch (err) {
+    // suppress error we're intentionally creating
+  }
   return 0;
 }
 

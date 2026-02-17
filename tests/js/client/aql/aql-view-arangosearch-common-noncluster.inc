@@ -249,7 +249,7 @@ return function (args) {
 
       // read lock
       trx = db._createTransaction({
-        collections: { allowImplicit: false, read: ["UnitTestsView"] }
+        collections: { allowImplicit: false, read: ["UnitTestsCollection"] }
       });
       var c = trx.collection("UnitTestsCollection");
       result = { length: c.toArray().length, value: c.document('foo').xyz };
@@ -259,7 +259,7 @@ return function (args) {
 
       // write lock
       trx = db._createTransaction({
-        collections: { allowImplicit: false, write: ["UnitTestsView"] }
+        collections: { allowImplicit: false, write: ["UnitTestsCollection"] }
       });
       c = trx.collection("UnitTestsCollection");
       c.save({ _key: "bar", xyz: 2 });
@@ -269,7 +269,7 @@ return function (args) {
 
       // exclusive lock
       trx = db._createTransaction({
-        collections: { allowImplicit: false, exclusive: ["UnitTestsView"] }
+        collections: { allowImplicit: false, exclusive: ["UnitTestsCollection"] }
       });
       c = trx.collection("UnitTestsCollection");
       c.save({ _key: "baz", xyz: 3 });
