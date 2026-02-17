@@ -33,9 +33,6 @@ var sprintf = arangodb.sprintf;
 
 var simple = require('@arangodb/simple-query');
 
-var SimpleQueryAll = simple.SimpleQueryAll;
-var SimpleQueryByExample = simple.SimpleQueryByExample;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief collection is corrupted
 // //////////////////////////////////////////////////////////////////////////////
@@ -135,32 +132,6 @@ ArangoCollection.prototype.documentId = function (documentKey) {
     });
   }
   return `${this.name()}/${documentKey}`;
-};
-
-ArangoCollection.prototype.all = function () {
-  return new SimpleQueryAll(this);
-};
-
-ArangoCollection.prototype.byExample = function (example) {
-  var e;
-  var i;
-
-  // example is given as only argument
-  if (arguments.length === 1) {
-    e = example;
-  }
-
-  // example is given as list
-  else {
-    e = {};
-
-    // create a REAL array, otherwise JSON.stringify will fail
-    for (i = 0;  i < arguments.length;  i += 2) {
-      e[arguments[i]] = arguments[i + 1];
-    }
-  }
-
-  return new SimpleQueryByExample(this, e);
 };
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
