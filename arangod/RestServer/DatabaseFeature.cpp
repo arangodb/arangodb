@@ -347,12 +347,6 @@ additional databases can be created in the deployment. In order to create additi
 databases, other databases need to be removed first.")")
       .setIntroducedIn(31200);
 
-  // the following option was obsoleted in 3.9
-  options->addObsoleteOption(
-      "--database.old-system-collections",
-      "Create and use deprecated system collection (_modules, _fishbowl).",
-      false);
-
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
       "--database.throw-collection-not-loaded-error",
