@@ -743,6 +743,18 @@ ArangoCollection.prototype.all = function () {
   return require('internal').db._query("FOR d IN @@collection RETURN d", { '@collection': this.name() });
 };
 
+ArangoCollection.prototype.range = function (attribute, left, right) {
+  const bindVars = {
+    '@collection': this.name(),
+    attribute,
+    left,
+    right
+  };
+
+  let query = 'FOR doc IN @@collection FILTER doc.@attribute >= @left && doc.@attribute < @right RETURN doc';
+  return require('internal').db._query({ query, bindVars });
+};
+
 ArangoCollection.prototype.byExample = function (example) {
   let query = buildExampleQuery(this.name(), example, 0, 0);
   query.query += ' RETURN doc';
