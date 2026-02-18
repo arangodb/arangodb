@@ -145,7 +145,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief prepares the index for the creation process, e.g. if we need to
   /// train index before any insertion
-  void beforeCreate();
+  // void beforeCreate();
 
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground(
