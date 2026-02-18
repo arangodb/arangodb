@@ -167,23 +167,15 @@ function Job (id) {
 
 Object.assign(Job.prototype, {
   abort () {
-    var self = this;
-    db._executeTransaction({
-      collections: {
-        exclusive: ['_jobs']
-      },
-      action () {
-        var job = db._jobs.document(self.id);
-        if (job.status !== 'completed') {
-          job.failures.push(flatten(new Error('Job aborted.')));
-          db._jobs.update(job, {
-            status: 'failed',
-            modified: Date.now(),
-            failures: job.failures
-          });
-        }
-      }
-    });
+    var job = db._jobs.document(this.id);
+    if (job.status !== 'completed') {
+      job.failures.push(flatten(new Error('Job aborted.')));
+      db._jobs.update(job, {
+        status: 'failed',
+        modified: Date.now(),
+        failures: job.failures
+      });
+    }
   },
   reset () {
     db._jobs.update(this.id, {
@@ -288,19 +280,12 @@ Object.assign(Queue.prototype, {
     return jobCache[databaseName][id];
   },
   delete (id) {
-    return db._executeTransaction({
-      collections: {
-        write: ['_jobs']
-      },
-      action () {
-        try {
-          db._jobs.remove(id);
-          return true;
-        } catch (err) {
-          return false;
-        }
-      }
-    });
+    try {
+      db._jobs.remove(id);
+      return true;
+    } catch (err) {
+      return false;
+    }
   },
   pending (type) {
     return getJobs(this.name, 'pending', type);

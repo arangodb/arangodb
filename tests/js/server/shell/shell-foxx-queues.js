@@ -40,30 +40,6 @@ const qn = "UnitTestFoxxQueue";
 
 function BaseTestConfig () {
   return {
-    testCreateQueueInsideTransactionNoCollectionDeclaration : function () {
-      try {
-        db._executeTransaction({
-          collections: {},
-          action: function() {
-            queues.create(qn);
-          }
-        });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-      }
-    },
-    
-    testCreateQueueInsideTransactionWithCollectionDeclaration : function () {
-      db._executeTransaction({
-        collections: { write: ["_queues"] },
-        action: function() {
-          queues.create(qn);
-        }
-      });
-      assertEqual([], queues.get(qn).all());
-    },
-
     testCreateEmptyQueue : function () {
       let queue = queues.create(qn);
       assertEqual([], queue.all());

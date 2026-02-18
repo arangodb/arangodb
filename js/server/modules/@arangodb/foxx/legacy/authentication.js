@@ -413,25 +413,12 @@ Users.prototype.add = function (identifier, password, active, data) {
     data: data || {}
   };
 
-  db._executeTransaction({
-    collections: {
-      exclusive: c.name()
-    },
-    action: function (params) {
-      var c = db._collection(params.cn),
-        u = c.firstExample({ identifier: params.user.identifier });
-
-      if (u === null) {
-        c.save(params.user);
-      } else {
-        c.replace(u._key, params.user);
-      }
-    },
-    params: {
-      cn: c.name(),
-      user: user
-    }
-  });
+  var u = c.firstExample({ identifier: user.identifier });
+  if (u === null) {
+    c.save(user);
+  } else {
+    c.replace(u._key, user);
+  }
 
   delete user.password;
 
@@ -447,25 +434,11 @@ Users.prototype.updateData = function (identifier, data) {
 
   identifier = this._validateIdentifier(identifier, true);
 
-  db._executeTransaction({
-    collections: {
-      exclusive: c.name()
-    },
-    action: function (params) {
-      var c = db._collection(params.cn),
-        u = c.firstExample({ identifier: params.identifier });
-
-      if (u === null) {
-        throw new Error('user not found');
-      }
-      c.update(u._key, params.data, true, false);
-    },
-    params: {
-      cn: c.name(),
-      identifier: identifier,
-      data: data || {}
-    }
-  });
+  var u = c.firstExample({ identifier: identifier });
+  if (u === null) {
+    throw new Error('user not found');
+  }
+  c.update(u._key, data || {}, true, false);
 
   return true;
 };

@@ -50,81 +50,73 @@ let ensureDefaultQueue = function () {
 
 var runInDatabase = function () {
   var busy = false;
-  db._executeTransaction({
-    collections: {
-      read: ['_queues', '_jobs'],
-      exclusive: ['_jobs']
-    },
-    action: function () {
-      db._queues.all().toArray()
-        .forEach(function (queue) {
-          var numBusy = db._jobs.byExample({
-            queue: queue._key,
-            status: 'progress'
-          }).count();
+  db._queues.all().toArray()
+    .forEach(function (queue) {
+      var numBusy = db._jobs.byExample({
+        queue: queue._key,
+        status: 'progress'
+      }).count();
 
-          if (numBusy >= queue.maxWorkers) {
-            busy = true;
-            return;
-          }
+      if (numBusy >= queue.maxWorkers) {
+        busy = true;
+        return;
+      }
 
-          var now = Date.now();
-          var max = queue.maxWorkers - numBusy;
-          var queueName = queue._key;
-          var query = global.aqlQuery`/*findPendingJobs*/ FOR job IN _jobs
-            FILTER ((job.queue      == ${queueName}) &&
-                    (job.status     == 'pending') &&
-                    (job.delayUntil <= ${now}))
-            SORT job.delayUntil ASC LIMIT ${max} RETURN job`;
+      var now = Date.now();
+      var max = queue.maxWorkers - numBusy;
+      var queueName = queue._key;
+      var query = global.aqlQuery`/*findPendingJobs*/ FOR job IN _jobs
+        FILTER ((job.queue      == ${queueName}) &&
+                (job.status     == 'pending') &&
+                (job.delayUntil <= ${now}))
+        SORT job.delayUntil ASC LIMIT ${max} RETURN job`;
 
-          var jobs = db._query(query).toArray();
+      var jobs = db._query(query).toArray();
 
-          if (jobs.length > 0) {
-            busy = true;
-          }
+      if (jobs.length > 0) {
+        busy = true;
+      }
 
-          jobs.forEach(function (job) {
-            const update = {
+      jobs.forEach(function (job) {
+        const update = {
+          status: 'progress'
+        };
+        if (isCluster) {
+          update.startedBy = coordinatorId;
+        }
+        const updateQuery = global.aqlQuery`
+        UPDATE ${job} WITH ${update} IN _jobs
+        `;
+        updateQuery.options = { ttl: 5, maxRuntime: 5 };
+
+        db._query(updateQuery);
+
+        // generate unique task id (uniqueness only required during
+        // runtime of arangod process)
+        const id = "foxx-queue-worker-" + require("@arangodb/crypto").uuidv4();
+
+        tasks.register({
+          id,
+          command: function (cfg) {
+            var db = require('@arangodb').db;
+            var initialDatabase = db._name();
+            db._useDatabase(cfg.db);
+            try {
+              require('@arangodb/foxx/queues/worker').work(cfg.job);
+            } catch (e) {}
+            db._useDatabase(initialDatabase);
+          },
+          offset: 0,
+          isSystem: true,
+          params: {
+            job: Object.assign({}, job, {
               status: 'progress'
-            };
-            if (isCluster) {
-              update.startedBy = coordinatorId;
-            }
-            const updateQuery = global.aqlQuery`
-            UPDATE ${job} WITH ${update} IN _jobs
-            `;
-            updateQuery.options = { ttl: 5, maxRuntime: 5 };
-
-            db._query(updateQuery);
-
-            // generate unique task id (uniqueness only required during
-            // runtime of arangod process)
-            const id = "foxx-queue-worker-" + require("@arangodb/crypto").uuidv4();
-
-            tasks.register({
-              id,
-              command: function (cfg) {
-                var db = require('@arangodb').db;
-                var initialDatabase = db._name();
-                db._useDatabase(cfg.db);
-                try {
-                  require('@arangodb/foxx/queues/worker').work(cfg.job);
-                } catch (e) {}
-                db._useDatabase(initialDatabase);
-              },
-              offset: 0,
-              isSystem: true,
-              params: {
-                job: Object.assign({}, job, {
-                  status: 'progress'
-                }),
-                db: db._name()
-              }
-            });
-          });
+            }),
+            db: db._name()
+          }
         });
-    }
-  });
+      });
+    });
   if (!busy) {
     require('@arangodb/foxx/queues')._updateQueueDelay();
   }

@@ -78,6 +78,24 @@ function jsTransactionRemovedSuite () {
       }
     },
 
+    test_server_executeTransaction_throws_error: function() {
+      let body = `
+        try {
+          require('@arangodb').db._executeTransaction({ collections: {}, action: function() {} });
+          return { threw: false };
+        } catch (err) {
+          return { threw: true, errorNum: err.errorNum };
+        }
+      `;
+      let res = arango.POST('/_db/_system/_admin/execute?returnBodyAsJSON=true', body);
+      if (res.code === 404) {
+        // _admin/execute is disabled, skip
+        return;
+      }
+      assertTrue(res.threw);
+      assertEqual(res.errorNum, internal.errors.ERROR_NOT_IMPLEMENTED.code);
+    },
+
     test_wrong_method_still_returns_405: function() {
       let doc = arango.PATCH_RAW(api, {});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);

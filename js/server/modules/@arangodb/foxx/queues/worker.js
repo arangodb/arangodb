@@ -132,42 +132,33 @@ exports.work = function (job) {
   }
 
   var callback;
-  db._executeTransaction({
-    collections: {
-      write: ['_jobs']
-    },
-    action: function () {
-      var data = {
-        modified: now,
-        runs: job.runs,
-        runFailures: job.runFailures
-      };
-      if (!success) {
-        data.failures = job.failures;
-      }
-      if (success) {
-        // mark complete
-        callback = job.success;
-        data.status = 'complete';
-        data.runs += 1;
-      } else if (maxFailures !== -1 && job.runFailures > maxFailures) {
-        // mark failed
-        callback = job.failure;
-        data.status = 'failed';
-        data.failures = job.failures;
-      } else {
-        data.delayUntil = now + getBackOffDelay(job);
-        data.status = 'pending';
-      }
-      if (data.status !== 'pending' && data.runs < repeatTimes && now <= repeatUntil) {
-        data.status = 'pending';
-        data.delayUntil = now + repeatDelay;
-        data.runFailures = 0;
-      }
-      db._jobs.update(job._key, data);
-      job = Object.assign(job, data);
-    }
-  });
+  var data = {
+    modified: now,
+    runs: job.runs,
+    runFailures: job.runFailures
+  };
+  if (!success) {
+    data.failures = job.failures;
+  }
+  if (success) {
+    callback = job.success;
+    data.status = 'complete';
+    data.runs += 1;
+  } else if (maxFailures !== -1 && job.runFailures > maxFailures) {
+    callback = job.failure;
+    data.status = 'failed';
+    data.failures = job.failures;
+  } else {
+    data.delayUntil = now + getBackOffDelay(job);
+    data.status = 'pending';
+  }
+  if (data.status !== 'pending' && data.runs < repeatTimes && now <= repeatUntil) {
+    data.status = 'pending';
+    data.delayUntil = now + repeatDelay;
+    data.runFailures = 0;
+  }
+  db._jobs.update(job._key, data);
+  job = Object.assign(job, data);
 
   if (job.status === 'pending') {
     queues._updateQueueDelay();

@@ -55,24 +55,6 @@ function testSuite() {
       } 
     },
     
-    testAccessFromFoxxTransaction : function() {
-      const mount = '/test';
-
-      FoxxManager.install(basePath, mount);
-      try {
-        // this executes a server-side transaction running inside Foxx
-        let res = arango.GET(`/_db/_system/${mount}/runInsideFoxxTransaction`);
-        let results = res.results;
-        let cases = Object.keys(results);
-        assertEqual(1, cases.length);
-        cases.forEach((c) => {
-          assertTrue(results[c], results);
-        });
-      } finally {
-        FoxxManager.uninstall(mount, {force: true});
-      } 
-    },
-    
     testAccessFromTask : function() {
       // this executes all the operations server-side,
       // inside a JavaScript task

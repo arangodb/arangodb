@@ -76,30 +76,6 @@ exports.isEnterprise = function () {
   }
 };
 
-exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
-  try {
-    db._executeTransaction(trx);
-  } catch (ex) {
-    if ((!abortArangoshOnly || global.arango) &&  // only on arangosh...
-      (ex instanceof arangodb.ArangoError) && // only regular arango errors has the subsequent:
-      (ex.errorNum === errorCode) && // check for right error code
-      (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
-      if (crashOnSuccess) {
-        if (global.hasOwnProperty('instanceManager')) {
-          global.instanceManager.debugTerminate();
-        } else if (internal.hasOwnProperty('debugTerminate')) {
-          internal.debugTerminate('crashing server');
-        } else {
-          throw new Error('instance manager not found!');
-        }
-      }
-      return 0;
-    }
-    console.log(ex);
-  }
-  return 1;
-};
-
 exports.truncateFailure = function (collection) {
   try {
     collection.truncate();

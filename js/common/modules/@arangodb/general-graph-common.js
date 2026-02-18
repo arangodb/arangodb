@@ -369,63 +369,39 @@ var removeEdge = function (graphs, edgeCollection, edgeId, self) {
 
 function executeGraphRemoveTransaction(db, writeCollections, ids, options, vertexId) {
   const idList = Array.isArray(ids) ? ids : Object.keys(ids);
-  const useStreaming = typeof db._createTransaction === 'function';
-  if (useStreaming) {
-    const trx = db._createTransaction({ collections: { write: writeCollections } });
-    try {
-      idList.forEach(function (edgeId) {
-        const coll = edgeId.split('/')[0];
-        if (options) {
-          trx.collection(coll).remove(edgeId, options);
-        } else {
-          trx.collection(coll).remove(edgeId);
-        }
-      });
-      if (vertexId) {
-        const vColl = vertexId.split('/')[0];
-        if (options) {
-          trx.collection(vColl).remove(vertexId, options);
-        } else {
-          trx.collection(vColl).remove(vertexId);
-        }
-      }
-      trx.commit();
-    } catch (e) {
-      try {
-        trx.abort();
-      } catch (abortErr) {
-      }
-      throw e;
-    }
-  } else {
-    db._executeTransaction({
-      collections: { write: writeCollections },
-      embed: true,
-      action: function (params) {
-        const internalDb = require('internal').db;
-        params.ids.forEach(
-          function (edgeId) {
-            if (params.options) {
-              internalDb._remove(edgeId, params.options);
-            } else {
-              internalDb._remove(edgeId);
-            }
-          }
-        );
-        if (params.vertexId) {
-          if (params.options) {
-            internalDb._remove(params.vertexId, params.options);
-          } else {
-            internalDb._remove(params.vertexId);
-          }
-        }
-      },
-      params: {
-        ids: idList,
-        options: options,
-        vertexId: vertexId || undefined
+  if (typeof db._createTransaction !== 'function') {
+    throw new ArangoError({
+      error: true,
+      errorNum: arangodb.errors.ERROR_NOT_IMPLEMENTED.code,
+      errorMessage: 'Graph operations require streaming transactions (db._createTransaction). ' +
+        'This function is only available in arangosh.'
+    });
+  }
+  const trx = db._createTransaction({ collections: { write: writeCollections } });
+  try {
+    idList.forEach(function (edgeId) {
+      const coll = edgeId.split('/')[0];
+      if (options) {
+        trx.collection(coll).remove(edgeId, options);
+      } else {
+        trx.collection(coll).remove(edgeId);
       }
     });
+    if (vertexId) {
+      const vColl = vertexId.split('/')[0];
+      if (options) {
+        trx.collection(vColl).remove(vertexId, options);
+      } else {
+        trx.collection(vColl).remove(vertexId);
+      }
+    }
+    trx.commit();
+  } catch (e) {
+    try {
+      trx.abort();
+    } catch (abortErr) {
+    }
+    throw e;
   }
 }
 

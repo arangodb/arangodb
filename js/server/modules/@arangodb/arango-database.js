@@ -1,5 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global TRANSACTION, AQL_PARSE */
+/* global AQL_PARSE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -152,29 +152,12 @@ ArangoDatabase.prototype._parse = function (query) {
 };
 
 ArangoDatabase.prototype._executeTransaction = function (data) {
-  if (data && typeof data === 'object') {
-    data = Object.assign({}, data);
-    if (data.collections && typeof data.collections === 'object') {
-      data.collections = Object.assign({}, data.collections);
-      if (data.collections.read) {
-        if (!Array.isArray(data.collections.read)) {
-          data.collections.read = [data.collections.read];
-        }
-        data.collections.read = data.collections.read.map(
-          col => col.isArangoCollection ? col.name() : col
-        );
-      }
-      if (data.collections.write) {
-        if (!Array.isArray(data.collections.write)) {
-          data.collections.write = [data.collections.write];
-        }
-        data.collections.write = data.collections.write.map(
-          col => col.isArangoCollection ? col.name() : col
-        );
-      }
-    }
-  }
-  return TRANSACTION(data);
+  throw new ArangoError({
+    error: true,
+    errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+    errorMessage: 'JavaScript transactions are no longer supported. ' +
+      'Use streaming transactions instead.'
+  });
 };
 
 ArangoDatabase.prototype._drop = function (name, options) {

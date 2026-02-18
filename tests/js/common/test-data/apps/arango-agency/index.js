@@ -35,17 +35,4 @@ router.get('/runInsideFoxx', function (req, res) {
   res.json({ results });
 });
 
-router.get('/runInsideFoxxTransaction', function (req, res) {
-  let results = {};
-  Object.keys(testCases).forEach((tc) => {
-    results[tc] = db._executeTransaction({
-      collections: {},
-      action: function() { 
-        return testCases[tc]();
-      }
-    });
-  });
-  res.json({ results });
-});
-
 module.context.use(router);
