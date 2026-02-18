@@ -1,4 +1,4 @@
-# config file for arangoimp
+# config file for arangoimport
 
 [server]
 endpoint = tcp://127.0.0.1:8529

@@ -1860,7 +1860,7 @@ global.DEFINE_MODULE('internal', (function () {
   };
   
   [ "arangobackup", "arangod", "arangodb", "arangodbtests",
-    "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
+    "arangodump", "arangoexport", "arangoimport", "arango-init-database",
     "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
     global[executableName] = () => {
       let console = require("console");

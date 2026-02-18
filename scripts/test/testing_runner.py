@@ -473,7 +473,6 @@ class TestingRunner:
             "arangoexport",
             "arangoinspect",
             "arangoimport",
-            "arangoimp",
             "arangorestore",
             "snowball",
             # 'arangodbtests', we do not need arangodbtests since these tests are executed in a separate job
