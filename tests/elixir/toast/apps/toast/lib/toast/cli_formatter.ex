@@ -75,7 +75,7 @@ defmodule Toast.CLIFormatter do
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
     state = ensure_module_header(state)
     name = display_name(test)
-    write("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}\n")
+    IO.puts("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}")
     {:noreply, state}
   end
 
@@ -100,9 +100,9 @@ defmodule Toast.CLIFormatter do
           do: ", #{state.module_skipped_count} skipped",
           else: ""
 
-      write(
+      IO.puts(
         "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
-          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})\n"
+          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})"
       )
     else
       # Module header was never printed — all tests were excluded or skipped
@@ -111,9 +111,9 @@ defmodule Toast.CLIFormatter do
         count = state.module_skipped_count
         test_word = if count == 1, do: "test", else: "tests"
 
-        write(
+        IO.puts(
           "#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} " <>
-            "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}\n"
+            "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}"
         )
       end
 
@@ -130,17 +130,17 @@ defmodule Toast.CLIFormatter do
   end
 
   def handle_cast({:sigquit, running_tests}, state) do
-    write("\n#{colorize("Showing running tests:", :yellow, state)}\n")
+    IO.puts("\n#{colorize("Showing running tests:", :yellow, state)}")
 
     for %ExUnit.Test{} = test <- running_tests do
-      write("  #{inspect(test.module)} - #{display_name(test)}\n")
+      IO.puts("  #{inspect(test.module)} - #{display_name(test)}")
     end
 
     {:noreply, state}
   end
 
   def handle_cast({:max_failures_reached, _}, state) do
-    write("\n#{colorize("--max-failures reached, aborting test suite", :red, state)}\n")
+    IO.puts("\n#{colorize("--max-failures reached, aborting test suite", :red, state)}")
     {:noreply, state}
   end
 
@@ -159,10 +159,12 @@ defmodule Toast.CLIFormatter do
   end
 
   defp print_module_header(file, colors_enabled) do
-    colored = "🚀 #{colorize("Running", :cyan, colors_enabled)} #{colorize(file, :bold, colors_enabled)}"
+    colored =
+      "🚀 #{colorize("Running", :cyan, colors_enabled)} #{colorize(file, :bold, colors_enabled)}"
+
     underline = colorize(String.duplicate("─", 80), :cyan, colors_enabled)
 
-    write("\n#{colored}\n#{underline}\n")
+    IO.puts("\n#{colored}\n#{underline}")
   end
 
   # --- Test result output ---
@@ -170,13 +172,13 @@ defmodule Toast.CLIFormatter do
   defp print_test_result(%ExUnit.Test{state: nil} = test, state) do
     elapsed = div(test.time, 1000)
     name = display_name(test)
-    write("#{timestamp()} #{colorize("[     PASSED ]", :green, state)} #{name} (#{elapsed}ms)\n")
+    IO.puts("#{timestamp()} #{colorize("[     PASSED ]", :green, state)} #{name} (#{elapsed}ms)")
   end
 
   defp print_test_result(%ExUnit.Test{state: {:failed, failures}} = test, state) do
     elapsed = div(test.time, 1000)
     name = display_name(test)
-    write("#{timestamp()} #{colorize("[     FAILED ]", :red, state)} #{name} (#{elapsed}ms)\n")
+    IO.puts("#{timestamp()} #{colorize("[     FAILED ]", :red, state)} #{name} (#{elapsed}ms)")
     print_failure_details(test, failures, state)
   end
 
@@ -186,12 +188,12 @@ defmodule Toast.CLIFormatter do
       # Abort-skipped tests in a fully-skipped module: suppress (module_finished handles it).
       if state.module_header_printed do
         name = display_name(test)
-        write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
+        IO.puts("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}")
       end
     else
       # Regular @tag :skip
       name = display_name(test)
-      write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
+      IO.puts("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}")
     end
   end
 
@@ -202,7 +204,7 @@ defmodule Toast.CLIFormatter do
 
   defp print_test_result(%ExUnit.Test{state: {:invalid, _}} = test, state) do
     name = display_name(test)
-    write("#{timestamp()} #{colorize("[    INVALID ]", :red, state)} #{name}\n")
+    IO.puts("#{timestamp()} #{colorize("[    INVALID ]", :red, state)} #{name}")
   end
 
   defp print_failure_details(test, failures, state) do
@@ -215,7 +217,7 @@ defmodule Toast.CLIFormatter do
         &formatter_cb/2
       )
 
-    write("\n#{formatted}\n")
+    IO.puts("\n#{formatted}")
   end
 
   # ExUnit.Formatter callback for diff coloring
@@ -225,9 +227,15 @@ defmodule Toast.CLIFormatter do
   defp formatter_cb(:extra_info, msg), do: colorize(msg, :cyan, true)
   defp formatter_cb(:location_info, msg), do: colorize(msg, [:bright, :default_color], true)
   defp formatter_cb(:diff_delete, msg), do: colorize(msg, :red, true)
-  defp formatter_cb(:diff_delete_whitespace, msg), do: colorize(msg, IO.ANSI.color_background(1, 0, 0), true)
+
+  defp formatter_cb(:diff_delete_whitespace, msg),
+    do: colorize(msg, IO.ANSI.color_background(1, 0, 0), true)
+
   defp formatter_cb(:diff_insert, msg), do: colorize(msg, :green, true)
-  defp formatter_cb(:diff_insert_whitespace, msg), do: colorize(msg, IO.ANSI.color_background(0, 1, 0), true)
+
+  defp formatter_cb(:diff_insert_whitespace, msg),
+    do: colorize(msg, IO.ANSI.color_background(0, 1, 0), true)
+
   defp formatter_cb(:blame_diff, msg), do: colorize(msg, [:red, :bright], true)
   defp formatter_cb(_, msg), do: msg
 
@@ -243,44 +251,60 @@ defmodule Toast.CLIFormatter do
 
     # Status line
     status_bracket = String.pad_leading(status_text, 10)
-    write(
-      "\n#{timestamp()} #{colorize("[#{status_bracket} ]", status_color, state)} #{c.total} tests.\n"
+
+    IO.puts(
+      "\n#{timestamp()} #{colorize("[#{status_bracket} ]", status_color, state)} #{c.total} tests."
     )
 
     # Detail line
     parts = []
-    parts = if c.passed > 0, do: parts ++ [colorize("#{c.passed} passed", :green, state)], else: parts
-    parts = if c.failed > 0, do: parts ++ [colorize("#{c.failed} failed", :red, state)], else: parts ++ ["#{c.failed} failed"]
-    parts = if c.skipped > 0, do: parts ++ [colorize("#{c.skipped} skipped", :yellow, state)], else: parts
+
+    parts =
+      if c.passed > 0, do: parts ++ [colorize("#{c.passed} passed", :green, state)], else: parts
+
+    parts =
+      if c.failed > 0,
+        do: parts ++ [colorize("#{c.failed} failed", :red, state)],
+        else: parts ++ ["#{c.failed} failed"]
+
+    parts =
+      if c.skipped > 0,
+        do: parts ++ [colorize("#{c.skipped} skipped", :yellow, state)],
+        else: parts
+
     parts = if c.excluded > 0, do: parts ++ ["#{c.excluded} excluded"], else: parts
-    parts = if c.invalid > 0, do: parts ++ [colorize("#{c.invalid} invalid", :red, state)], else: parts
+
+    parts =
+      if c.invalid > 0, do: parts ++ [colorize("#{c.invalid} invalid", :red, state)], else: parts
 
     detail = Enum.join(parts, ", ")
 
-    write(
+    IO.puts(
       "#{timestamp()} #{colorize("[============]", :cyan, state)} " <>
-        "Ran: #{c.total} tests (#{detail}) (#{elapsed}ms total)\n"
+        "Ran: #{c.total} tests (#{detail}) (#{elapsed}ms total)"
     )
   end
 
   defp print_failure_summary(%{failures: []}), do: :ok
 
   defp print_failure_summary(state) do
-    write("\n  Failed tests:\n\n")
+    colorize(
+      [
+        "\n",
+        String.duplicate("=", 80),
+        "\n TEST FAILURES\n",
+        String.duplicate("=", 80)
+      ],
+      :red,
+      state
+    )
+    |> IO.puts()
 
     state.failures
     |> Enum.reverse()
     |> Enum.with_index(1)
-    |> Enum.each(fn {%ExUnit.Test{} = test, idx} ->
-      name = display_name(test)
-      mod = inspect(test.module)
-      file = test.tags[:file] || "?"
-      line = test.tags[:line] || 0
-
-      write(
-        "    #{idx}) #{colorize(name, :red, state)} (#{mod})\n" <>
-          "       #{colorize("#{file}:#{line}", [:bright, :default_color], state)}\n\n"
-      )
+    |> Enum.each(fn {%ExUnit.Test{state: {:failed, failures}} = test, idx} ->
+      print_failure_details(test, failures, %{state | failure_counter: idx - 1})
     end)
   end
 
@@ -331,7 +355,9 @@ defmodule Toast.CLIFormatter do
 
   defp module_file(%ExUnit.TestModule{} = mod) do
     case mod.state do
-      {:failed, %{tags: %{file: file}}} -> file
+      {:failed, %{tags: %{file: file}}} ->
+        file
+
       _ ->
         if function_exported?(mod.name, :__ex_unit__, 0) do
           info = mod.name.__ex_unit__()
@@ -383,9 +409,5 @@ defmodule Toast.CLIFormatter do
 
   defp colorize(text, color, true) when is_binary(color) do
     IO.iodata_to_binary([color, text, IO.ANSI.reset()])
-  end
-
-  defp write(msg) do
-    IO.write(msg)
   end
 end
