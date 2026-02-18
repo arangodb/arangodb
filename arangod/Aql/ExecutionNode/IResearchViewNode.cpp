@@ -36,6 +36,7 @@
 #include "Aql/Executor/IResearchViewHeapSortExecutor.h"
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -1134,7 +1135,8 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
         }
         break;
       default:
-        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+        if ((!setter->isDeterministic() ||
+             aql::utils::findEnclosingLoop(&plan, setter) != nullptr) &&
             callback(var)) {
           return true;
         }

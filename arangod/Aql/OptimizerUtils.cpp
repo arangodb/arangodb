@@ -47,6 +47,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Containers/SmallUnorderedMap.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -1430,6 +1431,68 @@ arangodb::aql::Collection const* getCollection(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node type does not have a collection");
   }
+}
+
+auto findEnclosingLoop(ExecutionPlan const* plan, ExecutionNode const* node)
+    -> ExecutionNode const* {
+  using EN = arangodb::aql::ExecutionNode;
+
+  containers::SmallUnorderedMap<ExecutionNode const*, ExecutionNode const*>::
+      allocator_type::arena_type subqueriesArena;
+  containers::SmallUnorderedMap<ExecutionNode const*, ExecutionNode const*>
+      subqueries{subqueriesArena};
+  {
+    containers::SmallVector<ExecutionNode*, 8> subs;
+    plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+
+    // we build a map of the top-most nodes of each subquery to the outer
+    // subquery node
+    for (auto& it : subs) {
+      auto sub = ExecutionNode::castTo<SubqueryNode const*>(it)->getSubquery();
+      while (sub->hasDependency()) {
+        sub = sub->getFirstDependency();
+      }
+      subqueries.emplace(sub, it);
+    }
+  }
+
+  while (node != nullptr) {
+    auto type = node->getType();
+    LOG_DEVEL << "looking at node " << node->id().id() << " "
+              << node->getTypeString();
+
+    if (type == EN::SINGLETON) {
+      LOG_DEVEL << "singleton " << node->id().id();
+      if (node->isInSubquery()) {
+        LOG_DEVEL << "ran into singleton in subquery, lol";
+        auto it = subqueries.find(node);
+        TRI_ASSERT(it != std::end(subqueries));
+        auto [_, sq] = *it;
+        node = sq->getFirstDependency();
+        LOG_DEVEL << "moved node to " << node->id().id() << " "
+                  << node->getTypeString();
+      }
+    } else {
+      if (!node->hasDependency()) {
+        return nullptr;
+      }
+
+      node = node->getFirstDependency();
+      LOG_DEVEL << "found dependency: " << node->id().id() << " "
+                << node->getTypeString();
+    }
+
+    type = node->getType();
+    if (type == EN::ENUMERATE_COLLECTION || type == EN::INDEX ||
+        type == EN::TRAVERSAL || type == EN::ENUMERATE_LIST ||
+        type == EN::SHORTEST_PATH || type == EN::ENUMERATE_PATHS ||
+        type == EN::ENUMERATE_IRESEARCH_VIEW) {
+      LOG_DEVEL << "returning " << node->id().id();
+      return node;
+    }
+  }
+
+  return nullptr;
 }
 
 }  // namespace arangodb::aql::utils
