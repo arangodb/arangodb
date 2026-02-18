@@ -148,16 +148,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -310,16 +300,6 @@ R"=(
           "unique": false,
           "sparse": true,
           "deduplicate": false
-        },
-        {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
         },
         {
           "id": "2010055",
@@ -1041,16 +1021,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -1209,16 +1179,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -1371,16 +1331,6 @@ R"=(
           "unique": false,
           "sparse": true,
           "deduplicate": false
-        },
-        {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
         },
         {
           "id": "2010055",
@@ -1539,16 +1489,6 @@ R"=(
           "unique": false,
           "sparse": true,
           "deduplicate": false
-        },
-        {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
         },
         {
           "id": "2010055",

@@ -32,13 +32,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -566,4 +566,41 @@ Result UpgradeTasks::dropPregelQueriesCollection(
     res.reset();
   }
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all fulltext indexes (no longer supported since 4.0)
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice /*upgradeParams*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all fulltext indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+            << "Dropping obsolete fulltext index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - fulltext indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping fulltext index: " << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+
+  return {};
 }

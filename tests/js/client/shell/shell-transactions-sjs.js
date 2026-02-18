@@ -1508,35 +1508,6 @@ function transactionOperationsSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with create index operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCreateFulltextIndex: function () {
-      c1 = db._create(cn1);
-
-      let obj = {
-        collections: {
-        },
-        action: function () {
-          const db = require('@arangodb').db;
-          let c1 = db._collection(params.cn1);
-          c1.ensureIndex({ type: "fulltext", fields: ["foo"] });
-          fail();
-        },
-        params: {
-          cn1: cn1
-        }
-      };
-
-      try {
-        db._executeTransaction(obj);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with drop index operation
     // //////////////////////////////////////////////////////////////////////////////
 
@@ -2134,39 +2105,6 @@ function transactionOperationsSuite () {
         },
         params: {
           cn1: cn1
-        }
-      };
-
-      require('@arangodb').db._executeTransaction(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with fulltext operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFulltext: function () {
-      c1 = db._create(cn1);
-      var idx = c1.ensureIndex({ type: "fulltext", fields: ["text"] });
-
-      c1.save({ text: 'steam', other: 1 });
-      c1.save({ text: 'steamboot', other: 2 });
-
-      let obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          const db = require('@arangodb').db;
-          let c1 = db._collection(params.cn1);
-          var r = c1.fulltext('text', 'prefix:steam', params.idx).toArray();
-          require("jsunity").jsUnity.assertions.assertEqual(2, r.length);
-
-          r = c1.fulltext('text', 'steam', params.idx).toArray();
-          require("jsunity").jsUnity.assertions.assertEqual(1, r.length);
-        },
-        params: {
-          cn1: cn1,
-          idx: idx
         }
       };
 
