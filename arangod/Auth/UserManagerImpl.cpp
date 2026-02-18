@@ -213,13 +213,10 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             << "Preloading user cache is still in progress. Tried " << tries
             << " times";
       }
-      auto mutex = std::mutex{};
-      auto cv = std::condition_variable{};
-      auto lock = std::unique_lock(mutex);
       // This will try ~20 times in the first second, then will reduce to 1 try
       // per second
       uint32_t const multiplier = 1u << std::min(tries, 20u);
-      cv.wait_for(lock, 1us * multiplier);
+      std::this_thread::sleep_for(1us * multiplier);
       if (_server.isStopping()) {
         return;
       }
