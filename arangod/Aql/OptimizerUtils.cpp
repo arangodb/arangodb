@@ -1458,28 +1458,19 @@ auto findEnclosingLoop(ExecutionPlan const* plan, ExecutionNode const* node)
 
   while (node != nullptr) {
     auto type = node->getType();
-    LOG_DEVEL << "looking at node " << node->id().id() << " "
-              << node->getTypeString();
 
     if (type == EN::SINGLETON) {
-      LOG_DEVEL << "singleton " << node->id().id();
       if (node->isInSubquery()) {
-        LOG_DEVEL << "ran into singleton in subquery, lol";
         auto it = subqueries.find(node);
         TRI_ASSERT(it != std::end(subqueries));
         auto [_, sq] = *it;
         node = sq->getFirstDependency();
-        LOG_DEVEL << "moved node to " << node->id().id() << " "
-                  << node->getTypeString();
       }
     } else {
       if (!node->hasDependency()) {
         return nullptr;
       }
-
       node = node->getFirstDependency();
-      LOG_DEVEL << "found dependency: " << node->id().id() << " "
-                << node->getTypeString();
     }
 
     type = node->getType();
@@ -1487,7 +1478,6 @@ auto findEnclosingLoop(ExecutionPlan const* plan, ExecutionNode const* node)
         type == EN::TRAVERSAL || type == EN::ENUMERATE_LIST ||
         type == EN::SHORTEST_PATH || type == EN::ENUMERATE_PATHS ||
         type == EN::ENUMERATE_IRESEARCH_VIEW) {
-      LOG_DEVEL << "returning " << node->id().id();
       return node;
     }
   }
