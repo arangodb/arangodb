@@ -198,7 +198,7 @@ requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth
 endpoint. Requests with expiry times above this value will be rejected.)");
 
   options
-      ->addOption("--auth.external-rbac-service",
+      ->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
                   "external RBAC service endpoint.",
                   new StringParameter(&_options.externalRBACservice),
