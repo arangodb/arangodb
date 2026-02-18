@@ -26,20 +26,27 @@
 
 if (getOptions === true) {
   return {
-    'auth.use-rbac': 'true',
+    "server.external-rbac-service": "non-empty-to-activate",
   };
 }
 
-const jsunity = require('jsunity');
-const request = require('@arangodb/request');
+const jsunity = require("jsunity");
+const request = require("@arangodb/request");
 
 function testSuite() {
   return {
-    testAuthUseRBACOption : function() {
+    testServerExternalRBACServiceOption: function () {
       let res = JSON.parse(request.get("/_admin/options").body);
 
-      assertTrue(res.hasOwnProperty("auth.use-rbac"), "auth.use-rbac should be present in options");
-      assertEqual(true, res["auth.use-rbac"], "auth.use-rbac should be true");
+      assertTrue(
+        res.hasOwnProperty("server.external-rbac-service"),
+        "server.exernal-rbac-sergice should be present in options",
+      );
+      assertEqual(
+        "non-empty-to-activate",
+        res["server.external-rbac-service"],
+        "server.external-rbac-service should be 'non-empty-to-activate'",
+      );
     },
   };
 }

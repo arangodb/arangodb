@@ -198,15 +198,18 @@ requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth
 endpoint. Requests with expiry times above this value will be rejected.)");
 
   options
-      ->addOption("--auth.use-rbac", "Enable role-based access control (RBAC).",
-                  new BooleanParameter(&_options.useRBAC),
+      ->addOption("--auth.external-rbac-service",
+                  "Enable role-based access control (RBAC) and set the "
+                  "external RBAC service endpoint.",
+                  new StringParameter(&_options.externalRBACservice),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(When enabled, the server will use role-based
-access control (RBAC) for authorization decisions.)");
+      .setLongDescription(
+          R"(When set to a non-empty string, this must be the HTTP or HTTPS
+endpoint of an external RBAC authorization service, coordinators and single servers
+use role-based access control (RBAC) for authorization decisions.)");
 
   options->addObsoleteOption(
       "--server.local-authentication",

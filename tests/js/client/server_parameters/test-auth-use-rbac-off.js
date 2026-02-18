@@ -26,20 +26,27 @@
 
 if (getOptions === true) {
   return {
-    'auth.use-rbac': 'false',
+    "server.external-rbac-service": "",
   };
 }
 
-const jsunity = require('jsunity');
-const request = require('@arangodb/request');
+const jsunity = require("jsunity");
+const request = require("@arangodb/request");
 
 function testSuite() {
   return {
-    testAuthUseRBACOptionOff : function() {
+    testServerExternalRBACServiceOptionOff: function () {
       let res = JSON.parse(request.get("/_admin/options").body);
 
-      assertTrue(res.hasOwnProperty("auth.use-rbac"), "auth.use-rbac should be present in options");
-      assertEqual(false, res["auth.use-rbac"], "auth.use-rbac should be false");
+      assertTrue(
+        res.hasOwnProperty("server.external-rbac-service"),
+        "server.server-rbac-service should be present in options",
+      );
+      assertEqual(
+        "",
+        res["server.external-rbac-service"],
+        "server.external-rbac-service should be set",
+      );
     },
   };
 }
