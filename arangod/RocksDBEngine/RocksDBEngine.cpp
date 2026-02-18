@@ -1160,6 +1160,7 @@ void RocksDBEngine::start() {
 
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
+
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
   auto addFamily = [this,
@@ -1176,13 +1177,13 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
+  // Fulltext indexes were removed in 4.0, but we keep the column family.
+  // Existing fulltext indexes are dropped by the upgrade task.
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -3738,13 +3739,10 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::EdgeIndex);
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
-  addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (isVectorIndexEnabled()) {
-    addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
-  }
+  addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
   builder.close();
 
   if (_throttleListener) {

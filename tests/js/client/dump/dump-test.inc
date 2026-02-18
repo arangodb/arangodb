@@ -122,7 +122,7 @@
     removedSingleIndices: 1,
     removedModulo: 10,
     // testIndexes
-    indexesCount: 9,
+    indexesCount: 8,
     // testKeygenAutoInc
     keygenAutoInc: 42049,
     autoIncDocCount: 1001,
@@ -545,18 +545,14 @@
         assertTrue(c.indexes()[6].sparse);
         assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
 
+        assertEqual("geo", c.indexes()[7].type);
+        assertEqual(["a_la", "a_lo"], c.indexes()[7].fields);
         assertFalse(c.indexes()[7].unique);
-        assertEqual("fulltext", c.indexes()[7].type);
-        assertEqual(["a_f"], c.indexes()[7].fields);
 
-        assertEqual("geo", c.indexes()[8].type);
-        assertEqual(["a_la", "a_lo"], c.indexes()[8].fields);
-        assertFalse(c.indexes()[8].unique);
-
-        if (args.indexesCount > 9) {
-          assertEqual("persistent", c.indexes()[9].type);
-          assertEqual(["abc"], c.indexes()[9].fields);
-          assertFalse(c.indexes()[9].unique);
+        if (args.indexesCount > 8) {
+          assertEqual("persistent", c.indexes()[8].type);
+          assertEqual(["abc"], c.indexes()[8].fields);
+          assertFalse(c.indexes()[8].unique);
         }
         assertEqual(0, c.count());
       },

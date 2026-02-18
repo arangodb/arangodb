@@ -58,8 +58,7 @@ function ReplicationLoggerSuite () {
     getLastLogTick();
   
     var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' || 
-              name === '_apps' ||
+      return (name === '_apps' ||
               name === '_foxxlog' ||
               name === '_jobs' ||
               name === '_queues' ||
@@ -729,27 +728,6 @@ function ReplicationLoggerSuite () {
       assertEqual("persistent", entry.data.type);
       assertEqual(true, entry.data.unique);
       assertEqual(true, entry.data.sparse);
-      assertEqual([ "a" ], entry.data.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test actions
-////////////////////////////////////////////////////////////////////////////////
-
-    testLoggerCreateIndexFulltext1 : function () {
-      var c = db._create(cn);
-
-      var tick = getLastLogTick();
-      c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
-      var idx = c.indexes()[1];
-
-      var entry = getLogEntries(tick, 2100)[0];
-      assertTrue(2100, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("fulltext", entry.data.type);
-      assertEqual(false, entry.data.unique);
-      assertEqual(5, entry.data.minLength);
       assertEqual([ "a" ], entry.data.fields);
     },
 

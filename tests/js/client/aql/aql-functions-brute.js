@@ -131,7 +131,6 @@ function ahuacatlFunctionsBruteTestSuite () {
     "WITHIN",
     "WITHIN_RECTANGLE",
     "IS_IN_POLYGON",
-    "FULLTEXT",
     "DATE_NOW",
     "DATE_TIMESTAMP",
     "DATE_ISO8601",

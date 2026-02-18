@@ -1,5 +1,18 @@
 4.0
 ---
+* Remove fulltext indexes. Fulltext indexes are no longer supported and have
+  been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
+  will be automatically dropped during upgrade. The following functionality
+  has been removed:
+  - Fulltext index creation via `ensureFulltextIndex()` and `ensureIndex({type: "fulltext", ...})`
+  - The `FULLTEXT()` AQL function
+  - The `collection.fulltext()` JavaScript method
+  - The `PUT /_api/simple/fulltext` REST API endpoint
+  - The `lookupFulltextIndex()` method
+  Users should migrate to inverted indexes for full-text search functionality.
+
+* Remove _fishBowl collection.
+
 * Remove arangodb/foxx related code.
 
 * Remove PUT method in /_api/cursor/<cursor-id>.
@@ -19,11 +32,16 @@
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
 
+* Remove arangobench.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
+
+* Remove `minReplicationFactor` collection property, which is superseded by
+  `writeConcern`.
 
 * Make `vector-index` flag obsolete.
 

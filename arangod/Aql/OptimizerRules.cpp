@@ -3593,7 +3593,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   // we may find indexes in the plan when this rule runs, but
   // only some geo/fulltext indexes which are inserted into the
   // plan by an optimizer rule that replaces old AQL functions
-  // FULLTEXT/WITHIN with actual FOR loop-index lookups
+  // FULLTEXT/WITHIN/NEAR with actual FOR loop-index lookups
   plan->findNodesOfType(nodes, ::interchangeAdjacentEnumerationsNodeTypes,
                         true);
 

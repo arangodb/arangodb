@@ -32,13 +32,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -164,9 +164,6 @@ Result createSystemCollections(
     // NOTE: We could hard-code this on compile-time
     // List of _system database only collections
     systemCollections.push_back(StaticStrings::UsersCollection);
-    systemCollections.push_back(StaticStrings::StatisticsCollection);
-    systemCollections.push_back(StaticStrings::Statistics15Collection);
-    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
     // All others are available in all other Databases as well.
   }
 
@@ -303,42 +300,6 @@ Result createSystemCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
-Result createSystemStatisticsCollections(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  if (vocbase.isSystem()) {
-    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
-    // the order of systemCollections is important. If we're in _system db, the
-    // UsersCollection needs to be first, otherwise, the GraphsCollection must
-    // be first.
-    std::array<std::string, 3> systemCollections{
-        StaticStrings::StatisticsCollection,
-        StaticStrings::Statistics15Collection,
-        StaticStrings::StatisticsRawCollection,
-    };
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-    Result res;
-    OperationOptions options{};
-    for (auto const& collection : systemCollections) {
-      // No need to batch this.
-      // Fresh databases will have a batch run for those collections already.
-      // We only hit this on databases that do not have statistics collections
-      // yet. Which have to be somewhere from the 2.X series, and never had an
-      // upgrade task.
-      std::shared_ptr<LogicalCollection> col;
-      res = methods::Collections::createSystem(vocbase, options, collection,
-                                               false, col);
-      if (res.fail()) {
-        return res;
-      }
-      TRI_ASSERT(col) << "Create system collection did not fail but also did "
-                         "not create a collection.";
-      createdCollections.emplace_back(std::move(col));
-    }
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
-
 Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
@@ -361,33 +322,6 @@ Result createIndex(
       .waitAndGet();
 }
 
-Result createSystemStatisticsIndices(
-    TRI_vocbase_t& vocbase,
-    std::vector<std::shared_ptr<LogicalCollection>>& collections) {
-  Result res;
-  if (vocbase.isSystem()) {
-    res = ::createIndex(StaticStrings::StatisticsCollection,
-                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                        {"time"}, false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::Statistics15Collection,
-                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                        {"time"}, false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-    res = ::createIndex(StaticStrings::StatisticsRawCollection,
-                        arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
-                        {"time"}, false, false, collections);
-    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-      return res;
-    }
-  }
-  return res;
-}
-
 Result createSystemCollectionsIndices(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
@@ -396,11 +330,6 @@ Result createSystemCollectionsIndices(
     res = ::createIndex(StaticStrings::UsersCollection,
                         arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX,
                         {"user"}, true, true, collections);
-    if (!res.ok()) {
-      return res;
-    }
-
-    res = ::createSystemStatisticsIndices(vocbase, collections);
     if (!res.ok()) {
       return res;
     }
@@ -468,32 +397,6 @@ Result UpgradeTasks::createSystemCollectionsAndIndices(
   res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
   if (res.fail()) {
     LOG_TOPIC("fedc0", ERR, Logger::STARTUP)
-        << "could not create indices for system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  return {};
-}
-
-Result UpgradeTasks::createStatisticsCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
-  // This vector should after the call to ::createSystemCollections contain
-  // a LogicalCollection for *every* (required) system collection.
-  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
-  Result res =
-      ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
-
-  if (res.fail()) {
-    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
-        << "could not create system collections"
-        << ": error: " << res.errorMessage();
-    return res;
-  }
-
-  res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
-  if (res.fail()) {
-    LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
     return res;
@@ -712,4 +615,41 @@ Result UpgradeTasks::dropOldStatisticsCollections(
     res.reset();
   }
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all fulltext indexes (no longer supported since 4.0)
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice /*upgradeParams*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all fulltext indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+            << "Dropping obsolete fulltext index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - fulltext indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping fulltext index: " << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+
+  return {};
 }

@@ -824,88 +824,6 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief fulltext query
-// //////////////////////////////////////////////////////////////////////////////
-
-function SimpleQueryFulltext (collection, attribute, query, iid) {
-  this._collection = collection;
-  this._attribute = attribute;
-  this._query = query;
-  this._index = (iid === undefined ? null : iid);
-
-  if (iid === undefined) {
-    var idx = collection.indexes();
-    var i;
-
-    for (i = 0;  i < idx.length;  ++i) {
-      var index = idx[i];
-
-      if (index.type === 'fulltext' && index.fields[0] === attribute) {
-        if (this._index === null) {
-          this._index = index.id;
-        }
-        else if (index.indexSubstrings && ! this._index.indexSubstrings) {
-          // prefer indexes that have substrings indexed
-          this._index = index.id;
-        }
-      }
-    }
-  }
-
-  if (this._index === null) {
-    var err = new ArangoError();
-    err.errorNum = arangodb.ERROR_QUERY_FULLTEXT_INDEX_MISSING;
-    err.errorMessage = require('internal').sprintf(
-      arangodb.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message,
-      collection.name());
-    throw err;
-  }
-}
-
-SimpleQueryFulltext.prototype = new SimpleQuery();
-SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief clones a fulltext query
-// //////////////////////////////////////////////////////////////////////////////
-
-SimpleQueryFulltext.prototype.clone = function () {
-  var query;
-
-  query = new SimpleQueryFulltext(this._collection, this._attribute, this._query, this._index);
-  query._skip = this._skip;
-  query._limit = this._limit;
-
-  return query;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief prints a fulltext query
-// //////////////////////////////////////////////////////////////////////////////
-
-SimpleQueryFulltext.prototype._PRINT = function (context) {
-  var text;
-
-  text = 'SimpleQueryFulltext('
-    + this._collection.name()
-    + ', '
-    + this._attribute
-    + ', "'
-    + this._query
-    + '")';
-
-  if (this._skip !== null && this._skip !== 0) {
-    text += '.skip(' + this._skip + ')';
-  }
-
-  if (this._limit !== null) {
-    text += '.limit(' + this._limit + ')';
-  }
-
-  context.output += text;
-};
-
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
 exports.SimpleQueryArray = SimpleQueryArray;
@@ -916,4 +834,3 @@ exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
-exports.SimpleQueryFulltext = SimpleQueryFulltext;
