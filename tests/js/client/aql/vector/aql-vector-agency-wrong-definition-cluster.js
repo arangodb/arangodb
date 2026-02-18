@@ -28,25 +28,13 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
-const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
-const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
-let {
-    agency,
-    getMetric,
-    getEndpointById
-} = require('@arangodb/test-helper');
-
 let IM = global.instanceManager;
-const { versionHas } = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

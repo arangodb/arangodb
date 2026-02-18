@@ -26,9 +26,6 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const helper = require("@arangodb/aql-helper");
-const getQueryResults = helper.getQueryResults;
-const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = require("internal").db;
 const {
@@ -39,7 +36,6 @@ const { versionHas } = require("@arangodb/test-helper");
 
 const dbName = "vectorDB";
 const collName = "coll";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

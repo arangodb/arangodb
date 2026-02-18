@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = internal.db;
@@ -53,11 +52,11 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2TestSuite() {
+function VectorIndexL2TestSuite(numberOfDocsOverride) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 500;
+    const numberOfDocs = numberOfDocsOverride || 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -522,11 +521,11 @@ function VectorIndexL2TestSuite() {
 }
 
 
-function VectorIndexCosineTestSuite() {
+function VectorIndexCosineTestSuite(numberOfDocsOverride) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
+    const numberOfDocs = numberOfDocsOverride || 1000;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -700,11 +699,11 @@ function VectorIndexCosineTestSuite() {
     };
 }
 
-function VectorIndexInnerProductTestSuite() {
+function VectorIndexInnerProductTestSuite(numberOfDocsOverride) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 1000;
+    const numberOfDocs = numberOfDocsOverride || 1000;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -1055,9 +1054,31 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-jsunity.run(VectorIndexL2TestSuite);
-jsunity.run(VectorIndexCosineTestSuite);
-jsunity.run(VectorIndexInnerProductTestSuite);
+const trainedDocCount = 11000;
+const untrainedDocCount = 500;
+
+// Run with untrained index (brute-force mode)
+jsunity.run(function VectorIndexL2UntrainedTestSuite() {
+    return VectorIndexL2TestSuite(untrainedDocCount);
+});
+jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
+    return VectorIndexCosineTestSuite(untrainedDocCount);
+});
+jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
+    return VectorIndexInnerProductTestSuite(untrainedDocCount);
+});
+
+// Run with trained index (FAISS IVF mode)
+jsunity.run(function VectorIndexL2TrainedTestSuite() {
+    return VectorIndexL2TestSuite(trainedDocCount);
+});
+jsunity.run(function VectorIndexCosineTrainedTestSuite() {
+    return VectorIndexCosineTestSuite(trainedDocCount);
+});
+jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
+    return VectorIndexInnerProductTestSuite(trainedDocCount);
+});
+
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
