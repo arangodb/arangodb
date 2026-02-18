@@ -717,26 +717,18 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
   let bindVars = {'@collection': col};
   let query = "FOR doc IN @@collection";
   let count = 0;
-  for (const [key, value] of Object.entries(exampleDoc)) {
-    if (count > 0) {
-      query += " and ";
-    } else {
-      query += " FILTER ";
-    }
+
+  for (let [key, value] of Object.entries(exampleDoc)) {
+    key = key.replaceAll("`", "").split(".").join("`.`")
     let bVName = `value${count}`;
-    let attName = `att${count}`;
-        query += ` doc.@${attName} == @${bVName}`;
+    query += "  FILTER doc.`" + key + "` == @" + bVName;
     bindVars[bVName] = value;
-    bindVars[attName] = key;
     count += 1;
   }
   if (limit > 0 || skip > 0) {
     query += ` LIMIT ${skip}, ${(limit > 0) ? limit : "null"}`;
   }
-  return {
-    query,
-    bindVars
-  };
+  return { query, bindVars };
 };
 
 ArangoCollection.prototype.all = function () {
