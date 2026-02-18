@@ -61,7 +61,7 @@ class AuthenticationFeature final
 
   bool authenticationUnixSockets() const noexcept;
   bool authenticationSystemOnly() const noexcept;
-  bool externalRBACservice() const noexcept;
+  std::string_view externalRBACservice() const noexcept;
 
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;

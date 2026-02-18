@@ -434,7 +434,7 @@ bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
 }
 
-bool AuthenticationFeature::externalRBACservice() const noexcept {
+std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
   return _options.externalRBACservice;
 }
 
