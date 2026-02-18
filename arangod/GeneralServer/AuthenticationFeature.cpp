@@ -209,8 +209,10 @@ endpoint. Requests with expiry times above this value will be rejected.)");
                       arangodb::options::Flags::OnSingle))
       .setLongDescription(
           R"(When set to a non-empty string, this must be the HTTP or HTTPS
-endpoint of an external RBAC authorization service, coordinators and single servers
-use role-based access control (RBAC) for authorization decisions.)");
+endpoint of an external RBAC authorization service for use by coordinators and single
+servers. In this case, all requests with use role-based-access-control (RBAC) via the
+specified service for authorization decisions. When set to an empty string, RBAC is
+disabled and instead the old permission system is used.)");
 
   options->addObsoleteOption(
       "--server.local-authentication",
