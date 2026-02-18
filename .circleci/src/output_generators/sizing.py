@@ -72,8 +72,6 @@ class ResourceSizer:
         """
         # TSAN cluster tests need the most resources - even small tests get bumped to xlarge
         if size == ResourceSize.SMALL:
-            #if build_config.build_variant.is_tsan and is_cluster:
-            #    return ResourceSize.XLARGE
             return ResourceSize.LARGE
 
         # Medium/large tests get bumped to xlarge for all instrumented builds
