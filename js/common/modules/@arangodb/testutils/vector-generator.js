@@ -226,5 +226,18 @@ function createVectorGenerator(options) {
     };
 }
 
+function withSuffix(suite, suffix) {
+    const result = {};
+    for (const [key, value] of Object.entries(suite)) {
+        if (key.startsWith('test')) {
+            result[key + suffix] = value;
+        } else {
+            result[key] = value;
+        }
+    }
+    return result;
+}
+
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
+exports.withSuffix = withSuffix;

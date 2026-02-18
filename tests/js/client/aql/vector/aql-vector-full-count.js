@@ -32,6 +32,9 @@ const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    withSuffix,
+} = require("@arangodb/testutils/vector-generator");
 
 const dbName = "vectorDB";
 const collName = "vectorColl";
@@ -40,12 +43,13 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexFullCountTestSuite() {
+function VectorIndexFullCountTestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 100;
+    const numberOfDocs = numberOfDocsOverride || 100;
     const seed = 12132390894;
+    const nLists = 10;
 
     return {
         setUpAll: function() {
@@ -79,8 +83,9 @@ function VectorIndexFullCountTestSuite() {
                 params: {
                     metric: "l2",
                     dimension: dimension,
-                    nLists: 10,
+                    nLists: nLists,
                     trainingIterations: 10,
+                    defaultNProbe: nLists,
                 },
             });
         },
@@ -410,7 +415,20 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
-jsunity.run(VectorIndexFullCountTestSuite);
+// nLists=10, threshold = max(10*39, 1000) = 1000
+const untrainedDocCount = 500;
+const trainedDocCount = 1500;
+
+// Untrained (brute-force)
+jsunity.run(function VectorIndexFullCountUntrainedTestSuite() {
+    return withSuffix(VectorIndexFullCountTestSuite(untrainedDocCount), '_untrained');
+});
+
+// Trained
+jsunity.run(function VectorIndexFullCountTrainedTestSuite() {
+    return withSuffix(VectorIndexFullCountTestSuite(trainedDocCount), '_trained');
+});
+
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
 jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
 

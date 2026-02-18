@@ -31,6 +31,9 @@ const db = require("internal").db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    withSuffix,
+} = require("@arangodb/testutils/vector-generator");
 
 const { versionHas } = require("@arangodb/test-helper");
 
@@ -41,12 +44,12 @@ const collName = "coll";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexCreateAndRemoveTestSuite() {
+function VectorIndexCreateAndRemoveTestSuite(numberOfDocsOverride = null) {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
     let randomPoint;
-    const insertedDocsCount = 100;
+    const insertedDocsCount = numberOfDocsOverride || 100;
     let insertedDocs = [];
 
     return {
@@ -432,12 +435,12 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-function VectorIndexStoredValuesTestSuite() {
+function VectorIndexStoredValuesTestSuite(numberOfDocsOverride = null) {
     let collection;
     const dimension = 128;
     const seed = 123456789;
     let randomPoint;
-    const insertedDocsCount = 50;
+    const insertedDocsCount = numberOfDocsOverride || 50;
     let insertedDocs = [];
 
     return {
@@ -676,8 +679,26 @@ function VectorIndexStoredValuesTestSuite() {
 }
 
 
-jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+// nLists=1, threshold = max(1*39, 1000) = 1000
+const untrainedDocCount = 500;
+const trainedDocCount = 1500;
+
+// Untrained (brute-force)
+jsunity.run(function VectorIndexCreateAndRemoveUntrainedTestSuite() {
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(untrainedDocCount), '_untrained');
+});
+jsunity.run(function VectorIndexStoredValuesUntrainedTestSuite() {
+    return withSuffix(VectorIndexStoredValuesTestSuite(untrainedDocCount), '_untrained');
+});
+
+// Trained
+jsunity.run(function VectorIndexCreateAndRemoveTrainedTestSuite() {
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(trainedDocCount), '_trained');
+});
+jsunity.run(function VectorIndexStoredValuesTrainedTestSuite() {
+    return withSuffix(VectorIndexStoredValuesTestSuite(trainedDocCount), '_trained');
+});
+
 jsunity.run(VectorIndexTestCreationWithVectors);
-jsunity.run(VectorIndexStoredValuesTestSuite);
 
 return jsunity.done();

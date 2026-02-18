@@ -39,6 +39,7 @@ const {
 const {
     createVectorGenerator,
     DistanceFunctions,
+    withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
 const {
@@ -52,7 +53,7 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2TestSuite(numberOfDocsOverride) {
+function VectorIndexL2TestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 500;
@@ -521,7 +522,7 @@ function VectorIndexL2TestSuite(numberOfDocsOverride) {
 }
 
 
-function VectorIndexCosineTestSuite(numberOfDocsOverride) {
+function VectorIndexCosineTestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 500;
@@ -699,7 +700,7 @@ function VectorIndexCosineTestSuite(numberOfDocsOverride) {
     };
 }
 
-function VectorIndexInnerProductTestSuite(numberOfDocsOverride) {
+function VectorIndexInnerProductTestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 500;
@@ -1054,29 +1055,30 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-const trainedDocCount = 11000;
+// With nLists=10, threshold is max(10*39, 1000) = 1000
 const untrainedDocCount = 500;
+const trainedDocCount = 1500;
 
 // Run with untrained index (brute-force mode)
 jsunity.run(function VectorIndexL2UntrainedTestSuite() {
-    return VectorIndexL2TestSuite(untrainedDocCount);
+    return withSuffix(VectorIndexL2TestSuite(untrainedDocCount), '_untrained');
 });
 jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
-    return VectorIndexCosineTestSuite(untrainedDocCount);
+    return withSuffix(VectorIndexCosineTestSuite(untrainedDocCount), '_untrained');
 });
 jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
-    return VectorIndexInnerProductTestSuite(untrainedDocCount);
+    return withSuffix(VectorIndexInnerProductTestSuite(untrainedDocCount), '_untrained');
 });
 
-// Run with trained index (FAISS IVF mode)
+// Run with trained index
 jsunity.run(function VectorIndexL2TrainedTestSuite() {
-    return VectorIndexL2TestSuite(trainedDocCount);
+    return withSuffix(VectorIndexL2TestSuite(trainedDocCount), '_trained');
 });
 jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-    return VectorIndexCosineTestSuite(trainedDocCount);
+    return withSuffix(VectorIndexCosineTestSuite(trainedDocCount), '_trained');
 });
 jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-    return VectorIndexInnerProductTestSuite(trainedDocCount);
+    return withSuffix(VectorIndexInnerProductTestSuite(trainedDocCount), '_trained');
 });
 
 jsunity.run(MultipleVectorIndexesOnField);

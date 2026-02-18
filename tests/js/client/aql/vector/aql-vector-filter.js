@@ -97,11 +97,11 @@ const verifyPlan = function(query, bindVars, numberOfCalculationNodes) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2FilterTestSuite() {
+function VectorIndexL2FilterTestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocs = numberOfDocsOverride || 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -618,12 +618,12 @@ function VectorIndexL2FilterTestSuite() {
     };
 }
 
-function VectorIndexL2FilterTestMultipleCollectionsSuite() {
+function VectorIndexL2FilterTestMultipleCollectionsSuite(numberOfDocsOverride = null) {
     let collection1;
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocs = numberOfDocsOverride || 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
     const col2 = "col2";
@@ -721,11 +721,11 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     };
 }
 
-function VectorIndexL2FilterStoredValuesTestSuite() {
+function VectorIndexL2FilterStoredValuesTestSuite(numberOfDocsOverride = null) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = 500;
+    const numberOfDocs = numberOfDocsOverride || 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -940,8 +940,30 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
     };
 }
 
-jsunity.run(VectorIndexL2FilterTestSuite);
-jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
-jsunity.run(VectorIndexL2FilterStoredValuesTestSuite);
+// nLists=10, threshold = max(10*39, 1000) = 1000
+const untrainedDocCount = 500;
+const trainedDocCount = 1500;
+
+// Untrained (brute-force)
+jsunity.run(function VectorIndexL2FilterUntrainedTestSuite() {
+    return VectorIndexL2FilterTestSuite(untrainedDocCount);
+});
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() {
+    return VectorIndexL2FilterTestMultipleCollectionsSuite(untrainedDocCount);
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
+    return VectorIndexL2FilterStoredValuesTestSuite(untrainedDocCount);
+});
+
+// Trained (FAISS IVF)
+jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
+    return VectorIndexL2FilterTestSuite(trainedDocCount);
+});
+jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
+    return VectorIndexL2FilterTestMultipleCollectionsSuite(trainedDocCount);
+});
+jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
+    return VectorIndexL2FilterStoredValuesTestSuite(trainedDocCount);
+});
 
 return jsunity.done();

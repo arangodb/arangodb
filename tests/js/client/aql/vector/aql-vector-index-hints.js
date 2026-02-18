@@ -32,6 +32,9 @@ const {
   randomNumberGeneratorFloat,
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
+const {
+  withSuffix,
+} = require("@arangodb/testutils/vector-generator");
 
 const dbName = "vectorIndexHintDb";
 const collName = "vectorIndexHintColl";
@@ -54,11 +57,11 @@ function getVectorIndexName(query, bindVars = {}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test suite for vector index hints
 ////////////////////////////////////////////////////////////////////////////////
-function VectorIndexHintsSuite() {
+function VectorIndexHintsSuite(numberOfDocsOverride = null) {
   let collection;
   let randomPoint;
   const dimension = 128;
-  const numberOfDocs = 100;
+  const numberOfDocs = numberOfDocsOverride || 100;
   const seed = randomInteger();
 
   return {
@@ -247,6 +250,18 @@ function VectorIndexHintsSuite() {
   };
 }
 
-jsunity.run(VectorIndexHintsSuite);
+// nLists=5 (max), threshold = max(5*39, 1000) = 1000
+const untrainedDocCount = 500;
+const trainedDocCount = 1500;
+
+// Untrained (brute-force)
+jsunity.run(function VectorIndexHintsUntrainedSuite() {
+    return withSuffix(VectorIndexHintsSuite(untrainedDocCount), '_untrained');
+});
+
+// Trained
+jsunity.run(function VectorIndexHintsTrainedSuite() {
+    return withSuffix(VectorIndexHintsSuite(trainedDocCount), '_trained');
+});
 
 return jsunity.done();

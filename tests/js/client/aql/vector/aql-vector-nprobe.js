@@ -42,7 +42,6 @@ function VectorIndexL2NprobeTestSuite() {
     let randomPoint;
     const dimension = 500;
     const seed = 12132390894;
-    const defaultNProbe = 1;
 
     return {
         setUpAll: function() {
@@ -55,7 +54,7 @@ function VectorIndexL2NprobeTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < 10001; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
