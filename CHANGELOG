@@ -1,5 +1,7 @@
 4.0
 ---
+* Remove leftovers of arangoimp
+
 * Remove fulltext indexes. Fulltext indexes are no longer supported and have
   been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
   will be automatically dropped during upgrade. The following functionality
