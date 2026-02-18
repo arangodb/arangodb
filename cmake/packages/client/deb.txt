@@ -35,7 +35,6 @@ set(PACKAGING_HANDLE_CONFIG_FILES false)
 ################################################################################
 #   Substitute the install binaries:
 ################################################################################
-set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
 set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
 set(BIN_ARANGOIMPORT @BIN_ARANGOIMPORT@)
@@ -115,7 +114,6 @@ include(CPack)
 
 # TODO: missing usr/share/man
 # TODO: missing usr/share/man/man1
-# TODO: missing usr/share/man/man1/arangobench.1
 # TODO: missing usr/share/man/man1/arangodump.1
 # TODO: missing usr/share/man/man1/arangoimport.1
 # TODO: missing usr/share/man/man1/arangorestore.1

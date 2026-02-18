@@ -15,6 +15,8 @@
   - The `lookupFulltextIndex()` method
   Users should migrate to inverted indexes for full-text search functionality.
 
+* Remove _fishBowl collection.
+
 * Remove arangodb/foxx related code.
 
 * Remove PUT method in /_api/cursor/<cursor-id>.
@@ -34,11 +36,16 @@
   - `hash`: Use `persistent` index type instead.
   - `skiplist`: Use `persistent` index type instead.
 
+* Remove arangobench.
+
 * Consolidate endpoints for metrics by removing `_admin/metrics/v2` and just
   having `_admin/metrics` since both endpoints return the same data.
 
 * Remove the deprecated `bfs` option from graph traversal. Use `order: "bfs"` or
   `order: "dfs"` instead.
+
+* Remove `minReplicationFactor` collection property, which is superseded by
+  `writeConcern`.
 
 * Make `vector-index` flag obsolete.
 

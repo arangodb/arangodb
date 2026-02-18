@@ -2,7 +2,6 @@
 
 # manual pages
 set(MAN_NAMES
-  man1/arangobench.1
   man1/arangodump.1
   man1/arangoimport.1
   man1/arangorestore.1

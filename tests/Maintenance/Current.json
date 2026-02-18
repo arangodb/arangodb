@@ -147,38 +147,6 @@ R"=(
           "errorMessage": ""
         }
       },
-      "2010034": {
-        "s2010035": {
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "time"
-              ],
-              "id": "2010036",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
-            }
-          ],
-          "error": false,
-          "servers": [
-            "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
-            "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
-          ],
-          "errorNum": 0,
-          "errorMessage": ""
-        }
-      },
       "2010019": {
         "s2010020": {
           "indexes": [
@@ -256,38 +224,6 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            }
-          ],
-          "error": false,
-          "servers": [
-            "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
-            "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
-          ],
-          "errorNum": 0,
-          "errorMessage": ""
-        }
-      },
-      "2010031": {
-        "s2010032": {
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "time"
-              ],
-              "id": "2010033",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ],
           "error": false,
@@ -1221,38 +1157,6 @@ R"=(
               "sparse": false,
               "type": "primary",
               "unique": true
-            }
-          ],
-          "error": false,
-          "servers": [
-            "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
-            "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
-          ],
-          "errorNum": 0,
-          "errorMessage": ""
-        }
-      },
-      "2010037": {
-        "s2010038": {
-          "indexes": [
-            {
-              "fields": [
-                "_key"
-              ],
-              "id": "0",
-              "sparse": false,
-              "type": "primary",
-              "unique": true
-            },
-            {
-              "deduplicate": true,
-              "fields": [
-                "time"
-              ],
-              "id": "2010039",
-              "sparse": false,
-              "type": "skiplist",
-              "unique": false
             }
           ],
           "error": false,

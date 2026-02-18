@@ -164,7 +164,6 @@ add_library(arangoserver STATIC
   Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
-  Statistics/StatisticsWorker.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp

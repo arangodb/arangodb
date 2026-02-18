@@ -131,7 +131,6 @@ function clusterInventorySuite () {
     assertEqual("object", typeof parameters.keyOptions);
     assertEqual("boolean", typeof parameters.keyOptions.allowUserKeys);
     assertEqual("string", typeof parameters.keyOptions.type);
-    assertEqual("number", typeof parameters.minReplicationFactor);
     assertEqual("number", typeof parameters.writeConcern);
     assertEqual("string", typeof parameters.name);
     assertTrue(typeof parameters.replicationFactor === 'number' || parameters.replicationFactor === 'satellite');

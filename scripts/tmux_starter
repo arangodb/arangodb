@@ -74,7 +74,7 @@ suite_all(){
             tests="dump importing"
         ;;
         8)
-            tests="export arangobench upgrade"
+            tests="export upgrade"
         ;;
         9)
             tests="replication_sync replication_static"
