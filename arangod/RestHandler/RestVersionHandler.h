@@ -34,7 +34,7 @@ class RestVersionHandler : public arangodb::RestBaseHandler {
  public:
   static void getVersion(application_features::ApplicationServer& server,
                          bool allowInfo, bool includeDetails,
-                         VPackBuilder& result);
+                         VPackBuilder& result, uint32_t requestedApiVersion);
 
   char const* name() const override final { return "RestVersionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }

@@ -34,7 +34,7 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   auto operator=(Registry const&) = delete;
   auto operator=(Registry&&) = delete;
 
-  struct ScopedCurrentlyExecutingActivity;
+  struct [[nodiscard]] ScopedCurrentlyExecutingActivity;
 
   static auto currentlyExecutingActivity() noexcept -> ActivityId {
     return _currentlyExecutingActivity;
@@ -48,7 +48,7 @@ struct Registry : containers::Registry<ActivityInRegistry> {
   static thread_local ActivityId _currentlyExecutingActivity;
 };
 
-struct Registry::ScopedCurrentlyExecutingActivity {
+struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
   explicit ScopedCurrentlyExecutingActivity(ActivityId activity) noexcept;
   ~ScopedCurrentlyExecutingActivity();
 
