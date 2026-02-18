@@ -719,7 +719,7 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
   let count = 0;
 
   for (let [key, value] of Object.entries(exampleDoc)) {
-    key = key.replaceAll("`", "").split(".").join("`.`")
+    key = key.replaceAll("`", "").split(".").join("`.`");
     let bVName = `value${count}`;
     query += "  FILTER doc.`" + key + "` == @" + bVName;
     bindVars[bVName] = value;
