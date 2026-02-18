@@ -211,6 +211,7 @@ class runInArangoshRunner extends testRunnerBase {
   runOneTest(file) {
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
+    args['server.connection-timeout'] = this.options.httpTimeout;
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -275,6 +276,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
 
     try {
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
+      arango.timeout(this.options.httpTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
