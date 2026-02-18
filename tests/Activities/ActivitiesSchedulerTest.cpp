@@ -24,7 +24,7 @@
 #include "Activities/activity_registry_variable.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
-#include "Scheduler/ThreadPoolScheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "gtest/gtest.h"
 #include "Metrics/MetricsFeature.h"
 
@@ -43,7 +43,8 @@ struct ActivitiesSchedulerTest : ::testing::Test {
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
-        scheduler(mockApplicationServer.server(), 4, metrics) {}
+        scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
+                  0.33, metrics) {}
   void SetUp() override {
     arangodb::activities::Registry::setCurrentlyExecutingActivity(
         arangodb::activities::ActivityRoot);
@@ -57,7 +58,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
-  arangodb::ThreadPoolScheduler scheduler;
+  arangodb::SupervisedScheduler scheduler;
 };
 
 TEST_F(ActivitiesSchedulerTest, current_activity_persists) {
