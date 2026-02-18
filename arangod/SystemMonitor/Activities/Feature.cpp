@@ -48,7 +48,7 @@ DECLARE_GAUGE(arangodb_activities_ready_for_deletion, std::uint64_t,
               "for their garbage collection");
 
 DECLARE_COUNTER(arangodb_activities_thread_registries_total,
-                "Total number of threads that started actities "
+                "Total number of threads that started activities "
                 "since database process start");
 
 DECLARE_GAUGE(arangodb_activities_existing_thread_registries, std::uint64_t,
