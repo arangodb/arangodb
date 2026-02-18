@@ -206,7 +206,8 @@ endpoint. Requests with expiry times above this value will be rejected.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
       .setLongDescription(
           R"(When set to a non-empty string, this must be the HTTP or HTTPS
 endpoint of an external RBAC authorization service for use by coordinators and single
