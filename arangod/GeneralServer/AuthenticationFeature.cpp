@@ -434,8 +434,8 @@ bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
 }
 
-bool AuthenticationFeature::useRBAC() const noexcept {
-  return _options.useRBAC;
+bool AuthenticationFeature::externalRBACservice() const noexcept {
+  return _options.externalRBACservice;
 }
 
 /// @return Cache to deal with authentication tokens
