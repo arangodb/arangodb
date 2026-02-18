@@ -62,7 +62,7 @@ add_library(arango_rocksdb STATIC
   RocksDBValue.cpp
   RocksDBVectorIndex.cpp
   RocksDBVectorIndexList.cpp
-  RocksDBVectorIndexTraining.cpp
+  RocksDBVectorIndexBuilder.cpp
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
