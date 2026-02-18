@@ -5,8 +5,13 @@ defmodule Toast.Runner do
   Replaces ExUnit's scheduling loop to support aborting the entire suite
   when a server crashes mid-test. When a crash monitor detects a failure,
   it calls `abort!/1`, and the runner stops executing new tests, marking
-  all remaining ones as excluded.
+  all remaining ones as skipped.
   """
+
+  # This implementation is largely taken from ExUnit.Runner
+  # SPDX-License-Identifier: Apache-2.0
+  # SPDX-FileCopyrightText: 2021 The Elixir Team
+  # SPDX-FileCopyrightText: 2012 Plataformatec
 
   alias ExUnit.EventManager, as: EM
 
@@ -47,6 +52,17 @@ defmodule Toast.Runner do
   @spec abort!(String.t()) :: :ok
   def abort!(reason) do
     Application.put_env(:toast, @abort_key, {:aborted, reason})
+
+    IO.puts([
+      IO.ANSI.red(),
+      "====================================",
+      "\n   ",
+      reason,
+      "\n   !!! Aborting further tests !!!\n",
+      "====================================\n",
+      IO.ANSI.reset()
+    ])
+
     :ok
   end
 
@@ -56,8 +72,24 @@ defmodule Toast.Runner do
     :ok
   end
 
+  @doc "Returns the abort reason if the suite has been aborted, or nil."
+  @spec aborted?() :: String.t() | nil
+  def aborted? do
+    case Application.get_env(:toast, @abort_key) do
+      {:aborted, reason} -> reason
+      _ -> nil
+    end
+  end
+
+  ## Stacktrace
+
+  # Assertions can pop-up in the middle of the stack
   def prune_stacktrace([{ExUnit.Assertions, _, _, _} | t]), do: prune_stacktrace(t)
-  def prune_stacktrace([{__MODULE__, _, _, _} | _]), do: []
+
+  # As soon as we see a Runner, it is time to ignore the stacktrace
+  def prune_stacktrace([{ExUnit.Runner, _, _, _} | _]), do: []
+
+  # All other cases
   def prune_stacktrace([h | t]), do: [h | prune_stacktrace(t)]
   def prune_stacktrace([]), do: []
 
@@ -73,7 +105,11 @@ defmodule Toast.Runner do
     start_time = System.monotonic_time()
     EM.suite_started(config.manager, opts)
 
-    async_stop_time = async_loop(config, %{}, false)
+    modules_to_restore =
+      if Keyword.fetch!(opts, :repeat_until_failure) > 0, do: {[], []}, else: nil
+
+    {async_stop_time, modules_to_restore} = async_loop(config, %{}, false, modules_to_restore)
+
     stop_time = System.monotonic_time()
 
     if max_failures_reached?(config) do
@@ -92,7 +128,7 @@ defmodule Toast.Runner do
     EM.stop(config.manager)
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
     Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
-    stats
+    {stats, modules_to_restore}
   end
 
   defp configure(opts, manager, runner_pid, stats_pid) do
@@ -123,60 +159,67 @@ defmodule Toast.Runner do
     |> Keyword.put(:include, include)
   end
 
-  ## Abort mechanism
-
-  @doc "Returns the abort reason if the suite has been aborted, or nil."
-  @spec aborted?() :: String.t() | nil
-  def aborted? do
-    case Application.get_env(:toast, @abort_key) do
-      {:aborted, reason} -> reason
-      _ -> nil
-    end
-  end
-
   ## Scheduling
 
-  defp async_loop(config, running, async_once?) do
+  defp async_loop(config, running, async_once?, modules_to_restore) do
     if reason = aborted?() do
       drain_running(config, running)
       drain_remaining_modules(config, "Suite aborted: " <> reason)
       if async_once?, do: System.monotonic_time(), else: nil
     else
-      available = config.max_cases - map_size(running)
-
-      cond do
-        available <= 0 ->
-          running = wait_until_available(config, running)
-          async_loop(config, running, async_once?)
-
-        async_modules = ExUnit.Server.take_async_modules(available) ->
-          running = spawn_modules(config, async_modules, true, running)
-          async_loop(config, running, true)
-
-        true ->
-          sync_modules = ExUnit.Server.take_sync_modules()
-
-          0 =
-            running
-            |> Enum.reduce(running, fn _, acc -> wait_until_available(config, acc) end)
-            |> map_size()
-
-          async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
-
-          for pair <- sync_modules do
-            if aborted?() do
-              emit_excluded_pair(config, pair, "Suite aborted: " <> aborted?())
-            else
-              running = spawn_modules(config, [{nil, [pair]}], false, %{})
-              running != %{} and wait_until_available(config, running)
-            end
-          end
-
-          async_stop_time
-      end
+      do_async_loop(config, running, async_once?, modules_to_restore)
     end
   end
 
+  defp do_async_loop(config, running, async_once?, modules_to_restore) do
+    available = config.max_cases - map_size(running)
+
+    cond do
+      # No modules available, wait for one
+      available <= 0 ->
+        running = wait_until_available(config, running)
+        async_loop(config, running, async_once?, modules_to_restore)
+
+      # Slots are available, start with async modules
+      async_modules = ExUnit.Server.take_async_modules(available) ->
+        running = spawn_modules(config, async_modules, true, running)
+        modules_to_restore = maybe_store_modules(modules_to_restore, :async, async_modules)
+        async_loop(config, running, true, modules_to_restore)
+
+      true ->
+        sync_modules = ExUnit.Server.take_sync_modules()
+        modules_to_restore = maybe_store_modules(modules_to_restore, :sync, sync_modules)
+
+        # Wait for all async modules
+        0 =
+          running
+          |> Enum.reduce(running, fn _, acc -> wait_until_available(config, acc) end)
+          |> map_size()
+
+        async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
+
+        # Run all sync modules directly
+        for pair <- sync_modules do
+          if reason = aborted?() do
+            emit_skipped_pair(config, pair, "Suite aborted: " <> reason)
+          else
+            running = spawn_modules(config, [{nil, [pair]}], false, %{})
+            running != %{} and wait_until_available(config, running)
+          end
+        end
+
+        {async_stop_time, modules_to_restore}
+    end
+  end
+
+  # Expect down messages from the spawned modules.
+  #
+  # We first look at the sigquit signal because we don't want
+  # to spawn new test cases when we know we will have to handle
+  # sigquit next.
+  #
+  # Otherwise, whenever a module has finished executing, update
+  # the running modules and attempt to spawn new ones.
   defp wait_until_available(config, running) do
     receive do
       {ref, pid, :sigquit} ->
@@ -220,6 +263,10 @@ defmodule Toast.Runner do
     end
   end
 
+  defp maybe_store_modules(nil, _type, _modules), do: nil
+  defp maybe_store_modules({async, sync}, :async, modules), do: {async ++ modules, sync}
+  defp maybe_store_modules({async, sync}, :sync, modules), do: {async, sync ++ modules}
+
   ## Drain helpers
 
   defp drain_running(_config, running) do
@@ -236,7 +283,7 @@ defmodule Toast.Runner do
     drain_async(config, reason)
 
     for pair <- ExUnit.Server.take_sync_modules() do
-      emit_excluded_pair(config, pair, reason)
+      emit_skipped_pair(config, pair, reason)
     end
   end
 
@@ -248,37 +295,41 @@ defmodule Toast.Runner do
       groups ->
         for {_group, modules} <- groups,
             pair <- modules do
-          emit_excluded_pair(config, pair, reason)
+          emit_skipped_pair(config, pair, reason)
         end
 
         drain_async(config, reason)
     end
   end
 
-  defp emit_excluded_pair(config, {module, params}, reason) do
-    emit_excluded_module(config, module, params, reason)
+  defp emit_skipped_pair(config, {module, params}, reason) do
+    emit_skipped_module(config, module, params, reason)
   end
 
-  defp emit_excluded_module(config, module, params, reason) do
+  defp emit_skipped_module(config, module, params, reason) do
     test_module = %{module.__ex_unit__() | parameters: params}
     EM.module_started(config.manager, test_module)
 
-    excluded_tests =
+    skipped_tests =
       for test <- test_module.tests do
-        %{test | state: {:excluded, reason}}
+        %{test | state: {:skipped, reason}}
       end
 
-    for test <- excluded_tests do
+    for test <- skipped_tests do
       EM.test_started(config.manager, test)
       EM.test_finished(config.manager, test)
     end
 
-    EM.module_finished(config.manager, %{test_module | tests: excluded_tests})
+    EM.module_finished(config.manager, %{test_module | tests: skipped_tests})
   end
 
   ## sigquit
 
   defp sigquit(config, ref, pid, running) do
+    # Stop all child processes from running and get their current state.
+    # We need to stop these processes because they may invoke the event
+    # manager and we must stop the event manager to guarantee the sigquit
+    # data has been flushed.
     current =
       Enum.map(running, fn {ref, pid} ->
         current = safe_pdict_current(pid)
@@ -292,6 +343,7 @@ defmodule Toast.Runner do
     EM.sigquit(config.manager, Enum.reject(current, &is_nil/1))
     EM.stop(config.manager)
 
+    # Reply to the event manager and wait until it shuts down the VM.
     send(pid, ref)
     Process.sleep(:infinity)
   end
@@ -310,6 +362,7 @@ defmodule Toast.Runner do
     test_module = %{module.__ex_unit__() | parameters: params}
     EM.module_started(config.manager, test_module)
 
+    # Prepare tests, selecting which ones should be run or skipped
     {to_run_tests, excluded_and_skipped_tests} =
       prepare_tests(config, async?, group, test_module.tests)
 
@@ -321,14 +374,14 @@ defmodule Toast.Runner do
     {test_module, invalid_tests, finished_tests} =
       run_module_tests(config, test_module, async?, to_run_tests)
 
-    # When aborted, emit remaining invalid/pending tests as excluded
+    # When aborted, emit remaining tests as skipped
     if reason = aborted?() do
       abort_msg = "Suite aborted: " <> reason
 
       for test <- invalid_tests do
-        excluded = %{test | state: {:excluded, abort_msg}}
-        EM.test_started(config.manager, excluded)
-        EM.test_finished(config.manager, excluded)
+        skipped = %{test | state: {:skipped, abort_msg}}
+        EM.test_started(config.manager, skipped)
+        EM.test_finished(config.manager, skipped)
       end
 
       test_module = %{test_module | tests: Enum.reverse(finished_tests, invalid_tests)}
@@ -346,6 +399,8 @@ defmodule Toast.Runner do
             nil
         end
 
+      # If pending_tests is [], EM.module_finished is still called.
+      # Only if process_max_failures/2 returns :surpassed it is not.
       if pending_tests do
         for pending_test <- pending_tests do
           EM.test_started(config.manager, pending_test)
@@ -400,12 +455,12 @@ defmodule Toast.Runner do
     config
     |> run_setup_all(test_module, context, fn context ->
       if max_failures_reached?(config) or aborted?(),
-        do: [],
+        do: {[], tests},
         else: run_tests(config, tests, test_module.parameters, context)
     end)
     |> case do
-      {{:ok, finished_tests}, test_module} ->
-        {test_module, [], finished_tests}
+      {{:ok, {finished_tests, remaining_tests}}, test_module} ->
+        {test_module, remaining_tests, finished_tests}
 
       {:error, test_module} ->
         {test_module, Enum.map(tests, &%{&1 | state: {:invalid, test_module}}), []}
@@ -439,6 +494,8 @@ defmodule Toast.Runner do
 
         send(parent_pid, {self(), :setup_all, result})
 
+        # We keep the process alive so all of its resources
+        # stay alive until we run all tests in this case.
         ref = Process.monitor(parent_pid)
 
         receive do
@@ -475,19 +532,25 @@ defmodule Toast.Runner do
   end
 
   defp run_tests(config, tests, params, context) do
-    Enum.reduce_while(tests, [], fn test, acc ->
-      if aborted?() do
-        {:halt, acc}
-      else
-        test = %{test | parameters: params}
-        Process.put(@current_key, test)
+    run_tests_loop(config, tests, params, context, [])
+  end
 
-        case run_test(config, test, context) do
-          {:ok, test} -> {:cont, [test | acc]}
-          :max_failures_reached -> {:halt, acc}
-        end
+  defp run_tests_loop(_config, [], _params, _context, acc) do
+    {acc, []}
+  end
+
+  defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
+    if aborted?() do
+      {acc, remaining}
+    else
+      test = %{test | parameters: params}
+      Process.put(@current_key, test)
+
+      case run_test(config, test, context) do
+        {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
+        :max_failures_reached -> {acc, rest}
       end
-    end)
+    end
   end
 
   defp run_test(config, test, context) do
@@ -538,6 +601,7 @@ defmodule Toast.Runner do
 
             case exec_test_setup(test, context) do
               {:ok, context} -> exec_test(test, context)
+              {:skipped, test} -> test
               {:error, test} -> test
             end
           end)
@@ -603,7 +667,11 @@ defmodule Toast.Runner do
   end
 
   defp exec_test_setup(%ExUnit.Test{module: module} = test, context) do
-    {:ok, module.__ex_unit__(:setup, context)}
+    if reason = aborted?() do
+      {:skipped, %{test | state: {:skipped, "Suite aborted: " <> reason}}}
+    else
+      {:ok, module.__ex_unit__(:setup, context)}
+    end
   catch
     kind, error ->
       {:error, %{test | state: failed(kind, error, prune_stacktrace(__STACKTRACE__))}}

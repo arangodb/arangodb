@@ -10,6 +10,11 @@ defmodule Toast.CLIFormatter do
       2026-02-15T14:30:45.123Z [ RUN        ] server version
       2026-02-15T14:30:45.200Z [     PASSED ] server version (77ms)
       2026-02-15T14:30:45.300Z [------------] 1 test from SmokeTest.VersionTest (200ms total)
+
+  Modules whose tests are entirely skipped due to a suite abort are shown as
+  a single summary line instead of per-test output:
+
+      2026-02-15T14:30:45.300Z [    SKIPPED ] 5 tests from SmokeTest.OtherTest
   """
 
   use GenServer
@@ -21,8 +26,14 @@ defmodule Toast.CLIFormatter do
     state = %{
       config: opts,
       colors_enabled: colors_enabled,
+      # Module tracking — header is deferred until the first real test starts
+      pending_module: nil,
+      module_header_printed: false,
       module_start_time: nil,
       module_test_count: 0,
+      module_skipped_count: 0,
+      module_skipped_reason: nil,
+      # Suite-level stats
       failures: [],
       failure_counter: 0,
       counters: %{passed: 0, failed: 0, skipped: 0, excluded: 0, invalid: 0, total: 0},
@@ -40,18 +51,29 @@ defmodule Toast.CLIFormatter do
   end
 
   def handle_cast({:module_started, %ExUnit.TestModule{} = mod}, state) do
-    file = module_file(mod)
-    print_module_header(file, state.colors_enabled)
-
-    {:noreply, %{state | module_start_time: System.monotonic_time(:millisecond), module_test_count: 0}}
+    {:noreply,
+     %{
+       state
+       | pending_module: mod,
+         module_header_printed: false,
+         module_start_time: System.monotonic_time(:millisecond),
+         module_test_count: 0,
+         module_skipped_count: 0,
+         module_skipped_reason: nil
+     }}
   end
 
-  def handle_cast({:test_started, %ExUnit.Test{state: {:excluded, _}} = _test}, state) do
-    # Don't print RUN for excluded tests (e.g., after suite abort)
+  # Don't print RUN for excluded/skipped tests (filter-excluded or abort-skipped)
+  def handle_cast({:test_started, %ExUnit.Test{state: {:excluded, _}}}, state) do
+    {:noreply, state}
+  end
+
+  def handle_cast({:test_started, %ExUnit.Test{state: {:skipped, _}}}, state) do
     {:noreply, state}
   end
 
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
+    state = ensure_module_header(state)
     name = display_name(test)
     write("#{timestamp()} #{colorize("[ RUN        ]", :yellow, state)} #{name}\n")
     {:noreply, state}
@@ -59,21 +81,44 @@ defmodule Toast.CLIFormatter do
 
   def handle_cast({:test_finished, %ExUnit.Test{} = test}, state) do
     state = update_counters(state, test)
+    state = track_abort_skipped(state, test)
     print_test_result(test, state)
     state = maybe_record_failure(state, test)
     {:noreply, state}
   end
 
-  def handle_cast({:module_finished, %ExUnit.TestModule{} = mod}, state) do
-    elapsed = elapsed_ms(state.module_start_time)
-    mod_name = inspect(mod.name)
-    count = state.module_test_count
-    test_word = if count == 1, do: "test", else: "tests"
+  def handle_cast({:module_finished, %ExUnit.TestModule{} = _mod}, state) do
+    if state.module_header_printed do
+      # Some tests ran — print normal summary, note skipped count if any
+      elapsed = elapsed_ms(state.module_start_time)
+      mod_name = inspect(state.pending_module.name)
+      count = state.module_test_count
+      test_word = if count == 1, do: "test", else: "tests"
 
-    write(
-      "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
-        "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total)\n"
-    )
+      skip_part =
+        if state.module_skipped_count > 0,
+          do: ", #{state.module_skipped_count} skipped",
+          else: ""
+
+      write(
+        "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
+          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})\n"
+      )
+    else
+      # Module header was never printed — all tests were excluded or skipped
+      if state.module_skipped_count > 0 do
+        mod_name = inspect(state.pending_module.name)
+        count = state.module_skipped_count
+        test_word = if count == 1, do: "test", else: "tests"
+
+        write(
+          "#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} " <>
+            "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}\n"
+        )
+      end
+
+      # Purely filter-excluded modules produce no output
+    end
 
     {:noreply, state}
   end
@@ -103,7 +148,15 @@ defmodule Toast.CLIFormatter do
     {:noreply, state}
   end
 
-  # --- Module header ---
+  # --- Module header (deferred) ---
+
+  defp ensure_module_header(%{module_header_printed: true} = state), do: state
+
+  defp ensure_module_header(%{pending_module: mod} = state) do
+    file = module_file(mod)
+    print_module_header(file, state.colors_enabled)
+    %{state | module_header_printed: true}
+  end
 
   defp print_module_header(file, colors_enabled) do
     colored = "🚀 #{colorize("Running", :cyan, colors_enabled)} #{colorize(file, :bold, colors_enabled)}"
@@ -128,17 +181,23 @@ defmodule Toast.CLIFormatter do
   end
 
   defp print_test_result(%ExUnit.Test{state: {:skipped, _}} = test, state) do
-    name = display_name(test)
-    write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
+    if abort_skipped?(test) do
+      # Abort-skipped tests in a running module: show individually since [ RUN ] was printed.
+      # Abort-skipped tests in a fully-skipped module: suppress (module_finished handles it).
+      if state.module_header_printed do
+        name = display_name(test)
+        write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
+      end
+    else
+      # Regular @tag :skip
+      name = display_name(test)
+      write("#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} #{name}\n")
+    end
   end
 
-  defp print_test_result(%ExUnit.Test{state: {:excluded, reason}} = test, state) do
-    # Only print excluded tests that have a meaningful reason (e.g., suite abort).
-    # Filter-excluded tests (tag-based) are silently counted.
-    if is_binary(reason) and String.starts_with?(reason, "Suite aborted:") do
-      name = display_name(test)
-      write("#{timestamp()} #{colorize("[   EXCLUDED ]", :yellow, state)} #{name} (#{reason})\n")
-    end
+  defp print_test_result(%ExUnit.Test{state: {:excluded, _}}, _state) do
+    # Filter-excluded tests are silently counted
+    :ok
   end
 
   defp print_test_result(%ExUnit.Test{state: {:invalid, _}} = test, state) do
@@ -245,6 +304,17 @@ defmodule Toast.CLIFormatter do
     %{state | counters: counters, module_test_count: state.module_test_count + 1}
   end
 
+  defp track_abort_skipped(state, %ExUnit.Test{} = test) do
+    if abort_skipped?(test) do
+      %{state | module_skipped_count: state.module_skipped_count + 1}
+    else
+      state
+    end
+  end
+
+  defp abort_skipped?(%ExUnit.Test{state: {:skipped, "Suite aborted: " <> _}}), do: true
+  defp abort_skipped?(_test), do: false
+
   defp maybe_record_failure(state, %ExUnit.Test{state: {:failed, _}} = test) do
     %{state | failures: [test | state.failures], failure_counter: state.failure_counter + 1}
   end
@@ -263,8 +333,6 @@ defmodule Toast.CLIFormatter do
     case mod.state do
       {:failed, %{tags: %{file: file}}} -> file
       _ ->
-        # ExUnit.TestModule doesn't directly expose file in all versions,
-        # but the module attribute __ex_unit__ has it
         if function_exported?(mod.name, :__ex_unit__, 0) do
           info = mod.name.__ex_unit__()
           Map.get(info, :file, inspect(mod.name))

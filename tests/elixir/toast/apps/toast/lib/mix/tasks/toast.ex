@@ -194,7 +194,7 @@ defmodule Mix.Tasks.Toast do
         |> Keyword.merge(ex_unit_opts)
         |> Keyword.merge(test_opts)
 
-      stats = Toast.Runner.run(options, load_us)
+      {stats, _} = Toast.Runner.run(options, load_us)
 
       if stats.failures > 0 do
         exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
@@ -309,5 +309,4 @@ defmodule Mix.Tasks.Toast do
     :rand.seed(algo, {seed, seed, seed})
     Enum.shuffle(list)
   end
-
 end
