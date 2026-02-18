@@ -28,9 +28,7 @@
 
 const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
-const {assertEqual, assertTrue, assertNotEqual, assertFalse, assertNotUndefined}
-  = jsunity.jsUnity.assertions;
-const internal = require("internal");
+const { assertEqual, assertTrue, assertNotEqual } = jsunity.jsUnity.assertions;
 
 // The post fix is used to make testName unique accross suites in the same file
 // just to make testing-js happy.
