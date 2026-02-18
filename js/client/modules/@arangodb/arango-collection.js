@@ -1306,45 +1306,6 @@ ArangoCollection.prototype.updateByExample = function (example,
   query.bindVars['newValue'] = newValue;
   return require('internal').db._query(query).getExtra().stats.writesExecuted;
 };
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief looks up documents by keys
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.documents = function (keys) {
-  let data = {
-    collection: this._name,
-    keys: keys || []
-  };
-
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/lookup-by-keys'), data);
-  arangosh.checkRequestResult(requestResult);
-  return {
-    documents: requestResult.documents
-  };
-};
-
-// .lookupByKeys is now an alias for .documents
-ArangoCollection.prototype.lookupByKeys = ArangoCollection.prototype.documents;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief removes documents by keys
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.removeByKeys = function (keys) {
-  let data = {
-    collection: this._name,
-    keys: keys || []
-  };
-
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-keys'), data);
-  arangosh.checkRequestResult(requestResult);
-  return {
-    removed: requestResult.removed,
-    ignored: requestResult.ignored
-  };
-};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief load indexes of a collection into memory
