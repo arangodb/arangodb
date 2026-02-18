@@ -110,7 +110,6 @@ struct BackupMeta {
           builder.add(arangodb::StaticStrings::ErrorNum,
                       VPackValue(error.errorNumber()));
         }
-        builder.close();
       }
     }
   }
