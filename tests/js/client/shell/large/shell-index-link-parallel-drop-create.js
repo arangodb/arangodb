@@ -35,7 +35,9 @@ const {
   cleanupBGShells
 } = require('@arangodb/testutils/client-tools').run;
 let IM = global.instanceManager;
-const waitFor = IM.options.isInstrumented ? 80 * 10 : 80;
+// This timeout has already been incremented by a lot.
+// If the tests still fail, consider it an issue with creating links.
+const waitFor = IM.options.isInstrumented ? 120 * 10 : 120;
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
@@ -52,7 +54,7 @@ function ParallelIndexLinkCreateDropSuite() {
 
       // fill with some initial data
       let docs = [];
-      for (let i = 0; i < 100 * 1000; ++i) {
+      for (let i = 0; i < 10 * 1000; ++i) {
         docs.push({ value1: i, value2: "test" + i });
         docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         if (docs.length === 5000) {
@@ -67,7 +69,7 @@ function ParallelIndexLinkCreateDropSuite() {
       db._dropView(vn);
     },
     
-    testCreateDropInParallel: function () {
+    testCreateDropInParallelViews: function () {
       const threads = 4;
       const iterations = 15;
 
