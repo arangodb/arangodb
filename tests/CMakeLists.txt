@@ -227,6 +227,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -269,7 +270,7 @@ if (USE_PERF_TESTS)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
     Scheduler/ThreadPoolPerfTest.cpp)
 endif()
-    
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions

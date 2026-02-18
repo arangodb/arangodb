@@ -50,7 +50,7 @@
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
 
 using namespace arangodb;
@@ -210,10 +210,11 @@ void RestHandler::trackTaskEnd() noexcept {
 
 void RestHandler::startActivity() {
   _activity = std::make_unique<activities::Activity>(
-      name(), activities::Metadata{
-                  {"url", _request->fullUrl()},
-                  {"method", std::string{GeneralRequest::translateMethod(
-                                 _request->requestType())}}});
+      "RestHandler", activities::Metadata{
+                         {"handler", name()},
+                         {"url", _request->fullUrl()},
+                         {"method", std::string{GeneralRequest::translateMethod(
+                                        _request->requestType())}}});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
@@ -288,7 +289,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + fuerte::jwt::generateUserToken(
+            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                             auth->tokenCache().jwtSecret(), username));
       }
     }
