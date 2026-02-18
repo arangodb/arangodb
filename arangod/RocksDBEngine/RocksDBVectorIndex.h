@@ -23,6 +23,7 @@
 #pragma once
 
 #include <atomic>
+#include <thread>
 #include <type_traits>
 
 #include "RocksDBIndex.h"
@@ -42,6 +43,10 @@
 namespace faiss {
 struct IndexIVF;
 }  // namespace faiss
+
+namespace arangodb::vector {
+struct TrainingResult;
+}  // namespace arangodb::vector
 
 namespace arangodb {
 class LogicalCollection;
@@ -71,9 +76,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
-  void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
-                    RocksDBMethods* methods) override;
-
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
@@ -93,12 +95,16 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
-  Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
-
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
-  bool isTrained() const noexcept;
+  bool isTrained() const noexcept { return _trainedData.has_value(); }
+
+  std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
+    return _faissIndex;
+  }
+
+  void applyTrainingResult(vector::TrainingResult result);
 
   bool hasStoredValues() const noexcept;
 
@@ -117,8 +123,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void triggerTraining();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-  bruteForceSearch(std::vector<float>& inputs, std::size_t topK,
-                   transaction::Methods* trx);
+  bruteForceSearch(
+      std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
+      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
+      aql::QueryContext* queryContext,
+      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
+          filterVarsToRegs,
+      aql::Variable const* documentVariable);
 
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
@@ -126,6 +137,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   StoredValues const _storedValues;
   std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
+  bool _isTrained{false};
+  std::atomic<bool> _isBuilding{false};
+  std::jthread _buildThread;
 };
 
 }  // namespace arangodb
