@@ -43,9 +43,9 @@ function testSuite() {
         "server.exernal-rbac-sergice should be present in options",
       );
       assertEqual(
-        "non-empty-to-activate",
+        "https://non-empty-to-activate:9090",
         res["server.external-rbac-service"],
-        "server.external-rbac-service should be 'non-empty-to-activate'",
+        "server.external-rbac-service should be 'https://on-empty-to-activate:9090'",
       );
     },
   };
