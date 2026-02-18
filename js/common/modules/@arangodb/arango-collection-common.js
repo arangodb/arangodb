@@ -41,7 +41,6 @@ var SimpleQueryGeo = simple.SimpleQueryGeo;
 var SimpleQueryNear = simple.SimpleQueryNear;
 var SimpleQueryWithin = simple.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
-var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief collection is corrupted
@@ -250,10 +249,6 @@ ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
 };
 
-ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
-  return new SimpleQueryFulltext(this, attribute, query, iid);
-};
-
 ArangoCollection.prototype.iterate = function (iterator, options) {
   var probability = 1.0;
   var limit = null;
@@ -371,19 +366,6 @@ function addIndexOptions (body, parameters) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a persistent index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureHashIndex = function () {
-  'use strict';
-
-  // hash indexes are deprecated, use persistent instead
-  return this.ensureIndex(addIndexOptions({
-    type: 'persistent',
-  }, arguments));
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a unique constraint
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -395,25 +377,6 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
     unique: true
   }, arguments));
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a fulltext index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  'use strict';
-
-  if (! Array.isArray(field)) {
-    field = [ field ];
-  }
-
-  return this.ensureIndex({
-    type: 'fulltext',
-    minLength: minLength || undefined,
-    fields: field
-  });
-};
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a geo index

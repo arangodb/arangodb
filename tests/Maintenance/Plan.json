@@ -398,16 +398,6 @@ R"=(
             "unique": false
           },
           {
-            "fields": [
-              "fi"
-            ],
-            "id": "2010132",
-            "minLength": 3,
-            "sparse": true,
-            "type": "fulltext",
-            "unique": false
-          },
-          {
             "deduplicate": true,
             "fields": [
               "sli"
