@@ -200,7 +200,8 @@ endpoint. Requests with expiry times above this value will be rejected.)");
   options
       ->addOption("--server.external-rbac-service",
                   "Enable role-based access control (RBAC) and set the "
-                  "external RBAC service endpoint.",
+                  "external RBAC service endpoint. If the string is empty, "
+                  "RBAC is disabled.",
                   new StringParameter(&_options.externalRBACservice),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -348,6 +349,22 @@ void AuthenticationFeature::validateOptions(
         << ") must not be greater than --auth.maximal-jwt-expiry-time ("
         << _options.maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
+  }
+
+  // Validate RBAC service endpoint
+  if (!_options.externalRBACservice.empty()) {
+    if (!_options.externalRBACservice.starts_with("http://") &&
+        !_options.externalRBACservice.starts_with("https://")) {
+      LOG_TOPIC("1aaae", FATAL, arangodb::Logger::AUTHENTICATION)
+          << "--server.external-rbac-service must start with http:// or "
+             "https://";
+      FATAL_ERROR_EXIT();
+    }
+    if (_options.externalRBACservice.find(':') == std::string::npos) {
+      LOG_TOPIC("1aaae", FATAL, arangodb::Logger::AUTHENTICATION)
+          << "--server.external-rbac-service must contain a port number";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 

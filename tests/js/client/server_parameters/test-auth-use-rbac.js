@@ -26,7 +26,7 @@
 
 if (getOptions === true) {
   return {
-    "server.external-rbac-service": "non-empty-to-activate",
+    "server.external-rbac-service": "https://non-empty-to-activate:9090",
   };
 }
 
