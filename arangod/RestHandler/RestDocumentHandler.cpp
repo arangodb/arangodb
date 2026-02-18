@@ -845,17 +845,6 @@ async<void> RestDocumentHandler::readManyDocuments() {
       cname, AccessMode::Type::READ, opOptions,
       transaction::OperationOriginREST{"fetching documents"});
 
-  // Add GLOBAL_MANAGED hint for smart edge collections
-  if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver{_vocbase};
-    auto col = resolver.getCollection(cname);
-    if (col != nullptr && col->isSmartEdgeCollection()) {
-      // Smart Edge Collections hit multiple shards with dependent requests,
-      // they have to be globally managed.
-      trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    }
-  }
-
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
