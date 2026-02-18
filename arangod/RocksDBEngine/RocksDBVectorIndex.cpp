@@ -162,7 +162,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     }
   }
 
-  _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 10, 10000);
+  // Below 1000 documents training is not worth the effort nor having a index
+  // 39 is the minumum number of documents to train the vector index, but that
+  // does not mean it cannot be achieved with less documents.
+  _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
 }
 
 /// @brief Test if this index matches the definition
