@@ -283,7 +283,8 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   );
 
   addTask(upgradeFeature, "dropOldStatisticsCollections",
-          "drop old statistics collections: _statistics, _statistics15, _statisticsRaw",
+          "drop old statistics collections: _statistics, _statistics15, "
+          "_statisticsRaw",
           /*system*/ Upgrade::Flags::DATABASE_SYSTEM,
           /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
               Upgrade::Flags::CLUSTER_NONE,
