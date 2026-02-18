@@ -54,7 +54,7 @@ function VectorIndexL2NprobeTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 10001; ++i) {
+            for (let i = 0; i < 12000; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
@@ -80,6 +80,7 @@ function VectorIndexL2NprobeTestSuite() {
                     nLists: 300,
                 },
             });
+            assertEqual(true, collection.indexes().find(i => i.type === 'vector').isTrained);
         },
 
         tearDownAll: function() {

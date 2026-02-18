@@ -57,11 +57,11 @@ function getVectorIndexName(query, bindVars = {}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test suite for vector index hints
 ////////////////////////////////////////////////////////////////////////////////
-function VectorIndexHintsSuite(numberOfDocsOverride = null) {
+function VectorIndexHintsSuite(expectedTrained) {
   let collection;
   let randomPoint;
   const dimension = 128;
-  const numberOfDocs = numberOfDocsOverride || 100;
+  const numberOfDocs = expectedTrained ? 1500 : 100;
   const seed = randomInteger();
 
   return {
@@ -84,7 +84,6 @@ function VectorIndexHintsSuite(numberOfDocsOverride = null) {
         }
         
         docs.push({
-          _key: `doc${i}`,
           vector: vector,
           vectorCosine: vectorCosine,
           vectorInnerProduct: vectorInnerProduct,
@@ -103,6 +102,9 @@ function VectorIndexHintsSuite(numberOfDocsOverride = null) {
           nLists: 5,
         },
       });
+      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2');
+      assertEqual(expectedTrained, vecIdx.isTrained,
+        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
 
       collection.ensureIndex({
         name: "vector_l2_secondary",
@@ -114,6 +116,9 @@ function VectorIndexHintsSuite(numberOfDocsOverride = null) {
           nLists: 3,
         },
       });
+      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2_secondary');
+      assertEqual(expectedTrained, vecIdx.isTrained,
+        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
 
       collection.ensureIndex({
         name: "vector_l2_with_filter",
@@ -126,6 +131,9 @@ function VectorIndexHintsSuite(numberOfDocsOverride = null) {
           nLists: 4,
         },
       });
+      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2_with_filter');
+      assertEqual(expectedTrained, vecIdx.isTrained,
+        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
     },
 
     tearDownAll: function () {
@@ -250,18 +258,14 @@ function VectorIndexHintsSuite(numberOfDocsOverride = null) {
   };
 }
 
-// nLists=5 (max), threshold = max(5*39, 1000) = 1000
-const untrainedDocCount = 500;
-const trainedDocCount = 1500;
-
 // Untrained (brute-force)
 jsunity.run(function VectorIndexHintsUntrainedSuite() {
-    return withSuffix(VectorIndexHintsSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexHintsSuite(false), '_untrained');
 });
 
 // Trained
 jsunity.run(function VectorIndexHintsTrainedSuite() {
-    return withSuffix(VectorIndexHintsSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexHintsSuite(true), '_trained');
 });
 
 return jsunity.done();

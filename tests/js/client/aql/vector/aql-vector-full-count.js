@@ -43,11 +43,11 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexFullCountTestSuite(numberOfDocsOverride = null) {
+function VectorIndexFullCountTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = numberOfDocsOverride || 100;
+    const numberOfDocs = expectedTrained ? 1500 : 100;
     const seed = 12132390894;
     const nLists = 10;
 
@@ -88,6 +88,9 @@ function VectorIndexFullCountTestSuite(numberOfDocsOverride = null) {
                     defaultNProbe: nLists,
                 },
             });
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -415,18 +418,14 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
-// nLists=10, threshold = max(10*39, 1000) = 1000
-const untrainedDocCount = 500;
-const trainedDocCount = 1500;
-
 // Untrained (brute-force)
 jsunity.run(function VectorIndexFullCountUntrainedTestSuite() {
-    return withSuffix(VectorIndexFullCountTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexFullCountTestSuite(false), '_untrained');
 });
 
 // Trained
 jsunity.run(function VectorIndexFullCountTrainedTestSuite() {
-    return withSuffix(VectorIndexFullCountTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexFullCountTestSuite(true), '_trained');
 });
 
 jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);

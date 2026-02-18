@@ -53,11 +53,11 @@ const collName = "vectorColl";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2TestSuite(numberOfDocsOverride = null) {
+function VectorIndexL2TestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = numberOfDocsOverride || 500;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -99,6 +99,10 @@ function VectorIndexL2TestSuite(numberOfDocsOverride = null) {
                     trainingIterations: 10,
                 },
             });
+
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -522,11 +526,11 @@ function VectorIndexL2TestSuite(numberOfDocsOverride = null) {
 }
 
 
-function VectorIndexCosineTestSuite(numberOfDocsOverride = null) {
+function VectorIndexCosineTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = numberOfDocsOverride || 1000;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -567,6 +571,10 @@ function VectorIndexCosineTestSuite(numberOfDocsOverride = null) {
                     nLists: 10
                 },
             });
+
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -700,11 +708,11 @@ function VectorIndexCosineTestSuite(numberOfDocsOverride = null) {
     };
 }
 
-function VectorIndexInnerProductTestSuite(numberOfDocsOverride = null) {
+function VectorIndexInnerProductTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = numberOfDocsOverride || 1000;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -745,6 +753,10 @@ function VectorIndexInnerProductTestSuite(numberOfDocsOverride = null) {
                     nLists: 10
                 },
             });
+
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -1055,30 +1067,26 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-// With nLists=10, threshold is max(10*39, 1000) = 1000
-const untrainedDocCount = 500;
-const trainedDocCount = 1500;
-
 // Run with untrained index (brute-force mode)
 jsunity.run(function VectorIndexL2UntrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
 });
 jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
 });
 jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
 });
 
-// Run with trained index
+// Run with trained index (FAISS IVF mode)
 jsunity.run(function VectorIndexL2TrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
 });
 jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
 });
 jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
 });
 
 jsunity.run(MultipleVectorIndexesOnField);

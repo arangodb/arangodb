@@ -44,12 +44,12 @@ const collName = "coll";
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexCreateAndRemoveTestSuite(numberOfDocsOverride = null) {
+function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
     let randomPoint;
-    const insertedDocsCount = numberOfDocsOverride || 100;
+    const insertedDocsCount = expectedTrained ? 1500 : 100;
     let insertedDocs = [];
 
     return {
@@ -87,6 +87,9 @@ function VectorIndexCreateAndRemoveTestSuite(numberOfDocsOverride = null) {
                     nLists: 1
                 },
             });
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + insertedDocsCount + " docs");
         },
 
         tearDown: function() {
@@ -435,12 +438,12 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-function VectorIndexStoredValuesTestSuite(numberOfDocsOverride = null) {
+function VectorIndexStoredValuesTestSuite(expectedTrained) {
     let collection;
     const dimension = 128;
     const seed = 123456789;
     let randomPoint;
-    const insertedDocsCount = numberOfDocsOverride || 50;
+    const insertedDocsCount = expectedTrained ? 1500 : 50;
     let insertedDocs = [];
 
     return {
@@ -490,6 +493,9 @@ function VectorIndexStoredValuesTestSuite(numberOfDocsOverride = null) {
                     nLists: 1
                 },
             });
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + insertedDocsCount + " docs");
         },
 
         tearDown: function() {
@@ -679,24 +685,20 @@ function VectorIndexStoredValuesTestSuite(numberOfDocsOverride = null) {
 }
 
 
-// nLists=1, threshold = max(1*39, 1000) = 1000
-const untrainedDocCount = 500;
-const trainedDocCount = 1500;
-
 // Untrained (brute-force)
 jsunity.run(function VectorIndexCreateAndRemoveUntrainedTestSuite() {
-    return withSuffix(VectorIndexCreateAndRemoveTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(false), '_untrained');
 });
 jsunity.run(function VectorIndexStoredValuesUntrainedTestSuite() {
-    return withSuffix(VectorIndexStoredValuesTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexStoredValuesTestSuite(false), '_untrained');
 });
 
-// Trained
+// Trained (FAISS IVF)
 jsunity.run(function VectorIndexCreateAndRemoveTrainedTestSuite() {
-    return withSuffix(VectorIndexCreateAndRemoveTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexCreateAndRemoveTestSuite(true), '_trained');
 });
 jsunity.run(function VectorIndexStoredValuesTrainedTestSuite() {
-    return withSuffix(VectorIndexStoredValuesTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexStoredValuesTestSuite(true), '_trained');
 });
 
 jsunity.run(VectorIndexTestCreationWithVectors);

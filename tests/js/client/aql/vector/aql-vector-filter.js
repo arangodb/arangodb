@@ -100,11 +100,11 @@ const verifyPlan = function(query, bindVars, numberOfCalculationNodes) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexL2FilterTestSuite(numberOfDocsOverride = null) {
+function VectorIndexL2FilterTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = numberOfDocsOverride || 500;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -165,6 +165,9 @@ function VectorIndexL2FilterTestSuite(numberOfDocsOverride = null) {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -621,12 +624,12 @@ function VectorIndexL2FilterTestSuite(numberOfDocsOverride = null) {
     };
 }
 
-function VectorIndexL2FilterTestMultipleCollectionsSuite(numberOfDocsOverride = null) {
+function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
     let collection1;
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = numberOfDocsOverride || 500;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
     const col2 = "col2";
@@ -677,6 +680,9 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(numberOfDocsOverride = 
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+            const vecIdx = collection1.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -724,11 +730,11 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(numberOfDocsOverride = 
     };
 }
 
-function VectorIndexL2FilterStoredValuesTestSuite(numberOfDocsOverride = null) {
+function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = numberOfDocsOverride || 500;
+    const numberOfDocs = expectedTrained ? 1500 : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -781,6 +787,9 @@ function VectorIndexL2FilterStoredValuesTestSuite(numberOfDocsOverride = null) {
                 },
                 storedValues: ["val", "stringField", "boolField", "floatField"]
             });
+            const vecIdx = collection.indexes().find(i => i.type === 'vector');
+            assertEqual(expectedTrained, vecIdx.isTrained,
+                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
         },
 
         tearDownAll: function() {
@@ -943,30 +952,26 @@ function VectorIndexL2FilterStoredValuesTestSuite(numberOfDocsOverride = null) {
     };
 }
 
-// nLists=10, threshold = max(10*39, 1000) = 1000
-const untrainedDocCount = 500;
-const trainedDocCount = 1500;
-
 // Untrained (brute-force)
 jsunity.run(function VectorIndexL2FilterUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexL2FilterTestSuite(false), '_untrained');
 });
 jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(false), '_untrained');
 });
 jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(untrainedDocCount), '_untrained');
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(false), '_untrained');
 });
 
 // Trained (FAISS IVF)
 jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexL2FilterTestSuite(true), '_trained');
 });
 jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(true), '_trained');
 });
 jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
-    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(trainedDocCount), '_trained');
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(true), '_trained');
 });
 
 return jsunity.done();
