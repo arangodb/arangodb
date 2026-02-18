@@ -302,7 +302,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateInvalidField: function() {
-      const indexTypes = ["geo", "fulltext", "persistent", "inverted"];
+      const indexTypes = ["geo", "persistent", "inverted"];
       const isUnique = [true, false];
       const invalidFields = [":value", "value:"];
 
@@ -559,22 +559,6 @@ function IndexesSuite() {
       assertFalse(idx.sparse);
       assertEqual(["b", "a"], idx.fields);
       assertTrue(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetFulltext: function() {
-      collection.ensureIndex({type: "fulltext", fields: ["value"]});
-      var res = collection.indexes();
-
-      assertEqual(2, res.length);
-      var idx = res[1];
-
-      assertEqual("fulltext", idx.type);
-      assertFalse(idx.unique);
-      assertEqual(["value"], idx.fields);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -953,26 +937,6 @@ function IndexesEdgesSuite() {
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
       assertNotEqual(collection.name() + "/0", idx.id);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get fulltext index
-////////////////////////////////////////////////////////////////////////////////
-
-    testEdgeGetFulltext: function() {
-      collection.ensureIndex({type: "fulltext", fields: ["value"]});
-      var res = collection.indexes();
-
-      assertEqual(3, res.length);
-      var idx = res[2];
-
-      assertEqual("fulltext", idx.type);
-      assertFalse(idx.unique);
-      assertEqual(["value"], idx.fields);
-      assertEqual(2, idx.minLength);
-      assertTrue(idx.hasOwnProperty("id"));
-      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
-      assertNotEqual(collection.name() + "/0", idx.id);
-    }
 
   };
 }

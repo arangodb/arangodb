@@ -263,6 +263,18 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropPregelQueriesCollection);
 
+  // Fulltext indexes are no longer supported since 4.0.
+  // CLUSTER_NONE: single server drops locally.
+  // CLUSTER_COORDINATOR_GLOBAL: coordinator drops via agency, DB servers
+  //   pick up the change automatically.
+  addTask(upgradeFeature, "dropFulltextIndexes",
+          "drop obsolete fulltext indexes",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_NONE |
+              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropFulltextIndexes);
+
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators

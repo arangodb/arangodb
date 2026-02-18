@@ -155,7 +155,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   if (limit === null) {
     if (probability >= 1.0) {
       cursor = this.all();
-    }else {
+    } else {
       stmt = sprintf('FOR d IN %s FILTER rand() <= @prob RETURN d', this.name());
       stmt = arangodb.db._createStatement({ query: stmt });
 
@@ -165,7 +165,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 
       cursor = stmt.execute();
     }
-  }else {
+  } else {
     if (typeof limit !== 'number') {
       var error = new ArangoError();
       error.errorNum = arangodb.errors.ERROR_ILLEGAL_NUMBER.code;
@@ -176,7 +176,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 
     if (probability >= 1.0) {
       cursor = this.all().limit(limit);
-    }else {
+    } else {
       stmt = sprintf('FOR d IN %s FILTER rand() <= @prob LIMIT %d RETURN d',
         this.name(), limit);
       stmt = arangodb.db._createStatement({ query: stmt });
@@ -221,11 +221,11 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 // / @brief add options from arguments to index specification
 // //////////////////////////////////////////////////////////////////////////////
 
-function addIndexOptions (body, parameters) {
+function addIndexOptions(body, parameters) {
   body.fields = [];
 
   var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
+    if (!body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
   };
@@ -237,7 +237,7 @@ function addIndexOptions (body, parameters) {
       body.fields.push(parameters[i]);
     }
     else if (typeof parameters[i] === 'object' &&
-      ! Array.isArray(parameters[i]) &&
+      !Array.isArray(parameters[i]) &&
       parameters[i] !== null) {
       // set arbitrary options
       Object.keys(parameters[i]).forEach(setOption);
@@ -247,19 +247,6 @@ function addIndexOptions (body, parameters) {
 
   return body;
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a persistent index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureHashIndex = function () {
-  'use strict';
-
-  // hash indexes are deprecated, use persistent instead
-  return this.ensureIndex(addIndexOptions({
-    type: 'persistent',
-  }, arguments));
-};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a unique constraint
@@ -275,25 +262,6 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ensures a fulltext index
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  'use strict';
-
-  if (! Array.isArray(field)) {
-    field = [ field ];
-  }
-
-  return this.ensureIndex({
-    type: 'fulltext',
-    minLength: minLength || undefined,
-    fields: field
-  });
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief ensures a geo index
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -307,7 +275,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   if (typeof lon === 'boolean') {
     return this.ensureIndex({
       type: 'geo1',
-      fields: [ lat ],
+      fields: [lat],
       geoJson: lon
     });
   }
@@ -315,14 +283,14 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   if (lon === undefined) {
     return this.ensureIndex({
       type: 'geo1',
-      fields: [ lat ],
+      fields: [lat],
       geoJson: false
     });
   }
 
   return this.ensureIndex({
     type: 'geo2',
-    fields: [ lat, lon ]
+    fields: [lat, lon]
   });
 };
 

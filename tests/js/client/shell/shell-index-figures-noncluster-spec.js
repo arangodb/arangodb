@@ -180,45 +180,6 @@ describe('Index figures', function () {
     });
   }); // end persistent index
 
-// fulltest index ///////////////////////////////////////////////////////////
-  describe('fulltext index', function () {
-    const colName = "UnitTestDoggyFull";
-    var col;
-    before('create collection',function(){
-      db._drop(colName);
-      col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "fulltext", fields: ["name"], minLength : 3});
-      for(var i = 0; i < 100; i++){
-        col.insert({"name":"Harry"+i});
-      }
-    });
-    after(function() {
-      db._drop(colName);
-    });
-    it('verify index types', function() {
-      var indexes = col.indexes(true);
-      expect(indexes.length).to.be.equal(2);
-      expect(indexes[0].type).to.be.equal("primary");
-      expect(indexes[1].type).to.be.equal("fulltext");
-    });
-    it('verify index - memory', function() {
-      var indexes = col.indexes(true);
-      indexes.forEach((i) => {
-        verifyMemory(i);
-      });
-    });
-    // FIXME not implemented
-    it.skip('verify figures - cache', function() {
-      var indexes = col.indexes(true);
-      indexes.forEach((i) => {
-        verifyCache(i);
-      });
-    });
-    after(function(){
-      db._drop(col);
-    });
-  }); // end fulltext index
-
 // geo index ///////////////////////////////////////////////////////////
   describe('geo index', function () {
     const colName = "UnitTestGeoSpass";
@@ -260,5 +221,5 @@ describe('Index figures', function () {
     after(function(){
       db._drop(col);
     });
-  }); // end fulltext index
+  }); // end geo index
 }); // end Index figures
