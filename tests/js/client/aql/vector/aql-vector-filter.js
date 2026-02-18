@@ -36,6 +36,9 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    withSuffix,
+} = require("@arangodb/testutils/vector-generator");
 const dbName = "vectorDb";
 const collName = "vectorColl";
 
@@ -946,24 +949,24 @@ const trainedDocCount = 1500;
 
 // Untrained (brute-force)
 jsunity.run(function VectorIndexL2FilterUntrainedTestSuite() {
-    return VectorIndexL2FilterTestSuite(untrainedDocCount);
+    return withSuffix(VectorIndexL2FilterTestSuite(untrainedDocCount), '_untrained');
 });
 jsunity.run(function VectorIndexL2FilterMultipleCollectionsUntrainedTestSuite() {
-    return VectorIndexL2FilterTestMultipleCollectionsSuite(untrainedDocCount);
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(untrainedDocCount), '_untrained');
 });
 jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
-    return VectorIndexL2FilterStoredValuesTestSuite(untrainedDocCount);
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(untrainedDocCount), '_untrained');
 });
 
 // Trained (FAISS IVF)
 jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
-    return VectorIndexL2FilterTestSuite(trainedDocCount);
+    return withSuffix(VectorIndexL2FilterTestSuite(trainedDocCount), '_trained');
 });
 jsunity.run(function VectorIndexL2FilterMultipleCollectionsTrainedTestSuite() {
-    return VectorIndexL2FilterTestMultipleCollectionsSuite(trainedDocCount);
+    return withSuffix(VectorIndexL2FilterTestMultipleCollectionsSuite(trainedDocCount), '_trained');
 });
 jsunity.run(function VectorIndexL2FilterStoredValuesTrainedTestSuite() {
-    return VectorIndexL2FilterStoredValuesTestSuite(trainedDocCount);
+    return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(trainedDocCount), '_trained');
 });
 
 return jsunity.done();
