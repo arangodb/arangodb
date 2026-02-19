@@ -340,12 +340,6 @@ void RocksDBOptionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine");
 
-  options->addObsoleteOption("--rocksdb.enabled",
-                             "Whether the RocksDB engine is enabled for the "
-                             "persistent index type - this option is obsolete "
-                             "and always active!",
-                             true);
-
   options->addOption("--rocksdb.wal-directory",
                      "Absolute path for RocksDB WAL files. If not set, a "
                      "subdirectory `journals` inside the database directory "

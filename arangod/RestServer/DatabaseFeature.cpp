@@ -303,14 +303,6 @@ void DatabaseFeature::collectOptions(
       new options::BooleanParameter(&_options.defaultWaitForSync),
       options::makeDefaultFlags(options::Flags::Uncommon));
 
-  // the following option was obsoleted in 3.9
-  options->addObsoleteOption(
-      "--database.force-sync-properties",
-      "Force syncing of collection properties to disk after creating a "
-      "collection or updating its properties. Otherwise, let the waitForSync "
-      "property of each collection determine it.",
-      false);
-
   options->addOption(
       "--database.ignore-datafile-errors",
       "Load collections even if datafiles may contain errors.",
@@ -346,37 +338,6 @@ void DatabaseFeature::collectOptions(
 additional databases can be created in the deployment. In order to create additional
 databases, other databases need to be removed first.")")
       .setIntroducedIn(31200);
-
-  // the following option was obsoleted in 3.8
-  options->addObsoleteOption(
-      "--database.throw-collection-not-loaded-error",
-      "throw an error when accessing a collection that is still loading",
-      false);
-
-  // the following option was removed in 3.7
-  options->addObsoleteOption(
-      "--database.maximal-journal-size",
-      "default maximal journal size, can be overwritten when "
-      "creating a collection",
-      true);
-
-  // the following option was removed in 3.2
-  options->addObsoleteOption(
-      "--database.index-threads",
-      "threads to start for parallel background index creation", true);
-
-  // the following hidden option was removed in 3.4
-  options->addObsoleteOption(
-      "--database.check-30-revisions",
-      "check for revision values from ArangoDB 3.0 databases", true);
-
-  // the following options were removed in 3.2
-  options->addObsoleteOption(
-      "--database.revision-cache-chunk-size",
-      "chunk size (in bytes) for the document revisions cache", true);
-  options->addObsoleteOption(
-      "--database.revision-cache-target-size",
-      "total target size (in bytes) for the document revisions cache", true);
 }
 
 void DatabaseFeature::validateOptions(

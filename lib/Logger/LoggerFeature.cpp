@@ -570,11 +570,6 @@ full, log entries are written synchronously until the queue has space again.)");
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_options.logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addObsoleteOption("log.content-filter", "", true);
-  options->addObsoleteOption("log.source-filter", "", true);
-  options->addObsoleteOption("log.application", "", true);
-  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,

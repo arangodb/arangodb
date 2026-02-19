@@ -694,11 +694,6 @@ removal, they are removed in subsequent runs of the background thread.)");
       .setLongDescription(R"(You can configure this value separately from the
 total removal amount so that the per-collection time window for locking and
 potential write-write conflicts can be reduced.)");
-
-  // the following option was obsoleted in 3.8
-  options->addObsoleteOption(
-      "--ttl.only-loaded-collection",
-      "only consider already loaded collections for removal", false);
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

@@ -117,13 +117,6 @@ void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addObsoleteOption(
-      "server.disable-authentication",
-      "Whether to use authentication for all client requests.", false);
-  options->addObsoleteOption(
-      "server.disable-authentication-unix-sockets",
-      "Whether to use authentication for requests via UNIX domain sockets.",
-      false);
   options->addOldOption("server.authenticate-system-only",
                         "server.authentication-system-only");
 
@@ -196,10 +189,6 @@ endpoint. Requests with expiry times below this value will be rejected.)");
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
-
-  options->addObsoleteOption(
-      "--server.local-authentication",
-      "Whether to use ArangoDB's built-in authentication system.", false);
 
   options
       ->addOption("--server.authentication-system-only",
