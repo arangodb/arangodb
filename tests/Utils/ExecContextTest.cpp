@@ -167,8 +167,7 @@ TEST(ExecContextTest, canUseDatabase_single_arg_level_check) {
 }
 
 TEST(ExecContextTest, canUseDatabase_single_arg_rw_grants_all) {
-  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RW,
-                      true);
+  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RW, true);
 
   EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
   EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RO));
@@ -258,9 +257,8 @@ TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
 TEST(ExecContextTest, set_swaps_and_returns_old_value) {
   auto old = ExecContext::set(nullptr);
 
-  auto ctx =
-      std::make_shared<TestExecContext>("u", "db", auth::Level::RO,
-                                        auth::Level::RO, false);
+  auto ctx = std::make_shared<TestExecContext>("u", "db", auth::Level::RO,
+                                               auth::Level::RO, false);
   auto prev = ExecContext::set(ctx);
   EXPECT_EQ(prev, nullptr);
   EXPECT_EQ(ExecContext::currentAsShared(), ctx);
@@ -275,9 +273,8 @@ TEST(ExecContextTest, set_swaps_and_returns_old_value) {
 TEST(ExecContextTest, scope_sets_and_restores_current) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx =
-      std::make_shared<TestExecContext>("scoped", "db", auth::Level::RW,
-                                        auth::Level::RW, false);
+  auto ctx = std::make_shared<TestExecContext>("scoped", "db", auth::Level::RW,
+                                               auth::Level::RW, false);
   {
     ExecContextScope scope(ctx);
     EXPECT_EQ(ExecContext::current().user(), "scoped");
@@ -290,12 +287,10 @@ TEST(ExecContextTest, scope_sets_and_restores_current) {
 TEST(ExecContextTest, nested_scopes_restore_correctly) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx1 =
-      std::make_shared<TestExecContext>("outer", "db", auth::Level::RW,
-                                        auth::Level::RW, false);
-  auto ctx2 =
-      std::make_shared<TestExecContext>("inner", "db", auth::Level::RO,
-                                        auth::Level::RO, false);
+  auto ctx1 = std::make_shared<TestExecContext>("outer", "db", auth::Level::RW,
+                                                auth::Level::RW, false);
+  auto ctx2 = std::make_shared<TestExecContext>("inner", "db", auth::Level::RO,
+                                                auth::Level::RO, false);
   {
     ExecContextScope outer(ctx1);
     EXPECT_EQ(ExecContext::current().user(), "outer");
@@ -314,9 +309,8 @@ TEST(ExecContextTest, nested_scopes_restore_correctly) {
 TEST(ExecContextTest, superuser_scope_sets_and_restores) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx =
-      std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
-                                        auth::Level::RO, false);
+  auto ctx = std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
+                                               auth::Level::RO, false);
   {
     ExecContextScope setup(ctx);
     EXPECT_EQ(ExecContext::current().user(), "regular");
@@ -333,9 +327,8 @@ TEST(ExecContextTest, superuser_scope_sets_and_restores) {
 TEST(ExecContextTest, superuser_scope_false_is_noop) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx =
-      std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
-                                        auth::Level::RO, false);
+  auto ctx = std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
+                                               auth::Level::RO, false);
   {
     ExecContextScope setup(ctx);
     EXPECT_EQ(ExecContext::current().user(), "regular");

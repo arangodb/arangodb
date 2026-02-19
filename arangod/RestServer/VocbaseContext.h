@@ -77,9 +77,7 @@ class VocbaseContext final : public arangodb::ExecContext {
  public:
   VocbaseContext(ConstructorToken, GeneralRequest& req, TRI_vocbase_t& vocbase,
                  ExecContext::Type type, auth::Level systemLevel,
-                 auth::Level dbLevel, bool isAdminUser,
-                 std::vector<std::string> const& roles = {},
-                 std::string const& jwtToken = "");
+                 auth::Level dbLevel, bool isAdminUser);
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
 };
