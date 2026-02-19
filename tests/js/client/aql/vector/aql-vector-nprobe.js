@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -30,6 +30,9 @@ const db = internal.db;
 const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    waitForTrained,
+} = require("@arangodb/testutils/vector-generator");
 const dbName = "vectorDB";
 const collName = "vectorColl";
 
@@ -80,7 +83,8 @@ function VectorIndexL2NprobeTestSuite() {
                     nLists: 300,
                 },
             });
-            assertEqual(true, collection.indexes().find(i => i.type === 'vector').isTrained);
+            assertTrue(waitForTrained(collection, 60),
+                "Expected vector index to become trained");
         },
 
         tearDownAll: function() {

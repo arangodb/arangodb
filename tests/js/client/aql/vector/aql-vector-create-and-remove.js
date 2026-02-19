@@ -32,6 +32,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const {
+    waitForTrained,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
@@ -87,9 +88,13 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                     nLists: 1
                 },
             });
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + insertedDocsCount + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + insertedDocsCount + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + insertedDocsCount + " docs");
+            }
         },
 
         tearDown: function() {
@@ -493,9 +498,13 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                     nLists: 1
                 },
             });
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + insertedDocsCount + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + insertedDocsCount + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + insertedDocsCount + " docs");
+            }
         },
 
         tearDown: function() {

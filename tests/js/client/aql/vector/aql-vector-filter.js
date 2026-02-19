@@ -37,6 +37,7 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
+    waitForTrained,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 const dbName = "vectorDb";
@@ -165,9 +166,13 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {
@@ -680,9 +685,13 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
-            const vecIdx = collection1.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection1, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection1, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {
@@ -787,9 +796,13 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                 },
                 storedValues: ["val", "stringField", "boolField", "floatField"]
             });
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {

@@ -33,6 +33,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const {
+    waitForTrained,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
@@ -88,9 +89,13 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                     defaultNProbe: nLists,
                 },
             });
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {

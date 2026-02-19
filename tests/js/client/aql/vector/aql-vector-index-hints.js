@@ -33,6 +33,7 @@ const {
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
+  waitForTrained,
   withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
@@ -102,9 +103,13 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 5,
         },
       });
-      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2');
-      assertEqual(expectedTrained, vecIdx.isTrained,
-        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+      if (expectedTrained) {
+        assertTrue(waitForTrained(collection, 60),
+          "Expected vector_l2 to become trained with " + numberOfDocs + " docs");
+      } else {
+        assertFalse(waitForTrained(collection, 5),
+          "Expected vector_l2 to stay untrained with " + numberOfDocs + " docs");
+      }
 
       collection.ensureIndex({
         name: "vector_l2_secondary",
@@ -116,9 +121,13 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 3,
         },
       });
-      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2_secondary');
-      assertEqual(expectedTrained, vecIdx.isTrained,
-        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+      if (expectedTrained) {
+        assertTrue(waitForTrained(collection, 60),
+          "Expected vector_l2_secondary to become trained with " + numberOfDocs + " docs");
+      } else {
+        assertFalse(waitForTrained(collection, 5),
+          "Expected vector_l2_secondary to stay untrained with " + numberOfDocs + " docs");
+      }
 
       collection.ensureIndex({
         name: "vector_l2_with_filter",
@@ -131,9 +140,13 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 4,
         },
       });
-      const vecIdx = collection.indexes().find(i => i.name === 'vector_l2_with_filter');
-      assertEqual(expectedTrained, vecIdx.isTrained,
-        "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+      if (expectedTrained) {
+        assertTrue(waitForTrained(collection, 60),
+          "Expected vector_l2_with_filter to become trained with " + numberOfDocs + " docs");
+      } else {
+        assertFalse(waitForTrained(collection, 5),
+          "Expected vector_l2_with_filter to stay untrained with " + numberOfDocs + " docs");
+      }
     },
 
     tearDownAll: function () {

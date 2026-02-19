@@ -39,6 +39,7 @@ const {
 const {
     createVectorGenerator,
     DistanceFunctions,
+    waitForTrained,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
@@ -100,9 +101,13 @@ function VectorIndexL2TestSuite(expectedTrained) {
                 },
             });
 
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {
@@ -572,9 +577,13 @@ function VectorIndexCosineTestSuite(expectedTrained) {
                 },
             });
 
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {
@@ -754,9 +763,13 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
                 },
             });
 
-            const vecIdx = collection.indexes().find(i => i.type === 'vector');
-            assertEqual(expectedTrained, vecIdx.isTrained,
-                "Expected isTrained=" + expectedTrained + " with " + numberOfDocs + " docs");
+            if (expectedTrained) {
+                assertTrue(waitForTrained(collection, 60),
+                    "Expected index to become trained with " + numberOfDocs + " docs");
+            } else {
+                assertFalse(waitForTrained(collection, 5),
+                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+            }
         },
 
         tearDownAll: function() {
