@@ -1,8 +1,12 @@
-4.0
----
-* Remove leftovers of arangoimp
+4.0.0 (XXXX-XX-XX)
+------------------
 
-* Remove /_admin/database/target-version endpoint in favor of /_api/version
+* Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Remove leftovers of arangoimp.
+
+* Remove /_admin/database/target-version endpoint in favor of /_api/version.
 
 * Remove simple query API. This includes the following endpoints:
     - /_api/simple/all
@@ -82,12 +86,6 @@
 * Let's note the removals we do in 4.0 here.
 
 * Remove FoxxMaster code.
-
-devel
------
-
-* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.19.16.
 
