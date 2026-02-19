@@ -40,6 +40,19 @@ function getStats() {
   };
 }
 
+// Wait for metrics to reflect recent traffic (metrics API has no sync like old statistics).
+function waitForMetricsAggregation(condition, maxWaitMs) {
+  maxWaitMs = maxWaitMs || 15000;
+  const stepMs = 250;
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    if (condition()) {
+      return;
+    }
+    internal.sleep(stepMs / 1000);
+  }
+}
+
 function checkMetricsMoveSuite() {
   'use strict';
   let compressTransfer;
@@ -122,6 +135,12 @@ function checkMetricsMoveSuite() {
           assertEqual(200, res.code);
         }
 
+        waitForMetricsAggregation(function () {
+          let s2 = getStats();
+          let c2 = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
+          return (s2.bytesSent - stats.bytesSent > 3000000 && c2 - count >= 1000);
+        });
+
         let stats2 = getStats();
         let count2 = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
         let metric2 = getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
@@ -164,6 +183,12 @@ function checkMetricsMoveSuite() {
           assertEqual(202, res.code);
         }
 
+        waitForMetricsAggregation(function () {
+          let s2 = getStats();
+          let c2 = getMetric("arangodb_client_connection_statistics_bytes_received_count");
+          return (s2.bytesReceived - stats.bytesReceived > 3000000 && c2 - count >= 1000);
+        });
+
         let stats2 = getStats();
         let count2 = getMetric("arangodb_client_connection_statistics_bytes_received_count");
         let metric2 = getMetric("arangodb_client_connection_statistics_bytes_received_sum");
@@ -200,6 +225,11 @@ function checkMetricsMoveSuite() {
         let res = arango.GET_RAW(`/_api/version`, headers);
         assertEqual(200, res.code);
       }
+
+      waitForMetricsAggregation(function () {
+        let s2 = getStats();
+        return (s2.bytesReceived - stats.bytesReceived > 3000000);
+      });
 
       let stats2 = getStats();
 
