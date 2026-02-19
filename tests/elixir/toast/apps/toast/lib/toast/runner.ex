@@ -16,7 +16,7 @@ defmodule Toast.Runner do
   alias ExUnit.EventManager, as: EM
 
   @current_key __MODULE__
-  @abort_key :suite_abort
+  @abort_table :toast_suite_abort
 
   ## Public API
 
@@ -51,34 +51,43 @@ defmodule Toast.Runner do
 
   @spec abort!(String.t()) :: :ok
   def abort!(reason) do
-    Application.put_env(:toast, @abort_key, {:aborted, reason})
-
-    IO.puts([
-      IO.ANSI.red(),
-      "====================================",
-      "\n   ",
-      reason,
-      "\n   !!! Aborting further tests !!!\n",
-      "====================================\n",
-      IO.ANSI.reset()
-    ])
+    # CAS: insert_new is atomic — only the first caller gets true
+    if :ets.insert_new(@abort_table, {:aborted, reason}) do
+      IO.puts([
+        IO.ANSI.red(),
+        "====================================",
+        "\n   ",
+        reason,
+        "\n   !!! Aborting further tests !!!\n",
+        "====================================\n",
+        IO.ANSI.reset()
+      ])
+    end
 
     :ok
   end
 
   @spec clear_abort!() :: :ok
   def clear_abort!() do
-    Application.delete_env(:toast, @abort_key)
+    try do
+      :ets.delete(@abort_table)
+    catch
+      :error, :badarg -> :ok
+    end
+
+    :ets.new(@abort_table, [:named_table, :set, :public])
     :ok
   end
 
   @doc "Returns the abort reason if the suite has been aborted, or nil."
   @spec aborted?() :: String.t() | nil
   def aborted? do
-    case Application.get_env(:toast, @abort_key) do
-      {:aborted, reason} -> reason
-      _ -> nil
+    case :ets.lookup(@abort_table, :aborted) do
+      [{:aborted, reason}] -> reason
+      [] -> nil
     end
+  catch
+    :error, :badarg -> nil
   end
 
   ## Stacktrace
