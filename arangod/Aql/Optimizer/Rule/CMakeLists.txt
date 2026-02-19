@@ -16,5 +16,6 @@ target_sources(arango_aql PRIVATE
   IndexNode.cpp
   Join.cpp
   LateMaterializedCommon.cpp
+  OptimizeProjections.cpp
   ReplaceFunctions.cpp
 )
