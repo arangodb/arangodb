@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-1.
+
 * Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
   dependencies.
 
@@ -86,8 +88,6 @@
 * Let's note the removals we do in 4.0 here.
 
 * Remove FoxxMaster code.
-
-* Updated ArangoDB Starter to v0.19.16.
 
 * Added activities API which shows currently on-going high-level processes in the
   database and their possible dependencies on each other. Until now only a couple
