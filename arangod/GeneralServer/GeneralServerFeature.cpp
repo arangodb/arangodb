@@ -55,7 +55,6 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
-#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminDeploymentHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -829,12 +828,6 @@ void GeneralServerFeature::defineRemainingHandlers(
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
                      {0, 1}, _jobManager.get());
-
-  // further admin handlers
-  f.addPrefixHandler(
-      "/_admin/database/target-version",
-      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData,
-      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/log",

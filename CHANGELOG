@@ -1,5 +1,8 @@
 4.0
 ---
+
+* Remove /_admin/database/target-version endpoint in favor of /_api/version
+
 * Remove simple query API. This includes the following endpoints:
     - /_api/simple/all
     - /_api/simple/all-keys
