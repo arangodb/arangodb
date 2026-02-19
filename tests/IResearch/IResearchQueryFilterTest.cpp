@@ -24,7 +24,7 @@
 
 #include "IResearchQueryCommon.h"
 
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
 

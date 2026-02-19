@@ -32,7 +32,7 @@
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "Aql/Query.h"
 #include "Async/async.h"
 #include "IResearch/IResearchFeature.h"

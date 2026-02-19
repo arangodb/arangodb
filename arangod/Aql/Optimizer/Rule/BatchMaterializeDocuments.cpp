@@ -31,8 +31,8 @@
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/Optimizer/Optimizer.h"
+#include "Aql/Optimizer/Rules.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;

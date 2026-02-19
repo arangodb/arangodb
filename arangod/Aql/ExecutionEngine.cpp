@@ -43,7 +43,7 @@
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/Executor/RemoteExecutor.h"
 #include "Aql/Executor/ReturnExecutor.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"

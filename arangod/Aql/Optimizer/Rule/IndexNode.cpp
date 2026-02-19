@@ -32,7 +32,7 @@
 #include "Aql/ExecutionNode/MaterializeSearchNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/Optimizer/Rule/IndexNode.h"
 #include "Aql/Optimizer/Rule/LateMaterializedCommon.h"
 #include "Aql/QueryContext.h"

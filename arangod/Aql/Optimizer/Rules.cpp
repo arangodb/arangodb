@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
+#include "Aql/Optimizer/Rules.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -73,7 +73,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/Optimizer/Utils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
@@ -1628,7 +1628,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -4525,7 +4525,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -7022,7 +7022,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 

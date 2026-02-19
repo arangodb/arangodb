@@ -27,7 +27,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "Aql/Query.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLink.h"

@@ -33,7 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/TraversalExecutor.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"

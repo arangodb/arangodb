@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -29,8 +29,8 @@
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/OptimizerRule.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/Optimizer/Rule.h"
+#include "Aql/Optimizer/Rules.h"
 #include "Aql/Optimizer/Feature.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryOptions.h"
