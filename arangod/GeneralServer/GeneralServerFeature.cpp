@@ -98,6 +98,7 @@
 #include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestOptionsDescriptionHandler.h"
 #include "RestHandler/RestOptionsHandler.h"
+#include "RestHandler/RestPublicOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
@@ -891,6 +892,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData,
         {0, 1});
   }
+
+  f.addHandler("/_admin/public-options",
+               RestHandlerCreator<RestPublicOptionsHandler>::createNoData,
+               {0, 1});
 
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData,

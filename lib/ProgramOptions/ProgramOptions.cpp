@@ -65,6 +65,18 @@ using namespace arangodb::options;
       return true;
     };
 
+/*static*/ std::function<bool(std::string const&)> const
+    ProgramOptions::defaultPublicOptionsFilter = [](std::string const& name) {
+      // only expose a small, curated set of options that are safe to share
+      // with any authenticated database user via GET /_admin/public-options
+      return name == "database.extended-names" ||
+             name == "cluster.min-replication-factor" ||
+             name == "cluster.max-replication-factor" ||
+             name == "cluster.max-number-of-shards" ||
+             name == "cluster.api-jwt-policy" ||
+             name == "server.session-timeout";
+    };
+
 ProgramOptions::ProcessingResult::ProcessingResult()
     : _positionals(), _touched(), _frozen(), _exitCode(0) {}
 
