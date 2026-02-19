@@ -48,6 +48,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/voc-types.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalEnumeratePathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
@@ -1090,6 +1091,10 @@ void GraphNode::setEdgeOutput(Variable const* outVar) {
 
 std::vector<aql::Collection*> const& GraphNode::edgeColls() const {
   return _edgeColls;
+}
+
+std::vector<TRI_edge_direction_e> const& GraphNode::edgeDirections() const {
+  return _directions;
 }
 
 std::vector<aql::Collection*> const& GraphNode::vertexColls() const {

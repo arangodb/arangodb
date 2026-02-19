@@ -260,4 +260,21 @@ AqlValue functions::NotNull(ExpressionContext*, AstNode const&,
   }
   return AqlValue(AqlValueHintNull());
 }
+
+/// @brief function TO_DOCUMENT_ID
+AqlValue functions::ToDocumentId(ExpressionContext* cxt, AstNode const&,
+                                 VPackFunctionParametersView parameters) {
+  auto in = aql::functions::extractFunctionParameterValue(parameters, 0);
+  if (in.isString()) {
+    return in.clone();
+  } else {
+    if (in.isObject()) {
+      auto id = transaction::helpers::extractIdString(cxt->trx().resolver(),
+                                                      in.slice(), in.slice());
+      return AqlValue(id);
+    }
+  }
+
+  return AqlValue{AqlValueHintNull()};
+}
 }  // namespace arangodb::aql

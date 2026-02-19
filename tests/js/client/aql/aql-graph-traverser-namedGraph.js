@@ -82,10 +82,15 @@ function namedGraphSuite() {
         [ 'FOR x IN OUTBOUND @startId GRAPH \'' + gn + '\' RETURN x', { startId: gh.vertex.B } ],
       ];
 
+      // TODO: It is unclear what the value of this assertions is;
       queries.forEach(function(query) {
-        let nodes = db._createStatement({query: query[0], bindVars: query[1]}).explain().plan.nodes;
-        assertEqual("TraversalNode", nodes[1].type); 
-        assertEqual("UnitTestGraph", nodes[1].graph);
+        let plan = db._createStatement({query: query[0], bindVars: query[1]}).explain().plan;
+
+        if(!plan.rules.includes("short-traversal-to-join")) {
+          let nodes = plan.nodes;
+          assertEqual("TraversalNode", nodes[1].type); 
+          assertEqual("UnitTestGraph", nodes[1].graph);
+        }
       });
     },
 

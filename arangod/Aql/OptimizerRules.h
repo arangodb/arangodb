@@ -53,6 +53,9 @@ void activateCallstackSplit(ExecutionPlan& plan);
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                       OptimizerRule const&);
 
+void shortTraversalToJoinRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const&);
+
 /// @brief remove redundant sorts
 /// this rule modifies the plan in place:
 /// - sorts that are covered by earlier sorts will be removed

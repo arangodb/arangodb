@@ -140,14 +140,18 @@ function BaseTestConfig() {
         [ "FOR v, e, p IN 1..1 OUTBOUND '" + vn + "/test0' GRAPH '" + gn + "' OPTIONS { order: 'weighted', weightAttribute: 'testi' } FILTER p.vertices[*].weight ALL >= 3 RETURN p.edges", [ false, true, false ]],
       
       ].forEach((query) => {
-        let nodes = db._createStatement(query[0]).explain().plan.nodes;
-        let traversal = nodes.filter((node) => node.type === 'TraversalNode')[0];
+        let plan = db._createStatement(query[0]).explain().plan;
+        let nodes = plan.nodes;
 
-        assertEqual("p", traversal.pathOutVariable.name);
-        assertEqual(query[1][0], traversal.options.producePathsVertices, query);
-        assertEqual(query[1][1], traversal.options.producePathsEdges, query);
-        assertEqual(query[1][2], traversal.options.producePathsWeights, query);
-       
+        if(!plan.rules.includes("short-traversal-to-join")) {
+          let traversal = nodes.filter((node) => node.type === 'TraversalNode')[0];
+          assertEqual("p", traversal.pathOutVariable.name);
+
+          assertEqual(query[1][0], traversal.options.producePathsVertices, query);
+          assertEqual(query[1][1], traversal.options.producePathsEdges, query);
+          assertEqual(query[1][2], traversal.options.producePathsWeights, query);
+        }
+
         // execute the queries but don't check the results yet.
         // we execute them to ensure that there are no runtime crashses (e.g.
         // nullptr accesses due to optimized-away path variables etc.)

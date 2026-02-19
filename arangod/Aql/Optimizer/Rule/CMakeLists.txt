@@ -8,6 +8,7 @@ target_sources(arango_aql PRIVATE
   OptimizerRulePushLimitIntoIndex.cpp
   OptimizerRuleReplaceEntriesWithObjectIteration.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
+  OptimizerRuleShortTraversalToJoin.cpp
   OptimizerRuleVectorIndex.cpp
   OptimizerRulePushFilterVectorIndex.cpp
   OptimizerRulesCluster.cpp

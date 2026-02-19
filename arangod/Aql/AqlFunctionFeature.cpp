@@ -508,6 +508,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PARSE_COLLECTION", ".", flags, &functions::ParseCollection});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &functions::DecodeRev});
+  add({"TO_DOCUMENT_ID", ".", flags, &functions::ToDocumentId});
 
   // cannot be used in analyzers
   add({"SHARD_ID", ".,.",

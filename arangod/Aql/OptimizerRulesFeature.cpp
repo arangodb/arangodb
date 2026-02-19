@@ -434,6 +434,14 @@ loading the vertex documents if they are not accessed in the query.)");
                R"(Replace or remove `FilterNode` if the filter conditions are
 already covered by `TraversalNode`.)");
 
+  // rewrite 1-step traversal to a join
+  registerRule("short-traversal-to-join", shortTraversalToJoinRule,
+               OptimizerRule::shortTraversalToJoinRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden),
+               R"(Transform 1-step traversals into join)");
+
   // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,

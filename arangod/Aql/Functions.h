@@ -549,6 +549,8 @@ AqlValue Fail(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
 AqlValue DecodeRev(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
+AqlValue ToDocumentId(arangodb::aql::ExpressionContext*, AstNode const&,
+                      VPackFunctionParametersView);
 AqlValue ShardId(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
 AqlValue CurrentUser(arangodb::aql::ExpressionContext*, AstNode const&,

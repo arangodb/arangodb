@@ -148,10 +148,14 @@ function BaseTestConfig() {
           [0, 1].forEach((minDepth) => {
             [0, 1, 2].forEach((maxDepth) => {
               let bind = { start, minDepth, maxDepth: minDepth + maxDepth };
-              let nodes = db._createStatement({query: query, bindVars: bind, options: {}}).explain().plan.nodes;
-              let traversal = nodes.filter((node) => node.type === 'TraversalNode')[0];
+              let plan = db._createStatement({query: query, bindVars: bind, options: {}}).explain().plan;
+              let nodes = plan.nodes;
 
-              assertEqual("p", traversal.pathOutVariable.name);
+              if(!plan.rules.includes("short-traversal-to-join")) {
+                let traversal = nodes.filter((node) => node.type === 'TraversalNode')[0];
+                assertEqual("p", traversal.pathOutVariable.name);
+                // Maybe TODO: pick up the pathOutVariable from the join construct
+              }
               // execute the queries but don't check the results.
               // we execute the queries here to ensure that there are no runtime crashses (e.g.
               // nullptr accesses due to optimized-away path variables etc.)

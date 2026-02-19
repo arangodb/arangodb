@@ -101,6 +101,9 @@ struct OptimizerRule {
     // ========================================================
     replaceNearWithinFulltext,
 
+    // try replacing short traversals by a join
+    shortTraversalToJoinRule,
+
     inlineSubqueriesRule,
 
     replaceLikeWithRange,

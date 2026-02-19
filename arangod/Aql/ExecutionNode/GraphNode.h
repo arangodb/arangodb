@@ -187,7 +187,7 @@ class GraphNode : public ExecutionNode {
   void clearEngines();
 
   std::vector<aql::Collection*> const& edgeColls() const;
-
+  std::vector<TRI_edge_direction_e> const& edgeDirections() const;
   std::vector<aql::Collection*> const& vertexColls() const;
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
