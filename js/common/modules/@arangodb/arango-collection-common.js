@@ -31,17 +31,6 @@ var arangodb = require('@arangodb');
 var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
 
-var simple = require('@arangodb/simple-query');
-
-var SimpleQueryAll = simple.SimpleQueryAll;
-var SimpleQueryByExample = simple.SimpleQueryByExample;
-var SimpleQueryByCondition = simple.SimpleQueryByCondition;
-var SimpleQueryRange = simple.SimpleQueryRange;
-var SimpleQueryGeo = simple.SimpleQueryGeo;
-var SimpleQueryNear = simple.SimpleQueryNear;
-var SimpleQueryWithin = simple.SimpleQueryWithin;
-var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief collection is corrupted
 // //////////////////////////////////////////////////////////////////////////////
@@ -143,180 +132,6 @@ ArangoCollection.prototype.documentId = function (documentKey) {
   return `${this.name()}/${documentKey}`;
 };
 
-ArangoCollection.prototype.all = function () {
-  return new SimpleQueryAll(this);
-};
-
-ArangoCollection.prototype.byExample = function (example) {
-  var e;
-  var i;
-
-  // example is given as only argument
-  if (arguments.length === 1) {
-    e = example;
-  }
-
-  // example is given as list
-  else {
-    e = {};
-
-    // create a REAL array, otherwise JSON.stringify will fail
-    for (i = 0;  i < arguments.length;  i += 2) {
-      e[arguments[i]] = arguments[i + 1];
-    }
-  }
-
-  return new SimpleQueryByExample(this, e);
-};
-
-ArangoCollection.prototype.range = function (name, left, right) {
-  return new SimpleQueryRange(this, name, left, right, 0);
-};
-
-ArangoCollection.prototype.closedRange = function (name, left, right) {
-  return new SimpleQueryRange(this, name, left, right, 1);
-};
-
-ArangoCollection.prototype.geo = function (loc, order) {
-  var idx;
-
-  var locateGeoIndex1 = function (collection, loc, order) {
-    var inds = collection.indexes();
-    var i;
-
-    for (i = 0;  i < inds.length;  ++i) {
-      var index = inds[i];
-
-      if (index.type === 'geo1' || (index.type === 'geo' && index.fields.length === 1)) {
-        if (index.fields[0] === loc && index.geoJson === order) {
-          return index;
-        }
-      }
-    }
-
-    return null;
-  };
-
-  var locateGeoIndex2 = function (collection, lat, lon) {
-    var inds = collection.indexes();
-    var i;
-
-    for (i = 0;  i < inds.length;  ++i) {
-      var index = inds[i];
-
-      if (index.type === 'geo2' || (index.type === 'geo' && index.fields.length === 2)) {
-        if (index.fields[0] === lat && index.fields[1] === lon) {
-          return index;
-        }
-      }
-    }
-
-    return null;
-  };
-
-  if (order === undefined) {
-    if (typeof loc === 'object') {
-      idx = this.index(loc);
-    }else {
-      idx = locateGeoIndex1(this, loc, false);
-    }
-  }
-  else if (typeof order === 'boolean') {
-    idx = locateGeoIndex1(this, loc, order);
-  }else {
-    idx = locateGeoIndex2(this, loc, order);
-  }
-
-  if (idx === null) {
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.code;
-    err.errorMessage = require('internal').sprintf(arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message, this.name());
-    throw err;
-  }
-
-  return new SimpleQueryGeo(this, idx.id);
-};
-
-ArangoCollection.prototype.near = function (lat, lon) {
-  return new SimpleQueryNear(this, lat, lon);
-};
-
-ArangoCollection.prototype.within = function (lat, lon, radius) {
-  return new SimpleQueryWithin(this, lat, lon, radius);
-};
-
-ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
-  return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
-};
-
-ArangoCollection.prototype.iterate = function (iterator, options) {
-  var probability = 1.0;
-  var limit = null;
-  var stmt;
-  var cursor;
-  var pos;
-
-  // TODO: this is not optimal for the client, there should be an HTTP call handling
-  // everything on the server
-
-  if (options !== undefined) {
-    if (options.hasOwnProperty('probability')) {
-      probability = options.probability;
-    }
-
-    if (options.hasOwnProperty('limit')) {
-      limit = options.limit;
-    }
-  }
-
-  if (limit === null) {
-    if (probability >= 1.0) {
-      cursor = this.all();
-    }else {
-      stmt = sprintf('FOR d IN %s FILTER rand() <= @prob RETURN d', this.name());
-      stmt = arangodb.db._createStatement({ query: stmt });
-
-      if (probability < 1.0) {
-        stmt.bind('prob', probability);
-      }
-
-      cursor = stmt.execute();
-    }
-  }else {
-    if (typeof limit !== 'number') {
-      var error = new ArangoError();
-      error.errorNum = arangodb.errors.ERROR_ILLEGAL_NUMBER.code;
-      error.errorMessage = 'expecting a number, got ' + String(limit);
-
-      throw error;
-    }
-
-    if (probability >= 1.0) {
-      cursor = this.all().limit(limit);
-    }else {
-      stmt = sprintf('FOR d IN %s FILTER rand() <= @prob LIMIT %d RETURN d',
-        this.name(), limit);
-      stmt = arangodb.db._createStatement({ query: stmt });
-
-      if (probability < 1.0) {
-        stmt.bind('prob', probability);
-      }
-
-      cursor = stmt.execute();
-    }
-  }
-
-  pos = 0;
-
-  while (cursor.hasNext()) {
-    var document = cursor.next();
-
-    iterator(document, pos);
-
-    pos++;
-  }
-};
-
 ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
   throw 'cannot call abstract removeByExample function';
 };
@@ -338,11 +153,11 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 // / @brief add options from arguments to index specification
 // //////////////////////////////////////////////////////////////////////////////
 
-function addIndexOptions (body, parameters) {
+function addIndexOptions(body, parameters) {
   body.fields = [];
 
   var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
+    if (!body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
   };
@@ -354,7 +169,7 @@ function addIndexOptions (body, parameters) {
       body.fields.push(parameters[i]);
     }
     else if (typeof parameters[i] === 'object' &&
-      ! Array.isArray(parameters[i]) &&
+      !Array.isArray(parameters[i]) &&
       parameters[i] !== null) {
       // set arbitrary options
       Object.keys(parameters[i]).forEach(setOption);
@@ -392,7 +207,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   if (typeof lon === 'boolean') {
     return this.ensureIndex({
       type: 'geo1',
-      fields: [ lat ],
+      fields: [lat],
       geoJson: lon
     });
   }
@@ -400,14 +215,14 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   if (lon === undefined) {
     return this.ensureIndex({
       type: 'geo1',
-      fields: [ lat ],
+      fields: [lat],
       geoJson: false
     });
   }
 
   return this.ensureIndex({
     type: 'geo2',
-    fields: [ lat, lon ]
+    fields: [lat, lon]
   });
 };
 

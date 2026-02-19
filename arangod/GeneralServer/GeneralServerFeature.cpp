@@ -55,7 +55,6 @@
 #include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
-#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminDeploymentHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -92,8 +91,6 @@
 #include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
-#include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestTelemetricsHandler.h"
@@ -647,31 +644,6 @@ void GeneralServerFeature::defineRemainingHandlers(
                      RestHandlerCreator<RestIndexHandler>::createNoData,
                      {0, 1});
 
-  f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
-                     RestHandlerCreator<RestSimpleQueryHandler>::createData<
-                         aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
-                     RestHandlerCreator<RestSimpleQueryHandler>::createData<
-                         aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
-
-  f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
-                     RestHandlerCreator<RestSimpleQueryHandler>::createData<
-                         aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
-
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      {0, 1}, queryRegistry);
-
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      {0, 1}, queryRegistry);
-
   f.addPrefixHandler(RestVocbaseBaseHandler::UPLOAD_PATH,
                      RestHandlerCreator<RestUploadHandler>::createNoData,
                      {0, 1});
@@ -856,12 +828,6 @@ void GeneralServerFeature::defineRemainingHandlers(
                      RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
                      {0, 1}, _jobManager.get());
-
-  // further admin handlers
-  f.addPrefixHandler(
-      "/_admin/database/target-version",
-      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData,
-      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/log",
