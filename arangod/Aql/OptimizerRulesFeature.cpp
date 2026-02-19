@@ -845,13 +845,6 @@ vector embeddings with vector similarity AQL functions.)");
                R"(Push Filter into EnumerateNearVector node. Can also optimize
     filtering by using storedValues. This rule is enabled only by use-vector-index rule)");
 
-  registerRule(
-      "immutable-search-condition", iresearch::immutableSearchCondition,
-      OptimizerRule::immutableSearchConditionRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Optimize immutable search condition for nested loops. There is no need
-to perform a real search repeatedly if the results can be cached in a bitset.)");
-
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-4",
                removeUnnecessaryCalculationsRule,

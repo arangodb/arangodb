@@ -416,10 +416,6 @@ struct OptimizerRule {
     // their upstream node.
     asyncPrefetchRule,
 
-    // Better to be last, because it doesn't change plan and
-    // rely on no one will change search condition after this rule
-    immutableSearchConditionRule,
-
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.

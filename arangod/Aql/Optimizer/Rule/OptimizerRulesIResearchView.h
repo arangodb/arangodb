@@ -38,12 +38,6 @@ class ExecutionPlan;
 }  // namespace aql
 namespace iresearch {
 
-// Find immutable part of search condition for subqueries or inner loops
-// Regroup them to the two parts: immutable mutable
-void immutableSearchCondition(aql::Optimizer* opt,
-                              std::unique_ptr<aql::ExecutionPlan> plan,
-                              aql::OptimizerRule const& rule);
-
 // Moves document materialization from view nodes to materialize nodes.
 void lateDocumentMaterializationArangoSearchRule(
     aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
