@@ -28,10 +28,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-
-#include <Basics/StaticStrings.h>
 
 namespace arangodb {
 

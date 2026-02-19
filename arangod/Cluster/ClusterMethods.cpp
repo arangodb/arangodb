@@ -2800,7 +2800,8 @@ arangodb::Result hotBackupList(
         if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
             !error.isNone()) {
           return ResultT<BackupMeta>::success(BackupMeta::fromError(
-              key.copyString(), resSlice.get("server").copyString(), value));
+              key.copyString(),
+              VelocyPackHelper::getStringValue(resSlice, "server", ""), value));
         }
         return BackupMeta::fromSlice(value);
       }();
