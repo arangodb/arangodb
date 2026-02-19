@@ -238,6 +238,20 @@ function withSuffix(suite, suffix) {
     return result;
 }
 
+function waitForTrained(collection, timeoutSec) {
+    const internal = require("internal");
+    const deadline = Date.now() + timeoutSec * 1000;
+    while (Date.now() < deadline) {
+        const idx = collection.indexes().find(i => i.type === 'vector');
+        if (idx && idx.isTrained) {
+            return true;
+        }
+        internal.sleep(0.1);
+    }
+    return false;
+}
+
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
+exports.waitForTrained = waitForTrained;
 exports.withSuffix = withSuffix;
