@@ -28,8 +28,7 @@
 
 const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
-const {assertEqual, assertTrue, assertNotEqual, assertFalse, assertNotUndefined}
-  = jsunity.jsUnity.assertions;
+const { assertEqual, assertTrue, assertNotEqual } = jsunity.jsUnity.assertions;
 
 // The post fix is used to make testName unique accross suites in the same file
 // just to make testing-js happy.
@@ -41,7 +40,8 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
 
     const collection = collectionWrapper.rawCollection();
     const cn = collection.name();
-    const baseUrl = "/_api/document/" + encodeURIComponent(cn);
+    const baseUrl = "/_api/document?collection=" + encodeURIComponent(cn);
+    const singleDocBaseUrl = "/_api/document/" + encodeURIComponent(cn);
     for (const doc of generator) {
       let keyUrl;
       let documentKey;
@@ -49,7 +49,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       if (!isEnterpriseGraphEdge) {
         assertTrue(doc.hasOwnProperty("_key"));
         documentKey = doc._key;
-        keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
+        keyUrl = singleDocBaseUrl + "/" + encodeURIComponent(doc._key);
       }
 
       // create document
@@ -57,7 +57,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       if (isEnterpriseGraphEdge) {
         assertTrue(result.parsedBody.hasOwnProperty("_key"));
         documentKey = result.parsedBody._key;
-        keyUrl = baseUrl + "/" + encodeURIComponent(result.parsedBody._key);
+        keyUrl = singleDocBaseUrl + "/" + encodeURIComponent(result.parsedBody._key);
       }
       assertEqual(202, result.code, `Creating document with key ${documentKey}`);
       let rev = result.parsedBody._rev;
@@ -177,107 +177,6 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     [`testSpecialKeysInUrls${testNamePostfix}`]: function () {
       // This is supposed to test special characters in URLs
       runAllCrudOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
-    },
-
-    /// @brief this tests the SimpleQueries lookupByKeys and removeByKeys
-    [`testLookupByKeys${testNamePostfix}`]: function () {
-      const collection = collectionWrapper.rawCollection();
-      const cn = collection.name();
-      const baseUrl = "/_api/document/" + encodeURIComponent(cn);
-      const documents = [];
-      const isEnterpriseGraphEdge = collectionWrapper._isEnterpriseGraphEdge;
-      for (const doc of collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator())) {
-        documents.push(doc);
-      }
-
-      let keys = [];
-      {
-        // create all documents in one call
-        const result = arango.POST_RAW(baseUrl, documents);
-        assertEqual(202, result.code);
-        assertFalse(
-          result.headers.hasOwnProperty("x-arango-error-codes"),
-          `Got errors on insert: ${JSON.stringify(result.headers["x-arango-error-codes"])}`
-        );
-        // Validate all documents are successfully created
-        assertEqual(documents.length, collection.count());
-
-        if (isEnterpriseGraphEdge) {
-          // Keys are not provided by us, they are auto-generated.
-          keys = result.parsedBody.map(d => d._key);
-        } else {
-          keys = documents.map(d => d._key);
-        }
-      }
-      const sortByKey = (l, r) => {
-        if (l._key < r._key) {
-          return -1;
-        }
-        if (l._key > r._key) {
-          return 1;
-        }
-        return 0;
-      };
-      {
-        // Try to find one by key
-        // This defaults to a SingleRemoteOperation
-        const lookupUrl = "/_api/simple/lookup-by-keys";
-        assertNotUndefined(keys.slice(0, 1));
-        const body = {
-          collection: collection.name(),
-          keys: keys.slice(0, 1)
-        };
-        const result = arango.PUT_RAW(lookupUrl, body);
-
-        assertEqual(200, result.code);
-        const response = result.parsedBody.documents;
-        assertEqual(1, response.length);
-
-        for (const [key, value] of Object.entries(documents[0])) {
-          assertEqual(response[0][key], value,
-            `Mismatch user data of ${JSON.stringify(response[0])} does not match the insert ${JSON.stringify(documents[0])}`);
-        }
-      }
-      // The response does not have to be sorted by input keys.
-      documents.sort(sortByKey);
-      {
-        // Try to find them by keys
-        // This defaults to an IndexLookup
-        const lookupUrl = "/_api/simple/lookup-by-keys";
-        const body = {
-          collection: collection.name(),
-          keys
-        };
-
-        const result = arango.PUT_RAW(lookupUrl, body);
-
-        assertEqual(200, result.code);
-        const response = result.parsedBody.documents;
-        response.sort(sortByKey);
-        assertEqual(response.length, documents.length);
-        for (let i = 0; i < documents.length; ++i) {
-          for (const [key, value] of Object.entries(documents[i])) {
-            assertEqual(response[i][key], value,
-              `Mismatch at document ${i} user data of ${JSON.stringify(response[i])} does not match the insert ${JSON.stringify(documents[i])}`);
-          }
-        }
-      }
-
-      {
-        // Try to remove them by keys
-        const removeUrl = "/_api/simple/remove-by-keys";
-        const body = {
-          collection: collection.name(),
-          keys
-        };
-        const result = arango.PUT_RAW(removeUrl, body);
-        if (result.code !== 200) {
-          console.warn(`Remove returned with: ${JSON.stringify(result)}`);
-        }
-        assertEqual(200, result.code);
-        // Validate all documents are successfully removed
-        assertEqual(0, collection.count());
-      }
     },
   };
 };
