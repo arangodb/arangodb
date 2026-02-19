@@ -599,7 +599,6 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-
     if (inBackground) {
       // allow concurrent inserts into index
       {

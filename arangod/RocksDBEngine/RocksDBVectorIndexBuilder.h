@@ -26,16 +26,17 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Indexes/VectorIndexDefinition.h"
-
-#include <faiss/IndexIVF.h>
-#include <rocksdb/iterator.h>
-#include <rocksdb/slice.h>
-#include <velocypack/Slice.h>
+#include "RocksDBEngine/RocksDBCollection.h"
 
 #include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>
+
+#include <faiss/IndexIVF.h>
+#include <rocksdb/iterator.h>
+#include <rocksdb/slice.h>
+#include <velocypack/Slice.h>
 
 namespace rocksdb {
 class DB;
@@ -43,6 +44,7 @@ class DB;
 
 namespace arangodb {
 class RocksDBVectorIndex;
+class RocksDBEngine;
 }  // namespace arangodb
 
 namespace arangodb::vector {
@@ -105,17 +107,21 @@ class VectorIndexTrainer {
   std::uint64_t _indexId;
 };
 
-/// Bulk-ingest all documents from the iterator into the trained vector index.
-/// Uses a multi-threaded pipeline: reader -> encoder -> writer.
-/// The faissIndex must already be trained.
-Result ingestVectors(RocksDBVectorIndex& index,
-                     std::shared_ptr<faiss::IndexIVF> const& faissIndex,
-                     rocksdb::DB* rootDB,
-                     std::unique_ptr<rocksdb::Iterator> documentIterator);
+/// Orchestrates the full build pipeline for a vector index: train the FAISS
+/// index from collection documents, apply the result, then bulk-ingest all
+/// vectors using RocksDBBuilderIndex for ingestion + WAL catchup.
+/// Constructed in the background thread with the state it needs.
+class VectorIndexBuildManager {
+ public:
+  explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-/// Full build pipeline for a vector index: train the FAISS index from
-/// collection documents, apply the result, then bulk-ingest all vectors
-/// using RocksDBBuilderIndex for ingestion + WAL catchup.
-Result buildVectorIndex(RocksDBVectorIndex& index);
+  Result build();
+
+ private:
+  RocksDBVectorIndex& _index;
+  RocksDBEngine& _engine;
+  rocksdb::DB* _rootDB;
+  RocksDBCollection* _rcoll;
+};
 
 }  // namespace arangodb::vector

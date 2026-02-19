@@ -49,7 +49,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "RocksDBVectorIndex.h"
-#include "RocksDBVectorIndexBuilder.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -343,12 +342,10 @@ static Result fillIndex(
 
   if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
     auto& vecIdx = dynamic_cast<RocksDBVectorIndex&>(ridx);
-    if (!vecIdx.isTrained()) {
-      return {};
+    if (vecIdx.faissIndex() != nullptr) {
+      it->Seek(bounds.start());
+      return vecIdx.ingestVectors(rootDB, std::move(it));
     }
-    it->Seek(bounds.start());
-    return vector::ingestVectors(vecIdx, vecIdx.faissIndex(), rootDB,
-                                 std::move(it));
   }
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }

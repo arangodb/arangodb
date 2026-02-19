@@ -29,10 +29,8 @@
 #include <cstdint>
 #include <format>
 #include <functional>
-#include <thread>
 
 #include "Assertions/Assert.h"
-#include "Basics/BoundedChannel.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -40,19 +38,14 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/iterator.h>
-#include <rocksdb/write_batch.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include "faiss/IndexFlat.h"
@@ -151,9 +144,9 @@ VectorIndexTrainer::VectorIndexTrainer(
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
   if (_definition.factory) {
-    std::shared_ptr<faiss::Index> index(
-        faiss::index_factory(_definition.dimension, _definition.factory->c_str(),
-                             metricToFaissMetric(_definition.metric)));
+    std::shared_ptr<faiss::Index> index(faiss::index_factory(
+        _definition.dimension, _definition.factory->c_str(),
+        metricToFaissMetric(_definition.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
     if (ivfIndex == nullptr) {
@@ -271,332 +264,58 @@ TrainingResult VectorIndexTrainer::train(rocksdb::Iterator& it,
   return result;
 }
 
-Result ingestVectors(RocksDBVectorIndex& index,
-                     std::shared_ptr<faiss::IndexIVF> const& faissIndex,
-                     rocksdb::DB* rootDB,
-                     std::unique_ptr<rocksdb::Iterator> documentIterator) {
-  auto const& definition = index.getDefinition();
-  auto const dim = definition.dimension;
-  bool const isSparse = index.sparse();
-  auto const& fields = index.fields();
-  auto const hasStored = index.hasStoredValues();
-  auto const& stored = index.storedValues();
-  auto* cf = index.columnFamily();
-  auto const objId = index.objectId();
+VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
+    : _index(index),
+      _engine(index.collection().vocbase().engine<RocksDBEngine>()),
+      _rootDB(_engine.db()->GetRootDB()),
+      _rcoll(
+          static_cast<RocksDBCollection*>(index.collection().getPhysical())) {}
 
-  struct DocumentVectors {
-    std::vector<LocalDocumentId> docIds;
-    std::vector<float> vectors;
-    std::vector<velocypack::SharedSlice> storedValues;
-  };
+Result VectorIndexBuildManager::build() {
+  auto& coll = _index.collection();
+  auto const bounds = _rcoll->bounds();
 
-  struct EncodedVectors {
-    std::vector<LocalDocumentId> docIds;
-    std::unique_ptr<faiss::idx_t[]> lists;
-    std::unique_ptr<uint8_t[]> codes;
-    std::vector<velocypack::SharedSlice> storedValues;
-  };
+  VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
+                             _index.fields(), coll.name(), _index.id().id());
 
-  struct BlockCounters {
-    uint64_t readProduceBlocked{0};
-    uint64_t encodeProduceBlocked{0};
-    uint64_t encodeConsumeBlocked{0};
-    uint64_t writeConsumeBlocked{0};
-  } counters;
-
-  BoundedChannel<DocumentVectors> documentChannel{5};
-  BoundedChannel<EncodedVectors> encodedChannel{5};
-
-  constexpr auto numReaders = 1;
-  constexpr auto numEncoders = 8;
-  constexpr auto numWriters = 2;
-
-  constexpr auto documentPerBatch = 8000;
-
-  std::atomic<std::size_t> countBatches{0};
-  std::atomic<std::size_t> countDocuments{0};
-
-  std::atomic<bool> hasError;
-  Result firstError;
-
-  auto setResult = [&](Result result) {
-    if (result.fail()) {
-      if (hasError.exchange(true) == false) {
-        firstError = std::move(result);
-      }
-    }
-  };
-
-  auto errorExceptionHandler = [&](auto&& fn) noexcept {
-    try {
-      auto constexpr returnsResult = requires {
-        { fn() } -> std::convertible_to<Result>;
-      };
-
-      if constexpr (returnsResult) {
-        setResult(fn());
-      } else {
-        fn();
-      }
-    } catch (basics::Exception const& e) {
-      setResult({e.code(), e.message()});
-    } catch (std::exception const& e) {
-      setResult({TRI_ERROR_INTERNAL, e.what()});
-    }
-  };
-
-  auto readDocuments = [&] {
-    static_assert(numReaders == 1,
-                  "this code is not prepared for multiple reads");
-
-    errorExceptionHandler([&] {
-      BoundedChannelProducerGuard guard(documentChannel);
-
-      auto const prepareBatch = [&] {
-        auto batch = std::make_unique<DocumentVectors>();
-        batch->docIds.reserve(documentPerBatch);
-        batch->vectors.reserve(documentPerBatch * dim);
-        if (hasStored) {
-          batch->storedValues.reserve(documentPerBatch);
-        }
-        return batch;
-      };
-
-      std::unique_ptr<DocumentVectors> batch = prepareBatch();
-      while (documentIterator->Valid() && not hasError.load()) {
-        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
-        VPackSlice doc = RocksDBValue::data(documentIterator->value());
-        if (auto const res =
-                readDocumentVectorData(doc, fields, dim, batch->vectors);
-            res.fail()) {
-          if (res.is(TRI_ERROR_BAD_PARAMETER) && isSparse) {
-            documentIterator->Next();
-            continue;
-          }
-          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-        }
-        batch->docIds.push_back(docId);
-        if (hasStored) {
-          auto const extractedAttributeValues =
-              transaction::extractAttributeValues(stored, doc, true);
-          batch->storedValues.push_back(
-              extractedAttributeValues->sharedSlice());
-        }
-
-        documentIterator->Next();
-        if (batch->docIds.size() == documentPerBatch) {
-          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
-          counters.readProduceBlocked += blocked;
-
-          if (shouldStop) {
-            return;
-          }
-          batch = prepareBatch();
-        }
-      }
-
-      if (definition.metric == SimilarityMetric::kCosine) {
-        faiss::fvec_renorm_L2(dim, batch->docIds.size(),
-                              batch->vectors.data());
-      }
-
-      if (batch) {
-        std::ignore = documentChannel.push(std::move(batch));
-      }
-    });
-  };
-
-  auto encodeVectors = [&]() {
-    BoundedChannelProducerGuard guard(encodedChannel);
-    while (true) {
-      auto [item, blocked] = documentChannel.pop();
-      if (item == nullptr) {
-        return;
-      }
-
-      bool shouldStop = false;
-      errorExceptionHandler([&] {
-        counters.encodeConsumeBlocked += blocked;
-        auto n = item->docIds.size();
-        countBatches += 1;
-        countDocuments += n;
-
-        float* x = item->vectors.data();
-        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
-        faissIndex->quantizer->assign(n, x, coarse_idx.get());
-        auto code_size = faissIndex->code_size;
-        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
-
-        faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
-
-        auto encoded = std::make_unique<EncodedVectors>();
-        encoded->docIds = std::move(item->docIds);
-        encoded->lists = std::move(coarse_idx);
-        encoded->codes = std::move(flat_codes);
-        encoded->storedValues = std::move(item->storedValues);
-
-        bool pushBlocked = false;
-        std::tie(shouldStop, pushBlocked) =
-            encodedChannel.push(std::move(encoded));
-        counters.encodeProduceBlocked += pushBlocked;
-      });
-      if (shouldStop) {
-        break;
-      }
-    }
-  };
-
-  auto writeDocuments = [&] {
-    rocksdb::WriteBatch batch;
-    while (true) {
-      auto [item, blocked] = encodedChannel.pop();
-      if (item == nullptr) {
-        break;
-      }
-
-      errorExceptionHandler([&] {
-        counters.writeConsumeBlocked += blocked;
-        batch.Clear();
-
-        RocksDBKey key;
-        rocksdb::Status status;
-
-        for (size_t k = 0; k < item->docIds.size(); k++) {
-          key.constructVectorIndexValue(objId, item->lists[k],
-                                        item->docIds[k]);
-
-          auto const value = std::invoke([&]() {
-            auto* ptr = item->codes.get() + k * faissIndex->code_size;
-            if (hasStored) {
-              RocksDBVectorIndexEntryValue rocksdbEntryValue;
-              rocksdbEntryValue.encodedValue =
-                  std::vector<uint8_t>(ptr, ptr + faissIndex->code_size);
-              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
-
-              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
-            } else {
-              return RocksDBValue::VectorIndexValue(ptr,
-                                                    faissIndex->code_size);
-            }
-          });
-
-          status = batch.Put(cf, key.string(), value.string());
-          if (not status.ok()) {
-            THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
-          }
-        }
-
-        rocksdb::WriteOptions wo;
-        status = rootDB->Write(wo, &batch);
-        if (not status.ok()) {
-          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
-        }
-      });
-    }
-  };
-
-  std::vector<std::jthread> threads;
-
-  auto startNThreads = [&](auto& func, size_t n) {
-    for (size_t k = 0; k < n; k++) {
-      threads.emplace_back(func);
-    }
-  };
-
-  LOG_TOPIC("71c45", INFO, Logger::FIXME)
-      << "[shard=" << index.collection().name()
-      << ", index=" << index.id().id() << "] "
-      << "Ingesting vectors into index. Threads: num-readers=" << numReaders
-      << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
-
-  startNThreads(readDocuments, numReaders);
-  startNThreads(encodeVectors, numEncoders);
-  startNThreads(writeDocuments, numWriters);
-
-  threads.clear();
-
-  if (firstError.ok()) {
-    LOG_TOPIC("41658", INFO, Logger::FIXME)
-        << "[shard=" << index.collection().name()
-        << ", index=" << index.id().id() << "] "
-        << "Ingestion done. Encoded " << countDocuments << " vectors in "
-        << countBatches
-        << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
-        << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
-        << " " << counters.writeConsumeBlocked;
-  } else {
-    LOG_TOPIC("96a80", ERR, Logger::FIXME)
-        << "[shard=" << index.collection().name()
-        << ", index=" << index.id().id() << "] "
-        << "Ingestion failed: " << firstError;
-  }
-
-  return firstError;
-}
-
-Result buildVectorIndex(RocksDBVectorIndex& index) {
-  auto& coll = index.collection();
-  auto& engine = coll.vocbase().engine<RocksDBEngine>();
-  rocksdb::DB* rootDB = engine.db()->GetRootDB();
-
-  auto const* rcoll =
-      static_cast<RocksDBCollection const*>(coll.getPhysical());
-  auto const bounds =
-      RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  rocksdb::Slice upper(bounds.end());
+  rocksdb::ReadOptions ro(false, false);
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
 
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
+  std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
+  trainIt->Seek(bounds.start());
 
-  VectorIndexTrainer trainer(index.getDefinition(), index.sparse(),
-                             index.fields(), coll.name(), index.id().id());
-
-  // The insert transaction that triggered training may not have committed
-  // yet, so the snapshot might not see the documents. Retry with backoff.
-  constexpr int kMaxRetries = 10;
-  for (int attempt = 0; attempt < kMaxRetries; ++attempt) {
-    rocksdb::Slice upper(bounds.end());
-    rocksdb::ReadOptions ro(false, false);
-    ro.prefix_same_as_start = true;
-    ro.iterate_upper_bound = &upper;
-
-    std::unique_ptr<rocksdb::Iterator> trainIt(
-        rootDB->NewIterator(ro, docCF));
-    trainIt->Seek(bounds.start());
-
-    try {
-      auto result = trainer.train(*trainIt, upper);
-      index.applyTrainingResult(std::move(result));
-      break;
-    } catch (basics::Exception const& e) {
-      if (attempt + 1 >= kMaxRetries) {
-        return {e.code(), e.message()};
-      }
-      LOG_TOPIC("e162b", INFO, Logger::ENGINES)
-          << "[shard=" << coll.name() << ", index=" << index.id().id() << "] "
-          << "Training attempt " << (attempt + 1) << " failed ("
-          << e.message() << "), retrying...";
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(200 * (1 << attempt)));
-    }
-  }
+  auto result = trainer.train(*trainIt, upper);
 
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)
-      << "[shard=" << coll.name() << ", index=" << index.id().id() << "] "
+      << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
       << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
 
-  auto self = coll.lookupIndex(index.id());
+  _index.applyTrainingResult(std::move(result));
+
+  auto self = coll.lookupIndex(_index.id());
+  if (!self) {
+    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, "index was dropped during build"};
+  }
   auto selfRocksDB = std::static_pointer_cast<RocksDBIndex>(self);
   auto builder = std::make_shared<RocksDBBuilderIndex>(
-      selfRocksDB, rcoll->meta().numberDocuments(), /*parallelism*/ 1);
+      selfRocksDB, _rcoll->meta().numberDocuments(), /*parallelism*/ 2);
 
-  auto res = builder->fillIndexForeground();
+  RocksDBBuilderIndex::Locker locker(_rcoll);
+  std::move(locker.lock()).waitAndGet();
+  auto res = std::move(builder->fillIndexBackground(locker)).waitAndGet();
+
   if (res.fail()) {
     LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", index=" << index.id().id() << "] "
+        << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
   } else {
+    _index.markTrained();
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", index=" << index.id().id() << "] "
+        << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
         << "Deferred training and ingestion completed.";
   }
 

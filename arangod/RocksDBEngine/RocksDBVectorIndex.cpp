@@ -29,9 +29,11 @@
 #include <cstdint>
 #include <functional>
 #include <cstring>
+#include <thread>
 #include <omp.h>
 
 #include "Aql/AstNode.h"
+#include "Basics/BoundedChannel.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -59,6 +61,9 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/DocumentExpressionContext.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/write_batch.h>
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -112,6 +117,12 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   // 39 is the minumum number of documents to train the vector index, but that
   // does not mean it cannot be achieved with less documents.
   _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
+}
+
+RocksDBVectorIndex::~RocksDBVectorIndex() {
+  if (_buildThread.joinable()) {
+    _buildThread.detach();
+  }
 }
 
 /// @brief Test if this index matches the definition
@@ -239,6 +250,48 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                         output);
 }
 
+void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
+  _faissIndex = std::move(result.faissIndex);
+  _trainedData.emplace(std::move(result.trainedData));
+
+  _faissIndex->replace_invlists(
+      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+                                       _faissIndex->code_size),
+      true /* faiss owns the inverted list */);
+}
+
+void RocksDBVectorIndex::markTrained() noexcept { _isTrained = true; }
+
+bool RocksDBVectorIndex::shouldTriggerTraining() const noexcept {
+  return !_isTrained && _documentCount >= _trainingThreshold && !_isBuilding;
+}
+
+void RocksDBVectorIndex::triggerTraining() {
+  if (_isBuilding.exchange(true)) {
+    return;
+  }
+
+  LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
+      << "Training threshold reached (" << _trainingThreshold
+      << " documents). Starting deferred training.";
+
+  if (_buildThread.joinable()) {
+    _buildThread.join();
+  }
+  auto indexId = _iid.id();
+  _buildThread = std::thread([this, indexId]() {
+    try {
+      vector::VectorIndexBuildManager builder(*this);
+      builder.build();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("e166b", ERR, Logger::ENGINES)
+          << "[index=" << indexId
+          << "] Deferred training failed: " << e.what();
+    }
+    _isBuilding.store(false);
+  });
+}
+
 /// @brief inserts a document into the index
 Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   RocksDBMethods* methods,
@@ -246,6 +299,13 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
+  if (!_isTrained) {
+    _documentCount.fetch_add(1, std::memory_order_relaxed);
+    if (shouldTriggerTraining()) {
+      triggerTraining();
+    }
+    return {};
+  }
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -259,17 +319,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
-  }
-
-  if (!isTrained()) {
-    // Untrained: just count the document. The vector is not stored in the
-    // index yet. Once the threshold is reached, triggerTraining() will
-    // snapshot all documents and build the index from scratch.
-    auto count = _documentCount.fetch_add(1, std::memory_order_relaxed) + 1;
-    if (count >= _trainingThreshold) {
-      triggerTraining();
-    }
-    return {};
   }
 
   // Trained: normal FAISS path
@@ -307,45 +356,15 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   return rocksutils::convertStatus(status);
 }
 
-void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
-  _faissIndex = std::move(result.faissIndex);
-  _trainedData.emplace(std::move(result.trainedData));
-
-  _faissIndex->replace_invlists(
-      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
-                                       _faissIndex->code_size),
-      true /* faiss owns the inverted list */);
-  _isTrained = true;
-}
-
-void RocksDBVectorIndex::triggerTraining() {
-  if (_isBuilding.exchange(true)) {
-    return;
-  }
-
-  LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
-      << "Training threshold reached (" << _trainingThreshold
-      << " documents). Starting deferred training.";
-
-  _buildThread = std::jthread([this](std::stop_token) {
-    try {
-      vector::buildVectorIndex(*this);
-    } catch (std::exception const& e) {
-      LOG_VECTOR_INDEX("e166b", ERR, Logger::ENGINES)
-          << "Deferred training failed: " << e.what();
-    }
-    _isBuilding.store(false);
-  });
-}
-
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (!isTrained()) {
+  if (!_isTrained) {
     // Nothing stored in the vector index yet, nothing to remove
+    _documentCount.fetch_sub(1, std::memory_order_relaxed);
     return {};
   }
 
@@ -480,6 +499,257 @@ RocksDBVectorIndex::bruteForceSearch(
   }
 
   return {std::move(labels), std::move(distances)};
+}
+
+Result RocksDBVectorIndex::ingestVectors(
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
+  auto const dim = _definition.dimension;
+  auto const& fields = _fields;
+  auto const hasStored = hasStoredValues();
+  auto const& stored = _storedValues;
+
+  struct DocumentVectors {
+    std::vector<LocalDocumentId> docIds;
+    std::vector<float> vectors;
+    std::vector<velocypack::SharedSlice> storedValues;
+  };
+
+  struct EncodedVectors {
+    std::vector<LocalDocumentId> docIds;
+    std::unique_ptr<faiss::idx_t[]> lists;
+    std::unique_ptr<uint8_t[]> codes;
+    std::vector<velocypack::SharedSlice> storedValues;
+  };
+
+  struct BlockCounters {
+    uint64_t readProduceBlocked{0};
+    uint64_t encodeProduceBlocked{0};
+    uint64_t encodeConsumeBlocked{0};
+    uint64_t writeConsumeBlocked{0};
+  } counters;
+
+  BoundedChannel<DocumentVectors> documentChannel{5};
+  BoundedChannel<EncodedVectors> encodedChannel{5};
+
+  constexpr auto numReaders = 1;
+  constexpr auto numEncoders = 8;
+  constexpr auto numWriters = 2;
+
+  constexpr auto documentPerBatch = 8000;
+
+  std::atomic<std::size_t> countBatches{0};
+  std::atomic<std::size_t> countDocuments{0};
+
+  std::atomic<bool> hasError;
+  Result firstError;
+
+  auto setResult = [&](Result result) {
+    if (result.fail()) {
+      if (hasError.exchange(true) == false) {
+        firstError = std::move(result);
+      }
+    }
+  };
+
+  auto errorExceptionHandler = [&](auto&& fn) noexcept {
+    try {
+      auto constexpr returnsResult = requires {
+        { fn() } -> std::convertible_to<Result>;
+      };
+
+      if constexpr (returnsResult) {
+        setResult(fn());
+      }
+      else {
+        fn();
+      }
+    } catch (basics::Exception const& e) {
+      setResult({e.code(), e.message()});
+    } catch (std::exception const& e) {
+      setResult({TRI_ERROR_INTERNAL, e.what()});
+    }
+  };
+
+  auto readDocuments = [&] {
+    static_assert(numReaders == 1,
+                  "this code is not prepared for multiple reads");
+
+    errorExceptionHandler([&] {
+      BoundedChannelProducerGuard guard(documentChannel);
+
+      auto const prepareBatch = [&] {
+        auto batch = std::make_unique<DocumentVectors>();
+        batch->docIds.reserve(documentPerBatch);
+        batch->vectors.reserve(documentPerBatch * dim);
+        if (hasStored) {
+          batch->storedValues.reserve(documentPerBatch);
+        }
+        return batch;
+      };
+
+      std::unique_ptr<DocumentVectors> batch = prepareBatch();
+      while (documentIterator->Valid() && not hasError.load()) {
+        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
+        VPackSlice doc = RocksDBValue::data(documentIterator->value());
+        if (auto const res = vector::readDocumentVectorData(doc, fields, dim,
+                                                            batch->vectors);
+            res.fail()) {
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && sparse()) {
+            documentIterator->Next();
+            continue;
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+        batch->docIds.push_back(docId);
+        if (hasStored) {
+          auto const extractedAttributeValues =
+              transaction::extractAttributeValues(stored, doc, true);
+          batch->storedValues.push_back(
+              extractedAttributeValues->sharedSlice());
+        }
+
+        documentIterator->Next();
+        if (batch->docIds.size() == documentPerBatch) {
+          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
+          counters.readProduceBlocked += blocked;
+
+          if (shouldStop) {
+            return;
+          }
+          batch = prepareBatch();
+        }
+      }
+
+      if (_definition.metric == SimilarityMetric::kCosine) {
+        faiss::fvec_renorm_L2(dim, batch->docIds.size(), batch->vectors.data());
+      }
+
+      if (batch) {
+        std::ignore = documentChannel.push(std::move(batch));
+      }
+    });
+  };
+
+  auto encodeVectors = [&]() {
+    BoundedChannelProducerGuard guard(encodedChannel);
+    while (true) {
+      auto [item, blocked] = documentChannel.pop();
+      if (item == nullptr) {
+        return;
+      }
+
+      bool shouldStop = false;
+      errorExceptionHandler([&] {
+        counters.encodeConsumeBlocked += blocked;
+        auto n = item->docIds.size();
+        countBatches += 1;
+        countDocuments += n;
+
+        float* x = item->vectors.data();
+        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
+        _faissIndex->quantizer->assign(n, x, coarse_idx.get());
+        auto code_size = _faissIndex->code_size;
+        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+
+        _faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+
+        auto encoded = std::make_unique<EncodedVectors>();
+        encoded->docIds = std::move(item->docIds);
+        encoded->lists = std::move(coarse_idx);
+        encoded->codes = std::move(flat_codes);
+        encoded->storedValues = std::move(item->storedValues);
+
+        bool pushBlocked = false;
+        std::tie(shouldStop, pushBlocked) =
+            encodedChannel.push(std::move(encoded));
+        counters.encodeProduceBlocked += pushBlocked;
+      });
+      if (shouldStop) {
+        break;
+      }
+    }
+  };
+
+  auto writeDocuments = [&] {
+    rocksdb::WriteBatch batch;
+    while (true) {
+      auto [item, blocked] = encodedChannel.pop();
+      if (item == nullptr) {
+        break;
+      }
+
+      errorExceptionHandler([&] {
+        counters.writeConsumeBlocked += blocked;
+        batch.Clear();
+
+        RocksDBKey key;
+        rocksdb::Status status;
+
+        for (size_t k = 0; k < item->docIds.size(); k++) {
+          key.constructVectorIndexValue(objectId(), item->lists[k],
+                                        item->docIds[k]);
+
+          auto const value = std::invoke([&]() {
+            auto* ptr = item->codes.get() + k * _faissIndex->code_size;
+            if (hasStored) {
+              RocksDBVectorIndexEntryValue rocksdbEntryValue;
+              rocksdbEntryValue.encodedValue =
+                  std::vector<uint8_t>(ptr, ptr + _faissIndex->code_size);
+              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
+
+              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+            } else {
+              return RocksDBValue::VectorIndexValue(ptr,
+                                                    _faissIndex->code_size);
+            }
+          });
+
+          status = batch.Put(_cf, key.string(), value.string());
+          if (not status.ok()) {
+            THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+          }
+        }
+
+        rocksdb::WriteOptions wo;
+        status = rootDB->Write(wo, &batch);
+        if (not status.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+        }
+      });
+    }
+  };
+
+  std::vector<std::jthread> threads;
+
+  auto startNThreads = [&](auto& func, size_t n) {
+    for (size_t k = 0; k < n; k++) {
+      threads.emplace_back(func);
+    }
+  };
+
+  LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
+      << "Ingesting vectors into index. Threads: num-readers=" << numReaders
+      << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
+
+  startNThreads(readDocuments, numReaders);
+  startNThreads(encodeVectors, numEncoders);
+  startNThreads(writeDocuments, numWriters);
+
+  threads.clear();
+
+  if (firstError.ok()) {
+    LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
+        << "Ingestion done. Encoded " << countDocuments << " vectors in "
+        << countBatches
+        << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
+        << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
+        << " " << counters.writeConsumeBlocked;
+  } else {
+    LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
+        << "Ingestion failed: " << firstError;
+  }
+
+  return firstError;
 }
 
 }  // namespace arangodb

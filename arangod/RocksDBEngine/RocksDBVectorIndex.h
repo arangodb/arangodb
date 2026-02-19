@@ -23,39 +23,32 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <type_traits>
 
-#include "RocksDBIndex.h"
-#include "Indexes/VectorIndexDefinition.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "Transaction/Methods.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterId.h"
 #include "Aql/Variable.h"
+#include "Indexes/VectorIndexDefinition.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Transaction/Methods.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
-#include <faiss/MetricType.h>
+#include <faiss/IndexIVF.h>
+#include <rocksdb/iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
-namespace faiss {
-struct IndexIVF;
-}  // namespace faiss
-
-namespace arangodb::vector {
-struct TrainingResult;
-}  // namespace arangodb::vector
+namespace rocksdb {
+class DB;
+}  // namespace rocksdb
 
 namespace arangodb {
-class LogicalCollection;
-class RocksDBMethods;
-
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
 
 using VectorIndexLabelId = faiss::idx_t;
 
@@ -63,6 +56,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                      arangodb::velocypack::Slice info);
+  ~RocksDBVectorIndex();
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
 
@@ -83,6 +77,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
+  bool isTrained() const noexcept { return _isTrained; }
+
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
       std::vector<float>& inputs, SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
@@ -98,13 +94,16 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
-  bool isTrained() const noexcept { return _trainedData.has_value(); }
-
   std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
     return _faissIndex;
   }
 
   void applyTrainingResult(vector::TrainingResult result);
+
+  void markTrained() noexcept;
+
+  Result ingestVectors(rocksdb::DB* rootDB,
+                       std::unique_ptr<rocksdb::Iterator> documentIterator);
 
   bool hasStoredValues() const noexcept;
 
@@ -120,6 +119,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  bool shouldTriggerTraining() const noexcept;
+
   void triggerTraining();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
@@ -135,11 +136,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
   StoredValues const _storedValues;
+
   std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
   bool _isTrained{false};
   std::atomic<bool> _isBuilding{false};
-  std::jthread _buildThread;
+  std::thread _buildThread;
 };
 
 }  // namespace arangodb
