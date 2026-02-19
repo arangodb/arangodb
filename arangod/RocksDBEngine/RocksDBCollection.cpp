@@ -66,6 +66,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSavePoint.h"
@@ -642,6 +643,14 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
         removeIndex(_indexes, buildIdx->id());
       }
       _indexes.emplace(newIdx);
+    }
+
+    // Vector indexes may have deferred training (triggered during fillIndex
+    // when the index wasn't registered yet).  Now that it is registered,
+    // start training if the document threshold was reached.
+    if (newIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      auto& vecIdx = static_cast<RocksDBVectorIndex&>(*newIdx);
+      vecIdx.triggerDeferredTraining(newIdx);
     }
 
     // inBackground index might not recover selectivity estimate w/o sync

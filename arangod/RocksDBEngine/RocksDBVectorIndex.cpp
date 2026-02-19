@@ -271,6 +271,31 @@ void RocksDBVectorIndex::triggerTraining() {
     return;
   }
 
+  auto guard = collection().lookupIndex(id());
+  if (!guard) {
+    // Index not yet registered (we are inside fillIndex during createIndex).
+    // Defer training until the index is registered and
+    // triggerDeferredTraining() is called.
+    _needsTraining = true;
+    _isBuilding.store(false);
+    return;
+  }
+
+  startBuildThread(std::move(guard));
+}
+
+void RocksDBVectorIndex::triggerDeferredTraining(std::shared_ptr<Index> self) {
+  if (!_needsTraining || _isTrained) {
+    return;
+  }
+  _needsTraining = false;
+  if (_isBuilding.exchange(true)) {
+    return;
+  }
+  startBuildThread(std::move(self));
+}
+
+void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> guard) {
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
@@ -279,16 +304,17 @@ void RocksDBVectorIndex::triggerTraining() {
     _buildThread.join();
   }
   auto indexId = _iid.id();
-  _buildThread = std::thread([this, indexId]() {
+  _buildThread = std::thread([this, indexId, guard = std::move(guard)]() {
     try {
       vector::VectorIndexBuildManager builder(*this);
       builder.build();
     } catch (std::exception const& e) {
       LOG_TOPIC("e166b", ERR, Logger::ENGINES)
-          << "[index=" << indexId
-          << "] Deferred training failed: " << e.what();
+          << "[index=" << indexId << "] Deferred training failed: " << e.what();
     }
     _isBuilding.store(false);
+    // guard (shared_ptr) released here - keeps the index alive until
+    // the thread body completes, preventing use-after-free.
   });
 }
 
@@ -300,6 +326,14 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   if (!_isTrained) {
+    std::vector<float> probe;
+    probe.reserve(_definition.dimension);
+    if (auto const res = readDocumentVectorData(doc, probe); res.fail()) {
+      if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
+        return {};
+      }
+      return res;
+    }
     _documentCount.fetch_add(1, std::memory_order_relaxed);
     if (shouldTriggerTraining()) {
       triggerTraining();

@@ -25,10 +25,12 @@
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <thread>
 
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
@@ -285,6 +287,21 @@ Result VectorIndexBuildManager::build() {
 
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
+
+  // Training may be triggered from an insert() call while the enclosing
+  // transaction has not yet committed.  In that case the RocksDB iterator
+  // won't see any documents.  Wait until at least one document is visible.
+  static constexpr int kMaxWaitIterations = 300;
+  static constexpr auto kWaitInterval = std::chrono::milliseconds(100);
+  for (int i = 0; i < kMaxWaitIterations; ++i) {
+    std::unique_ptr<rocksdb::Iterator> probe(_rootDB->NewIterator(ro, docCF));
+    probe->Seek(bounds.start());
+    if (probe->Valid()) {
+      break;
+    }
+    std::this_thread::sleep_for(kWaitInterval);
+  }
+
   std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
   trainIt->Seek(bounds.start());
 
