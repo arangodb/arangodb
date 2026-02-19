@@ -910,6 +910,7 @@ void ExecutionEngine::initializeConstValueBlock(
     plan.getAst()->variables()->visit(
         [&, regPlan = plan.root()->getRegisterPlan(),
          block = mgr.getConstValueBlock()](Variable* var) {
+          ResourceMonitor* rm = &plan.getAst()->query().resourceMonitor();
           if (var->type() == Variable::Type::Const) {
             RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
             if (reg.value() != RegisterId::maxRegisterId) {
@@ -918,7 +919,8 @@ void ExecutionEngine::initializeConstValueBlock(
               TRI_ASSERT(!value.isNone());
               // the constValueBlock takes ownership, so we have to create a
               // copy here.
-              block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+              block->emplaceValue(0, reg.value(),
+                                  AqlValue(value.slice(), 0, rm));
             }
           } else if (var->type() == Variable::Type::BindParameter) {
             RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
@@ -927,8 +929,7 @@ void ExecutionEngine::initializeConstValueBlock(
               if (slice.isNone()) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING);
               }
-
-              block->emplaceValue(0, reg.value(), AqlValue(slice));
+              block->emplaceValue(0, reg.value(), AqlValue(slice, 0, rm));
             }
           }
         });
