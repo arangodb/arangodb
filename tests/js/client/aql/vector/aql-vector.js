@@ -1080,7 +1080,18 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-// Run with untrained index (brute-force mode)
+// Run with trained index
+jsunity.run(function VectorIndexL2TrainedTestSuite() {
+    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexCosineTrainedTestSuite() {
+    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
+    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
+});
+
+// Run with untrained index
 jsunity.run(function VectorIndexL2UntrainedTestSuite() {
     return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
 });
@@ -1091,16 +1102,6 @@ jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
     return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
 });
 
-// Run with trained index (FAISS IVF mode)
-jsunity.run(function VectorIndexL2TrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
-});
 
 jsunity.run(MultipleVectorIndexesOnField);
 
