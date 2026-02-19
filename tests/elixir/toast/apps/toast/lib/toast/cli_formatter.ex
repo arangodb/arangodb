@@ -220,23 +220,25 @@ defmodule Toast.CLIFormatter do
     IO.puts("\n#{formatted}")
   end
 
-  # ExUnit.Formatter callback for diff coloring
+  # ExUnit.Formatter callback for diff coloring.
+  # Diff callbacks may receive Inspect.Algebra documents (ExUnit 1.19+),
+  # not just iodata, so they use colorize_diff/2.
   defp formatter_cb(:diff_enabled?, _default), do: true
 
   defp formatter_cb(:error_info, msg), do: colorize(msg, :red, true)
   defp formatter_cb(:extra_info, msg), do: colorize(msg, :cyan, true)
   defp formatter_cb(:location_info, msg), do: colorize(msg, [:bright, :default_color], true)
-  defp formatter_cb(:diff_delete, msg), do: colorize(msg, :red, true)
+  defp formatter_cb(:diff_delete, msg), do: colorize_diff(msg, :red)
 
   defp formatter_cb(:diff_delete_whitespace, msg),
-    do: colorize(msg, IO.ANSI.color_background(1, 0, 0), true)
+    do: colorize_diff(msg, IO.ANSI.color_background(1, 0, 0))
 
-  defp formatter_cb(:diff_insert, msg), do: colorize(msg, :green, true)
+  defp formatter_cb(:diff_insert, msg), do: colorize_diff(msg, :green)
 
   defp formatter_cb(:diff_insert_whitespace, msg),
-    do: colorize(msg, IO.ANSI.color_background(0, 1, 0), true)
+    do: colorize_diff(msg, IO.ANSI.color_background(0, 1, 0))
 
-  defp formatter_cb(:blame_diff, msg), do: colorize(msg, [:red, :bright], true)
+  defp formatter_cb(:blame_diff, msg), do: colorize_diff(msg, [:red, :bright])
   defp formatter_cb(_, msg), do: msg
 
   # --- Session summary ---
@@ -389,6 +391,22 @@ defmodule Toast.CLIFormatter do
       Keyword.get(colors, :enabled, IO.ANSI.enabled?())
     end)
   end
+
+  # Colorize diff content — handles both iodata and Inspect.Algebra documents.
+  defp colorize_diff(msg, color) when is_binary(msg) or is_list(msg) do
+    colorize(msg, color, true)
+  end
+
+  defp colorize_diff(msg, color) do
+    Inspect.Algebra.concat([ansi_code(color), msg, IO.ANSI.reset()])
+  end
+
+  defp ansi_code(color) when is_list(color),
+    do: IO.iodata_to_binary(Enum.map(color, &apply(IO.ANSI, &1, [])))
+
+  defp ansi_code(:bold), do: IO.ANSI.bright()
+  defp ansi_code(color) when is_atom(color), do: apply(IO.ANSI, color, [])
+  defp ansi_code(color) when is_binary(color), do: color
 
   # Accepts state map or boolean for colors_enabled
   defp colorize(text, color, %{colors_enabled: enabled}), do: colorize(text, color, enabled)
