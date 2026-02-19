@@ -330,7 +330,6 @@ Result VectorIndexBuildManager::build() {
         << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
   } else {
-    _index.markTrained();
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
         << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
         << "Deferred training and ingestion completed.";

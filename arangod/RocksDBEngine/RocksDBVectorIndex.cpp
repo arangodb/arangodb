@@ -258,53 +258,29 @@ void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
       new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
+  _isTrained = true;
 }
-
-void RocksDBVectorIndex::markTrained() noexcept { _isTrained = true; }
 
 bool RocksDBVectorIndex::shouldTriggerTraining() const noexcept {
   return !_isTrained && _documentCount >= _trainingThreshold && !_isBuilding;
 }
 
 void RocksDBVectorIndex::triggerTraining() {
-  if (_isBuilding.exchange(true)) {
+  if (!shouldTriggerTraining()) {
     return;
   }
+  _isBuilding = true;
+  TRI_ASSERT(_isBuilding && !_isTrained);
 
-  auto guard = collection().lookupIndex(id());
-  if (!guard) {
-    // Index not yet registered (we are inside fillIndex during createIndex).
-    // Defer training until the index is registered and
-    // triggerDeferredTraining() is called.
-    _needsTraining = true;
-    _isBuilding.store(false);
-    return;
-  }
-
-  startBuildThread(std::move(guard));
+  startBuildThread();
 }
 
-void RocksDBVectorIndex::triggerDeferredTraining(std::shared_ptr<Index> self) {
-  if (!_needsTraining || _isTrained) {
-    return;
-  }
-  _needsTraining = false;
-  if (_isBuilding.exchange(true)) {
-    return;
-  }
-  startBuildThread(std::move(self));
-}
-
-void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> guard) {
+void RocksDBVectorIndex::startBuildThread() {
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  if (_buildThread.joinable()) {
-    _buildThread.join();
-  }
-  auto indexId = _iid.id();
-  _buildThread = std::thread([this, indexId, guard = std::move(guard)]() {
+  _buildThread = std::thread([this, indexId = _iid.id()] {
     try {
       vector::VectorIndexBuildManager builder(*this);
       builder.build();
@@ -313,8 +289,6 @@ void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> guard) {
           << "[index=" << indexId << "] Deferred training failed: " << e.what();
     }
     _isBuilding.store(false);
-    // guard (shared_ptr) released here - keeps the index alive until
-    // the thread body completes, preventing use-after-free.
   });
 }
 
@@ -326,18 +300,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   if (!_isTrained) {
-    std::vector<float> probe;
-    probe.reserve(_definition.dimension);
-    if (auto const res = readDocumentVectorData(doc, probe); res.fail()) {
-      if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
-        return {};
-      }
-      return res;
-    }
     _documentCount.fetch_add(1, std::memory_order_relaxed);
-    if (shouldTriggerTraining()) {
-      triggerTraining();
-    }
+    triggerTraining();
     return {};
   }
   std::vector<float> input;

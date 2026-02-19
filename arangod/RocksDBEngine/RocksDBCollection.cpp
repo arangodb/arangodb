@@ -645,14 +645,6 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
       _indexes.emplace(newIdx);
     }
 
-    // Vector indexes may have deferred training (triggered during fillIndex
-    // when the index wasn't registered yet).  Now that it is registered,
-    // start training if the document threshold was reached.
-    if (newIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-      auto& vecIdx = static_cast<RocksDBVectorIndex&>(*newIdx);
-      vecIdx.triggerDeferredTraining(newIdx);
-    }
-
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
       engine.settingsManager()->sync(/*force*/ false);

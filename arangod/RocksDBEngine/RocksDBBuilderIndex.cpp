@@ -340,14 +340,6 @@ static Result fillIndex(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
-  if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-    auto& vecIdx = dynamic_cast<RocksDBVectorIndex&>(ridx);
-    if (vecIdx.faissIndex() != nullptr) {
-      it->Seek(bounds.start());
-      return vecIdx.ingestVectors(rootDB, std::move(it));
-    }
-  }
-
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&

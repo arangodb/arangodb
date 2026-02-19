@@ -100,19 +100,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void applyTrainingResult(vector::TrainingResult result);
 
-  void markTrained() noexcept;
-
   Result ingestVectors(rocksdb::DB* rootDB,
                        std::unique_ptr<rocksdb::Iterator> documentIterator);
 
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;
-
-  /// Called after the index is registered in the collection's index list.
-  /// Starts deferred training if the document threshold was reached during
-  /// the initial fillIndex phase (when lookupIndex was not yet available).
-  void triggerDeferredTraining(std::shared_ptr<Index> self);
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -128,7 +121,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void triggerTraining();
 
-  void startBuildThread(std::shared_ptr<Index> guard);
+  void startBuildThread();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(
@@ -146,9 +139,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
-  bool _isTrained{false};
+  std::atomic<bool> _isTrained{false};
   std::atomic<bool> _isBuilding{false};
-  bool _needsTraining{false};
   std::thread _buildThread;
 };
 
