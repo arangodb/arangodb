@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
 * Add switch `--server.external-rbac-service` to enable role-based access control.
   For now, it does not do the actual authorization change.
 
