@@ -34,9 +34,7 @@ using namespace arangodb;
 
 namespace arangodb::tests {
 
-// Helper class for testing - provides public access to ExecContext constructor
 struct TestExecContext : public ExecContext {
-  // Constructor for default type contexts (most common case)
   TestExecContext(std::string const& user, std::string const& database,
                   auth::Level systemLevel, auth::Level dbLevel,
                   bool isAdminUser, std::vector<std::string> const& roles = {},
@@ -44,7 +42,6 @@ struct TestExecContext : public ExecContext {
       : ExecContext(ConstructorToken{}, Type::Default, user, database,
                     systemLevel, dbLevel, isAdminUser, roles, jwtToken) {}
 
-  // Constructor for internal type contexts - use isInternal=true for internal
   TestExecContext(bool isInternal, std::string const& user,
                   std::string const& database, auth::Level systemLevel,
                   auth::Level dbLevel, bool isAdminUser)
@@ -53,298 +50,304 @@ struct TestExecContext : public ExecContext {
                     systemLevel, dbLevel, isAdminUser) {}
 };
 
-class ExecContextTest : public ::testing::Test {
- protected:
-  ExecContextTest() = default;
-  ~ExecContextTest() override = default;
-};
+// --- Construction ---
 
-// Test basic ExecContext construction with default parameters
-TEST_F(ExecContextTest, test_basic_construction) {
-  auto ctx = std::make_shared<TestExecContext>(
-      "testuser", "testdb", auth::Level::RW, auth::Level::RW, true);
+TEST(ExecContextTest, basic_construction) {
+  TestExecContext ctx("testuser", "testdb", auth::Level::RW, auth::Level::RW,
+                      true);
 
-  EXPECT_EQ(ctx->user(), "testuser");
-  EXPECT_EQ(ctx->database(), "testdb");
-  EXPECT_EQ(ctx->systemAuthLevel(), auth::Level::RW);
-  EXPECT_EQ(ctx->databaseAuthLevel(), auth::Level::RW);
-  EXPECT_TRUE(ctx->isAdminUser());
-  EXPECT_FALSE(ctx->isInternal());
-  EXPECT_FALSE(ctx->isSuperuser());
-  EXPECT_FALSE(ctx->isReadOnly());
+  EXPECT_EQ(ctx.user(), "testuser");
+  EXPECT_EQ(ctx.database(), "testdb");
+  EXPECT_EQ(ctx.systemAuthLevel(), auth::Level::RW);
+  EXPECT_EQ(ctx.databaseAuthLevel(), auth::Level::RW);
+  EXPECT_TRUE(ctx.isAdminUser());
+  EXPECT_FALSE(ctx.isInternal());
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_FALSE(ctx.hasJwtToken());
+  EXPECT_TRUE(ctx.jwtToken().empty());
+  EXPECT_TRUE(ctx.roles().empty());
 }
 
-// Test ExecContext construction with JWT token and roles
-TEST_F(ExecContextTest, test_construction_with_jwt_and_roles) {
+TEST(ExecContextTest, construction_with_jwt_and_roles) {
   std::vector<std::string> roles = {"admin", "developer", "viewer"};
-  std::string jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.signature";
+  std::string jwtToken = "eyJhbGciOiJIUzI1NiJ9.test.signature";
 
-  auto ctx =
-      std::make_shared<TestExecContext>("jwtuser", "testdb", auth::Level::RW,
-                                        auth::Level::RO, true, roles, jwtToken);
+  TestExecContext ctx("jwtuser", "testdb", auth::Level::RW, auth::Level::RO,
+                      true, roles, jwtToken);
 
-  EXPECT_EQ(ctx->user(), "jwtuser");
-  EXPECT_EQ(ctx->database(), "testdb");
-  EXPECT_EQ(ctx->systemAuthLevel(), auth::Level::RW);
-  EXPECT_EQ(ctx->databaseAuthLevel(), auth::Level::RO);
-  EXPECT_TRUE(ctx->isAdminUser());
+  EXPECT_EQ(ctx.user(), "jwtuser");
+  EXPECT_EQ(ctx.database(), "testdb");
+  EXPECT_EQ(ctx.systemAuthLevel(), auth::Level::RW);
+  EXPECT_EQ(ctx.databaseAuthLevel(), auth::Level::RO);
+  EXPECT_TRUE(ctx.isAdminUser());
+  EXPECT_TRUE(ctx.hasJwtToken());
+  EXPECT_EQ(ctx.jwtToken(), jwtToken);
 
-  // Test JWT-specific functionality
-  EXPECT_TRUE(ctx->hasJwtToken());
-  EXPECT_EQ(ctx->jwtToken(), jwtToken);
-
-  const auto& ctxRoles = ctx->roles();
-  EXPECT_EQ(ctxRoles.size(), 3);
+  auto const& ctxRoles = ctx.roles();
+  ASSERT_EQ(ctxRoles.size(), 3u);
   EXPECT_EQ(ctxRoles[0], "admin");
   EXPECT_EQ(ctxRoles[1], "developer");
   EXPECT_EQ(ctxRoles[2], "viewer");
 }
 
-// Test ExecContext without JWT token
-TEST_F(ExecContextTest, test_no_jwt_token) {
-  auto ctx = std::make_shared<TestExecContext>(
-      "basicuser", "testdb", auth::Level::RO, auth::Level::RO, false);
+TEST(ExecContextTest, duplicate_roles_are_preserved) {
+  std::vector<std::string> roles = {"admin", "dev", "admin"};
+  TestExecContext ctx("user", "db", auth::Level::RW, auth::Level::RW, false,
+                      roles, "tok");
 
-  EXPECT_FALSE(ctx->hasJwtToken());
-  EXPECT_TRUE(ctx->jwtToken().empty());
-  EXPECT_TRUE(ctx->roles().empty());
-}
-
-// Test ExecContext with empty roles but with JWT token
-TEST_F(ExecContextTest, test_jwt_token_without_roles) {
-  std::vector<std::string> emptyRoles;
-  std::string jwtToken = "token.without.roles";
-
-  auto ctx = std::make_shared<TestExecContext>("user", "testdb",
-                                               auth::Level::RW, auth::Level::RW,
-                                               true, emptyRoles, jwtToken);
-
-  EXPECT_TRUE(ctx->hasJwtToken());
-  EXPECT_EQ(ctx->jwtToken(), jwtToken);
-  EXPECT_TRUE(ctx->roles().empty());
-}
-
-// Test ExecContext with roles but without JWT token (edge case)
-TEST_F(ExecContextTest, test_roles_without_jwt_token) {
-  std::vector<std::string> roles = {"role1", "role2"};
-
-  auto ctx = std::make_shared<TestExecContext>(
-      "user", "testdb", auth::Level::RW, auth::Level::RW, true, roles, "");
-
-  EXPECT_FALSE(ctx->hasJwtToken());
-  EXPECT_TRUE(ctx->jwtToken().empty());
-
-  // Roles should still be accessible even without JWT token
-  const auto& ctxRoles = ctx->roles();
-  EXPECT_EQ(ctxRoles.size(), 2);
-  EXPECT_EQ(ctxRoles[0], "role1");
-  EXPECT_EQ(ctxRoles[1], "role2");
-}
-
-// Test internal superuser context
-TEST_F(ExecContextTest, test_superuser_context) {
-  auto ctx = std::make_shared<TestExecContext>(true, "", "", auth::Level::RW,
-                                               auth::Level::RW, true);
-
-  EXPECT_TRUE(ctx->user().empty());
-  EXPECT_TRUE(ctx->database().empty());
-  EXPECT_TRUE(ctx->isInternal());
-  EXPECT_TRUE(ctx->isSuperuser());
-  EXPECT_FALSE(ctx->isReadOnly());
-  EXPECT_TRUE(ctx->isAdminUser());
-  EXPECT_EQ(ctx->systemAuthLevel(), auth::Level::RW);
-  EXPECT_EQ(ctx->databaseAuthLevel(), auth::Level::RW);
-}
-
-// Test read-only internal context
-TEST_F(ExecContextTest, test_readonly_internal_context) {
-  auto ctx = std::make_shared<TestExecContext>(
-      true, "", "testdb", auth::Level::RO, auth::Level::RO, false);
-
-  EXPECT_TRUE(ctx->isInternal());
-  EXPECT_FALSE(ctx->isSuperuser());  // RO is not superuser
-  EXPECT_TRUE(ctx->isReadOnly());
-  EXPECT_FALSE(ctx->isAdminUser());
-  EXPECT_EQ(ctx->systemAuthLevel(), auth::Level::RO);
-  EXPECT_EQ(ctx->databaseAuthLevel(), auth::Level::RO);
-}
-
-// Test canUseDatabase method
-TEST_F(ExecContextTest, test_can_use_database) {
-  auto ctx = std::make_shared<TestExecContext>(
-      "user", "testdb", auth::Level::RW, auth::Level::RO, false);
-
-  // Should be able to use database with RO access
-  EXPECT_TRUE(ctx->canUseDatabase(auth::Level::RO));
-  EXPECT_TRUE(ctx->canUseDatabase(auth::Level::NONE));
-
-  // Should NOT be able to use database with RW access (only has RO)
-  EXPECT_FALSE(ctx->canUseDatabase(auth::Level::RW));
-}
-
-// Test superuser context
-TEST_F(ExecContextTest, test_superuser_access) {
-  auto& superuser = ExecContext::superuser();
-
-  EXPECT_TRUE(superuser.isInternal());
-  EXPECT_TRUE(superuser.isSuperuser());
-  EXPECT_FALSE(superuser.isReadOnly());
-  EXPECT_TRUE(superuser.isAdminUser());
-  EXPECT_EQ(superuser.systemAuthLevel(), auth::Level::RW);
-  EXPECT_EQ(superuser.databaseAuthLevel(), auth::Level::RW);
-  EXPECT_TRUE(superuser.canUseDatabase(auth::Level::RW));
-}
-
-// Test superuser shared pointer
-TEST_F(ExecContextTest, test_superuser_as_shared) {
-  auto superuserPtr = ExecContext::superuserAsShared();
-
-  ASSERT_NE(superuserPtr, nullptr);
-  EXPECT_TRUE(superuserPtr->isSuperuser());
-  EXPECT_TRUE(superuserPtr->isInternal());
-}
-
-// Test ExecContext with different auth levels
-TEST_F(ExecContextTest, test_different_auth_levels) {
-  auto ctxNone = std::make_shared<TestExecContext>(
-      "user1", "testdb", auth::Level::NONE, auth::Level::NONE, false);
-
-  auto ctxRO = std::make_shared<TestExecContext>(
-      "user2", "testdb", auth::Level::RO, auth::Level::RO, false);
-
-  auto ctxRW = std::make_shared<TestExecContext>(
-      "user3", "testdb", auth::Level::RW, auth::Level::RW, true);
-
-  EXPECT_FALSE(ctxNone->canUseDatabase(auth::Level::RO));
-  EXPECT_TRUE(ctxNone->canUseDatabase(auth::Level::NONE));
-
-  EXPECT_TRUE(ctxRO->canUseDatabase(auth::Level::RO));
-  EXPECT_FALSE(ctxRO->canUseDatabase(auth::Level::RW));
-
-  EXPECT_TRUE(ctxRW->canUseDatabase(auth::Level::RW));
-  EXPECT_TRUE(ctxRW->canUseDatabase(auth::Level::RO));
-  EXPECT_TRUE(ctxRW->canUseDatabase(auth::Level::NONE));
-}
-
-// Test JWT token with special characters
-TEST_F(ExecContextTest, test_jwt_token_with_special_characters) {
-  std::string complexToken =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-      "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIy"
-      "fQ."
-      "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-
-  auto ctx = std::make_shared<TestExecContext>(
-      "user", "testdb", auth::Level::RW, auth::Level::RW, true,
-      std::vector<std::string>{}, complexToken);
-
-  EXPECT_TRUE(ctx->hasJwtToken());
-  EXPECT_EQ(ctx->jwtToken(), complexToken);
-}
-
-// Test roles with special characters
-TEST_F(ExecContextTest, test_roles_with_special_characters) {
-  std::vector<std::string> specialRoles = {
-      "admin-role", "developer_role", "viewer.read-only", "role:with:colons",
-      "role/with/slashes"};
-
-  auto ctx = std::make_shared<TestExecContext>("user", "testdb",
-                                               auth::Level::RW, auth::Level::RW,
-                                               true, specialRoles, "token");
-
-  const auto& ctxRoles = ctx->roles();
-  EXPECT_EQ(ctxRoles.size(), specialRoles.size());
-  for (size_t i = 0; i < specialRoles.size(); ++i) {
-    EXPECT_EQ(ctxRoles[i], specialRoles[i]);
-  }
-}
-
-// Test multiple roles with duplicates
-TEST_F(ExecContextTest, test_multiple_roles_with_duplicates) {
-  std::vector<std::string> rolesWithDuplicates = {"admin", "developer", "admin",
-                                                  "viewer", "developer"};
-
-  auto ctx = std::make_shared<TestExecContext>(
-      "user", "testdb", auth::Level::RW, auth::Level::RW, true,
-      rolesWithDuplicates, "token");
-
-  // The ExecContext stores roles as-is, including duplicates
-  const auto& ctxRoles = ctx->roles();
-  EXPECT_EQ(ctxRoles.size(), rolesWithDuplicates.size());
+  auto const& ctxRoles = ctx.roles();
+  ASSERT_EQ(ctxRoles.size(), 3u);
   EXPECT_EQ(ctxRoles[0], "admin");
   EXPECT_EQ(ctxRoles[2], "admin");
 }
 
-// Test empty strings
-TEST_F(ExecContextTest, test_empty_strings) {
-  auto ctx = std::make_shared<TestExecContext>("", "", auth::Level::NONE,
-                                               auth::Level::NONE, false);
+// --- isSuperuser() predicate ---
 
-  EXPECT_TRUE(ctx->user().empty());
-  EXPECT_TRUE(ctx->database().empty());
-  EXPECT_FALSE(ctx->hasJwtToken());
-  EXPECT_TRUE(ctx->roles().empty());
+TEST(ExecContextTest, superuser_requires_internal_and_rw_rw) {
+  TestExecContext ctx(true, "", "", auth::Level::RW, auth::Level::RW, true);
+
+  EXPECT_TRUE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
 }
 
-// Test admin user flag combinations
-TEST_F(ExecContextTest, test_admin_user_flag) {
-  auto adminCtx = std::make_shared<TestExecContext>(
-      "admin", "_system", auth::Level::RW, auth::Level::RW, true);
+TEST(ExecContextTest, internal_ro_ro_is_readonly_not_superuser) {
+  TestExecContext ctx(true, "", "db", auth::Level::RO, auth::Level::RO, false);
 
-  auto nonAdminCtx = std::make_shared<TestExecContext>(
-      "user", "userdb", auth::Level::RW, auth::Level::RW, false);
-
-  EXPECT_TRUE(adminCtx->isAdminUser());
-  EXPECT_FALSE(nonAdminCtx->isAdminUser());
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_TRUE(ctx.isReadOnly());
 }
 
-// Test system database vs user database
-TEST_F(ExecContextTest, test_system_vs_user_database) {
-  auto sysCtx = std::make_shared<TestExecContext>(
-      "admin", "_system", auth::Level::RW, auth::Level::RW, true);
+TEST(ExecContextTest, internal_rw_ro_is_neither_superuser_nor_readonly) {
+  TestExecContext ctx(true, "", "db", auth::Level::RW, auth::Level::RO, false);
 
-  auto userCtx = std::make_shared<TestExecContext>(
-      "user", "mydb", auth::Level::RO, auth::Level::RO, false);
-
-  EXPECT_EQ(sysCtx->database(), "_system");
-  EXPECT_EQ(sysCtx->systemAuthLevel(), auth::Level::RW);
-
-  EXPECT_EQ(userCtx->database(), "mydb");
-  EXPECT_EQ(userCtx->systemAuthLevel(), auth::Level::RO);
-  EXPECT_EQ(userCtx->databaseAuthLevel(), auth::Level::RO);
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
 }
 
-// Test large number of roles
-TEST_F(ExecContextTest, test_large_number_of_roles) {
-  std::vector<std::string> manyRoles;
-  for (int i = 0; i < 100; ++i) {
-    manyRoles.push_back("role_" + std::to_string(i));
+TEST(ExecContextTest, internal_ro_rw_is_readonly_not_superuser) {
+  TestExecContext ctx(true, "", "db", auth::Level::RO, auth::Level::RW, false);
+
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_TRUE(ctx.isReadOnly());
+}
+
+TEST(ExecContextTest, internal_none_none_is_neither) {
+  TestExecContext ctx(true, "", "db", auth::Level::NONE, auth::Level::NONE,
+                      false);
+
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
+}
+
+TEST(ExecContextTest, default_rw_rw_is_not_superuser) {
+  TestExecContext ctx("user", "db", auth::Level::RW, auth::Level::RW, true);
+
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
+}
+
+TEST(ExecContextTest, default_ro_ro_is_not_superuser_not_readonly) {
+  // isReadOnly requires isInternal
+  TestExecContext ctx("user", "db", auth::Level::RO, auth::Level::RO, false);
+
+  EXPECT_FALSE(ctx.isSuperuser());
+  EXPECT_FALSE(ctx.isReadOnly());
+}
+
+// --- canUseDatabase (single-arg: checks _databaseAuthLevel) ---
+
+TEST(ExecContextTest, canUseDatabase_single_arg_level_check) {
+  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RO,
+                      false);
+
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RO));
+  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RW));
+}
+
+TEST(ExecContextTest, canUseDatabase_single_arg_rw_grants_all) {
+  TestExecContext ctx("user", "testdb", auth::Level::RW, auth::Level::RW,
+                      true);
+
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RO));
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::RW));
+}
+
+TEST(ExecContextTest, canUseDatabase_single_arg_none_grants_only_none) {
+  TestExecContext ctx("user", "testdb", auth::Level::NONE, auth::Level::NONE,
+                      false);
+
+  EXPECT_TRUE(ctx.canUseDatabase(auth::Level::NONE));
+  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RO));
+  EXPECT_FALSE(ctx.canUseDatabase(auth::Level::RW));
+}
+
+// --- canUseDatabase (two-arg: internal and same-database paths) ---
+
+TEST(ExecContextTest, canUseDatabase_internal_uses_dbAuthLevel) {
+  TestExecContext ctx(true, "", "", auth::Level::RW, auth::Level::RW, true);
+
+  EXPECT_TRUE(ctx.canUseDatabase("anydb", auth::Level::RW));
+  EXPECT_TRUE(ctx.canUseDatabase("anotherdb", auth::Level::RO));
+}
+
+TEST(ExecContextTest, canUseDatabase_internal_ro_rejects_rw) {
+  TestExecContext ctx(true, "", "", auth::Level::RO, auth::Level::RO, false);
+
+  EXPECT_TRUE(ctx.canUseDatabase("anydb", auth::Level::RO));
+  EXPECT_FALSE(ctx.canUseDatabase("anydb", auth::Level::RW));
+}
+
+TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
+  TestExecContext ctx("user", "mydb", auth::Level::RW, auth::Level::RO, false);
+
+  EXPECT_TRUE(ctx.canUseDatabase("mydb", auth::Level::RO));
+  EXPECT_FALSE(ctx.canUseDatabase("mydb", auth::Level::RW));
+}
+
+// --- collectionAuthLevel (internal path) ---
+
+TEST(ExecContextTest, collectionAuthLevel_internal_returns_dbAuthLevel) {
+  TestExecContext ctx(true, "", "", auth::Level::RW, auth::Level::RW, true);
+
+  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"), auth::Level::RW);
+}
+
+TEST(ExecContextTest, collectionAuthLevel_internal_ro_returns_ro) {
+  TestExecContext ctx(true, "", "", auth::Level::RO, auth::Level::RO, false);
+
+  EXPECT_EQ(ctx.collectionAuthLevel("anydb", "anycoll"), auth::Level::RO);
+}
+
+// --- Static superuser singleton ---
+
+TEST(ExecContextTest, superuser_singleton) {
+  auto const& su = ExecContext::superuser();
+
+  EXPECT_TRUE(su.isInternal());
+  EXPECT_TRUE(su.isSuperuser());
+  EXPECT_FALSE(su.isReadOnly());
+  EXPECT_TRUE(su.isAdminUser());
+  EXPECT_EQ(su.systemAuthLevel(), auth::Level::RW);
+  EXPECT_EQ(su.databaseAuthLevel(), auth::Level::RW);
+  EXPECT_TRUE(su.canUseDatabase(auth::Level::RW));
+}
+
+TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
+  auto ptr = ExecContext::superuserAsShared();
+
+  ASSERT_NE(ptr, nullptr);
+  EXPECT_EQ(ptr.get(), &ExecContext::superuser());
+}
+
+// --- current() / currentAsShared() / set() ---
+
+TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
+  // CURRENT is thread_local and starts as nullptr in a fresh thread.
+  // current() should fall back to superuser.
+  auto old = ExecContext::set(nullptr);
+
+  EXPECT_TRUE(ExecContext::current().isSuperuser());
+  EXPECT_EQ(ExecContext::currentAsShared(), nullptr);
+
+  ExecContext::set(old);
+}
+
+TEST(ExecContextTest, set_swaps_and_returns_old_value) {
+  auto old = ExecContext::set(nullptr);
+
+  auto ctx =
+      std::make_shared<TestExecContext>("u", "db", auth::Level::RO,
+                                        auth::Level::RO, false);
+  auto prev = ExecContext::set(ctx);
+  EXPECT_EQ(prev, nullptr);
+  EXPECT_EQ(ExecContext::currentAsShared(), ctx);
+  EXPECT_EQ(ExecContext::current().user(), "u");
+
+  auto prev2 = ExecContext::set(old);
+  EXPECT_EQ(prev2, ctx);
+}
+
+// --- ExecContextScope RAII ---
+
+TEST(ExecContextTest, scope_sets_and_restores_current) {
+  auto original = ExecContext::currentAsShared();
+
+  auto ctx =
+      std::make_shared<TestExecContext>("scoped", "db", auth::Level::RW,
+                                        auth::Level::RW, false);
+  {
+    ExecContextScope scope(ctx);
+    EXPECT_EQ(ExecContext::current().user(), "scoped");
+    EXPECT_EQ(ExecContext::currentAsShared(), ctx);
   }
 
-  auto ctx = std::make_shared<TestExecContext>("user", "testdb",
-                                               auth::Level::RW, auth::Level::RW,
-                                               true, manyRoles, "token");
-
-  const auto& ctxRoles = ctx->roles();
-  EXPECT_EQ(ctxRoles.size(), 100);
-  EXPECT_EQ(ctxRoles[0], "role_0");
-  EXPECT_EQ(ctxRoles[99], "role_99");
+  EXPECT_EQ(ExecContext::currentAsShared(), original);
 }
 
-// Test very long JWT token
-TEST_F(ExecContextTest, test_long_jwt_token) {
-  std::string longToken(10000, 'a');  // 10KB token
-  longToken += ".";
-  longToken += std::string(10000, 'b');
-  longToken += ".";
-  longToken += std::string(10000, 'c');
+TEST(ExecContextTest, nested_scopes_restore_correctly) {
+  auto original = ExecContext::currentAsShared();
 
-  auto ctx = std::make_shared<TestExecContext>(
-      "user", "testdb", auth::Level::RW, auth::Level::RW, true,
-      std::vector<std::string>{}, longToken);
+  auto ctx1 =
+      std::make_shared<TestExecContext>("outer", "db", auth::Level::RW,
+                                        auth::Level::RW, false);
+  auto ctx2 =
+      std::make_shared<TestExecContext>("inner", "db", auth::Level::RO,
+                                        auth::Level::RO, false);
+  {
+    ExecContextScope outer(ctx1);
+    EXPECT_EQ(ExecContext::current().user(), "outer");
+    {
+      ExecContextScope inner(ctx2);
+      EXPECT_EQ(ExecContext::current().user(), "inner");
+    }
+    EXPECT_EQ(ExecContext::current().user(), "outer");
+  }
 
-  EXPECT_TRUE(ctx->hasJwtToken());
-  EXPECT_EQ(ctx->jwtToken().length(), 30002);  // 3*10000 + 2 dots
+  EXPECT_EQ(ExecContext::currentAsShared(), original);
+}
+
+// --- ExecContextSuperuserScope RAII ---
+
+TEST(ExecContextTest, superuser_scope_sets_and_restores) {
+  auto original = ExecContext::currentAsShared();
+
+  auto ctx =
+      std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
+                                        auth::Level::RO, false);
+  {
+    ExecContextScope setup(ctx);
+    EXPECT_EQ(ExecContext::current().user(), "regular");
+    {
+      ExecContextSuperuserScope su;
+      EXPECT_TRUE(ExecContext::current().isSuperuser());
+    }
+    EXPECT_EQ(ExecContext::current().user(), "regular");
+  }
+
+  EXPECT_EQ(ExecContext::currentAsShared(), original);
+}
+
+TEST(ExecContextTest, superuser_scope_false_is_noop) {
+  auto original = ExecContext::currentAsShared();
+
+  auto ctx =
+      std::make_shared<TestExecContext>("regular", "db", auth::Level::RO,
+                                        auth::Level::RO, false);
+  {
+    ExecContextScope setup(ctx);
+    EXPECT_EQ(ExecContext::current().user(), "regular");
+    {
+      ExecContextSuperuserScope noop(false);
+      EXPECT_EQ(ExecContext::current().user(), "regular");
+      EXPECT_FALSE(ExecContext::current().isSuperuser());
+    }
+    EXPECT_EQ(ExecContext::current().user(), "regular");
+  }
+
+  EXPECT_EQ(ExecContext::currentAsShared(), original);
 }
 
 }  // namespace arangodb::tests
