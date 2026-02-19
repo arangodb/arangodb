@@ -586,10 +586,8 @@ Result UpgradeTasks::dropOldStatisticsCollections(
                                     .allowDropGraphCollection = true};
 
   // List of old statistics collections to drop
-  std::vector<std::string> collectionsToDrop = {
-      "_statistics",
-      "_statistics15",
-      "_statisticsRaw"};
+  std::vector<std::string> collectionsToDrop = {"_statistics", "_statistics15",
+                                                "_statisticsRaw"};
 
   Result res;
   for (auto const& collectionName : collectionsToDrop) {
