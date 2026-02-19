@@ -30,6 +30,7 @@ defmodule Toast.Process.ServerProcess do
           env: [{String.t(), String.t()}],
           working_dir: Path.t(),
           listener: pid(),
+          output_handler: (server_id(), binary() -> :ok) | nil,
           name: GenServer.name()
         ]
 
@@ -53,6 +54,7 @@ defmodule Toast.Process.ServerProcess do
     * `:env` - environment variables as `[{key, value}]` (default: `[]`)
     * `:working_dir` - working directory (default: `nil`)
     * `:listener` - pid to receive crash notifications (default: `nil`)
+    * `:output_handler` - `fn(server_id, binary) -> :ok` called for each stderr chunk (default: `nil`)
     * `:name` - GenServer name registration (optional)
   """
   @spec start_link(start_opts()) :: GenServer.on_start()
@@ -125,6 +127,7 @@ defmodule Toast.Process.ServerProcess do
       os_pid: nil,
       status: :stopped,
       listener: Keyword.get(opts, :listener),
+      output_handler: Keyword.get(opts, :output_handler),
       stop_from: nil,
       stop_timer: nil
     }
@@ -205,6 +208,12 @@ defmodule Toast.Process.ServerProcess do
     {:noreply, state}
   end
 
+  def handle_info({:stderr, os_pid, data}, %{os_pid: os_pid, output_handler: handler} = state)
+      when handler != nil do
+    handler.(state.id, data)
+    {:noreply, state}
+  end
+
   # Catch-all for late/orphaned messages
   def handle_info({:stdout, _os_pid, _data}, state), do: {:noreply, state}
   def handle_info({:stderr, _os_pid, _data}, state), do: {:noreply, state}
@@ -233,6 +242,7 @@ defmodule Toast.Process.ServerProcess do
     exec_opts =
       [:monitor, {:stdin, :null},
        {:kill_timeout, 5}, {:group, 0}, :kill_group] ++
+        if(state.output_handler, do: [:stderr], else: []) ++
         exec_env(state.env) ++
         exec_cd(state.working_dir)
 

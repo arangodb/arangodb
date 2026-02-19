@@ -224,7 +224,8 @@ defmodule Toast.Deployment.ClusterController do
         args: spec.args,
         env: spec.env,
         working_dir: spec.working_dir,
-        listener: self()
+        listener: self(),
+        output_handler: &print_server_output/2
       ]
 
       case Toast.Process.Supervisor.start_server(opts) do
@@ -302,7 +303,6 @@ defmodule Toast.Deployment.ClusterController do
     stop_servers(state.agents, state, remaining_ms(deadline))
     diagnostics = collect_all_diagnostics(state)
     Logger.debug("#{state.id}: diagnostics collected")
-    cleanup_all_dirs(state)
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers), diagnostics: diagnostics}
   end
@@ -343,19 +343,12 @@ defmodule Toast.Deployment.ClusterController do
     |> Stream.run()
   end
 
-  defp cleanup_all_dirs(state) do
-    Enum.each(state.servers, fn {_id, server} ->
-      Toast.Utils.Filesystem.cleanup_server_dirs(server.server_dir)
-    end)
-  end
-
   # --- Rollback on deploy failure ---
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
     all_ids = state.agents ++ state.dbservers ++ state.coordinators
     stop_servers(all_ids, state, 5_000)
-    cleanup_all_dirs(state)
     %{state | status: :failed, servers: clear_server_pids(state.servers), error: reason}
   end
 
@@ -367,6 +360,13 @@ defmodule Toast.Deployment.ClusterController do
 
   defp notify_crash_monitor(nil, _id, _info), do: :ok
   defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
+
+  defp print_server_output(server_id, data) do
+    data
+    |> String.split("\n")
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.each(&IO.puts("  #{server_id} | #{&1}"))
+  end
 
   defp generate_id do
     "toast-cluster-#{System.unique_integer([:positive])}"

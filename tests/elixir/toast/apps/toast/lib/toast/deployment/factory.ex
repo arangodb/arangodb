@@ -33,7 +33,13 @@ defmodule Toast.Deployment.Factory do
         id: server_id,
         executable: executable,
         args: args,
-        env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root, config.explicit_sanitizer),
+        env:
+          Sanitizer.build_env(
+            config.sanitizer,
+            paths.base_dir,
+            repo_root,
+            config.explicit_sanitizer
+          ),
         # Run from repo root so relative config paths (etc/testing/...) resolve correctly
         working_dir: repo_root,
         server_dir: paths.base_dir,
@@ -72,20 +78,35 @@ defmodule Toast.Deployment.Factory do
 
       agents =
         build_role_specs(
-          config, deployment_id, executable, repo_root,
-          :agent, agent_ports, &agent_args(config, &1, agency_endpoints)
+          config,
+          deployment_id,
+          executable,
+          repo_root,
+          :agent,
+          agent_ports,
+          &agent_args(config, &1, agency_endpoints)
         )
 
       dbservers =
         build_role_specs(
-          config, deployment_id, executable, repo_root,
-          :dbserver, dbserver_ports, &dbserver_args(&1, agency_endpoints)
+          config,
+          deployment_id,
+          executable,
+          repo_root,
+          :dbserver,
+          dbserver_ports,
+          &dbserver_args(&1, agency_endpoints)
         )
 
       coordinators =
         build_role_specs(
-          config, deployment_id, executable, repo_root,
-          :coordinator, coordinator_ports, &coordinator_args(config, &1, agency_endpoints)
+          config,
+          deployment_id,
+          executable,
+          repo_root,
+          :coordinator,
+          coordinator_ports,
+          &coordinator_args(config, &1, agency_endpoints)
         )
 
       with {:ok, agents} <- agents,
@@ -108,7 +129,15 @@ defmodule Toast.Deployment.Factory do
       |> Enum.reduce_while([], fn {port, index}, acc ->
         server_id = "#{deployment_id}-#{role}-#{index}"
 
-        case build_cluster_server(config, server_id, executable, repo_root, role, port, custom_args_fn.(port)) do
+        case build_cluster_server(
+               config,
+               server_id,
+               executable,
+               repo_root,
+               role,
+               port,
+               custom_args_fn.(port)
+             ) do
           {:ok, spec} -> {:cont, [spec | acc]}
           {:error, _} = error -> {:halt, error}
         end
@@ -131,7 +160,13 @@ defmodule Toast.Deployment.Factory do
          id: server_id,
          executable: executable,
          args: args,
-         env: Sanitizer.build_env(config.sanitizer, paths.base_dir, repo_root, config.explicit_sanitizer),
+         env:
+           Sanitizer.build_env(
+             config.sanitizer,
+             paths.base_dir,
+             repo_root,
+             config.explicit_sanitizer
+           ),
          working_dir: repo_root,
          server_dir: paths.base_dir,
          port: port,
@@ -168,11 +203,13 @@ defmodule Toast.Deployment.Factory do
 
   @spec build_server_args(Config.t()) :: %{String.t() => String.t() | [String.t()]}
   def build_server_args(config) do
+    # Use "+" (stderr) for visible output. erlexec defaults all streams to /dev/null,
+    # but ServerProcess explicitly captures stderr via pipe and forwards it to IO.
     defaults =
       if config.show_server_logs do
-        %{"log.output" => "-"}
+        %{"log.output" => "+"}
       else
-        %{"log.output" => "-;all=error"}
+        %{"log.output" => "+;all=error"}
       end
 
     Map.merge(defaults, config.server_args)

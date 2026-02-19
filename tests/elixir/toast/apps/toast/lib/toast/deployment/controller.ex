@@ -176,7 +176,8 @@ defmodule Toast.Deployment.Controller do
       args: launch_spec.args,
       env: launch_spec.env,
       working_dir: launch_spec.working_dir,
-      listener: self()
+      listener: self(),
+      output_handler: &print_server_output/2
     ]
 
     Toast.Process.Supervisor.start_server(opts)
@@ -204,7 +205,6 @@ defmodule Toast.Deployment.Controller do
     stop_server(state, timeout)
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.id}: diagnostics collected")
-    cleanup_dirs(state)
     %{state | status: :stopped, server_pid: nil, diagnostics: diagnostics}
   end
 
@@ -230,18 +230,11 @@ defmodule Toast.Deployment.Controller do
     :exit, _ -> :ok
   end
 
-  defp cleanup_dirs(%{server_dir: nil}), do: :ok
-
-  defp cleanup_dirs(%{server_dir: server_dir}) do
-    Toast.Utils.Filesystem.cleanup_server_dirs(server_dir)
-  end
-
   # --- Rollback on deploy failure ---
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
     stop_server(state, 5_000)
-    cleanup_dirs(state)
     %{state | status: :failed, server_pid: nil, error: reason}
   end
 
@@ -249,6 +242,13 @@ defmodule Toast.Deployment.Controller do
 
   defp notify_crash_monitor(nil, _id, _info), do: :ok
   defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
+
+  defp print_server_output(server_id, data) do
+    data
+    |> String.split("\n")
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.each(&IO.puts("  #{server_id} | #{&1}"))
+  end
 
   defp generate_id do
     "toast-#{System.unique_integer([:positive])}"
