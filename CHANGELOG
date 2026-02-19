@@ -1,10 +1,10 @@
 v3.11.14.3 (XXXX-XX-XX)
 -----------------------
 
-* Added new public key for license signature verification.
-
 * Rebuilt included rclone v1.62.2 with go1.24.13 and non-vulnerable
   dependencies.
+
+* Added new public key for license signature verification.
 
 * Updated ArangoDB Starter to v0.18.20 and arangosync to v2.19.23.
 
