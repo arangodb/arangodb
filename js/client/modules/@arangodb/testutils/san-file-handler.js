@@ -151,6 +151,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
     'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
+    'httpTimeout': 240, // 3 minutes is enough!
   });
 
   tu.CopyIntoList(optionsDocumentation, [
