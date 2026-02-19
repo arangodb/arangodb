@@ -130,12 +130,18 @@ defmodule Toast.Deployment.ClusterController do
 
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    Logger.error(
-      "Server #{server_id} crashed: #{inspect(crash_info)}"
-    )
-
+    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+    stop_health_monitor(state, server_id)
     notify_crash_monitor(state.crash_monitor, server_id, crash_info)
     {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+  end
+
+  def handle_info({:server_unhealthy, server_id}, state) do
+    Logger.error("Server #{server_id} is unresponsive, killing process")
+    stop_server_process(state, server_id, 5_000)
+    crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
+    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+    {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
   end
 
   def handle_info(msg, state) do
@@ -168,7 +174,8 @@ defmodule Toast.Deployment.ClusterController do
            launch_servers(state.coordinators, state,
              health_check: true,
              timeout: remaining_ms(deadline)
-           ) do
+           ),
+         {:ok, state} <- start_all_health_monitors(state) do
       Logger.info("Cluster #{state.id} ready")
       {:ok, %{state | status: :ready}}
     else
@@ -205,6 +212,7 @@ defmodule Toast.Deployment.ClusterController do
            port: spec.port,
            endpoint: "http://127.0.0.1:#{spec.port}",
            server_pid: nil,
+           health_monitor: nil,
            log_file: spec.log_file,
            server_dir: spec.server_dir
          }}
@@ -295,6 +303,7 @@ defmodule Toast.Deployment.ClusterController do
     state = %{state | status: :stopping}
     deadline = System.monotonic_time(:millisecond) + timeout
 
+    stop_all_health_monitors(state)
     Logger.debug("#{state.id}: stopping coordinators")
     stop_servers(state.coordinators, state, remaining_ms(deadline))
     Logger.debug("#{state.id}: stopping dbservers")
@@ -347,13 +356,71 @@ defmodule Toast.Deployment.ClusterController do
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
+    stop_all_health_monitors(state)
     all_ids = state.agents ++ state.dbservers ++ state.coordinators
     stop_servers(all_ids, state, 5_000)
     %{state | status: :failed, servers: clear_server_pids(state.servers), error: reason}
   end
 
   defp clear_server_pids(servers) do
-    Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil}} end)
+    Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
+  end
+
+  # --- Health monitoring ---
+
+  defp start_all_health_monitors(state) do
+    all_ids = state.agents ++ state.dbservers ++ state.coordinators
+
+    Enum.reduce_while(all_ids, {:ok, state}, fn server_id, {:ok, acc} ->
+      server = acc.servers[server_id]
+
+      opts = [
+        server_id: server_id,
+        endpoint: server.endpoint,
+        listener: self()
+      ]
+
+      case Toast.Process.Supervisor.start_health_monitor(opts) do
+        {:ok, pid} ->
+          updated = %{server | health_monitor: pid}
+          {:cont, {:ok, %{acc | servers: Map.put(acc.servers, server_id, updated)}}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp stop_all_health_monitors(state) do
+    for {_id, server} <- state.servers, server.health_monitor != nil do
+      try do
+        Toast.Process.HealthMonitor.stop(server.health_monitor)
+      catch
+        :exit, _ -> :ok
+      end
+    end
+  end
+
+  defp stop_health_monitor(state, server_id) do
+    case get_in(state.servers, [server_id, :health_monitor]) do
+      nil -> :ok
+      pid -> try do Toast.Process.HealthMonitor.stop(pid) catch :exit, _ -> :ok end
+    end
+  end
+
+  defp stop_server_process(state, server_id, timeout) do
+    case get_in(state.servers, [server_id, :server_pid]) do
+      nil ->
+        :ok
+
+      pid ->
+        try do
+          ServerProcess.stop(pid, timeout)
+          DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
+        catch
+          :exit, _ -> :ok
+        end
+    end
   end
 
   # --- Helpers ---

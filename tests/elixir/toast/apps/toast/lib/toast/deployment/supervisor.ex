@@ -8,10 +8,10 @@ defmodule Toast.Deployment.Supervisor do
     DynamicSupervisor.start_link(__MODULE__, opts, name: name)
   end
 
-  @doc "Start a Controller under this supervisor."
+  @doc "Start a SingleServerController under this supervisor."
   @spec start_controller(GenServer.server(), keyword()) :: DynamicSupervisor.on_start_child()
   def start_controller(supervisor \\ __MODULE__, opts) do
-    DynamicSupervisor.start_child(supervisor, {Toast.Deployment.Controller, opts})
+    DynamicSupervisor.start_child(supervisor, {Toast.Deployment.SingleServerController, opts})
   end
 
   @doc "Start a ClusterController under this supervisor."

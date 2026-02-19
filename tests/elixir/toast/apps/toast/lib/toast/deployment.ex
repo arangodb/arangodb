@@ -4,7 +4,7 @@ defmodule Toast.Deployment do
   require Logger
 
   alias Toast.Config
-  alias Toast.Deployment.{Controller, ClusterController}
+  alias Toast.Deployment.{SingleServerController, ClusterController}
 
   @type server_info :: %{role: atom(), port: pos_integer(), endpoint: String.t()}
 
@@ -32,8 +32,8 @@ defmodule Toast.Deployment do
     controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
-         :ok <- Controller.deploy(pid, config.startup_timeout) do
-      info = Controller.get_info(pid)
+         :ok <- SingleServerController.deploy(pid, config.startup_timeout) do
+      info = SingleServerController.get_info(pid)
 
       {:ok,
        %__MODULE__{
@@ -120,7 +120,7 @@ defmodule Toast.Deployment do
   end
 
   @doc "Query the current deployment status."
-  @spec status(t()) :: Controller.status()
+  @spec status(t()) :: SingleServerController.status()
   def status(deployment) do
     controller_call(deployment, :get_status, :stopped)
   end
@@ -144,49 +144,21 @@ defmodule Toast.Deployment do
   @doc """
   Check whether the deployment is healthy.
 
-  Verifies the controller status is `:ready` and all servers respond to
-  an HTTP health check (`/_api/version`).
+  Checks the controller status. Per-server HTTP health monitoring is handled
+  continuously by `Toast.Process.HealthMonitor` — if any server becomes
+  unresponsive, the controller is already notified and status set to `:failed`.
   """
   @spec check_health(t()) :: :ok | {:error, String.t()}
   def check_health(%__MODULE__{} = deployment) do
     case status(deployment) do
       :ready ->
-        case check_all_endpoints(deployment) do
-          :ok -> :ok
-          {:error, _} -> {:error, format_crash_message(crash_info(deployment))}
-        end
+        :ok
 
       :failed ->
         {:error, format_crash_message(crash_info(deployment))}
 
       other ->
         {:error, "Deployment not ready (status: #{other})"}
-    end
-  end
-
-  defp check_all_endpoints(%__MODULE__{servers: nil, endpoint: endpoint}) do
-    check_endpoint(endpoint)
-  end
-
-  defp check_all_endpoints(%__MODULE__{servers: servers}) do
-    servers
-    |> Task.async_stream(fn {_id, server} -> check_endpoint(server.endpoint) end,
-      ordered: false,
-      timeout: 5_000
-    )
-    |> Enum.reduce_while(:ok, fn
-      {:ok, :ok}, :ok -> {:cont, :ok}
-      {:ok, error}, _ -> {:halt, error}
-      {:exit, reason}, _ -> {:halt, {:error, reason}}
-    end)
-  end
-
-  defp check_endpoint(endpoint) do
-    client = Toast.Client.new(endpoint)
-
-    case Toast.Client.version(client) do
-      {:ok, _} -> :ok
-      {:error, _} = error -> error
     end
   end
 
@@ -296,7 +268,7 @@ defmodule Toast.Deployment do
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
 
-  defp controller_module(%__MODULE__{mode: :single_server}), do: Controller
+  defp controller_module(%__MODULE__{mode: :single_server}), do: SingleServerController
   defp controller_module(%__MODULE__{mode: :cluster}), do: ClusterController
 
   defp controller_call(%__MODULE__{controller: pid} = deployment, function, default) do

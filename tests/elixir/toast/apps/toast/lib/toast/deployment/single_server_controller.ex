@@ -1,5 +1,5 @@
-defmodule Toast.Deployment.Controller do
-  @moduledoc "GenServer orchestrating the lifecycle of one ArangoDB deployment."
+defmodule Toast.Deployment.SingleServerController do
+  @moduledoc "GenServer orchestrating the lifecycle of a single-server ArangoDB deployment."
 
   use GenServer
 
@@ -68,6 +68,7 @@ defmodule Toast.Deployment.Controller do
       server_dir: nil,
       error: nil,
       diagnostics: nil,
+      health_monitor: nil,
       crash_monitor: Keyword.get(opts, :crash_monitor)
     }
 
@@ -132,8 +133,19 @@ defmodule Toast.Deployment.Controller do
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+    stop_health_monitor(state)
     notify_crash_monitor(state.crash_monitor, server_id, crash_info)
-    {:noreply, %{state | status: :failed, error: {:server_crashed, crash_info}}}
+    {:noreply, %{state | status: :failed, error: {:server_crashed, crash_info}, health_monitor: nil}}
+  end
+
+  def handle_info({:server_unhealthy, server_id}, state) do
+    Logger.error("Server #{server_id} is unresponsive, killing process")
+    stop_server(state, 5_000)
+    crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
+    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+
+    {:noreply,
+     %{state | status: :failed, server_pid: nil, health_monitor: nil, error: {:server_unhealthy, server_id}}}
   end
 
   def handle_info(msg, state) do
@@ -158,9 +170,10 @@ defmodule Toast.Deployment.Controller do
          :ok <- ServerProcess.launch(server_pid),
          os_pid = ServerProcess.os_pid(server_pid),
          _ = Logger.info("#{state.id}: server started (os_pid=#{os_pid}), endpoint=#{state.endpoint}"),
-         :ok <- wait_for_ready(state, timeout) do
+         :ok <- wait_for_ready(state, timeout),
+         {:ok, monitor_pid} <- start_health_monitor(state) do
       Logger.info("Deployment #{state.id} ready at #{state.endpoint}")
-      {:ok, %{state | status: :ready}}
+      {:ok, %{state | status: :ready, health_monitor: monitor_pid}}
     else
       {:error, reason} ->
         Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
@@ -202,10 +215,11 @@ defmodule Toast.Deployment.Controller do
 
   defp do_cleanup(state, timeout) do
     Logger.debug("Cleaning up #{state.id}")
+    stop_health_monitor(state)
     stop_server(state, timeout)
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.id}: diagnostics collected")
-    %{state | status: :stopped, server_pid: nil, diagnostics: diagnostics}
+    %{state | status: :stopped, server_pid: nil, health_monitor: nil, diagnostics: diagnostics}
   end
 
   defp collect_diagnostics(%{server_dir: nil}), do: nil
@@ -234,8 +248,27 @@ defmodule Toast.Deployment.Controller do
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
+    stop_health_monitor(state)
     stop_server(state, 5_000)
-    %{state | status: :failed, server_pid: nil, error: reason}
+    %{state | status: :failed, server_pid: nil, health_monitor: nil, error: reason}
+  end
+
+  # --- Health monitoring ---
+
+  defp start_health_monitor(state) do
+    Toast.Process.Supervisor.start_health_monitor(
+      server_id: state.id,
+      endpoint: state.endpoint,
+      listener: self()
+    )
+  end
+
+  defp stop_health_monitor(%{health_monitor: nil}), do: :ok
+
+  defp stop_health_monitor(%{health_monitor: pid}) do
+    Toast.Process.HealthMonitor.stop(pid)
+  catch
+    :exit, _ -> :ok
   end
 
   # --- Helpers ---

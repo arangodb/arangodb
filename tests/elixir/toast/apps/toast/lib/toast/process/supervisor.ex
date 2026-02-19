@@ -14,6 +14,12 @@ defmodule Toast.Process.Supervisor do
     DynamicSupervisor.start_child(supervisor, {Toast.Process.ServerProcess, opts})
   end
 
+  @doc "Start a HealthMonitor under this supervisor."
+  @spec start_health_monitor(GenServer.server(), keyword()) :: DynamicSupervisor.on_start_child()
+  def start_health_monitor(supervisor \\ __MODULE__, opts) do
+    DynamicSupervisor.start_child(supervisor, {Toast.Process.HealthMonitor, opts})
+  end
+
   @impl true
   def init(_opts) do
     DynamicSupervisor.init(strategy: :one_for_one, max_restarts: 0)
