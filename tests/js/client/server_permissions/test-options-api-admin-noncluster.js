@@ -134,6 +134,18 @@ function testSuite() {
       assertEqual(403, res.status);
     },
 
+    testApiGetPublicOptionsRo : function() {
+      let res = request.get({
+        url: baseUrl() + "/_admin/public-options",
+        auth: {
+          username: "test_ro",
+          password: "testi"
+        }
+      });
+      assertEqual(200, res.status);
+      assertTrue(res.json.hasOwnProperty("server.session-timeout"));
+    },
+
     testApiGetOptionsDescriptionJwt : function() {
       let res = request.get({
         url: baseUrl() + "/_admin/options-description",
