@@ -2717,15 +2717,19 @@ arangodb::Result hotBackupList(
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
+  reqOpts.allowCompression = false;
 
   std::string const url = apiStr + "list";
+
+  network::Headers headers;
+  headers.emplace("accept-encoding", "identity");
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+                                                   body, reqOpts, headers));
   }
 
   size_t nrGood = 0;
