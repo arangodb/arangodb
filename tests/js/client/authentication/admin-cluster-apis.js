@@ -30,6 +30,7 @@ const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
 const request = require('@arangodb/request');
+const internal = require("internal");
 
 function AuthSuite() {
   'use strict';
@@ -60,9 +61,13 @@ function AuthSuite() {
   };
 
   let checkClusterNodeStats = function() {
-    let result = arango.GET('/_admin/cluster/nodeStatistics?ServerID=' + servers[0]);
-    assertTrue(result.hasOwnProperty('time'), result);
-    assertTrue(result.hasOwnProperty('system'), result);
+    const res = arango.GET_RAW('/_admin/metrics?serverId=' + servers[0]);
+    assertTrue(res.code === 200, 'GET /_admin/metrics?serverId=... should return 200');
+    const body = typeof res.body === 'string' ? res.body : String(res.body);
+    assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+      'metrics response should contain uptime metric');
+    const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
+    assertTrue(uptime !== undefined && uptime >= 0, 'uptime metric should be present and non-negative');
   };
 
   return {

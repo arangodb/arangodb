@@ -28,11 +28,16 @@ const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const console = require('console');
 const db = require('internal').db;
+const internal = require('internal');
 
 function getStats() {
-  let s = arango.GET("/_admin/statistics?sync=true");
-  return {bytesReceived: s.client.bytesReceived.sum,
-          bytesSent: s.client.bytesSent.sum};
+  const res = arango.GET_RAW("/_admin/metrics");
+  assertEqual(200, res.code, "GET /_admin/metrics should return 200");
+  const body = typeof res.body === 'string' ? res.body : String(res.body);
+  return {
+    bytesReceived: internal.parsePrometheusMetric(body, "arangodb_client_connection_statistics_bytes_received_sum") || 0,
+    bytesSent: internal.parsePrometheusMetric(body, "arangodb_client_connection_statistics_bytes_sent_sum") || 0
+  };
 }
 
 function checkMetricsMoveSuite() {
