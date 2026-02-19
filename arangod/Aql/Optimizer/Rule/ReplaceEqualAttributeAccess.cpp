@@ -38,7 +38,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"

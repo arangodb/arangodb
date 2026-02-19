@@ -31,7 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"

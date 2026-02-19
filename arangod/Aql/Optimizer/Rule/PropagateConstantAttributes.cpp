@@ -30,7 +30,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Cluster/ServerState.h"
 #include "Containers/ImmutableMap.h"
 #include "Logger/LogMacros.h"

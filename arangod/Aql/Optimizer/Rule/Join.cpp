@@ -39,7 +39,7 @@
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"

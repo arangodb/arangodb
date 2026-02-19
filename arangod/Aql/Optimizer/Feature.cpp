@@ -29,7 +29,7 @@
 #include "Aql/Optimizer/Rule/IResearchView.h"
 #include "Aql/Optimizer/Rule/IndexNode.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerRulesOptionsProvider.h"
+#include "Aql/Optimizer/OptionsProvider.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"

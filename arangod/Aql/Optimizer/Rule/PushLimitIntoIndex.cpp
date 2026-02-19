@@ -30,7 +30,7 @@
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"

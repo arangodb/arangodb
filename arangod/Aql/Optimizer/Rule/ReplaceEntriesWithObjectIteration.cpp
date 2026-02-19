@@ -31,7 +31,7 @@
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
