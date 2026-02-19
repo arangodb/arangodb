@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 struct ValidatorBase;
+struct ResourceMonitor;
 namespace transaction {
 class Methods;
 }
@@ -78,6 +79,8 @@ class ExpressionContext {
 
   // unregister a temporary variable from the ExpressionContext.
   virtual void clearVariable(Variable const* variable) noexcept = 0;
+
+  virtual ResourceMonitor* getResourceMonitorPtr() const noexcept = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

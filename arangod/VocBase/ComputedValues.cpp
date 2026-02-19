@@ -52,6 +52,7 @@
 #include <span>
 #include <string_view>
 #include <type_traits>
+#include <immer/detail/combine_standard_layout.hpp>
 
 namespace {
 // name of bind parameter variable that contains the current document
@@ -70,11 +71,13 @@ namespace arangodb {
 
 // expression context used for calculating computed values inside
 ComputedValuesExpressionContext::ComputedValuesExpressionContext(
-    transaction::Methods& trx, LogicalCollection& collection)
+    transaction::Methods& trx, LogicalCollection& collection,
+    ResourceMonitor* rm)
     : aql::ExpressionContext(),
       _trx(trx),
       _collection(collection),
-      _failOnWarning(false) {}
+      _failOnWarning(false),
+      _resourceMonitor(rm) {}
 
 TRI_vocbase_t& ComputedValuesExpressionContext::vocbase() const {
   return _trx.vocbase();
@@ -145,7 +148,8 @@ aql::AqlValue ComputedValuesExpressionContext::getVariableValue(
     return aql::AqlValue(aql::AqlValueHintNull());
   }
   if (doCopy) {
-    return aql::AqlValue(aql::AqlValueHintSliceCopy(it->second));
+    return aql::AqlValue(aql::AqlValueHintSliceCopy(it->second),
+                         getResourceMonitorPtr());
   }
   return aql::AqlValue(aql::AqlValueHintSliceNoCopy(it->second));
 }
@@ -316,6 +320,11 @@ void ComputedValues::ComputedValue::computeAttribute(
   output.add(_name, materializer.slice(result));
 }
 
+ResourceMonitor& ComputedValues::ComputedValue::getResourceMonitor()
+    const noexcept {
+  return _queryContext->resourceMonitor();
+}
+
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::span<std::string const> shardKeys,
                                velocypack::Slice params,
@@ -401,7 +410,7 @@ void ComputedValues::mergeComputedAttributes(
     if (cv.overwrite() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       cvec.failOnWarning(cv.failOnWarning());
-      // update "name" vlaue for each computation (for errors/warnings)
+      // update "name" value for each computation (for errors/warnings)
       cvec.setName(cv.name());
       // inject document into temporary variable (@doc)
       cvec.setVariable(cv.tempVariable(), input);
@@ -610,6 +619,13 @@ void ComputedValues::toVelocyPack(velocypack::Builder& result) const {
     it.toVelocyPack(result);
   }
   result.close();
+}
+
+ResourceMonitor* ComputedValues::getResourceMonitor() const noexcept {
+  if (_values.empty()) {
+    return nullptr;
+  }
+  return &_values[0].getResourceMonitor();
 }
 
 }  // namespace arangodb

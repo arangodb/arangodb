@@ -87,6 +87,8 @@ class GeoEqualsTest : public ::testing::Test {
     fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
+    fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+        .AlwaysReturn(nullptr);
   }
 
   ~GeoEqualsTest() {

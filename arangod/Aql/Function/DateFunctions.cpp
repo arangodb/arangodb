@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/datetime.h"
 #include "Transaction/Helpers.h"
@@ -131,8 +133,11 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext, char const* AFN,
   formatted[22] = '0' + (millis % 10);
   formatted[23] = 'Z';
 
-  return AqlValue(std::string_view{
-      &formatted[0], utc ? sizeof(formatted) : sizeof(formatted) - 1});
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&formatted[0], utc ? sizeof(formatted)
+                                                      : sizeof(formatted) - 1},
+                  rm);
 }
 
 DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
@@ -861,7 +866,9 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
   builder->add("year", VPackValue(isoYear));
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 /// @brief function DATE_LEAPYEAR
@@ -1102,7 +1109,9 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     builder->close();
     builder->close();
 
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   aqlLocalGuard.steal();
@@ -1172,7 +1181,9 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     builder->close();
     builder->close();
 
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   aqlUtcGuard.steal();
@@ -1211,7 +1222,9 @@ AqlValue functions::DateTimeZones(ExpressionContext* expressionContext,
   }
 
   result->close();
-  return AqlValue(result->slice(), result->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(result->slice(), result->size(), rm);
 }
 
 /// @brief function DATE_ADD
@@ -1776,7 +1789,9 @@ AqlValue functions::DateFormat(ExpressionContext* expressionContext,
     localizeTimePoint(inputTimezone, tp);
   }
 
-  return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp));
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp),
+                  rm);
 }
 
 }  // namespace arangodb::aql

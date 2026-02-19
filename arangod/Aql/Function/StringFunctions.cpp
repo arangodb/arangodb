@@ -27,8 +27,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ThreadLocalLeaser.h"
@@ -127,7 +129,10 @@ AqlValue functions::ToString(ExpressionContext* expr, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(trx.vpackOptions(), adapter, value);
-  return AqlValue(std::string_view{buffer->data(), buffer->length()});
+
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{buffer->data(), buffer->length()}, rm);
 }
 
 AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
@@ -149,7 +154,10 @@ AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
   int32_t offset = 0;
   U8_APPEND_UNSAFE(&buffer[0], offset, c);
 
-  return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
+  ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)),
+                  rm);
 }
 
 AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
@@ -161,7 +169,9 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
   int64_t r = repetitions.toInt64();
   if (r == 0) {
     // empty string
-    return AqlValue(std::string_view("", 0));
+    ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+    return AqlValue(std::string_view("", 0), rm);
   }
   if (r < 0) {
     // negative number of repetitions
@@ -200,7 +210,9 @@ AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
   }
 
   // hand over string to AqlValue
-  return AqlValue(std::string_view(buffer->data(), buffer->size()));
+  ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view(buffer->data(), buffer->size()), rm);
 }
 
 /// @brief function FIND_FIRST
@@ -398,7 +410,9 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
         appendAsString(vopts, adapter, AqlValue(it.begin()));
         found = true;
       }
-      return AqlValue(std::string_view{buffer->data(), buffer->length()});
+      ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+      return AqlValue(std::string_view{buffer->data(), buffer->length()}, rm);
     }
   }
 
@@ -420,7 +434,9 @@ AqlValue functions::ConcatSeparator(ExpressionContext* ctx, AstNode const&,
     found = true;
   }
 
-  return AqlValue(std::string_view{buffer->data(), buffer->length()});
+  ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{buffer->data(), buffer->length()}, rm);
 }
 
 /// @brief function CHAR_LENGTH
@@ -1215,7 +1231,9 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
         // convert member to a string and append
         appendAsString(vopts, adapter, AqlValue(it.begin()));
       }
-      return AqlValue(std::string_view{buffer->data(), buffer->length()});
+      ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+      return AqlValue(std::string_view{buffer->data(), buffer->length()}, rm);
     }
   }
 
@@ -1231,7 +1249,9 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
     appendAsString(vopts, adapter, member);
   }
 
-  return AqlValue(std::string_view{buffer->data(), buffer->length()});
+  ResourceMonitor* rm = ctx->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{buffer->data(), buffer->length()}, rm);
 }
 
 /// @brief function LIKE
@@ -1327,7 +1347,9 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     builder->openArray();
     builder->add(aqlValueToSplit.slice());
     builder->close();
-    return AqlValue(builder->slice(), builder->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(builder->slice(), builder->size(), rm);
   }
 
   // Get ready for ICU
@@ -1355,7 +1377,9 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
     // empty string again.
     result->add(VPackValue(""));
     result->close();
-    return AqlValue(result->slice(), result->size());
+    ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+    return AqlValue(result->slice(), result->size(), rm);
   }
 
   std::string utf8;
@@ -1416,7 +1440,9 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   }
 
   result->close();
-  return AqlValue(result->slice(), result->size());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(result->slice(), result->size(), rm);
 }
 
 }  // namespace arangodb::aql

@@ -63,7 +63,7 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
             s = _covering->value();
           }
           if (doCopy) {
-            return AqlValue(AqlValueHintSliceCopy(s));
+            return AqlValue(AqlValueHintSliceCopy(s), getResourceMonitorPtr());
           }
           return AqlValue(AqlValueHintSliceNoCopy(s));
         }

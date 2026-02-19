@@ -28,6 +28,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
 
@@ -84,6 +85,14 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   bool killed() const override final;
 
   aql::AstNode const* _expr{};  // for troubleshooting
+
+  virtual ResourceMonitor* getResourceMonitorPtr()
+      const noexcept override final {
+    if (_query == nullptr) {
+      return nullptr;
+    }
+    return &_query->resourceMonitor();
+  }
 
  protected:
   arangodb::transaction::Methods* _trx;

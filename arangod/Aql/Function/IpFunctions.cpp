@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/StringUtils.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -85,7 +87,9 @@ AqlValue functions::IpV4FromNumber(ExpressionContext* expressionContext,
   digit = (number & 0x0000ffULL);
   p += basics::StringUtils::itoa(digit, p);
 
-  return AqlValue(std::string_view{&result[0], p});
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+
+  return AqlValue(std::string_view{&result[0], p}, rm);
 }
 
 /// @brief function IPV4_TO_NUMBER

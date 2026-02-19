@@ -71,6 +71,8 @@ class GeoConstructorTest : public ::testing::Test {
     fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&options);
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&]() -> transaction::Methods& { return this->trx; });
+    fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+        .AlwaysReturn(nullptr);
   }
 };
 

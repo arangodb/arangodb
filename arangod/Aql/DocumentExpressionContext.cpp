@@ -58,7 +58,8 @@ AqlValue SimpleDocumentExpressionContext::getVariableValue(
         mustDestroy = doCopy;
         // return current document
         if (doCopy) {
-          return AqlValue(AqlValueHintSliceCopy(_document));
+          return AqlValue(AqlValueHintSliceCopy(_document),
+                          getResourceMonitorPtr());
         }
         return AqlValue(AqlValueHintSliceNoCopy(_document));
       });
@@ -82,7 +83,8 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
         if (variable->id == _outputVariable->id) {
           // return current document
           if (doCopy) {
-            return AqlValue(AqlValueHintSliceCopy(_document));
+            return AqlValue(AqlValueHintSliceCopy(_document),
+                            getResourceMonitorPtr());
           }
           return AqlValue(AqlValueHintSliceNoCopy(_document));
         }

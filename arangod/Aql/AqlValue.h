@@ -309,12 +309,14 @@ struct AqlValue final {
       // PD points to [ ResourceMonitor* | Actual Data ]
       // So 'pointer' itself is a pointer to a pointer
       arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
+        TRI_ASSERT(pointer != nullptr);
         return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
       }
 
       // Actual data starts at the 9th byte!!!
       // pointer's first 8 bytes are the pointer of ResourceMonitor
       uint8_t* getPayloadPtr() const noexcept {
+        TRI_ASSERT(pointer != nullptr);
         return pointer + sizeof(arangodb::ResourceMonitor*);
       }
       uint64_t lengthOrigin;  // The first 8 bytes looks like

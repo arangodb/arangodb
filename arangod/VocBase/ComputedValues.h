@@ -73,7 +73,8 @@ enum class ComputeValuesOn : uint8_t {
 class ComputedValuesExpressionContext final : public aql::ExpressionContext {
  public:
   explicit ComputedValuesExpressionContext(transaction::Methods& trx,
-                                           LogicalCollection& collection);
+                                           LogicalCollection& collection,
+                                           ResourceMonitor* rm);
 
   void registerWarning(ErrorCode errorCode, std::string_view msg) override;
 
@@ -110,6 +111,12 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   // unregister a temporary variable from the ExpressionContext.
   void clearVariable(aql::Variable const* variable) noexcept override;
 
+  virtual ResourceMonitor* getResourceMonitorPtr()
+      const noexcept override final {
+    // This might be nullptr; Caller needs to do nullptr check
+    return _resourceMonitor;
+  }
+
  private:
   std::string buildLogMessage(std::string_view type,
                               std::string_view msg) const;
@@ -123,6 +130,8 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   std::string_view _name;
   // current setting of "failOnWarning"
   bool _failOnWarning;
+
+  ResourceMonitor* _resourceMonitor;
 
   containers::FlatHashMap<aql::Variable const*, velocypack::Slice> _variables;
 };
@@ -149,6 +158,7 @@ class ComputedValues {
     bool failOnWarning() const noexcept;
     bool keepNull() const noexcept;
     aql::Variable const* tempVariable() const noexcept;
+    ResourceMonitor& getResourceMonitor() const noexcept;
 
    private:
     TRI_vocbase_t& _vocbase;
@@ -196,6 +206,9 @@ class ComputedValues {
       velocypack::Slice computedValues,
       transaction::OperationOrigin operationOrigin);
 
+  // Caller has to do nullptr check
+  ResourceMonitor* getResourceMonitor() const noexcept;
+
  private:
   void mergeComputedAttributes(
       aql::ExpressionContext& ctx,
@@ -212,7 +225,7 @@ class ComputedValues {
   // individual instructions for computed values
   std::vector<ComputedValue> _values;
 
-  // the size_t value indiciates the position of the computation inside
+  // the size_t value indicates the position of the computation inside
   // the _values vector
   containers::FlatHashMap<std::string, std::size_t> _attributesForInsert;
   containers::FlatHashMap<std::string, std::size_t> _attributesForUpdate;

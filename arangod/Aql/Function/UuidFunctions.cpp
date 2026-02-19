@@ -49,7 +49,7 @@ static std::mutex uuidMutex;
 }  // namespace
 
 /// @brief function UUID
-AqlValue functions::Uuid(ExpressionContext*, AstNode const&,
+AqlValue functions::Uuid(ExpressionContext* expr, AstNode const&,
                          VPackFunctionParametersView parameters) {
   boost::uuids::uuid uuid;
   {
@@ -58,7 +58,8 @@ AqlValue functions::Uuid(ExpressionContext*, AstNode const&,
     uuid = boost::uuids::random_generator()();
   }
 
-  return AqlValue(boost::uuids::to_string(uuid));
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
+  return AqlValue(boost::uuids::to_string(uuid), rm);
 }
 
 }  // namespace arangodb::aql

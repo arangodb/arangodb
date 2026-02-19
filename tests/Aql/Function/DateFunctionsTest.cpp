@@ -131,6 +131,8 @@ struct TestDate {
 TEST(DateFunctionsTest, IS_DATESTRING) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
+  fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+      .AlwaysReturn(nullptr);
 
   std::vector<TestDate> testees = {
 #include "IS_DATESTRING.testcases"
@@ -191,6 +193,8 @@ struct TestDate {
 TEST(DateFunctionsTest, DATE_COMPARE) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
+  fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+      .AlwaysReturn(nullptr);
 
   std::vector<TestDate> testees = {
 #include "DATE_COMPARE.testcases"
@@ -250,6 +254,8 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         laterDate("2001-06-13T06:53:48.246"),
         dateDiffMillis(37857906123),
         avgDaysPerMonth(365.0 / 12.0) {
+    fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+        .AlwaysReturn(nullptr);
     dateBuilder.openArray();
     dateBuilder.add(VPackValue(earlierDate));
     dateBuilder.add(VPackValue(laterDate));
@@ -450,6 +456,8 @@ struct TestDate {
 TEST(DateFunctionsTest, DATE_SUBTRACT) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
+  fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+      .AlwaysReturn(nullptr);
 
   std::vector<TestDate> testees = {
 #include "DATE_SUBTRACT.testcases"

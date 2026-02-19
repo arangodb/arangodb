@@ -92,6 +92,8 @@ AqlValue evaluateDistanceFunction(std::span<AqlValue const> params,
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
       .AlwaysDo([](ErrorCode, std::string_view) {});
+  fakeit::When(Method(expressionContextMock, getResourceMonitorPtr))
+      .AlwaysReturn(nullptr);
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;

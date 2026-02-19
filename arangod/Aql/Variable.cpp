@@ -51,7 +51,7 @@ Variable::Variable(velocypack::Slice slice,
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
       _resourceMonitor(resourceMonitor) {
-  setConstantValue(AqlValue{slice.get("constantValue")});
+  setConstantValue(AqlValue{slice.get("constantValue"), &_resourceMonitor});
   if (auto s = slice.get("bindParameter"); s.isString()) {
     setBindParameterReplacement(s.copyString());
   }

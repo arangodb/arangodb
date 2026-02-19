@@ -43,7 +43,7 @@ AqlValue functions::Rand(ExpressionContext*, AstNode const&,
 }
 
 /// @brief function RANDOM_TOKEN
-AqlValue functions::RandomToken(ExpressionContext*, AstNode const&,
+AqlValue functions::RandomToken(ExpressionContext* expr, AstNode const&,
                                 VPackFunctionParametersView parameters) {
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
@@ -54,9 +54,10 @@ AqlValue functions::RandomToken(ExpressionContext*, AstNode const&,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
   }
 
+  ResourceMonitor* rm = expr->getResourceMonitorPtr();
   UniformCharacter generator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  return AqlValue(generator.random(static_cast<size_t>(length)));
+  return AqlValue(generator.random(static_cast<size_t>(length)), rm);
 }
 
 }  // namespace arangodb::aql

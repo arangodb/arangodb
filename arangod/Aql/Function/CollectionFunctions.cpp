@@ -26,8 +26,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -96,7 +98,9 @@ AqlValue functions::Collections(ExpressionContext* exprCtx, AstNode const&,
 
   builder->close();
 
-  return AqlValue(builder->slice(), builder->size());
+  ResourceMonitor* rm = exprCtx->getResourceMonitorPtr();
+
+  return AqlValue(builder->slice(), builder->size(), rm);
 }
 
 AqlValue functions::ShardId(ExpressionContext* expressionContext,
@@ -158,8 +162,8 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
             // of AQL universality
     shardId = colName;
   }
-
-  return AqlValue{shardId};
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue{shardId, rm};
 }
 
 /// @brief function COLLECTION_COUNT
@@ -187,7 +191,8 @@ AqlValue functions::CollectionCount(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION(res.result);
   }
 
-  return AqlValue(res.slice());
+  ResourceMonitor* rm = expressionContext->getResourceMonitorPtr();
+  return AqlValue(res.slice(), rm);
 }
 
 }  // namespace arangodb::aql
