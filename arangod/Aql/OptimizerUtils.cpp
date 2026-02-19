@@ -1465,6 +1465,9 @@ auto findEnclosingLoop(ExecutionPlan const* plan, ExecutionNode const* node)
         TRI_ASSERT(it != std::end(subqueries));
         auto [_, sq] = *it;
         node = sq->getFirstDependency();
+      } else {
+        TRI_ASSERT(node->id().id() == 1);
+        return nullptr;
       }
     } else {
       if (!node->hasDependency()) {
