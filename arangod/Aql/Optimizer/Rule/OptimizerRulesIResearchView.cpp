@@ -1197,7 +1197,9 @@ void immutableSearchCondition(Optimizer* opt,
       TRI_ASSERT(count != numMembers);
       break;
     }
-    modified = true;
+    if (count > 0) {
+      modified = true;
+    }
     view.setImmutableParts(count);
   }
 }
