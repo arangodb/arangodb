@@ -1,5 +1,6 @@
 4.0
 ---
+* Remove leftovers of arangoimp
 
 * Remove /_admin/database/target-version endpoint in favor of /_api/version
 
