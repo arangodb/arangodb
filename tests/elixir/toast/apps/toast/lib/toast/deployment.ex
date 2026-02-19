@@ -14,11 +14,12 @@ defmodule Toast.Deployment do
           endpoint: String.t(),
           controller: pid(),
           crash_monitor: pid(),
+          work_dir: Path.t(),
           servers: %{String.t() => server_info()} | nil
         }
 
-  @enforce_keys [:id, :mode, :endpoint, :controller]
-  defstruct [:id, :mode, :endpoint, :controller, :crash_monitor, :servers]
+  @enforce_keys [:id, :mode, :endpoint, :controller, :work_dir]
+  defstruct [:id, :mode, :endpoint, :controller, :crash_monitor, :work_dir, :servers]
 
   @spec start(atom(), keyword()) :: {:ok, t()} | {:error, term()}
   def start(mode \\ :single_server, opts \\ [])
@@ -40,7 +41,8 @@ defmodule Toast.Deployment do
          mode: :single_server,
          endpoint: info.endpoint,
          controller: pid,
-         crash_monitor: crash_monitor
+         crash_monitor: crash_monitor,
+         work_dir: config.work_dir
        }}
     else
       {:error, _reason} = error ->
@@ -67,6 +69,7 @@ defmodule Toast.Deployment do
          endpoint: info.coordinator_endpoint,
          controller: pid,
          crash_monitor: crash_monitor,
+         work_dir: config.work_dir,
          servers: info.servers
        }}
     else
@@ -138,6 +141,55 @@ defmodule Toast.Deployment do
     end
   end
 
+  @doc """
+  Check whether the deployment is healthy.
+
+  Verifies the controller status is `:ready` and all servers respond to
+  an HTTP health check (`/_api/version`).
+  """
+  @spec check_health(t()) :: :ok | {:error, String.t()}
+  def check_health(%__MODULE__{} = deployment) do
+    case status(deployment) do
+      :ready ->
+        case check_all_endpoints(deployment) do
+          :ok -> :ok
+          {:error, _} -> {:error, format_crash_message(crash_info(deployment))}
+        end
+
+      :failed ->
+        {:error, format_crash_message(crash_info(deployment))}
+
+      other ->
+        {:error, "Deployment not ready (status: #{other})"}
+    end
+  end
+
+  defp check_all_endpoints(%__MODULE__{servers: nil, endpoint: endpoint}) do
+    check_endpoint(endpoint)
+  end
+
+  defp check_all_endpoints(%__MODULE__{servers: servers}) do
+    servers
+    |> Task.async_stream(fn {_id, server} -> check_endpoint(server.endpoint) end,
+      ordered: false,
+      timeout: 5_000
+    )
+    |> Enum.reduce_while(:ok, fn
+      {:ok, :ok}, :ok -> {:cont, :ok}
+      {:ok, error}, _ -> {:halt, error}
+      {:exit, reason}, _ -> {:halt, {:error, reason}}
+    end)
+  end
+
+  defp check_endpoint(endpoint) do
+    client = Toast.Client.new(endpoint)
+
+    case Toast.Client.version(client) do
+      {:ok, _} -> :ok
+      {:error, _} = error -> error
+    end
+  end
+
   @doc "Retrieve diagnostics collected during shutdown."
   @spec diagnostics(t()) :: map() | nil
   def diagnostics(deployment) do
@@ -175,6 +227,40 @@ defmodule Toast.Deployment do
   end
 
   defp extract_cluster_crash_info(_error, _servers), do: :no_crash
+
+  defp format_crash_message(:no_crash) do
+    "Deployment failed (no crash details available)"
+  end
+
+  defp format_crash_message({:ok, details}) do
+    alias Toast.Diagnostics.CrashLogParser
+
+    parts = ["Server crashed"]
+
+    parts =
+      if details.server_id,
+        do: parts ++ ["(#{details.server_id})"],
+        else: parts
+
+    parts =
+      if details.server_crash_info do
+        ci = details.server_crash_info
+        signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
+        parts ++ ["exit_status=#{ci.exit_status}#{signal_part}"]
+      else
+        parts
+      end
+
+    parts =
+      if details.log_report do
+        summary = CrashLogParser.format_summary(details.log_report)
+        if summary != "No crash detected", do: parts ++ ["- #{summary}"], else: parts
+      else
+        parts
+      end
+
+    Enum.join(parts, " ")
+  end
 
   defp read_and_parse_log(nil), do: nil
 

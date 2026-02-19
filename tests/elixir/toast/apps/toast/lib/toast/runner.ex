@@ -136,6 +136,7 @@ defmodule Toast.Runner do
 
     %{
       capture_log: opts[:capture_log],
+      deployments: load_deployments(),
       exclude: opts[:exclude],
       include: opts[:include],
       manager: manager,
@@ -149,6 +150,13 @@ defmodule Toast.Runner do
       timeout: opts[:timeout],
       trace: opts[:trace]
     }
+  end
+
+  defp load_deployments do
+    case Application.get_env(:toast, :__test_deployment__) do
+      nil -> []
+      deployment -> [deployment]
+    end
   end
 
   defp normalize_opts(opts) do
@@ -540,16 +548,31 @@ defmodule Toast.Runner do
   end
 
   defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
-    if aborted?() do
-      {acc, remaining}
-    else
-      test = %{test | parameters: params}
-      Process.put(@current_key, test)
+    cond do
+      aborted?() ->
+        {acc, remaining}
 
-      case run_test(config, test, context) do
-        {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
-        :max_failures_reached -> {acc, rest}
-      end
+      reason = check_deployments(config.deployments) ->
+        abort!(reason)
+        {acc, remaining}
+
+      true ->
+        test = %{test | parameters: params}
+        Process.put(@current_key, test)
+
+        case run_test(config, test, context) do
+          {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
+          :max_failures_reached -> {acc, rest}
+        end
+    end
+  end
+
+  defp check_deployments([]), do: nil
+
+  defp check_deployments([deployment | rest]) do
+    case Toast.Deployment.check_health(deployment) do
+      :ok -> check_deployments(rest)
+      {:error, reason} -> reason
     end
   end
 

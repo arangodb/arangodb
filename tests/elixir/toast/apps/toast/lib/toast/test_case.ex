@@ -26,6 +26,8 @@ defmodule Toast.TestCase do
 
   use ExUnit.CaseTemplate
 
+  require Logger
+
   @env_key :__test_deployment__
   @unavailable_key :__test_deployment_unavailable__
 
@@ -38,25 +40,8 @@ defmodule Toast.TestCase do
 
   setup _context do
     deployment = get_deployment()
-
-    # Link to crash monitor — if a server crashes mid-test, this test process
-    # is killed immediately rather than continuing against a dead server.
-    if is_pid(deployment.crash_monitor) and Process.alive?(deployment.crash_monitor) do
-      Process.link(deployment.crash_monitor)
-    end
-
-    case Toast.Deployment.status(deployment) do
-      :ready ->
-        client = Toast.Client.new(deployment.endpoint)
-        %{deployment: deployment, endpoint: deployment.endpoint, client: client}
-
-      :failed ->
-        message = format_crash_message(Toast.Deployment.crash_info(deployment))
-        raise message
-
-      other ->
-        raise "Deployment not ready (status: #{other})"
-    end
+    client = Toast.Client.new(deployment.endpoint)
+    %{deployment: deployment, endpoint: deployment.endpoint, client: client}
   end
 
   @doc """
@@ -125,10 +110,16 @@ defmodule Toast.TestCase do
   defp register_after_suite(deployment) do
     register_formatters()
 
-    ExUnit.after_suite(fn _stats ->
+    ExUnit.after_suite(fn stats ->
       diagnostics = Toast.Deployment.stop_and_collect(deployment)
       Application.put_env(:toast, :__test_diagnostics__, diagnostics)
       Toast.ResultExporter.export()
+
+      if stats.failures == 0 do
+        File.rm_rf(deployment.work_dir)
+      else
+        Logger.warning("Test failures — preserving server data in #{deployment.work_dir}")
+      end
     end)
   end
 
@@ -151,37 +142,4 @@ defmodule Toast.TestCase do
     ExUnit.configure(formatters: formatters)
   end
 
-  defp format_crash_message(:no_crash) do
-    "Deployment failed (no crash details available)"
-  end
-
-  defp format_crash_message({:ok, details}) do
-    alias Toast.Diagnostics.CrashLogParser
-
-    parts = ["Server crashed"]
-
-    parts =
-      if details.server_id,
-        do: parts ++ ["(#{details.server_id})"],
-        else: parts
-
-    parts =
-      if details.server_crash_info do
-        ci = details.server_crash_info
-        signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
-        parts ++ ["exit_status=#{ci.exit_status}#{signal_part}"]
-      else
-        parts
-      end
-
-    parts =
-      if details.log_report do
-        summary = CrashLogParser.format_summary(details.log_report)
-        if summary != "No crash detected", do: parts ++ ["- #{summary}"], else: parts
-      else
-        parts
-      end
-
-    Enum.join(parts, " ")
-  end
 end
