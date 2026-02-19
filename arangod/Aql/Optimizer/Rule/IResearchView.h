@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/Optimizer/Rule/LateMaterializedCommon.h"
 
 #include <memory>
 

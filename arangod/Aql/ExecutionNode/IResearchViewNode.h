@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode/DataAccessingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/Optimizer/Rule/LateMaterializedCommon.h"
 #include "Aql/types.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"

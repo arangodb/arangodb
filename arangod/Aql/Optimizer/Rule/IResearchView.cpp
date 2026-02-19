@@ -42,7 +42,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
+#include "Aql/Optimizer/Rule/IResearchView.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
