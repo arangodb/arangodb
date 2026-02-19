@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
-------------------
+
+* Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
+  `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
+  
 * Existing `hash` and `skiplist` indexes are automatically converted to
   `persistent` during database upgrade. Converted indexes are renamed by
   appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
@@ -2831,7 +2834,7 @@
 
   The explain output for queries is now extended with a new "Par" column, which
   shows which nodes in the query are eligible for asynchronous prefetching.
-  All nodes denoted with "✓" will support asynchronous prefetching at runtime.
+  All nodes denoted with "�?" will support asynchronous prefetching at runtime.
 
   The profiling output for queries is now extended with a new "Par" column,
   which shows the actual number of parallel calls during query execution. Note
@@ -21966,11 +21969,11 @@ v2.6.0 (2015-06-20)
 
       var c = db._create("example");
       c.ensureFulltextIndex("translations");
-      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "ли�?а" } });
       c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
       c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
 
-      c.fulltext("translations", "лиса").toArray();       // returns only first document
+      c.fulltext("translations", "ли�?а").toArray();       // returns only first document
       c.fulltext("translations", "Fox").toArray();        // returns first and second documents
       c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
 
