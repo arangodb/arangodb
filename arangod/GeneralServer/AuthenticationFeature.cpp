@@ -364,11 +364,6 @@ void AuthenticationFeature::validateOptions(
              "https://";
       FATAL_ERROR_EXIT();
     }
-    if (_options.externalRBACservice.find(':') == std::string::npos) {
-      LOG_TOPIC("1aaad", FATAL, arangodb::Logger::AUTHENTICATION)
-          << "--server.external-rbac-service must contain a port number";
-      FATAL_ERROR_EXIT();
-    }
   }
 }
 
