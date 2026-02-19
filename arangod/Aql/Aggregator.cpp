@@ -367,7 +367,7 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
       builder.add(VPackValue(count));
     }
     builder.close();
-    return AqlValue(builder.slice());
+    return AqlValue(builder.slice(), &_resourceMonitor);
   }
 
   mutable arangodb::velocypack::Builder builder;
@@ -502,7 +502,7 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
     }
     builder.close();
 
-    return AqlValue(builder.slice());
+    return AqlValue(builder.slice(), &_resourceMonitor);
   }
 
   mutable arangodb::velocypack::Builder builder;
@@ -694,7 +694,7 @@ struct AggregatorUnique : public Aggregator {
     }
     // close the array and return a slice
     builder.close();
-    return AqlValue(builder.slice());
+    return AqlValue(builder.slice(), &_resourceMonitor);
   }
 
   MemoryBlockAllocator allocator;
@@ -780,7 +780,7 @@ struct AggregatorSortedUnique : public Aggregator {
       builder.add(it);
     }
     builder.close();
-    return AqlValue(builder.slice());
+    return AqlValue(builder.slice(), &_resourceMonitor);
   }
 
   MemoryBlockAllocator allocator;
@@ -1038,7 +1038,7 @@ struct AggregatorMergeLists : public Aggregator {
       builder.openArray();
     }
     builder.close();
-    return AqlValue(builder.slice());
+    return AqlValue(builder.slice(), &_resourceMonitor);
   }
 
   mutable arangodb::velocypack::Builder builder;
@@ -1075,7 +1075,7 @@ struct AggregatorList : public Aggregator {
     // velocypack slice.
     auto builderCopy = builder;
     builderCopy.close();
-    return AqlValue(std::move(*builderCopy.steal()));
+    return AqlValue(std::move(*builderCopy.steal()), &_resourceMonitor);
   }
 
   mutable arangodb::velocypack::Builder builder;

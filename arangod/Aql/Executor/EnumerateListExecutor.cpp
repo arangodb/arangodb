@@ -35,6 +35,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/RegisterInfos.h"
+#include "Basics/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
@@ -428,14 +429,20 @@ void EnumerateListObjectExecutor::initializeNewRow(
 
 std::tuple<AqlValue, AqlValue> EnumerateListObjectExecutor::keyValueExtractor(
     velocypack::ObjectIteratorPair innerValue) {
-  AqlValue key = AqlValue(innerValue.key);
+  ResourceMonitor* rm = &_infos.getQuery().resourceMonitor();
+  // innerValue.key is a Slice, so use Slice constructor
+  AqlValue key = AqlValue(innerValue.key, rm);
   AqlValue value;
   if (innerValue.key.stringView() == arangodb::StaticStrings::IdString &&
       innerValue.value.isCustom()) {
-    value = AqlValue(_trx.extractIdString(
-        _currentRow.getValue(_infos.getInputRegister()).slice()));
+    // extractIdString returns std::string, which converts to string_view
+    value =
+        AqlValue(_trx.extractIdString(
+                     _currentRow.getValue(_infos.getInputRegister()).slice()),
+                 rm);
   } else {
-    value = AqlValue(innerValue.value);
+    // innerValue.value is a Slice
+    value = AqlValue(innerValue.value, rm);
   }
 
   return std::tuple<AqlValue, AqlValue>{key, value};

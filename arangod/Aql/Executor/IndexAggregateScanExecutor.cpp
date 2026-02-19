@@ -59,7 +59,7 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
       auto it = _varsToIndex.find(searchId);
       if (it != _varsToIndex.end()) {
         if (doCopy) {
-          return AqlValue(_sliceSpan[it->second]);
+          return AqlValue(_sliceSpan[it->second], &this->resourceMonitor());
         }
         return AqlValue(AqlValueHintSliceNoCopy{_sliceSpan[it->second]});
       }

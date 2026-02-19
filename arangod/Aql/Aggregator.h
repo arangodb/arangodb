@@ -57,6 +57,7 @@ struct Aggregator {
   explicit Aggregator(velocypack::Options const* opts,
                       ResourceMonitor& resourceMonitor)
       : _vpackOptions(opts),
+        _resourceMonitor(resourceMonitor),
         _usageScope(ResourceUsageScope(resourceMonitor, 0)) {}
 
   virtual ~Aggregator() = default;
@@ -113,6 +114,7 @@ struct Aggregator {
 
  protected:
   velocypack::Options const* _vpackOptions;
+  ResourceMonitor& _resourceMonitor;
   ResourceUsageScope
       _usageScope;  // Holds reference of (global) ResourceMonitor
 };
