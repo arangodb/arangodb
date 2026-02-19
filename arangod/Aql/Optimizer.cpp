@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Optimizer.h"
+#include "Aql/Optimizer.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -31,7 +31,7 @@
 #include "Aql/IndexHint.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"

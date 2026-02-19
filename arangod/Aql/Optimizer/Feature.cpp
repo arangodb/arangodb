@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
 #include "Aql/Optimizer/Rule/Graph.h"

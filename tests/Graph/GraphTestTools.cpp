@@ -25,7 +25,7 @@
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/common.h"

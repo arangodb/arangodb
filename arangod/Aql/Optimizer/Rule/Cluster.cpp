@@ -38,6 +38,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"

@@ -57,7 +57,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/NodeFinder.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/VarUsageFinder.h"

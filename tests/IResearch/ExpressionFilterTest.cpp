@@ -47,7 +47,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -363,7 +363,7 @@ struct FilterCtx : irs::attribute_provider {
 
   arangodb::iresearch::ExpressionExecutionContext*
       _execCtx;  // expression execution context
-};               // FilterCtx
+};  // FilterCtx
 
 }  // namespace
 

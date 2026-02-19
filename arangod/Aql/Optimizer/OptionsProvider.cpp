@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesOptionsProvider.h"
+#include "Aql/Optimizer/OptionsProvider.h"
 
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
