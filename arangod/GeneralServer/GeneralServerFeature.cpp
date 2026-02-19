@@ -855,7 +855,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/activities",
       RestHandlerCreator<arangodb::activities::RestHandler>::createNoData,
-      {0, 1});
+      {ApiVersion::experimentalApiVersion});
 
   f.addPrefixHandler(
       "/_admin/cluster",
