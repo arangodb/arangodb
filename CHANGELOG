@@ -1,5 +1,29 @@
 4.0
 ---
+* Remove simple query API. This includes the following endpoints:
+    - /_api/simple/all
+    - /_api/simple/all-keys
+    - /_api/simple/by-example
+    - /_api/simple/lookup-by-keys
+    - /_api/simple/remove-by-keys
+  Also the following arangosh collection APIs are removed in favor of AQL:
+    - byCondition
+    - geo
+    - near
+    - within
+    - withinRectangle
+  For convenience the following APIs are retained and have been reimplemented
+  via AQL. However, they are simplified a bit and no longer support `skip` and
+  `limit`:
+    - any
+    - all
+    - range
+    - byExample
+    - firstExample
+    - removeByExample
+    - replaceByExample
+    - updateByExample
+
 * Remove fulltext indexes. Fulltext indexes are no longer supported and have
   been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
   will be automatically dropped during upgrade. The following functionality
