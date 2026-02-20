@@ -112,9 +112,6 @@ Projections translateLMIndexVarsToProjections(
     ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
     transaction::Methods::IndexHandle index);
 
-auto findEnclosingLoop(ExecutionPlan const* plan, ExecutionNode const* node)
-    -> ExecutionNode const*;
-
 }  // namespace utils
 }  // namespace aql
 }  // namespace arangodb
