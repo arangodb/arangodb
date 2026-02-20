@@ -237,66 +237,6 @@ return function (args) {
     },
 
     testTransactionRegistration : function () {
-      if (SYS_IS_V8_BUILD) {
-        // ensure data is synced
-        db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
-
-        // implicit read lock
-        var result = db._executeTransaction({
-          collections: { },
-          action: function () {
-            var db = require("@arangodb").db;
-            return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
-          }
-        });
-        assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
-        assertEqual(1, result.length);
-
-        // read lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            read: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            return {length: c.toArray().length, value: c.document('foo').xyz};
-          }
-        });
-        assertEqual(1, result.value);
-        assertEqual(28, result.length);
-
-        // write lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            write: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "bar", xyz: 2 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(29, result);
-
-        // exclusive lock
-        result = db._executeTransaction({
-          collections: {
-            allowImplicit: false,
-            exclusive: [ "UnitTestsView" ]
-          },
-          action: function () {
-            var db = require("@arangodb").db;
-            var c = db._collection("UnitTestsCollection");
-            c.save({ _key: "baz", xyz: 3 });
-            return c.toArray().length;
-          }
-        });
-        assertEqual(30, result);
-      }
     },
 
     testAttributeEqualityFilter : function () {

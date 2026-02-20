@@ -234,7 +234,6 @@ const helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help
   '  _name()                               name of the current database      ' + '\n' +
   '                                                                          ' + '\n' +
   'Query / Transaction Functions:                                            ' + '\n' +
-  '  _executeTransaction(<transaction>)    execute transaction               ' + '\n' +
   '  _query(<query>)                       execute AQL query                 ' + '\n' +
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
@@ -1199,71 +1198,14 @@ ArangoDatabase.prototype._endpoints = function () {
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief execute a transaction
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._executeTransaction = function (data) {
-  if (!data || typeof (data) !== 'object') {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'usage: _executeTransaction(<object>)'
-    });
-  }
-
-  data = Object.assign({}, data);
-
-  if (!data.collections || typeof data.collections !== 'object') {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'missing/invalid collections definition for transaction'
-    });
-  }
-
-  data.collections = Object.assign({}, data.collections);
-  if (data.collections.read) {
-    if (!Array.isArray(data.collections.read)) {
-      data.collections.read = [data.collections.read];
-    }
-    data.collections.read = data.collections.read.map(
-      col => col.isArangoCollection ? col.name() : col
-    );
-  }
-  if (data.collections.write) {
-    if (!Array.isArray(data.collections.write)) {
-      data.collections.write = [data.collections.write];
-    }
-    data.collections.write = data.collections.write.map(
-      col => col.isArangoCollection ? col.name() : col
-    );
-  }
-
-  if (!data.action ||
-    (typeof (data.action) !== 'string' && typeof (data.action) !== 'function')) {
-    throw new ArangoError({
-      error: true,
-      code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: 'missing/invalid action definition for transaction'
-    });
-  }
-
-  if (typeof (data.action) === 'function') {
-    data.action = String(data.action);
-  }
-
-  let requestResult = this._connection.POST('/_api/transaction', data);
-  if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
+  throw new ArangoError({
+    error: true,
+    code: internal.errors.ERROR_HTTP_NOT_IMPLEMENTED.code,
+    errorNum: internal.errors.ERROR_NOT_IMPLEMENTED.code,
+    errorMessage: 'JavaScript transactions are no longer supported. ' +
+      'Use streaming transactions (db._createTransaction) instead.'
+  });
 };
 
 

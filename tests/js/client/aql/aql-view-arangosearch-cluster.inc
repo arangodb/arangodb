@@ -298,21 +298,6 @@
       },
 
       testTransactionRegistration : function () {
-        if (SYS_IS_V8_BUILD) {
-          // ensure data is synced
-          db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
-
-          // implicit read lock
-          var result = db._executeTransaction({
-            collections: { },
-            action: function () {
-              var db = require("@arangodb").db;
-              return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
-            }
-          });
-          assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
-          assertEqual(1, result.length);
-        }
       },
 
       testViewCollectionOptions : function() {
