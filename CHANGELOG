@@ -3,13 +3,13 @@ devel
 
 * Add new API GET /_admin/public-options for new platform UI.
 
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
 * Add support to access the JWT token and the list of roles in the ExecContext.
 
 * Add switch `--server.external-rbac-service` to enable role-based access control.
   For now, it does not do the actual authorization change.
-
-* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
-  dependencies.
 
 * Updated ArangoDB Starter to v0.19.17.
 
