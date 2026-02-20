@@ -2717,19 +2717,15 @@ arangodb::Result hotBackupList(
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  reqOpts.allowCompression = false;
 
   std::string const url = apiStr + "list";
-
-  network::Headers headers;
-  headers.emplace("accept-encoding", "identity");
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
                                                    fuerte::RestVerb::Post, url,
-                                                   body, reqOpts, headers));
+                                                   body, reqOpts));
   }
 
   size_t nrGood = 0;
@@ -2800,10 +2796,7 @@ arangodb::Result hotBackupList(
     }
 
     for (auto [key, value] : VPackObjectIterator(resSlice.get("list"))) {
-      LOG_DEVEL << "FROM " << r.destination << " READING BACKUP " << key.toHex()
-                << " WITH VALUE " << value.toHex();
       auto meta = [&] {
-        // try {
         if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
             !error.isNone()) {
           return ResultT<BackupMeta>::success(BackupMeta::fromError(
@@ -2811,10 +2804,6 @@ arangodb::Result hotBackupList(
               VelocyPackHelper::getStringValue(resSlice, "server", ""), value));
         }
         return BackupMeta::fromSlice(value);
-        // } catch (...) {
-        //   LOG_DEVEL << "Could not parse backup meta ";
-        //   throw;
-        // }
       }();
       if (meta.ok()) {
         dbsBackups[key.copyString()].push_back(std::move(meta.get()));
@@ -2865,11 +2854,9 @@ arangodb::Result hotBackupList(
       front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
       front._errors = std::move(errors);
       hotBackups.insert(std::make_pair(front._id, front));
-      LOG_DEVEL << "BACKUP " << front._id << " IS VALID";
     }
   }
 
-  LOG_DEVEL << "HOT BACKUP LIST COMPLETE";
   return arangodb::Result();
 }
 
@@ -4413,8 +4400,6 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature,
       }
     }
   }
-
-  LOG_DEVEL << "FINAL REPORT: " << report.slice().toHex();
 
   return arangodb::Result();
 }
