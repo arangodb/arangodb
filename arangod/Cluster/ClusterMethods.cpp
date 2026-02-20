@@ -2801,7 +2801,7 @@ arangodb::Result hotBackupList(
 
     for (auto [key, value] : VPackObjectIterator(resSlice.get("list"))) {
       LOG_DEVEL << "FROM " << r.destination << " READING BACKUP " << key.toHex()
-                << " WITH VALUE ";  // << value.toJson();
+                << " WITH VALUE " << value.toHex();
       auto meta = [&] {
         // try {
         if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
@@ -2865,9 +2865,11 @@ arangodb::Result hotBackupList(
       front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
       front._errors = std::move(errors);
       hotBackups.insert(std::make_pair(front._id, front));
+      LOG_DEVEL << "BACKUP " << front._id << " IS VALID";
     }
   }
 
+  LOG_DEVEL << "HOT BACKUP LIST COMPLETE";
   return arangodb::Result();
 }
 
