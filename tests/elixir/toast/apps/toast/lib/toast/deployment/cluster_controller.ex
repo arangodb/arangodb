@@ -7,7 +7,7 @@ defmodule Toast.Deployment.ClusterController do
 
   alias Toast.Config
   alias Toast.Process.ServerProcess
-  alias Toast.Deployment.{Factory, Health}
+  alias Toast.Deployment.{Factory, Health, ServerInstance}
   alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
 
   @type status :: :stopped | :starting | :ready | :stopping | :failed
@@ -111,16 +111,11 @@ defmodule Toast.Deployment.ClusterController do
         [] -> nil
       end
 
-    server_info =
-      Map.new(state.servers, fn {id, s} ->
-        {id, %{role: s.role, port: s.port, endpoint: s.endpoint, log_file: s.log_file}}
-      end)
-
     info = %{
       id: state.id,
       status: state.status,
       coordinator_endpoint: coordinator_endpoint,
-      servers: server_info,
+      servers: state.servers,
       error: state.error,
       diagnostics: state.diagnostics
     }
@@ -160,18 +155,18 @@ defmodule Toast.Deployment.ClusterController do
          state = init_servers_from_topology(state, topology),
          {:ok, state} <- start_all_server_processes(state, topology),
          _ = Logger.info("#{state.id}: launching agents"),
-         :ok <- launch_servers(state.agents, state, timeout: remaining_ms(deadline)),
+         {:ok, state} <- launch_servers(state, state.agents, timeout: remaining_ms(deadline)),
          _ = Logger.info("#{state.id}: waiting for agency consensus"),
          :ok <- wait_for_agency(state, deadline),
          _ = Logger.info("#{state.id}: agency ready, launching dbservers"),
-         :ok <-
-           launch_servers(state.dbservers, state,
+         {:ok, state} <-
+           launch_servers(state, state.dbservers,
              health_check: true,
              timeout: remaining_ms(deadline)
            ),
          _ = Logger.info("#{state.id}: dbservers ready, launching coordinators"),
-         :ok <-
-           launch_servers(state.coordinators, state,
+         {:ok, state} <-
+           launch_servers(state, state.coordinators,
              health_check: true,
              timeout: remaining_ms(deadline)
            ),
@@ -180,9 +175,7 @@ defmodule Toast.Deployment.ClusterController do
       {:ok, %{state | status: :ready}}
     else
       {:error, reason} ->
-        Logger.error(
-          "Deploy failed for #{state.id}: #{inspect(reason)}"
-        )
+        Logger.error("Deploy failed for #{state.id}: #{inspect(reason)}")
 
         failed_state = rollback(state, reason)
         {:error, reason, failed_state}
@@ -207,12 +200,11 @@ defmodule Toast.Deployment.ClusterController do
     servers =
       Map.new(specs, fn spec ->
         {spec.id,
-         %{
+         %ServerInstance{
+           id: spec.id,
            role: role,
            port: spec.port,
            endpoint: "http://127.0.0.1:#{spec.port}",
-           server_pid: nil,
-           health_monitor: nil,
            log_file: spec.log_file,
            server_dir: spec.server_dir
          }}
@@ -247,7 +239,7 @@ defmodule Toast.Deployment.ClusterController do
     end)
   end
 
-  defp launch_servers(server_ids, state, opts) do
+  defp launch_servers(state, server_ids, opts) do
     health_check? = Keyword.get(opts, :health_check, false)
     timeout = Keyword.get(opts, :timeout, 60_000)
     count = length(server_ids)
@@ -272,6 +264,10 @@ defmodule Toast.Deployment.ClusterController do
             else
               :ok
             end
+            |> case do
+              :ok -> {:ok, {server_id, os_pid}}
+              error -> error
+            end
           end
         end,
         ordered: false,
@@ -284,8 +280,16 @@ defmodule Toast.Deployment.ClusterController do
     timeouts = for {:exit, :timeout} <- results, do: :timeout
 
     case errors ++ timeouts do
-      [] -> :ok
-      [first | _] -> {:error, first}
+      [] ->
+        servers =
+          Enum.reduce(results, state.servers, fn {:ok, {:ok, {id, os_pid}}}, servers ->
+            Map.update!(servers, id, &%{&1 | pid: os_pid})
+          end)
+
+        {:ok, %{state | servers: servers}}
+
+      [first | _] ->
+        {:error, first}
     end
   end
 
@@ -313,23 +317,45 @@ defmodule Toast.Deployment.ClusterController do
     diagnostics = collect_all_diagnostics(state)
     Logger.debug("#{state.id}: diagnostics collected")
 
-    %{state | status: :stopped, servers: clear_server_pids(state.servers), diagnostics: diagnostics}
+    %{
+      state
+      | status: :stopped,
+        servers: clear_server_pids(state.servers),
+        diagnostics: diagnostics
+    }
   end
 
   defp collect_all_diagnostics(state) do
+    {crashed_id, crashed_info} = extract_crashed_server(state.error)
+
     Map.new(state.servers, fn {server_id, server} ->
       sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server_id)
       log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
 
+      server_error =
+        if server_id == crashed_id,
+          do: {:server_crashed, crashed_info},
+          else: nil
+
       diagnostics = %{
         sanitizer_errors: sanitizer_errors,
         server_log: if(log_content, do: ServerLog.scan(log_content)),
-        crash_report: if(log_content, do: CrashLogParser.parse(log_content))
+        crash_report: if(log_content, do: CrashLogParser.parse(log_content)),
+        server_error: server_error,
+        server: server
       }
 
       {server_id, diagnostics}
     end)
   end
+
+  defp extract_crashed_server({:server_crashed, server_id, crash_info}),
+    do: {server_id, crash_info}
+
+  defp extract_crashed_server({:server_unhealthy, server_id}),
+    do: {server_id, nil}
+
+  defp extract_crashed_server(_), do: {nil, nil}
 
   defp stop_servers(server_ids, state, timeout) do
     Task.async_stream(
@@ -402,24 +428,37 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   defp stop_health_monitor(state, server_id) do
-    case get_in(state.servers, [server_id, :health_monitor]) do
-      nil -> :ok
-      pid -> try do Toast.Process.HealthMonitor.stop(pid) catch :exit, _ -> :ok end
+    case state.servers[server_id] do
+      %{health_monitor: nil} ->
+        :ok
+
+      %{health_monitor: pid} ->
+        try do
+          Toast.Process.HealthMonitor.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+
+      nil ->
+        :ok
     end
   end
 
   defp stop_server_process(state, server_id, timeout) do
-    case get_in(state.servers, [server_id, :server_pid]) do
-      nil ->
+    case state.servers[server_id] do
+      %{server_pid: nil} ->
         :ok
 
-      pid ->
+      %{server_pid: pid} ->
         try do
           ServerProcess.stop(pid, timeout)
           DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
         catch
           :exit, _ -> :ok
         end
+
+      nil ->
+        :ok
     end
   end
 

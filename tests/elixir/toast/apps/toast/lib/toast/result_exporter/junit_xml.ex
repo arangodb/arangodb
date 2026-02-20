@@ -174,7 +174,34 @@ defmodule Toast.ResultExporter.JUnitXML do
   defp format_crash_section(%{signal_name: nil}), do: nil
 
   defp format_crash_section(report) do
-    "Crash Report:\n  Signal: #{report.signal_name} (#{report.signal_number})\n  #{report.crash_header}"
+    parts = [
+      "Crash Report:",
+      "  Signal: #{report.signal_name} (#{report.signal_number})"
+    ]
+
+    parts =
+      case Map.get(report, :crash_output, []) do
+        lines when is_list(lines) and lines != [] ->
+          formatted = Enum.map(lines, &"    #{&1}")
+          parts ++ ["  Crash output:" | formatted]
+
+        _ ->
+          parts ++ [if(report.crash_header, do: "  #{report.crash_header}")]
+      end
+
+    parts =
+      case report.fatal_lines do
+        lines when is_list(lines) and lines != [] ->
+          formatted = Enum.map(lines, &"    #{&1}")
+          parts ++ ["  Fatal lines:" | formatted]
+
+        _ ->
+          parts
+      end
+
+    parts
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n")
   end
 
   defp format_log_section(nil), do: nil

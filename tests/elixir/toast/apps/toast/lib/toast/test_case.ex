@@ -113,6 +113,7 @@ defmodule Toast.TestCase do
     ExUnit.after_suite(fn stats ->
       diagnostics = Toast.Deployment.stop_and_collect(deployment)
       Application.put_env(:toast, :__test_diagnostics__, diagnostics)
+      print_diagnostics_summary(diagnostics)
       Toast.ResultExporter.export()
 
       if stats.failures == 0 do
@@ -142,4 +143,12 @@ defmodule Toast.TestCase do
     ExUnit.configure(formatters: formatters)
   end
 
+  defp print_diagnostics_summary(nil), do: :ok
+
+  defp print_diagnostics_summary(diagnostics) do
+    case Toast.Diagnostics.Summary.format_crashed_servers(diagnostics) do
+      nil -> :ok
+      text -> IO.puts(text)
+    end
+  end
 end

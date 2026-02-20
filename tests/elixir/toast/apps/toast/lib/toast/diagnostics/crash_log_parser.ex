@@ -6,21 +6,28 @@ defmodule Toast.Diagnostics.CrashLogParser do
           signal_name: String.t() | nil,
           crash_header: String.t() | nil,
           backtrace: [String.t()],
-          fatal_lines: [String.t()]
+          fatal_lines: [String.t()],
+          crash_output: [String.t()]
         }
 
+  @doc "Parse log content from a string. Prefer `parse_file/1` for large logs."
   @spec parse(String.t()) :: crash_report()
   def parse(content) do
-    lines = String.split(content, "\n")
+    content
+    |> String.split("\n")
+    |> Enum.reduce(new(), &process_line/2)
+    |> finalize()
+  end
 
-    report =
-      Enum.reduce(lines, empty_report(), fn line, report ->
-        report
-        |> maybe_collect_fatal(line)
-        |> maybe_collect_crash(line)
-      end)
-
-    %{report | fatal_lines: Enum.reverse(report.fatal_lines), backtrace: Enum.reverse(report.backtrace)}
+  @doc "Stream a log file and parse crash diagnostics without loading it into memory."
+  @spec parse_file(Path.t()) :: crash_report() | nil
+  def parse_file(path) do
+    if File.exists?(path) do
+      path
+      |> File.stream!()
+      |> Enum.reduce(new(), &process_line/2)
+      |> finalize()
+    end
   end
 
   @spec has_crash?(String.t()) :: boolean()
@@ -33,13 +40,35 @@ defmodule Toast.Diagnostics.CrashLogParser do
     "#{name} (signal #{number}) - #{length(bt)} backtrace frames"
   end
 
-  defp empty_report do
+  @doc "Create initial accumulator for streaming line-by-line processing."
+  @spec new() :: map()
+  def new do
     %{
       signal_number: nil,
       signal_name: nil,
       crash_header: nil,
       backtrace: [],
-      fatal_lines: []
+      fatal_lines: [],
+      crash_output: []
+    }
+  end
+
+  @doc "Process a single log line, updating the accumulator."
+  @spec process_line(String.t(), map()) :: map()
+  def process_line(line, report) do
+    report
+    |> maybe_collect_fatal(line)
+    |> maybe_collect_crash(line)
+  end
+
+  @doc "Finalize the accumulator into a crash_report (reverses collected lists)."
+  @spec finalize(map()) :: crash_report()
+  def finalize(report) do
+    %{
+      report
+      | fatal_lines: Enum.reverse(report.fatal_lines),
+        backtrace: Enum.reverse(report.backtrace),
+        crash_output: Enum.reverse(report.crash_output)
     }
   end
 
@@ -61,6 +90,7 @@ defmodule Toast.Diagnostics.CrashLogParser do
       report
       |> maybe_set_crash_header(line, crash_content)
       |> maybe_collect_backtrace_frame(crash_content)
+      |> Map.update!(:crash_output, &[crash_content | &1])
     else
       report
     end

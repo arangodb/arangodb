@@ -1,0 +1,171 @@
+defmodule Toast.Diagnostics.SummaryTest do
+  use ExUnit.Case, async: true
+
+  alias Toast.Diagnostics.Summary
+  alias Toast.Deployment.ServerInstance
+
+  defp base_diagnostics(overrides \\ %{}) do
+    Map.merge(
+      %{
+        sanitizer_errors: [],
+        server_log: %{assertion_failures: [], warnings: []},
+        crash_report: %{
+          signal_number: nil,
+          signal_name: nil,
+          crash_header: nil,
+          backtrace: [],
+          fatal_lines: [],
+          crash_output: []
+        },
+        server_error: nil,
+        server: %ServerInstance{id: "toast-42", role: :single, pid: 12345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
+      },
+      overrides
+    )
+  end
+
+  defp crashed_diagnostics(overrides \\ %{}) do
+    base_diagnostics(
+      Map.merge(
+        %{
+          crash_report: %{
+            signal_number: 11,
+            signal_name: "SIGSEGV",
+            crash_header: "caught unexpected signal 11 (SIGSEGV)",
+            backtrace: ["frame 0 at 0xdead", "frame 1 at 0xbeef"],
+            fatal_lines: ["FATAL: something went wrong"],
+            crash_output: [
+              "caught unexpected signal 11 (SIGSEGV)",
+              "physical memory: 16384, rss usage: 1234567",
+              "frame 0 at 0xdead",
+              "frame 1 at 0xbeef"
+            ]
+          },
+          server_error:
+            {:server_crashed, %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+        },
+        overrides
+      )
+    )
+  end
+
+  describe "format_crashed_servers/1" do
+    test "returns nil for nil input" do
+      assert Summary.format_crashed_servers(nil) == nil
+    end
+
+    test "returns nil for single-server diagnostics with no crash" do
+      diag = base_diagnostics()
+      assert Summary.format_crashed_servers(diag) == nil
+    end
+
+    test "formats single-server crash with signal, crash output, and log path" do
+      diag = crashed_diagnostics()
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "toast-42 (PID 12345, http://127.0.0.1:8529):"
+      assert text =~ "Signal: SIGSEGV (signal 11)"
+      assert text =~ "Crash output:"
+      assert text =~ "caught unexpected signal 11 (SIGSEGV)"
+      assert text =~ "physical memory: 16384"
+      assert text =~ "frame 0 at 0xdead"
+      assert text =~ "frame 1 at 0xbeef"
+      assert text =~ "Fatal log entries:"
+      assert text =~ "FATAL: something went wrong"
+      assert text =~ "Log: /tmp/toast/server/log"
+    end
+
+    test "cluster with one crashed server shows only the crashed server" do
+      cluster_diag = %{
+        "agent-1" => base_diagnostics(%{
+          server: %ServerInstance{id: "agent-1", role: :agent, pid: 10001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
+        }),
+        "dbserver-1" => crashed_diagnostics(%{
+          server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
+        })
+      }
+
+      text = Summary.format_crashed_servers(cluster_diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "dbserver-1 (PID 10002, http://127.0.0.1:8530):"
+      assert text =~ "Signal: SIGSEGV"
+      assert text =~ "Log: /tmp/toast/dbserver-1/log"
+      refute text =~ "agent-1"
+    end
+
+    test "shows server header without PID/endpoint when not available" do
+      diag = crashed_diagnostics(%{
+        server: %ServerInstance{id: "toast-99", role: :single, pid: nil, endpoint: nil}
+      })
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "  toast-99:\n"
+      refute text =~ "PID"
+    end
+
+    test "detects crash from server_error {:server_crashed, _} without signal_name" do
+      diag =
+        base_diagnostics(%{
+          server_error:
+            {:server_crashed, %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+        })
+
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "Exit: signal 11, exit_status 139"
+      assert text =~ "No crash information found in server log."
+    end
+
+    test "detects crash from server_error {:server_unhealthy, _}" do
+      diag = base_diagnostics(%{server_error: {:server_unhealthy, "server-1"}})
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "Server became unresponsive"
+    end
+
+    test "shows 'no crash information' when crash_output is empty" do
+      diag =
+        crashed_diagnostics(%{
+          crash_report: %{
+            signal_number: 11,
+            signal_name: "SIGSEGV",
+            crash_header: "caught unexpected signal 11 (SIGSEGV)",
+            backtrace: [],
+            fatal_lines: [],
+            crash_output: []
+          }
+        })
+
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "Signal: SIGSEGV"
+      refute text =~ "Crash output:"
+      assert text =~ "No crash information found in server log."
+    end
+
+    test "omits Fatal log entries section when fatal_lines is empty" do
+      diag =
+        crashed_diagnostics(%{
+          crash_report: %{
+            signal_number: 11,
+            signal_name: "SIGSEGV",
+            crash_header: "caught unexpected signal 11 (SIGSEGV)",
+            backtrace: [],
+            fatal_lines: [],
+            crash_output: ["caught unexpected signal 11 (SIGSEGV)"]
+          }
+        })
+
+      text = Summary.format_crashed_servers(diag)
+
+      assert text =~ "CRASHED SERVERS"
+      assert text =~ "Crash output"
+      refute text =~ "Fatal log entries"
+    end
+  end
+end

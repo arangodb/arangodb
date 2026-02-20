@@ -2,6 +2,7 @@ defmodule Toast.ResultExporter.JSONTest do
   use ExUnit.Case, async: true
 
   alias Toast.ResultExporter.JSON
+  alias Toast.Deployment.ServerInstance
 
   @started_at ~U[2024-01-15 10:00:00Z]
   @finished_at ~U[2024-01-15 10:02:00Z]
@@ -63,8 +64,10 @@ defmodule Toast.ResultExporter.JSONTest do
         signal_name: "SIGSEGV",
         crash_header: "caught unexpected signal 11",
         backtrace: ["frame 0 at 0xdead"],
-        fatal_lines: ["FATAL error"]
-      }
+        fatal_lines: ["FATAL error"],
+        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
+      },
+      server: %ServerInstance{id: "toast-1", role: :single, pid: 12345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
     }
   end
 
@@ -78,10 +81,14 @@ defmodule Toast.ResultExporter.JSONTest do
           signal_name: nil,
           crash_header: nil,
           backtrace: [],
-          fatal_lines: []
-        }
+          fatal_lines: [],
+          crash_output: []
+        },
+        server: %ServerInstance{id: "agent-1", role: :agent, pid: 10001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
       },
-      "dbserver-1" => single_server_diagnostics()
+      "dbserver-1" => %{single_server_diagnostics() |
+        server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
+      }
     }
   end
 
@@ -200,6 +207,20 @@ defmodule Toast.ResultExporter.JSONTest do
 
       assert health["log_issues"]["assertion_failures"] == ["assertion failed at foo.cpp:42"]
       assert health["log_issues"]["warnings"] == ["FATAL shutdown"]
+    end
+
+    test "log_file included in server instance" do
+      result = JSON.build(base_test_results(), single_server_diagnostics())
+      assert result["server_health"]["server"]["log_file"] == "/tmp/toast/server/log"
+    end
+
+    test "server instance included in server_health" do
+      result = JSON.build(base_test_results(), single_server_diagnostics())
+      server = result["server_health"]["server"]
+      assert server["id"] == "toast-1"
+      assert server["role"] == "single"
+      assert server["pid"] == 12345
+      assert server["endpoint"] == "http://127.0.0.1:8529"
     end
 
     test "cluster diagnostics (per-server map) rendered correctly" do

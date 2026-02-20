@@ -4,9 +4,7 @@ defmodule Toast.Deployment do
   require Logger
 
   alias Toast.Config
-  alias Toast.Deployment.{SingleServerController, ClusterController}
-
-  @type server_info :: %{role: atom(), port: pos_integer(), endpoint: String.t()}
+  alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
 
   @type t :: %__MODULE__{
           id: String.t(),
@@ -15,7 +13,7 @@ defmodule Toast.Deployment do
           controller: pid(),
           crash_monitor: pid(),
           work_dir: Path.t(),
-          servers: %{String.t() => server_info()} | nil
+          servers: %{String.t() => ServerInstance.t()} | nil
         }
 
   @enforce_keys [:id, :mode, :endpoint, :controller, :work_dir]
@@ -37,9 +35,9 @@ defmodule Toast.Deployment do
 
       {:ok,
        %__MODULE__{
-         id: info.id,
+         id: info.server.id,
          mode: :single_server,
-         endpoint: info.endpoint,
+         endpoint: info.server.endpoint,
          controller: pid,
          crash_monitor: crash_monitor,
          work_dir: config.work_dir
@@ -130,7 +128,7 @@ defmodule Toast.Deployment do
   def crash_info(%__MODULE__{mode: :single_server} = d) do
     case controller_call(d, :get_info, nil) do
       nil -> :no_crash
-      info -> extract_crash_info(info.error, info.log_file)
+      info -> extract_crash_info(info.error, info.server.log_file)
     end
   end
 
@@ -186,7 +184,7 @@ defmodule Toast.Deployment do
   defp extract_crash_info(_error, _log_file), do: :no_crash
 
   defp extract_cluster_crash_info({:server_crashed, server_id, crash_info}, servers) do
-    log_file = get_in(servers, [server_id, :log_file])
+    log_file = servers[server_id].log_file
     log_report = read_and_parse_log(log_file)
 
     {:ok,

@@ -63,7 +63,8 @@ defmodule Toast.ResultExporter.JUnitXMLTest do
         signal_name: "SIGSEGV",
         crash_header: "caught unexpected signal 11",
         backtrace: ["frame 0 at 0xdead"],
-        fatal_lines: ["FATAL error"]
+        fatal_lines: ["FATAL error"],
+        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
       }
     }
   end
@@ -158,6 +159,27 @@ defmodule Toast.ResultExporter.JUnitXMLTest do
       assert xml =~ "Crash Report:"
       assert xml =~ "Signal: SIGSEGV (11)"
       assert xml =~ "Log Issues:"
+    end
+
+    test "crash section includes crash output" do
+      xml = JUnitXML.render(base_test_results(), single_server_diagnostics())
+      assert xml =~ "Crash output:"
+      assert xml =~ "caught unexpected signal 11"
+      assert xml =~ "frame 0 at 0xdead"
+    end
+
+    test "crash section includes fatal lines" do
+      diag = %{single_server_diagnostics() | crash_report: %{
+        signal_number: 11,
+        signal_name: "SIGSEGV",
+        crash_header: "caught unexpected signal 11",
+        backtrace: [],
+        fatal_lines: ["assertion failed at foo.cpp:42"],
+        crash_output: []
+      }}
+      xml = JUnitXML.render(base_test_results(), diag)
+      assert xml =~ "Fatal lines:"
+      assert xml =~ "assertion failed at foo.cpp:42"
     end
 
     test "no system-err when diagnostics are nil" do
