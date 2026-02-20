@@ -71,7 +71,6 @@ LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addOldOption("log.tty", "log.foreground-tty");
   options->addOldOption("log.escape", "log.escape-control-chars");
 
   options->addSection("log", "logging");

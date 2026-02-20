@@ -38,8 +38,6 @@ using namespace arangodb::options;
 namespace arangodb {
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("temp-path", "temp.path");
-
   options->addSection("temp", "temporary files");
 
   options

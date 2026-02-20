@@ -522,9 +522,6 @@ prevent WAL files from being moved to the archive and being removed.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-  options->addOldOption("rocksdb.delayed_write_rate",
-                        "rocksdb.delayed-write-rate");
-
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "The minimum number of write buffers that are merged "
                      "together before writing to storage.",

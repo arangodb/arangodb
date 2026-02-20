@@ -117,9 +117,6 @@ void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addOldOption("server.authenticate-system-only",
-                        "server.authentication-system-only");
-
   options
       ->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",

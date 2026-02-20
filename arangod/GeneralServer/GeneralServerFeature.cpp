@@ -170,13 +170,6 @@ GeneralServerFeature::GeneralServerFeature(
 
 void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("no-server", "server.rest-server");
-
   options
       ->addOption("--server.telemetrics-api",
                   "Whether to enable the telemetrics API.",

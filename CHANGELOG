@@ -1,6 +1,40 @@
 4.0
 ---
 
+* Remove the following commandline options which have been replaced a while ago:
+    - check-version (replaced by "database.check-version")
+    - database.disable-query-tracking (replaced by "query.tracking")
+    - database.query-cache-max-results (replaced by "query.cache-entries")
+    - database.query-cache-mode (replaced by "query.cache-mode")
+    - database.replication-applier (replaced by "replication.auto-start")
+    - javascript.endpoints-blacklist (replaced by "javascript.endpoints-denylist")
+    - javascript.endpoints-whitelist (replaced by "javascript.endpoints-allowlist")
+    - javascript.environment-variables-blacklist (replaced by "javascript.environment-variables-denylist")
+    - javascript.environment-variables-whitelist (replaced by "javascript.environment-variables-allowlist")
+    - javascript.files-whitelist (replaced by "javascript.files-allowlist")
+    - javascript.startup-options-blacklist (replaced by "javascript.startup-options-denylist")
+    - javascript.startup-options-whitelist (replaced by "javascript.startup-options-allowlist")
+    - log.tty (replaced by "log.foreground-tty")
+    - no-server (replaced by "server.rest-server")
+    - rocksdb.delayed_write_rate (replaced by "rocksdb.delayed-write-rate")
+    - scheduler.threads (replaced by "server.maximal-threads")
+    - server.allow-method-override (replaced by "http.allow-method-override")
+    - server.authenticate-system-only (replaced by "server.authentication-system-only")
+    - server.backlog-size (replaced by "tcp.backlog-size")
+    - server.cafile (replaced by "ssl.cafile")
+    - server.disable-replication-applier (replaced by "replication.auto-start")
+    - server.disable-statistics (replaced by "server.statistics")
+    - server.hide-product-header (replaced by "http.hide-product-header")
+    - server.keep-alive-timeout (replaced by "http.keep-alive-timeout")
+    - server.keyfile (replaced by "ssl.keyfile")
+    - server.reuse-address (replaced by "tcp.reuse-address")
+    - server.ssl-cache ((replaced by "ssl.session-cache")
+    - server.ssl-cipher-list (replaced by "ssl.cipher-list")
+    - server.ssl-options (replaced by "ssl.options")
+    - server.ssl-protocol (replaced by "ssl.protocol")
+    - temp-path (replaced by "temp.path")
+    - upgrade (replaced by "database.auto-upgrade")
+
 * Remove the following deprecated commandline options:
     - agency.pool-size
     - arangosearch.threads

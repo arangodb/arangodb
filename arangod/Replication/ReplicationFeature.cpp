@@ -93,11 +93,6 @@ void ReplicationFeature::collectOptions(
       new BooleanParameter(&_options.replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOldOption("server.disable-replication-applier",
-                        "replication.auto-start");
-  options->addOldOption("database.replication-applier",
-                        "replication.auto-start");
-
   options->addOldOption("--replication.automatic-failover",
                         "--replication.active-failover");
 

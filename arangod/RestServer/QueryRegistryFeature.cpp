@@ -133,11 +133,6 @@ void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("query", "AQL queries");
 
-  options->addOldOption("database.query-cache-mode", "query.cache-mode");
-  options->addOldOption("database.query-cache-max-results",
-                        "query.cache-entries");
-  options->addOldOption("database.disable-query-tracking", "query.tracking");
-
   // option obsoleted since 3.12.1, because the APIs are turned on by default.
   options->addObsoleteOption("query.enable-debug-apis",
                              "Whether to enable query debug APIs.", false);

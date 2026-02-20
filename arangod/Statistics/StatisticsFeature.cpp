@@ -658,8 +658,6 @@ StatisticsFeature::StatisticsFeature(
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.disable-statistics", "server.statistics");
-
   options
       ->addOption("--server.statistics",
                   "Whether to enable statistics gathering and statistics APIs.",
