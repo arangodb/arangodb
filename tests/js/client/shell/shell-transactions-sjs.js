@@ -30,7 +30,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
-const {activateFailure} = require('@arangodb/test-helper');
+const { activateFailure } = require('@arangodb/test-helper');
 const isCluster = internal.isCluster();
 let IM = global.instanceManager;
 
@@ -52,7 +52,7 @@ let compareStringIds = function (l, r) {
 
 var sortedKeys = function (col) {
   'use strict';
-  var keys = [ ];
+  var keys = [];
 
   col.toArray().forEach(function (d) {
     keys.push(d._key);
@@ -62,7 +62,7 @@ var sortedKeys = function (col) {
   return keys;
 };
 
-function transactionFailuresSuite () {
+function transactionFailuresSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
   let c = null;
@@ -81,17 +81,17 @@ function transactionFailuresSuite () {
       db._drop(cn);
       c = null;
     },
-    
-    testCommitEmptyTransactionFailure : function () {
+
+    testCommitEmptyTransactionFailure: function () {
       c.insert({ _key: "foobar", value: "baz" });
       assertEqual(1, c.count());
       activateFailure("TransactionCommitFail");
       try {
         db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
-          action: function () {}
+          action: function () { }
         });
 
         fail();
@@ -104,19 +104,19 @@ function transactionFailuresSuite () {
       assertEqual("baz", c.document("foobar").value);
     },
 
-    testCommitTransactionWithRemovalsFailure : function () {
+    testCommitTransactionWithRemovalsFailure: function () {
       let docs = [];
       for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i });
       }
       c.insert(docs);
       assertEqual(100, c.count());
-      
+
       activateFailure("TransactionCommitFail");
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
           action: function () {
             let c = require('@arangodb').db._collection(params.cn);
@@ -138,15 +138,15 @@ function transactionFailuresSuite () {
       IM.debugClearFailAt();
       assertEqual(100, c.count());
     },
-    
-    testCommitTransactionWithFailuresInsideFailure : function () {
+
+    testCommitTransactionWithFailuresInsideFailure: function () {
       c.insert({ _key: "foobar", value: "baz" });
 
       activateFailure("TransactionCommitFail");
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
           action: function () {
             let c = require('@arangodb').db._collection(params.cn);
@@ -179,7 +179,7 @@ function transactionFailuresSuite () {
   };
 }
 
-function transactionRevisionsSuite () {
+function transactionRevisionsSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
   let c = null;
@@ -446,7 +446,7 @@ function transactionRevisionsSuite () {
   };
 }
 
-function transactionInvocationSuite () {
+function transactionInvocationSuite() {
   'use strict';
   return {
 
@@ -463,34 +463,34 @@ function transactionInvocationSuite () {
         0,
         1,
         'foo',
-        { }, { },
-        { }, { }, { },
+        {}, {},
+        {}, {}, {},
         false, true,
-        [ ],
-        [ 'action' ],
-        [ 'collections' ],
-        [ 'collections', 'action' ],
-        { },
+        [],
+        ['action'],
+        ['collections'],
+        ['collections', 'action'],
+        {},
         { collections: true },
         { action: true },
         { action: function () { } },
         { collections: true, action: true },
-        { collections: { }, action: true },
-        { collections: { } },
+        { collections: {}, action: true },
+        { collections: {} },
         { collections: true, action: function () { } },
         { collections: { read: true }, action: function () { } },
-        { collections: { }, lockTimeout: -1, action: function () { } },
-        { collections: { }, lockTimeout: -30.0, action: function () { } },
-        { collections: { }, lockTimeout: null, action: function () { } },
-        { collections: { }, lockTimeout: true, action: function () { } },
-        { collections: { }, lockTimeout: 'foo', action: function () { } },
-        { collections: { }, lockTimeout: [ ], action: function () { } },
-        { collections: { }, lockTimeout: { }, action: function () { } },
-        { collections: { }, waitForSync: null, action: function () { } },
-        { collections: { }, waitForSync: 0, action: function () { } },
-        { collections: { }, waitForSync: 'foo', action: function () { } },
-        { collections: { }, waitForSync: [ ], action: function () { } },
-        { collections: { }, waitForSync: { }, action: function () { } }
+        { collections: {}, lockTimeout: -1, action: function () { } },
+        { collections: {}, lockTimeout: -30.0, action: function () { } },
+        { collections: {}, lockTimeout: null, action: function () { } },
+        { collections: {}, lockTimeout: true, action: function () { } },
+        { collections: {}, lockTimeout: 'foo', action: function () { } },
+        { collections: {}, lockTimeout: [], action: function () { } },
+        { collections: {}, lockTimeout: {}, action: function () { } },
+        { collections: {}, waitForSync: null, action: function () { } },
+        { collections: {}, waitForSync: 0, action: function () { } },
+        { collections: {}, waitForSync: 'foo', action: function () { } },
+        { collections: {}, waitForSync: [], action: function () { } },
+        { collections: {}, waitForSync: {}, action: function () { } }
       ];
 
       let localDebug = false;
@@ -523,14 +523,14 @@ function transactionInvocationSuite () {
 
     testValidEmptyInvocations: function () {
       var tests = [
-        { collections: { }, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ] }, action: function () { var result = 1; return result; } },
-        { collections: { write: [ ] }, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ], write: [ ] }, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ], write: [ ] }, lockTimeout: 5.0, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ], write: [ ] }, lockTimeout: 0.0, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ], write: [ ] }, waitForSync: true, action: function () { var result = 1; return result; } },
-        { collections: { read: [ ], write: [ ] }, waitForSync: false, action: function () { var result = 1; return result; } }
+        { collections: {}, action: function () { var result = 1; return result; } },
+        { collections: { read: [] }, action: function () { var result = 1; return result; } },
+        { collections: { write: [] }, action: function () { var result = 1; return result; } },
+        { collections: { read: [], write: [] }, action: function () { var result = 1; return result; } },
+        { collections: { read: [], write: [] }, lockTimeout: 5.0, action: function () { var result = 1; return result; } },
+        { collections: { read: [], write: [] }, lockTimeout: 0.0, action: function () { var result = 1; return result; } },
+        { collections: { read: [], write: [] }, waitForSync: true, action: function () { var result = 1; return result; } },
+        { collections: { read: [], write: [] }, waitForSync: false, action: function () { var result = 1; return result; } }
       ];
 
       tests.forEach(function (test) {
@@ -547,12 +547,12 @@ function transactionInvocationSuite () {
 
     testReturnValues: function () {
       var tests = [
-        { expected: 1, trx: { collections: { }, action: function () { return 1; } } },
-        { expected: null, trx: { collections: { }, action: function () { } } },
-        { expected: [ ], trx: { collections: { read: [ ] }, action: function () { return [ ]; } } },
-        { expected: [ null, true, false ], trx: { collections: { write: [ ] }, action: function () { return [ null, true, false ]; } } },
-        { expected: 'foo', trx: { collections: { read: [ ], write: [ ] }, action: function () { return 'foo'; } } },
-        { expected: { 'a': 1, 'b': 2 }, trx: { collections: { read: [ ], write: [ ] }, action: function () { return { 'a': 1, 'b': 2 }; } } }
+        { expected: 1, trx: { collections: {}, action: function () { return 1; } } },
+        { expected: null, trx: { collections: {}, action: function () { } } },
+        { expected: [], trx: { collections: { read: [] }, action: function () { return []; } } },
+        { expected: [null, true, false], trx: { collections: { write: [] }, action: function () { return [null, true, false]; } } },
+        { expected: 'foo', trx: { collections: { read: [], write: [] }, action: function () { return 'foo'; } } },
+        { expected: { 'a': 1, 'b': 2 }, trx: { collections: { read: [], write: [] }, action: function () { return { 'a': 1, 'b': 2 }; } } }
       ];
 
       tests.forEach(function (test) {
@@ -662,12 +662,12 @@ function transactionInvocationSuite () {
         collections: {
         },
         action: function (params) {
-          return [ params[1], params[4] ];
+          return [params[1], params[4]];
         },
-        params: [ 1, 2, 3, 4, 5 ]
+        params: [1, 2, 3, 4, 5]
       };
 
-      assertEqual([ 2, 5 ], require('@arangodb').db._executeTransaction(obj));
+      assertEqual([2, 5], require('@arangodb').db._executeTransaction(obj));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -679,10 +679,10 @@ function transactionInvocationSuite () {
         collections: {
         },
         action: 'function (params) { return [ params[1], params[4] ]; }',
-        params: [ 1, 2, 3, 4, 5 ]
+        params: [1, 2, 3, 4, 5]
       };
 
-      assertEqual([ 2, 5 ], require('@arangodb').db._executeTransaction(obj));
+      assertEqual([2, 5], require('@arangodb').db._executeTransaction(obj));
     }
 
   };
@@ -692,7 +692,7 @@ function transactionInvocationSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCollectionsSuite () {
+function transactionCollectionsSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
   const cn2 = 'UnitTestsTransaction2';
@@ -724,7 +724,7 @@ function transactionCollectionsSuite () {
     testNonExistingCollectionsArray: function () {
       var obj = {
         collections: {
-          read: [ 'UnitTestsTransactionNonExisting' ]
+          read: ['UnitTestsTransactionNonExisting']
         },
         action: function () {
           return true;
@@ -795,7 +795,7 @@ function transactionCollectionsSuite () {
     testNonDeclaredCollections2: function () {
       var obj = {
         collections: {
-          write: [ cn2 ]
+          write: [cn2]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -823,7 +823,7 @@ function transactionCollectionsSuite () {
     testNonDeclaredCollections3: function () {
       var obj = {
         collections: {
-          read: [ cn1 ]
+          read: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -875,7 +875,7 @@ function transactionCollectionsSuite () {
       };
 
       var result = require('@arangodb').db._executeTransaction(obj);
-      assertEqual([ 1, 2, 3 ], result);
+      assertEqual([1, 2, 3], result);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -885,7 +885,7 @@ function transactionCollectionsSuite () {
     testValidCollectionsArray: function () {
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -930,7 +930,7 @@ function transactionCollectionsSuite () {
     testValidMultipleCollectionsArray: function () {
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -985,8 +985,8 @@ function transactionCollectionsSuite () {
     testRedeclareCollectionArray: function () {
       var obj = {
         collections: {
-          read: [ cn1 ],
-          write: [ cn1 ]
+          read: [cn1],
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1033,8 +1033,8 @@ function transactionCollectionsSuite () {
     testReadWriteCollections: function () {
       var obj = {
         collections: {
-          read: [ cn1 ],
-          write: [ cn2 ]
+          read: [cn1],
+          write: [cn2]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1057,7 +1057,7 @@ function transactionCollectionsSuite () {
     testWaitForSyncTrue: function () {
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         waitForSync: true,
         action: function () {
@@ -1081,7 +1081,7 @@ function transactionCollectionsSuite () {
     testWaitForSyncFalse: function () {
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         waitForSync: false,
         action: function () {
@@ -1111,7 +1111,7 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1 ]
+          read: [cn1]
         },
         action: function () {
           var docs = require('@arangodb').db._query('FOR i IN @@cn1 RETURN i', { '@cn1': params.cn1 }).toArray();
@@ -1140,7 +1140,7 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1, cn2 ]
+          read: [cn1, cn2]
         },
         action: function () {
           var docs = require('@arangodb').db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': params.cn1, '@cn2': params.cn2 }).toArray();
@@ -1199,7 +1199,7 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1233,8 +1233,8 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1 ],
-          write: [ cn2 ]
+          read: [cn1],
+          write: [cn2]
         },
         action: function () {
           var ops = require('@arangodb').db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': params.cn1, '@cn2': params.cn2 }).getExtra().stats;
@@ -1267,7 +1267,7 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1 ]
+          read: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1308,7 +1308,7 @@ function transactionCollectionsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           var ops;
@@ -1343,7 +1343,7 @@ function transactionCollectionsSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionOperationsSuite () {
+function transactionOperationsSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
   const cn2 = 'UnitTestsTransaction2';
@@ -1548,7 +1548,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1 ]
+          read: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1564,7 +1564,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(['foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1577,7 +1577,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1592,20 +1592,20 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(['foo'], sortedKeys(c1));
     },
 
-    testReadWithCache: function() {
+    testReadWithCache: function () {
 
-      c1 = db._create(cn1, {cacheEnabled: true});
+      c1 = db._create(cn1, { cacheEnabled: true });
       let trx = db._createTransaction({
-        collections: {read: [cn1]}
+        collections: { read: [cn1] }
       });
 
       assertEqual(trx.collection(cn1).exists("baz"), false);
 
       // insert and read the document
-      c1.insert({_key: "baz"});
+      c1.insert({ _key: "baz" });
       c1.document("baz");
 
       assertEqual(trx.collection(cn1).exists("baz"), false);
@@ -1626,7 +1626,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          read: [ cn1 ]
+          read: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1662,7 +1662,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1693,7 +1693,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1708,7 +1708,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(['foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1720,12 +1720,12 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
           let c1 = db._collection(params.cn1);
-      
+
           c1.save({ _key: 'foo' });
           c1.save({ _key: 'bar' });
           return true;
@@ -1737,7 +1737,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(2, c1.count());
-      assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1751,7 +1751,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1767,7 +1767,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(4, c1.count());
-      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
+      assertEqual(['bam', 'bar', 'baz', 'foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1781,7 +1781,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1800,7 +1800,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(2, c1.count());
-      assertEqual([ 'bar', 'foo' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo'], sortedKeys(c1));
       assertEqual(3, c1.document('foo').a);
       assertEqual(9, c1.document('bar').b);
       assertEqual(undefined, c1.document('bar').c);
@@ -1816,7 +1816,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1851,13 +1851,13 @@ function transactionOperationsSuite () {
     testUpdate: function () {
       c1 = db._create(cn1);
       c1.insert([{ _key: 'foo', a: 1 },
-                 { _key: 'bar', b: 2 },
-                 { _key: 'baz', c: 3 },
-                 { _key: 'bam', d: 4 }]);
+      { _key: 'bar', b: 2 },
+      { _key: 'baz', c: 3 },
+      { _key: 'bam', d: 4 }]);
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1881,7 +1881,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(4, c1.count());
-      assertEqual([ 'bam', 'bar', 'baz', 'foo' ], sortedKeys(c1));
+      assertEqual(['bam', 'bar', 'baz', 'foo'], sortedKeys(c1));
       assertEqual(3, c1.document('foo').a);
       assertEqual(9, c1.document('bar').b);
       assertEqual(9, c1.document('baz').b);
@@ -1896,12 +1896,12 @@ function transactionOperationsSuite () {
     testRemove: function () {
       c1 = db._create(cn1);
       c1.insert([{ _key: 'foo', a: 1 },
-                 { _key: 'bar', b: 2 },
-                 { _key: 'baz', c: 3 }]);
+      { _key: 'bar', b: 2 },
+      { _key: 'baz', c: 3 }]);
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1917,7 +1917,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
-      assertEqual([ 'bar' ], sortedKeys(c1));
+      assertEqual(['bar'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1929,7 +1929,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1944,7 +1944,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual([], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1962,7 +1962,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -1977,7 +1977,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual([], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1995,7 +1995,7 @@ function transactionOperationsSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2011,7 +2011,7 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(['foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2030,7 +2030,7 @@ function transactionOperationsSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2063,7 +2063,7 @@ function transactionOperationsSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2095,7 +2095,7 @@ function transactionOperationsSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2110,11 +2110,10 @@ function transactionOperationsSuite () {
 
       require('@arangodb').db._executeTransaction(obj);
     }
-
   };
 }
 
-function transactionBarriersSuite () {
+function transactionBarriersSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
   const cn2 = 'UnitTestsTransaction2';
@@ -2153,10 +2152,10 @@ function transactionBarriersSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
-          var docs = [ ];
+          var docs = [];
           const db = require('@arangodb').db;
           let c1 = db._collection(params.cn1);
           for (i = 0; i < 100; ++i) {
@@ -2201,10 +2200,10 @@ function transactionBarriersSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
-          var docs = [ ];
+          var docs = [];
 
           for (i = 0; i < 100; ++i) {
             c1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
@@ -2234,7 +2233,7 @@ function transactionBarriersSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionGraphSuite () {
+function transactionGraphSuite() {
   'use strict';
   var cn1 = 'UnitTestsVertices';
   var cn2 = 'UnitTestsEdges';
@@ -2289,13 +2288,13 @@ function transactionGraphSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
-          var result = { };
+          var result = {};
           result.enxirvp = graph[cn1].save({});
           result.biitqtk = graph[cn1].save({});
-          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
+          result.oboyuhh = graph[cn2].save({ _from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith' });
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev: null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev: null });
           result.xsjzbst = (function () {
@@ -2303,16 +2302,16 @@ function transactionGraphSuite () {
             return true;
           }());
 
-          result.thizhdd = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
-          
+          result.thizhdd = graph[cn2].save({ _from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith' });
+
           // gotHere = 1;
-          
-          result.rldfnre = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
-          
+
+          result.rldfnre = graph[cn2].save({ _from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith' });
+
           // In case last `save` call will not throw error, we will throw it by ourself
           var err = new Error('gotHere = 2');
           err.errorNum = 2;
-          throw(err);
+          throw (err);
         }
       };
 
@@ -2337,15 +2336,15 @@ function transactionGraphSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           var graph = require('@arangodb/general-graph')._graph(params.graphName);
-          var result = { };
+          var result = {};
 
           result.enxirvp = graph[params.cn1].save({});
           result.biitqtk = graph[params.cn1].save({});
-          result.oboyuhh = graph[params.cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
+          result.oboyuhh = graph[params.cn2].save({ _from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith' });
           result.oboyuhh = graph[params.cn2].document(result.oboyuhh);
           result.cvwmkym = require('@arangodb').db[params.cn1].replace(result.enxirvp._id, { _rev: null });
           result.gsalfxu = require('@arangodb').db[params.cn1].replace(result.biitqtk._id, { _rev: null });
@@ -2354,7 +2353,7 @@ function transactionGraphSuite () {
             return true;
           }());
 
-          graph[params.cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
+          graph[params.cn2].save({ _from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith' });
           result.rldfnre = graph[params.cn2].document(result.oboyuhh._key);
 
           return result;
@@ -2407,11 +2406,11 @@ function transactionGraphSuite () {
 
       var obj = {
         collections: {
-          write: [ cn2 ]
+          write: [cn2]
         },
         action: function () {
           const db = require('@arangodb').db;
-          var result = [ ];
+          var result = [];
           let c2 = db._collection(params.cn2);
           result.push(c2.inEdges(params.cn1 + '/baz'));
           result.push(c2.inEdges(params.cn1 + '/bar'));
@@ -2487,7 +2486,7 @@ function transactionGraphSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionRollbackSuite () {
+function transactionRollbackSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
 
@@ -2513,7 +2512,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2552,7 +2551,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           var _r = r;
@@ -2612,7 +2611,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2637,7 +2636,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo', 'meow'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2654,7 +2653,7 @@ function transactionRollbackSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2698,7 +2697,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2708,10 +2707,10 @@ function transactionRollbackSuite () {
           c1.save({ _key: 'tim' });
           c1.save({ _key: 'tam' });
 
-          c1.update('tom', { });
-          c1.update('tim', { });
-          c1.update('tam', { });
-          c1.update('bar', { });
+          c1.update('tom', {});
+          c1.update('tim', {});
+          c1.update('tam', {});
+          c1.update('bar', {});
           c1.remove('foo');
           c1.remove('bar');
           c1.remove('meow');
@@ -2732,7 +2731,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo', 'meow'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2749,7 +2748,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2774,7 +2773,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo', 'meow'], sortedKeys(c1));
       assertEqual(d1._rev, c1.document('foo')._rev);
       assertEqual(d2._rev, c1.document('bar')._rev);
       assertEqual(d3._rev, c1.document('meow')._rev);
@@ -2794,7 +2793,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2826,7 +2825,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo', 'meow'], sortedKeys(c1));
       assertEqual(1, c1.document('foo').a);
       assertEqual(2, c1.document('bar').a);
       assertEqual(3, c1.document('meow').a);
@@ -2848,7 +2847,7 @@ function transactionRollbackSuite () {
       c1.ensureIndex({ type: "persistent", fields: ["value"] });
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2888,7 +2887,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2898,7 +2897,7 @@ function transactionRollbackSuite () {
           c1.remove('foo');
 
           require("jsunity").jsUnity.assertions.assertEqual(1, c1.count());
-          require("jsunity").jsUnity.assertions.assertEqual([ 'bar' ], sortedKeys(c1));
+          require("jsunity").jsUnity.assertions.assertEqual(['bar'], sortedKeys(c1));
 
           throw new Error('rollback');
         },
@@ -2914,7 +2913,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(3, c1.count());
-      assertEqual([ 'bar', 'foo', 'meow' ], sortedKeys(c1));
+      assertEqual(['bar', 'foo', 'meow'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2927,7 +2926,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -2953,7 +2952,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(1, c1.count());
-      assertEqual([ 'foo' ], sortedKeys(c1));
+      assertEqual(['foo'], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2969,7 +2968,7 @@ function transactionRollbackSuite () {
       c1.ensureIndex({ type: "persistent", fields: ["value"] });
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3011,7 +3010,7 @@ function transactionRollbackSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3051,7 +3050,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3076,7 +3075,7 @@ function transactionRollbackSuite () {
       }
 
       assertEqual(0, c1.count());
-      assertEqual([ ], sortedKeys(c1));
+      assertEqual([], sortedKeys(c1));
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3094,7 +3093,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3132,7 +3131,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3169,7 +3168,7 @@ function transactionRollbackSuite () {
 
       let obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3204,13 +3203,13 @@ function transactionRollbackSuite () {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({_key: 'key' + i, value: i });
+        docs.push({ _key: 'key' + i, value: i });
       }
       c1.insert(docs);
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3255,7 +3254,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           var i;
@@ -3305,7 +3304,7 @@ function transactionRollbackSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           var i;
@@ -3365,7 +3364,7 @@ function transactionRollbackSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCountSuite () {
+function transactionCountSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
 
@@ -3392,7 +3391,7 @@ function transactionCountSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           var d1, d2;
@@ -3442,7 +3441,7 @@ function transactionCountSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3483,7 +3482,7 @@ function transactionCountSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           const db = require('@arangodb').db;
@@ -3519,7 +3518,7 @@ function transactionCountSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1 ]
+          write: [cn1]
         },
         action: function () {
           c1.save({ _key: 'baz' });
@@ -3542,12 +3541,12 @@ function transactionCountSuite () {
       }
       assertEqual(2, c1.count());
 
-      var keys = [ ];
+      var keys = [];
       c1.toArray().forEach(function (d) {
         keys.push(d._key);
       });
       keys.sort();
-      assertEqual([ 'bar', 'foo' ], keys);
+      assertEqual(['bar', 'foo'], keys);
     }
 
   };
@@ -3557,7 +3556,7 @@ function transactionCountSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionCrossCollectionSuite () {
+function transactionCrossCollectionSuite() {
   'use strict';
   const cn1 = 'UnitTestsTransaction1';
   const cn2 = 'UnitTestsTransaction2';
@@ -3598,7 +3597,7 @@ function transactionCrossCollectionSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           var i;
@@ -3642,7 +3641,7 @@ function transactionCrossCollectionSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           var i;
@@ -3688,7 +3687,7 @@ function transactionCrossCollectionSuite () {
 
       var obj = {
         collections: {
-          write: [ cn1, cn2 ]
+          write: [cn1, cn2]
         },
         action: function () {
           var i;
@@ -3716,7 +3715,7 @@ function transactionCrossCollectionSuite () {
   };
 }
 
-function transactionConstraintsSuite () {
+function transactionConstraintsSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
   let c = null;
@@ -3795,7 +3794,7 @@ function transactionConstraintsSuite () {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function transactionTraversalSuite () {
+function transactionTraversalSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
 
@@ -3815,7 +3814,7 @@ function transactionTraversalSuite () {
 
       docs = [];
       for (let i = 1; i < 100; ++i) {
-        docs.push({_from: cn + 'Vertex/' + i, _to: cn + 'Vertex/' + (i + 1) });
+        docs.push({ _from: cn + 'Vertex/' + i, _to: cn + 'Vertex/' + (i + 1) });
       }
       db.UnitTestsTransactionEdge.insert(docs);
     },
@@ -3836,15 +3835,15 @@ function transactionTraversalSuite () {
     testUndeclaredTraversalCollection: function () {
       var result = db._executeTransaction({
         collections: {
-          read: [ cn + 'Edge' ],
-          write: [ cn + 'Edge' ]
+          read: [cn + 'Edge'],
+          write: [cn + 'Edge']
         },
         action: function () {
           var db = require('internal').db;
 
-          var results = db._query('WITH ' + params.cn + 'Vertex FOR v, e IN ANY "' + params.cn + 'Vertex/20" ' + 
-                                  params.cn + 'Edge FILTER v._id == "' + params.cn + 
-                                  'Vertex/21" LIMIT 1 RETURN e').toArray();
+          var results = db._query('WITH ' + params.cn + 'Vertex FOR v, e IN ANY "' + params.cn + 'Vertex/20" ' +
+            params.cn + 'Edge FILTER v._id == "' + params.cn +
+            'Vertex/21" LIMIT 1 RETURN e').toArray();
 
           if (results.length > 0) {
             var result = results[0];
@@ -3867,13 +3866,13 @@ function transactionTraversalSuite () {
 
     testTestCount: function () {
       for (var i = 0; i < 100; ++i) {
-        db[cn + 'Edge'].insert(cn + 'Edge/test' + (i % 21), cn + 'Edge/test' + (i % 7), { });
+        db[cn + 'Edge'].insert(cn + 'Edge/test' + (i % 21), cn + 'Edge/test' + (i % 7), {});
       }
 
       var result = db._executeTransaction({
         collections: {
-          read: [ cn + 'Edge' ],
-          write: [ cn + 'Edge' ]
+          read: [cn + 'Edge'],
+          write: [cn + 'Edge']
         },
         action: function () {
           var db = require('internal').db;
@@ -3887,7 +3886,7 @@ function transactionTraversalSuite () {
           db[params.cn + 'Edge'].update({ _id: newDoc._id }, newDoc);
 
           var fromCount2 = db[params.cn + 'Edge'].byExample({ _from: from, request: false }).count();
-          return [ fromCount1, fromCount2 ];
+          return [fromCount1, fromCount2];
         },
         params: {
           cn: cn

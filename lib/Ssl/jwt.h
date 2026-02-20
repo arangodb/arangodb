@@ -18,22 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include <chrono>
+#include <string>
+#include <string_view>
 
 namespace arangodb {
-class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
- public:
-  RestAdminDatabaseHandler(application_features::ApplicationServer&,
-                           GeneralRequest*, GeneralResponse*);
+namespace velocypack {
+class Slice;
+}
 
- public:
-  char const* name() const override final { return "RestAdminDatabaseHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
-};
+namespace rest::SslInterface::jwt {
+
+/// Generate JWT token as used by internal arangodb communication
+std::string generateInternalToken(std::string_view secret, std::string_view id);
+
+/// Generate JWT token as used for 'users' in arangodb
+std::string generateUserToken(
+    std::string_view secret, std::string_view username,
+    std::chrono::seconds validFor = std::chrono::seconds{0});
+
+std::string generateRawJwt(std::string_view secret, velocypack::Slice body);
+
+}  // namespace rest::SslInterface::jwt
 }  // namespace arangodb

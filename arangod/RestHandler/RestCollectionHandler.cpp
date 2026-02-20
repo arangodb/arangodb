@@ -587,7 +587,8 @@ async<void> RestCollectionHandler::handleCommandPut() {
     std::vector<std::string> keep = {
         StaticStrings::WaitForSyncString, StaticStrings::Schema,
         StaticStrings::ReplicationFactor, StaticStrings::WriteConcern,
-        StaticStrings::ComputedValues,    StaticStrings::CacheEnabled};
+        StaticStrings::ComputedValues,    StaticStrings::CacheEnabled,
+        StaticStrings::SupportsRBAC};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);

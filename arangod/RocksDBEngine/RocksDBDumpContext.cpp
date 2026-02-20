@@ -215,7 +215,7 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
       _channel(_options.prefetchCount),
-      _activity{"dump context",
+      _activity{"RocksDBDump",
                 {{"id", _id}, {"user", _user}, {"database", _database}}} {
   auto guard =
       activities::Registry::ScopedCurrentlyExecutingActivity(_activity.id());
