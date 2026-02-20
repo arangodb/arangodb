@@ -35,9 +35,14 @@ constexpr unsigned char kOpenApiV0[] = {
 #include "openapi-v0.csx"
 };
 
-constexpr unsigned char kOpenApiV1[] = {
+constexpr unsigned char kOpenApiV1[] =
+    {
 #include "openapi-v1.csx"
-};
+}
+
+constexpr unsigned char kOpenApiV2[] = {
+#include "openapi-v2.csx"
+}
 }  // namespace
 
 RestOpenApiHandler::RestOpenApiHandler(
@@ -53,6 +58,9 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
     case 1:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV1),
                               sizeof(kOpenApiV1));
+    case ApiVersion::experimental:
+      return std::string_view(reinterpret_cast<char const*>(kOpenApiV2),
+                              sizeof(kOpenApiV2));
     default:
       return std::string_view();
   }

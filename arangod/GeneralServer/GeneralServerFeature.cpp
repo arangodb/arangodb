@@ -603,7 +603,7 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
   f.addHandler("/_admin/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/openapi.json",
-               RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1});
+               RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1, 2});
   f.addHandler("/_admin/status",
                RestHandlerCreator<RestStatusHandler>::createNoData, {0, 1});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

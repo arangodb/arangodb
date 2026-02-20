@@ -36,10 +36,20 @@ add_custom_command(
   COMMENT "Hex-encoding OpenAPI v1 specification"
 )
 
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx
+  COMMAND ${CMAKE_COMMAND}
+    -DSRC="${PROJECT_SOURCE_DIR}/OpenAPI/2-openapi.json"
+    -DDST="${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx"
+    -P "${PROJECT_SOURCE_DIR}/lib/iresearch/cmake/HexEncodeFile.cmake"
+  DEPENDS ${PROJECT_SOURCE_DIR}/OpenAPI/2-openapi.json
+  COMMENT "Hex-encoding OpenAPI v2 specification"
+)
 # Create a custom target for the generated files
 add_custom_target(
   openapi-hex-files
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v0.csx
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v1.csx
+    ${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx
 )
