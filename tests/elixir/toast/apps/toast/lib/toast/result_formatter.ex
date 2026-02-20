@@ -13,6 +13,7 @@ defmodule Toast.ResultFormatter do
      %{
        suite_started_at: DateTime.utc_now(),
        tests: [],
+       test_start_times: %{},
        config: opts
      }}
   end
@@ -24,8 +25,15 @@ defmodule Toast.ResultFormatter do
     {:noreply, %{state | suite_started_at: DateTime.utc_now()}}
   end
 
+  def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
+    key = {test.module, test.name}
+    {:noreply, put_in(state, [:test_start_times, key], DateTime.utc_now())}
+  end
+
   def handle_cast({:test_finished, %ExUnit.Test{} = test}, state) do
-    result = extract_test_result(test)
+    key = {test.module, test.name}
+    started_at = state.test_start_times[key]
+    result = extract_test_result(test, started_at)
     {:noreply, %{state | tests: [result | state.tests]}}
   end
 
@@ -47,8 +55,9 @@ defmodule Toast.ResultFormatter do
 
   # --- Result extraction ---
 
-  defp extract_test_result(%ExUnit.Test{} = test) do
+  defp extract_test_result(%ExUnit.Test{} = test, started_at) do
     {outcome, failure} = extract_outcome(test.state)
+    finished_at = if started_at, do: DateTime.add(started_at, test.time, :microsecond)
 
     %{
       module: test.module,
@@ -56,6 +65,8 @@ defmodule Toast.ResultFormatter do
       outcome: outcome,
       duration_us: test.time,
       failure: failure,
+      started_at: started_at,
+      finished_at: finished_at,
       tags: %{
         file: test.tags[:file],
         line: test.tags[:line]

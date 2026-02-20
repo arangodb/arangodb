@@ -168,4 +168,150 @@ defmodule Toast.Diagnostics.SummaryTest do
       refute text =~ "Fatal log entries"
     end
   end
+
+  describe "format_sanitizer_issues/1" do
+    defp make_sanitizer_error(opts \\ %{}) do
+      Map.merge(
+        %{
+          content: "==12345==ERROR: AddressSanitizer: heap-buffer-overflow\nREAD of size 8\n",
+          file_path: "/tmp/toast/server/alubsan.log.arangod.12345",
+          timestamp: ~U[2024-06-15 10:00:05Z],
+          sanitizer_type: :alubsan,
+          server_id: "toast-42"
+        },
+        opts
+      )
+    end
+
+    test "returns nil when matched and unmatched are both empty" do
+      assert Summary.format_sanitizer_issues(%{matched: [], unmatched: []}) == nil
+    end
+
+    test "returns nil for non-matching input" do
+      assert Summary.format_sanitizer_issues(nil) == nil
+      assert Summary.format_sanitizer_issues(%{}) == nil
+    end
+
+    test "formats matched sanitizer issues with test attribution" do
+      match_result = %{
+        matched: [
+          %{
+            module: SmokeTest.VersionTest,
+            test: "test server version",
+            confidence: :high,
+            error: make_sanitizer_error()
+          }
+        ],
+        unmatched: []
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "SANITIZER ISSUES"
+      assert text =~ "SmokeTest.VersionTest"
+      assert text =~ "test server version"
+      assert text =~ "high confidence"
+      assert text =~ "[ALUBSAN]"
+      assert text =~ "toast-42"
+      assert text =~ "AddressSanitizer"
+    end
+
+    test "formats unmatched sanitizer issues" do
+      match_result = %{
+        matched: [],
+        unmatched: [make_sanitizer_error()]
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "SANITIZER ISSUES"
+      assert text =~ "Not attributed to a specific test"
+      assert text =~ "[ALUBSAN]"
+      assert text =~ "toast-42"
+    end
+
+    test "shows low confidence label" do
+      match_result = %{
+        matched: [
+          %{
+            module: SmokeTest.AqlTest,
+            test: "test basic AQL",
+            confidence: :low,
+            error: make_sanitizer_error()
+          }
+        ],
+        unmatched: []
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "low confidence"
+    end
+
+    test "formats TSAN sanitizer type" do
+      match_result = %{
+        matched: [],
+        unmatched: [make_sanitizer_error(%{sanitizer_type: :tsan, file_path: "/tmp/tsan.log.arangod.999"})]
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "[TSAN]"
+    end
+
+    test "truncates long content" do
+      long_content = Enum.map_join(1..20, "\n", &"line #{&1} of sanitizer output")
+
+      match_result = %{
+        matched: [],
+        unmatched: [make_sanitizer_error(%{content: long_content})]
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "line 1 of sanitizer output"
+      assert text =~ "line 10 of sanitizer output"
+      assert text =~ "more lines"
+      refute text =~ "line 20 of sanitizer output"
+    end
+
+    test "includes file path reference" do
+      match_result = %{
+        matched: [],
+        unmatched: [make_sanitizer_error(%{file_path: "/tmp/toast/run_1/server/alubsan.log.arangod.12345"})]
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "see /tmp/toast/run_1/server/alubsan.log.arangod.12345"
+    end
+
+    test "groups multiple errors for same test" do
+      match_result = %{
+        matched: [
+          %{
+            module: SmokeTest.VersionTest,
+            test: "test server version",
+            confidence: :high,
+            error: make_sanitizer_error(%{sanitizer_type: :alubsan})
+          },
+          %{
+            module: SmokeTest.VersionTest,
+            test: "test server version",
+            confidence: :high,
+            error: make_sanitizer_error(%{sanitizer_type: :tsan, file_path: "/tmp/tsan.log.arangod.12345"})
+          }
+        ],
+        unmatched: []
+      }
+
+      text = Summary.format_sanitizer_issues(match_result)
+
+      assert text =~ "[ALUBSAN]"
+      assert text =~ "[TSAN]"
+      # The test name should appear only once as a header
+      [_ | rest] = String.split(text, "test server version")
+      assert length(rest) == 1
+    end
+  end
 end

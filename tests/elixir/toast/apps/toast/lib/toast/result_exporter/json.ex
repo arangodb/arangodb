@@ -4,11 +4,11 @@ defmodule Toast.ResultExporter.JSON do
   @toast_version "0.1.0"
 
   @doc "Build a JSON-safe Elixir map from test results and diagnostics."
-  @spec build(map(), map() | nil) :: map()
-  def build(test_results, diagnostics) do
+  @spec build(map(), map() | nil, map() | nil) :: map()
+  def build(test_results, diagnostics, sanitizer_matching \\ nil) do
     suites = build_suites(test_results.tests)
 
-    %{
+    base = %{
       "toast_version" => @toast_version,
       "generated_at" => DateTime.to_iso8601(DateTime.utc_now()),
       "test_run" => build_test_run(test_results),
@@ -16,13 +16,18 @@ defmodule Toast.ResultExporter.JSON do
       "test_suites" => suites,
       "server_health" => build_server_health(diagnostics)
     }
+
+    case build_sanitizer_matching(sanitizer_matching) do
+      nil -> base
+      matching -> Map.put(base, "sanitizer_matching", matching)
+    end
   end
 
   @doc "Render test results and diagnostics as a JSON string."
-  @spec render(map(), map() | nil) :: String.t()
-  def render(test_results, diagnostics) do
+  @spec render(map(), map() | nil, map() | nil) :: String.t()
+  def render(test_results, diagnostics, sanitizer_matching \\ nil) do
     test_results
-    |> build(diagnostics)
+    |> build(diagnostics, sanitizer_matching)
     |> format_json()
   end
 
@@ -163,6 +168,29 @@ defmodule Toast.ResultExporter.JSON do
     %{
       "assertion_failures" => log.assertion_failures,
       "warnings" => log.warnings
+    }
+  end
+
+  # --- Sanitizer matching ---
+
+  defp build_sanitizer_matching(nil), do: nil
+  defp build_sanitizer_matching(%{matched: [], unmatched: []}), do: nil
+
+  defp build_sanitizer_matching(%{matched: matched, unmatched: unmatched}) do
+    %{
+      "matched" => Enum.map(matched, &build_match_entry/1),
+      "unmatched" => Enum.map(unmatched, &build_sanitizer_error/1)
+    }
+  end
+
+  defp build_sanitizer_matching(_), do: nil
+
+  defp build_match_entry(entry) do
+    %{
+      "module" => Atom.to_string(entry.module),
+      "test" => entry.test,
+      "confidence" => Atom.to_string(entry.confidence),
+      "error" => build_sanitizer_error(entry.error)
     }
   end
 

@@ -113,7 +113,13 @@ defmodule Toast.TestCase do
     ExUnit.after_suite(fn stats ->
       diagnostics = Toast.Deployment.stop_and_collect(deployment)
       Application.put_env(:toast, :__test_diagnostics__, diagnostics)
+
+      test_results = Application.get_env(:toast, :__test_results__)
+      sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, test_results)
+      Application.put_env(:toast, :__sanitizer_matching__, sanitizer_matching)
+
       print_diagnostics_summary(diagnostics)
+      print_sanitizer_summary(sanitizer_matching)
       Toast.ResultExporter.export()
 
       if stats.failures == 0 do
@@ -147,6 +153,15 @@ defmodule Toast.TestCase do
 
   defp print_diagnostics_summary(diagnostics) do
     case Toast.Diagnostics.Summary.format_crashed_servers(diagnostics) do
+      nil -> :ok
+      text -> IO.puts(text)
+    end
+  end
+
+  defp print_sanitizer_summary(%{matched: [], unmatched: []}), do: :ok
+
+  defp print_sanitizer_summary(sanitizer_matching) do
+    case Toast.Diagnostics.Summary.format_sanitizer_issues(sanitizer_matching) do
       nil -> :ok
       text -> IO.puts(text)
     end

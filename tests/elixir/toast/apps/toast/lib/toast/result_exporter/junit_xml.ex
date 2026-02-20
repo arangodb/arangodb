@@ -2,8 +2,8 @@ defmodule Toast.ResultExporter.JUnitXML do
   @moduledoc "Transform test results and diagnostics into JUnit XML format."
 
   @doc "Render test results and diagnostics as a JUnit XML string."
-  @spec render(map(), map() | nil) :: String.t()
-  def render(test_results, diagnostics) do
+  @spec render(map(), map() | nil, map() | nil) :: String.t()
+  def render(test_results, diagnostics, sanitizer_matching \\ nil) do
     suites = group_by_module(test_results.tests)
     all_tests = test_results.tests
 
@@ -14,7 +14,7 @@ defmodule Toast.ResultExporter.JUnitXML do
     time = format_duration(test_results.times_us.run)
 
     suite_elements = Enum.map_join(suites, "\n", &render_testsuite/1)
-    system_err = render_system_err(diagnostics)
+    system_err = render_system_err(diagnostics, sanitizer_matching)
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
@@ -117,15 +117,21 @@ defmodule Toast.ResultExporter.JUnitXML do
 
   # --- system-err for diagnostics ---
 
-  defp render_system_err(nil), do: ""
+  defp render_system_err(nil, _sanitizer_matching), do: ""
 
-  defp render_system_err(diagnostics) do
-    text = format_diagnostics(diagnostics)
+  defp render_system_err(diagnostics, sanitizer_matching) do
+    parts =
+      [
+        format_diagnostics(diagnostics),
+        format_sanitizer_matching(sanitizer_matching)
+      ]
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.join("\n\n")
 
-    if text == "" do
+    if parts == "" do
       ""
     else
-      ~s(<system-err>#{xml_cdata(text)}</system-err>)
+      ~s(<system-err>#{xml_cdata(parts)}</system-err>)
     end
   end
 
@@ -212,6 +218,65 @@ defmodule Toast.ResultExporter.JUnitXML do
 
     if a_count > 0 or w_count > 0 do
       "Log Issues:\n  Assertions: #{a_count}\n  Warnings: #{w_count}"
+    end
+  end
+
+  # --- Sanitizer matching ---
+
+  defp format_sanitizer_matching(nil), do: ""
+  defp format_sanitizer_matching(%{matched: [], unmatched: []}), do: ""
+
+  defp format_sanitizer_matching(%{matched: matched, unmatched: unmatched}) do
+    parts = []
+
+    parts =
+      if matched != [] do
+        grouped = Enum.group_by(matched, fn e -> {e.module, e.test} end)
+
+        entries =
+          grouped
+          |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
+          |> Enum.map(fn {{module, test_name}, entries} ->
+            confidence = entries |> Enum.map(& &1.confidence) |> best_confidence()
+            header = "#{inspect(module)} - #{test_name} (#{confidence} confidence):"
+
+            details =
+              Enum.map_join(entries, "\n", fn e ->
+                type = e.error.sanitizer_type |> Atom.to_string() |> String.upcase()
+                "  [#{type}] #{e.error.server_id} - #{e.error.file_path}"
+              end)
+
+            "#{header}\n#{details}"
+          end)
+
+        parts ++ ["Sanitizer Attribution:" | entries]
+      else
+        parts
+      end
+
+    parts =
+      if unmatched != [] do
+        entries =
+          Enum.map_join(unmatched, "\n", fn e ->
+            type = e.sanitizer_type |> Atom.to_string() |> String.upcase()
+            "  [#{type}] #{e.server_id} - #{e.file_path}"
+          end)
+
+        parts ++ ["Unattributed sanitizer errors:\n#{entries}"]
+      else
+        parts
+      end
+
+    Enum.join(parts, "\n")
+  end
+
+  defp format_sanitizer_matching(_), do: ""
+
+  defp best_confidence(confidences) do
+    cond do
+      :high in confidences -> :high
+      :low in confidences -> :low
+      true -> :none
     end
   end
 
