@@ -999,7 +999,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   // (including the currently unused experimental one), or else requests to
   // unknown endpoints (Foxx) might run into a crash.
   f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData,
-                     {0, 1, ApiVersion::});
+                     {0, 1, ApiVersion::experimentalApiVersion});
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
