@@ -197,6 +197,25 @@ endpoint. Requests with expiry times below this value will be rejected.)");
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
 
+  options
+      ->addOption("--server.external-rbac-service",
+                  "Enable role-based access control (RBAC) and set the "
+                  "external RBAC service endpoint. If the string is empty, "
+                  "RBAC is disabled.",
+                  new StringParameter(&_options.externalRBACservice),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setLongDescription(
+          R"(When set to a non-empty string, this must be the HTTP or HTTPS
+endpoint of an external RBAC authorization service for use by coordinators and single
+servers. In this case, all requests with use role-based-access-control (RBAC) via the
+specified service for authorization decisions. When set to an empty string, RBAC is
+disabled and instead the old permission system is used.)");
+
   options->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
@@ -335,6 +354,17 @@ void AuthenticationFeature::validateOptions(
         << _options.maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
   }
+
+  // Validate RBAC service endpoint
+  if (!_options.externalRBACservice.empty()) {
+    if (!_options.externalRBACservice.starts_with("http://") &&
+        !_options.externalRBACservice.starts_with("https://")) {
+      LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
+          << "--server.external-rbac-service must start with http:// or "
+             "https://";
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void AuthenticationFeature::prepare() {
@@ -418,6 +448,10 @@ bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
 
 bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
+}
+
+std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
+  return _options.externalRBACservice;
 }
 
 /// @return Cache to deal with authentication tokens
