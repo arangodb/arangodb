@@ -19,6 +19,7 @@ defmodule Toast.Config do
           cluster_dbservers: pos_integer(),
           cluster_coordinators: pos_integer(),
           cluster_replication_factor: pos_integer(),
+          keep_work_dir: boolean(),
           explicit_sanitizer: String.t() | nil,
           sanitizer: MapSet.t(String.t())
         }
@@ -41,6 +42,7 @@ defmodule Toast.Config do
     cluster_dbservers: 3,
     cluster_coordinators: 1,
     cluster_replication_factor: 2,
+    keep_work_dir: false,
     explicit_sanitizer: nil,
     sanitizer: MapSet.new()
   ]
@@ -75,6 +77,7 @@ defmodule Toast.Config do
       cluster_dbservers: opt_or(opts, :cluster_dbservers, read_pos_int("TOAST_CLUSTER_DBSERVERS", 3)),
       cluster_coordinators: opt_or(opts, :cluster_coordinators, read_pos_int("TOAST_CLUSTER_COORDINATORS", 1)),
       cluster_replication_factor: opt_or(opts, :cluster_replication_factor, read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2)),
+      keep_work_dir: opt_or(opts, :keep_work_dir, read_bool("TOAST_KEEP_WORK_DIR")),
       explicit_sanitizer: explicit_sanitizer,
       sanitizer: sanitizer
     }
@@ -127,7 +130,11 @@ defmodule Toast.Config do
   end
 
   defp read_show_server_logs do
-    env("TOAST_SHOW_SERVER_LOGS") == "true"
+    read_bool("TOAST_SHOW_SERVER_LOGS")
+  end
+
+  defp read_bool(var) do
+    env(var) == "true"
   end
 
   defp read_timeout_factor(sanitizer) do

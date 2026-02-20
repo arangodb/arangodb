@@ -28,6 +28,7 @@ defmodule Mix.Tasks.Toast do
       --startup-timeout MS        - Server startup timeout in milliseconds (default: 60000)
       --shutdown-timeout MS       - Server shutdown timeout in milliseconds (default: 60000)
       --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
+      --keep-work-dir             - Keep server data/logs even on success
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
       --cluster-agents N          - Number of agency nodes (default: 3)
       --cluster-dbservers N       - Number of DB servers (default: 3)
@@ -89,6 +90,7 @@ defmodule Mix.Tasks.Toast do
     startup_timeout: :integer,
     shutdown_timeout: :integer,
     timeout_factor: :integer,
+    keep_work_dir: :boolean,
     sanitizer: :string,
     cluster_agents: :integer,
     cluster_dbservers: :integer,
@@ -115,6 +117,7 @@ defmodule Mix.Tasks.Toast do
     startup_timeout: "TOAST_STARTUP_TIMEOUT",
     shutdown_timeout: "TOAST_SHUTDOWN_TIMEOUT",
     timeout_factor: "TOAST_TIMEOUT_FACTOR",
+    keep_work_dir: "TOAST_KEEP_WORK_DIR",
     sanitizer: "TOAST_SANITIZER",
     cluster_agents: "TOAST_CLUSTER_AGENTS",
     cluster_dbservers: "TOAST_CLUSTER_DBSERVERS",

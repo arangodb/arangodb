@@ -60,7 +60,7 @@ defmodule Toast.TestCase do
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
         register_deployment(deployment)
-        register_after_suite(deployment)
+        register_after_suite(deployment, config.keep_work_dir)
         deployment
 
       {:error, reason} ->
@@ -85,7 +85,7 @@ defmodule Toast.TestCase do
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
         register_deployment(deployment)
-        register_after_suite(deployment)
+        register_after_suite(deployment, config.keep_work_dir)
         {:ok, deployment}
 
       {:error, reason} ->
@@ -118,7 +118,7 @@ defmodule Toast.TestCase do
     ExUnit.configure(timeout: config.test_timeout)
   end
 
-  defp register_after_suite(deployment) do
+  defp register_after_suite(deployment, keep_work_dir) do
     register_formatters()
 
     ExUnit.after_suite(fn stats ->
@@ -133,10 +133,15 @@ defmodule Toast.TestCase do
       print_sanitizer_summary(sanitizer_matching)
       Toast.ResultExporter.export()
 
-      if stats.failures == 0 do
-        File.rm_rf(deployment.work_dir)
-      else
-        Logger.warning("Test failures — preserving server data in #{deployment.work_dir}")
+      cond do
+        keep_work_dir ->
+          Logger.info("Keeping server data in #{deployment.work_dir} (--keep-work-dir)")
+
+        stats.failures > 0 or Toast.Runner.aborted?() ->
+          Logger.warning("Test failures — preserving server data in #{deployment.work_dir}")
+
+        true ->
+          File.rm_rf(deployment.work_dir)
       end
     end)
   end
