@@ -28,7 +28,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRule.h"
+#include "Aql/Optimizer/Rule.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Async/async.h"

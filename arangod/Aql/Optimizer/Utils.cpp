@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"

@@ -31,7 +31,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EnumeratePathsExecutor.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "OptimizerRulesOptions.h"
+#include "Aql/Optimizer/Options.h"
 #include <memory>
 
 namespace arangodb::options {

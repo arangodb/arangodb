@@ -29,9 +29,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/Optimizer.h"
-#include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Optimizer.h"
+#include "Aql/Optimizer/Rules.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;

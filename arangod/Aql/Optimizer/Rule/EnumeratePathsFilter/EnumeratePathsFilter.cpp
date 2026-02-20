@@ -26,7 +26,7 @@
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Optimizer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
 #include "Containers/SmallVector.h"
 

@@ -21,14 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
-#include "Aql/OptimizerRules.h"
-#include "Aql/OptimizerRulesOptionsProvider.h"
+#include "Aql/Optimizer/Rule/Graph.h"
+#include "Aql/Optimizer/Rule/IResearchView.h"
+#include "Aql/Optimizer/Rule/IndexNode.h"
+#include "Aql/Optimizer/Rules.h"
+#include "Aql/Optimizer/OptionsProvider.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"

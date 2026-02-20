@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"

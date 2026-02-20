@@ -47,7 +47,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/QueryInfoLoggerFeature.h"

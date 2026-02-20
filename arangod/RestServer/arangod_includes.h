@@ -50,7 +50,7 @@
 #endif
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "SystemMonitor/Activities/Feature.h"

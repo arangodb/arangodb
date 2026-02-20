@@ -69,11 +69,6 @@ add_library(arango_aql STATIC
   NodeFinder.cpp
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
-  Optimizer.cpp
-  OptimizerRules.cpp
-  OptimizerRulesFeature.cpp
-  OptimizerRulesOptionsProvider.cpp
-  OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Parser.cpp
   Projections.cpp

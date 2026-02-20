@@ -23,7 +23,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
+#include "Aql/Optimizer/Rule/LateMaterializedCommon.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "IResearch/IResearchViewSort.h"
 

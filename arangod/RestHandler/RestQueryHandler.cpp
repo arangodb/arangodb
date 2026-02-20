@@ -24,7 +24,7 @@
 #include "RestQueryHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Optimizer/Feature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"

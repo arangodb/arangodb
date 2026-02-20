@@ -28,8 +28,8 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/OptimizerRule.h"
-#include "Aql/OptimizerRulesOptions.h"
+#include "Aql/Optimizer/Rule.h"
+#include "Aql/Optimizer/Options.h"
 
 namespace arangodb {
 namespace aql {

@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
+#include "Aql/Optimizer/Rules.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -73,8 +73,8 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
-#include "Aql/Optimizer.h"
-#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Optimizer.h"
+#include "Aql/Optimizer/Utils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
@@ -1628,7 +1628,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -4525,7 +4525,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -7022,7 +7022,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 
@@ -9195,110 +9195,4 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     plan.clearVarUsageComputed();
     plan.findVarUsage();
   }
-}
-
-class AttributeAccessReplacer final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
- public:
-  AttributeAccessReplacer(ExecutionNode const* self,
-                          Variable const* searchVariable,
-                          std::span<std::string_view> attribute,
-                          Variable const* replaceVariable, size_t index)
-      : _self(self),
-        _searchVariable(searchVariable),
-        _attribute(attribute),
-        _replaceVariable(replaceVariable),
-        _index(index) {
-    TRI_ASSERT(_searchVariable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-    TRI_ASSERT(_replaceVariable != nullptr);
-  }
-
-  bool before(ExecutionNode* en) override final {
-    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable, _index);
-
-    // always continue
-    return false;
-  }
-
- private:
-  ExecutionNode const* _self;
-  Variable const* _searchVariable;
-  std::span<std::string_view> _attribute;
-  Variable const* _replaceVariable;
-  size_t _index;
-};
-
-void arangodb::aql::optimizeProjections(Optimizer* opt,
-                                        std::unique_ptr<ExecutionPlan> plan,
-                                        OptimizerRule const& rule) {
-  containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(
-      nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN, EN::MATERIALIZE},
-      true);
-
-  auto replace = [&plan](ExecutionNode* self, Projections& p,
-                         Variable const* searchVariable, size_t index) {
-    bool modified = false;
-    std::vector<std::string_view> path;
-    for (size_t i = 0; i < p.size(); ++i) {
-      TRI_ASSERT(p[i].variable == nullptr);
-      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
-      path.clear();
-      for (auto const& it : p[i].path.get()) {
-        path.emplace_back(it);
-      }
-
-      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
-                                       p[i].variable, index);
-      plan->root()->walk(replacer);
-      modified = true;
-    }
-    return modified;
-  };
-
-  bool modified = false;
-  for (auto* n : nodes) {
-    if (n->getType() == EN::JOIN) {
-      // JoinNode. optimize projections in all parts
-      auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
-      size_t index = 0;
-      for (auto& it : joinNode->getIndexInfos()) {
-        modified |= replace(n, it.projections, it.outVariable, index++);
-      }
-    } else if (n->getType() == EN::MATERIALIZE) {
-      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(n);
-      if (matNode == nullptr) {
-        continue;
-      }
-
-      containers::FlatHashSet<AttributeNamePath> attributes;
-      if (utils::findProjections(matNode, &matNode->outVariable(),
-                                 /*expectedAttribute*/ "",
-                                 /*excludeStartNodeFilterCondition*/ true,
-                                 attributes)) {
-        if (attributes.size() <= matNode->maxProjections()) {
-          matNode->projections() = Projections(std::move(attributes));
-        }
-      }
-
-      modified |= replace(n, matNode->projections(), &matNode->outVariable(),
-                          /*index*/ 0);
-    } else {
-      // IndexNode or EnumerateCollectionNode.
-      TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||
-                 n->getType() == EN::INDEX);
-
-      auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
-      if (documentNode->projections().hasOutputRegisters()) {
-        // Some late materialize rule sets output registers
-        continue;
-      }
-      modified |= documentNode->recalculateProjections(plan.get());
-      modified |= replace(n, documentNode->projections(),
-                          documentNode->outVariable(), /*index*/ 0);
-    }
-  }
-  opt->addPlan(std::move(plan), rule, modified);
 }
