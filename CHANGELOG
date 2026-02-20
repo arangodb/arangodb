@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add new API GET /_admin/options-public for new platform UI.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 
