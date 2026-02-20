@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
+
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
 * Fixed BTS-2309: Treat empty object as null with respect to schema.
