@@ -13,6 +13,13 @@ const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper')
 
 const fixtureDir = internal.pathForTesting('fixtures/legacy-geo/dump', '');
 
+// #region agent log
+function _debugLog(location, message, data, hypothesisId) {
+  const payload = { location, message, data: data || {}, timestamp: Date.now(), hypothesisId };
+  fetch('http://localhost:7242/ingest/6e2b4329-2f54-4c0e-ac03-652a51eb9fa5', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(function () {});
+}
+// #endregion
+
 const dbName = 'LegacyGeoFixtureDB';
 const cn = 'places';
 
@@ -32,14 +39,42 @@ function addConnectionArgs(args) {
 }
 
 function restoreLegacyGeoFixture() {
+  // #region agent log
+  const fixtureExists = fs.isDirectory(fixtureDir);
+  let fixtureFiles = [];
+  try {
+    if (fixtureExists) {
+      fixtureFiles = fs.list(fixtureDir).slice(0, 20);
+    }
+  } catch (e) {
+    fixtureFiles = ['list_error: ' + e.message];
+  }
+  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:entry', 'fixture path and existence', { fixtureDir, fixtureExists, fixtureFilesCount: fixtureFiles.length, fixtureFiles }, 'H1');
+  // #endregion
+
   // Find arangorestore binary used by the test framework
   const restoreBin = pu.ARANGORESTORE_BIN || pu.arangorestoreBin || 'arangorestore';
   const args = ['--create-database', 'true', '--input-directory', fixtureDir];
   addConnectionArgs(args);
 
+  // #region agent log
+  const endpoint = internal.arango.getEndpoint();
+  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:before_restore', 'binary and connection', { restoreBin, endpoint, argsLength: args.length, args }, 'H2-H3');
+  // #endregion
+
   const res = executeExternalAndWaitWithSanitizer(
     restoreBin, args, 'legacy-geo-restore-rewrite'
   );
+
+  // #region agent log
+  const resKeys = res ? Object.keys(res) : [];
+  const resSafe = {};
+  if (res) {
+    resKeys.forEach(function (k) { resSafe[k] = res[k]; });
+  }
+  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:after_restore', 'arangorestore result', { resKeys, resSafe, exit: res && res.exit, status: res && res.status }, 'H4-H5');
+  // #endregion
+
   if (!res.hasOwnProperty('exit')) {
     throw new Error('arangorestore returned unexpected result: ' + JSON.stringify(res));
   }
