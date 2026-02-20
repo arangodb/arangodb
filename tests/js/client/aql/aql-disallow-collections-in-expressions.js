@@ -25,11 +25,6 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-if (getOptions === true) {
-  return {
-    'query.allow-collections-in-expressions': "false",
-  };
-}
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
@@ -38,7 +33,7 @@ const db = require('internal').db;
 
 function testSuite() {
   return {
-    setUpAll: function() {
+    setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn);
       let docs = [];
@@ -46,18 +41,18 @@ function testSuite() {
         docs.push({ _key: "test" + i, value: i, text: "testi" + i, loc: [i * 0.001, -i * 0.001] });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "geo", fields: ["loc"] }); 
-      
+      c.ensureIndex({ type: "geo", fields: ["loc"] });
+
       db._drop(en);
       db._createEdgeCollection(en);
     },
-    
-    tearDownAll: function() {
+
+    tearDownAll: function () {
       db._drop(cn);
       db._drop(en);
     },
 
-    testUseInForLoop: function() {
+    testUseInForLoop: function () {
       let result = db._query("FOR doc IN " + cn + " RETURN doc").toArray();
       assertEqual(500, result.length);
       result.forEach((doc) => {
@@ -66,7 +61,7 @@ function testSuite() {
       });
     },
 
-    testUseInSubquery: function() {
+    testUseInSubquery: function () {
       let result = db._query("LET sub = (FOR doc IN " + cn + " RETURN doc) RETURN sub").toArray();
       assertEqual(1, result.length);
       assertEqual(500, result[0].length);
@@ -75,62 +70,62 @@ function testSuite() {
         assertTrue(doc.hasOwnProperty('value'));
       });
     },
-    
-    testUseInInsert: function() {
+
+    testUseInInsert: function () {
       let result = db._query("FOR i IN 1..1000 FILTER i > 10000 INSERT {} INTO " + cn).toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInUpdate: function() {
+
+    testUseInUpdate: function () {
       let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 UPDATE doc WITH {} IN " + cn).toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInReplace: function() {
+
+    testUseInReplace: function () {
       let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 REPLACE doc WITH {} IN " + cn).toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInRemove: function() {
+
+    testUseInRemove: function () {
       let result = db._query("FOR doc IN " + cn + " FILTER doc.value == 9999999 REMOVE doc IN " + cn).toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInTraversal: function() {
+
+    testUseInTraversal: function () {
       let result = db._query("WITH " + cn + " FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test0' " + en + " RETURN [v, e, p]").toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInShortestPath: function() {
+
+    testUseInShortestPath: function () {
       let result = db._query("WITH " + cn + " FOR s IN OUTBOUND SHORTEST_PATH '" + cn + "/test0' TO '" + cn + "/test1' " + en + " RETURN s").toArray();
       assertEqual(0, result.length);
     },
-    
-    testUseInCollectionCount: function() {
+
+    testUseInCollectionCount: function () {
       let result = db._query("RETURN COLLECTION_COUNT(" + cn + ")").toArray();
       assertEqual(1, result.length);
       assertEqual(db[cn].count(), result[0]);
     },
-    
-    testUseInCount: function() {
+
+    testUseInCount: function () {
       let result = db._query("RETURN COUNT(" + cn + ")").toArray();
       assertEqual(1, result.length);
       assertEqual(db[cn].count(), result[0]);
     },
-    
-    testUseInLength: function() {
+
+    testUseInLength: function () {
       let result = db._query("RETURN LENGTH(" + cn + ")").toArray();
       assertEqual(1, result.length);
       assertEqual(db[cn].count(), result[0]);
     },
-    
-    testUseInWithinRectangle: function() {
+
+    testUseInWithinRectangle: function () {
       let result = db._query("RETURN WITHIN_RECTANGLE(" + cn + ", -1, -1, 1, 1)").toArray();
       assertEqual(1, result.length);
       assertEqual(500, result[0].length);
     },
-    
-    testUseInExpressions: function() {
+
+    testUseInExpressions: function () {
       let queries = [
         "RETURN " + cn,
         "RETURN " + cn + "[*].value",
