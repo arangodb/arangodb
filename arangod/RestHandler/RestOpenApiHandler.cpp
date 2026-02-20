@@ -58,7 +58,7 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
   }
 }
 
-RestStatus RestOpenApiHandler::execute() {
+futures::Future<futures::Unit> RestOpenApiHandler::executeAsync() {
   // Get requested API version (already parsed by GeneralRequest)
   uint32_t apiVersion = _request->requestedApiVersion();
 
@@ -70,7 +70,7 @@ RestStatus RestOpenApiHandler::execute() {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "OpenAPI specification not available for API version " +
                       std::to_string(apiVersion));
-    return RestStatus::DONE;
+    co_return;
   }
 
   // Set response headers
@@ -81,6 +81,4 @@ RestStatus RestOpenApiHandler::execute() {
 
   // Add the raw JSON payload
   _response->addRawPayload(spec);
-
-  return RestStatus::DONE;
 }
