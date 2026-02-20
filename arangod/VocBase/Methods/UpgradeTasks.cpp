@@ -815,7 +815,8 @@ Result UpgradeTasks::migrateHashSkiplistToPersistent(
 /// @brief drops legacy geo1/geo2 indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice /*slice*/) {
+Result UpgradeTasks::dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice /*slice*/) {
   auto collections = vocbase.collections(false);
 
   for (auto const& collection : collections) {

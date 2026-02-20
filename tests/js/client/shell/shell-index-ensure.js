@@ -799,18 +799,20 @@ function ensureIndexSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
       try {
-        check(collection.ensureIndex({
+        collection.ensureIndex({
           type: "geo1", fields: ["pos"],
           legacyPolygons: true
-        }), true);
+        });
+        fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
       try {
-        check(collection.ensureIndex({
+        collection.ensureIndex({
           type: "geo1", fields: ["pos"],
           legacyPolygons: false
-        }), false);
+        });
+        fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
