@@ -39,26 +39,29 @@ function addConnectionArgs(args) {
 }
 
 function restoreLegacyGeoFixture() {
+  // arangorestore runs in a different CWD (e.g. CI temp dir), so use absolute path
+  const inputDir = fs.normalize(fs.makeAbsolute(fixtureDir));
+
   // #region agent log
-  const fixtureExists = fs.isDirectory(fixtureDir);
+  const fixtureExists = fs.isDirectory(inputDir);
   let fixtureFiles = [];
   try {
     if (fixtureExists) {
-      fixtureFiles = fs.list(fixtureDir).slice(0, 20);
+      fixtureFiles = fs.list(inputDir).slice(0, 20);
     }
   } catch (e) {
     fixtureFiles = ['list_error: ' + e.message];
   }
-  print('[legacy-geo-restore] fixtureDir=' + fixtureDir + ' exists=' + fixtureExists + ' fileCount=' + fixtureFiles.length);
+  print('[legacy-geo-restore] fixtureDir=' + inputDir + ' exists=' + fixtureExists + ' fileCount=' + fixtureFiles.length);
   if (fixtureFiles.length > 0) {
     print('[legacy-geo-restore] fixtureFiles: ' + fixtureFiles.join(', '));
   }
-  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:entry', 'fixture path and existence', { fixtureDir, fixtureExists, fixtureFilesCount: fixtureFiles.length, fixtureFiles }, 'H1');
+  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:entry', 'fixture path and existence', { fixtureDir: inputDir, fixtureExists, fixtureFilesCount: fixtureFiles.length, fixtureFiles }, 'H1');
   // #endregion
 
   // Find arangorestore binary used by the test framework
   const restoreBin = pu.ARANGORESTORE_BIN || pu.arangorestoreBin || 'arangorestore';
-  const args = ['--create-database', 'true', '--input-directory', fixtureDir];
+  const args = ['--create-database', 'true', '--input-directory', inputDir];
   addConnectionArgs(args);
 
   // #region agent log
