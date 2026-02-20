@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused:false */
-/* global runSetup assertEqual, assertNotNull, assertTrue */
+/* global runSetup assertEqual, assertNotNull, assertTrue, print */
 
 'use strict';
 
