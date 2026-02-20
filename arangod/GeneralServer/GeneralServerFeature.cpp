@@ -119,6 +119,7 @@
 #include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/RestOpenApiHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
@@ -601,6 +602,8 @@ void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
   f.addHandler("/_admin/version",
                RestHandlerCreator<RestVersionHandler>::createNoData, {0, 1});
+  f.addHandler("/openapi.json",
+               RestHandlerCreator<RestOpenApiHandler>::createNoData, {0, 1, 2});
   f.addHandler("/_admin/status",
                RestHandlerCreator<RestStatusHandler>::createNoData, {0, 1});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -665,34 +668,33 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
+                     {0}, queryRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
+                     {0}, queryRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
                      RestHandlerCreator<RestSimpleQueryHandler>::createData<
                          aql::QueryRegistry*>,
-                     {0, 1}, queryRegistry);
+                     {0}, queryRegistry);
 
   f.addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      {0, 1}, queryRegistry);
+      {0}, queryRegistry);
 
   f.addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
-      {0, 1}, queryRegistry);
+      {0}, queryRegistry);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
     f.addPrefixHandler(RestVocbaseBaseHandler::TASKS_PATH,
-                       RestHandlerCreator<RestTasksHandler>::createNoData,
-                       {0, 1});
+                       RestHandlerCreator<RestTasksHandler>::createNoData, {0});
   }
 #endif
 
@@ -741,7 +743,7 @@ void GeneralServerFeature::defineRemainingHandlers(
     // enabled
     f.addPrefixHandler(
         "/_api/aqlfunction",
-        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData, {0, 1});
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData, {0});
   }
 #endif
 
@@ -818,7 +820,7 @@ void GeneralServerFeature::defineRemainingHandlers(
     // enabled
     f.addHandler("/_admin/execute",
                  RestHandlerCreator<RestAdminExecuteHandler>::createNoData,
-                 {0, 1});
+                 {0});
   }
 #endif
 
@@ -913,7 +915,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/database/target-version",
       RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData,
-      {0, 1});
+      {0});
 
   f.addPrefixHandler(
       "/_admin/log",
@@ -926,7 +928,7 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addPrefixHandler(
         "/_admin/routing",
         RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData,
-        {0, 1});
+        {0});
   }
 #endif
 
@@ -951,7 +953,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addHandler(
       "/_admin/statistics",
       RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
-      {0, 1});
+      {0});
 
   f.addPrefixHandler(
       "/_admin/metrics",
@@ -965,7 +967,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addHandler(
       "/_admin/statistics-description",
       RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
-      {0, 1});
+      {0});
 
   f.addPrefixHandler(
       "/_admin/license",
@@ -997,7 +999,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   // (including the currently unused experimental one), or else requests to
   // unknown endpoints (Foxx) might run into a crash.
   f.addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData,
-                     {0, 1, 2});
+                     {0, 1, ApiVersion::experimentalApiVersion});
 
   // engine specific handlers
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
