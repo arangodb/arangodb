@@ -14,10 +14,213 @@
   },
   "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
   "title": "ArangoDB Core API",
-  "version": "3.12.7"
+  "version": "3.12.8"
  },
  "openapi": "3.1.0",
  "paths": {
+  "/_db/{database-name}/_api/engine/stats": {
+   "get": {
+    "description": "Returns detailed statistics related to the RocksDB storage engine activity,\nincluding figures about data size, cache usage, individual column families, etc.\n",
+    "operationId": "getEngineStats",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "description": "A plethora of information about RocksDB.\n",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successfully retrieved the storage engine statistics.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Missing read access to the given database.\n"
+     }
+    },
+    "summary": "Get the storage engine statistics",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/options-public": {
+   "get": {
+    "description": "Return a small, curated subset of the configured server startup options\nthat are safe to expose to any authenticated user with read access to the\nrequested database.\n\nAdministrative tools can use this endpoint to adapt their behavior to the server\nconfiguration. For example, they can show the valid range for `replicationFactor`\nwhen creating a collection, or respect `--database.extended-names` when\nvalidating names on the client-side.\n\nThis endpoint is available regardless of the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\nsetting, so that the Arango Data Platform web interface for instance can always\naccess the public options.\n",
+    "operationId": "getPublicStartupOptions",
+    "parameters": [
+     {
+      "description": "The name of a database. Any database the user has at least read\naccess to can be used.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "cluster.api-jwt-policy": {
+           "description": "The permissions required for accessing `/_admin/cluster/*` endpoints.\n",
+           "type": "string"
+          },
+          "cluster.max-number-of-shards": {
+           "description": "Maximum number of shards per collection.\n",
+           "type": "integer"
+          },
+          "cluster.max-replication-factor": {
+           "description": "Maximum replication factor for collections.\n",
+           "type": "integer"
+          },
+          "cluster.min-replication-factor": {
+           "description": "Minimum replication factor for collections.\n",
+           "type": "integer"
+          },
+          "database.extended-names": {
+           "description": "Whether the traditional or extended naming constraints\napply for collections, Views, etc.\n",
+           "type": "boolean"
+          },
+          "server.session-timeout": {
+           "description": "The timeout for JWT session tokens in seconds.\n",
+           "type": "number"
+          }
+         },
+         "type": "object"
+        }
+       }
+      },
+      "description": "An object with public startup option names as keys and their\neffective values.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the database.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
+     }
+    },
+    "summary": "Get the public startup option configuration",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
   "/_admin/backup/create": {
    "post": {
     "description": "Creates a consistent local backup \"as soon as possible\", very much\nlike a snapshot in time, with a given label. The ambiguity in the\nphrase \"as soon as possible\" refers to the next window during which a\nglobal write lock across all databases can be obtained in order to\nguarantee consistency. Note that the backup at first resides on the\nsame machine and hard drive as the original data. Make sure to upload\nit to a remote site for an actual backup.\n",
