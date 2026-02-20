@@ -1100,34 +1100,36 @@ auto findEnclosingLoop(aql::ExecutionPlan const* plan,
   }
 
   while (node != nullptr) {
-    auto type = node->getType();
-
-    if (type == EN::SINGLETON) {
-      if (node->isInSubquery()) {
-        auto it = subqueries.find(node);
-        TRI_ASSERT(it != std::end(subqueries));
-        auto [_, sq] = *it;
-        node = sq->getFirstDependency();
-      } else {
-        TRI_ASSERT(node->id().id() == 1);
-        return nullptr;
-      }
-    } else {
-      if (!node->hasDependency()) {
-        return nullptr;
-      }
-      node = node->getFirstDependency();
-    }
-
-    type = node->getType();
-    if (type == EN::ENUMERATE_COLLECTION || type == EN::INDEX ||
-        type == EN::TRAVERSAL || type == EN::ENUMERATE_LIST ||
-        type == EN::SHORTEST_PATH || type == EN::ENUMERATE_PATHS ||
-        type == EN::ENUMERATE_IRESEARCH_VIEW) {
-      return node;
+    switch (node->getType()) {
+      case EN::SINGLETON: {
+        if (node->isInSubquery()) {
+          auto it = subqueries.find(node);
+          TRI_ASSERT(it != std::end(subqueries));
+          auto [_, sq] = *it;
+          node = sq->getFirstDependency();
+        } else {
+          TRI_ASSERT(node->id().id() == 1);
+          return nullptr;
+        }
+      } break;
+      case EN::ENUMERATE_COLLECTION:
+      case EN::INDEX:
+      case EN::TRAVERSAL:
+      case EN::ENUMERATE_LIST:
+      case EN::SHORTEST_PATH:
+      case EN::ENUMERATE_PATHS:
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+      case EN::ENUMERATE_NEAR_VECTORS: {
+        return node;
+      } break;
+      default: {
+        if (!node->hasDependency()) {
+          return nullptr;
+        }
+        node = node->getFirstDependency();
+      } break;
     }
   }
-
   return nullptr;
 }
 
