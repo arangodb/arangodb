@@ -4414,6 +4414,8 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature,
     }
   }
 
+  LOG_DEVEL << "FINAL REPORT: " << report.slice().toHex();
+
   return arangodb::Result();
 }
 
