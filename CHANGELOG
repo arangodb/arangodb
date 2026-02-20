@@ -1,6 +1,10 @@
 devel
 -----
 
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
 * Updated minimatch to 10.2.1.
 
 * Add new API GET /_admin/options-public for new platform UI.
