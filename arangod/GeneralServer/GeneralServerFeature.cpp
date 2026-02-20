@@ -896,7 +896,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   // Note that this is intentionally visible even if `optionsApiPolicy`
   // is set to 'disabled', since we need the public options API for the
   // platform UI to be always on.
-  f.addHandler("/_admin/public-options",
+  f.addHandler("/_admin/options-public",
                RestHandlerCreator<RestPublicOptionsHandler>::createNoData,
                {0, 1});
 

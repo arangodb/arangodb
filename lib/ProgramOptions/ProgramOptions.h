@@ -57,7 +57,7 @@ class ProgramOptions {
   static std::function<bool(std::string const&)> const defaultOptionsFilter;
 
   // filter function to select only the publicly-visible options for the
-  // HTTP REST API: GET /_admin/public-options
+  // HTTP REST API: GET /_admin/options-public
   // filter function returns true only for options that should be publicly
   // accessible to any authenticated database user.
   static std::function<bool(std::string const&)> const

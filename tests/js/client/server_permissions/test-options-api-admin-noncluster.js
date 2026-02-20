@@ -136,7 +136,7 @@ function testSuite() {
 
     testApiGetPublicOptionsRo : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/public-options",
+        url: baseUrl() + "/_admin/options-public",
         auth: {
           username: "test_ro",
           password: "testi"

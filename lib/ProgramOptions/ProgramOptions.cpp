@@ -68,7 +68,7 @@ using namespace arangodb::options;
 /*static*/ std::function<bool(std::string const&)> const
     ProgramOptions::defaultPublicOptionsFilter = [](std::string const& name) {
       // only expose a small, curated set of options that are safe to share
-      // with any authenticated database user via GET /_admin/public-options
+      // with any authenticated database user via GET /_admin/options-public
       return name == "database.extended-names" ||
              name == "cluster.min-replication-factor" ||
              name == "cluster.max-replication-factor" ||
