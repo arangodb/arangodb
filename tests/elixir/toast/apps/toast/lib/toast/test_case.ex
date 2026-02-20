@@ -53,7 +53,9 @@ defmodule Toast.TestCase do
   """
   @spec setup_suite!(atom(), keyword()) :: Toast.Deployment.t()
   def setup_suite!(mode \\ nil, opts \\ []) do
-    mode = mode || Toast.Config.load(opts).deployment_mode
+    config = Toast.Config.load(opts)
+    mode = mode || config.deployment_mode
+    setup_timeouts(config)
 
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
@@ -76,7 +78,9 @@ defmodule Toast.TestCase do
   """
   @spec setup_suite(atom(), keyword()) :: {:ok, Toast.Deployment.t()} | {:error, term()}
   def setup_suite(mode \\ nil, opts \\ []) do
-    mode = mode || Toast.Config.load(opts).deployment_mode
+    config = Toast.Config.load(opts)
+    mode = mode || config.deployment_mode
+    setup_timeouts(config)
 
     case Toast.Deployment.start(mode, opts) do
       {:ok, deployment} ->
@@ -105,6 +109,13 @@ defmodule Toast.TestCase do
       No deployment registered.
       Call Toast.TestCase.setup_suite/2 in your test_helper.exs after ExUnit.start().
       """
+  end
+
+  defp setup_timeouts(config) do
+    deadline = System.monotonic_time(:millisecond) + config.global_timeout
+    Application.put_env(:toast, :__suite_deadline__, deadline)
+    Application.put_env(:toast, :__timeout_factor__, config.timeout_factor)
+    ExUnit.configure(timeout: config.test_timeout)
   end
 
   defp register_after_suite(deployment) do

@@ -156,7 +156,9 @@ defmodule Toast.Runner do
       runner_pid: runner_pid,
       seed: opts[:seed],
       stats_pid: stats_pid,
+      suite_deadline: Application.get_env(:toast, :__suite_deadline__),
       timeout: opts[:timeout],
+      timeout_factor: Application.get_env(:toast, :__timeout_factor__, 1),
       trace: opts[:trace]
     }
   end
@@ -179,10 +181,13 @@ defmodule Toast.Runner do
   ## Scheduling
 
   defp async_loop(config, running, async_once?, modules_to_restore) do
+    check_suite_deadline!(config)
+
     if reason = aborted?() do
       drain_running(config, running)
       drain_remaining_modules(config, "Suite aborted: " <> reason)
-      if async_once?, do: System.monotonic_time(), else: nil
+      async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
+      {async_stop_time, modules_to_restore}
     else
       do_async_loop(config, running, async_once?, modules_to_restore)
     end
@@ -217,6 +222,8 @@ defmodule Toast.Runner do
 
         # Run all sync modules directly
         for pair <- sync_modules do
+          check_suite_deadline!(config)
+
           if reason = aborted?() do
             emit_skipped_pair(config, pair, "Suite aborted: " <> reason)
           else
@@ -557,6 +564,8 @@ defmodule Toast.Runner do
   end
 
   defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
+    check_suite_deadline!(config)
+
     cond do
       aborted?() ->
         {acc, remaining}
@@ -764,10 +773,29 @@ defmodule Toast.Runner do
   end
 
   defp get_timeout(config, tags) do
-    if config.trace do
-      :infinity
-    else
-      Map.get(tags, :timeout, config.timeout)
+    base = if config.trace, do: :infinity, else: Map.get(tags, :timeout, config.timeout)
+
+    # Apply timeout_factor to @tag timeout values (config.timeout already includes the factor)
+    base =
+      if base != :infinity and Map.has_key?(tags, :timeout),
+        do: base * config.timeout_factor,
+        else: base
+
+    clamp_to_deadline(config.suite_deadline, base)
+  end
+
+  defp clamp_to_deadline(nil, timeout), do: timeout
+
+  defp clamp_to_deadline(deadline, timeout) do
+    remaining = max(deadline - System.monotonic_time(:millisecond), 1)
+    if timeout == :infinity, do: remaining, else: min(timeout, remaining)
+  end
+
+  defp check_suite_deadline!(%{suite_deadline: nil}), do: :ok
+
+  defp check_suite_deadline!(%{suite_deadline: deadline}) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      abort!("Suite timeout exceeded")
     end
   end
 

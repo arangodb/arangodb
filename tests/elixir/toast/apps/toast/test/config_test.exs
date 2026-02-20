@@ -8,8 +8,11 @@ defmodule Toast.ConfigTest do
     TOAST_WORK_DIR
     TOAST_DEPLOYMENT_MODE
     TOAST_SHOW_SERVER_LOGS
+    TOAST_GLOBAL_TIMEOUT
+    TOAST_TEST_TIMEOUT
     TOAST_STARTUP_TIMEOUT
     TOAST_SHUTDOWN_TIMEOUT
+    TOAST_TIMEOUT_FACTOR
     TOAST_CLUSTER_AGENTS
     TOAST_CLUSTER_DBSERVERS
     TOAST_CLUSTER_COORDINATORS
@@ -42,8 +45,11 @@ defmodule Toast.ConfigTest do
       assert config.deployment_mode == :single_server
       assert config.show_server_logs == false
       assert config.server_args == %{}
+      assert config.global_timeout == 3_600_000
+      assert config.test_timeout == 300_000
       assert config.startup_timeout == 60_000
-      assert config.shutdown_timeout == 30_000
+      assert config.shutdown_timeout == 60_000
+      assert config.timeout_factor == 1
     end
 
     test "work_dir has unique default under tmp_dir" do
@@ -106,6 +112,22 @@ defmodule Toast.ConfigTest do
     end
   end
 
+  describe "TOAST_GLOBAL_TIMEOUT env var" do
+    test "parses integer from string" do
+      System.put_env("TOAST_GLOBAL_TIMEOUT", "7200000")
+
+      assert Config.load().global_timeout == 7_200_000
+    end
+  end
+
+  describe "TOAST_TEST_TIMEOUT env var" do
+    test "parses integer from string" do
+      System.put_env("TOAST_TEST_TIMEOUT", "600000")
+
+      assert Config.load().test_timeout == 600_000
+    end
+  end
+
   describe "TOAST_STARTUP_TIMEOUT env var" do
     test "parses integer from string" do
       System.put_env("TOAST_STARTUP_TIMEOUT", "120000")
@@ -121,6 +143,8 @@ defmodule Toast.ConfigTest do
       System.put_env("TOAST_DEPLOYMENT_MODE", "cluster")
       System.put_env("TOAST_SHOW_SERVER_LOGS", "true")
       System.put_env("TOAST_STARTUP_TIMEOUT", "120000")
+      System.put_env("TOAST_GLOBAL_TIMEOUT", "7200000")
+      System.put_env("TOAST_TEST_TIMEOUT", "600000")
 
       config =
         Config.load(
@@ -128,7 +152,9 @@ defmodule Toast.ConfigTest do
           work_dir: "/opt/work",
           deployment_mode: :single_server,
           show_server_logs: false,
-          startup_timeout: 5_000
+          startup_timeout: 5_000,
+          global_timeout: 1_800_000,
+          test_timeout: 120_000
         )
 
       assert config.build_dir == "/opt/build"
@@ -136,6 +162,8 @@ defmodule Toast.ConfigTest do
       assert config.deployment_mode == :single_server
       assert config.show_server_logs == false
       assert config.startup_timeout == 5_000
+      assert config.global_timeout == 1_800_000
+      assert config.test_timeout == 120_000
     end
   end
 
@@ -171,6 +199,49 @@ defmodule Toast.ConfigTest do
       config = Config.load(server_args: args)
 
       assert config.server_args == %{"log.level" => "debug"}
+    end
+  end
+
+  describe "timeout_factor" do
+    test "defaults to 1 without sanitizer" do
+      config = Config.load()
+
+      assert config.timeout_factor == 1
+    end
+
+    test "auto-detects factor 3 when sanitizer is present" do
+      config = Config.load(sanitizer: MapSet.new(["tsan"]))
+
+      assert config.timeout_factor == 3
+      assert config.test_timeout == 300_000 * 3
+      assert config.global_timeout == 3_600_000 * 3
+      assert config.startup_timeout == 60_000 * 3
+      assert config.shutdown_timeout == 60_000 * 3
+    end
+
+    test "TOAST_TIMEOUT_FACTOR env var overrides auto-detection" do
+      System.put_env("TOAST_TIMEOUT_FACTOR", "2")
+
+      config = Config.load(sanitizer: MapSet.new(["tsan"]))
+
+      assert config.timeout_factor == 2
+      assert config.test_timeout == 300_000 * 2
+    end
+
+    test "keyword override takes precedence" do
+      config = Config.load(timeout_factor: 5, sanitizer: MapSet.new(["tsan"]))
+
+      assert config.timeout_factor == 5
+      assert config.test_timeout == 300_000 * 5
+    end
+
+    test "factor multiplies explicitly set timeouts" do
+      System.put_env("TOAST_TEST_TIMEOUT", "600000")
+
+      config = Config.load(sanitizer: MapSet.new(["alubsan"]))
+
+      assert config.timeout_factor == 3
+      assert config.test_timeout == 600_000 * 3
     end
   end
 

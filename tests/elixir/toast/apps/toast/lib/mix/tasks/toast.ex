@@ -23,8 +23,11 @@ defmodule Mix.Tasks.Toast do
       --cluster                   - Use cluster deployment (default: single server)
       --single                    - Use single server deployment (explicit default)
       --show-server-logs          - Print arangod output to stdout
+      --global-timeout MS         - Global timeout in milliseconds (default: 3600000)
+      --test-timeout MS           - Per-test timeout in milliseconds (default: 300000)
       --startup-timeout MS        - Server startup timeout in milliseconds (default: 60000)
-      --shutdown-timeout MS       - Server shutdown timeout in milliseconds (default: 30000)
+      --shutdown-timeout MS       - Server shutdown timeout in milliseconds (default: 60000)
+      --timeout-factor N          - Timeout multiplier (default: 1, auto-set to 3 for sanitizer builds)
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
       --cluster-agents N          - Number of agency nodes (default: 3)
       --cluster-dbservers N       - Number of DB servers (default: 3)
@@ -81,8 +84,11 @@ defmodule Mix.Tasks.Toast do
     cluster: :boolean,
     single: :boolean,
     show_server_logs: :boolean,
+    global_timeout: :integer,
+    test_timeout: :integer,
     startup_timeout: :integer,
     shutdown_timeout: :integer,
+    timeout_factor: :integer,
     sanitizer: :string,
     cluster_agents: :integer,
     cluster_dbservers: :integer,
@@ -104,8 +110,11 @@ defmodule Mix.Tasks.Toast do
     work_dir: "TOAST_WORK_DIR",
     result_dir: "TOAST_RESULT_DIR",
     show_server_logs: "TOAST_SHOW_SERVER_LOGS",
+    global_timeout: "TOAST_GLOBAL_TIMEOUT",
+    test_timeout: "TOAST_TEST_TIMEOUT",
     startup_timeout: "TOAST_STARTUP_TIMEOUT",
     shutdown_timeout: "TOAST_SHUTDOWN_TIMEOUT",
+    timeout_factor: "TOAST_TIMEOUT_FACTOR",
     sanitizer: "TOAST_SANITIZER",
     cluster_agents: "TOAST_CLUSTER_AGENTS",
     cluster_dbservers: "TOAST_CLUSTER_DBSERVERS",
@@ -196,7 +205,7 @@ defmodule Mix.Tasks.Toast do
 
       {stats, _} = Toast.Runner.run(options, load_us)
 
-      if stats.failures > 0 do
+      if stats.failures > 0 or Toast.Runner.aborted?() do
         exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
         System.at_exit(fn _ -> exit({:shutdown, exit_status}) end)
       end

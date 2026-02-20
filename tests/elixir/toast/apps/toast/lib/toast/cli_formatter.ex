@@ -246,7 +246,8 @@ defmodule Toast.CLIFormatter do
   defp print_session_summary(state) do
     c = state.counters
     elapsed = elapsed_ms(state.suite_start_time)
-    is_failure = c.failed > 0 || c.invalid > 0
+    abort_reason = Toast.Runner.aborted?()
+    is_failure = c.failed > 0 || c.invalid > 0 || abort_reason != nil
 
     status_text = if is_failure, do: "FAILED", else: "PASSED"
     status_color = if is_failure, do: :red, else: :green
@@ -257,6 +258,13 @@ defmodule Toast.CLIFormatter do
     IO.puts(
       "\n#{timestamp()} #{colorize("[#{status_bracket} ]", status_color, state)} #{c.total} tests."
     )
+
+    # Abort reason
+    if abort_reason do
+      IO.puts(
+        "#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_reason}"
+      )
+    end
 
     # Detail line
     parts = []
