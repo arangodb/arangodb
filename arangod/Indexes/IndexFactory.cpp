@@ -357,8 +357,8 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   }
 
   auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index = factory.instantiate(
-      collection, definition, id, isClusterConstructor);
+  std::shared_ptr<Index> index =
+      factory.instantiate(collection, definition, id, isClusterConstructor);
 
   if (!index) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
