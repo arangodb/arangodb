@@ -1,6 +1,76 @@
 4.0
 ---
 
+* Remove the following deprecated commandline options:
+    - agency.pool-size
+    - arangosearch.threads
+    - arangosearch.threads-limit
+    - network.protocol
+    - query.allow-collections-in-expressions
+    - rocksdb.exclusive-writes
+    - log
+
+* Remove the following obsolete commandline options from arangod executable:
+    - query.parallelize-gather-writes
+    - cluster.dbserver-config
+    - cluster.coordinator-config
+    - cluster.data-path
+    - cluster.log-path
+    - cluster.arangod-path
+    - cluster.my-local-info
+    - cluster.my-id
+    - cluster.agency-prefix
+    - server.local-authentication
+    - server.disable-authentication
+    - server.disable-authentication-unix-sockets
+    - http.allow-method-override
+    - http.hide-product-header
+    - replication.active-failover
+    - replication.active-failover-leader-grace-period
+    - database.force-sync-properties
+    - database.throw-collection-not-loaded-error
+    - database.maximal-journal-size
+    - database.index-threads
+    - database.check-30-revisions
+    - database.revision-cache-chunk-size
+    - database.revision-cache-target-size
+    - server.flush-interval
+    - server.check-max-memory-mappings
+    - nonce.size
+    - wal.allow-oversize-entries
+    - wal.use-mlock
+    - wal.directory
+    - wal.historic-logfiles
+    - wal.ignore-logfile-errors
+    - wal.ignore-recovery-errors
+    - wal.flush-timeout
+    - wal.logfile-size
+    - wal.open-logfiles
+    - wal.reserve-logfiles
+    - wal.slots
+    - wal.sync-interval
+    - wal.throttle-when-pending
+    - wal.throttle-wait
+    - ttl.only-loaded-collection
+    - rocksdb.use-range-delete-in-wal
+    - rocksdb.edge-cache
+    - rocksdb.enabled
+    - server.threads
+    - server.max-number-detached-threads
+    - log.content-filter
+    - log.source-filter
+    - log.application
+    - log.facility
+
+* Remove the following commandline options from client tools
+  arangodump:
+    - envelope
+    - tick-start
+    - tick-end
+  arangorestore:
+    - recycle-ids
+    - envelope  
+
 * Remove /_admin/database/target-version endpoint in favor of /_api/version
 
 * Remove simple query API. This includes the following endpoints:
@@ -11,6 +81,7 @@
     - /_api/simple/remove-by-keys
   Also the following arangosh collection APIs are removed in favor of AQL:
     - byCondition
+    - closedRange
     - geo
     - near
     - within
