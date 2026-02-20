@@ -2800,14 +2800,22 @@ arangodb::Result hotBackupList(
     }
 
     for (auto [key, value] : VPackObjectIterator(resSlice.get("list"))) {
+      LOG_DEVEL << "FROM " << r.destination << " READING BACKUP " << key
+                << " WITH VALUE " << value.toJson();
       auto meta = [&] {
-        if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
-            !error.isNone()) {
-          return ResultT<BackupMeta>::success(BackupMeta::fromError(
-              key.copyString(),
-              VelocyPackHelper::getStringValue(resSlice, "server", ""), value));
+        try {
+          if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
+              !error.isNone()) {
+            return ResultT<BackupMeta>::success(BackupMeta::fromError(
+                key.copyString(),
+                VelocyPackHelper::getStringValue(resSlice, "server", ""),
+                value));
+          }
+          return BackupMeta::fromSlice(value);
+        } catch (...) {
+          LOG_DEVEL << "Could not parse backup meta ";
+          throw;
         }
-        return BackupMeta::fromSlice(value);
       }();
       if (meta.ok()) {
         dbsBackups[key.copyString()].push_back(std::move(meta.get()));
