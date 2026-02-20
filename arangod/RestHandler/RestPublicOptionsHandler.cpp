@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestPublicOptionsHandler.h"
@@ -38,12 +38,12 @@ RestPublicOptionsHandler::RestPublicOptionsHandler(
     GeneralResponse* response)
     : RestOptionsBaseHandler(server, request, response) {}
 
-RestStatus RestPublicOptionsHandler::execute() {
+futures::Future<futures::Unit> RestPublicOptionsHandler::executeAsync() {
   if (_request->requestType() != rest::RequestType::GET) {
     // only HTTP GET allowed
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   // available to any user with at least read access to the database
@@ -51,12 +51,12 @@ RestStatus RestPublicOptionsHandler::execute() {
       !ExecContext::current().canUseDatabase(auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
-    return RestStatus::DONE;
+    co_return;
   }
 
   VPackBuilder builder =
       server().options(options::ProgramOptions::defaultPublicOptionsFilter);
 
   generateResult(rest::ResponseCode::OK, builder.slice());
-  return RestStatus::DONE;
+  co_return;
 }
