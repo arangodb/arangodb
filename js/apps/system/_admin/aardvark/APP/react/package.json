@@ -32,7 +32,7 @@
     "leaflet.geodesic": "^2.6.1",
     "lodash": "^4.17.21",
     "marked": "^0.7.0",
-    "minimatch": "^3.1.2",
+    "minimatch": "^10.2.1",
     "moment": "2.30.1",
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
@@ -119,6 +119,7 @@
     "rollup": "^2.79.2",
     "webpack-dev-middleware": "^5.3.4",
     "qs": "^6.14.1",
+    "minimatch": "^10.2.1",
     "@emotion/react": "^11.13.0"
   },
   "babel": {
