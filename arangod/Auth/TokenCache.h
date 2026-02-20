@@ -72,12 +72,18 @@ class TokenCache {
     std::vector<std::string> const& allowedPaths() const {
       return _allowedPaths;
     }
+    std::vector<std::string> const& roles() const { return _roles; }
+    std::string const& jwtToken() const { return _jwtToken; }
 
    private:
     /// username
     std::string _username;
     // paths that are valid for this token
     std::vector<std::string> _allowedPaths;
+    /// roles from JWT token
+    std::vector<std::string> _roles;
+    /// JWT token string
+    std::string _jwtToken;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
     /// User exists and password was checked
@@ -106,6 +112,9 @@ class TokenCache {
   TokenCache::Entry checkAuthenticationBasic(std::string const& secret);
   /// Check JWT token contents
   TokenCache::Entry checkAuthenticationJWT(std::string const& secret);
+  /// Check JWT token contents and return full token string
+  TokenCache::Entry checkAuthenticationJWT(std::string const& secret,
+                                           std::string const& fullToken);
 
   bool validateJwtHeader(std::string_view headerWebBase64, bool& isES256);
   TokenCache::Entry validateJwtBody(std::string_view bodyWebBase64);
