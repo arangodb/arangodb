@@ -200,6 +200,23 @@ void GeneralRequest::setUser(std::string user) {
   setStringValue(_user, std::move(user));
 }
 
+void GeneralRequest::setRoles(std::vector<std::string> roles) {
+  size_t oldSize = 0;
+  for (auto const& role : _roles) {
+    oldSize += role.size();
+  }
+  size_t newSize = 0;
+  for (auto const& role : roles) {
+    newSize += role.size();
+  }
+  _roles = std::move(roles);
+  _memoryUsage = _memoryUsage - oldSize + newSize;
+}
+
+void GeneralRequest::setJwtToken(std::string token) {
+  setStringValue(_jwtToken, std::move(token));
+}
+
 void GeneralRequest::setPrefix(std::string prefix) {
   setStringValue(_prefix, std::move(prefix));
 }

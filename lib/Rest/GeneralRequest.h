@@ -89,6 +89,14 @@ class GeneralRequest {
   std::string const& user() const { return _user; }
   void setUser(std::string user);
 
+  /// @brief Roles from JWT token (if authenticated via JWT)
+  std::vector<std::string> const& roles() const { return _roles; }
+  void setRoles(std::vector<std::string> roles);
+
+  /// @brief JWT token string (if authenticated via JWT)
+  std::string const& jwtToken() const { return _jwtToken; }
+  void setJwtToken(std::string token);
+
   /// @brief the request context depends on the application
   std::shared_ptr<RequestContext> requestContext() const {
     return _requestContext;
@@ -231,6 +239,8 @@ class GeneralRequest {
 
   std::string _databaseName;
   std::string _user;
+  std::vector<std::string> _roles;
+  std::string _jwtToken;
 
   std::string _fullUrl;
   std::string _requestPath;

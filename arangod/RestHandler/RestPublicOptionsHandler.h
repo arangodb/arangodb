@@ -18,34 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "RestHandler/RestOptionsBaseHandler.h"
 
 namespace arangodb {
 
-struct AuthenticationOptions {
-  bool authenticationUnixSockets = true;
-  bool authenticationSystemOnly = true;
-  bool active = true;
-  std::string externalRBACservice = "";  // means deactivated RBAC
-  double authenticationTimeout = 0.0;
-  double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
-  double minimalJwtExpiryTime = 10.0;                     // 10 seconds
-  double maximalJwtExpiryTime = 3600.0;                   // 3600 seconds
+class RestPublicOptionsHandler : public RestOptionsBaseHandler {
+ public:
+  RestPublicOptionsHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
-  std::string jwtSecretProgramOption;
-  std::string jwtSecretKeyfileProgramOption;
-  std::string jwtSecretFolderProgramOption;
-  bool jwtSecretIsES256 = false;  // true if the active secret uses ES256
-
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::vector<std::string> jwtPassiveSecrets;
-#endif
+  char const* name() const override final { return "RestPublicOptionsHandler"; }
+  futures::Future<futures::Unit> executeAsync() override;
 };
-
 }  // namespace arangodb
