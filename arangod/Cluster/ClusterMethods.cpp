@@ -2801,7 +2801,7 @@ arangodb::Result hotBackupList(
 
     for (auto [key, value] : VPackObjectIterator(resSlice.get("list"))) {
       LOG_DEVEL << "FROM " << r.destination << " READING BACKUP " << key
-                << " WITH VALUE " << value.toJson();
+                << " WITH VALUE ";  // << value.toJson();
       auto meta = [&] {
         try {
           if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
