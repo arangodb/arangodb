@@ -22,6 +22,22 @@ defmodule Toast.TestCase do
           assert {:ok, %{"server" => "arango"}} = Client.version(client)
         end
       end
+
+  ## Deployment tags
+
+  Tests can be restricted to a specific deployment mode:
+
+      @tag :cluster_only
+      test "sharding", %{client: client} do
+        # only runs with --cluster
+      end
+
+      @tag :single_only
+      test "local feature", %{client: client} do
+        # only runs with single server (skipped in cluster mode)
+      end
+
+  These tags also work as `@moduletag` to apply to all tests in a module.
   """
 
   use ExUnit.CaseTemplate
@@ -115,7 +131,16 @@ defmodule Toast.TestCase do
     deadline = System.monotonic_time(:millisecond) + config.global_timeout
     Application.put_env(:toast, :__suite_deadline__, deadline)
     Application.put_env(:toast, :__timeout_factor__, config.timeout_factor)
-    ExUnit.configure(timeout: config.test_timeout)
+
+    exclude = ExUnit.configuration()[:exclude] || []
+
+    exclude =
+      case config.deployment_mode do
+        :single_server -> Enum.uniq([:cluster_only | exclude])
+        :cluster -> Enum.uniq([:single_only | exclude])
+      end
+
+    ExUnit.configure(timeout: config.test_timeout, exclude: exclude)
   end
 
   defp register_after_suite(deployment, keep_work_dir) do
