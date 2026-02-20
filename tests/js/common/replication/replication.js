@@ -2127,7 +2127,6 @@ function ReplicationLoggerSuite() {
 }
 
 
-// testLoggerTransaction* tests removed - JS transactions no longer supported
 
 
 function ReplicationApplierSuite() {
