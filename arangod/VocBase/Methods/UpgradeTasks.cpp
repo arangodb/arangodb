@@ -569,6 +569,53 @@ Result UpgradeTasks::dropPregelQueriesCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drops old statistics collections: '_statistics', '_statistics15',
+/// '_statisticsRaw'
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropOldStatisticsCollections(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  // Drop collection will revoke the rights of all the users that had rights
+  // on it, so we need a working UserManager here.
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->loadUserCacheAndStartUpdateThread();
+  }
+
+  CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                    .allowDropGraphCollection = true};
+
+  // List of old statistics collections to drop
+  std::vector<std::string> collectionsToDrop = {"_statistics", "_statistics15",
+                                                "_statisticsRaw"};
+
+  Result res;
+  for (auto const& collectionName : collectionsToDrop) {
+    std::shared_ptr<arangodb::LogicalCollection> col;
+    auto lookupRes =
+        arangodb::methods::Collections::lookup(vocbase, collectionName, col);
+    if (col) {
+      auto dropRes = arangodb::methods::Collections::drop(*col, dropOptions);
+      if (dropRes.fail()) {
+        if (!dropRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+          // Only propagate non-expected errors
+          res = dropRes;
+        }
+      }
+    }
+    // If collection doesn't exist (col == nullptr), that's fine, just continue
+    // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND from lookup is also expected
+  }
+
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND is expected if collections don't
+  // exist
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    res.reset();
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drops all fulltext indexes (no longer supported since 4.0)
 ////////////////////////////////////////////////////////////////////////////////
 

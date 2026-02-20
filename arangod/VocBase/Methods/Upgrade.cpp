@@ -288,6 +288,15 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
 
+  addTask(upgradeFeature, "dropOldStatisticsCollections",
+          "drop old statistics collections: _statistics, _statistics15, "
+          "_statisticsRaw",
+          /*system*/ Upgrade::Flags::DATABASE_SYSTEM,
+          /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropOldStatisticsCollections);
+
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
 #endif
