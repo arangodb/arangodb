@@ -543,45 +543,6 @@ The value can still be adjusted on a per-query basis by setting the
 #endif
 
   options
-      ->addOption("--query.allow-collections-in-expressions",
-                  "Allow full collections to be used in AQL expressions.",
-                  new BooleanParameter(&_options.allowCollectionsInExpressions),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30800)
-      .setDeprecatedIn(30900)
-      .setLongDescription(R"(If set to `true`, using collection names in
-arbitrary places in AQL expressions is allowed, although using collection names
-like this is very likely unintended.
-
-For example, consider the following query:
-
-```aql
-FOR doc IN collection RETURN collection
-```
-
-Here, the collection name is `collection`, and its usage in the `FOR` loop is
-intended and valid. However, `collection` is also used in the `RETURN`
-statement, which is legal but potentially unintended. It should likely be
-`RETURN doc` or `RETURN doc.someAttribute` instead. Otherwise, the entire
-collection is materialized and returned as many times as there are documents in
-the collection. This can take a long time and even lead to out-of-memory crashes
-in the worst case.
-
-If you set the option to `false`, such unintentional usage of collection names
-in queries is prohibited, and instead makes the query fail with error 1568
-("collection used as expression operand").
-
-The default value of the option was `true` in v3.8, meaning that potentially
-unintended usage of collection names in queries were still allowed. In v3.9,
-the default value changes to `false`. The option is also deprecated from
-3.9.0 on and will be removed in future versions. From then on, unintended
-usage of collection names will always be disallowed.)");
-
-  options
       ->addOption("--query.max-artifact-log-length",
                   "The maximum length of query strings and bind parameter "
                   "values in logs before they get truncated.",

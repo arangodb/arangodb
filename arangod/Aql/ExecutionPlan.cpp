@@ -915,47 +915,13 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
     // we found at least one occurence of NODE_TYPE_COLLECTION
     // now replace them with proper (FOR doc IN collection RETURN doc)
     // subqueries
-    auto visitor = [this, &previous](AstNode* node) {
+    auto visitor = [](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
         // collection name used inside an expression...
-
-        auto& vocbase = _ast->query().vocbase();
-        if (!vocbase.server()
-                 .getFeature<QueryRegistryFeature>()
-                 .allowCollectionsInExpressions()) {
-          // this is disallowed here, so fail the query
-          std::string cn = node->getString();
-          THROW_ARANGO_EXCEPTION_PARAMS(
-              TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
-        }
-
-        // create an on-the-fly subquery for a full collection access
-        AstNode* rootNode = _ast->createNodeSubquery();
-
-        // FOR part
-        Variable* v = _ast->variables()->createTemporaryVariable();
-        AstNode* forNode = _ast->createNodeFor(v, node, nullptr);
-        // RETURN part
-        AstNode* returnNode =
-            _ast->createNodeReturn(_ast->createNodeReference(v));
-
-        // add both nodes to subquery
-        rootNode->addMember(forNode);
-        rootNode->addMember(returnNode);
-
-        // produce the proper ExecutionNodes from the subquery AST
-        auto subquery = fromNode(rootNode);
-        if (subquery == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        // and register a reference to the subquery result in the expression
-        v = _ast->variables()->createTemporaryVariable();
-        auto en = createNode<SubqueryNode>(this, nextId(), subquery, v);
-        _subqueries[v->id] = en;
-        en->addDependency(previous);
-        previous = en;
-        return _ast->createNodeReference(v);
+        // this is disallowed here, so fail the query
+        std::string cn = node->getString();
+        THROW_ARANGO_EXCEPTION_PARAMS(
+            TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, cn.c_str());
       }
 
       return node;
