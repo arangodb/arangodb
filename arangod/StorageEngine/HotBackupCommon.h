@@ -31,6 +31,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
@@ -100,6 +101,11 @@ struct BackupMeta {
       builder.add(POTENTIALLYINCONSISTENT,
                   VPackValue(_potentiallyInconsistent));
       builder.add(COUNTINCLUDESFILESONLY, VPackValue(_countIncludesFilesOnly));
+      LOG_DEVEL << "AFTER COUNTINCLUDESFILESONLY: "
+                << basics::StringUtils::encodeHex(
+                       reinterpret_cast<const char*>(builder.buffer()->data()),
+                       builder.buffer()->size());
+
       if (!_errors.empty()) {
         VPackObjectBuilder errorBuilder(&builder, StaticStrings::Error);
         for (auto const& [server, error] : _errors) {
@@ -110,6 +116,11 @@ struct BackupMeta {
                       VPackValue(error.errorNumber()));
         }
       }
+
+      LOG_DEVEL << "AFTER ERROR WRITE: "
+                << basics::StringUtils::encodeHex(
+                       reinterpret_cast<const char*>(builder.buffer()->data()),
+                       builder.buffer()->size());
     }
   }
 
