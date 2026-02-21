@@ -1,4 +1,3 @@
-
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertFalse, fail */
 
