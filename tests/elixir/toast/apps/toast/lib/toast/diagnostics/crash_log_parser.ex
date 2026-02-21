@@ -7,7 +7,8 @@ defmodule Toast.Diagnostics.CrashLogParser do
           crash_header: String.t() | nil,
           backtrace: [String.t()],
           fatal_lines: [String.t()],
-          crash_output: [String.t()]
+          crash_output: [String.t()],
+          timestamp: DateTime.t() | nil
         }
 
   @doc "Parse log content from a string. Prefer `parse_file/1` for large logs."
@@ -49,7 +50,8 @@ defmodule Toast.Diagnostics.CrashLogParser do
       crash_header: nil,
       backtrace: [],
       fatal_lines: [],
-      crash_output: []
+      crash_output: [],
+      timestamp: nil
     }
   end
 
@@ -75,7 +77,7 @@ defmodule Toast.Diagnostics.CrashLogParser do
   defp maybe_collect_fatal(report, line) do
     # Collect FATAL lines that are NOT in {crash} topic — crash-specific fatals
     # are handled separately as crash_header / backtrace.
-    if String.contains?(line, "] FATAL [") and not String.contains?(line, "{crash}") do
+    if fatal_line?(line) and not String.contains?(line, "{crash}") do
       content = extract_after_prefix(line)
       %{report | fatal_lines: [content | report.fatal_lines]}
     else
@@ -97,10 +99,17 @@ defmodule Toast.Diagnostics.CrashLogParser do
   end
 
   defp maybe_set_crash_header(report, line, crash_content) do
-    if report.crash_header == nil and String.contains?(line, "] FATAL [") do
+    if report.crash_header == nil and fatal_line?(line) do
       {signal_number, signal_name} = extract_signal(crash_content)
+      timestamp = extract_timestamp(line)
 
-      %{report | crash_header: crash_content, signal_number: signal_number, signal_name: signal_name}
+      %{
+        report
+        | crash_header: crash_content,
+          signal_number: signal_number,
+          signal_name: signal_name,
+          timestamp: timestamp
+      }
     else
       report
     end
@@ -113,6 +122,12 @@ defmodule Toast.Diagnostics.CrashLogParser do
       report
     end
   end
+
+  # Match FATAL level in arangod log lines. The format varies:
+  # older: `[pid] FATAL [logid]`
+  # newer: `[pid-tid] R FATAL [logid]` — R is the server role
+  #   (S=single, C=coordinator, P=primary/dbserver, A=agent)
+  defp fatal_line?(line), do: String.contains?(line, " FATAL ")
 
   defp extract_signal(text) do
     case Regex.run(~r/caught unexpected signal (\d+) \((\w+)/, text) do
@@ -133,6 +148,27 @@ defmodule Toast.Diagnostics.CrashLogParser do
     case Regex.run(~r/\{[^}]+\}\s+(.*)$/, line) do
       [_, content] -> content
       _ -> line
+    end
+  end
+
+  defp extract_timestamp(line) do
+    with [_, ts_string] <-
+           Regex.run(~r/^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})?)/, String.trim_leading(line)) do
+      case DateTime.from_iso8601(ts_string) do
+        {:ok, dt, _offset} ->
+          dt
+
+        {:error, :missing_offset} ->
+          case NaiveDateTime.from_iso8601(ts_string) do
+            {:ok, ndt} -> DateTime.from_naive!(ndt, "Etc/UTC")
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
+    else
+      _ -> nil
     end
   end
 end

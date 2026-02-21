@@ -43,6 +43,7 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
       assert Enum.any?(report.backtrace, &(&1 =~ "SomeFunction"))
       # fatal_lines excludes {crash} topic lines — those are captured as crash_header/backtrace
       assert report.fatal_lines == []
+      assert report.timestamp == ~U[2024-01-15 10:30:45Z]
     end
 
     test "parses SIGABRT crash" do
@@ -51,6 +52,7 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
       assert report.signal_number == 6
       assert report.signal_name == "SIGABRT"
       assert length(report.backtrace) == 2
+      assert report.timestamp == ~U[2024-01-15 10:30:45Z]
     end
 
     test "returns empty report for clean log" do
@@ -61,6 +63,7 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
       assert report.crash_header == nil
       assert report.backtrace == []
       assert report.fatal_lines == []
+      assert report.timestamp == nil
     end
 
     test "collects fatal lines from any topic" do
@@ -78,6 +81,36 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
       assert report.signal_number == nil
       assert report.backtrace == []
       assert report.fatal_lines == []
+      assert report.timestamp == nil
+    end
+
+    test "parses new format with severity abbreviation and pid-tid" do
+      log = """
+      2026-02-21T17:19:17.461624Z [9185-29] S FATAL [a7902] {crash} ArangoDB 3.12.8-devel enterprise, thread 13 [SchedWorker] caught unexpected signal 11 (SIGSEGV, sub type SEGV_MAPERR): address 0x0
+      2026-02-21T17:19:17.461657Z [9185-29] S FATAL [a7903] {crash} Hello, this is the dedicated crash handler thread
+      2026-02-21T17:19:17.461700Z [9185-29] S INFO  [308c3] {crash} frame  1 [+0x1a2b3c] arangodb::SomeFunction() (+0x42)
+      """
+
+      report = CrashLogParser.parse(log)
+
+      assert report.signal_number == 11
+      assert report.signal_name == "SIGSEGV"
+      assert report.crash_header =~ "caught unexpected signal 11"
+      assert length(report.backtrace) == 1
+      assert report.timestamp == ~U[2026-02-21 17:19:17.461624Z]
+    end
+
+    test "collects fatal lines with severity abbreviation format" do
+      log = """
+      2026-02-21T10:30:00Z [9185-1] S INFO  [abc12] {general} ArangoDB starting up
+      2026-02-21T10:30:45Z [9185-1] S FATAL [xyz99] {general} assertion failed: x > 0
+      """
+
+      report = CrashLogParser.parse(log)
+
+      assert report.signal_number == nil
+      assert length(report.fatal_lines) == 1
+      assert hd(report.fatal_lines) =~ "assertion failed"
     end
 
     test "handles truncated backtrace" do
@@ -90,6 +123,7 @@ defmodule Toast.Diagnostics.CrashLogParserTest do
 
       assert report.signal_number == 11
       assert length(report.backtrace) == 1
+      assert report.timestamp == ~U[2024-01-15 10:30:45Z]
     end
   end
 

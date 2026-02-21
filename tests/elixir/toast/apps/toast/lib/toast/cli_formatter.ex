@@ -125,7 +125,15 @@ defmodule Toast.CLIFormatter do
 
   def handle_cast({:suite_finished, _times_us}, state) do
     print_session_summary(state)
-    print_failure_summary(state)
+
+    # When aborted due to crash, skip the failure summary here —
+    # the after_suite CRASH ATTRIBUTION section handles it with better context.
+    if Toast.Runner.aborted?() do
+      :ok
+    else
+      print_failure_summary(state)
+    end
+
     {:noreply, state}
   end
 

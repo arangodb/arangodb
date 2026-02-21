@@ -228,4 +228,38 @@ defmodule Toast.ResultExporter.JUnitXMLTest do
       assert xml =~ ~s(time="0.100")
     end
   end
+
+  describe "crash matching" do
+    test "crash matching in system-err CDATA" do
+      crash_matching = %{
+        matched: [
+          %{
+            module: SomeTest,
+            test: "test passes",
+            confidence: :high,
+            crash: %{
+              server_id: "toast-1",
+              signal_name: "SIGSEGV",
+              signal_number: 11,
+              crash_header: "caught unexpected signal 11",
+              backtrace: [],
+              fatal_lines: [],
+              crash_output: ["caught unexpected signal 11"],
+              log_file: "/tmp/toast/server/log",
+              timestamp: ~U[2024-01-15 10:01:30Z]
+            }
+          }
+        ],
+        unmatched: []
+      }
+
+      xml = JUnitXML.render(base_test_results(), single_server_diagnostics(), nil, crash_matching)
+
+      assert xml =~ "Crash Attribution:"
+      assert xml =~ "SomeTest"
+      assert xml =~ "test passes"
+      assert xml =~ "high confidence"
+      assert xml =~ "SIGSEGV"
+    end
+  end
 end

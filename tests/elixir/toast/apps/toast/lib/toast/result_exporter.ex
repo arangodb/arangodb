@@ -8,6 +8,7 @@ defmodule Toast.ResultExporter do
   @results_key :__test_results__
   @diagnostics_key :__test_diagnostics__
   @sanitizer_matching_key :__sanitizer_matching__
+  @crash_matching_key :__crash_matching__
   @default_result_dir "toast-results"
 
   @doc """
@@ -35,15 +36,16 @@ defmodule Toast.ResultExporter do
     results = Application.get_env(:toast, @results_key)
     diagnostics = Application.get_env(:toast, @diagnostics_key)
     sanitizer_matching = Application.get_env(:toast, @sanitizer_matching_key)
+    crash_matching = Application.get_env(:toast, @crash_matching_key)
 
     if results do
       File.mkdir_p!(result_dir)
 
       json_path = Path.join(result_dir, "results.json")
-      File.write!(json_path, JSON.render(results, diagnostics, sanitizer_matching))
+      File.write!(json_path, JSON.render(results, diagnostics, sanitizer_matching, crash_matching))
 
       xml_path = Path.join(result_dir, "results.xml")
-      File.write!(xml_path, JUnitXML.render(results, diagnostics, sanitizer_matching))
+      File.write!(xml_path, JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching))
 
       Logger.info("Results written to #{result_dir}")
     else

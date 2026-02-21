@@ -1,7 +1,7 @@
 defmodule Toast.Deployment.DeploymentLifecycleTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Deployment.Controller
+  alias Toast.Deployment.SingleServerController, as: Controller
 
   describe "stop_and_collect/2" do
     test "returns nil for a controller that never deployed" do
@@ -11,7 +11,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-collect-never-deployed",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       # Controller is :stopped (never deployed), shutdown on :stopped returns :ok,
@@ -27,7 +28,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-collect-already-stopped",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       # Shutdown the controller first
@@ -45,7 +47,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-collect-dead",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       GenServer.stop(pid)
@@ -64,7 +67,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-diagnostics-clean",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       assert Toast.Deployment.diagnostics(deployment) == nil
@@ -77,7 +81,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-diagnostics-dead",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       GenServer.stop(pid)
@@ -95,7 +100,8 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         id: "test-status-dead",
         mode: :single_server,
         endpoint: "http://127.0.0.1:0",
-        controller: pid
+        controller: pid,
+        work_dir: "/tmp/toast-test"
       }
 
       GenServer.stop(pid)

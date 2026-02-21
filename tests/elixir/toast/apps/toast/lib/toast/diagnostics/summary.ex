@@ -2,6 +2,7 @@ defmodule Toast.Diagnostics.Summary do
   @moduledoc "Format diagnostics into human-readable CLI summary sections."
 
   alias Toast.Deployment.ServerInstance
+  alias Toast.Diagnostics.Matcher
 
   @separator String.duplicate("=", 80)
 
@@ -124,9 +125,35 @@ defmodule Toast.Diagnostics.Summary do
   defp format_log_path(path) when is_binary(path), do: ["    Log: #{path}"]
   defp format_log_path(_), do: []
 
-  # --- Sanitizer issues ---
+  # --- Attribution formatting (shared by crash and sanitizer) ---
 
   @max_content_lines 10
+
+  @doc """
+  Format crash report attribution for CLI display.
+
+  Returns a formatted string with a "CRASH ATTRIBUTION" section, or nil if
+  no crash attribution data is present. Shows matched crashes grouped by test
+  case with confidence level, and unmatched crashes separately.
+  """
+  @spec format_crash_attribution(map(), [map()]) :: String.t() | nil
+  def format_crash_attribution(crash_matching, crash_affected_tests \\ [])
+
+  def format_crash_attribution(%{matched: [], unmatched: []}, []), do: nil
+
+  def format_crash_attribution(%{matched: matched, unmatched: unmatched}, crash_affected_tests) do
+    format_attribution(
+      "CRASH ATTRIBUTION",
+      IO.ANSI.red(),
+      matched,
+      unmatched,
+      :crash,
+      &format_crash_entry/1,
+      extra_sections: format_crash_affected(crash_affected_tests)
+    )
+  end
+
+  def format_crash_attribution(_, _), do: nil
 
   @doc """
   Format sanitizer error attribution for CLI display.
@@ -139,6 +166,19 @@ defmodule Toast.Diagnostics.Summary do
   def format_sanitizer_issues(%{matched: [], unmatched: []}), do: nil
 
   def format_sanitizer_issues(%{matched: matched, unmatched: unmatched}) do
+    format_attribution(
+      "SANITIZER ISSUES",
+      IO.ANSI.yellow(),
+      matched,
+      unmatched,
+      :error,
+      &format_sanitizer_entry/1
+    )
+  end
+
+  def format_sanitizer_issues(_), do: nil
+
+  defp format_attribution(title, color, matched, unmatched, item_key, format_entry_fn, opts \\ []) do
     sections = []
 
     sections =
@@ -148,7 +188,7 @@ defmodule Toast.Diagnostics.Summary do
         entries =
           grouped
           |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
-          |> Enum.map(&format_matched_group/1)
+          |> Enum.map(&format_matched_group(&1, item_key, format_entry_fn))
 
         sections ++ entries
       else
@@ -157,19 +197,23 @@ defmodule Toast.Diagnostics.Summary do
 
     sections =
       if unmatched != [] do
-        sections ++ [format_unmatched(unmatched)]
+        header = "  Not attributed to a specific test:"
+        details = Enum.map(unmatched, format_entry_fn)
+        sections ++ [Enum.join([header | details], "\n")]
       else
         sections
       end
+
+    sections = sections ++ Keyword.get(opts, :extra_sections, [])
 
     if sections == [] do
       nil
     else
       IO.iodata_to_binary([
         "\n",
-        IO.ANSI.yellow(),
+        color,
         @separator,
-        "\n SANITIZER ISSUES\n",
+        "\n #{title}\n",
         @separator,
         IO.ANSI.reset(),
         "\n\n",
@@ -179,27 +223,29 @@ defmodule Toast.Diagnostics.Summary do
     end
   end
 
-  def format_sanitizer_issues(_), do: nil
-
-  defp format_matched_group({{module, test_name}, entries}) do
-    confidences = entries |> Enum.map(& &1.confidence) |> Enum.uniq()
-
+  defp format_matched_group({{module, test_name}, entries}, item_key, format_entry_fn) do
     confidence_label =
-      cond do
-        :high in confidences -> "high confidence"
-        :low in confidences -> "low confidence"
-        true -> ""
-      end
+      entries
+      |> Enum.map(& &1.confidence)
+      |> Matcher.confidence_label()
 
     header = "  #{inspect(module)} - #{test_name} (#{confidence_label}):"
-    details = Enum.map(entries, &format_sanitizer_entry(&1.error))
+    details = Enum.map(entries, fn e -> format_entry_fn.(Map.fetch!(e, item_key)) end)
     Enum.join([header | details], "\n")
   end
 
-  defp format_unmatched(errors) do
-    header = "  Not attributed to a specific test:"
-    details = Enum.map(errors, &format_sanitizer_entry/1)
-    Enum.join([header | details], "\n")
+  defp format_crash_entry(crash) do
+    signal = "#{crash.signal_name} (signal #{crash.signal_number})"
+    preview = truncate_content(Enum.join(crash.crash_output, "\n"))
+    log_ref = if crash.log_file, do: "    (see #{crash.log_file})", else: nil
+
+    [
+      "    [#{signal}] #{crash.server_id}",
+      indent(preview, 6),
+      log_ref
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n")
   end
 
   defp format_sanitizer_entry(error) do
@@ -208,6 +254,18 @@ defmodule Toast.Diagnostics.Summary do
     file_ref = "    (see #{error.file_path})"
 
     Enum.join(["    [#{type}] #{error.server_id}", indent(preview, 6), file_ref], "\n")
+  end
+
+  defp format_crash_affected([]), do: []
+
+  defp format_crash_affected(tests) do
+    entries =
+      tests
+      |> Enum.sort_by(fn t -> {inspect(t.module), t.name} end)
+      |> Enum.map(fn t -> "    #{inspect(t.module)} - #{t.name}" end)
+      |> Enum.join("\n")
+
+    ["  Test failures caused by server crash (not actual test issues):\n#{entries}"]
   end
 
   defp truncate_content(content) do

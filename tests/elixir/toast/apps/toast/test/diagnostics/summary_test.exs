@@ -314,4 +314,87 @@ defmodule Toast.Diagnostics.SummaryTest do
       assert length(rest) == 1
     end
   end
+
+  describe "format_crash_attribution/1" do
+    defp make_crash_info(opts \\ %{}) do
+      Map.merge(
+        %{
+          server_id: "toast-42",
+          signal_name: "SIGSEGV",
+          signal_number: 11,
+          crash_header: "caught unexpected signal 11 (SIGSEGV)",
+          backtrace: ["frame 0 at 0xdead", "frame 1 at 0xbeef"],
+          fatal_lines: [],
+          crash_output: ["caught unexpected signal 11 (SIGSEGV)", "frame 0 at 0xdead", "frame 1 at 0xbeef"],
+          log_file: "/tmp/toast/server/log",
+          timestamp: ~U[2024-06-15 10:00:05Z]
+        },
+        opts
+      )
+    end
+
+    test "returns nil when matched and unmatched are both empty" do
+      assert Summary.format_crash_attribution(%{matched: [], unmatched: []}) == nil
+    end
+
+    test "returns nil for non-matching input" do
+      assert Summary.format_crash_attribution(nil) == nil
+      assert Summary.format_crash_attribution(%{}) == nil
+    end
+
+    test "formats matched crash with test attribution" do
+      match_result = %{
+        matched: [
+          %{
+            module: SmokeTest.VersionTest,
+            test: "test server version",
+            confidence: :high,
+            crash: make_crash_info()
+          }
+        ],
+        unmatched: []
+      }
+
+      text = Summary.format_crash_attribution(match_result)
+
+      assert text =~ "CRASH ATTRIBUTION"
+      assert text =~ "SmokeTest.VersionTest"
+      assert text =~ "test server version"
+      assert text =~ "high confidence"
+      assert text =~ "SIGSEGV"
+      assert text =~ "toast-42"
+      assert text =~ "caught unexpected signal 11 (SIGSEGV)"
+      assert text =~ "/tmp/toast/server/log"
+    end
+
+    test "formats unmatched crashes" do
+      match_result = %{
+        matched: [],
+        unmatched: [make_crash_info()]
+      }
+
+      text = Summary.format_crash_attribution(match_result)
+
+      assert text =~ "Not attributed to a specific test"
+      assert text =~ "SIGSEGV"
+    end
+
+    test "shows low confidence label" do
+      match_result = %{
+        matched: [
+          %{
+            module: SmokeTest.AqlTest,
+            test: "test basic AQL",
+            confidence: :low,
+            crash: make_crash_info()
+          }
+        ],
+        unmatched: []
+      }
+
+      text = Summary.format_crash_attribution(match_result)
+
+      assert text =~ "low confidence"
+    end
+  end
 end

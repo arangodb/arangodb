@@ -40,7 +40,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
       # Get the OS pid before stopping
       server_pid = deployment.controller
-      info = Toast.Deployment.Controller.get_info(server_pid)
+      info = Toast.Deployment.SingleServerController.get_info(server_pid)
       assert info.status == :ready
 
       assert :ok = Toast.Deployment.stop(deployment)

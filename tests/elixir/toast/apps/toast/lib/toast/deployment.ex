@@ -184,7 +184,8 @@ defmodule Toast.Deployment do
   defp extract_crash_info(_error, _log_file), do: :no_crash
 
   defp extract_cluster_crash_info({:server_crashed, server_id, crash_info}, servers) do
-    log_file = servers[server_id].log_file
+    server = if servers, do: servers[server_id]
+    log_file = if server, do: server.log_file
     log_report = read_and_parse_log(log_file)
 
     {:ok,

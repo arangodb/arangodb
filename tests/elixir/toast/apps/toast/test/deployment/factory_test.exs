@@ -29,12 +29,12 @@ defmodule Toast.Deployment.FactoryTest do
   describe "build_server_args/1" do
     test "show_server_logs false suppresses non-error output" do
       config = Config.load(show_server_logs: false, server_args: %{})
-      assert Factory.build_server_args(config) == %{"log.output" => "-;all=error"}
+      assert Factory.build_server_args(config) == %{"log.output" => "+;all=error"}
     end
 
     test "show_server_logs true passes output through" do
       config = Config.load(show_server_logs: true, server_args: %{})
-      assert Factory.build_server_args(config) == %{"log.output" => "-"}
+      assert Factory.build_server_args(config) == %{"log.output" => "+"}
     end
 
     test "custom server_args override defaults" do

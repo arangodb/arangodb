@@ -33,7 +33,8 @@ defmodule Toast.TestCaseTest do
       id: "test-1",
       mode: :single_server,
       endpoint: "http://localhost:8529",
-      controller: self()
+      controller: self(),
+      work_dir: "/tmp/toast-test"
     }
 
     fields = Map.merge(defaults, overrides)
@@ -42,7 +43,8 @@ defmodule Toast.TestCaseTest do
       id: fields.id,
       mode: fields.mode,
       endpoint: fields.endpoint,
-      controller: fields.controller
+      controller: fields.controller,
+      work_dir: fields.work_dir
     }
   end
 

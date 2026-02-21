@@ -154,7 +154,17 @@ defmodule Toast.TestCase do
       sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, test_results)
       Application.put_env(:toast, :__sanitizer_matching__, sanitizer_matching)
 
-      print_diagnostics_summary(diagnostics)
+      crash_matching = Toast.Diagnostics.CrashMatcher.match(diagnostics, test_results)
+      Application.put_env(:toast, :__crash_matching__, crash_matching)
+
+      # Only print CRASHED SERVERS when crash attribution has no data
+      # (e.g., no crash log to parse). Otherwise attribution replaces it.
+      if crash_matching.matched == [] and crash_matching.unmatched == [] do
+        print_diagnostics_summary(diagnostics)
+      end
+
+      crash_affected = find_crash_affected_tests(crash_matching, test_results)
+      print_crash_attribution(crash_matching, crash_affected)
       print_sanitizer_summary(sanitizer_matching)
       Toast.ResultExporter.export()
 
@@ -196,6 +206,41 @@ defmodule Toast.TestCase do
     case Toast.Diagnostics.Summary.format_crashed_servers(diagnostics) do
       nil -> :ok
       text -> IO.puts(text)
+    end
+  end
+
+  defp print_crash_attribution(%{matched: [], unmatched: []}, []), do: :ok
+
+  defp print_crash_attribution(crash_matching, crash_affected) do
+    case Toast.Diagnostics.Summary.format_crash_attribution(crash_matching, crash_affected) do
+      nil -> :ok
+      text -> IO.puts(text)
+    end
+  end
+
+  defp find_crash_affected_tests(_crash_matching, nil), do: []
+
+  defp find_crash_affected_tests(%{matched: matched, unmatched: unmatched}, test_results) do
+    # Find the earliest crash timestamp
+    all_crashes = Enum.map(matched, & &1.crash) ++ unmatched
+    timestamps = all_crashes |> Enum.map(& &1.timestamp) |> Enum.reject(&is_nil/1)
+
+    case timestamps do
+      [] ->
+        []
+
+      _ ->
+        earliest = Enum.min(timestamps, DateTime)
+        # Matched test names — these are attributed to a crash, not "affected"
+        attributed = MapSet.new(matched, fn m -> {m.module, m.test} end)
+
+        test_results.tests
+        |> Enum.filter(fn t ->
+          t.outcome == :failed and
+            t.started_at != nil and
+            DateTime.compare(t.started_at, earliest) in [:gt, :eq] and
+            not MapSet.member?(attributed, {t.module, t.name})
+        end)
     end
   end
 

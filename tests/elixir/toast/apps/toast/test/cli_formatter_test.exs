@@ -514,7 +514,7 @@ defmodule Toast.CLIFormatterTest do
 
       assert output =~ "FAILED"
       assert output =~ "1 failed"
-      assert output =~ "Failed tests:"
+      assert output =~ "TEST FAILURES"
     end
 
     test "includes skipped count when present" do

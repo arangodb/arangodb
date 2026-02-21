@@ -294,4 +294,46 @@ defmodule Toast.ResultExporter.JSONTest do
       assert passed["duration_seconds"] == 0.025
     end
   end
+
+  describe "build/4 crash matching" do
+    test "includes crash_matching when present" do
+      crash_matching = %{
+        matched: [
+          %{
+            module: SomeTest,
+            test: "test passes",
+            confidence: :high,
+            crash: %{
+              server_id: "toast-1",
+              signal_name: "SIGSEGV",
+              signal_number: 11,
+              crash_header: "caught unexpected signal 11",
+              backtrace: ["frame 0 at 0xdead"],
+              fatal_lines: [],
+              crash_output: ["caught unexpected signal 11"],
+              log_file: "/tmp/toast/server/log",
+              timestamp: ~U[2024-01-15 10:01:30Z]
+            }
+          }
+        ],
+        unmatched: []
+      }
+
+      result = JSON.build(base_test_results(), nil, nil, crash_matching)
+
+      assert Map.has_key?(result, "crash_matching")
+      assert [entry] = result["crash_matching"]["matched"]
+      assert entry["module"] == "Elixir.SomeTest"
+      assert entry["test"] == "test passes"
+      assert entry["confidence"] == "high"
+      assert entry["crash"]["signal_name"] == "SIGSEGV"
+      assert entry["crash"]["server_id"] == "toast-1"
+      assert entry["crash"]["timestamp"] == "2024-01-15T10:01:30Z"
+    end
+
+    test "omits crash_matching when nil" do
+      result = JSON.build(base_test_results(), nil, nil, nil)
+      refute Map.has_key?(result, "crash_matching")
+    end
+  end
 end

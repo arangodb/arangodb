@@ -1,9 +1,11 @@
 defmodule Toast.ResultExporter.JUnitXML do
   @moduledoc "Transform test results and diagnostics into JUnit XML format."
 
+  alias Toast.Diagnostics.Matcher
+
   @doc "Render test results and diagnostics as a JUnit XML string."
-  @spec render(map(), map() | nil, map() | nil) :: String.t()
-  def render(test_results, diagnostics, sanitizer_matching \\ nil) do
+  @spec render(map(), map() | nil, map() | nil, map() | nil) :: String.t()
+  def render(test_results, diagnostics, sanitizer_matching \\ nil, crash_matching \\ nil) do
     suites = group_by_module(test_results.tests)
     all_tests = test_results.tests
 
@@ -14,7 +16,7 @@ defmodule Toast.ResultExporter.JUnitXML do
     time = format_duration(test_results.times_us.run)
 
     suite_elements = Enum.map_join(suites, "\n", &render_testsuite/1)
-    system_err = render_system_err(diagnostics, sanitizer_matching)
+    system_err = render_system_err(diagnostics, sanitizer_matching, crash_matching)
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
@@ -62,14 +64,17 @@ defmodule Toast.ResultExporter.JUnitXML do
 
       :failed ->
         child = render_failure(test.failure)
+
         ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n#{child}\n    </testcase>)
 
       :invalid ->
         child = render_error(test.failure)
+
         ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n#{child}\n    </testcase>)
 
       outcome when outcome in [:skipped, :excluded] ->
         child = render_skipped(test.failure)
+
         ~s(    <testcase name="#{name}" classname="#{cn}" time="#{time}">\n#{child}\n    </testcase>)
     end
   end
@@ -117,13 +122,26 @@ defmodule Toast.ResultExporter.JUnitXML do
 
   # --- system-err for diagnostics ---
 
-  defp render_system_err(nil, _sanitizer_matching), do: ""
+  defp render_system_err(nil, _sanitizer_matching, _crash_matching), do: ""
 
-  defp render_system_err(diagnostics, sanitizer_matching) do
+  defp render_system_err(diagnostics, sanitizer_matching, crash_matching) do
     parts =
       [
         format_diagnostics(diagnostics),
-        format_sanitizer_matching(sanitizer_matching)
+        format_matching_attribution(
+          "Crash Attribution",
+          "Unattributed crashes",
+          crash_matching,
+          :crash,
+          &format_crash_detail/1
+        ),
+        format_matching_attribution(
+          "Sanitizer Attribution",
+          "Unattributed sanitizer errors",
+          sanitizer_matching,
+          :error,
+          &format_sanitizer_detail/1
+        )
       ]
       |> Enum.reject(&(&1 == ""))
       |> Enum.join("\n\n")
@@ -221,12 +239,26 @@ defmodule Toast.ResultExporter.JUnitXML do
     end
   end
 
-  # --- Sanitizer matching ---
+  # --- Matching attribution (shared by crash and sanitizer) ---
 
-  defp format_sanitizer_matching(nil), do: ""
-  defp format_sanitizer_matching(%{matched: [], unmatched: []}), do: ""
+  defp format_matching_attribution(_title, _unmatched_title, nil, _item_key, _detail_fn), do: ""
 
-  defp format_sanitizer_matching(%{matched: matched, unmatched: unmatched}) do
+  defp format_matching_attribution(
+         _title,
+         _unmatched_title,
+         %{matched: [], unmatched: []},
+         _item_key,
+         _detail_fn
+       ),
+       do: ""
+
+  defp format_matching_attribution(
+         title,
+         unmatched_title,
+         %{matched: matched, unmatched: unmatched},
+         item_key,
+         detail_fn
+       ) do
     parts = []
 
     parts =
@@ -237,19 +269,22 @@ defmodule Toast.ResultExporter.JUnitXML do
           grouped
           |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
           |> Enum.map(fn {{module, test_name}, entries} ->
-            confidence = entries |> Enum.map(& &1.confidence) |> best_confidence()
-            header = "#{inspect(module)} - #{test_name} (#{confidence} confidence):"
+            confidence_label =
+              entries
+              |> Enum.map(& &1.confidence)
+              |> Matcher.confidence_label()
+
+            header = "#{inspect(module)} - #{test_name} (#{confidence_label}):"
 
             details =
               Enum.map_join(entries, "\n", fn e ->
-                type = e.error.sanitizer_type |> Atom.to_string() |> String.upcase()
-                "  [#{type}] #{e.error.server_id} - #{e.error.file_path}"
+                detail_fn.(Map.fetch!(e, item_key))
               end)
 
             "#{header}\n#{details}"
           end)
 
-        parts ++ ["Sanitizer Attribution:" | entries]
+        parts ++ ["#{title}:" | entries]
       else
         parts
       end
@@ -257,12 +292,9 @@ defmodule Toast.ResultExporter.JUnitXML do
     parts =
       if unmatched != [] do
         entries =
-          Enum.map_join(unmatched, "\n", fn e ->
-            type = e.sanitizer_type |> Atom.to_string() |> String.upcase()
-            "  [#{type}] #{e.server_id} - #{e.file_path}"
-          end)
+          Enum.map_join(unmatched, "\n", detail_fn)
 
-        parts ++ ["Unattributed sanitizer errors:\n#{entries}"]
+        parts ++ ["#{unmatched_title}:\n#{entries}"]
       else
         parts
       end
@@ -270,14 +302,17 @@ defmodule Toast.ResultExporter.JUnitXML do
     Enum.join(parts, "\n")
   end
 
-  defp format_sanitizer_matching(_), do: ""
+  defp format_matching_attribution(_title, _unmatched_title, _other, _item_key, _detail_fn),
+    do: ""
 
-  defp best_confidence(confidences) do
-    cond do
-      :high in confidences -> :high
-      :low in confidences -> :low
-      true -> :none
-    end
+  defp format_crash_detail(crash) do
+    signal = "#{crash.signal_name} (signal #{crash.signal_number})"
+    "  [#{signal}] #{crash.server_id} - #{crash.log_file}"
+  end
+
+  defp format_sanitizer_detail(error) do
+    type = error.sanitizer_type |> Atom.to_string() |> String.upcase()
+    "  [#{type}] #{error.server_id} - #{error.file_path}"
   end
 
   # --- Helpers ---
