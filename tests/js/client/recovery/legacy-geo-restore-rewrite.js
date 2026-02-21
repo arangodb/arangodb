@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused:false */
-/* global runSetup assertEqual, assertNotNull, assertTrue, print */
+/* global runSetup assertEqual, assertNotNull, assertTrue*/
 
 'use strict';
 
@@ -12,13 +12,6 @@ const pu = require('@arangodb/testutils/process-utils');
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
 const fixtureDir = internal.pathForTesting('fixtures/legacy-geo/dump', '');
-
-// #region agent log
-function _debugLog(location, message, data, hypothesisId) {
-  const payload = { location, message, data: data || {}, timestamp: Date.now(), hypothesisId };
-  print('[legacy-geo-restore] ' + JSON.stringify(payload));
-}
-// #endregion
 
 const dbName = 'LegacyGeoFixtureDB';
 const cn = 'places';
@@ -39,73 +32,23 @@ function addConnectionArgs(args) {
 }
 
 function restoreLegacyGeoFixture() {
-  // arangorestore runs in a different CWD (e.g. CI temp dir), so use absolute path
+  // arangorestore runs in a different CWD (e.g. CI), so use absolute path
   const inputDir = fs.normalize(fs.makeAbsolute(fixtureDir));
 
-  // #region agent log
-  const fixtureExists = fs.isDirectory(inputDir);
-  let fixtureFiles = [];
-  try {
-    if (fixtureExists) {
-      fixtureFiles = fs.list(inputDir).slice(0, 20);
-    }
-  } catch (e) {
-    fixtureFiles = ['list_error: ' + e.message];
-  }
-  print('[legacy-geo-restore] fixtureDir=' + inputDir + ' exists=' + fixtureExists + ' fileCount=' + fixtureFiles.length);
-  if (fixtureFiles.length > 0) {
-    print('[legacy-geo-restore] fixtureFiles: ' + fixtureFiles.join(', '));
-  }
-  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:entry', 'fixture path and existence', { fixtureDir: inputDir, fixtureExists, fixtureFilesCount: fixtureFiles.length, fixtureFiles }, 'H1');
-  // #endregion
-
-  // Find arangorestore binary used by the test framework
   const restoreBin = pu.ARANGORESTORE_BIN || pu.arangorestoreBin || 'arangorestore';
   const args = ['--create-database', 'true', '--input-directory', inputDir];
   addConnectionArgs(args);
 
-  // #region agent log
-  const endpoint = internal.arango.getEndpoint();
-  print('[legacy-geo-restore] restoreBin=' + restoreBin + ' endpoint=' + endpoint);
-  print('[legacy-geo-restore] args: ' + JSON.stringify(args));
-  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:before_restore', 'binary and connection', { restoreBin, endpoint, argsLength: args.length, args }, 'H2-H3');
-  // #endregion
-
-  // Capture stderr so we can print the real error when restore fails (CI only gets exit code otherwise)
-  const stderrFile = fs.join(fs.getTempPath(), 'legacy-geo-restore-rewrite.stderr');
-  const quote = function (s) { return "'" + String(s).replace(/'/g, "'\"'\"'") + "'"; };
-  const shellCmd = restoreBin + ' ' + args.map(quote).join(' ') + ' 2>"' + stderrFile + '"';
-  const res = executeExternalAndWaitWithSanitizer('sh', ['-c', shellCmd], 'legacy-geo-restore-rewrite');
-
-  // #region agent log
-  const resKeys = res ? Object.keys(res) : [];
-  const resSafe = res ? {} : {};
-  if (res) {
-    resKeys.forEach(function (k) { resSafe[k] = res[k]; });
-  }
-  print('[legacy-geo-restore] arangorestore result: exit=' + (res && res.exit) + ' status=' + (res && res.status) + ' keys=' + resKeys.join(','));
-  print('[legacy-geo-restore] full result: ' + JSON.stringify(resSafe));
-  if (res && res.exit !== 0 && fs.exists(stderrFile)) {
-    try {
-      const stderrContent = fs.read(stderrFile);
-      print('[legacy-geo-restore] arangorestore stderr (this is the real error):');
-      print(stderrContent);
-    } catch (e) {
-      print('[legacy-geo-restore] could not read stderr file: ' + e.message);
-    }
-  }
-  _debugLog('legacy-geo-restore-rewrite.js:restoreLegacyGeoFixture:after_restore', 'arangorestore result', { resKeys, resSafe, exit: res && res.exit, status: res && res.status }, 'H4-H5');
-  // #endregion
+  const res = executeExternalAndWaitWithSanitizer(
+    restoreBin, args, 'legacy-geo-restore-rewrite'
+  );
 
   if (!res.hasOwnProperty('exit')) {
-    print('[legacy-geo-restore] FAIL: unexpected result (no exit property)');
     throw new Error('arangorestore returned unexpected result: ' + JSON.stringify(res));
   }
   if (res.exit !== 0) {
-    print('[legacy-geo-restore] FAIL: arangorestore exited with ' + res.exit + '. See stderr above. To re-run: ' + restoreBin + ' ' + args.join(' '));
     throw new Error('arangorestore failed: ' + JSON.stringify(res));
   }
-  print('[legacy-geo-restore] restore completed successfully');
 }
 
 if (runSetup === true) {
