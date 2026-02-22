@@ -1672,7 +1672,7 @@ TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInView) {
   try {
     vocbase.createView(createView->slice(), false);
     FAIL() << "View creation did not fail";
-  } catch (arangodb::basics::Exception e) {
+  } catch (const arangodb::basics::Exception& e) {
     std::string_view exMsg = e.what();
     std::string expectedExceptionSubstr =
         "error in attribute 'primarySort[1].field'";
@@ -1712,7 +1712,7 @@ TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInInvertedIndex) {
   try {
     collection->createIndex(invIndexJson->slice(), created).waitAndGet();
     FAIL() << "Inverted index creation did not fail";
-  } catch (arangodb::basics::Exception e) {
+  } catch (const arangodb::basics::Exception& e) {
     std::string expectedExceptionSubstr = "primarySort";
     EXPECT_EQ(expectedExceptionSubstr, e.what());
   }
