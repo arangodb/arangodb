@@ -1,4 +1,4 @@
-v3.11.14.3 (XXXX-XX-XX)
+v3.11.14.3 (2022-02-23)
 -----------------------
 
 * Rebuilt included rclone v1.62.2 with go1.24.13 and non-vulnerable
@@ -25,8 +25,8 @@ v3.11.14.2 (2025-12-05)
 
 * Upgraded OpenSSL to 3.5.4 and OpenLDAP to 2.6.10.
 
-* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
-  coordinates for Point geometries.
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and
+  3D coordinates for Point geometries.
 
 
 v3.11.14.1 (2025-07-13)
