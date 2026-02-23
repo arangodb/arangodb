@@ -125,7 +125,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
         new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-    _buildState = VectorIndexBuildState::kReady;
+
+    setBuildState(VectorIndexBuildState::kReady);
   }
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minumum number of documents to train the vector index, but that
@@ -288,7 +289,7 @@ void RocksDBVectorIndex::tryBuilding() {
   // lookup (index may not be registered yet, e.g. during createIndex fill).
   auto indexSelf = shared_from_this();
   TRI_ASSERT(_buildState == VectorIndexBuildState::kUninitialized);
-  _buildState = VectorIndexBuildState::kTraining;
+  setBuildState(VectorIndexBuildState::kTraining);
   startBuildThread(std::move(indexSelf));
 }
 
@@ -451,17 +452,16 @@ RocksDBVectorIndex::bruteForceSearch(
       _definition.metric == SimilarityMetric::kInnerProduct;
 
   std::vector<faiss::idx_t> labels(topK, -1);
-  std::vector<float> distances(topK);
-
   // Initialize heap: max-heap for L2 (keep smallest distances),
   // min-heap for IP/cosine (keep largest inner products)
-  if (isDescending) {
-    std::fill(distances.begin(), distances.end(),
-              -std::numeric_limits<float>::max());
-  } else {
-    std::fill(distances.begin(), distances.end(),
-              std::numeric_limits<float>::max());
-  }
+  auto const minValue = std::invoke([&]() {
+    if (isDescending) {
+      return -std::numeric_limits<float>::max();
+    } else {
+      return std::numeric_limits<float>::max();
+    }
+  });
+  std::vector<float> distances(topK, minValue);
 
   aql::AqlFunctionsInternalCache aqlFunctionsInternalCache;
 
