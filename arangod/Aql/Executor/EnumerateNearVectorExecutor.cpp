@@ -89,6 +89,7 @@ void EnumerateNearVectorsExecutor::fillInput(
                     vectorComponentsCount));
   }
   ++_processedInputs;
+  _reportedCurrentRowForFullCount = false;
 
   searchResults();
 }
@@ -199,22 +200,36 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     }
 
     return {state(), {}, skipped, {}};
+    skipped += (_collectionCount - _currentProcessedResultCount);
+    LOG_INTERNAL << ADB_HERE
+                 << std::format(
+                        ": skipped={}, currentProcessed={}, nr={}, state={}, "
+                        "hasResults={}, call={}, colCount={}",
+                        skipped, _currentProcessedResultCount,
+                        _infos.getNumberOfResults(), state(), hasResults(),
+                        to_string(call), _collectionCount);
+
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
     auto skipped = skipOutput(AqlCall::Infinity{});
-    skipped += (_collectionCount - _currentProcessedResultCount);
 
     TRI_ASSERT(!hasResults());
     auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
+    if (_processedInputs > 0 && !_reportedCurrentRowForFullCount) {
+      skipped += _collectionCount - _currentProcessedResultCount;
+      _reportedCurrentRowForFullCount = true;
+    }
     skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    LOG_INTERNAL << std::format(
-        "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
-        "hasResults={}, call={}, colCount={}",
-        skipped, remainingRows, _currentProcessedResultCount,
-        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
-        _collectionCount);
+    LOG_INTERNAL << ADB_HERE
+                 << std::format(
+                        ": skipped={}, remainingRows={}, currentProcessed={}, "
+                        "nr={}, state={}, "
+                        "hasResults={}, call={}, colCount={}",
+                        skipped, remainingRows, _currentProcessedResultCount,
+                        _infos.getNumberOfResults(), state(), hasResults(),
+                        to_string(call), _collectionCount);
 
     auto upstreamCall = AqlCall{};
 
