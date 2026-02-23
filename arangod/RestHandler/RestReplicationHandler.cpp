@@ -102,6 +102,69 @@ namespace {
 std::string const dataString("data");
 std::string const typeString("type");
 
+/// @brief Rewrites the type field in a VelocyPack index definition, copying
+/// all other fields. Keys listed in @p skipKeys are omitted from the output.
+void rewriteIndexType(VPackSlice idxDef, VPackBuilder& builder,
+                      std::string_view newType,
+                      std::initializer_list<std::string_view> skipKeys = {}) {
+  builder.clear();
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::IndexType, VPackValue(newType));
+    for (auto const& it : VPackObjectIterator(idxDef)) {
+      auto key = it.key.stringView();
+      if (key == StaticStrings::IndexType) {
+        continue;
+      }
+      bool skip = false;
+      for (auto const& sk : skipKeys) {
+        if (key == sk) {
+          skip = true;
+          break;
+        }
+      }
+      if (!skip) {
+        builder.add(it.key);
+        builder.add(it.value);
+      }
+    }
+  }
+}
+
+/// @brief Transforms deprecated index types in a VelocyPack index definition.
+/// Returns the (possibly rewritten) slice. If a transformation occurred, the
+/// returned slice points into @p rebuilder.
+VPackSlice transformDeprecatedIndexType(VPackSlice idxDef,
+                                        VPackBuilder& rebuilder,
+                                        std::string_view collectionName) {
+  VPackSlice type = idxDef.get(StaticStrings::IndexType);
+  if (!type.isString()) {
+    return idxDef;
+  }
+
+  if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+    rewriteIndexType(idxDef, rebuilder, "geo");
+    return rebuilder.slice();
+  }
+
+  if (type.isEqualString("hash") || type.isEqualString("skiplist")) {
+    rewriteIndexType(idxDef, rebuilder, "persistent");
+    return rebuilder.slice();
+  }
+
+  if (type.isEqualString("fulltext")) {
+    LOG_TOPIC("43c19", INFO, Logger::REPLICATION)
+        << "Transforming deprecated fulltext index into inverted index "
+           "for collection '"
+        << collectionName << "'";
+    rewriteIndexType(idxDef, rebuilder, "inverted",
+                     {"minLength", "sparse", "unique", "deduplicate"});
+    return rebuilder.slice();
+  }
+
+  return idxDef;
+}
+
 bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
@@ -1874,20 +1937,7 @@ Result RestReplicationHandler::processRestoreIndexes(
         continue;
       }
 
-      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
-        // transform type "geo1" or "geo2" into "geo".
-        rebuilder.clear();
-        rebuilder.openObject();
-        rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-        for (auto const& it : VPackObjectIterator(idxDef)) {
-          if (!it.key.isEqualString(StaticStrings::IndexType)) {
-            rebuilder.add(it.key);
-            rebuilder.add(it.value);
-          }
-        }
-        rebuilder.close();
-        idxDef = rebuilder.slice();
-      }
+      idxDef = transformDeprecatedIndexType(idxDef, rebuilder, name);
 
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
@@ -2009,40 +2059,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       continue;
     }
 
-    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
-      // transform type "geo1" or "geo2" into "geo".
-      rebuilder.clear();
-      rebuilder.openObject();
-      rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-      for (auto const& it : VPackObjectIterator(idxDef)) {
-        if (!it.key.isEqualString(StaticStrings::IndexType)) {
-          rebuilder.add(it.key);
-          rebuilder.add(it.value);
-        }
-      }
-      rebuilder.close();
-      idxDef = rebuilder.slice();
-    }
-
-    if (type.isEqualString("fulltext")) {
-      VPackSlice minLength = idxDef.get("minLength");
-      if (minLength.isNumber()) {
-        int length = minLength.getNumericValue<int>();
-        if (length <= 0) {
-          rebuilder.clear();
-          rebuilder.openObject();
-          rebuilder.add("minLength", VPackValue(1));
-          for (auto const& it : VPackObjectIterator(idxDef)) {
-            if (!it.key.isEqualString("minLength")) {
-              rebuilder.add(it.key);
-              rebuilder.add(it.value);
-            }
-          }
-          rebuilder.close();
-          idxDef = rebuilder.slice();
-        }
-      }
-    }
+    idxDef = transformDeprecatedIndexType(idxDef, rebuilder, name);
 
     if (type.isEqualString(StaticStrings::IndexNameVector) &&
         !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
