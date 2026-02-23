@@ -225,6 +225,7 @@
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
+      suffix: large
 
 - gtest_iresearch:
     options:
@@ -411,6 +412,7 @@
       dumpAgencyOnError: true
       # TODO: BTS-2283
       encryptionAtRest: false
+      suffix: large
 - shell_client:
     options:
       priority: 500
