@@ -213,12 +213,10 @@ RocksDBVectorIndex::readBatch(
   }
 
   if (_buildState != VectorIndexBuildState::kReady) {
-    LOG_DEVEL << ADB_HERE
-              << ": Index is not ready, performing brute force search.";
     return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
                             &queryContext, &filterVarsToRegs, documentVariable);
   }
-  LOG_DEVEL << ADB_HERE << ": Index is ready, performing FAISS search.";
+  TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
   std::vector<float> distances(topK);
@@ -248,9 +246,6 @@ RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  LOG_DEVEL << ADB_HERE << ": Performing FAISS search :" << inputs;
-  LOG_DEVEL << ADB_HERE
-            << ": Trained data size: " << _trainedData->codeData.size();
   _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
                       &searchParametersIvf);
 
