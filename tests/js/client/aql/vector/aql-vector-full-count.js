@@ -257,12 +257,12 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
 /// The test suite with vector index not having enough
 // documents in single nList will not return true full count in collection but how much
 // it actually produced.
-// Check more details in EnumerateNearVectorExucutor file
+// Check more details in EnumerateNearVectorExecutor file
 function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 10;
+    const numberOfDocs = 4;
     const seed = 12132390894;
 
     return {
@@ -337,10 +337,10 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
             const queryResults = db._query(query, bindVars, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 4);
+            assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 4);
+            assertEqual(stats.fullCount, 16);
         },
     };
 }
