@@ -83,6 +83,20 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
 
+std::string_view buildStateToString(
+    VectorIndexBuildState const state) noexcept {
+  switch (state) {
+    case VectorIndexBuildState::kUninitialized:
+      return "uninitialized";
+    case VectorIndexBuildState::kTraining:
+      return "training";
+    case VectorIndexBuildState::kBuilding:
+      return "building";
+    case VectorIndexBuildState::kReady:
+      return "ready";
+  }
+}
+
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
@@ -111,7 +125,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
         new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
                                          _faissIndex->code_size),
         true /* faiss owns the inverted list */);
-    _isTrained = true;
+    _buildState = VectorIndexBuildState::kReady;
   }
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minumum number of documents to train the vector index, but that
@@ -170,7 +184,7 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
-  builder.add("isTrained", VPackValue(isTrained()));
+  builder.add("buildState", VPackValue(buildStateToString(_buildState)));
 
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
@@ -198,7 +212,7 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
-  if (!isTrained()) {
+  if (_buildState != VectorIndexBuildState::kReady) {
     return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
                             &queryContext, &filterVarsToRegs, documentVariable);
   }
@@ -258,20 +272,20 @@ void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
       new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
-  _isTrained = true;
+  _buildState = VectorIndexBuildState::kReady;
 }
 
 bool RocksDBVectorIndex::shouldTriggerTraining() const noexcept {
-  return !_isTrained && _documentCount >= _trainingThreshold && !_isBuilding;
+  return _buildState == VectorIndexBuildState::kUninitialized &&
+         _documentCount >= _trainingThreshold;
 }
 
-void RocksDBVectorIndex::triggerTraining() {
+void RocksDBVectorIndex::tryBuilding() {
   if (!shouldTriggerTraining()) {
     return;
   }
-  _isBuilding = true;
-  TRI_ASSERT(_isBuilding && !_isTrained);
-
+  TRI_ASSERT(_buildState == VectorIndexBuildState::kUninitialized);
+  _buildState = VectorIndexBuildState::kTraining;
   startBuildThread();
 }
 
@@ -288,8 +302,11 @@ void RocksDBVectorIndex::startBuildThread() {
       LOG_TOPIC("e166b", ERR, Logger::ENGINES)
           << "[index=" << indexId << "] Deferred training failed: " << e.what();
     }
-    _isBuilding.store(false);
   });
+}
+
+void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
+  _buildState.store(state, std::memory_order_relaxed);
 }
 
 /// @brief inserts a document into the index
@@ -299,9 +316,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  if (!_isTrained) {
+  if (_buildState == VectorIndexBuildState::kUninitialized) {
     _documentCount.fetch_add(1, std::memory_order_relaxed);
-    triggerTraining();
+    tryBuilding();
     return {};
   }
   std::vector<float> input;
@@ -360,7 +377,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (!_isTrained) {
+  if (_buildState != VectorIndexBuildState::kReady) {
     // Nothing stored in the vector index yet, nothing to remove
     _documentCount.fetch_sub(1, std::memory_order_relaxed);
     return {};

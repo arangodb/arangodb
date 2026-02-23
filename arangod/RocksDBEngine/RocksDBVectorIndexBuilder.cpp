@@ -312,6 +312,7 @@ Result VectorIndexBuildManager::build() {
       << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
 
   _index.applyTrainingResult(std::move(result));
+  _index.setBuildState(VectorIndexBuildState::kBuilding);
 
   auto self = coll.lookupIndex(_index.id());
   if (!self) {
@@ -323,7 +324,7 @@ Result VectorIndexBuildManager::build() {
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   std::move(locker.lock()).waitAndGet();
-  auto res = std::move(builder->fillIndexBackground(locker)).waitAndGet();
+  auto res = builder->fillIndexBackground(locker).waitAndGet();
 
   if (res.fail()) {
     LOG_TOPIC("e164b", ERR, Logger::ENGINES)
@@ -335,6 +336,7 @@ Result VectorIndexBuildManager::build() {
         << "Deferred training and ingestion completed.";
   }
 
+  _index.setBuildState(VectorIndexBuildState::kReady);
   return res;
 }
 

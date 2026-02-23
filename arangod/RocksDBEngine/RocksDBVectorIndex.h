@@ -52,6 +52,13 @@ namespace arangodb {
 
 using VectorIndexLabelId = faiss::idx_t;
 
+enum class VectorIndexBuildState : std::uint8_t {
+  kUninitialized,
+  kTraining,
+  kBuilding,
+  kReady
+};
+
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
@@ -76,8 +83,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   UserVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
-
-  bool isTrained() const noexcept { return _isTrained; }
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
       std::vector<float>& inputs, SearchParameters const& searchParameters,
@@ -107,6 +112,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
+  void setBuildState(VectorIndexBuildState state) noexcept;
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -119,7 +126,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
  private:
   bool shouldTriggerTraining() const noexcept;
 
-  void triggerTraining();
+  void tryBuilding();
 
   void startBuildThread();
 
@@ -139,8 +146,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::atomic<std::int64_t> _documentCount{0};
   std::int64_t _trainingThreshold{0};
-  std::atomic<bool> _isTrained{false};
-  std::atomic<bool> _isBuilding{false};
+  std::atomic<VectorIndexBuildState> _buildState{
+      VectorIndexBuildState::kUninitialized};
   std::thread _buildThread;
 };
 
