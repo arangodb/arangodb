@@ -1439,7 +1439,9 @@ void RocksDBCollection::figuresSpecific(
                 false);
             break;
           case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-            TRI_ASSERT(false) << "Fulltext indexes are disabled!";
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
+                true);
             break;
           case Index::TRI_IDX_TYPE_VECTOR_INDEX:
             count = rocksutils::countKeyRange(

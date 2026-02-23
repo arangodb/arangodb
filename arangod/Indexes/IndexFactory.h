@@ -202,6 +202,11 @@ class IndexFactory {
                                     velocypack::Builder& builder, bool create,
                                     int minFields, int maxFields);
 
+  /// @brief enhances the json of a fulltext index
+  static Result enhanceJsonIndexFulltext(velocypack::Slice definition,
+                                         velocypack::Builder& builder,
+                                         bool create);
+
   /// @brief enhances the json of a mdi
   static Result enhanceJsonIndexMdi(arangodb::velocypack::Slice definition,
                                     arangodb::velocypack::Builder& builder,

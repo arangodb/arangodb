@@ -68,6 +68,16 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief static limits for fulltext index
+struct FulltextIndexLimits {
+  /// @brief maximum length of an indexed word in characters
+  static constexpr int maxWordLength = 40;
+  /// @brief default minimum word length for a fulltext index
+  static constexpr int minWordLengthDefault = 2;
+  /// @brief maximum number of search words in a query
+  static constexpr int maxSearchWords = 32;
+};
+
 class Index {
  public:
   Index() = delete;
@@ -86,7 +96,6 @@ class Index {
       emptyCoveredFields;
 
   /// @brief index types
-  /// The TRI_IDX_TYPE_FULLTEXT_INDEX was removed in 4.0
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,

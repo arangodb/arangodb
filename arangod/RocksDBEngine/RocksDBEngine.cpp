@@ -1230,10 +1230,6 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
 
   // set our column families
-  // Note: indices must match the order of addFamily calls above
-  // [0]=Definitions, [1]=Documents, [2]=PrimaryIndex, [3]=EdgeIndex,
-  // [4]=VPackIndex, [5]=GeoIndex, [6]=FulltextIndex, [7]=ReplicatedLogs,
-  // [8]=MdiIndex, [9]=MdiVPackIndex, [10]=VectorIndex
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::Invalid,
                                   _db->DefaultColumnFamily());
   RocksDBColumnFamilyManager::set(
