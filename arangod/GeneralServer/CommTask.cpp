@@ -1019,6 +1019,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
   // invalidate the member
+  req.setRoles(authToken.roles());
+  req.setJwtToken(authToken.jwtToken());
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {

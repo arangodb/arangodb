@@ -2795,10 +2795,18 @@ arangodb::Result hotBackupList(
       plan.add(resSlice.get("agency-dump")[0]);
     }
 
-    for (auto backup : VPackObjectIterator(resSlice.get("list"))) {
-      ResultT<BackupMeta> meta = BackupMeta::fromSlice(backup.value);
+    for (auto [key, value] : VPackObjectIterator(resSlice.get("list"))) {
+      auto meta = [&] {
+        if (auto error = value.get(arangodb::StaticStrings::ErrorNum);
+            !error.isNone()) {
+          return ResultT<BackupMeta>::success(BackupMeta::fromError(
+              key.copyString(),
+              VelocyPackHelper::getStringValue(resSlice, "server", ""), value));
+        }
+        return BackupMeta::fromSlice(value);
+      }();
       if (meta.ok()) {
-        dbsBackups[backup.key.copyString()].push_back(std::move(meta.get()));
+        dbsBackups[key.copyString()].push_back(std::move(meta.get()));
       }
     }
   }
@@ -2806,13 +2814,20 @@ arangodb::Result hotBackupList(
   for (auto& i : dbsBackups) {
     // check if the backup is on all dbservers
     bool valid = true;
+    bool available = true;
 
     // check here that the backups are all made with the same version
     std::string version;
     size_t totalSize = 0;
     size_t totalFiles = 0;
+    std::unordered_map<std::string, result::Error> errors;
 
-    for (BackupMeta const& meta : i.second) {
+    for (BackupMeta& meta : i.second) {
+      if (!meta._isAvailable) {
+        available = false;
+        errors.merge(meta._errors);
+        continue;
+      }
       if (version.empty()) {
         version = meta._version;
       } else {
@@ -2834,9 +2849,10 @@ arangodb::Result hotBackupList(
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
       front._serverId = "";  // makes no sense for whole cluster
-      front._isAvailable = i.second.size() == dbServers.size() &&
+      front._isAvailable = available && i.second.size() == dbServers.size() &&
                            i.second.size() == front._nrDBServers;
       front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
+      front._errors = std::move(errors);
       hotBackups.insert(std::make_pair(front._id, front));
     }
   }
