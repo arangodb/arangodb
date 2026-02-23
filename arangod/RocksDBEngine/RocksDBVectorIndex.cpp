@@ -321,19 +321,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  // During initial fill or deferred training trigger, only count and maybe
-  // start building; do not write. During kBuilding we're in fillIndexBackground
-  // and must perform the actual insert.
-  if (const auto buildState = _buildState.load(std::memory_order_relaxed);
-      buildState == VectorIndexBuildState::kUninitialized ||
-      buildState == VectorIndexBuildState::kTraining) {
-    _documentCount.fetch_add(1, std::memory_order_relaxed);
-    tryBuilding();
-    return {};
-  }
-  // kBuilding or kReady: perform the actual insert (kBuilding = fill after
-  // train)
-  TRI_ASSERT(_faissIndex != nullptr);
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -344,6 +331,21 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     }
     return res;
   }
+  // During initial fill or deferred training trigger, only count and maybe
+  // start building; do not write. During kBuilding we're in fillIndexBackground
+  // and must perform the actual insert.
+  if (const auto buildState = _buildState.load(std::memory_order_relaxed);
+      buildState == VectorIndexBuildState::kUninitialized ||
+      buildState == VectorIndexBuildState::kTraining) {
+    // For non-sparse index, validate that the document has the vector field
+    // even when we are not writing yet; otherwise fail early.
+    _documentCount.fetch_add(1, std::memory_order_relaxed);
+    tryBuilding();
+    return {};
+  }
+  // kBuilding or kReady: perform the actual insert (kBuilding = fill after
+  // train)
+  TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());

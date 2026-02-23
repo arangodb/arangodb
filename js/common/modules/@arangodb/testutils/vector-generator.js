@@ -265,7 +265,7 @@ function waitForAllVectorIndexesBuildState(collection, buildState, timeoutSec = 
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
         const vectorIndexes = collection.indexes().filter(idx => idx.type === 'vector');
-        if (vectorIndexes.length > 0 && vectorIndexes.every(idx => idx.buildState == buildState)) {
+        if (vectorIndexes.length > 0 && vectorIndexes.every(idx => idx.buildState === buildState)) {
             return true;
         }
         internal.sleep(sleepIntervalSec);
