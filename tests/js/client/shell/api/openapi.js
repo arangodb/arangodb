@@ -56,6 +56,11 @@ function openapi_endpointsSuite() {
       assertEqual(typeof response, 'object');
       assertEqual(typeof response.paths, 'object');
     },
+
+    test_openapi_v0_returns_404: function () {
+      let doc = arango.GET_RAW("/_arango/v0/openapi.json");
+      assertEqual(doc.code, 404);
+    },
   };
 }
 
