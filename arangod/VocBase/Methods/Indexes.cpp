@@ -463,7 +463,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     VPackBuilder& output, std::shared_ptr<ProgressTracker> progress,
     Replication2Callback replicationCb) {
   activities::Activity ensureIndexActivity(
-      "ensureIndex",
+      "EnsureIndex",
       {{"collection", collection.name()}, {"parameters", input.toJson()}});
 
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;

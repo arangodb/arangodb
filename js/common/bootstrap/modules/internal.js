@@ -492,6 +492,24 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ES256 sign with private key in PEM format
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ES256SIGN) {
+    exports.es256sign = global.SYS_ES256SIGN;
+    delete global.SYS_ES256SIGN;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ES256 verify with public key in PEM format
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ES256VERIFY) {
+    exports.es256verify = global.SYS_ES256VERIFY;
+    delete global.SYS_ES256VERIFY;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief sleep
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -1842,7 +1860,7 @@ global.DEFINE_MODULE('internal', (function () {
   };
   
   [ "arangobackup", "arangod", "arangodb", "arangodbtests",
-    "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
+    "arangodump", "arangoexport", "arangoimport", "arango-init-database",
     "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
     global[executableName] = () => {
       let console = require("console");
