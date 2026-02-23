@@ -31,8 +31,9 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    waitForTrained,
+    waitForVectorIndexState,
 } = require("@arangodb/testutils/vector-generator");
+const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
 
@@ -83,8 +84,12 @@ function VectorIndexL2NprobeTestSuite() {
                     nLists: 300,
                 },
             });
-            assertTrue(waitForTrained(collection, 60),
-                "Expected vector index to become trained");
+            if (isCluster) {
+                internal.sleep(3);
+            } else {
+                assertTrue(waitForVectorIndexState(collection, "ready", 60),
+                    "Expected vector index to become trained");
+            }
         },
 
         tearDownAll: function() {

@@ -39,7 +39,8 @@ const {
 const {
     createVectorGenerator,
     DistanceFunctions,
-    waitForTrained,
+    waitForVectorIndexState,
+    waitForAllVectorIndexesBuildState,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 
@@ -101,12 +102,16 @@ function VectorIndexL2TestSuite(expectedTrained) {
                 },
             });
 
-            if (expectedTrained) {
-                assertTrue(waitForTrained(collection, 60),
-                    "Expected index to become trained with " + numberOfDocs + " docs");
+            if (isCluster) {
+                internal.sleep(3);
             } else {
-                assertFalse(waitForTrained(collection, 5),
-                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+                if (expectedTrained) {
+                    assertTrue(waitForAllVectorIndexesBuildState(collection, "ready", 10),
+                        "Expected index to become ready with " + numberOfDocs + " docs");
+                } else {
+                    assertTrue(waitForAllVectorIndexesBuildState(collection, "uninitialized", 5),
+                        "Expected index to stay uninitialized with " + numberOfDocs + " docs");
+                }
             }
         },
 
@@ -577,12 +582,16 @@ function VectorIndexCosineTestSuite(expectedTrained) {
                 },
             });
 
-            if (expectedTrained) {
-                assertTrue(waitForTrained(collection, 60),
-                    "Expected index to become trained with " + numberOfDocs + " docs");
+            if (isCluster) {
+                internal.sleep(3);
             } else {
-                assertFalse(waitForTrained(collection, 5),
-                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+                if (expectedTrained) {
+                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
+                        "Expected index to become trained with " + numberOfDocs + " docs");
+                } else {
+                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
+                        "Expected index to stay untrained with " + numberOfDocs + " docs");
+                }
             }
         },
 
@@ -763,12 +772,16 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
                 },
             });
 
-            if (expectedTrained) {
-                assertTrue(waitForTrained(collection, 60),
-                    "Expected index to become trained with " + numberOfDocs + " docs");
+            if (isCluster) {
+                internal.sleep(3);
             } else {
-                assertFalse(waitForTrained(collection, 5),
-                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+                if (expectedTrained) {
+                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
+                        "Expected index to become trained with " + numberOfDocs + " docs");
+                } else {
+                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
+                        "Expected index to stay untrained with " + numberOfDocs + " docs");
+                }
             }
         },
 
@@ -943,6 +956,13 @@ function MultipleVectorIndexesOnField() {
                 },
             });
 
+            if (isCluster) {
+                internal.sleep(3);
+            } else {
+                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                    "Expected all vector indexes to become ready before query");
+            }
+
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -991,6 +1011,12 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            if (isCluster) {
+                internal.sleep(3);
+            } else {
+                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                    "Expected vector indexes to become trained before query");
+            }
 
             const query =
                 "FOR d IN " +
@@ -1039,6 +1065,12 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            if (isCluster) {
+                internal.sleep(3);
+            } else {
+                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                    "Expected vector indexes to become trained before query");
+            }
 
             const queries = [{
                 query: "FOR d IN " +

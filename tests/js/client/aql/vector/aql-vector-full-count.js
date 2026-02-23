@@ -33,9 +33,10 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    waitForTrained,
+    waitForVectorIndexState,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
+const isCluster = require("internal").isCluster();
 
 const dbName = "vectorDB";
 const collName = "vectorColl";
@@ -89,12 +90,16 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                     defaultNProbe: nLists,
                 },
             });
-            if (expectedTrained) {
-                assertTrue(waitForTrained(collection, 60),
-                    "Expected index to become trained with " + numberOfDocs + " docs");
+            if (isCluster) {
+                internal.sleep(3);
             } else {
-                assertFalse(waitForTrained(collection, 5),
-                    "Expected index to stay untrained with " + numberOfDocs + " docs");
+                if (expectedTrained) {
+                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
+                        "Expected index to become trained with " + numberOfDocs + " docs");
+                } else {
+                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
+                        "Expected index to stay untrained with " + numberOfDocs + " docs");
+                }
             }
         },
 

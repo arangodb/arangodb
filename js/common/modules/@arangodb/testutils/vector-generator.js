@@ -238,20 +238,43 @@ function withSuffix(suite, suffix) {
     return result;
 }
 
-function waitForTrained(collection, timeoutSec) {
+const sleepIntervalSec = 0.1;
+
+/**
+ * Waits until the collection's (first) vector index reaches the given build state.
+ * @param {ArangoCollection} collection - collection that has a vector index
+ * @param {string} state - desired build state: "ready" or "uninitialized"
+ * @param {number} timeoutSec - max time to wait in seconds
+ * @returns {boolean} true if the vector index reached the state within the timeout
+ */
+function waitForVectorIndexState(collection, state, timeoutSec = 20) {
     const internal = require("internal");
-    const deadline = Date.now() + timeoutSec * 1000;
-    while (Date.now() < deadline) {
-        const idx = collection.indexes().find(i => i.type === 'vector');
-        if (idx && idx.isTrained) {
+    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
+    for (let i = 0; i < iterations; i++) {
+        const idx = collection.indexes().find(ix => ix.type === 'vector');
+        if (idx && idx.buildState === state) {
             return true;
         }
-        internal.sleep(0.1);
+        internal.sleep(sleepIntervalSec);
+    }
+    return false;
+}
+
+function waitForAllVectorIndexesBuildState(collection, buildState, timeoutSec = 20) {
+    const internal = require("internal");
+    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
+    for (let i = 0; i < iterations; i++) {
+        const vectorIndexes = collection.indexes().filter(idx => idx.type === 'vector');
+        if (vectorIndexes.length > 0 && vectorIndexes.every(idx => idx.buildState == buildState)) {
+            return true;
+        }
+        internal.sleep(sleepIntervalSec);
     }
     return false;
 }
 
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
-exports.waitForTrained = waitForTrained;
+exports.waitForVectorIndexState = waitForVectorIndexState;
+exports.waitForAllVectorIndexesBuildState = waitForAllVectorIndexesBuildState;
 exports.withSuffix = withSuffix;
