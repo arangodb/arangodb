@@ -98,6 +98,10 @@ get_target_property(IRESEARCH_INCLUDE
   iresearch-static INCLUDE_DIRECTORIES)
 
 include(arangoserver.cmake)
+# Ensure OpenAPI files are generated before building arangoserver
+add_dependencies(arangoserver openapi-hex-files)
+# Add binary directory to include path so generated files can be found
+target_include_directories(arangoserver PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/RestHandler)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)

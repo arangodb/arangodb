@@ -104,10 +104,12 @@ int main(int argc, char* argv[]) {
     server.addFeature<V8ShellFeaturePhase>();
     server.addFeature<ShellFeature>(&ret);
     server.addFeature<V8PlatformFeature>();
-    server.addFeature<V8ShellFeature>(context.binaryName());
+
+    auto& v8ShellFeature =
+        server.addFeature<V8ShellFeature>(context.binaryName());
     server.addFeature<LanguageFeature>();
     server.addFeature<V8SecurityFeature>();
-    server.addFeature<ProcessMonitoringFeature>();
+    server.addFeature<ProcessMonitoringFeature>(v8ShellFeature);
     server.addFeature<TempFeature>(context.binaryName());
 
     try {
