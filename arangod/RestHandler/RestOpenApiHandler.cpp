@@ -32,10 +32,6 @@ using namespace arangodb::rest;
 
 namespace {
 // Embedded OpenAPI specs as compile-time byte arrays
-constexpr unsigned char kOpenApiV0[] = {
-#include "openapi-v0.csx"
-};
-
 constexpr unsigned char kOpenApiV1[] = {
 #include "openapi-v1.csx"
 };

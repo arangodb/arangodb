@@ -38,25 +38,6 @@ const contentType = forceJson ? "application/json" :  "application/x-velocypack"
 
 function openapi_endpointsSuite() {
   return {
-    test_retrieves_openapi_v0: function() {
-      let doc = arango.GET_RAW("/_arango/v0/openapi.json");
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], "application/json");
-      
-      let response = doc.parsedBody;
-      assertNotUndefined(response);
-      
-      // Verify it's a valid OpenAPI structure
-      assertNotUndefined(response.openapi, "Should have openapi version field");
-      assertNotUndefined(response.info, "Should have info object");
-      assertNotUndefined(response.paths, "Should have paths object");
-      
-      // Verify it's a JSON object with expected structure
-      assertEqual(typeof response, 'object');
-      assertEqual(typeof response.paths, 'object');
-    },
-
     test_retrieves_openapi_v1: function() {
       let doc = arango.GET_RAW("/_arango/v1/openapi.json");
 
@@ -75,26 +56,6 @@ function openapi_endpointsSuite() {
       assertEqual(typeof response, 'object');
       assertEqual(typeof response.paths, 'object');
     },
-
-    test_openapi_v0_and_v1_differ: function() {
-      let docV0 = arango.GET_RAW("/_arango/v0/openapi.json");
-      let docV1 = arango.GET_RAW("/_arango/v1/openapi.json");
-
-      assertEqual(docV0.code, 200);
-      assertEqual(docV1.code, 200);
-
-      let v0 = docV0.parsedBody;
-      let v1 = docV1.parsedBody;
-
-      // Both should be valid OpenAPI documents
-      assertNotUndefined(v0.openapi);
-      assertNotUndefined(v1.openapi);
-
-      // They should potentially differ in content
-      // (At minimum, they should have different version info or paths)
-      assertNotUndefined(v0.paths);
-      assertNotUndefined(v1.paths);
-    }
   };
 }
 
