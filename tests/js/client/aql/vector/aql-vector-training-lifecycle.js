@@ -33,6 +33,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     waitForVectorIndexState,
+    waitForAllVectorIndexesBuildStateOnDBServers,
 } = require("@arangodb/testutils/vector-generator");
 const isCluster = require("internal").isCluster();
 
@@ -84,7 +85,10 @@ function VectorIndexRemainsUntrainedSuite() {
             assertEqual(insertCount, collection.count());
 
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "uninitialized", 5),
+                    "Index should remain uninitialized with only " + insertCount + " docs (threshold ~1000)"
+                );
             } else {
                 const trained = waitForVectorIndexState(collection, "uninitialized", 5);
                 assertTrue(trained,
@@ -137,7 +141,11 @@ function VectorIndexDeferredTrainingSuite() {
             assertEqual(insertCount, collection.count());
 
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    "Index should become trained after inserting " + insertCount +
+                    " docs (threshold ~1000), waited up to 60s"
+                );
             } else {
                 const trained = waitForVectorIndexState(collection, "ready", 60);
                 assertTrue(trained,
@@ -163,7 +171,10 @@ function VectorIndexDeferredTrainingSuite() {
             collection.insert(docs);
 
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    "Index should become trained within 60s"
+                );
             } else {
                 const trained = waitForVectorIndexState(collection, "ready", 60);
                 assertTrue(trained, "Index should become trained within 60s");
@@ -222,7 +233,11 @@ function VectorIndexBatchInsertTrainingSuite() {
             assertEqual(batchSize * numBatches, collection.count());
 
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    "Index should become trained after " + (batchSize * numBatches) +
+                    " docs inserted in " + numBatches + " batches"
+                );
             } else {
                 const trained = waitForVectorIndexState(collection, "ready", 60);
                 assertTrue(trained,

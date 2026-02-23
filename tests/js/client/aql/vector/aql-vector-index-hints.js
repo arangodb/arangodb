@@ -34,6 +34,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
   waitForVectorIndexState,
+  waitForAllVectorIndexesBuildStateOnDBServers,
   withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 const isCluster = require("internal").isCluster();
@@ -105,15 +106,21 @@ function VectorIndexHintsSuite(expectedTrained) {
         },
       });
       if (isCluster) {
-        internal.sleep(3);
+        assertTrue(
+          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2 to become " + (expectedTrained ? "trained" : "untrained") +
+          " on DB servers with " + numberOfDocs + " docs"
+        );
       } else {
-        if (expectedTrained) {
-          assertTrue(waitForVectorIndexState(collection, "ready", 60),
-            "Expected vector_l2 to become trained with " + numberOfDocs + " docs");
-        } else {
-          assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-            "Expected vector_l2 to stay untrained with " + numberOfDocs + " docs");
-        }
+        assertTrue(
+          waitForVectorIndexState(collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2 to become " + (expectedTrained ? "trained" : "untrained") +
+          " with " + numberOfDocs + " docs"
+        );
       }
 
       collection.ensureIndex({
@@ -127,15 +134,21 @@ function VectorIndexHintsSuite(expectedTrained) {
         },
       });
       if (isCluster) {
-        internal.sleep(3);
+        assertTrue(
+          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2_secondary to become " + (expectedTrained ? "trained" : "untrained") +
+          " on DB servers with " + numberOfDocs + " docs"
+        );
       } else {
-        if (expectedTrained) {
-          assertTrue(waitForVectorIndexState(collection, "ready", 60),
-            "Expected vector_l2_secondary to become trained with " + numberOfDocs + " docs");
-        } else {
-          assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-            "Expected vector_l2_secondary to stay untrained with " + numberOfDocs + " docs");
-        }
+        assertTrue(
+          waitForVectorIndexState(collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2_secondary to become " + (expectedTrained ? "trained" : "untrained") +
+          " with " + numberOfDocs + " docs"
+        );
       }
 
       collection.ensureIndex({
@@ -150,15 +163,21 @@ function VectorIndexHintsSuite(expectedTrained) {
         },
       });
       if (isCluster) {
-        internal.sleep(3);
+        assertTrue(
+          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
+          " on DB servers with " + numberOfDocs + " docs"
+        );
       } else {
-        if (expectedTrained) {
-          assertTrue(waitForVectorIndexState(collection, "ready", 60),
-            "Expected vector_l2_with_filter to become trained with " + numberOfDocs + " docs");
-        } else {
-          assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-            "Expected vector_l2_with_filter to stay untrained with " + numberOfDocs + " docs");
-        }
+        assertTrue(
+          waitForVectorIndexState(collection,
+            expectedTrained ? "ready" : "uninitialized",
+            expectedTrained ? 60 : 5),
+          "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
+          " with " + numberOfDocs + " docs"
+        );
       }
     },
 

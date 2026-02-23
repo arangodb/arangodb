@@ -32,6 +32,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     waitForVectorIndexState,
+    waitForAllVectorIndexesBuildStateOnDBServers,
 } = require("@arangodb/testutils/vector-generator");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
@@ -85,7 +86,10 @@ function VectorIndexL2NprobeTestSuite() {
                 },
             });
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    "Expected vector index to become trained on DB servers"
+                );
             } else {
                 assertTrue(waitForVectorIndexState(collection, "ready", 60),
                     "Expected vector index to become trained");

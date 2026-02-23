@@ -34,6 +34,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     waitForVectorIndexState,
+    waitForAllVectorIndexesBuildStateOnDBServers,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 const isCluster = require("internal").isCluster();
@@ -91,15 +92,21 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                 },
             });
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " on DB servers with " + numberOfDocs + " docs"
+                );
             } else {
-                if (expectedTrained) {
-                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
-                        "Expected index to become trained with " + numberOfDocs + " docs");
-                } else {
-                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-                        "Expected index to stay untrained with " + numberOfDocs + " docs");
-                }
+                assertTrue(
+                    waitForVectorIndexState(collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " with " + numberOfDocs + " docs"
+                );
             }
         },
 

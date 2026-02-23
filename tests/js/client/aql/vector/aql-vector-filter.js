@@ -38,6 +38,7 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     waitForVectorIndexState,
+    waitForAllVectorIndexesBuildStateOnDBServers,
     withSuffix,
 } = require("@arangodb/testutils/vector-generator");
 const isCluster = require("internal").isCluster();
@@ -168,15 +169,21 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 },
             });
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " on DB servers with " + numberOfDocs + " docs"
+                );
             } else {
-                if (expectedTrained) {
-                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
-                        "Expected index to become trained with " + numberOfDocs + " docs");
-                } else {
-                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-                        "Expected index to stay untrained with " + numberOfDocs + " docs");
-                }
+                assertTrue(
+                    waitForVectorIndexState(collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " with " + numberOfDocs + " docs"
+                );
             }
         },
 
@@ -691,15 +698,21 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                 },
             });
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection1,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " on DB servers with " + numberOfDocs + " docs"
+                );
             } else {
-                if (expectedTrained) {
-                    assertTrue(waitForVectorIndexState(collection1, "ready", 60),
-                        "Expected index to become trained with " + numberOfDocs + " docs");
-                } else {
-                    assertTrue(waitForVectorIndexState(collection1, "uninitialized", 5),
-                        "Expected index to stay untrained with " + numberOfDocs + " docs");
-                }
+                assertTrue(
+                    waitForVectorIndexState(collection1,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " with " + numberOfDocs + " docs"
+                );
             }
         },
 
@@ -806,15 +819,21 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                 storedValues: ["val", "stringField", "boolField", "floatField"]
             });
             if (isCluster) {
-                internal.sleep(3);
+                assertTrue(
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " on DB servers with " + numberOfDocs + " docs"
+                );
             } else {
-                if (expectedTrained) {
-                    assertTrue(waitForVectorIndexState(collection, "ready", 60),
-                        "Expected index to become trained with " + numberOfDocs + " docs");
-                } else {
-                    assertTrue(waitForVectorIndexState(collection, "uninitialized", 5),
-                        "Expected index to stay untrained with " + numberOfDocs + " docs");
-                }
+                assertTrue(
+                    waitForVectorIndexState(collection,
+                        expectedTrained ? "ready" : "uninitialized",
+                        expectedTrained ? 60 : 5),
+                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
+                    " with " + numberOfDocs + " docs"
+                );
             }
         },
 

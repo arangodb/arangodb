@@ -273,8 +273,81 @@ function waitForAllVectorIndexesBuildState(collection, buildState, timeoutSec = 
     return false;
 }
 
+/**
+ * In cluster mode: waits until all vector indexes on all DB servers (shards) reach
+ * the given build state by querying each DB server via the HTTP API (no reconnect).
+ * @param {ArangoDatabase} db - database (e.g. internal.db)
+ * @param {ArangoCollection} collection - collection that has vector index(es)
+ * @param {string} buildState - desired build state: "ready" or "uninitialized"
+ * @param {number} timeoutSec - max time to wait in seconds
+ * @returns {boolean} true if all vector indexes on all shards reached the state within the timeout
+ */
+function waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, timeoutSec = 20) {
+    const internal = require("internal");
+    const request = require("@arangodb/request");
+    const testHelper = require("@arangodb/test-helper");
+    const getEndpointById = testHelper.getEndpointById;
+
+    const dbName = db._name();
+    const shardMap = collection.shards(true);
+    if (!shardMap || Object.keys(shardMap).length === 0) {
+        return false;
+    }
+
+    const serverToShards = {};
+    for (const [shard, servers] of Object.entries(shardMap)) {
+        const primaryId = servers[0];
+        if (!serverToShards[primaryId]) {
+            serverToShards[primaryId] = [];
+        }
+        serverToShards[primaryId].push(shard);
+    }
+
+    const indexApiPath = "/_db/" + encodeURIComponent(dbName) + "/_api/index";
+
+    const iterations = Math.floor(timeoutSec / sleepIntervalSec);
+    for (let iter = 0; iter < iterations; iter++) {
+        let allMatch = true;
+        for (const [serverId, shards] of Object.entries(serverToShards)) {
+            const baseUrl = getEndpointById(serverId);
+            if (!baseUrl) {
+                allMatch = false;
+                break;
+            }
+            for (const shardName of shards) {
+                const url = baseUrl + indexApiPath + "?collection=" + encodeURIComponent(shardName);
+                let res;
+                try {
+                    res = request({ method: "GET", url });
+                } catch (e) {
+                    allMatch = false;
+                    break;
+                }
+                if (res.status !== 200 || !res.json || !res.json.indexes) {
+                    allMatch = false;
+                    break;
+                }
+                const vectorIndexes = res.json.indexes.filter(idx => idx.type === 'vector');
+                if (vectorIndexes.length === 0 || !vectorIndexes.every(idx => idx.buildState === buildState)) {
+                    allMatch = false;
+                    break;
+                }
+            }
+            if (!allMatch) {
+                break;
+            }
+        }
+        if (allMatch) {
+            return true;
+        }
+        internal.sleep(sleepIntervalSec);
+    }
+    return false;
+}
+
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
 exports.waitForVectorIndexState = waitForVectorIndexState;
 exports.waitForAllVectorIndexesBuildState = waitForAllVectorIndexesBuildState;
+exports.waitForAllVectorIndexesBuildStateOnDBServers = waitForAllVectorIndexesBuildStateOnDBServers;
 exports.withSuffix = withSuffix;
