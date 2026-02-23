@@ -43,6 +43,7 @@ class DB;
 }  // namespace rocksdb
 
 namespace arangodb {
+class Index;
 class RocksDBVectorIndex;
 class RocksDBEngine;
 }  // namespace arangodb
@@ -115,7 +116,9 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build();
+  /// @param indexSelf  shared_ptr to this index (keeps it alive; must be
+  ///                   non-null). Passed by the caller to avoid lookup.
+  Result build(std::shared_ptr<Index> indexSelf);
 
  private:
   RocksDBVectorIndex& _index;

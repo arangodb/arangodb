@@ -213,9 +213,12 @@ RocksDBVectorIndex::readBatch(
   }
 
   if (_buildState != VectorIndexBuildState::kReady) {
+    LOG_DEVEL << ADB_HERE
+              << ": Index is not ready, performing brute force search.";
     return bruteForceSearch(inputs, topK, trx, filterExpression, inputRow,
                             &queryContext, &filterVarsToRegs, documentVariable);
   }
+  LOG_DEVEL << ADB_HERE << ": Index is ready, performing FAISS search.";
 
   // Trained: normal FAISS IVF search
   std::vector<float> distances(topK);
@@ -245,6 +248,9 @@ RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
+  LOG_DEVEL << ADB_HERE << ": Performing FAISS search :" << inputs;
+  LOG_DEVEL << ADB_HERE
+            << ": Trained data size: " << _trainedData->codeData.size();
   _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
                       &searchParametersIvf);
 
@@ -272,7 +278,6 @@ void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
       new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
-  _buildState = VectorIndexBuildState::kReady;
 }
 
 bool RocksDBVectorIndex::shouldTriggerTraining() const noexcept {
@@ -284,25 +289,30 @@ void RocksDBVectorIndex::tryBuilding() {
   if (!shouldTriggerTraining()) {
     return;
   }
+  // Keep this index alive for the build thread without requiring collection
+  // lookup (index may not be registered yet, e.g. during createIndex fill).
+  auto indexSelf = shared_from_this();
   TRI_ASSERT(_buildState == VectorIndexBuildState::kUninitialized);
   _buildState = VectorIndexBuildState::kTraining;
-  startBuildThread();
+  startBuildThread(std::move(indexSelf));
 }
 
-void RocksDBVectorIndex::startBuildThread() {
+void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> indexSelf) {
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  _buildThread = std::thread([this, indexId = _iid.id()] {
-    try {
-      vector::VectorIndexBuildManager builder(*this);
-      builder.build();
-    } catch (std::exception const& e) {
-      LOG_TOPIC("e166b", ERR, Logger::ENGINES)
-          << "[index=" << indexId << "] Deferred training failed: " << e.what();
-    }
-  });
+  _buildThread = std::jthread(
+      [this, indexSelf = std::move(indexSelf), indexId = _iid.id()] {
+        vector::VectorIndexBuildManager builder(*this);
+        if (auto const res = builder.build(indexSelf); res.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+        setBuildState(VectorIndexBuildState::kReady);
+      });
+#ifdef TRI_HAVE_SYS_PRCTL_H
+  pthread_setname_np(_buildThread.native_handle(), "VectorIndexBuilder");
+#endif
 }
 
 void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
@@ -316,11 +326,19 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
-  if (_buildState == VectorIndexBuildState::kUninitialized) {
+  // During initial fill or deferred training trigger, only count and maybe
+  // start building; do not write. During kBuilding we're in fillIndexBackground
+  // and must perform the actual insert.
+  if (const auto buildState = _buildState.load(std::memory_order_relaxed);
+      buildState == VectorIndexBuildState::kUninitialized ||
+      buildState == VectorIndexBuildState::kTraining) {
     _documentCount.fetch_add(1, std::memory_order_relaxed);
     tryBuilding();
     return {};
   }
+  // kBuilding or kReady: perform the actual insert (kBuilding = fill after
+  // train)
+  TRI_ASSERT(_faissIndex != nullptr);
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {

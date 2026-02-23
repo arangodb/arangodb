@@ -35,6 +35,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -78,7 +79,7 @@ struct FulltextIndexLimits {
   static constexpr int maxSearchWords = 32;
 };
 
-class Index {
+class Index : public std::enable_shared_from_this<Index> {
  public:
   Index() = delete;
   Index(Index const&) = delete;

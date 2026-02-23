@@ -128,7 +128,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void tryBuilding();
 
-  void startBuildThread();
+  void startBuildThread(std::shared_ptr<Index> indexSelf);
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(
@@ -148,7 +148,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::int64_t _trainingThreshold{0};
   std::atomic<VectorIndexBuildState> _buildState{
       VectorIndexBuildState::kUninitialized};
-  std::thread _buildThread;
+  std::jthread _buildThread;
 };
 
 }  // namespace arangodb

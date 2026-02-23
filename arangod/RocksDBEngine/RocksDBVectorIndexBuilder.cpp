@@ -35,6 +35,7 @@
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -273,7 +274,7 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(
           static_cast<RocksDBCollection*>(index.collection().getPhysical())) {}
 
-Result VectorIndexBuildManager::build() {
+Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
   auto& coll = _index.collection();
   auto const bounds = _rcoll->bounds();
 
@@ -314,17 +315,14 @@ Result VectorIndexBuildManager::build() {
   _index.applyTrainingResult(std::move(result));
   _index.setBuildState(VectorIndexBuildState::kBuilding);
 
-  auto self = coll.lookupIndex(_index.id());
-  if (!self) {
-    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND, "index was dropped during build"};
-  }
-  auto selfRocksDB = std::static_pointer_cast<RocksDBIndex>(self);
+  TRI_ASSERT(indexSelf != nullptr);
+  auto selfRocksDB = std::static_pointer_cast<RocksDBIndex>(indexSelf);
   auto builder = std::make_shared<RocksDBBuilderIndex>(
       selfRocksDB, _rcoll->meta().numberDocuments(), /*parallelism*/ 2);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   std::move(locker.lock()).waitAndGet();
-  auto res = builder->fillIndexBackground(locker).waitAndGet();
+  auto const res = builder->fillIndexBackground(locker).waitAndGet();
 
   if (res.fail()) {
     LOG_TOPIC("e164b", ERR, Logger::ENGINES)
@@ -336,7 +334,6 @@ Result VectorIndexBuildManager::build() {
         << "Deferred training and ingestion completed.";
   }
 
-  _index.setBuildState(VectorIndexBuildState::kReady);
   return res;
 }
 
