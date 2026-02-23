@@ -222,10 +222,10 @@
       buckets: 5
       priority: 250
       type: single
+      suffix: _large
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
-      suffix: large
 
 - gtest_iresearch:
     options:
@@ -408,11 +408,11 @@
       size: medium+
       type: cluster
       buckets: 4
+      suffix: _large
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
       encryptionAtRest: false
-      suffix: large
 - shell_client:
     options:
       priority: 500
