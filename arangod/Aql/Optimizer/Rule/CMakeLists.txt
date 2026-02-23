@@ -1,6 +1,7 @@
 add_subdirectory(EnumeratePathsFilter)
 
 target_sources(arango_aql PRIVATE
+  AsyncPrefetch.cpp
   BatchMaterializeDocuments.cpp
   CollectWithIndex.cpp
   DecayUnnecessarySortedGather.cpp
@@ -17,6 +18,7 @@ target_sources(arango_aql PRIVATE
   IndexNode.cpp
   Join.cpp
   LateMaterializedCommon.cpp
+  OptimizeCount.cpp
   OptimizeProjections.cpp
   ReplaceFunctions.cpp
   SpliceSubqueries.cpp
