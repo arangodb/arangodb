@@ -653,7 +653,7 @@ R"=({"DBServers": {"PRMR-62940941-7b13-4333-86a4-819deacff9e3": "none","PRMR-341
         "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
       ]
     }
-  },
+  }
 }
 },
 "Coordinators": {
