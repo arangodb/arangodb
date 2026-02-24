@@ -72,7 +72,6 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
-  static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;

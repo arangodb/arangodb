@@ -824,7 +824,7 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "isRestore"].forEach(function(key) {
       if (options[key]) {
         url = appendBoolParameter(url, key, options[key]);
       }

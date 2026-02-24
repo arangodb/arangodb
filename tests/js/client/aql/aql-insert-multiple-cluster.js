@@ -328,7 +328,7 @@ function InsertMultipleDocumentsSuite(params) {
 
     testReturnOld: function () {
       // initial document
-      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false }`;
+      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn}`;
       assertRuleIsUsed(query);
 
       let res = db._query(query);
@@ -356,7 +356,7 @@ function InsertMultipleDocumentsSuite(params) {
 
     testOverwriteReturnNew: function () {
       // initial document
-      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} RETURN NEW`;
       assertRuleIsNotUsed(query);
 
       let res = db._query(query);
@@ -378,7 +378,7 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testOverwriteUpdateMerge: function () {
-      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} RETURN NEW`;
       assertRuleIsNotUsed(query);
 
       let res = db._query(query);
@@ -404,7 +404,7 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testOverwriteUpdateNotMerge: function () {
-      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} RETURN NEW`;
       assertRuleIsNotUsed(query);
       let res = db._query(query);
 

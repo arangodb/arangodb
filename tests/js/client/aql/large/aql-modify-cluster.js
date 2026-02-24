@@ -1127,7 +1127,7 @@ function ahuacatlInsertSuite () {
             FOR a IN 3..5
               INSERT { _key: CONCAT('12',a), name: a }
             IN @@cn
-              OPTIONS { overwrite: true }
+              OPTIONS { overwriteMode: 'replace' }
               RETURN {old: OLD, new: NEW}
           )
 

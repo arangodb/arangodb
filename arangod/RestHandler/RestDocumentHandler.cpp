@@ -203,11 +203,6 @@ async<void> RestDocumentHandler::insertDocument() {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   handleFillIndexCachesValue(opOptions);
 
-  if (_request->parsedValue(StaticStrings::Overwrite, false)) {
-    // the default behavior if just "overwrite" is set
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-  }
-
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
     auto overwriteMode =
