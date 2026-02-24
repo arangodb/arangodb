@@ -351,19 +351,20 @@ void SchedulerFeature::prepare() {
       // should perform all the throttling.
 
       return std::make_unique<SupervisedScheduler>(
-          server(), _options.nrMinimalThreads, _options.nrMaximalThreads, _options.queueSize,
-          _options.fifo1Size, _options.fifo2Size, _options.fifo3Size, metrics, lowPrioAntiOverwhelm);
+          server(), _options.nrMinimalThreads, _options.nrMaximalThreads,
+          _options.queueSize, _options.fifo1Size, _options.fifo2Size,
+          _options.fifo3Size, metrics, lowPrioAntiOverwhelm);
     }
 
     TRI_ASSERT(_schedulerType == "threadpools");
-    return std::make_unique<ThreadPoolScheduler>(server(), _options.nrMaximalThreads,
-                                                 metrics);
+    return std::make_unique<ThreadPoolScheduler>(
+        server(), _options.nrMaximalThreads, metrics);
   });
 
   _acceptanceQueue = std::make_unique<AcceptanceQueueImpl>(
-      _options.queueSize, _options.fifo1Size, _options.fifo2Size, _options.fifo3Size,
-      _options.unavailabilityQueueFillGrade, _scheduler.get(), metrics,
-      lowPrioAntiOverwhelm);
+      _options.queueSize, _options.fifo1Size, _options.fifo2Size,
+      _options.fifo3Size, _options.unavailabilityQueueFillGrade,
+      _scheduler.get(), metrics, lowPrioAntiOverwhelm);
 
   SCHEDULER = _scheduler.get();
   ACCEPTANCE_QUEUE = _acceptanceQueue.get();

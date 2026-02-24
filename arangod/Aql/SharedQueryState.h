@@ -40,7 +40,8 @@ class SharedQueryState final
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   explicit SharedQueryState(application_features::ApplicationServer& server);
-  SharedQueryState(application_features::ApplicationServer& server, AcceptanceQueue* acceptanceQueue);
+  SharedQueryState(application_features::ApplicationServer& server,
+                   AcceptanceQueue* acceptanceQueue);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 

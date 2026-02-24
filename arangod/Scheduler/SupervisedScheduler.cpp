@@ -130,10 +130,10 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 }  // namespace arangodb
 
 SupervisedScheduler::SupervisedScheduler(
-    application_features::ApplicationServer& server, uint64_t const minThreads, uint64_t const maxThreads,
-    uint64_t const maxQueueSize, uint64_t const fifo1Size,
-    uint64_t const fifo2Size, uint64_t const fifo3Size,
-    std::shared_ptr<SchedulerMetrics> const& metrics,
+    application_features::ApplicationServer& server, uint64_t const minThreads,
+    uint64_t const maxThreads, uint64_t const maxQueueSize,
+    uint64_t const fifo1Size, uint64_t const fifo2Size,
+    uint64_t const fifo3Size, std::shared_ptr<SchedulerMetrics> const& metrics,
     std::shared_ptr<LowPrioAntiOverwhelm> const& antiOverwhelm)
     : Scheduler(server),
       _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
