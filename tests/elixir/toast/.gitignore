@@ -20,3 +20,6 @@ erl_crash.dump
 *.ez
 
 toast-results
+
+# Local Toast configuration
+.toast.local.exs

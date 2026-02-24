@@ -375,7 +375,8 @@ This section has no dependencies on other sections. All subsequent sections depe
 - **File naming in `suites/`**: Files are renamed from `*_test.exs` (ExUnit convention) to `test_*.exs` (Toast convention) during the move. The `mix toast` task supports both patterns during the transition.
 - **Deprecated alias for `Toast.TestCase`**: A thin `Toast.TestCase` wrapper that delegates to `ToastTest.Case` is preserved so existing test files continue to compile without changes.
 - **`Toast.Application` -> `ToastTest.ResultExporter` dependency**: This cross-boundary reference is acceptable temporarily and will be cleaned up in section-02-library-extraction.
-- **No functional changes**: The restructure changes only file locations and module names. All runtime behavior is identical before and after.
+- **No functional changes**: The restructure changes only file locations and module names. All runtime behavior is identical before and after (one intentional exception: rocket emoji removed from CLIFormatter module headers).
+- **mix.exs `test_paths` removed**: The plan specified `test_paths: ["test"]` but this short-circuits the `mix toast` task's `default_test_paths()` fallback. Since Mix defaults to `["test"]` anyway, the explicit setting was removed so `mix toast` correctly discovers `suites/`.
 
 ## File Inventory
 
