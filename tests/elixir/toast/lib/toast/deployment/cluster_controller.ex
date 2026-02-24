@@ -62,7 +62,8 @@ defmodule Toast.Deployment.ClusterController do
       error: nil,
       diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
-      on_event: Keyword.get(opts, :on_event)
+      on_event: Keyword.get(opts, :on_event),
+      cluster_id_mapping: %{}
     }
 
     {:ok, state}
@@ -144,6 +145,32 @@ defmodule Toast.Deployment.ClusterController do
     {:reply, servers, state}
   end
 
+  def handle_call({:cluster_id, toast_id}, _from, state) do
+    result =
+      case Map.get(state.cluster_id_mapping, toast_id) do
+        nil -> {:error, :not_found}
+        cluster_id -> {:ok, cluster_id}
+      end
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:server_by_cluster_id, cluster_internal_id}, _from, state) do
+    result =
+      case Enum.find(state.cluster_id_mapping, fn {_toast_id, cid} -> cid == cluster_internal_id end) do
+        {toast_id, _} ->
+          case Map.get(state.servers, toast_id) do
+            nil -> {:error, :not_found}
+            server -> {:ok, server}
+          end
+
+        nil ->
+          {:error, :not_found}
+      end
+
+    {:reply, result, state}
+  end
+
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
@@ -214,6 +241,7 @@ defmodule Toast.Deployment.ClusterController do
              timeout: remaining_ms(deadline)
            ),
          {:ok, state} <- start_all_health_monitors(state) do
+      state = fetch_cluster_id_mapping(state)
       Logger.info("Cluster #{state.id} ready")
       {:ok, %{state | status: :ready}}
     else
@@ -343,6 +371,53 @@ defmodule Toast.Deployment.ClusterController do
       Enum.map(state.agents, fn id -> state.servers[id].endpoint end)
 
     Health.wait_for_agency_ready(agent_endpoints, timeout: remaining_ms(deadline))
+  end
+
+  defp fetch_cluster_id_mapping(state) do
+    coordinator_endpoint =
+      case state.coordinators do
+        [first_id | _] -> state.servers[first_id].endpoint
+        [] -> nil
+      end
+
+    case coordinator_endpoint do
+      nil ->
+        state
+
+      endpoint ->
+        url = "#{endpoint}/_admin/cluster/health"
+
+        case Req.get(url) do
+          {:ok, %{status: 200, body: body}} ->
+            health = Map.get(body, "Health", %{})
+
+            mapping =
+              Enum.reduce(health, %{}, fn {cluster_id, info}, acc ->
+                short_name = Map.get(info, "ShortName", "")
+
+                case find_toast_id_by_short_name(state, short_name) do
+                  nil -> acc
+                  toast_id -> Map.put(acc, toast_id, cluster_id)
+                end
+              end)
+
+            %{state | cluster_id_mapping: mapping}
+
+          _ ->
+            Logger.warning("Failed to fetch cluster health for ID mapping")
+            state
+        end
+    end
+  rescue
+    e in [Req.Error, Mint.TransportError] ->
+      Logger.warning("Failed to fetch cluster ID mapping: #{Exception.message(e)}")
+      state
+  end
+
+  defp find_toast_id_by_short_name(state, short_name) do
+    Enum.find_value(state.servers, fn {toast_id, server} ->
+      if server.id == short_name or toast_id == short_name, do: toast_id
+    end)
   end
 
   # --- Shutdown sequence ---

@@ -54,10 +54,19 @@ defmodule ToastTest.Case do
     end
   end
 
-  setup _context do
-    deployment = get_deployment()
+  setup context do
+    deployment = get_deployment_for_context(context)
     client = Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)
     %{deployment: deployment, endpoint: deployment.endpoint, client: client}
+  end
+
+  defp get_deployment_for_context(context) do
+    if function_exported?(context.module, :__toast_suite__, 0) do
+      suite_module = context.module.__toast_suite__()
+      ToastTest.DeploymentRegistry.get(suite_module)
+    else
+      get_deployment()
+    end
   end
 
   @doc """

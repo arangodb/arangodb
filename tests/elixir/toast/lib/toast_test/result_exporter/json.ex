@@ -37,6 +37,62 @@ defmodule ToastTest.ResultExporter.JSON do
     |> format_json()
   end
 
+  @doc "Render suite-level results as a JSON string."
+  @spec render_suites(map()) :: String.t()
+  def render_suites(suite_results) do
+    suite_results
+    |> build_suites_report()
+    |> format_json()
+  end
+
+  defp build_suites_report(suite_results) do
+    suites =
+      Enum.map(suite_results.suites, fn suite ->
+        %{
+          "name" => suite.name,
+          "suite_module" => Atom.to_string(suite.suite_module),
+          "deployment_mode" => Atom.to_string(suite.deployment_mode),
+          "started_at" => format_datetime(suite.started_at),
+          "finished_at" => format_datetime(suite.finished_at),
+          "duration_seconds" => us_to_seconds(suite.duration_us),
+          "diagnostics" => suite[:diagnostics],
+          "tests" => Enum.map(suite.tests, &build_suite_test/1)
+        }
+      end)
+
+    %{
+      "toast_version" => @toast_version,
+      "generated_at" => DateTime.to_iso8601(DateTime.utc_now()),
+      "started_at" => format_datetime(suite_results.started_at),
+      "finished_at" => format_datetime(suite_results.finished_at),
+      "duration_seconds" => us_to_seconds(suite_results.global_duration_us),
+      "suites" => suites,
+      "summary" => build_global_summary(suite_results.summary)
+    }
+  end
+
+  defp build_suite_test(test) do
+    %{
+      "module" => Atom.to_string(test.module),
+      "name" => test.name,
+      "outcome" => Atom.to_string(test.outcome),
+      "duration_seconds" => us_to_seconds(test.duration_us)
+    }
+  end
+
+  defp build_global_summary(summary) do
+    %{
+      "total" => summary.total,
+      "passed" => summary.passed,
+      "failed" => summary.failed,
+      "skipped" => summary.skipped,
+      "errored" => Map.get(summary, :errored, 0)
+    }
+  end
+
+  defp format_datetime(nil), do: nil
+  defp format_datetime(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+
   # --- Test run ---
 
   defp build_test_run(test_results) do

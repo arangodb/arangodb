@@ -25,6 +25,10 @@
     "section-02-library-extraction": {
       "status": "complete",
       "commit_hash": "74a67bcdc21"
+    },
+    "section-03-rest-client": {
+      "status": "complete",
+      "commit_hash": "d742514bc49"
     }
   },
   "pre_commit": {

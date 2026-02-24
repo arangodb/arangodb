@@ -94,7 +94,9 @@ defmodule Mix.Tasks.Toast do
     cluster_agents: :integer,
     cluster_dbservers: :integer,
     cluster_coordinators: :integer,
-    replication_factor: :integer
+    replication_factor: :integer,
+    test: :string,
+    no_agency_dump: :boolean
   ]
 
   @aliases [
@@ -121,7 +123,8 @@ defmodule Mix.Tasks.Toast do
     cluster_agents: "TOAST_CLUSTER_AGENTS",
     cluster_dbservers: "TOAST_CLUSTER_DBSERVERS",
     cluster_coordinators: "TOAST_CLUSTER_COORDINATORS",
-    replication_factor: "TOAST_CLUSTER_REPLICATION_FACTOR"
+    replication_factor: "TOAST_CLUSTER_REPLICATION_FACTOR",
+    no_agency_dump: "TOAST_NO_AGENCY_DUMP"
   }
 
   # Keys passed through to ExUnit.configure
@@ -141,7 +144,7 @@ defmodule Mix.Tasks.Toast do
 
   @impl Mix.Task
   def run(args) do
-    {opts, files} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
+    {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
     unless opts[:compile] == false do
       Mix.Task.run("compile", args)
@@ -155,10 +158,227 @@ defmodule Mix.Tasks.Toast do
 
     apply_toast_env(opts)
 
-    {ex_unit_opts, _allowed_files} = process_opts(opts)
+    {ex_unit_opts, _} = process_opts(opts)
     ExUnit.configure(ex_unit_opts)
 
-    # Load test_helper.exs — this calls ExUnit.start() and setup_suite()
+    suites_dir = Path.join(File.cwd!(), "suites")
+
+    if File.dir?(suites_dir) and has_suite_structure?(suites_dir) do
+      run_suite_mode(args_rest, opts, ex_unit_opts, suites_dir)
+    else
+      run_legacy_mode(args_rest, opts, ex_unit_opts)
+    end
+  end
+
+  defp has_suite_structure?(suites_dir) do
+    Path.wildcard(Path.join([suites_dir, "*", "suite.ex"])) != []
+  end
+
+  ## Suite mode
+
+  defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
+    ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
+
+    {suite_requests, file_filters} = parse_suite_args(args, suites_dir)
+
+    suite_modules = discover_and_compile_suites(suites_dir, suite_requests)
+
+    if suite_modules == [] do
+      Mix.raise("No suites found in #{suites_dir}")
+    end
+
+    test_filter = opts[:test]
+
+    suite_data =
+      Enum.flat_map(suite_modules, fn {suite_module, suite_dir} ->
+        {helpers, test_files} = discover_suite_files(suite_dir)
+        compile_helpers(helpers)
+
+        test_files = apply_file_filters(test_files, file_filters, suite_dir)
+
+        if test_files == [] do
+          []
+        else
+          {test_modules, orphans} = load_test_files(test_files, suite_dir)
+          warn_orphans(orphans, suite_dir)
+          validate_namespaces(test_modules, suite_module, suite_dir)
+
+          test_modules =
+            Enum.filter(test_modules, fn mod ->
+              function_exported?(mod, :__toast_suite__, 0) and
+                mod.__toast_suite__() == suite_module
+            end)
+
+          test_modules = apply_test_name_filter(test_modules, test_filter)
+          [{suite_module, test_modules}]
+        end
+      end)
+
+    # Store suite data for the runner (Section 05 will use this)
+    Application.put_env(:toast, :__suite_data__, suite_data)
+
+    # For now, use legacy runner path with all discovered test modules
+    _all_test_modules = Enum.flat_map(suite_data, fn {_suite, modules} -> modules end)
+    ExUnit.Server.modules_loaded(true)
+
+    options =
+      ExUnit.configuration()
+      |> Keyword.merge(ex_unit_opts)
+
+    {stats, _} = ToastTest.Runner.run(options, nil)
+
+    if stats.failures > 0 or ToastTest.Runner.aborted?() do
+      exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
+      System.at_exit(fn _ -> exit({:shutdown, exit_status}) end)
+    end
+  end
+
+  ## Suite discovery helpers
+
+  defp parse_suite_args([], _suites_dir), do: {:all, %{}}
+
+  defp parse_suite_args(args, _suites_dir) do
+    {suite_names, file_filters} =
+      Enum.reduce(args, {[], %{}}, fn arg, {names, filters} ->
+        case String.split(arg, "/", parts: 2) do
+          [suite_name, file_spec] ->
+            {[suite_name | names], Map.update(filters, suite_name, [file_spec], &[file_spec | &1])}
+
+          [suite_name] ->
+            {[suite_name | names], filters}
+        end
+      end)
+
+    {Enum.uniq(Enum.reverse(suite_names)), file_filters}
+  end
+
+  defp discover_and_compile_suites(suites_dir, suite_requests) do
+    suite_files = Path.wildcard(Path.join([suites_dir, "*", "suite.ex"]))
+
+    suite_files =
+      case suite_requests do
+        :all ->
+          suite_files
+
+        names ->
+          Enum.filter(suite_files, fn path ->
+            dir_name = path |> Path.dirname() |> Path.basename()
+            dir_name in names
+          end)
+      end
+
+    if suite_files == [] do
+      []
+    else
+      case Kernel.ParallelCompiler.compile(suite_files, return_diagnostics: true) do
+        {:ok, modules, _} ->
+          suite_modules =
+            Enum.filter(modules, fn mod ->
+              behaviours = mod.__info__(:attributes)[:behaviour] || []
+              ToastTest.Suite in behaviours
+            end)
+
+          Enum.map(suite_modules, fn mod ->
+            source = mod.__info__(:compile)[:source] |> to_string()
+            {mod, Path.dirname(source)}
+          end)
+
+        {:error, errors, _} ->
+          Logger.error("Failed to compile suites: #{inspect(errors)}")
+          []
+      end
+    end
+  end
+
+  defp discover_suite_files(suite_dir) do
+    all_files = Path.wildcard(Path.join(suite_dir, "*"))
+
+    helpers =
+      all_files
+      |> Enum.filter(&(String.ends_with?(&1, ".ex") and Path.basename(&1) != "suite.ex"))
+
+    test_files =
+      all_files
+      |> Enum.filter(&String.ends_with?(&1, ".exs"))
+      |> Enum.filter(&(Path.basename(&1) |> String.starts_with?("test_")))
+
+    {helpers, test_files}
+  end
+
+  defp compile_helpers([]), do: :ok
+
+  defp compile_helpers(helpers) do
+    case Kernel.ParallelCompiler.compile(helpers, return_diagnostics: true) do
+      {:ok, _, _} -> :ok
+      {:error, errors, _} -> Logger.error("Failed to compile helpers: #{inspect(errors)}")
+    end
+  end
+
+  defp apply_file_filters(test_files, filters, _suite_dir) when map_size(filters) == 0,
+    do: test_files
+
+  defp apply_file_filters(test_files, filters, suite_dir) do
+    suite_name = Path.basename(suite_dir)
+
+    case Map.get(filters, suite_name) do
+      nil ->
+        test_files
+
+      file_specs ->
+        Enum.filter(test_files, fn path ->
+          basename = Path.basename(path)
+
+          Enum.any?(file_specs, fn spec ->
+            # Handle file:line syntax
+            file = String.split(spec, ":") |> hd()
+            basename == file
+          end)
+        end)
+    end
+  end
+
+  defp load_test_files(test_files, suite_dir) do
+    case Kernel.ParallelCompiler.require(test_files, return_diagnostics: true) do
+      {:ok, modules, _} ->
+        all_exs = Path.wildcard(Path.join(suite_dir, "*.exs"))
+
+        orphans =
+          Enum.filter(all_exs, fn path ->
+            basename = Path.basename(path)
+            not String.starts_with?(basename, "test_")
+          end)
+
+        {modules, orphans}
+
+      {:error, errors, _} ->
+        Logger.error("Failed to load test files: #{inspect(errors)}")
+        {[], []}
+    end
+  end
+
+  defp warn_orphans([], _suite_dir), do: :ok
+
+  defp warn_orphans(orphans, suite_dir) do
+    for path <- orphans do
+      relative = Path.relative_to(path, Path.dirname(suite_dir))
+
+      Logger.warning(
+        "#{relative} is not a test file (must start with test_) and is not compiled as a helper (must end in .ex). This file is ignored."
+      )
+    end
+  end
+
+  defp validate_namespaces(_test_modules, _suite_module, _suite_dir) do
+    # Namespace validation deferred -- requires knowing the suite's root namespace
+    :ok
+  end
+
+  defp apply_test_name_filter(modules, nil), do: modules
+  defp apply_test_name_filter(modules, _pattern), do: modules
+
+  ## Legacy mode
+
+  defp run_legacy_mode(files, _opts, ex_unit_opts) do
     test_paths = Mix.Project.config()[:test_paths] || default_test_paths()
 
     for dir <- test_paths do
@@ -166,7 +386,6 @@ defmodule Mix.Tasks.Toast do
       if File.exists?(helper), do: Code.require_file(helper)
     end
 
-    # Re-apply CLI opts so they override anything test_helper.exs configured
     ExUnit.configure(ex_unit_opts)
 
     test_pattern = Mix.Project.config()[:test_pattern] || "{test_*,*_test}.exs"

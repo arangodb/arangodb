@@ -750,12 +750,52 @@ Files to **deprecate** (keep as thin wrappers):
 
 ## Key Design Decisions Relevant to This Section
 
-**Suite module IS the CaseTemplate**: The `use ToastTest.Suite` macro turns the suite module itself into a CaseTemplate. No separate module is generated. Test modules `use MySuite` directly. This keeps ownership clear (one suite per folder, test modules point to it) and avoids module-generation complexity.
+**Suite module defines `__using__` directly (NOT via ExUnit.CaseTemplate)**: The plan originally specified `use ExUnit.CaseTemplate` in suite modules, but ExUnit.CaseTemplate's `@before_compile` hook overwrites any custom `__using__/1` macro defined in the module body. Instead, the suite module defines `defmacro __using__` directly, which injects `use ToastTest.Case` into test modules. This means suite modules cannot define `setup/1` or `setup_all/1` blocks that inherit to test modules — use `setup_deployment/1` (called once per suite by the runner) instead. Test modules get full ExUnit.CaseTemplate support through ToastTest.Case.
 
 **`@toast_suite` attribute AND `__toast_suite__/0` function**: The attribute enables compile-time checks. The function enables runtime discovery by the runner. Both are injected into test modules when they `use` a suite.
 
 **`setup_deployment/1` is optional and runs once**: Checked via `function_exported?(suite_module, :setup_deployment, 1)`. The return value merges into every test's context with override semantics. This is the per-suite equivalent of `setup_all` but at the deployment level.
 
-**No ExUnit.Server interaction**: The runner never calls `ExUnit.Server.modules_loaded/1`, `take_sync_modules/0`, or `take_async_modules/1`. Module accumulation in ExUnit.Server from compilation is harmless dead state. The runner manages its own module lists.
+**ExUnit.Server bypass deferred to section-05**: The plan says the runner should not call `ExUnit.Server.modules_loaded/1`. Currently the suite mode still calls it as temporary scaffolding — the per-suite execution model will be implemented in section-05 (Runner). Related stubs: `--test` filtering, `file:line` filtering, `validate_namespaces`, per-suite compilation isolation.
 
 **Sequential suites, synchronous tests**: Suites always run one at a time. Tests within a suite always run synchronously. This ensures resource isolation and prevents inter-test interference against shared deployments.
+
+---
+
+## Implementation Notes (Actual vs. Planned)
+
+### Deviations from plan
+1. **No ExUnit.CaseTemplate in suite modules** — `@before_compile` conflict (see above)
+2. **Suite discovery stubs** — `--test` filtering, `file:line` filtering, namespace validation, per-suite compilation isolation deferred to section-05
+3. **Interactive module** — skeleton only; actual test execution will use section-05's ExUnitCompat adapter
+4. **ResultFormatter** — not updated for suite boundaries yet (section-05)
+5. **Toast.TestCase deprecation wrapper** — already existed from section-01
+
+### Files actually created
+| File | Status |
+|------|--------|
+| `lib/toast_test/suite.ex` | Complete |
+| `lib/toast_test/deployment_registry.ex` | Complete |
+| `lib/toast_test/state_cleanup.ex` | Complete |
+| `lib/toast_test/interactive.ex` | Skeleton (awaiting section-05) |
+| `lib/toast_test/process_history.ex` | GenServer stub (deferred to Phase 4) |
+| `test/toast_test/suite_test.exs` | 10 tests |
+| `test/toast_test/deployment_registry_test.exs` | 4 tests |
+| `test/toast_test/state_cleanup_test.exs` | 3 tests |
+| `test/toast_test/interactive_test.exs` | 2 tests (minimal) |
+| `test/toast_test/result_export_test.exs` | 6 tests |
+| `test/toast_test/server_id_mapping_test.exs` | 2 tests |
+
+### Files modified
+| File | Changes |
+|------|---------|
+| `lib/toast_test/case.ex` | Added DeploymentRegistry lookup in setup |
+| `lib/mix/tasks/toast.ex` | Suite discovery, path-based CLI, --test/--no-agency-dump switches |
+| `lib/toast_test/result_exporter.ex` | Added `export_suites/1` |
+| `lib/toast_test/result_exporter/json.ex` | Added `render_suites/1` |
+| `lib/toast_test/result_exporter/junit_xml.ex` | Added `render_suites/1` |
+| `lib/toast/deployment.ex` | Added `cluster_id/2`, `server_by_cluster_id/2` |
+| `lib/toast/deployment/cluster_controller.ex` | Cluster ID mapping via `/_admin/cluster/health` |
+
+### Test count
+Total: 425 tests, 0 failures (10 new tests for section-04)

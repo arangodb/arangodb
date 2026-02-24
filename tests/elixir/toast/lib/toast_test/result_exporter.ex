@@ -59,6 +59,29 @@ defmodule ToastTest.ResultExporter do
       :ok
   end
 
+  @doc """
+  Export suite-level results to JSON and JUnit XML files.
+  Called by the runner after all suites complete.
+  """
+  @spec export_suites(map()) :: :ok
+  def export_suites(suite_results) do
+    result_dir = result_dir()
+    File.mkdir_p!(result_dir)
+
+    json_path = Path.join(result_dir, "results.json")
+    File.write!(json_path, JSON.render_suites(suite_results))
+
+    xml_path = Path.join(result_dir, "results.xml")
+    File.write!(xml_path, JUnitXML.render_suites(suite_results))
+
+    Logger.info("Results written to #{result_dir}")
+    :ok
+  rescue
+    error ->
+      Logger.warning("Failed to export: #{Exception.message(error)}")
+      :ok
+  end
+
   @doc false
   defdelegate cluster_diagnostics?(diagnostics), to: Toast.Diagnostics
 end

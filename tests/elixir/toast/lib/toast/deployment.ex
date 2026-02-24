@@ -166,6 +166,22 @@ defmodule Toast.Deployment do
     end
   end
 
+  @doc "Get the cluster-internal ID for a toast server ID."
+  @spec cluster_id(t(), String.t()) :: {:ok, String.t()} | {:error, :not_found | :not_cluster}
+  def cluster_id(%__MODULE__{mode: :cluster} = deployment, toast_id) do
+    controller_call(deployment, {:cluster_id, toast_id}, {:error, :not_found})
+  end
+
+  def cluster_id(%__MODULE__{}, _toast_id), do: {:error, :not_cluster}
+
+  @doc "Get server info by cluster-internal ID."
+  @spec server_by_cluster_id(t(), String.t()) :: {:ok, ServerInstance.t()} | {:error, :not_found | :not_cluster}
+  def server_by_cluster_id(%__MODULE__{mode: :cluster} = deployment, cluster_internal_id) do
+    controller_call(deployment, {:server_by_cluster_id, cluster_internal_id}, {:error, :not_found})
+  end
+
+  def server_by_cluster_id(%__MODULE__{}, _cluster_internal_id), do: {:error, :not_cluster}
+
   @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
   @spec crash_info(t()) :: {:ok, map()} | :no_crash
   def crash_info(%__MODULE__{mode: :single_server} = d) do
