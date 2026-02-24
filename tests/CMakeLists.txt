@@ -261,6 +261,7 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/ManagerTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
+  Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
   VocBase/ComputedValuesTest.cpp

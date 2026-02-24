@@ -1,8 +1,24 @@
 devel
 -----
 
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
+
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
+* Updated minimatch to 10.2.1.
+
+* Add new API GET /_admin/options-public for new platform UI.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
+
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
+* Add switch `--server.external-rbac-service` to enable role-based access control.
+  For now, it does not do the actual authorization change.
 
 * Updated ArangoDB Starter to v0.19.17.
 
@@ -10,6 +26,10 @@ devel
   database and their possible dependencies on each other. Until now only a couple
   of activities are implemented, e.g. a rest handler is called, an aql query is
   executed, a collection or an index is created or a dump is on-going.
+
+* BTS-2316: List broken hotbackups and report, why they are broken.
+
+* Fixes BTS-2309: Treat empty object in schema definition as null.
 
 * FE-972: fix sparse option not being sent in vector index creation payload.
 

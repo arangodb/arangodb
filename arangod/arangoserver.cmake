@@ -99,6 +99,7 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsBaseHandler.cpp
   RestHandler/RestOptionsDescriptionHandler.cpp
   RestHandler/RestOptionsHandler.cpp
+  RestHandler/RestPublicOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestQueryPlanCacheHandler.cpp
@@ -116,6 +117,7 @@ add_library(arangoserver STATIC
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestOpenApiHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
