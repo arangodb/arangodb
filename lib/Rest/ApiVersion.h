@@ -37,7 +37,7 @@ struct ApiVersion {
   static constexpr uint32_t deprecatedApiVersions[] = {};
 
   // The default API version used when no /_arango/vX prefix is specified
-  static constexpr uint32_t defaultApiVersion = 0;
+  static constexpr uint32_t defaultApiVersion = 1;
 
   // The experimental API version (accessed via /_arango/experimental)
   static constexpr uint32_t experimentalApiVersion = 2;

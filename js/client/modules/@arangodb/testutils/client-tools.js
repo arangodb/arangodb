@@ -692,6 +692,7 @@ function cleanupBGShells (clients, cn) {
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
   let args = Object.assign(makeArgsArangosh(options), {
     'server.endpoint': instanceManager.findEndpoint(),
+    'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
