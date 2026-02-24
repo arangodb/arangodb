@@ -35,8 +35,12 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
-const toArgv = require('internal').toArgv;
-const download = require('internal').download;
+const {
+  toArgv,
+  download,
+  time
+}  = require('internal');
+
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
@@ -274,6 +278,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
       };
     }
 
+    let startTime = time();
     try {
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
       arango.timeout(this.options.httpTimeout);
@@ -285,14 +290,19 @@ class runLocalInArangoshRunner extends testRunnerBase {
           forceTerminate: true,
           status: false,
           message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
+          duration: (time() - startTime) * 1000,
         };
       }
       if (result === undefined) {
         return {
           timeout: true,
           status: false,
-          message: "test didn't return any result at all!"
+          message: "test didn't return any result at all!",
+          duration: (time() - startTime) * 1000,
         };
+      }
+      if (!result.hasOwnProperty('duration')) {
+        result.duration = (time() - startTime) * 1000;
       }
       return result;
     } catch (ex) {
@@ -305,7 +315,8 @@ class runLocalInArangoshRunner extends testRunnerBase {
         forceTerminate: true,
         status: false,
         message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
+        stack: ex.stack,
+        duration: (time() - startTime) * 1000,
       };
     }
   }

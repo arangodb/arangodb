@@ -710,6 +710,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
                        '--minReplicationFactor', '2',
+                       '--progress', true,
+                       '--printTimeTableMeasurement', true,
                        '--progress', 'true',
                        '--oldVersion', require('internal').db._version()
                      ]);
