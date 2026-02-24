@@ -1174,6 +1174,7 @@ void immutableSearchCondition(Optimizer* opt,
                     });
     if (mutableVars.empty()) {
       view.setImmutableParts(std::numeric_limits<uint32_t>::max());
+      modified = true;
       continue;
     }
     uint32_t count = 0;
@@ -1195,6 +1196,9 @@ void immutableSearchCondition(Optimizer* opt,
       });
       TRI_ASSERT(count != numMembers);
       break;
+    }
+    if (count > 0) {
+      modified = true;
     }
     view.setImmutableParts(count);
   }

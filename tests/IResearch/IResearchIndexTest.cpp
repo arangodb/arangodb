@@ -1658,4 +1658,63 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   ASSERT_EQ(feature.columnsCacheUsage(), 0);
 }
 
+TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInView) {
+  auto viewDef = R"({ "name": "testView", "type": "arangosearch",
+        "primarySortCache":true,
+        "primarySort":[
+          {"field":"valid1", "direction":"asc" },
+          {"field":"", "direction":"asc" },
+          {"field":"valid2", "direction":"asc" }
+        ]})";
+
+  auto createView = arangodb::velocypack::Parser::fromJson(viewDef);
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  try {
+    vocbase.createView(createView->slice(), false);
+    FAIL() << "View creation did not fail";
+  } catch (const arangodb::basics::Exception& e) {
+    std::string_view exMsg = e.what();
+    std::string expectedExceptionSubstr =
+        "error in attribute 'primarySort[1].field'";
+    auto itr =
+        std::search(exMsg.begin(), exMsg.end(),
+                    std::default_searcher(expectedExceptionSubstr.begin(),
+                                          expectedExceptionSubstr.end()));
+    EXPECT_NE(itr, exMsg.end()) << "Expected exception substring: ("
+                                << expectedExceptionSubstr << ") NOT FOUND";
+  }
+}
+
+TEST_F(IResearchIndexTest, test_emptyPrimarySortFieldInInvertedIndex) {
+  auto collectionJson =
+      arangodb::velocypack::Parser::fromJson(R"({"id":1, "name": "coll" })");
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  auto collection = vocbase.createCollection(collectionJson->slice());
+
+  auto invIndexDef = R"({
+    "type": "inverted",
+    "name": "coll_inv",
+     "fields": [
+      { "name": "id" }
+     ],
+    "primarySort": {
+      "fields": [
+        {"field":"valid1", "direction":"asc" },
+        {"field":"valid2", "direction":"asc" },
+        {"field":"", "direction":"asc" },
+        {"field":"valid3", "direction":"asc" }
+        ],
+      "compression": "lz4"
+    }})";
+  auto invIndexJson = arangodb::velocypack::Parser::fromJson(invIndexDef);
+
+  bool created{false};
+  try {
+    collection->createIndex(invIndexJson->slice(), created).waitAndGet();
+    FAIL() << "Inverted index creation did not fail";
+  } catch (const arangodb::basics::Exception& e) {
+    std::string expectedExceptionSubstr = "primarySort";
+    EXPECT_EQ(expectedExceptionSubstr, e.what());
+  }
+}
 #endif
