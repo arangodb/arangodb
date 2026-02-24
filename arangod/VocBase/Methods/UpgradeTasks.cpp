@@ -38,8 +38,6 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
-#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -47,7 +45,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
@@ -665,13 +662,13 @@ Result UpgradeTasks::dropRedundantHashSkiplistIndexes(
     auto indexes = collection->getPhysical()->getReadyIndexes();
 
     for (auto const& index : indexes) {
-      auto t = index->type();
-      if (t != Index::TRI_IDX_TYPE_HASH_INDEX &&
-          t != Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      auto const indexType = index->type();
+      if (indexType != Index::TRI_IDX_TYPE_HASH_INDEX &&
+          indexType != Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
         continue;
       }
       LOG_TOPIC("a1b2c", INFO, Logger::STARTUP)
-          << "Dropping obsolete " << index->oldtypeName(t) << " index '"
+          << "Dropping obsolete " << index->oldtypeName(indexType) << " index '"
           << index->id().id() << "' from collection '" << collection->name()
           << "' - hash/skiplist indexes are no longer supported";
 
