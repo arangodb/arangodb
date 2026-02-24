@@ -4,7 +4,8 @@
 
 namespace arangodb {
 LowPrioAntiOverwhelm::LowPrioAntiOverwhelm(
-    ArangodServer const& server, uint64_t const ongoingLowPriorityLimit,
+    application_features::ApplicationServer const& server,
+    uint64_t const ongoingLowPriorityLimit,
     std::shared_ptr<SchedulerMetrics> const& metrics)
     : _ongoingLowPriorityLimit(ongoingLowPriorityLimit),
       _metrics(metrics),

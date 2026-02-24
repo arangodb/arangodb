@@ -338,8 +338,8 @@ void SchedulerFeature::prepare() {
       ServerState::instance()->isDBServer() ||
               ServerState::instance()->isAgent()
           ? 0
-          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
-                                  _nrMaximalThreads);
+          : static_cast<uint64_t>(_options.ongoingLowPriorityMultiplier *
+                                  _options.nrMaximalThreads);
 
   auto const lowPrioAntiOverwhelm = std::make_shared<LowPrioAntiOverwhelm>(
       server(), ongoingLowPriorityLimit, metrics);
@@ -356,7 +356,7 @@ void SchedulerFeature::prepare() {
           _options.fifo3Size, metrics, lowPrioAntiOverwhelm);
     }
 
-    TRI_ASSERT(_schedulerType == "threadpools");
+    TRI_ASSERT(_options.schedulerType == "threadpools");
     return std::make_unique<ThreadPoolScheduler>(
         server(), _options.nrMaximalThreads, metrics);
   });

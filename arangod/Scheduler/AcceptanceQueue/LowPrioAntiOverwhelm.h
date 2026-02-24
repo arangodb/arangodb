@@ -18,7 +18,8 @@ class NetworkFeature;
 class LowPrioAntiOverwhelm final {
  public:
   explicit LowPrioAntiOverwhelm(
-      ArangodServer const& server, uint64_t ongoingLowPriorityLimit,
+      application_features::ApplicationServer const& server,
+      uint64_t ongoingLowPriorityLimit,
       std::shared_ptr<SchedulerMetrics> const& metrics);
 
   // This code will most-likely be deleted/moved to the AcceptanceQueue and thus
