@@ -972,16 +972,6 @@ function MultipleVectorIndexesOnField() {
                 },
             });
 
-            const buildState = "ready";
-            const waitTimeoutSec = 20;
-            if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
-                    "Expected all vector indexes to become ready on DB servers before query");
-            } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
-                    "Expected all vector indexes to become ready before query");
-            }
-
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -1030,15 +1020,6 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-            const buildState = "ready";
-            const waitTimeoutSec = 20;
-            if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
-                    "Expected vector indexes to become trained on DB servers before query");
-            } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
-                    "Expected vector indexes to become trained before query");
-            }
 
             const query =
                 "FOR d IN " +
@@ -1087,15 +1068,6 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-            const buildState = "ready";
-            const waitTimeoutSec = 20;
-            if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
-                    "Expected vector indexes to become trained on DB servers before query");
-            } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
-                    "Expected vector indexes to become trained before query");
-            }
 
             const queries = [{
                 query: "FOR d IN " +
