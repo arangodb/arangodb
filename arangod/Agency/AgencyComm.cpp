@@ -1414,7 +1414,7 @@ bool AgencyComm::tryInitializeStructure() {
     if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
       LOG_TOPIC("a695d", ERR, Logger::AUTHENTICATION)
           << "Cannot authenticate with agency,"
-          << " check value of --server.jwt-secret";
+          << " check value of --server.jwt-secret-keyfile";
     }
 
     return result.successful();

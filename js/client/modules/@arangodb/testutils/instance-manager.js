@@ -76,7 +76,6 @@ const termSignal = 15;
 const instanceRole = inst.instanceRole;
 
 // Write a JWT secret string to a temporary keyfile and return the path.
-// This avoids passing the secret as a plain CLI argument via --server.jwt-secret.
 function writeJwtSecretToFile(rootDir, secret, suffix) {
   let dir = fs.join(rootDir, 'jwtSecrets');
   fs.makeDirectoryRecursive(dir);
@@ -1125,15 +1124,6 @@ class instanceManager {
   checkClusterAlive() {
     let httpOptions = _.clone(this.httpJWTAuthOptions);
     httpOptions.returnBodyOnError = true;
-
-    // scrape the jwt token
-    //instanceInfo.authOpts = _.clone(this.options);
-    //if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
-    //  instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
-    //} else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
-    //  instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-    //}
-
 
     let count = 0;
     while (true) {
