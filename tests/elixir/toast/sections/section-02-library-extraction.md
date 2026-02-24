@@ -681,3 +681,64 @@ Files to **update tests**:
 **Struct as handle**: The deployment struct contains only immutable fields set at startup. All mutable state queries go through GenServer calls. This prevents stale data issues where a test reads `deployment.servers` and gets an outdated snapshot.
 
 **`:suspended` as explicit status**: Rather than a boolean `suspended?` field, `:suspended` is a first-class status value. This makes the three-state nature explicit and prevents callers from accidentally checking `healthy?` on a suspended monitor.
+
+---
+
+## Implementation Record
+
+### What Was Actually Built
+
+All core objectives achieved: `lib/toast/` has **zero ExUnit dependencies** verified via `mix xref graph`. The deployment infrastructure works standalone.
+
+### Deviations from Plan
+
+**Step 5 (operational_state/intentional tracking) — Deferred**: The `operational_state` and `intentional` fields on server instances, and the `:degraded` cluster status, were not implemented. These are foundations for the section-06/07 resilience layer but are not required for the library extraction boundary. The controllers track `on_crash`/`on_event` callbacks but do not yet distinguish intentional vs unintentional server stops.
+
+**Step 8c (apply_toast_env refactoring) — Not done**: Removing `apply_toast_env/1` from the mix task is a runner/task concern, not a library extraction concern. Deferred.
+
+**Step 11 (IEx workflow verification) — Skipped**: Cannot run interactive IEx in the implementation workflow. The structural verification (xref graph) confirms the library boundary.
+
+**Additional work not in plan**: Created `lib/toast/diagnostics.ex` with `cluster_diagnostics?/1` moved from `ToastTest.ResultExporter` to break a cross-boundary dependency. `ToastTest.ResultExporter.cluster_diagnostics?/1` became a `defdelegate`. Also updated `lib/toast_test/result_exporter/json.ex` and `lib/toast/diagnostics/{crash_matcher,sanitizer_matcher,summary}.ex` callers.
+
+### Test Files — Consolidation
+
+The plan called for separate test files (`crash_notification_test.exs`, `event_observer_test.exs`, `controller_test.exs`). Instead:
+- `on_crash` and `on_event` callback tests were folded into the existing `test/deployment/crash_abort_test.exs`
+- Controller state tracking tests (`controller_test.exs`) were not created because the feature (Step 5) was deferred
+- A new `test/toast/process/health_monitor_test.exs` was created for suspend/resume tests
+
+### Code Review Fix
+
+**H3 (controller_call mixed dispatch bug)**: `controller_call/3` in `deployment.ex` was simplified from mixed dispatch (`apply` for atoms, `GenServer.call` for tuples) to uniform `GenServer.call(pid, function)`. The atom dispatch path had no corresponding public API functions — it would crash at runtime.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `lib/toast/deployment.ex` | Struct refactored (removed crash_monitor/servers, added config); callback injection; live query functions; fixed controller_call dispatch |
+| `lib/toast/deployment/single_server_controller.ex` | on_crash/on_event callbacks; handle_call for live queries; HealthMonitor process monitoring |
+| `lib/toast/deployment/cluster_controller.ex` | Same as SingleServerController; on_event passed to launch tasks |
+| `lib/toast/process/health_monitor.ex` | suspend/resume; status/1; timer cancellation |
+| `lib/toast/config.ex` | .toast.local.exs support; api_version/debugger fields; opt_or/4 precedence |
+| `lib/toast/application.ex` | Replaced ToastTest.ResultExporter.result_dir() with Application.get_env |
+| `lib/toast/diagnostics/crash_matcher.ex` | Updated caller to Toast.Diagnostics.cluster_diagnostics? |
+| `lib/toast/diagnostics/sanitizer_matcher.ex` | Same |
+| `lib/toast/diagnostics/summary.ex` | Same |
+| `lib/toast_test/result_exporter.ex` | cluster_diagnostics?/1 → defdelegate to Toast.Diagnostics |
+| `lib/toast_test/result_exporter/json.ex` | Updated caller to Toast.Diagnostics.cluster_diagnostics? |
+| `test/deployment/crash_abort_test.exs` | Updated for new struct shape; on_crash/on_event tests |
+| `test/deployment/deployment_lifecycle_test.exs` | Updated for new struct shape |
+| `test/deployment/deployment_test.exs` | Updated struct field tests |
+| `test/config_test.exs` | api_version, debugger, .toast.local.exs tests |
+| `test/test_case_test.exs` | Added config field to fake_deployment |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/toast/diagnostics.ex` | Shared diagnostics utilities (cluster_diagnostics?/1) |
+| `test/toast/process/health_monitor_test.exs` | Suspend/resume and status tests |
+
+### Test Results
+
+361 tests, 0 failures (5 excluded integration tests)

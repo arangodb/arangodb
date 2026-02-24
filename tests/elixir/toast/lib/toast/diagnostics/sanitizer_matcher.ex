@@ -48,7 +48,7 @@ defmodule Toast.Diagnostics.SanitizerMatcher do
   end
 
   defp extract_all_errors(diagnostics) do
-    if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
+    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
       Enum.flat_map(diagnostics, fn {_id, diag} -> Map.get(diag, :sanitizer_errors, []) end)
     else
       Map.get(diagnostics, :sanitizer_errors, [])

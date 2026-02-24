@@ -64,7 +64,8 @@ defmodule Toast.Deployment.SingleServerController do
       server: %ServerInstance{id: id, role: :single},
       error: nil,
       diagnostics: nil,
-      crash_monitor: Keyword.get(opts, :crash_monitor)
+      on_crash: Keyword.get(opts, :on_crash),
+      on_event: Keyword.get(opts, :on_event)
     }
 
     {:ok, state}
@@ -122,11 +123,29 @@ defmodule Toast.Deployment.SingleServerController do
     {:reply, info, state}
   end
 
+  def handle_call({:get_server, server_id}, _from, state) do
+    if state.server.id == server_id do
+      {:reply, state.server, state}
+    else
+      {:reply, {:error, :not_found}, state}
+    end
+  end
+
+  def handle_call(:get_servers, _from, state) do
+    {:reply, [state.server], state}
+  end
+
+  def handle_call({:get_servers, role}, _from, state) do
+    servers = if state.server.role == role, do: [state.server], else: []
+    {:reply, servers, state}
+  end
+
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     stop_health_monitor(state)
-    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+    notify_crash(state.on_crash, crash_info)
+    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}}, health_monitor: nil)
     {:noreply, state}
   end
@@ -135,9 +154,23 @@ defmodule Toast.Deployment.SingleServerController do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     stop_server(state, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
-    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+    notify_crash(state.on_crash, crash_info)
+    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     state = put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}}, server_pid: nil, health_monitor: nil)
     {:noreply, state}
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when reason != :normal do
+    if pid == state.server.health_monitor and state.status == :ready do
+      Logger.warning("HealthMonitor died unexpectedly (#{inspect(reason)}), restarting")
+
+      case start_health_monitor(state) do
+        {:ok, new_pid} -> {:noreply, put_server(state, health_monitor: new_pid)}
+        {:error, _} -> {:noreply, state}
+      end
+    else
+      {:noreply, state}
+    end
   end
 
   def handle_info(msg, state) do
@@ -163,6 +196,7 @@ defmodule Toast.Deployment.SingleServerController do
          os_pid = ServerProcess.os_pid(server_pid),
          state = put_server(state, server_pid: server_pid, pid: os_pid),
          _ = Logger.info("#{id}: started (os_pid=#{os_pid}), endpoint=#{state.server.endpoint}"),
+         _ = notify_event(state.on_event, {:server_started, id, os_pid, DateTime.utc_now()}),
          :ok <- wait_for_ready(state, timeout),
          {:ok, monitor_pid} <- start_health_monitor(state) do
       Logger.info("Deployment #{id} ready at #{state.server.endpoint}")
@@ -210,6 +244,7 @@ defmodule Toast.Deployment.SingleServerController do
     Logger.debug("Cleaning up #{state.server.id}")
     stop_health_monitor(state)
     stop_server(state, timeout)
+    notify_event(state.on_event, {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()})
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.server.id}: diagnostics collected")
     put_server(%{state | status: :stopped, diagnostics: diagnostics}, server_pid: nil, health_monitor: nil)
@@ -252,11 +287,18 @@ defmodule Toast.Deployment.SingleServerController do
   # --- Health monitoring ---
 
   defp start_health_monitor(state) do
-    Toast.Process.Supervisor.start_health_monitor(
-      server_id: state.server.id,
-      endpoint: state.server.endpoint,
-      listener: self()
-    )
+    case Toast.Process.Supervisor.start_health_monitor(
+           server_id: state.server.id,
+           endpoint: state.server.endpoint,
+           listener: self()
+         ) do
+      {:ok, pid} ->
+        Process.monitor(pid)
+        {:ok, pid}
+
+      error ->
+        error
+    end
   end
 
   defp stop_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
@@ -273,8 +315,11 @@ defmodule Toast.Deployment.SingleServerController do
     %{state | server: struct!(state.server, updates)}
   end
 
-  defp notify_crash_monitor(nil, _id, _info), do: :ok
-  defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
+  defp notify_crash(nil, _crash_info), do: :ok
+  defp notify_crash(on_crash, crash_info) when is_function(on_crash, 1), do: on_crash.(crash_info)
+
+  defp notify_event(nil, _event), do: :ok
+  defp notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)
 
   defp print_server_output(server_id, data) do
     data

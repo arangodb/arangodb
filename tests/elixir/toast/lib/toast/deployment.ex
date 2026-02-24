@@ -9,15 +9,14 @@ defmodule Toast.Deployment do
   @type t :: %__MODULE__{
           id: String.t(),
           mode: :single_server | :cluster,
-          endpoint: String.t(),
+          config: Config.t(),
           controller: pid(),
-          crash_monitor: pid(),
-          work_dir: Path.t(),
-          servers: %{String.t() => ServerInstance.t()} | nil
+          endpoint: String.t(),
+          work_dir: Path.t()
         }
 
-  @enforce_keys [:id, :mode, :endpoint, :controller, :work_dir]
-  defstruct [:id, :mode, :endpoint, :controller, :crash_monitor, :work_dir, :servers]
+  @enforce_keys [:id, :mode, :config, :controller, :endpoint, :work_dir]
+  defstruct [:id, :mode, :config, :controller, :endpoint, :work_dir]
 
   @spec start(atom(), keyword()) :: {:ok, t()} | {:error, term()}
   def start(mode \\ :single_server, opts \\ [])
@@ -25,9 +24,12 @@ defmodule Toast.Deployment do
   def start(:single_server, opts) do
     config = Config.load(opts)
     Logger.info("Starting single server deployment (work_dir=#{config.work_dir})")
-    crash_monitor = spawn_crash_monitor()
 
-    controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
+    on_crash = Keyword.get(opts, :on_crash)
+    on_event = Keyword.get(opts, :on_event)
+
+    controller_opts =
+      [config: config, on_crash: on_crash, on_event: on_event] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
          :ok <- SingleServerController.deploy(pid, config.startup_timeout) do
@@ -37,24 +39,23 @@ defmodule Toast.Deployment do
        %__MODULE__{
          id: info.server.id,
          mode: :single_server,
+         config: config,
          endpoint: info.server.endpoint,
          controller: pid,
-         crash_monitor: crash_monitor,
          work_dir: config.work_dir
        }}
-    else
-      {:error, _reason} = error ->
-        stop_crash_monitor(crash_monitor)
-        error
     end
   end
 
   def start(:cluster, opts) do
     config = Config.load(opts)
     Logger.info("Starting cluster deployment (work_dir=#{config.work_dir})")
-    crash_monitor = spawn_crash_monitor()
 
-    controller_opts = [config: config, crash_monitor: crash_monitor] ++ Keyword.take(opts, [:id])
+    on_crash = Keyword.get(opts, :on_crash)
+    on_event = Keyword.get(opts, :on_event)
+
+    controller_opts =
+      [config: config, on_crash: on_crash, on_event: on_event] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_cluster_controller(controller_opts),
          :ok <- ClusterController.deploy(pid, config.startup_timeout) do
@@ -64,16 +65,11 @@ defmodule Toast.Deployment do
        %__MODULE__{
          id: info.id,
          mode: :cluster,
+         config: config,
          endpoint: info.coordinator_endpoint,
          controller: pid,
-         crash_monitor: crash_monitor,
-         work_dir: config.work_dir,
-         servers: info.servers
+         work_dir: config.work_dir
        }}
-    else
-      {:error, _reason} = error ->
-        stop_crash_monitor(crash_monitor)
-        error
     end
   end
 
@@ -88,7 +84,6 @@ defmodule Toast.Deployment do
 
     with :ok <- mod.shutdown(pid, timeout) do
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-      stop_crash_monitor(deployment.crash_monitor)
       :ok
     end
   end
@@ -109,7 +104,6 @@ defmodule Toast.Deployment do
     with :ok <- mod.shutdown(pid, timeout) do
       diagnostics = mod.get_info(pid)[:diagnostics]
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-      stop_crash_monitor(deployment.crash_monitor)
       Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
       diagnostics
     else
@@ -122,6 +116,31 @@ defmodule Toast.Deployment do
   def status(deployment) do
     controller_call(deployment, :get_status, :stopped)
   end
+
+  @doc "Get a specific server's current state."
+  @spec server(t(), String.t()) :: {:ok, ServerInstance.t()} | {:error, :not_found}
+  def server(%__MODULE__{} = deployment, server_id) do
+    case controller_call(deployment, {:get_server, server_id}, {:error, :stopped}) do
+      {:error, _} = error -> error
+      server_instance -> {:ok, server_instance}
+    end
+  end
+
+  @doc "List all servers with current state."
+  @spec servers(t()) :: [ServerInstance.t()]
+  def servers(%__MODULE__{} = deployment) do
+    controller_call(deployment, :get_servers, [])
+  end
+
+  @doc "List servers filtered by role."
+  @spec servers(t(), keyword()) :: [ServerInstance.t()]
+  def servers(%__MODULE__{} = deployment, role: role) do
+    controller_call(deployment, {:get_servers, role}, [])
+  end
+
+  @doc "Get the primary endpoint URL."
+  @spec endpoint(t()) :: String.t()
+  def endpoint(%__MODULE__{endpoint: ep}), do: ep
 
   @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
   @spec crash_info(t()) :: {:ok, map()} | :no_crash
@@ -242,36 +261,14 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp spawn_crash_monitor do
-    spawn(fn ->
-      Process.flag(:trap_exit, true)
-      crash_monitor_loop()
-    end)
-  end
-
-  defp crash_monitor_loop do
-    receive do
-      {:server_crashed, id, info} ->
-        ToastTest.Runner.abort!("Server crashed: #{id}")
-        Process.flag(:trap_exit, false)
-        exit({:server_crashed, id, info})
-
-      {:EXIT, _pid, _reason} ->
-        crash_monitor_loop()
-    end
-  end
-
-  defp stop_crash_monitor(pid) when is_pid(pid), do: Process.exit(pid, :kill)
-  defp stop_crash_monitor(_), do: :ok
-
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
 
   defp controller_module(%__MODULE__{mode: :single_server}), do: SingleServerController
   defp controller_module(%__MODULE__{mode: :cluster}), do: ClusterController
 
-  defp controller_call(%__MODULE__{controller: pid} = deployment, function, default) do
-    apply(controller_module(deployment), function, [pid])
+  defp controller_call(%__MODULE__{controller: pid}, function, default) do
+    GenServer.call(pid, function)
   catch
     :exit, _ -> default
   end

@@ -116,7 +116,7 @@ defmodule ToastTest.ResultExporter.JSON do
   defp build_server_health(nil), do: nil
 
   defp build_server_health(diagnostics) do
-    if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
+    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
       Map.new(diagnostics, fn {server_id, diag} ->
         {server_id, build_single_server_health(diag)}
       end)

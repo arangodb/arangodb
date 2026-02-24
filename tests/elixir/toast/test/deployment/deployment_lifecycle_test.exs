@@ -3,58 +3,42 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
   alias Toast.Deployment.SingleServerController, as: Controller
 
+  defp make_deployment(pid, opts \\ []) do
+    %Toast.Deployment{
+      id: Keyword.get(opts, :id, "test-lifecycle"),
+      mode: :single_server,
+      config: Toast.Config.load(),
+      endpoint: "http://127.0.0.1:0",
+      controller: pid,
+      work_dir: "/tmp/toast-test"
+    }
+  end
+
   describe "stop_and_collect/2" do
     test "returns nil for a controller that never deployed" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      deployment = make_deployment(pid, id: "test-collect-never-deployed")
 
-      deployment = %Toast.Deployment{
-        id: "test-collect-never-deployed",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
-      # Controller is :stopped (never deployed), shutdown on :stopped returns :ok,
-      # but diagnostics will be nil since server_dir is nil.
       result = Toast.Deployment.stop_and_collect(deployment)
       assert result == nil
     end
 
     test "returns nil for a controller that was already shut down" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      deployment = make_deployment(pid, id: "test-collect-already-stopped")
 
-      deployment = %Toast.Deployment{
-        id: "test-collect-already-stopped",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
-      # Shutdown the controller first
       :ok = Controller.shutdown(pid)
 
-      # Calling stop_and_collect again should still return nil (already stopped, no diagnostics)
       result = Toast.Deployment.stop_and_collect(deployment)
       assert result == nil
     end
 
     test "exits when controller process is dead" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-collect-dead",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid, id: "test-collect-dead")
 
       GenServer.stop(pid)
 
-      # stop_and_collect does not use controller_call (which has try/catch),
-      # so calling it on a dead process raises an exit.
       assert catch_exit(Toast.Deployment.stop_and_collect(deployment)) != nil
     end
   end
@@ -62,32 +46,17 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
   describe "diagnostics/1" do
     test "returns nil for a controller that never deployed" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-diagnostics-clean",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid, id: "test-diagnostics-clean")
 
       assert Toast.Deployment.diagnostics(deployment) == nil
     end
 
     test "returns nil when controller process is dead" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-diagnostics-dead",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid, id: "test-diagnostics-dead")
 
       GenServer.stop(pid)
 
-      # The try/catch in controller_call catches :exit and returns nil
       assert Toast.Deployment.diagnostics(deployment) == nil
     end
   end
@@ -95,14 +64,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
   describe "status/1 with dead controller" do
     test "returns :stopped when controller process has died" do
       {:ok, pid} = Controller.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-status-dead",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid, id: "test-status-dead")
 
       GenServer.stop(pid)
 

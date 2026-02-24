@@ -32,6 +32,7 @@ defmodule ToastTest.CaseTest do
     defaults = %{
       id: "test-1",
       mode: :single_server,
+      config: Toast.Config.load(),
       endpoint: "http://localhost:8529",
       controller: self(),
       work_dir: "/tmp/toast-test"
@@ -42,6 +43,7 @@ defmodule ToastTest.CaseTest do
     %Toast.Deployment{
       id: fields.id,
       mode: fields.mode,
+      config: fields.config,
       endpoint: fields.endpoint,
       controller: fields.controller,
       work_dir: fields.work_dir

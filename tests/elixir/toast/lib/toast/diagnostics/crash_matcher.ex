@@ -59,7 +59,7 @@ defmodule Toast.Diagnostics.CrashMatcher do
   end
 
   defp extract_crashes(diagnostics) do
-    if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
+    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
       Enum.flat_map(diagnostics, fn {_id, diag} -> maybe_crash_info(diag) end)
     else
       maybe_crash_info(diagnostics)

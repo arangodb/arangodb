@@ -17,7 +17,12 @@
     "section-08-diagnostics",
     "section-09-ci-packaging"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-restructure": {
+      "status": "complete",
+      "commit_hash": "365d3cad8556725db6872d97776fd0ae4f0e59cd"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

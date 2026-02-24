@@ -8,6 +8,9 @@ defmodule Toast.Process.HealthMonitor do
 
   After `max_failures` consecutive failed health checks, notifies the listener
   with `{:server_unhealthy, server_id}` and stops polling.
+
+  Supports `:suspend` and `:resume` messages to temporarily pause monitoring
+  (e.g., during intentional server stops).
   """
 
   use GenServer
@@ -27,10 +30,13 @@ defmodule Toast.Process.HealthMonitor do
     GenServer.start_link(__MODULE__, opts)
   end
 
-  @spec healthy?(GenServer.server()) :: boolean()
-  def healthy?(server) do
-    GenServer.call(server, :healthy?)
+  @spec status(GenServer.server()) :: :healthy | :unhealthy | :suspended
+  def status(server) do
+    GenServer.call(server, :status)
   end
+
+  @spec healthy?(GenServer.server()) :: boolean()
+  def healthy?(server), do: status(server) == :healthy
 
   @spec stop(GenServer.server()) :: :ok
   def stop(server) do
@@ -60,8 +66,12 @@ defmodule Toast.Process.HealthMonitor do
     {:reply, state.status == :healthy, state}
   end
 
+  def handle_call(:status, _from, state) do
+    {:reply, state.status, state}
+  end
+
   @impl true
-  def handle_info(:check, %{status: :unhealthy} = state) do
+  def handle_info(:check, %{status: status} = state) when status in [:unhealthy, :suspended] do
     {:noreply, state}
   end
 
@@ -90,6 +100,19 @@ defmodule Toast.Process.HealthMonitor do
           {:noreply, schedule_check(%{state | consecutive_failures: failures})}
         end
     end
+  end
+
+  def handle_info(:suspend, state) do
+    if state.timer_ref, do: Process.cancel_timer(state.timer_ref)
+    {:noreply, %{state | status: :suspended, timer_ref: nil}}
+  end
+
+  def handle_info(:resume, %{status: :suspended} = state) do
+    {:noreply, schedule_check(%{state | status: :healthy, consecutive_failures: 0})}
+  end
+
+  def handle_info(:resume, state) do
+    {:noreply, state}
   end
 
   def handle_info(_msg, state) do

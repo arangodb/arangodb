@@ -6,13 +6,23 @@ defmodule Toast.Deployment.CrashAbortTest do
 
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
+  defp make_deployment(pid, opts \\ []) do
+    %Toast.Deployment{
+      id: Keyword.get(opts, :id, "test-crash"),
+      mode: Keyword.get(opts, :mode, :single_server),
+      config: Toast.Config.load(),
+      endpoint: "http://127.0.0.1:0",
+      controller: pid,
+      work_dir: "/tmp/toast-test"
+    }
+  end
+
   describe "crash status propagation" do
     test "controller status becomes :failed after crash message" do
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
-      # Allow message processing
       :sys.get_state(pid)
 
       assert SingleServerController.get_status(pid) == :failed
@@ -22,14 +32,7 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "Deployment.status/1 returns :failed for crashed deployment" do
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-crash",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid)
 
       crash_info = %{exit_status: 134, signal: 6, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
@@ -40,53 +43,27 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "Deployment.status/1 returns :stopped when controller is dead" do
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-dead",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
+      deployment = make_deployment(pid, id: "test-dead")
       GenServer.stop(pid)
-
       assert Toast.Deployment.status(deployment) == :stopped
     end
 
     test "Deployment.crash_info/1 returns :no_crash for healthy controller" do
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-healthy",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
+      deployment = make_deployment(pid, id: "test-healthy")
       assert Toast.Deployment.crash_info(deployment) == :no_crash
     end
 
     test "Deployment.crash_info/1 returns crash details" do
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
       :sys.get_state(pid)
 
-      deployment = %Toast.Deployment{
-        id: "test-crash-info",
-        mode: :single_server,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
+      deployment = make_deployment(pid, id: "test-crash-info")
       assert {:ok, details} = Toast.Deployment.crash_info(deployment)
       assert details.server_id == nil
       assert details.server_crash_info == crash_info
-      # log_report will be nil since there's no actual log file
       assert details.log_report == nil
     end
   end
@@ -105,7 +82,6 @@ defmodule Toast.Deployment.CrashAbortTest do
 
       ServerProcess.launch(server_pid)
 
-      # Poll until the crash propagates to the controller
       assert poll_until(fn -> SingleServerController.get_status(controller_pid) == :failed end),
              "Controller did not reach :failed status within timeout"
 
@@ -130,14 +106,7 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "Deployment.status/1 returns :failed for cluster deployment with crashed server" do
       {:ok, pid} = ClusterController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-cluster",
-        mode: :cluster,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
+      deployment = make_deployment(pid, id: "test-cluster", mode: :cluster)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "agent-1", crash_info})
@@ -148,22 +117,7 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "Deployment.crash_info/1 returns cluster crash details with server_id" do
       {:ok, pid} = ClusterController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-cluster-crash",
-        mode: :cluster,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test",
-        servers: %{
-          "agent-1" => %{
-            role: :agent,
-            port: 8531,
-            endpoint: "http://127.0.0.1:8531",
-            log_file: nil
-          }
-        }
-      }
+      deployment = make_deployment(pid, id: "test-cluster-crash", mode: :cluster)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "agent-1", crash_info})
@@ -176,16 +130,68 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "Deployment.crash_info/1 returns :no_crash for healthy cluster controller" do
       {:ok, pid} = ClusterController.start_link(config: Toast.Config.load())
-
-      deployment = %Toast.Deployment{
-        id: "test-cluster-healthy",
-        mode: :cluster,
-        endpoint: "http://127.0.0.1:0",
-        controller: pid,
-        work_dir: "/tmp/toast-test"
-      }
-
+      deployment = make_deployment(pid, id: "test-cluster-healthy", mode: :cluster)
       assert Toast.Deployment.crash_info(deployment) == :no_crash
+    end
+  end
+
+  describe "on_crash callback" do
+    test "controller invokes on_crash callback on unexpected crash" do
+      test_pid = self()
+      on_crash = fn crash_info -> send(test_pid, {:crash_callback, crash_info}) end
+
+      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), on_crash: on_crash)
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "test-server", crash_info})
+
+      assert_receive {:crash_callback, ^crash_info}, 1_000
+    end
+
+    test "cluster controller invokes on_crash callback on unexpected crash" do
+      test_pid = self()
+      on_crash = fn crash_info -> send(test_pid, {:crash_callback, crash_info}) end
+
+      {:ok, pid} = ClusterController.start_link(config: Toast.Config.load(), on_crash: on_crash)
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "dbserver-1", crash_info})
+
+      assert_receive {:crash_callback, ^crash_info}, 1_000
+    end
+
+    test "no crash callback when none provided" do
+      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "test-server", crash_info})
+      :sys.get_state(pid)
+
+      assert SingleServerController.get_status(pid) == :failed
+    end
+  end
+
+  describe "on_event callback" do
+    test "on_event fires for :server_crashed" do
+      test_pid = self()
+      on_event = fn event -> send(test_pid, {:event, event}) end
+
+      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), on_event: on_event)
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "test-server", crash_info})
+
+      assert_receive {:event, {:server_crashed, "test-server", _, ^crash_info, _}}, 1_000
+    end
+
+    test "no event callback when none provided" do
+      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(pid, {:server_crashed, "test-server", crash_info})
+      :sys.get_state(pid)
+
+      assert SingleServerController.get_status(pid) == :failed
     end
   end
 
@@ -205,119 +211,6 @@ defmodule Toast.Deployment.CrashAbortTest do
       ToastTest.Runner.abort!("reason")
       ToastTest.Runner.clear_abort!()
       assert ToastTest.Runner.aborted?() == nil
-    end
-  end
-
-  describe "crash_monitor" do
-    test "controller forwards crash to crash_monitor" do
-      monitor = self()
-      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), crash_monitor: monitor)
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(pid, {:server_crashed, "test-server", crash_info})
-
-      assert_receive {:server_crashed, "test-server", ^crash_info}, 1_000
-    end
-
-    test "cluster controller forwards crash to crash_monitor" do
-      monitor = self()
-
-      {:ok, pid} =
-        ClusterController.start_link(config: Toast.Config.load(), crash_monitor: monitor)
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(pid, {:server_crashed, "dbserver-1", crash_info})
-
-      assert_receive {:server_crashed, "dbserver-1", ^crash_info}, 1_000
-    end
-
-    test "crash_monitor exits when receiving server_crashed" do
-      # Spawn a process that behaves like crash_monitor
-      crash_info = %{exit_status: 139, signal: 11}
-
-      monitor =
-        spawn(fn ->
-          Process.flag(:trap_exit, true)
-
-          receive do
-            {:server_crashed, id, info} ->
-              Process.flag(:trap_exit, false)
-              exit({:server_crashed, id, info})
-          end
-        end)
-
-      ref = Process.monitor(monitor)
-      send(monitor, {:server_crashed, "test-srv", crash_info})
-
-      assert_receive {:DOWN, ^ref, :process, ^monitor,
-                      {:server_crashed, "test-srv", ^crash_info}},
-                     1_000
-    end
-
-    test "crash_monitor kills linked processes on crash" do
-      # Spawn a crash_monitor-like process
-      crash_info = %{exit_status: 139, signal: 11}
-
-      monitor =
-        spawn(fn ->
-          Process.flag(:trap_exit, true)
-
-          receive do
-            {:server_crashed, id, info} ->
-              Process.flag(:trap_exit, false)
-              exit({:server_crashed, id, info})
-          end
-        end)
-
-      # Spawn a "test process" linked to the monitor
-      test_proc =
-        spawn(fn ->
-          Process.link(monitor)
-          Process.sleep(:infinity)
-        end)
-
-      # Give time for the link to be established
-      Process.sleep(10)
-
-      ref = Process.monitor(test_proc)
-
-      # Trigger crash notification
-      send(monitor, {:server_crashed, "test-srv", crash_info})
-
-      # The linked test process should die with the crash details
-      assert_receive {:DOWN, ^ref, :process, ^test_proc,
-                      {:server_crashed, "test-srv", ^crash_info}},
-                     1_000
-    end
-
-    test "crash_monitor survives linked process exits" do
-      monitor =
-        spawn(fn ->
-          Process.flag(:trap_exit, true)
-
-          receive do
-            {:server_crashed, id, info} ->
-              Process.flag(:trap_exit, false)
-              exit({:server_crashed, id, info})
-          end
-        end)
-
-      # Spawn and kill a linked process
-      linked =
-        spawn(fn ->
-          Process.link(monitor)
-          Process.sleep(:infinity)
-        end)
-
-      Process.sleep(10)
-      Process.exit(linked, :kill)
-      Process.sleep(10)
-
-      # Monitor should still be alive
-      assert Process.alive?(monitor)
-
-      # Clean up
-      Process.exit(monitor, :kill)
     end
   end
 

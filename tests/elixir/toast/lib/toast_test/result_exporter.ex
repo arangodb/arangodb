@@ -60,15 +60,5 @@ defmodule ToastTest.ResultExporter do
   end
 
   @doc false
-  @spec cluster_diagnostics?(map()) :: boolean()
-  def cluster_diagnostics?(diagnostics) do
-    case Map.keys(diagnostics) do
-      [] ->
-        false
-
-      [first_key | _] ->
-        is_binary(first_key) and is_map(Map.get(diagnostics, first_key)) and
-          Map.has_key?(Map.get(diagnostics, first_key), :sanitizer_errors)
-    end
-  end
+  defdelegate cluster_diagnostics?(diagnostics), to: Toast.Diagnostics
 end

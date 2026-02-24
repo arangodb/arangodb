@@ -61,7 +61,8 @@ defmodule Toast.Deployment.ClusterController do
       coordinators: [],
       error: nil,
       diagnostics: nil,
-      crash_monitor: Keyword.get(opts, :crash_monitor)
+      on_crash: Keyword.get(opts, :on_crash),
+      on_event: Keyword.get(opts, :on_event)
     }
 
     {:ok, state}
@@ -123,11 +124,32 @@ defmodule Toast.Deployment.ClusterController do
     {:reply, info, state}
   end
 
+  def handle_call({:get_server, server_id}, _from, state) do
+    case Map.get(state.servers, server_id) do
+      nil -> {:reply, {:error, :not_found}, state}
+      server -> {:reply, server, state}
+    end
+  end
+
+  def handle_call(:get_servers, _from, state) do
+    {:reply, Map.values(state.servers), state}
+  end
+
+  def handle_call({:get_servers, role}, _from, state) do
+    servers =
+      state.servers
+      |> Map.values()
+      |> Enum.filter(&(&1.role == role))
+
+    {:reply, servers, state}
+  end
+
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     stop_health_monitor(state, server_id)
-    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+    notify_crash(state.on_crash, crash_info)
+    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
   end
 
@@ -135,8 +157,29 @@ defmodule Toast.Deployment.ClusterController do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     stop_server_process(state, server_id, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
-    notify_crash_monitor(state.crash_monitor, server_id, crash_info)
+    notify_crash(state.on_crash, crash_info)
+    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when reason != :normal do
+    case find_server_by_health_monitor(state, pid) do
+      {server_id, _server} when state.status == :ready ->
+        Logger.warning("HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting")
+        server = state.servers[server_id]
+
+        case start_single_health_monitor(server_id, server.endpoint) do
+          {:ok, new_pid} ->
+            updated = %{server | health_monitor: new_pid}
+            {:noreply, %{state | servers: Map.put(state.servers, server_id, updated)}}
+
+          {:error, _} ->
+            {:noreply, state}
+        end
+
+      _ ->
+        {:noreply, state}
+    end
   end
 
   def handle_info(msg, state) do
@@ -243,6 +286,7 @@ defmodule Toast.Deployment.ClusterController do
     health_check? = Keyword.get(opts, :health_check, false)
     timeout = Keyword.get(opts, :timeout, 60_000)
     count = length(server_ids)
+    on_event = state.on_event
 
     results =
       Task.async_stream(
@@ -253,6 +297,7 @@ defmodule Toast.Deployment.ClusterController do
           with :ok <- ServerProcess.launch(server.server_pid) do
             os_pid = ServerProcess.os_pid(server.server_pid)
             Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
+            notify_event(on_event, {:server_started, server_id, os_pid, DateTime.utc_now()})
 
             if health_check? do
               process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
@@ -358,6 +403,8 @@ defmodule Toast.Deployment.ClusterController do
   defp extract_crashed_server(_), do: {nil, nil}
 
   defp stop_servers(server_ids, state, timeout) do
+    on_event = state.on_event
+
     Task.async_stream(
       server_ids,
       fn server_id ->
@@ -367,6 +414,7 @@ defmodule Toast.Deployment.ClusterController do
           try do
             ServerProcess.stop(server.server_pid, timeout)
             DynamicSupervisor.terminate_child(Toast.Process.Supervisor, server.server_pid)
+            notify_event(on_event, {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()})
           catch
             :exit, _ -> :ok
           end
@@ -400,13 +448,7 @@ defmodule Toast.Deployment.ClusterController do
     Enum.reduce_while(all_ids, {:ok, state}, fn server_id, {:ok, acc} ->
       server = acc.servers[server_id]
 
-      opts = [
-        server_id: server_id,
-        endpoint: server.endpoint,
-        listener: self()
-      ]
-
-      case Toast.Process.Supervisor.start_health_monitor(opts) do
+      case start_single_health_monitor(server_id, server.endpoint) do
         {:ok, pid} ->
           updated = %{server | health_monitor: pid}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, server_id, updated)}}}
@@ -415,6 +457,21 @@ defmodule Toast.Deployment.ClusterController do
           {:halt, {:error, reason}}
       end
     end)
+  end
+
+  defp start_single_health_monitor(server_id, endpoint) do
+    case Toast.Process.Supervisor.start_health_monitor(
+           server_id: server_id,
+           endpoint: endpoint,
+           listener: self()
+         ) do
+      {:ok, pid} ->
+        Process.monitor(pid)
+        {:ok, pid}
+
+      error ->
+        error
+    end
   end
 
   defp stop_all_health_monitors(state) do
@@ -462,10 +519,17 @@ defmodule Toast.Deployment.ClusterController do
     end
   end
 
+  defp find_server_by_health_monitor(state, pid) do
+    Enum.find(state.servers, fn {_id, server} -> server.health_monitor == pid end)
+  end
+
   # --- Helpers ---
 
-  defp notify_crash_monitor(nil, _id, _info), do: :ok
-  defp notify_crash_monitor(pid, id, info), do: send(pid, {:server_crashed, id, info})
+  defp notify_crash(nil, _crash_info), do: :ok
+  defp notify_crash(on_crash, crash_info) when is_function(on_crash, 1), do: on_crash.(crash_info)
+
+  defp notify_event(nil, _event), do: :ok
+  defp notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)
 
   defp print_server_output(server_id, data) do
     data

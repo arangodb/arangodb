@@ -42,7 +42,7 @@ defmodule Toast.Diagnostics.Summary do
   end
 
   defp crashed_server_entries(diagnostics) do
-    if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
+    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
       diagnostics
       |> Enum.filter(fn {_id, diag} -> has_crash?(diag) end)
       |> Enum.map(fn {_id, diag} -> {diag, diag.server} end)

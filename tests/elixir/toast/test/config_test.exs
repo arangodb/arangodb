@@ -17,6 +17,9 @@ defmodule Toast.ConfigTest do
     TOAST_CLUSTER_DBSERVERS
     TOAST_CLUSTER_COORDINATORS
     TOAST_CLUSTER_REPLICATION_FACTOR
+    TOAST_API_VERSION
+    TOAST_DEBUGGER
+    TOAST_CI
   )
 
   setup do
@@ -50,6 +53,8 @@ defmodule Toast.ConfigTest do
       assert config.startup_timeout == 60_000
       assert config.shutdown_timeout == 60_000
       assert config.timeout_factor == 1
+      assert config.api_version == nil
+      assert config.debugger == :auto
     end
 
     test "work_dir has unique default under tmp_dir" do
@@ -274,6 +279,103 @@ defmodule Toast.ConfigTest do
 
       assert config.cluster_agents == 10
       assert config.cluster_dbservers == 5
+    end
+  end
+
+  describe "TOAST_API_VERSION env var" do
+    test "parses integer version" do
+      System.put_env("TOAST_API_VERSION", "2")
+      assert Config.load().api_version == 2
+    end
+
+    test "keeps string version" do
+      System.put_env("TOAST_API_VERSION", "2.0")
+      assert Config.load().api_version == "2.0"
+    end
+
+    test "nil defaults to nil" do
+      assert Config.load().api_version == nil
+    end
+
+    test "keyword override" do
+      System.put_env("TOAST_API_VERSION", "2")
+      config = Config.load(api_version: 3)
+      assert config.api_version == 3
+    end
+  end
+
+  describe "TOAST_DEBUGGER env var" do
+    test "gdb string maps to :gdb atom" do
+      System.put_env("TOAST_DEBUGGER", "gdb")
+      assert Config.load().debugger == :gdb
+    end
+
+    test "lldb string maps to :lldb atom" do
+      System.put_env("TOAST_DEBUGGER", "lldb")
+      assert Config.load().debugger == :lldb
+    end
+
+    test "auto string maps to :auto atom" do
+      System.put_env("TOAST_DEBUGGER", "auto")
+      assert Config.load().debugger == :auto
+    end
+
+    test "unrecognized values fall back to default :auto" do
+      System.put_env("TOAST_DEBUGGER", "something")
+      assert Config.load().debugger == :auto
+    end
+
+    test "defaults to :auto" do
+      assert Config.load().debugger == :auto
+    end
+
+    test "keyword override" do
+      System.put_env("TOAST_DEBUGGER", "gdb")
+      config = Config.load(debugger: :lldb)
+      assert config.debugger == :lldb
+    end
+  end
+
+  describe ".toast.local.exs" do
+    setup do
+      path = Path.join(File.cwd!(), ".toast.local.exs")
+      on_exit(fn -> File.rm(path) end)
+      {:ok, local_path: path}
+    end
+
+    test "reads config from .toast.local.exs when present", %{local_path: path} do
+      File.write!(path, "%{build_dir: \"/local/build\"}")
+
+      config = Config.load()
+      assert config.build_dir == "/local/build"
+    end
+
+    test "env vars take precedence over .toast.local.exs", %{local_path: path} do
+      File.write!(path, "%{build_dir: \"/local/build\"}")
+      System.put_env("TOAST_BUILD_DIR", "/env/build")
+
+      config = Config.load()
+      assert config.build_dir == "/env/build"
+    end
+
+    test "keyword opts take precedence over .toast.local.exs", %{local_path: path} do
+      File.write!(path, "%{build_dir: \"/local/build\"}")
+
+      config = Config.load(build_dir: "/keyword/build")
+      assert config.build_dir == "/keyword/build"
+    end
+
+    test "ignored when absent" do
+      config = Config.load()
+      assert config.build_dir == nil
+    end
+
+    test "skipped when TOAST_CI=true", %{local_path: path} do
+      File.write!(path, "%{build_dir: \"/local/build\"}")
+      System.put_env("TOAST_CI", "true")
+
+      config = Config.load()
+      assert config.build_dir == nil
     end
   end
 end

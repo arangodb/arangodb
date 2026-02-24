@@ -18,7 +18,7 @@ defmodule Toast.Application do
   end
 
   defp setup_file_logger do
-    result_dir = ToastTest.ResultExporter.result_dir()
+    result_dir = Application.get_env(:toast, :result_dir, "toast-results")
     File.mkdir_p!(result_dir)
     log_path = Path.join(result_dir, "toast.log")
 
