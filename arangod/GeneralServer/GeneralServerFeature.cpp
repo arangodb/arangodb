@@ -879,7 +879,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addHandler(
       "/_admin/statistics-description",
       RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
-      {0});
+      {0, 1});
 
   f.addPrefixHandler(
       "/_admin/license",
