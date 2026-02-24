@@ -100,41 +100,77 @@ function VectorIndexHintsSuite(expectedTrained) {
           value: i,
         });
       }
-      collection.insert(docs);
+      if (seed % 2 === 0) {
+        collection.insert(docs);
+        collection.ensureIndex({
+          name: "vector_l2",
+          type: "vector",
+          fields: ["vector"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 5,
+          },
+        });
 
-      collection.ensureIndex({
-        name: "vector_l2",
-        type: "vector",
-        fields: ["vector"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 5,
-        },
-      });
+        collection.ensureIndex({
+          name: "vector_l2_secondary",
+          type: "vector",
+          fields: ["vector"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 3,
+          },
+        });
 
-      collection.ensureIndex({
-        name: "vector_l2_secondary",
-        type: "vector",
-        fields: ["vector"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 3,
-        },
-      });
+        collection.ensureIndex({
+          name: "vector_l2_with_filter",
+          type: "vector",
+          fields: ["vector"],
+          storedValues: ["value"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 4,
+          },
+        });
+      } else {
+        collection.ensureIndex({
+          name: "vector_l2",
+          type: "vector",
+          fields: ["vector"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 5,
+          },
+        });
 
-      collection.ensureIndex({
-        name: "vector_l2_with_filter",
-        type: "vector",
-        fields: ["vector"],
-        storedValues: ["value"],
-        params: {
-          metric: "l2",
-          dimension: dimension,
-          nLists: 4,
-        },
-      });
+        collection.ensureIndex({
+          name: "vector_l2_secondary",
+          type: "vector",
+          fields: ["vector"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 3,
+          },
+        });
+
+        collection.ensureIndex({
+          name: "vector_l2_with_filter",
+          type: "vector",
+          fields: ["vector"],
+          storedValues: ["value"],
+          params: {
+            metric: "l2",
+            dimension: dimension,
+            nLists: 4,
+          },
+        });
+        collection.insert(docs);
+      }
       const state = expectedTrained ? "ready" : "uninitialized";
       const timeoutSec = expectedTrained ? 60 : 5;
       if (isCluster) {

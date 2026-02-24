@@ -90,20 +90,35 @@ function VectorIndexL2TestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(vectorData.docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                });
+                collection.insert(vectorData.docs);
+            }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 10 : 5;
@@ -576,18 +591,31 @@ function VectorIndexCosineTestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_cosine",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "cosine",
-                    dimension: dimension,
-                    nLists: 10
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(vectorData.docs);
+                collection.ensureIndex({
+                    name: "vector_cosine",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "cosine",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_cosine",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "cosine",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                });
+                collection.insert(vectorData.docs);
+            }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
@@ -771,18 +799,31 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            collection.insert(vectorData.docs);
-
-            collection.ensureIndex({
-                name: "vector_inner_product",
-                type: "vector",
-                fields: ["vector"],
-                params: {
-                    metric: "innerProduct",
-                    dimension: dimension,
-                    nLists: 10
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(vectorData.docs);
+                collection.ensureIndex({
+                    name: "vector_inner_product",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "innerProduct",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_inner_product",
+                    type: "vector",
+                    fields: ["vector"],
+                    params: {
+                        metric: "innerProduct",
+                        dimension: dimension,
+                        nLists: 10
+                    },
+                });
+                collection.insert(vectorData.docs);
+            }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;

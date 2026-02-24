@@ -79,19 +79,33 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                     vector
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 10
-                },
-            });
+            if (seed % 2 === 0) {
+                insertedDocs = db.coll.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 10
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 10
+                    },
+                });
+                insertedDocs = db.coll.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
@@ -502,21 +516,35 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                     description: `This is document number ${i} with some description text`
                 });
             }
-            insertedDocs = db.coll.insert(docs);
-
-            // Create vector index with storedValues
-            collection.ensureIndex({
-                name: "vector_l2_stored",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                storedValues: ["name", "value", "category", "metadata", "description"],
-                params: {
-                    metric: "l2",
-                    dimension,
-                    nLists: 1
-                },
-            });
+            if (seed % 2 === 0) {
+                insertedDocs = db.coll.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value", "category", "metadata", "description"],
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 1
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    storedValues: ["name", "value", "category", "metadata", "description"],
+                    params: {
+                        metric: "l2",
+                        dimension,
+                        nLists: 1
+                    },
+                });
+                insertedDocs = db.coll.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {

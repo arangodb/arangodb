@@ -76,19 +76,33 @@ function VectorIndexL2NprobeTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 300,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 300,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 300,
+                    },
+                });
+                collection.insert(docs);
+            }
             const buildState = "ready";
             const waitTimeoutSec = 60;
             if (isCluster) {

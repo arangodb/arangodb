@@ -78,21 +78,37 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                     vector,
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nLists,
-                    trainingIterations: 10,
-                    defaultNProbe: nLists,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                        trainingIterations: 10,
+                        defaultNProbe: nLists,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                        trainingIterations: 10,
+                        defaultNProbe: nLists,
+                    },
+                });
+                collection.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
@@ -292,20 +308,35 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
+                });
+                collection.insert(docs);
+            }
         },
 
         tearDownAll: function() {
@@ -380,20 +411,35 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     vector
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+                collection.insert(docs);
+            }
         },
 
         tearDownAll: function() {

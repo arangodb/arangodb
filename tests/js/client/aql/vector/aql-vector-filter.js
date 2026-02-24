@@ -155,21 +155,37 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 });
             }
 
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                });
+                collection.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
@@ -687,22 +703,39 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                     val: i
                 });
             }
-            collection1.insert(docs);
-            collection2.insert(docs);
-
-            collection1.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
-            });
+            if (seed % 2 === 0) {
+                collection1.insert(docs);
+                collection2.insert(docs);
+                collection1.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                });
+            } else {
+                collection1.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                });
+                collection1.insert(docs);
+                collection2.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
@@ -812,22 +845,39 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                     floatField: i + 0.5
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2_stored_values",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
-                storedValues: ["val", "stringField", "boolField", "floatField"]
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                collection.ensureIndex({
+                    name: "vector_l2_stored_values",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                    storedValues: ["val", "stringField", "boolField", "floatField"]
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vector_l2_stored_values",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                    storedValues: ["val", "stringField", "boolField", "floatField"]
+                });
+                collection.insert(docs);
+            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {

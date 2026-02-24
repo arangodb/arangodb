@@ -72,19 +72,33 @@ function VectorIndexReplicationFailoverTest() {
                 const vector = Array.from({length: dimension}, () => gen());
                 docs.push({vec: vector, value: i});
             }
-            collection.insert(docs);
-            assertEqual(collection.count(), numberOfDocs);
-
-            collection.ensureIndex({
-                name: "vec_idx",
-                type: "vector",
-                fields: ["vec"],
-                params: {
-                    dimension: dimension,
-                    metric: "l2",
-                    nLists: nLists,
-                }
-            });
+            if (seed % 2 === 0) {
+                collection.insert(docs);
+                assertEqual(collection.count(), numberOfDocs);
+                collection.ensureIndex({
+                    name: "vec_idx",
+                    type: "vector",
+                    fields: ["vec"],
+                    params: {
+                        dimension: dimension,
+                        metric: "l2",
+                        nLists: nLists,
+                    }
+                });
+            } else {
+                collection.ensureIndex({
+                    name: "vec_idx",
+                    type: "vector",
+                    fields: ["vec"],
+                    params: {
+                        dimension: dimension,
+                        metric: "l2",
+                        nLists: nLists,
+                    }
+                });
+                collection.insert(docs);
+                assertEqual(collection.count(), numberOfDocs);
+            }
 
             // Verify vector search works on the leader
             const queryVector = Array.from({length: dimension}, () => gen());
