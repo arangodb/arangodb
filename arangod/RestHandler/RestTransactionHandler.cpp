@@ -108,10 +108,9 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_await executeBegin();
         co_return;
       } else if (_request->suffixes().empty()) {
-        generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                      TRI_ERROR_NOT_IMPLEMENTED,
-                      "JavaScript operations are not available in this build "
-                      "of ArangoDB");
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                      "JavaScript transactions not supported. Use streaming "
+                      "transactions (POST /_api/transaction/begin)");
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
