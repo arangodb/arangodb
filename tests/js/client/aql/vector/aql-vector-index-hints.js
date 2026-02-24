@@ -33,7 +33,7 @@ const {
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
-  waitForVectorIndexState,
+  waitForAllVectorIndexesBuildState,
   waitForAllVectorIndexesBuildStateOnDBServers,
   withSuffix,
 } = require("@arangodb/testutils/vector-generator");
@@ -69,10 +69,16 @@ function VectorIndexHintsSuite(expectedTrained) {
 
   return {
     setUpAll: function () {
+      db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
-      collection = db._create(collName, { numberOfShards: 3 });
+      // Use 1 shard when expecting trained index so the single shard has enough
+      // docs (>= 1000) to trigger training; with 3 shards and 1500 docs each
+      // shard has only 500 and the index never becomes "ready" in cluster.
+      collection = db._create(collName, {
+        numberOfShards: expectedTrained ? 1 : 3
+      });
 
       // Generate random vectors
       let docs = [];
@@ -105,23 +111,6 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 5,
         },
       });
-      if (isCluster) {
-        assertTrue(
-          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
-          "Expected vector_l2 to become " + (expectedTrained ? "trained" : "untrained") +
-          " on DB servers with " + numberOfDocs + " docs"
-        );
-      } else {
-        assertTrue(
-          waitForVectorIndexState(collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
-          "Expected vector_l2 to become " + (expectedTrained ? "trained" : "untrained") +
-          " with " + numberOfDocs + " docs"
-        );
-      }
 
       collection.ensureIndex({
         name: "vector_l2_secondary",
@@ -133,23 +122,6 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 3,
         },
       });
-      if (isCluster) {
-        assertTrue(
-          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
-          "Expected vector_l2_secondary to become " + (expectedTrained ? "trained" : "untrained") +
-          " on DB servers with " + numberOfDocs + " docs"
-        );
-      } else {
-        assertTrue(
-          waitForVectorIndexState(collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
-          "Expected vector_l2_secondary to become " + (expectedTrained ? "trained" : "untrained") +
-          " with " + numberOfDocs + " docs"
-        );
-      }
 
       collection.ensureIndex({
         name: "vector_l2_with_filter",
@@ -162,19 +134,21 @@ function VectorIndexHintsSuite(expectedTrained) {
           nLists: 4,
         },
       });
+      const state = expectedTrained ? "ready" : "uninitialized";
+      const timeoutSec = expectedTrained ? 60 : 5;
       if (isCluster) {
         assertTrue(
           waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
+            state,
+            timeoutSec),
           "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
           " on DB servers with " + numberOfDocs + " docs"
         );
       } else {
         assertTrue(
-          waitForVectorIndexState(collection,
-            expectedTrained ? "ready" : "uninitialized",
-            expectedTrained ? 60 : 5),
+          waitForAllVectorIndexesBuildState(collection,
+            state,
+            timeoutSec),
           "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
           " with " + numberOfDocs + " docs"
         );

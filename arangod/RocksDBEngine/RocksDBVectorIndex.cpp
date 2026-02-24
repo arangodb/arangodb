@@ -302,7 +302,11 @@ void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> indexSelf) {
       [this, indexSelf = std::move(indexSelf), indexId = _iid.id()] {
         vector::VectorIndexBuildManager builder(*this);
         if (auto const res = builder.build(indexSelf); res.fail()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+          LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+              << "[shard=" << collection().name() << ", index=" << indexId
+              << "] Vector build failed: " << res.errorMessage();
+          setBuildState(VectorIndexBuildState::kUninitialized);
+          return;
         }
         setBuildState(VectorIndexBuildState::kReady);
       });
