@@ -47,6 +47,9 @@ function VectorIndexL2NprobeTestSuite() {
     let randomPoint;
     const dimension = 500;
     const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    // 3 shards; enough docs per shard (300*5=15000 total in cluster) to trigger training
+    const numberOfDocs = numberOfDocsFactor * 300 * 50;
 
     return {
         setUpAll: function() {
@@ -62,8 +65,7 @@ function VectorIndexL2NprobeTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            const numberOfDocs = isCluster ? 12000 * numberOfShards + 100 : 12000;
-            for (let i = 0; i < 12000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
