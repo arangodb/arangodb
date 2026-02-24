@@ -325,7 +325,7 @@ Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
   auto const res = builder->fillIndexBackground(locker).waitAndGet();
 
   if (res.fail()) {
-    LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+    LOG_TOPIC("e166b", ERR, Logger::ENGINES)
         << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
   } else {
