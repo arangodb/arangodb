@@ -91,19 +91,21 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                     defaultNProbe: nLists,
                 },
             });
+            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " on DB servers with " + numberOfDocs + " docs"
                 );
             } else {
                 assertTrue(
                     waitForVectorIndexState(collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );

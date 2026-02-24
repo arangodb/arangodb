@@ -965,11 +965,13 @@ function MultipleVectorIndexesOnField() {
                 },
             });
 
+            const buildState = "ready";
+            const waitTimeoutSec = 20;
             if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 20),
+                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Expected all vector indexes to become ready on DB servers before query");
             } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
                     "Expected all vector indexes to become ready before query");
             }
 
@@ -1021,11 +1023,13 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            const buildState = "ready";
+            const waitTimeoutSec = 20;
             if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 20),
+                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Expected vector indexes to become trained on DB servers before query");
             } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
                     "Expected vector indexes to become trained before query");
             }
 
@@ -1076,11 +1080,13 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            const buildState = "ready";
+            const waitTimeoutSec = 20;
             if (isCluster) {
-                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 20),
+                assertTrue(waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Expected vector indexes to become trained on DB servers before query");
             } else {
-                assertTrue(waitForAllVectorIndexesBuildState(collection, "ready"),
+                assertTrue(waitForAllVectorIndexesBuildState(collection, buildState),
                     "Expected vector indexes to become trained before query");
             }
 

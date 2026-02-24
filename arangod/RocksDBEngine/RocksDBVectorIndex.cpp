@@ -306,6 +306,7 @@ void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> indexSelf) {
               << "[shard=" << collection().name() << ", index=" << indexId
               << "] Vector build failed: " << res.errorMessage();
           setBuildState(VectorIndexBuildState::kUninitialized);
+
           return;
         }
         setBuildState(VectorIndexBuildState::kReady);

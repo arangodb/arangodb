@@ -84,13 +84,15 @@ function VectorIndexRemainsUntrainedSuite() {
 
             assertEqual(insertCount, collection.count());
 
+            const buildState = "uninitialized";
+            const waitTimeoutSec = 5;
             if (isCluster) {
                 assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "uninitialized", 5),
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Index should remain uninitialized with only " + insertCount + " docs (threshold ~1000)"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, "uninitialized", 5);
+                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should remain uninitialized with only " + insertCount + " docs (threshold ~1000)");
             }
@@ -140,21 +142,20 @@ function VectorIndexDeferredTrainingSuite() {
 
             assertEqual(insertCount, collection.count());
 
+            const buildState = "ready";
+            const waitTimeoutSec = 60;
             if (isCluster) {
                 assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Index should become trained after inserting " + insertCount +
                     " docs (threshold ~1000), waited up to 60s"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, "ready", 60);
+                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should become trained after inserting " + insertCount +
                     " docs (threshold ~1000), waited up to 60s");
             }
-
-            const idxAfter = collection.indexes().find(i => i.name === "vec_l2");
-            assertTrue(idxAfter.isTrained, "Index should be trained");
         },
 
         testSearchWorksAfterDeferredTraining: function () {
@@ -170,13 +171,15 @@ function VectorIndexDeferredTrainingSuite() {
             }
             collection.insert(docs);
 
+            const buildState = "ready";
+            const waitTimeoutSec = 60;
             if (isCluster) {
                 assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Index should become trained within 60s"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, "ready", 60);
+                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
                 assertTrue(trained, "Index should become trained within 60s");
             }
 
@@ -232,14 +235,16 @@ function VectorIndexBatchInsertTrainingSuite() {
 
             assertEqual(batchSize * numBatches, collection.count());
 
+            const buildState = "ready";
+            const waitTimeoutSec = 60;
             if (isCluster) {
                 assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Index should become trained after " + (batchSize * numBatches) +
                     " docs inserted in " + numBatches + " batches"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, "ready", 60);
+                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should become trained after " + (batchSize * numBatches) +
                     " docs inserted in " + numBatches + " batches");

@@ -114,11 +114,12 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards: expectedTrained ? 1 : 3
             });
 
             let docs = [];
@@ -168,19 +169,21 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " on DB servers with " + numberOfDocs + " docs"
                 );
             } else {
                 assertTrue(
                     waitForVectorIndexState(collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );
@@ -654,14 +657,15 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print(`Using seed: ${seed}`);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection1 = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards: expectedTrained ? 1 : 3
             });
             collection2 = db._create(col2, {
-                numberOfShards: 3
+                numberOfShards: expectedTrained ? 1 : 3
             });
 
 
@@ -697,19 +701,21 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                     defaultNProbe: nProbeAndNlists,
                 },
             });
+            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection1,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " on DB servers with " + numberOfDocs + " docs"
                 );
             } else {
                 assertTrue(
                     waitForVectorIndexState(collection1,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );
@@ -772,11 +778,12 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards: expectedTrained ? 1 : 3
             });
 
             let docs = [];
@@ -818,19 +825,21 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                 },
                 storedValues: ["val", "stringField", "boolField", "floatField"]
             });
+            const expectedState = expectedTrained ? "ready" : "uninitialized";
+            const waitTimeoutSec = expectedTrained ? 60 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " on DB servers with " + numberOfDocs + " docs"
                 );
             } else {
                 assertTrue(
                     waitForVectorIndexState(collection,
-                        expectedTrained ? "ready" : "uninitialized",
-                        expectedTrained ? 60 : 5),
+                        expectedState,
+                        waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );

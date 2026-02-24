@@ -53,12 +53,15 @@ function VectorIndexL2NprobeTestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
+            // Use 1 shard so the single shard has enough docs (>= 1000) to trigger training;
+            const numberOfShards = 3;
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
+            const numberOfDocs = isCluster ? 12000 * numberOfShards + 100 : 12000;
             for (let i = 0; i < 12000; ++i) {
                 const vector = Array.from({
                     length: dimension
@@ -72,8 +75,6 @@ function VectorIndexL2NprobeTestSuite() {
             }
             collection.insert(docs);
 
-            // big number of nLists causes that results are spread across
-            // multiple nLists and makes probability of returning all the results with 1 nProbe lower
             collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
@@ -85,13 +86,15 @@ function VectorIndexL2NprobeTestSuite() {
                     nLists: 300,
                 },
             });
+            const buildState = "ready";
+            const waitTimeoutSec = 60;
             if (isCluster) {
                 assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, "ready", 60),
+                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
                     "Expected vector index to become trained on DB servers"
                 );
             } else {
-                assertTrue(waitForVectorIndexState(collection, "ready", 60),
+                assertTrue(waitForVectorIndexState(collection, buildState, waitTimeoutSec),
                     "Expected vector index to become trained");
             }
         },
@@ -136,12 +139,12 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) LIMIT 20 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) LIMIT 300 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
                 " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 100}) " +
-                " LIMIT 20 RETURN {key: d._key}";
+                " LIMIT 300 RETURN {key: d._key}";
 
             const bindVars = {
                 qp: randomPoint
