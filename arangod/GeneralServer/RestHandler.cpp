@@ -46,19 +46,20 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
+#include "Activities/activity.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _request(request),
       _response(response),
       _server(server),
@@ -209,6 +210,15 @@ void RestHandler::trackTaskEnd() noexcept {
   }
 }
 
+void RestHandler::startActivity() {
+  _activity = std::make_unique<activities::Activity>(
+      "RestHandler", activities::Metadata{
+                         {"handler", name()},
+                         {"url", _request->fullUrl()},
+                         {"method", std::string{GeneralRequest::translateMethod(
+                                        _request->requestType())}}});
+}
+
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
   return std::move(_statistics);
 }
@@ -281,7 +291,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + fuerte::jwt::generateUserToken(
+            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                             auth->tokenCache().jwtSecret(), username));
       }
     }

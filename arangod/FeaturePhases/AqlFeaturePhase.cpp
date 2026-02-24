@@ -22,25 +22,35 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 namespace arangodb::application_features {
 
-AqlFeaturePhase::AqlFeaturePhase(ArangodServer& server)
+AqlFeaturePhase::AqlFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<CommunicationFeaturePhase, ArangodServer>();
+  startsAfter<CommunicationFeaturePhase>();
 #ifdef USE_V8
-  startsAfter<V8FeaturePhase, ArangodServer>();
+  startsAfter<V8FeaturePhase>();
 #endif
 
-  startsAfter<AqlFeature, ArangodServer>();
-  startsAfter<aql::AqlFunctionFeature, ArangodServer>();
-  startsAfter<iresearch::IResearchAnalyzerFeature, ArangodServer>();
-  startsAfter<iresearch::IResearchFeature, ArangodServer>();
-  startsAfter<aql::OptimizerRulesFeature, ArangodServer>();
-  startsAfter<QueryRegistryFeature, ArangodServer>();
-  startsAfter<SystemDatabaseFeature, ArangodServer>();
+  startsAfter<AqlFeature>();
+  startsAfter<aql::AqlFunctionFeature>();
+  startsAfter<iresearch::IResearchAnalyzerFeature>();
+  startsAfter<iresearch::IResearchFeature>();
+  startsAfter<aql::OptimizerRulesFeature>();
+  startsAfter<QueryRegistryFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 }  // namespace arangodb::application_features

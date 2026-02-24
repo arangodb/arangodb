@@ -34,10 +34,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState(ArangodServer& server)
+using application_features::ApplicationServer;
+
+SharedQueryState::SharedQueryState(ApplicationServer& server)
     : SharedQueryState(server, SchedulerFeature::ACCEPTANCE_QUEUE) {}
 
-SharedQueryState::SharedQueryState(ArangodServer& server,
+SharedQueryState::SharedQueryState(ApplicationServer& server,
                                    AcceptanceQueue* acceptanceQueue)
     : _server(server),
       _acceptanceQueue(acceptanceQueue),

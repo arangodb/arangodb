@@ -23,8 +23,7 @@
 
 #include "LockfileFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -38,8 +37,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-LockfileFeature::LockfileFeature(Server& server)
-    : ArangodFeature{server, *this} {
+LockfileFeature::LockfileFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

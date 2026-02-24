@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/FunctionUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Thread.h"
@@ -34,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
@@ -41,8 +41,9 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <fuerte/connection.h>
 
@@ -63,12 +64,12 @@ namespace {
 // pushing retry operations to the scheduler needs to use the correct
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
-class RetryThread : public ServerThread<ArangodServer> {
+class RetryThread : public Thread {
   static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
-  explicit RetryThread(ArangodServer& server)
-      : ServerThread<ArangodServer>(server, "NetworkRetry"),
+  explicit RetryThread()
+      : Thread("NetworkRetry"),
         _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {
@@ -310,9 +311,10 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
-NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               metrics::MetricsFeature& metrics,
                                network::ConnectionPool::Config config)
-    : ArangodFeature{server, *this},
+    : application_features::ApplicationFeature{server, *this},
       _options(config),
       _prepared(false),
       _forwardedRequests(
@@ -541,7 +543,7 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
-  _retryThread = std::make_unique<RetryThread>(server());
+  _retryThread = std::make_unique<RetryThread>();
   if (!_retryThread->start()) {
     LOG_TOPIC("9b1a2", FATAL, arangodb::Logger::COMMUNICATION)
         << "unable to start network request retry thread";
@@ -572,6 +574,7 @@ void NetworkFeature::stop() {
     _pool->shutdownConnections();
     _pool->drainConnections();
     _pool->stop();
+    _pool.reset();  // Destroy the pool to avoid any races
   }
   _retryThread.reset();
 }

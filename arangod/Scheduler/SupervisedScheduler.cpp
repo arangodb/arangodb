@@ -94,9 +94,9 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : public Thread {
  public:
-  explicit SupervisedSchedulerThread(ArangodServer& server,
-                                     SupervisedScheduler& scheduler,
-                                     std::string const& name = "Scheduler")
+  explicit SupervisedSchedulerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler, std::string const& name = "Scheduler")
       : Thread(server, name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
@@ -109,8 +109,9 @@ class SupervisedSchedulerThread : public Thread {
 class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(ArangodServer& server,
-                                            SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerManagerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler)
       : SupervisedSchedulerThread(server, scheduler, "SchedMan") {}
   ~SupervisedSchedulerManagerThread() override { shutdown(); }
   void run() override { _scheduler.runSupervisor(); }
@@ -118,8 +119,9 @@ class SupervisedSchedulerManagerThread final
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(ArangodServer& server,
-                                           SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerWorkerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler)
       : SupervisedSchedulerThread(server, scheduler, "SchedWorker") {}
   ~SupervisedSchedulerWorkerThread() override { shutdown(); }
   void run() override { _scheduler.runWorker(); }
@@ -128,7 +130,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 }  // namespace arangodb
 
 SupervisedScheduler::SupervisedScheduler(
-    ArangodServer& server, uint64_t const minThreads, uint64_t const maxThreads,
+    application_features::ApplicationServer& server, uint64_t const minThreads, uint64_t const maxThreads,
     uint64_t const maxQueueSize, uint64_t const fifo1Size,
     uint64_t const fifo2Size, uint64_t const fifo3Size,
     std::shared_ptr<SchedulerMetrics> const& metrics,

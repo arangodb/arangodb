@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include <format>
 #include <ostream>
 
 #include "Inspection/Format.h"
@@ -1099,11 +1100,11 @@ TEST(JsonPrint, format_output) {
   "b": true,
   "s": "foobar"
 })";
-    auto actual = fmt::format("Dummy - {:p}", inspection::json(f));
+    auto actual = std::format("Dummy - {:p}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
     actual =
-        fmt::format("Dummy - {}",
+        std::format("Dummy - {}",
                     inspection::json(f, inspection::JsonPrintFormat::kPretty));
     EXPECT_EQ(expected, actual);
   }
@@ -1111,19 +1112,19 @@ TEST(JsonPrint, format_output) {
   {
     auto expected =
         R"(Dummy - { "i": 42, "d": 123.456, "b": true, "s": "foobar" })";
-    auto actual = fmt::format("Dummy - {}", inspection::json(f));
+    auto actual = std::format("Dummy - {}", inspection::json(f));
     EXPECT_EQ(expected, actual);
-    actual = fmt::format("Dummy - {:c}", inspection::json(f));
+    actual = std::format("Dummy - {:c}", inspection::json(f));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - {"i":42,"d":123.456,"b":true,"s":"foobar"})";
-    auto actual = fmt::format("Dummy - {:m}", inspection::json(f));
+    auto actual = std::format("Dummy - {:m}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
     actual =
-        fmt::format("Dummy - {}",
+        std::format("Dummy - {}",
                     inspection::json(f, inspection::JsonPrintFormat::kMinimal));
     EXPECT_EQ(expected, actual);
   }
@@ -1139,10 +1140,10 @@ TEST(JsonPrint, format_output_with_unquoted_fields) {
   b: true,
   s: "foobar"
 })";
-    auto actual = fmt::format("Dummy - {:pu}", inspection::json(f));
+    auto actual = std::format("Dummy - {:pu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
+    actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kPretty, false));
     EXPECT_EQ(expected, actual);
@@ -1150,20 +1151,20 @@ TEST(JsonPrint, format_output_with_unquoted_fields) {
 
   {
     auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
-    auto actual = fmt::format(
+    auto actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kCompact, false));
     EXPECT_EQ(expected, actual);
-    actual = fmt::format("Dummy - {:cu}", inspection::json(f));
+    actual = std::format("Dummy - {:cu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
-    auto actual = fmt::format("Dummy - {:mu}", inspection::json(f));
+    auto actual = std::format("Dummy - {:mu}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
+    actual = std::format(
         "Dummy - {}",
         inspection::json(f, inspection::JsonPrintFormat::kMinimal, false));
     EXPECT_EQ(expected, actual);

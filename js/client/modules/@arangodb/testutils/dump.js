@@ -658,15 +658,14 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
         message:  'Makedata:\n' + fs.read(logFile).replace(rx, '\n'),
-        status: false
+        status: false,
+        duration: rc.duration
       };
       this.results.failed += 1;
       return false;
     } else {
       fs.remove(logFile);
-      this.results.RtaMakedata = {
-        status: true
-      };
+      this.results.RtaMakedata = rc;
       return true;
     }
   }
@@ -750,7 +749,8 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       this.results.RtaCheckdata = {
         message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
         status: false,
-        failed: 1
+        failed: 1,
+        duration: rc.duration,
       };
       this.results.failed += 1;
       return false;
@@ -758,7 +758,8 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       fs.remove(logFile);
       this.results.RtaCheckdata = {
         status: true,
-        failed: 0
+        failed: 0,
+        duration: rc.duration,
       };
       return true;
     }

@@ -27,13 +27,10 @@
 #include <condition_variable>
 #include <function2.hpp>
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
 class AcceptanceQueue;
-namespace application_features {
-class ApplicationServer;
-}
 namespace aql {
 
 class SharedQueryState final
@@ -42,8 +39,8 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  explicit SharedQueryState(ArangodServer& server);
-  SharedQueryState(ArangodServer& server, AcceptanceQueue* acceptanceQueue);
+  explicit SharedQueryState(application_features::ApplicationServer& server);
+  SharedQueryState(application_features::ApplicationServer& server, AcceptanceQueue* acceptanceQueue);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -181,7 +178,7 @@ class SharedQueryState final
   bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   AcceptanceQueue* _acceptanceQueue;
   mutable std::mutex _mutex;
   std::condition_variable _cv;

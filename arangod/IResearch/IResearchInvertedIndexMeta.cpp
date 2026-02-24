@@ -137,11 +137,10 @@ IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
-bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
-                                      VPackSlice const& slice,
-                                      bool readAnalyzerDefinition,
-                                      std::string& errorField,
-                                      std::string_view const defaultVocbase) {
+bool IResearchInvertedIndexMeta::init(
+    arangodb::application_features::ApplicationServer& server,
+    VPackSlice const& slice, bool readAnalyzerDefinition,
+    std::string& errorField, std::string_view const defaultVocbase) {
   if (!IResearchDataStoreMeta::init(slice, errorField, DEFAULT(), nullptr)) {
     return false;
   }
@@ -390,8 +389,8 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 }
 
 bool IResearchInvertedIndexMeta::json(
-    arangodb::ArangodServer& server, VPackBuilder& builder,
-    bool writeAnalyzerDefinition,
+    arangodb::application_features::ApplicationServer& server,
+    VPackBuilder& builder, bool writeAnalyzerDefinition,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   if (!IResearchDataStoreMeta::json(builder)) {
     return false;
@@ -488,8 +487,8 @@ bool IResearchInvertedIndexMeta::matchesDefinition(
 }
 
 bool InvertedIndexField::json(
-    arangodb::ArangodServer& server, VPackBuilder& builder,
-    InvertedIndexField const& parent, bool rootMode,
+    arangodb::application_features::ApplicationServer& server,
+    VPackBuilder& builder, InvertedIndexField const& parent, bool rootMode,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
   // FIXME: uncomment once parameter is supported
   // if (rootMode || parent._isArray != _isArray) {

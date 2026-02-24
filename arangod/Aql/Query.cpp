@@ -143,7 +143,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryHashCalculated(false),
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
-      _queryKilled(false) {
+      _queryKilled(false),
+      _activity("AQLQuery", {{"query", queryString.string()}}) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");

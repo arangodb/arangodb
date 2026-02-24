@@ -127,7 +127,8 @@ auto waitForOperationRoundtrip(ClusterInfo& ci,
 }
 
 auto waitForCurrentToCatchUp(
-    ArangodServer& server, std::shared_ptr<CurrentWatcher>& callbackInfos,
+    application_features::ApplicationServer& server,
+    std::shared_ptr<CurrentWatcher>& callbackInfos,
     std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>&
         callbackList,
     double pollInterval) {
@@ -185,7 +186,7 @@ auto waitForCurrentToCatchUp(
   return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
-Result impl(ClusterInfo& ci, ArangodServer& server,
+Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
             std::string_view databaseName, PlanCollectionToAgencyWriter& writer,
             bool waitForSyncReplication) {
   AgencyComm ac(server);
@@ -525,7 +526,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           "Failed to create collection after 60 retries, giving up."};
 }
 
-Result impl(ClusterInfo& ci, ArangodServer& server,
+Result impl(ClusterInfo& ci, application_features::ApplicationServer& server,
             std::string_view databaseName, TargetCollectionAgencyWriter& writer,
             bool waitForSyncReplication) {
   std::vector<ServerID> availableServers = ci.getCurrentDBServers();

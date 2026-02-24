@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "AuthenticationOptions.h"
 #include "Basics/Result.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstddef>
@@ -39,17 +39,20 @@ class TokenCache;
 class UserManager;
 }  // namespace auth
 
-class AuthenticationFeature final : public ArangodFeature {
+class AuthenticationFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
-  explicit AuthenticationFeature(Server& server);
+  explicit AuthenticationFeature(
+      application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void stop() override final;
   void unprepare() override final;
 
   static AuthenticationFeature* instance() noexcept;
@@ -58,6 +61,7 @@ class AuthenticationFeature final : public ArangodFeature {
 
   bool authenticationUnixSockets() const noexcept;
   bool authenticationSystemOnly() const noexcept;
+  std::string_view externalRBACservice() const noexcept;
 
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;
@@ -67,10 +71,9 @@ class AuthenticationFeature final : public ArangodFeature {
   auth::UserManager* userManager() const noexcept;
 
   bool hasUserdefinedJwt() const;
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
-#endif
+  /// verification only secrets (returns active secret, passive secrets,
+  /// isES256)
+  std::tuple<std::string, std::vector<std::string>, bool> jwtSecrets() const;
 
   double sessionTimeout() const { return _options.sessionTimeout; }
   double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }

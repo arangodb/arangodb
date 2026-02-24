@@ -33,6 +33,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
@@ -57,7 +59,8 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-AgencyFeature::AgencyFeature(Server& server) : ArangodFeature{server, *this} {
+AgencyFeature::AgencyFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::FoxxFeaturePhase>();
@@ -338,13 +341,13 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // - ArangoSearch: not needed by agency
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-  server().disableFeatures(std::array{
-      ArangodServer::id<iresearch::IResearchFeature>(),
-      ArangodServer::id<iresearch::IResearchAnalyzerFeature>(),
+  server()
+      .disableFeatures<iresearch::IResearchFeature,
+                       iresearch::IResearchAnalyzerFeature,
 #ifdef USE_V8
-      ArangodServer::id<FoxxFeature>(), ArangodServer::id<FrontendFeature>(),
+                       FoxxFeature, FrontendFeature,
 #endif
-      ArangodServer::id<ActionFeature>()});
+                       ActionFeature>();
 
 #ifdef USE_V8
   if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
@@ -352,9 +355,8 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // off if not requested
 
     // console mode inactive. so we can turn off V8
-    server().disableFeatures(std::array{ArangodServer::id<ScriptFeature>(),
-                                        ArangodServer::id<V8PlatformFeature>(),
-                                        ArangodServer::id<V8DealerFeature>()});
+    server()
+        .disableFeatures<ScriptFeature, V8PlatformFeature, V8DealerFeature>();
   }
 #endif
 }

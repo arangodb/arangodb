@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <iostream>
 #include <thread>
 
 #include "Actor/Actor.h"
@@ -93,7 +94,7 @@ struct EgressHandler : HandlerBase<Runtime, EgressState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<EgressState> {
-    fmt::print(stderr, "EgressActor: handles rest\n");
+    std::cerr << "EgressActor: handles rest\n";
     return std::move(this->state);
   }
 };

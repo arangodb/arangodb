@@ -1,0 +1,26 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section segmented_vector ]
+
+This _segv_ API is very similar to that of _ur_, except that is supports more
+types than `char` for the element-type.
+
+Though _segv_ is not meant to be a string-like type, it has a `replace()`
+member, since it is considerably more efficient to do a replace operation than
+to do an erasure followed by an insertion.
+
+Otherwise, a few interface changes were made from the _ur_ interface to make
+the type more like `std::vector`.
+
+One nice use case for this template is writing undo systems:
+
+[segmented_vector]
+
+I don't know if you've ever written an undo system that can do, undo, or redo
+any command you can think of; it's usually a lot of code.  This one is less
+than 40 lines.
+
+[endsect]

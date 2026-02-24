@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 
 namespace arangodb::tests {

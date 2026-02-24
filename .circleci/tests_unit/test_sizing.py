@@ -67,7 +67,7 @@ class TestGetTestSize:
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=True
         )
-        assert result == "xlarge"
+        assert result == "large"
 
     def test_tsan_single_small_to_large(self):
         """Test TSAN single small tests need large (not xlarge)."""
@@ -173,7 +173,7 @@ class TestGetTestSize:
         # Small on TSAN cluster -> xlarge -> arm.xlarge
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
-            == "arm.xlarge"
+            == "arm.large"
         )
 
         # Small on TSAN single -> large -> arm.large
@@ -206,7 +206,7 @@ class TestGetTestSize:
                     ResourceSizer.get_test_size(
                         ResourceSize.SMALL, config, is_cluster=True
                     )
-                    == "xlarge"
+                    == "large"
                 )
             else:
                 # Other sanitizers: small -> large
@@ -237,7 +237,7 @@ class TestSanitizerOverhead:
         )
 
         expected = {
-            (ResourceSize.SMALL, True): "xlarge",  # Special case: TSAN cluster small
+            (ResourceSize.SMALL, True): "large",  # Special case: TSAN cluster small
             (ResourceSize.SMALL, False): "large",
             (ResourceSize.MEDIUM, True): "xlarge",
             (ResourceSize.MEDIUM, False): "xlarge",

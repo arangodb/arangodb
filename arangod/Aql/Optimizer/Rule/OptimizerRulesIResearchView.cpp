@@ -416,6 +416,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         return false;
     }
   }
+
   if (!attrs.empty()) {
     if (latematerialized::attributesMatch<true>(
             primarySort, storedValues, attrs, usedColumns, columnsCount)) {
@@ -431,12 +432,12 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         TRI_ASSERT(sortBucket.postfix.empty());
         TRI_ASSERT(a.afData.field);
         auto const fieldSize = a.afData.field->size();
-        TRI_ASSERT(fieldSize > a.afData.postfix);
-        for (size_t i = a.afData.postfix + 1; i < fieldSize; ++i) {
-          if (i != a.afData.postfix + 1) {
-            sortBucket.postfix += ".";
+
+        if (fieldSize < a.attr.size()) {
+          sortBucket.postfix = a.attr[fieldSize].name;
+          for (size_t i = fieldSize + 1; i < a.attr.size(); i++) {
+            sortBucket.postfix += ("." + a.attr[i].name);
           }
-          sortBucket.postfix += a.afData.field->at(i).name;
         }
       }
     } else {
@@ -1173,6 +1174,7 @@ void immutableSearchCondition(Optimizer* opt,
                     });
     if (mutableVars.empty()) {
       view.setImmutableParts(std::numeric_limits<uint32_t>::max());
+      modified = true;
       continue;
     }
     uint32_t count = 0;
@@ -1194,6 +1196,9 @@ void immutableSearchCondition(Optimizer* opt,
       });
       TRI_ASSERT(count != numMembers);
       break;
+    }
+    if (count > 0) {
+      modified = true;
     }
     view.setImmutableParts(count);
   }

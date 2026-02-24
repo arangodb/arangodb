@@ -62,7 +62,7 @@ bool ThreadPoolScheduler::queueItem(RequestLane lane,
 }
 
 ThreadPoolScheduler::ThreadPoolScheduler(
-    ArangodServer& server, uint64_t maxThreads,
+    application_features::ApplicationServer& server, uint64_t maxThreads,
     std::shared_ptr<SchedulerMetrics> metrics)
     : Scheduler(server), _metrics(std::move(metrics)) {
   ThreadPoolMetrics poolMetrics = {

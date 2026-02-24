@@ -501,9 +501,10 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
 }
 
 function readClientLogfile(client) {
-  const logfile = client.file + '.log';
-  if (fs.exists(logfile)) {
-    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()}`);
+  // remove file:// from the filename:
+  let fn = client.client.logFile.slice(7);
+  if (fs.exists(fn)) {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(fn).toString()}`);
   } else {
     return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
   }
@@ -515,6 +516,8 @@ function joinBGShells (options, clients, waitFor, cn) {
   let tries = 0;
   let done = 0;
   let clientErrors = '';
+  let haveErrors = false;
+
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
@@ -525,17 +528,14 @@ function joinBGShells (options, clients, waitFor, cn) {
           client.failed = failed;
           client.done = true;
         }
-        if (client.status === 'TERMINATED') {
-          if (client.exit === 0) {
-            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-            client.failed = false;
-          } else {
-            IM.options.cleanup = false;
-            client.failed = true;
+        if (client.status.status === 'TERMINATED') {
+          client.done = true;
+          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          client.failed = (client.status.exit !== 0);
+          if (client.failed) {
+            haveErrors = true;
+            clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
           }
-        }
-        if (client.failed) {
-          clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
         }
       }
     });
@@ -556,9 +556,17 @@ function joinBGShells (options, clients, waitFor, cn) {
     }
   }
 
-  if (done !== clients.length) {
-    options.cleanup = false;
-    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
+  let notAllJoined = done !== clients.length;
+  if (notAllJoined || haveErrors) {
+    IM.options.cleanup = false;
+    let msg = '';
+    if (notAllJoined) {
+      msg += 'not all shells could be joined';
+    }
+    if (haveErrors) {
+      msg += 'some shells exited with errors. Read on for their log output';
+    }
+    throw new Error(`${msg}:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
   }
 }
 
@@ -684,6 +692,7 @@ function cleanupBGShells (clients, cn) {
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
   let args = Object.assign(makeArgsArangosh(options), {
     'server.endpoint': instanceManager.findEndpoint(),
+    'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
@@ -701,6 +710,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
                        '--minReplicationFactor', '2',
+                       '--progress', true,
+                       '--printTimeTableMeasurement', true,
                        '--progress', 'true',
                        '--oldVersion', require('internal').db._version()
                      ]);

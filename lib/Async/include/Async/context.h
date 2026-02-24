@@ -24,8 +24,8 @@
 
 #include "Async/Registry/promise.h"
 #include "Logger/LogContext.h"
-#include "TaskMonitoring/task.h"
 #include "Utils/ExecContext.h"
+#include "Activities/registry.h"
 
 namespace arangodb {
 
@@ -39,14 +39,15 @@ namespace arangodb {
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::CurrentRequester _requester;
-  task_monitoring::Task* _task;
   LogContext _logContext;
+  activities::ActivityId _currentlyExecutingActivity;
 
   Context()
       : _execContext{ExecContext::currentAsShared()},
         _requester{std::move(*async_registry::get_current_coroutine())},
-        _task{*task_monitoring::get_current_task()},
-        _logContext{LogContext::current()} {}
+        _logContext{LogContext::current()},
+        _currentlyExecutingActivity{
+            activities::Registry::currentlyExecutingActivity()} {}
 
   Context(Context const& other) = delete;
   auto operator=(Context const& other) -> Context& = delete;
@@ -58,8 +59,9 @@ struct Context {
     if (_requester != *async_registry::get_current_coroutine()) {
       *async_registry::get_current_coroutine() = _requester;
     }
-    *task_monitoring::get_current_task() = _task;
     LogContext::setCurrent(_logContext);
+    activities::Registry::setCurrentlyExecutingActivity(
+        _currentlyExecutingActivity);
   }
 
   auto update() -> void {
@@ -67,8 +69,9 @@ struct Context {
     if (_requester != *async_registry::get_current_coroutine()) {
       _requester = *async_registry::get_current_coroutine();
     }
-    _task = *task_monitoring::get_current_task();
     _logContext = LogContext::current();
+    _currentlyExecutingActivity =
+        activities::Registry::currentlyExecutingActivity();
   }
 
   ~Context() = default;

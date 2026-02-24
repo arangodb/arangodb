@@ -32,9 +32,11 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -49,8 +51,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, *this} {
+OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();

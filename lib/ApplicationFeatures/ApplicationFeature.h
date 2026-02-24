@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <vector>
 
 #include "Basics/Exceptions.h"
@@ -95,21 +96,19 @@ class ApplicationFeature {
   }
 
   // names of features required to be enabled for this feature to be enabled
-  std::vector<size_t> const& dependsOn() const { return _requires; }
+  std::vector<std::type_index> const& dependsOn() const { return _requires; }
 
   // whether the feature starts before another
-  template<typename T, typename Server>
+  template<typename T>
   bool doesStartBefore() const {
     static_assert(std::is_base_of_v<ApplicationFeature, T>);
-    static_assert(std::is_base_of_v<ApplicationServer, Server>);
-
-    return doesStartBefore(Server::template id<T>());
+    return doesStartBefore(typeid(T));
   }
 
   // whether the feature starts after another
-  template<typename T, typename Server>
+  template<typename T>
   bool doesStartAfter() const {
-    return !doesStartBefore<T, Server>();
+    return !doesStartBefore<T>();
   }
 
   // add the feature's options to the global list of options. this method will
@@ -158,15 +157,15 @@ class ApplicationFeature {
   // return startup dependencies for feature
   auto const& startsBefore() const { return _startsBefore; }
 
-  size_t registration() const { return _registration; }
+  std::type_index registration() const { return _registration; }
 
  protected:
-  ApplicationFeature(ApplicationServer& server, size_t registration,
+  ApplicationFeature(ApplicationServer& server, std::type_index registration,
                      std::string_view name);
 
   template<typename Server, typename Impl>
   ApplicationFeature(Server& server, const Impl&)
-      : ApplicationFeature{server, Server::template id<Impl>(), Impl::name()} {}
+      : ApplicationFeature{server, typeid(Impl), Impl::name()} {}
 
   void setOptional() { setOptional(true); }
 
@@ -174,23 +173,25 @@ class ApplicationFeature {
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void dependsOn(size_t other) { _requires.emplace_back(other); }
+  void dependsOn(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
-  template<typename T, typename Server>
+  template<typename T>
   void startsAfter() {
-    startsAfter(Server::template id<T>());
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
+    startsAfter(typeid(T));
   }
 
-  void startsAfter(size_t type);
+  void startsAfter(std::type_index type);
 
   // register a start dependency upon another feature
-  template<typename T, typename Server>
+  template<typename T>
   void startsBefore() {
-    startsBefore(Server::template id<T>());
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
+    startsBefore(typeid(T));
   }
 
-  void startsBefore(size_t type);
+  void startsBefore(std::type_index type);
 
   // determine all direct and indirect ancestors of a feature
   auto const& ancestors() const {
@@ -198,9 +199,10 @@ class ApplicationFeature {
     return _ancestors;
   }
 
-  template<typename T, typename Server>
+  template<typename T>
   void onlyEnabledWith() {
-    _onlyEnabledWith.emplace(Server::template id<T>());
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
+    _onlyEnabledWith.emplace(typeid(T));
   }
 
   // return the list of other features that this feature depends on
@@ -208,44 +210,44 @@ class ApplicationFeature {
 
  private:
   // whether the feature starts before another
-  bool doesStartBefore(size_t type) const;
+  bool doesStartBefore(std::type_index type) const;
 
   void addAncestorToAllInPath(
       std::vector<
           std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
-      size_t ancestorType);
+      std::type_index ancestorType);
 
   // set a feature's state. this method should be called by the
   // application server only
   void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
-  void determineAncestors(size_t as);
+  void determineAncestors(std::type_index as);
 
   // pointer to application server
   ApplicationServer& _server;
 
   // type registration for lookup within the ApplicationServer
-  size_t _registration;
+  std::type_index _registration;  // TODO - remove?
 
   // name of feature
   std::string_view _name;
 
   // names of other features required to be enabled if this feature
   // is enabled
-  std::vector<size_t> _requires;
+  std::vector<std::type_index> _requires;
 
   // a list of start dependencies for the feature
-  containers::FlatHashSet<size_t> _startsAfter;
+  containers::FlatHashSet<std::type_index> _startsAfter;
 
   // a list of start dependencies for the feature
-  containers::FlatHashSet<size_t> _startsBefore;
+  containers::FlatHashSet<std::type_index> _startsBefore;
 
   // list of direct and indirect ancestors of the feature
-  containers::FlatHashSet<size_t> _ancestors;
+  containers::FlatHashSet<std::type_index> _ancestors;
 
   // enable this feature only if the following other features are enabled
-  containers::FlatHashSet<size_t> _onlyEnabledWith;
+  containers::FlatHashSet<std::type_index> _onlyEnabledWith;
 
   // state of feature
   State _state;
@@ -257,59 +259,6 @@ class ApplicationFeature {
   bool _optional;
 
   bool _ancestorsDetermined;
-};
-
-template<typename ServerT>
-class ApplicationFeatureT : public ApplicationFeature {
- public:
-  using Server = ServerT;
-
-  Server& server() const noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* p = dynamic_cast<Server*>(&ApplicationFeature::server());
-    TRI_ASSERT(p);
-    return *p;
-#else
-    return static_cast<Server&>(ApplicationFeature::server());
-#endif
-  }
-
-  // register a start dependency upon another feature
-  template<typename T>
-  void startsAfter() {
-    ApplicationFeature::startsAfter<T, Server>();
-  }
-
-  // register a start dependency upon another feature
-  template<typename T>
-  void startsBefore() {
-    ApplicationFeature::startsBefore<T, Server>();
-  }
-
-  template<typename T>
-  void onlyEnabledWith() {
-    ApplicationFeature::onlyEnabledWith<T, Server>();
-  }
-
-  template<typename T>
-  bool doesStartBefore() const {
-    return ApplicationFeature::doesStartBefore<T, Server>();
-  }
-
-  template<typename T>
-  bool doesStartAfter() const {
-    return ApplicationFeature::doesStartAfter<T, Server>();
-  }
-
- protected:
-  template<typename Impl>
-  ApplicationFeatureT(Server& server, const Impl&)
-      : ApplicationFeatureT(server, Server::template id<Impl>(), Impl::name()) {
-  }
-
-  ApplicationFeatureT(Server& server, size_t registration,
-                      std::string_view name)
-      : ApplicationFeature{server, registration, name} {}
 };
 
 }  // namespace application_features

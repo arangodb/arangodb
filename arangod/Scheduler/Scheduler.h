@@ -27,20 +27,17 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <functional>
 #include <mutex>
 #include <queue>
 #include <string_view>
 #include <utility>
 
+#include "Activities/registry.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
 
 namespace arangodb {
@@ -57,7 +54,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler(ArangodServer&);
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -99,7 +96,7 @@ class Scheduler {
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   // Returns the scheduler's server object
-  ArangodServer& server() noexcept { return _server; }
+  application_features::ApplicationServer& server() noexcept { return _server; }
 
   struct WorkItemBase {
     virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
@@ -139,7 +136,9 @@ class Scheduler {
           _lane(lane),
           _disable(false),
           _scheduler(scheduler),
-          _logContext(LogContext::current()) {}
+          _logContext(LogContext::current()),
+          _currentlyExecutingActivity(
+              activities::Registry::currentlyExecutingActivity()) {}
 
     // This is not copyable or movable
     DelayedWorkItem(DelayedWorkItem const&) = delete;
@@ -156,6 +155,8 @@ class Scheduler {
       // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
         LogContext::ScopedContext ctxGuard(_logContext);
+        activities::Registry::ScopedCurrentlyExecutingActivity activityGuard(
+            _currentlyExecutingActivity);
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
@@ -175,15 +176,19 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
     LogContext _logContext;
+    activities::ActivityId _currentlyExecutingActivity;
   };
 
  protected:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {
+        : F(std::move(f)),
+          logContext(LogContext::current()),
+          currentlyExecutingActivity(
+              activities::Registry::currentlyExecutingActivity()) {
       schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
     }
     ~WorkItem() override {
@@ -192,6 +197,8 @@ class Scheduler {
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
           logContext, LogContext::ScopedContext::DontRestoreOldContext{});
+      activities::Registry::ScopedCurrentlyExecutingActivity activityGuard(
+          currentlyExecutingActivity);
       this->operator()();
     }
 
@@ -200,6 +207,7 @@ class Scheduler {
 
    private:
     LogContext logContext;
+    activities::ActivityId currentlyExecutingActivity;
   };
 
  public:

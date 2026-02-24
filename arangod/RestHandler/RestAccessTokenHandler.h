@@ -31,7 +31,8 @@ class UserManager;
 
 class RestAccessTokenHandler : public RestVocbaseBaseHandler {
  public:
-  RestAccessTokenHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAccessTokenHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAccessTokenHandler"; }

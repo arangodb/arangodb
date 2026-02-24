@@ -23,8 +23,11 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/arangod.h"
 #include "gtest/gtest.h"
+
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
+#include "Logger/LoggerFeature.h"
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
@@ -65,6 +68,7 @@
 
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <random>
 
 using namespace arangodb;
@@ -531,16 +535,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    auto& roOptions = as.addFeature2(
-        std::function<std::unique_ptr<RocksDBOptionFeature>(ArangodServer&)>(
-            [](ArangodServer& server) {
-              TRI_ASSERT(!server.hasFeature<AgencyFeature>());
-              return RocksDBOptionFeature::construct(
-                  server, server.hasFeature<AgencyFeature>()
-                              ? &server.getFeature<AgencyFeature>()
-                              : nullptr);
-            }));
-    as.addFeature<GreetingsFeaturePhase>(std::false_type{});
+    auto& agencyFeature = as.addFeature<AgencyFeature>();
+    auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
+    as.addFeature<application_features::GreetingsFeaturePhase>(
+        std::false_type{});
     auto& selector = as.addFeature<EngineSelectorFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
@@ -559,17 +557,18 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
     auto& rocksDbIndexCacheRefillFeature =
-        as.addFeature<RocksDBIndexCacheRefillFeature>();
+        as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
+                                                      metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
+    auto& sharedPrngFeature = as.addFeature<SharedPRNGFeature>();
     auto& cacheManagerFeature =
-        as.addFeature<CacheManagerFeature>(cacheOptions);
-    auto& agencyFeature = as.addFeature<AgencyFeature>();
+        as.addFeature<CacheManagerFeature>(cacheOptions, sharedPrngFeature);
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = RocksDBEngine::construct(
+    engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
         schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
         databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,

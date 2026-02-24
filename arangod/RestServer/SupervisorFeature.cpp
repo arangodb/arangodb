@@ -30,9 +30,8 @@
 #include "SupervisorFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
-#include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
@@ -104,8 +103,9 @@ static void HUPHandler(int) {
   }
 }
 
-SupervisorFeature::SupervisorFeature(Server& server)
-    : ArangodFeature{server, *this}, _supervisor(false), _clientPid(0) {
+SupervisorFeature::SupervisorFeature(
+    application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this}, _clientPid(0) {
   setOptional(true);
   startsAfter<GreetingsFeaturePhase>();
   startsAfter<DaemonFeature>();
@@ -117,7 +117,7 @@ void SupervisorFeature::collectOptions(
       ->addOption(
           "--supervisor",
           "Start the server in supervisor mode. Requires --pid-file to be set.",
-          new BooleanParameter(&_supervisor),
+          new BooleanParameter(&_options.supervisor),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Runs an arangod process as supervisor with another
@@ -129,7 +129,7 @@ daemon.)");
 
 void SupervisorFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_supervisor) {
+  if (_options.supervisor) {
     try {
       DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
@@ -149,7 +149,7 @@ void SupervisorFeature::validateOptions(
 void SupervisorFeature::daemonize() {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
-  if (!_supervisor) {
+  if (!_options.supervisor) {
     return;
   }
 

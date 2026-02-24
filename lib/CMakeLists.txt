@@ -1,5 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+# IResearch currently won't run with [-Werror,-Wtautological-constant-out-of-range-compare] as errors.
+# Hence we moved this block here.
+# Need to be included in future builds.
+
+################################################################################
+## IResearch
+################################################################################
+
+
+add_subdirectory(iresearch)
+
 ################################################################################
 ## global definitions
 ################################################################################
@@ -34,9 +45,6 @@ include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
-
-set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 add_library(arango_basic_errors STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
@@ -161,6 +169,8 @@ target_link_libraries(arango_basic_utils
          linenoise-ng
          zlib_interface
          snappy
+         lz4_static
+         arango_activities_global
 )
 
 # Enterprise
@@ -202,6 +212,7 @@ target_link_libraries(arango_basic_features
          arango_inspection
          arango_basic_errors
          arango_futures
+         arango_basic_http_client
          absl::flat_hash_set
          fuerte
          s2
@@ -258,6 +269,7 @@ add_library(arango_basic_http_client STATIC
         Ssl/SslFeature.cpp
         Ssl/SslInterface.cpp
         Ssl/ssl-helper.cpp
+        Ssl/jwt.cpp
 
         Endpoint/Endpoint.cpp
         Endpoint/EndpointIp.cpp
@@ -332,10 +344,9 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_activities_global
          arango_async
-         arango_task_registry_global
   PRIVATE date_interface
-          fmt
           arango_assertions
           arango_static_strings
           arango_futures
@@ -400,8 +411,6 @@ if (USE_V8)
   target_link_libraries(arango PUBLIC ${V8_LIBS})
 endif()
 
-target_link_libraries(arango PUBLIC fmt::fmt)
-
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -453,4 +462,4 @@ add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
-add_subdirectory(TaskMonitoring)
+add_subdirectory(Activities)
