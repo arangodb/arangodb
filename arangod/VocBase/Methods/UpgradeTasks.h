@@ -48,6 +48,8 @@ struct UpgradeTasks {
                                              velocypack::Slice slice);
   static Result dropFulltextIndexes(TRI_vocbase_t& vocbase,
                                     velocypack::Slice slice);
+  static Result dropRedundantHashSkiplistIndexes(TRI_vocbase_t& vocbase,
+                                                 velocypack::Slice slice);
 };
 
 }  // namespace arangodb::methods

@@ -651,3 +651,39 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
 
   return {};
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all hash and skiplist indexes (no longer supported; use
+/// persistent indexes instead).
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropRedundantHashSkiplistIndexes(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  auto collections = methods::Collections::sorted(vocbase);
+
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+
+    for (auto const& index : indexes) {
+      auto t = index->type();
+      if (t != Index::TRI_IDX_TYPE_HASH_INDEX &&
+          t != Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        continue;
+      }
+      LOG_TOPIC("a1b2c", INFO, Logger::STARTUP)
+          << "Dropping obsolete " << index->oldtypeName(t) << " index '"
+          << index->id().id() << "' from collection '" << collection->name()
+          << "' - hash/skiplist indexes are no longer supported";
+
+      auto res = methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+      if (res.fail()) {
+        LOG_TOPIC("a1b2d", ERR, Logger::STARTUP)
+            << "Error dropping hash/skiplist index: " << res.errorMessage();
+        return res;
+      }
+    }
+  }
+
+  return {};
+}

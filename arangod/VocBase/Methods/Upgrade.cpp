@@ -275,6 +275,16 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropFulltextIndexes);
 
+  // Hash/skiplist indexes are no longer supported; drop them (use persistent
+  // indexes instead).
+  addTask(upgradeFeature, "dropRedundantHashSkiplistIndexes",
+          "drop hash/skiplist indexes (use persistent instead)",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_NONE |
+              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropRedundantHashSkiplistIndexes);
+
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
