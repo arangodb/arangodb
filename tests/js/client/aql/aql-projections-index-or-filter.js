@@ -256,6 +256,20 @@ function perIndexCoveringPlansSuite() {
       assertFalse(nodes[0].hasOwnProperty("perIndexCovering"));
     },
 
+    testPerIndexCoveringWithIdProjection: function () {
+      // _id can't be covered by persistent indexes, so perIndexCovering
+      // should show [false, false] when _id is in the projections
+      c.ensureIndex({type: "persistent", fields: ["price"], storedValues: ["name"]});
+      c.ensureIndex({type: "persistent", fields: ["name"], storedValues: ["price"]});
+      let query = `FOR p IN ${cn} FILTER p.price > 20 OR p.name == "P1" RETURN p._id`;
+      let plan = query_explain(query).plan;
+      let nodes = plan.nodes.filter(n => n.type === 'IndexNode');
+      assertEqual(1, nodes.length);
+      assertEqual(2, nodes[0].indexes.length);
+      assertTrue(nodes[0].hasOwnProperty("perIndexCovering"));
+      assertEqual([false, false], nodes[0].perIndexCovering);
+    },
+
     testPerIndexCoveringNotShownForFullDocReturn: function () {
       // returning full document means empty projections, so no perIndexCovering
       c.ensureIndex({type: "persistent", fields: ["price"], storedValues: ["name"]});
@@ -367,6 +381,32 @@ function perIndexCoveringResultsSuite() {
       // x == "P1": price>20 = a,c,e; name=="P1" = a,b,e → union: a,b,c,e
       // x == "P2": price>20 = a,c,e; name=="P2" = c → union: a,c,e
       assertEqual([["alpha", "beta", "gamma", "epsilon"], ["alpha", "gamma", "epsilon"]], res);
+    },
+
+    testCoveringWithLimit: function () {
+      c.ensureIndex({type: "persistent", fields: ["price"], storedValues: ["name", "description"]});
+      c.ensureIndex({type: "persistent", fields: ["name"], storedValues: ["price", "description"]});
+      // price > 20: a(100), c(50), e(200); name == "P1": a, b, e → union: a, b, c, e
+      let query = `FOR p IN ${cn} FILTER p.price > 20 OR p.name == "P1" SORT p._key LIMIT 2 RETURN p.description`;
+      let res = db._query(query).toArray();
+      assertEqual(["alpha", "beta"], res);
+    },
+
+    testCoveringWithLimitOffset: function () {
+      c.ensureIndex({type: "persistent", fields: ["price"], storedValues: ["name", "description"]});
+      c.ensureIndex({type: "persistent", fields: ["name"], storedValues: ["price", "description"]});
+      let query = `FOR p IN ${cn} FILTER p.price > 20 OR p.name == "P1" SORT p._key LIMIT 1, 2 RETURN p.description`;
+      let res = db._query(query).toArray();
+      assertEqual(["beta", "gamma"], res);
+    },
+
+    testCoveringWithIdProjection: function () {
+      // _id is a virtual attribute that indexes can't cover — should fall back to kDocument
+      c.ensureIndex({type: "persistent", fields: ["price"], storedValues: ["name"]});
+      c.ensureIndex({type: "persistent", fields: ["name"], storedValues: ["price"]});
+      let query = `FOR p IN ${cn} FILTER p.price > 20 OR p.name == "P1" SORT p._key RETURN p._id`;
+      let res = db._query(query).toArray();
+      assertEqual([`${cn}/a`, `${cn}/b`, `${cn}/c`, `${cn}/e`], res);
     },
   };
 }
