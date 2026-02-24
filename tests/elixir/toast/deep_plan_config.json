@@ -1,0 +1,36 @@
+{
+  "context": {
+    "check_enabled": true,
+    "_comment": "check_enabled: set false to skip context prompts before critical operations"
+  },
+  "vertex_ai": {
+    "project": null,
+    "location": null,
+    "_comment": "Required for Vertex AI: set project and location. Falls back to gcloud config (project) and GOOGLE_CLOUD_LOCATION env var."
+  },
+  "external_review": {
+    "alert_if_missing": true,
+    "feedback_iterations": 1,
+    "_comment_alert": "alert_if_missing: set false to skip external LLM checks silently",
+    "_comment_iterations": "feedback_iterations: number of review/integrate cycles (0 = skip external review entirely). More than 1 feedback iteration is not yet implemented"
+  },
+  "models": {
+    "gemini": "gemini-3-pro-preview",
+    "chatgpt": "gpt-5.2",
+    "_comment": "Models used for external plan review"
+  },
+  "llm_client": {
+    "timeout_seconds": 120,
+    "max_retries": 3,
+    "retry_codes": [
+      429,
+      500,
+      503
+    ],
+    "_comment": "Timeout and retry settings for external LLM calls"
+  },
+  "plugin_root": "/home/mpoeter/dev/claude/deep-plan",
+  "planning_dir": "/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast",
+  "initial_file": "/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast/README.md",
+  "review_mode": "opus_subagent"
+}

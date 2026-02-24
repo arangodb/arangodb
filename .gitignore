@@ -147,3 +147,5 @@ js/apps/**/*.map.gz
 swagger-ui-es-bundle*
 swagger-ui.js
 swagger-ui.js.map
+
+CLAUDE.local.md

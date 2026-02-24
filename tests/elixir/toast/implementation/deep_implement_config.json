@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/mpoeter/dev/claude/deep-implement",
+  "sections_dir": "/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast/sections",
+  "target_dir": "/home/mpoeter/dev/arangodb/arango_next4",
+  "state_dir": "/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast/implementation",
+  "git_root": "/home/mpoeter/dev/arangodb/arango_next4",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-restructure",
+    "section-02-library-extraction",
+    "section-03-rest-client",
+    "section-04-suite-system",
+    "section-05-runner",
+    "section-06-server-control",
+    "section-07-resilience",
+    "section-08-diagnostics",
+    "section-09-ci-packaging"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-24T10:10:51.961190+00:00"
+}
