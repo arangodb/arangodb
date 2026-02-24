@@ -60,7 +60,8 @@ function VectorIndexL2TestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -77,6 +78,7 @@ function VectorIndexL2TestSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -543,7 +545,8 @@ function VectorIndexCosineTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -561,6 +564,7 @@ function VectorIndexCosineTestSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -736,7 +740,8 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
@@ -754,6 +759,7 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -911,6 +917,7 @@ function MultipleVectorIndexesOnField() {
     return {
         setUp: function() {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 

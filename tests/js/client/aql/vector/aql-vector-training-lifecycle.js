@@ -51,9 +51,10 @@ function VectorIndexRemainsUntrainedSuite() {
     return {
         setUp: function () {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: 1});
+            collection = db._create(collName, {numberOfShards: 3});
 
             collection.ensureIndex({
                 name: "vec_l2",
@@ -106,14 +107,16 @@ function VectorIndexDeferredTrainingSuite() {
     const seed = randomInteger();
     // nLists=1 gives threshold = max(1*39, 1000) = 1000
     // Insert well above threshold so training triggers.
-    const insertCount = 1500;
+    const insertCountFactor = isCluster ? 3 : 1;
+    const insertCount = 1500 * insertCountFactor;
 
     return {
         setUp: function () {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: 1});
+            collection = db._create(collName, {numberOfShards: 3});
 
             collection.ensureIndex({
                 name: "vec_l2",
@@ -199,14 +202,16 @@ function VectorIndexBatchInsertTrainingSuite() {
     const dimension = 100;
     const seed = randomInteger();
     const batchSize = 200;
-    const numBatches = 8; // 1600 total > 1000 threshold
+    const totalDocsFactor = isCluster ? 3 : 1;
+    const numBatches = Math.ceil((1500 * totalDocsFactor) / 200); // 4500 cluster / 1500 single
 
     return {
         setUp: function () {
             print("Using seed: " + seed);
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: 1});
+            collection = db._create(collName, {numberOfShards: 3});
 
             collection.ensureIndex({
                 name: "vec_l2",

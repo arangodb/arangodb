@@ -64,7 +64,8 @@ function VectorIndexHintsSuite(expectedTrained) {
   let collection;
   let randomPoint;
   const dimension = 128;
-  const numberOfDocs = expectedTrained ? 1500 : 100;
+  const numberOfDocsFactor = isCluster ? 3 : 1;
+  const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
   const seed = randomInteger();
 
   return {
@@ -77,7 +78,7 @@ function VectorIndexHintsSuite(expectedTrained) {
       // docs (>= 1000) to trigger training; with 3 shards and 1500 docs each
       // shard has only 500 and the index never becomes "ready" in cluster.
       collection = db._create(collName, {
-        numberOfShards: expectedTrained ? 1 : 3
+        numberOfShards: 3
       });
 
       // Generate random vectors

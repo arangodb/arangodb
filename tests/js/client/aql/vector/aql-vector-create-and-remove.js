@@ -52,7 +52,8 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
     const dimension = 500;
     const seed = 12132390894;
     let randomPoint;
-    const insertedDocsCount = expectedTrained ? 1500 : 100;
+    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 100;
     let insertedDocs = [];
 
     return {
@@ -88,7 +89,7 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                 params: {
                     metric: "l2",
                     dimension,
-                    nLists: 1
+                    nLists: 10
                 },
             });
             const expectedState = expectedTrained ? "ready" : "uninitialized";
@@ -464,7 +465,8 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
     const dimension = 128;
     const seed = 123456789;
     let randomPoint;
-    const insertedDocsCount = expectedTrained ? 1500 : 50;
+    const insertedDocsCountFactor = isCluster ? 3 : 1;
+    const insertedDocsCount = expectedTrained ? 1500 * insertedDocsCountFactor : 50;
     let insertedDocs = [];
 
     return {

@@ -49,6 +49,7 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -145,6 +146,7 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
     return {
         setUp: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 

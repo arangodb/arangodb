@@ -50,6 +50,7 @@ function VectorIndexReplicationFailoverTest() {
 
     return {
         setUp: function () {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
         },

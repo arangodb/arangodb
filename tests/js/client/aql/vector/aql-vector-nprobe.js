@@ -50,6 +50,7 @@ function VectorIndexL2NprobeTestSuite() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 

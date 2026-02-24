@@ -50,17 +50,19 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = expectedTrained ? 1500 : 100;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = 12132390894;
     const nLists = 10;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -269,11 +271,12 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -356,11 +359,12 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards: 3
             });
 
             let docs = [];

@@ -107,7 +107,8 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -119,7 +120,7 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: expectedTrained ? 1 : 3
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -649,7 +650,8 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
     let collection2;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
     const col2 = "col2";
@@ -662,10 +664,10 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
             db._useDatabase(dbName);
 
             collection1 = db._create(collName, {
-                numberOfShards: expectedTrained ? 1 : 3
+                numberOfShards: 3
             });
             collection2 = db._create(col2, {
-                numberOfShards: expectedTrained ? 1 : 3
+                numberOfShards: 3
             });
 
 
@@ -771,7 +773,8 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
     let collection;
     let randomPoint;
     const dimension = 20;
-    const numberOfDocs = expectedTrained ? 1500 : 500;
+    const numberOfDocsFactor = isCluster ? 3 : 1;
+    const numberOfDocs = expectedTrained ? 1500 * numberOfDocsFactor : 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
@@ -783,7 +786,7 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: expectedTrained ? 1 : 3
+                numberOfShards: 3
             });
 
             let docs = [];
