@@ -66,6 +66,7 @@ constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
+constexpr std::string_view pathPrefixOpenApi("/openapi.json");
 
 VocbasePtr lookupDatabaseFromRequest(
     application_features::ApplicationServer& server, GeneralRequest& req) {
@@ -325,7 +326,8 @@ CommTask::Flow CommTask::prepareExecution(
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     if (!(path == "/" || path.starts_with(::pathPrefixAdmin) ||
           path.starts_with(::pathPrefixApi) ||
-          path.starts_with(::pathPrefixOpen))) {
+          path.starts_with(::pathPrefixOpen) ||
+          path.starts_with(::pathPrefixOpenApi))) {
       sendErrorResponse(rest::ResponseCode::FORBIDDEN,
                         req.contentTypeResponse(), req.messageId(),
                         TRI_ERROR_FORBIDDEN,
