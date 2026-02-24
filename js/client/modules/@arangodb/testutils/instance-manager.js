@@ -124,6 +124,12 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
+    // In the old times of ArangoDB 3.2 or so there was an option
+    // --server.jwt-secret to give the JWT secret directly on the
+    // command line, which is of course very insecure. Some tests
+    // used to use this feature. If we encounter this setting here,
+    // we write the secret to a temprary keyfile and rather us the
+    // more secure --server.jwt-secret-keyfile option.
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
       delete addArgs['server.jwt-secret'];
