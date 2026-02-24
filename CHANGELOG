@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Existing `hash` and `skiplist` indexes are automatically dropped during database
+  upgrade.
 
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
