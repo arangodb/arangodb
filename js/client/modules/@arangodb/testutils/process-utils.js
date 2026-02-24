@@ -359,7 +359,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
-  const deltaTime = time() - startTime;
+  const deltaTime = (time() - startTime) * 1000;
   let errorMessage = ' - ';
   if (sh.fetchSanFileAfterExit(res.pid)) {
     serverCrashedLocal = true;
