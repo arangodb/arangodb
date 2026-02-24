@@ -132,6 +132,7 @@ add_library(arangoserver STATIC
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
+  RestServer/LegacyOptionsFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp

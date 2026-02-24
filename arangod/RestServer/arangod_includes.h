@@ -105,6 +105,7 @@
 #include "RestServer/FortuneFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
+#include "RestServer/LegacyOptionsFeature.h"
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
