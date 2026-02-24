@@ -73,12 +73,12 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
       use Toast.TestCase
 
       test "server is running", %{client: client} do
-        assert {:ok, body} = Client.version(client)
+        assert {:ok, body} = Client.Admin.version(client)
         assert body["server"] == "arango"
       end
 
       test "AQL query works", %{client: client} do
-        assert {:ok, [1]} = Client.aql(client, "RETURN 1")
+        assert {:ok, [1]} = Client.AQL.execute(client, "RETURN 1")
       end
     end
     """

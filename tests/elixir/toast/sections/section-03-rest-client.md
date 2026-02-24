@@ -538,3 +538,65 @@ After implementation:
 3. `mix compile --warnings-as-errors` -- no warnings from old-style client calls
 4. If a deployment is available: manually verify `Toast.Client.new("http://localhost:8529") |> Toast.Client.Admin.version()` returns version info
 5. Verify `Toast.Client.with_api_version(client, 1) |> Toast.Client.Collection.list()` produces requests with `/_arango/v1/` prefix
+
+---
+
+## Implementation Record
+
+### What Was Actually Built
+
+Core client rewritten with layered architecture. 5 domain modules created. All callers migrated. 38 new tests added (399 total, 0 failures).
+
+### Deviations from Plan
+
+**Global API version fallback — Removed**: Plan called for `global_api_version/0` reading from `Application.get_env(:toast, :global_api_version)`. This was dead code — nothing populates the env. Instead, api_version is set explicitly on clients via `Client.new/2` (from `deployment.config.api_version` in `case.ex`). Cleaner than hidden global state.
+
+**cluster_id targeting in Deployment.client/2 — Deferred**: Plan specified 3 targeting modes (server ID, role/index, cluster_id). Only server ID and role/index implemented. cluster_id resolution requires `/_admin/cluster/health` data which is section-07 scope.
+
+**joken added but not used yet**: Added `{:joken, "~> 2.6"}` to mix.exs per plan. JWT token generation will be used by test suites. Client accepts pre-generated tokens via `with_auth({:jwt, token})`.
+
+**plug test dependency**: Added `{:plug, "~> 1.0", only: :test}` for Req plug-based test adapter. Tests use `plug:` option to intercept requests without HTTP.
+
+### Code Review Fixes
+
+- **H1**: Removed dead `global_api_version/0` fallback
+- **H2**: Fixed auth header merging — replaced `auth_headers/1` returning separate `:headers` keyword with `apply_auth/2` that merges into existing opts headers
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `mix.exs` | Added joken and plug deps |
+| `lib/toast/client.ex` | Full rewrite — new struct, scoping, URL construction, HTTP methods |
+| `lib/toast/deployment.ex` | Added `client/2` for server-specific clients |
+| `lib/toast_test/case.ex` | Updated setup to pass api_version to Client.new |
+| `lib/mix/tasks/toast.gen.suite.ex` | Updated template to use domain modules |
+| `suites/smoke/test_version.exs` | `Client.version` → `Client.Admin.version` |
+| `suites/smoke/test_collection.exs` | Migrated to Collection/Document domain modules |
+| `suites/smoke/test_aql.exs` | `Client.aql` → `Client.AQL.execute` |
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/toast/client/collection.ex` | create, drop, list |
+| `lib/toast/client/document.ex` | insert, get, remove |
+| `lib/toast/client/aql.ex` | execute with cursor pagination, execute! |
+| `lib/toast/client/admin.ex` | version, status |
+| `lib/toast/client/index.ex` | create, list, drop |
+| `test/toast/client_test.exs` | Core client tests (struct, scoping, URL, HTTP, auth) |
+| `test/toast/client/collection_test.exs` | Collection domain tests |
+| `test/toast/client/document_test.exs` | Document domain tests |
+| `test/toast/client/aql_test.exs` | AQL + cursor pagination tests |
+| `test/toast/client/admin_test.exs` | Admin domain tests |
+| `test/toast/client/index_test.exs` | Index domain tests |
+
+### Files Deleted
+
+| File | Reason |
+|------|--------|
+| `test/client_test.exs` | Replaced by test/toast/client_test.exs |
+
+### Test Results
+
+399 tests, 0 failures (5 excluded integration tests)

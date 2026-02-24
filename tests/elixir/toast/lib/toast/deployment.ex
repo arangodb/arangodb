@@ -3,6 +3,7 @@ defmodule Toast.Deployment do
 
   require Logger
 
+  alias Toast.Client
   alias Toast.Config
   alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
 
@@ -141,6 +142,29 @@ defmodule Toast.Deployment do
   @doc "Get the primary endpoint URL."
   @spec endpoint(t()) :: String.t()
   def endpoint(%__MODULE__{endpoint: ep}), do: ep
+
+  @spec client(t(), String.t() | keyword()) :: {:ok, Client.t()} | {:error, term()}
+  def client(%__MODULE__{} = deployment, server_id) when is_binary(server_id) do
+    case server(deployment, server_id) do
+      {:ok, srv} -> {:ok, Client.new(srv.endpoint)}
+      {:error, _} = error -> error
+    end
+  end
+
+  def client(%__MODULE__{} = deployment, opts) when is_list(opts) do
+    if Keyword.has_key?(opts, :role) do
+      role = Keyword.fetch!(opts, :role)
+      index = Keyword.get(opts, :index, 0)
+
+      case servers(deployment, role: role) do
+        [] -> {:error, :unknown_server}
+        srvs when length(srvs) > index -> {:ok, Client.new(Enum.at(srvs, index).endpoint)}
+        _ -> {:error, :unknown_server}
+      end
+    else
+      {:error, :invalid_target}
+    end
+  end
 
   @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
   @spec crash_info(t()) :: {:ok, map()} | :no_crash

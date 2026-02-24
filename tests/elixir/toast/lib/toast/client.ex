@@ -1,159 +1,108 @@
 defmodule Toast.Client do
-  @moduledoc "Thin REST client for ArangoDB, designed for test assertions."
+  @moduledoc "Thin REST client for ArangoDB, designed for test use."
 
-  defstruct [:req]
+  @type auth_t :: {:basic, String.t(), String.t()} | {:jwt, String.t()}
 
-  @type t :: %__MODULE__{req: Req.Request.t()}
+  @type t :: %__MODULE__{
+          base_url: String.t(),
+          database: String.t() | nil,
+          api_version: non_neg_integer() | String.t() | nil,
+          auth: auth_t() | nil,
+          req: Req.Request.t()
+        }
 
-  @doc """
-  Create a new client for the given endpoint.
+  @enforce_keys [:base_url, :req]
+  defstruct [:base_url, :database, :api_version, :auth, :req]
 
-  ## Options
-    * `:database` - target database name (default: `_system`)
-    * All other options are passed through to `Req.new/1`
-  """
   @spec new(String.t(), keyword()) :: t()
-  def new(endpoint, opts \\ []) do
-    {database, req_opts} = Keyword.pop(opts, :database)
+  def new(base_url, opts \\ []) do
+    {database, opts} = Keyword.pop(opts, :database)
+    {api_version, opts} = Keyword.pop(opts, :api_version)
+    {auth, req_opts} = Keyword.pop(opts, :auth)
 
-    base_url =
-      case database do
-        nil -> endpoint
-        "_system" -> endpoint
-        db -> endpoint <> "/_db/" <> db
+    req = Req.new([base_url: base_url, retry: false] ++ req_opts)
+
+    %__MODULE__{
+      base_url: base_url,
+      database: database,
+      api_version: api_version,
+      auth: auth,
+      req: req
+    }
+  end
+
+  @spec with_database(t(), String.t() | nil) :: t()
+  def with_database(%__MODULE__{} = client, database) do
+    %{client | database: database}
+  end
+
+  @spec with_auth(t(), auth_t() | nil) :: t()
+  def with_auth(%__MODULE__{} = client, auth) do
+    %{client | auth: auth}
+  end
+
+  @spec with_api_version(t(), non_neg_integer() | String.t() | nil) :: t()
+  def with_api_version(%__MODULE__{} = client, version) do
+    %{client | api_version: version}
+  end
+
+  @spec get(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
+  def get(%__MODULE__{} = client, path, opts \\ []) do
+    request(client, :get, path, opts)
+  end
+
+  def post(client, path, body \\ nil, opts \\ [])
+
+  @spec post(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
+  def post(%__MODULE__{} = client, path, body, opts) do
+    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    request(client, :post, path, opts)
+  end
+
+  def put(client, path, body \\ nil, opts \\ [])
+
+  @spec put(t(), String.t(), term(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
+  def put(%__MODULE__{} = client, path, body, opts) do
+    opts = if body != nil, do: [{:json, body} | opts], else: opts
+    request(client, :put, path, opts)
+  end
+
+  @spec delete(t(), String.t(), keyword()) :: {:ok, Req.Response.t()} | {:error, term()}
+  def delete(%__MODULE__{} = client, path, opts \\ []) do
+    request(client, :delete, path, opts)
+  end
+
+  defp request(%__MODULE__{} = client, method, path, opts) do
+    url = build_url(client, path)
+    opts = [{:url, url} | apply_auth(client, opts)]
+    apply(Req, method, [client.req, opts])
+  end
+
+  defp build_url(%__MODULE__{} = client, path) do
+    version = client.api_version
+    parts = []
+    parts = if version, do: parts ++ [version_prefix(version)], else: parts
+    parts = if client.database, do: parts ++ ["/_db/#{client.database}"], else: parts
+    parts = parts ++ [path]
+    Enum.join(parts)
+  end
+
+  defp version_prefix(version) when is_integer(version), do: "/_arango/v#{version}"
+  defp version_prefix(version) when is_binary(version), do: "/_arango/#{version}"
+
+  defp apply_auth(%__MODULE__{auth: nil}, opts), do: opts
+
+  defp apply_auth(%__MODULE__{auth: auth}, opts) do
+    header =
+      case auth do
+        {:basic, user, password} ->
+          {"authorization", "Basic " <> Base.encode64("#{user}:#{password}")}
+
+        {:jwt, token} ->
+          {"authorization", "Bearer #{token}"}
       end
 
-    req_opts = [base_url: base_url, retry: false] ++ req_opts
-    %__MODULE__{req: Req.new(req_opts)}
-  end
-
-  # --- Version ---
-
-  @spec version(t()) :: {:ok, map()} | {:error, term()}
-  def version(%__MODULE__{req: req}) do
-    case Req.get(req, url: "/_api/version") do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  # --- AQL ---
-
-  @spec aql(t(), String.t(), map()) :: {:ok, [term()]} | {:error, term()}
-  def aql(%__MODULE__{req: req}, query, bind_vars \\ %{}) do
-    payload = %{"query" => query, "bindVars" => bind_vars}
-
-    case Req.post(req, url: "/_api/cursor", json: payload) do
-      {:ok, %{status: 201, body: body}} ->
-        collect_cursor_results(req, body)
-
-      {:ok, resp} ->
-        {:error, response_error(resp)}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  @spec aql!(t(), String.t(), map()) :: [term()]
-  def aql!(client, query, bind_vars \\ %{}) do
-    case aql(client, query, bind_vars) do
-      {:ok, results} -> results
-      {:error, reason} -> raise "AQL query failed: #{inspect(reason)}"
-    end
-  end
-
-  # --- Collections ---
-
-  @spec create_collection(t(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
-  def create_collection(%__MODULE__{req: req}, name, opts \\ []) do
-    type = if Keyword.get(opts, :edge, false), do: 3, else: 2
-    payload = %{"name" => name, "type" => type}
-
-    case Req.post(req, url: "/_api/collection", json: payload) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @spec drop_collection(t(), String.t()) :: :ok | {:error, term()}
-  def drop_collection(%__MODULE__{req: req}, name) do
-    case Req.delete(req, url: "/_api/collection/#{name}") do
-      {:ok, %{status: status}} when status in 200..299 -> :ok
-      # Already gone -- idempotent for on_exit cleanup
-      {:ok, %{status: 404}} -> :ok
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @spec list_collections(t(), keyword()) :: {:ok, [map()]} | {:error, term()}
-  def list_collections(%__MODULE__{req: req}, opts \\ []) do
-    exclude_system = Keyword.get(opts, :exclude_system, false)
-    params = if exclude_system, do: [excludeSystem: true], else: []
-
-    case Req.get(req, url: "/_api/collection", params: params) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body["result"]}
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  # --- Documents ---
-
-  @spec insert_document(t(), String.t(), map()) :: {:ok, map()} | {:error, term()}
-  def insert_document(%__MODULE__{req: req}, collection, doc) do
-    case Req.post(req, url: "/_api/document/#{collection}", json: doc) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @spec get_document(t(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
-  def get_document(%__MODULE__{req: req}, collection, key) do
-    case Req.get(req, url: "/_api/document/#{collection}/#{key}") do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @spec remove_document(t(), String.t(), String.t()) :: :ok | {:error, term()}
-  def remove_document(%__MODULE__{req: req}, collection, key) do
-    case Req.delete(req, url: "/_api/document/#{collection}/#{key}") do
-      {:ok, %{status: status}} when status in 200..299 -> :ok
-      {:ok, resp} -> {:error, response_error(resp)}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  # --- Internal ---
-
-  defp collect_cursor_results(req, body) do
-    collect_cursor_pages(req, body, [body["result"]])
-  end
-
-  defp collect_cursor_pages(req, %{"hasMore" => true, "id" => cursor_id}, pages_acc) do
-    case Req.put(req, url: "/_api/cursor/#{cursor_id}") do
-      {:ok, %{status: 200, body: next_body}} ->
-        collect_cursor_pages(req, next_body, [next_body["result"] | pages_acc])
-
-      {:ok, resp} ->
-        {:error, response_error(resp)}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp collect_cursor_pages(_req, _body, pages_acc) do
-    {:ok, pages_acc |> Enum.reverse() |> List.flatten()}
-  end
-
-  defp response_error(%{status: status, body: body}) do
-    %{status: status, body: body}
+    existing = Keyword.get(opts, :headers, [])
+    Keyword.put(opts, :headers, [header | existing])
   end
 end

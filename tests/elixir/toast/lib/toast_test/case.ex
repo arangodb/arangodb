@@ -19,7 +19,7 @@ defmodule ToastTest.Case do
         use ToastTest.Case
 
         test "server version", %{client: client} do
-          assert {:ok, %{"server" => "arango"}} = Client.version(client)
+          assert {:ok, %{"server" => "arango"}} = Client.Admin.version(client)
         end
       end
 
@@ -56,7 +56,7 @@ defmodule ToastTest.Case do
 
   setup _context do
     deployment = get_deployment()
-    client = Toast.Client.new(deployment.endpoint)
+    client = Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)
     %{deployment: deployment, endpoint: deployment.endpoint, client: client}
   end
 
