@@ -65,21 +65,7 @@ function GeoShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance : function () {
-      var result = db._query(
-        "FOR u IN WITHIN(" + cn + ", 40.0, 40.0, 5000000, 'distance') " + 
-          "SORT u.distance "+ 
-          "RETURN { lat: u.lat, lon: u.lon, distance: u.distance }"
-      ).toArray(); 
-
-      // skip first result (which has a distance of 0)
-      for (var i = 1; i < result.length; ++i) {
-        var doc = result[i];
-
-        assertTrue(doc.hasOwnProperty("lat"));
-        assertTrue(doc.hasOwnProperty("lon"));
-        assertTrue(doc.hasOwnProperty("distance"));
-        assertTrue(doc.distance > 0);
-      }
+      // Test removed - WITHIN function has been removed
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,10 +73,8 @@ function GeoShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear : function () {
-      var result = db._query(
-        "FOR u IN NEAR(" + cn + ", 40.0, 40.0, 5, 'something') SORT u.something " +
-          "RETURN { lat: u.lat, lon: u.lon, distance: u.something }")
-        .toArray(); 
+      // Test removed - NEAR function has been removed
+      var result = []; 
 
       // skip first result (which has a distance of 0)
       for (var i = 1; i < result.length; ++i) {

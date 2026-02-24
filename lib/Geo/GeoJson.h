@@ -181,10 +181,7 @@ Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
 /// @param loop  output parameter to hold the parsed loop
 /// @param geoJson  If true, the points are assumed to be [lon, lat],
 ///                 otherwise [lat, lon]
-[[deprecated(
-    "Subject to removal"
-    " when deprecated IS_IN_POLYGON function is removed.")]] Result
-parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson);
+Result parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson);
 
 }  // namespace json
 }  // namespace arangodb::geo
