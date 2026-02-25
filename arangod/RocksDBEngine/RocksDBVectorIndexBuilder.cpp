@@ -317,11 +317,14 @@ Result VectorIndexBuildManager::build() {
   _index.applyTrainingResult(std::move(result));
   _index.setBuildState(VectorIndexBuildState::kBuilding);
 
-  std::shared_ptr<Index> indexPtr = _rcoll->lookupIndex(_index.id());
-  TRI_ASSERT(indexPtr != nullptr);
+  auto wrappedIndex =
+      std::static_pointer_cast<RocksDBIndex>(_rcoll->lookupIndex(_index.id()));
+  if (wrappedIndex == nullptr) {
+    return {TRI_ERROR_INTERNAL, "Internal error: wrapped index not found"};
+  }
   auto builder = std::make_shared<RocksDBBuilderIndex>(
-      std::static_pointer_cast<RocksDBIndex>(std::move(indexPtr)),
-      _rcoll->meta().numberDocuments(), /*parallelism*/ 2);
+      std::move(wrappedIndex), _rcoll->meta().numberDocuments(),
+      /*parallelism*/ 2);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   std::move(locker.lock()).waitAndGet();

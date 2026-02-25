@@ -115,7 +115,7 @@ class VectorIndexTrainer {
 /// Constructed in the background thread with the state it needs.
 class VectorIndexBuildManager {
  public:
-  explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
+  VectorIndexBuildManager(RocksDBVectorIndex& index);
 
   Result build();
 
