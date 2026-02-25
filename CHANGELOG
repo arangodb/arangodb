@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Remove deprecated option `--server.jwt-secret` because it is insecure.
+
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
