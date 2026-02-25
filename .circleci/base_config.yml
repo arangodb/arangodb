@@ -746,9 +746,15 @@ jobs:
       - run:
           name: Wait for Kafka brokers to be ready
           command: |
+            count=0
             wait_server() {
                 # shellcheck disable=SC2091
                 until $(/usr/bin/nc -z $1 $2); do
+                    count=$((count + 1))
+                    if test "$count" -gt 300; then
+                       print "server not ready after 5 mins, giving up."
+                       exit 1
+                    fi
                     printf '.'
                     sleep 1
                 done
