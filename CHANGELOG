@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Reject creation of Smart Edge collection without `distributeShardsLike`.
+
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
@@ -2713,7 +2715,7 @@
 
   The explain output for queries is now extended with a new "Par" column, which
   shows which nodes in the query are eligible for asynchronous prefetching.
-  All nodes denoted with "✓" will support asynchronous prefetching at runtime.
+  All nodes denoted with "�?" will support asynchronous prefetching at runtime.
 
   The profiling output for queries is now extended with a new "Par" column,
   which shows the actual number of parallel calls during query execution. Note
@@ -21848,11 +21850,11 @@ v2.6.0 (2015-06-20)
 
       var c = db._create("example");
       c.ensureFulltextIndex("translations");
-      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "лиса" } });
+      c.insert({ translations: { en: "fox", de: "Fuchs", fr: "renard", ru: "ли�?а" } });
       c.insert({ translations: "Fox is the English translation of the German word Fuchs" });
       c.insert({ translations: [ "ArangoDB", "document", "database", "Foxx" ] });
 
-      c.fulltext("translations", "лиса").toArray();       // returns only first document
+      c.fulltext("translations", "ли�?а").toArray();       // returns only first document
       c.fulltext("translations", "Fox").toArray();        // returns first and second documents
       c.fulltext("translations", "prefix:Fox").toArray(); // returns all three documents
 
