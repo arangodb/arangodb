@@ -129,11 +129,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  bool shouldTriggerTraining() const noexcept;
-
+  /// @brief Try to build the index if the training threshold is reached.
   void tryBuilding();
-
-  void startBuildThread();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(

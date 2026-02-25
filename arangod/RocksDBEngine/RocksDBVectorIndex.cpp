@@ -289,13 +289,8 @@ void RocksDBVectorIndex::applyTrainingResult(vector::TrainingResult result) {
       true /* faiss owns the inverted list */);
 }
 
-bool RocksDBVectorIndex::shouldTriggerTraining() const noexcept {
-  return _buildState == VectorIndexBuildState::kUninitialized &&
-         _documentCount >= _trainingThreshold;
-}
-
 void RocksDBVectorIndex::tryBuilding() {
-  if (!shouldTriggerTraining()) {
+  if (_documentCount < _trainingThreshold) {
     return;
   }
   VectorIndexBuildState expected{VectorIndexBuildState::kUninitialized};
@@ -304,23 +299,18 @@ void RocksDBVectorIndex::tryBuilding() {
           std::memory_order_acquire)) {
     return;  // another thread already started training, or state changed
   }
-  startBuildThread();
-}
 
-void RocksDBVectorIndex::startBuildThread() {
+  auto rocksDBIndex = std::static_pointer_cast<RocksDBIndex>(
+      collection().getPhysical()->lookupIndex(id()));
+  if (rocksDBIndex == nullptr) {
+    setBuildState(VectorIndexBuildState::kUninitialized);
+    return;
+  }
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  auto rocksDBIndex =
-      std::static_pointer_cast<RocksDBIndex>(_collection.lookupIndex(id()));
-  if (rocksDBIndex == nullptr) {
-    LOG_TOPIC("e164e", ERR, Logger::ENGINES)
-        << "[index=" << id().id() << "] Vector index not found";
-    return;
-  }
   _buildThread = std::jthread([this, rocksDBIndex] {
-    LOG_DEVEL << "Start build thread";
     auto const indexId = id().id();
     try {
       vector::VectorIndexBuildManager builder(*this);
