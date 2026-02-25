@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-198: Removed the overwrite query option for insert operations in favor of 
+  using overWriteMode
+
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
