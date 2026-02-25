@@ -144,16 +144,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -312,16 +302,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -379,6 +359,57 @@ R"=(
       ],
       "shardingStrategy": "hash",
       "theLeader": "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
+    },
+    "s2010009": {
+      "id": "1010008",
+      "name": "s2010009",
+      "cid": "1010008",
+      "type": 2,
+      "status": 3,
+      "statusString": "loaded",
+      "version": 7,
+      "waitForSync": false,
+      "deleted": false,
+      "globallyUniqueId": "c2010008/s2010009",
+      "isSystem": false,
+      "allowUserKeys": true,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "objectId": "2010028",
+      "cacheEnabled": false,
+      "indexes": [
+        {
+          "id": "0",
+          "type": "primary",
+          "fields": [
+            "_key"
+          ],
+          "unique": true,
+          "sparse": false
+        }
+      ],
+      "isSmart": false,
+      "planId": "2010008",
+      "numberOfShards": 1,
+      "shards": {
+        "s2010009": [
+          "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
+          "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
+        ]
+      },
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "theLeader": "",
+      "servers": [
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
+      ]
     },
     "s2010004": {
       "id": "1010006",
@@ -649,16 +680,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -811,16 +832,6 @@ R"=(
           "unique": false,
           "sparse": true,
           "deduplicate": false
-        },
-        {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
         },
         {
           "id": "2010055",
@@ -981,16 +992,6 @@ R"=(
           "deduplicate": false
         },
         {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
-        },
-        {
           "id": "2010055",
           "type": "skiplist",
           "fields": [
@@ -1143,16 +1144,6 @@ R"=(
           "unique": false,
           "sparse": true,
           "deduplicate": false
-        },
-        {
-          "id": "2010132",
-          "type": "fulltext",
-          "fields": [
-            "fi"
-          ],
-          "unique": false,
-          "sparse": true,
-          "minLength": 3
         },
         {
           "id": "2010055",
@@ -1779,100 +1770,6 @@ R"=(
       "numberOfShards": 1,
       "shards": {
         "s2010060": [
-          "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
-          "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
-        ]
-      },
-      "replicationFactor": 2,
-      "shardKeys": [
-        "_key"
-      ],
-      "shardingStrategy": "hash",
-      "theLeader": "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
-    },
-    "s2010071": {
-      "id": "1010030",
-      "name": "s2010071",
-      "cid": "1010030",
-      "type": 2,
-      "status": 3,
-      "statusString": "loaded",
-      "version": 7,
-      "waitForSync": false,
-      "deleted": false,
-      "globallyUniqueId": "c2010070/s2010071",
-      "isSystem": false,
-      "allowUserKeys": true,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "2010923",
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "id": "0",
-          "type": "primary",
-          "fields": [
-            "_key"
-          ],
-          "unique": true,
-          "sparse": false
-        }
-      ],
-      "isSmart": false,
-      "planId": "2010070",
-      "numberOfShards": 1,
-      "shards": {
-        "s2010071": [
-          "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
-          "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
-        ]
-      },
-      "replicationFactor": 2,
-      "shardKeys": [
-        "_key"
-      ],
-      "shardingStrategy": "hash",
-      "theLeader": "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
-    },
-    "s2010073": {
-      "id": "1010031",
-      "name": "s2010073",
-      "cid": "1010031",
-      "type": 2,
-      "status": 3,
-      "statusString": "loaded",
-      "version": 7,
-      "waitForSync": false,
-      "deleted": false,
-      "globallyUniqueId": "c2010072/s2010073",
-      "isSystem": false,
-      "allowUserKeys": true,
-      "keyOptions": {
-        "allowUserKeys": true,
-        "type": "traditional",
-        "lastValue": 0
-      },
-      "objectId": "2010965",
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "id": "0",
-          "type": "primary",
-          "fields": [
-            "_key"
-          ],
-          "unique": true,
-          "sparse": false
-        }
-      ],
-      "isSmart": false,
-      "planId": "2010072",
-      "numberOfShards": 1,
-      "shards": {
-        "s2010073": [
           "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
           "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
         ]
