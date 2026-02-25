@@ -249,10 +249,10 @@ commands:
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
-          # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
           no_output_timeout: 20m
           command: |
             set -x
+            # ulimit needs to be in here since it only has effect for this verry shell and its subprocesses:
             ulimit -c unlimited
             mkdir work
             if [ "<< parameters.sanitizer >>" = "alubsan" ]; then
