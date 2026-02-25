@@ -692,6 +692,7 @@ function cleanupBGShells (clients, cn) {
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
   let args = Object.assign(makeArgsArangosh(options), {
     'server.endpoint': instanceManager.findEndpoint(),
+    'server.connection-timeout': options.httpTimeout,
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
@@ -709,6 +710,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
                        '--minReplicationFactor', '2',
+                       '--progress', true,
+                       '--printTimeTableMeasurement', true,
                        '--progress', 'true',
                        '--oldVersion', require('internal').db._version()
                      ]);
@@ -716,7 +719,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
   if (options.forceOneShard) {
-    argv = argv.concat(['--singleShard', 'true']);
+    argv = argv.concat(['--singleShard', 'true', '--createOneShardDatabase', 'true', '--countOffset', '1']);
   }
   if (options.hasOwnProperty('makedataArgs')) {
     argv = argv.concat(toArgv(options['makedataArgs']));
