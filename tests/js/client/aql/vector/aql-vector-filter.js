@@ -198,7 +198,7 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection,
+                    waitForVectorIndexState(collection, "vector_l2",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
@@ -748,7 +748,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection1,
+                    waitForVectorIndexState(collection1, "vector_l2",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
@@ -890,7 +890,7 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection,
+                    waitForVectorIndexState(collection, "vector_l2_stored_values",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +

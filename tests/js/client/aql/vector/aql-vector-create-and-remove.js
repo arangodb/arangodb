@@ -118,7 +118,7 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection,
+                    waitForVectorIndexState(collection, "vector_l2",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
@@ -557,7 +557,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection,
+                    waitForVectorIndexState(collection, "vector_l2_stored",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +

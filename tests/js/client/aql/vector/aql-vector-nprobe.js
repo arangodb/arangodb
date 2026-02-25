@@ -57,10 +57,8 @@ function VectorIndexL2NprobeTestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            // Use 1 shard so the single shard has enough docs (>= 1000) to trigger training;
-            const numberOfShards = 3;
             collection = db._create(collName, {
-                numberOfShards
+                numberOfShards: 3
             });
 
             let docs = [];
@@ -111,7 +109,7 @@ function VectorIndexL2NprobeTestSuite() {
                     "Expected vector index to become trained on DB servers"
                 );
             } else {
-                assertTrue(waitForVectorIndexState(collection, buildState, waitTimeoutSec),
+                assertTrue(waitForVectorIndexState(collection, "vector_l2", buildState, waitTimeoutSec),
                     "Expected vector index to become trained");
             }
         },

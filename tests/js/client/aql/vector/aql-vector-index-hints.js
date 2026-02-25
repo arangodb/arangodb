@@ -74,9 +74,6 @@ function VectorIndexHintsSuite(expectedTrained) {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
-      // Use 1 shard when expecting trained index so the single shard has enough
-      // docs (>= 1000) to trigger training; with 3 shards and 1500 docs each
-      // shard has only 500 and the index never becomes "ready" in cluster.
       collection = db._create(collName, {
         numberOfShards: 3
       });

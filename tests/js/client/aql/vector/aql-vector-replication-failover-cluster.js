@@ -113,8 +113,6 @@ function VectorIndexReplicationFailoverTest() {
 
             // Increase replicationFactor to 2
             collection.properties({replicationFactor: 2});
-
-            // Wait for the new follower to fully sync
             
             // Get the leader after sync
             waitForShardsInSync(collName, 120, 1);
@@ -130,20 +128,20 @@ function VectorIndexReplicationFailoverTest() {
             assertTrue(leaderServer !== undefined,
                        "Could not find leader server " + leaderServerId);
             leaderServer.suspend();
+            try {
+                // Wait for failover and shards to stabilize
+                waitForShardsInSync(collName, 120, 1);
 
-            // Wait for failover and shards to stabilize
-            waitForShardsInSync(collName, 120, 1);
+                // Query the vector index on the new leader (former follower)
+                let resultsAfter = db._query(vectorQuery).toArray();
 
-            // Query the vector index on the new leader (former follower)
-            let resultsAfter = db._query(vectorQuery).toArray();
-
-            // Verify results
-            assertEqual(resultsAfter.length, 5,
-                        "Expected 5 results from vector search after failover");
-            // The results are no longer the same as before failover
-            assertEqual(resultsBefore.length, resultsAfter.length);
-
-            leaderServer.resume();
+                // Verify results
+                assertEqual(resultsAfter.length, 5,
+                            "Expected 5 results from vector search after failover");
+                assertEqual(resultsBefore.length, resultsAfter.length);
+            } finally {
+                leaderServer.resume();
+            }
         },
     };
 }

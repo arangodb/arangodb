@@ -626,7 +626,7 @@ function VectorIndexCosineTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection, buildState, waitTimeoutSec),
+                    waitForVectorIndexState(collection, "vector_cosine", buildState, waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );
@@ -834,7 +834,7 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection, buildState, waitTimeoutSec),
+                    waitForVectorIndexState(collection, "vector_inner_product", buildState, waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
                     " with " + numberOfDocs + " docs"
                 );

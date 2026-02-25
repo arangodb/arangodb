@@ -121,7 +121,7 @@ function VectorIndexFullCountTestSuite(expectedTrained) {
                 );
             } else {
                 assertTrue(
-                    waitForVectorIndexState(collection,
+                    waitForVectorIndexState(collection, "vector_l2",
                         expectedState,
                         waitTimeoutSec),
                     "Expected index to become " + (expectedTrained ? "trained" : "untrained") +

@@ -241,17 +241,19 @@ function withSuffix(suite, suffix) {
 const sleepIntervalSec = 0.1;
 
 /**
- * Waits until the collection's (first) vector index reaches the given build state.
- * @param {ArangoCollection} collection - collection that has a vector index
+ * Waits until the named vector index on the collection reaches the given build state.
+ * @param {ArangoCollection} collection - collection that has the vector index
+ * @param {string} indexName - name of the vector index to wait for
  * @param {string} state - desired build state: "ready" or "uninitialized"
  * @param {number} timeoutSec - max time to wait in seconds
  * @returns {boolean} true if the vector index reached the state within the timeout
  */
-function waitForVectorIndexState(collection, state, timeoutSec = 20) {
+function waitForVectorIndexState(collection, indexName, state, timeoutSec = 20) {
     const internal = require("internal");
     const iterations = Math.floor(timeoutSec / sleepIntervalSec);
     for (let i = 0; i < iterations; i++) {
-        const idx = collection.indexes().find(ix => ix.type === 'vector');
+        const idx = collection.indexes().find(
+            ix => ix.type === 'vector' && ix.name === indexName);
         if (idx && idx.buildState === state) {
             return true;
         }

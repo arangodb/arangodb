@@ -93,7 +93,7 @@ function VectorIndexRemainsUntrainedSuite() {
                     "Index should remain uninitialized with only " + insertCount + " docs (threshold ~1000)"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
+                const trained = waitForVectorIndexState(collection, "vec_l2", buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should remain uninitialized with only " + insertCount + " docs (threshold ~1000)");
             }
@@ -154,7 +154,7 @@ function VectorIndexDeferredTrainingSuite() {
                     " docs (threshold ~1000), waited up to 60s"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
+                const trained = waitForVectorIndexState(collection, "vec_l2", buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should become trained after inserting " + insertCount +
                     " docs (threshold ~1000), waited up to 60s");
@@ -182,7 +182,7 @@ function VectorIndexDeferredTrainingSuite() {
                     "Index should become trained within 60s"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
+                const trained = waitForVectorIndexState(collection, "vec_l2", buildState, waitTimeoutSec);
                 assertTrue(trained, "Index should become trained within 60s");
             }
 
@@ -249,7 +249,7 @@ function VectorIndexBatchInsertTrainingSuite() {
                     " docs inserted in " + numBatches + " batches"
                 );
             } else {
-                const trained = waitForVectorIndexState(collection, buildState, waitTimeoutSec);
+                const trained = waitForVectorIndexState(collection, "vec_l2", buildState, waitTimeoutSec);
                 assertTrue(trained,
                     "Index should become trained after " + (batchSize * numBatches) +
                     " docs inserted in " + numBatches + " batches");
