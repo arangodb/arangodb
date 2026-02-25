@@ -208,20 +208,12 @@
       # TODO: BTS-2283
       encryptionAtRest: false
 
-- shell_client_aql:
-    options:
-      buckets: 5
-      priority: 250
-      type: single
-    args:
-      # TODO: BTS-2283
-      encryptionAtRest: false
-
 - shell_client_aql_large:
     options:
       buckets: 5
       priority: 250
       type: single
+      suffix: _large
     args:
       # TODO: BTS-2283
       encryptionAtRest: false
@@ -257,6 +249,7 @@
           args:
             cluster: true
             forceOneShard: true
+            makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
 
 - chaos:
@@ -407,6 +400,7 @@
       size: medium+
       type: cluster
       buckets: 4
+      suffix: _large
     args:
       dumpAgencyOnError: true
       # TODO: BTS-2283
