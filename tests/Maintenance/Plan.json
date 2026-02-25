@@ -665,22 +665,6 @@ R"=(
       ]
     }
 },
-"Coordinators": {
-"CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6": "none",
-"CRDN-067429e5-38b7-4917-8b51-0eb170d73079": "none"
-},
-"Databases": {
-"_system": {
-  "id": "1",
-  "name": "_system"
-},
-"foo": {
-  "coordinator": "CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6",
-  "id": "2010058",
-  "name": "foo",
-  "options": {}
-}
-},
 "AsyncReplication": {},
 "Views": {
 "_system": {}
