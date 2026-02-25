@@ -24,7 +24,6 @@
 #include "gtest/gtest.h"
 
 #include <s2/s2latlng.h>
-#include <s2/s2loop.h>
 #include <s2/s2point.h>
 #include <s2/s2polyline.h>
 #include <s2/s2polygon.h>
@@ -49,7 +48,6 @@ class InvalidGeoJSONInputTest : public ::testing::Test {
   geo::S2MultiPointRegion points;
   geo::S2MultiPolylineRegion polylines;
   S2Polygon polygon;
-  S2Loop loop;
   geo::ShapeContainer shape;
 
   VPackBuilder builder;
@@ -70,8 +68,6 @@ TEST_F(InvalidGeoJSONInputTest, empty_object) {
   ASSERT_TRUE(geo::json::parseMultiLinestring(vpack, polylines)
                   .is(TRI_ERROR_BAD_PARAMETER));
 
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
   ASSERT_TRUE(
       geo::json::parsePolygon(vpack, polygon).is(TRI_ERROR_BAD_PARAMETER));
 
@@ -484,95 +480,6 @@ TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_points_outside_of_line) {
   ASSERT_EQ(geo::json::Type::MULTI_LINESTRING, geo::json::type(vpack));
   ASSERT_TRUE(geo::json::parseMultiLinestring(vpack, polylines)
                   .is(TRI_ERROR_BAD_PARAMETER));
-}
-
-TEST_F(InvalidGeoJSONInputTest, bad_loop_object_not_array) {
-  { velocypack::ObjectBuilder object(&builder); }
-  VPackSlice vpack = builder.slice();
-
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
-}
-
-TEST_F(InvalidGeoJSONInputTest, bad_loop_empty_array) {
-  { velocypack::ArrayBuilder object(&builder); }
-  VPackSlice vpack = builder.slice();
-
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
-}
-
-TEST_F(InvalidGeoJSONInputTest, bad_loop_numbers_instead_of_points) {
-  {
-    velocypack::ArrayBuilder points(&builder);
-    points->add(VPackValue(0.0));
-    points->add(VPackValue(0.0));
-  }
-  VPackSlice vpack = builder.slice();
-
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
-}
-
-TEST_F(InvalidGeoJSONInputTest, bad_loop_extra_numbers_in_bad_points) {
-  {
-    velocypack::ArrayBuilder points(&builder);
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));  // 4 coordinates - invalid
-    }
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));  // 4 coordinates - invalid
-    }
-  }
-  VPackSlice vpack = builder.slice();
-
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
-}
-
-TEST_F(InvalidGeoJSONInputTest, bad_loop_full_geojson_input) {
-  {
-    velocypack::ObjectBuilder object(&builder);
-    object->add("type", VPackValue("Polygon"));
-    velocypack::ArrayBuilder points(&builder, "coordinates");
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-    }
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(1.0));
-    }
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(1.0));
-      point->add(VPackValue(1.0));
-    }
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(1.0));
-      point->add(VPackValue(0.0));
-    }
-    {
-      velocypack::ArrayBuilder point(&builder);
-      point->add(VPackValue(0.0));
-      point->add(VPackValue(0.0));
-    }
-  }
-  VPackSlice vpack = builder.slice();
-
-  ASSERT_TRUE(
-      geo::json::parseLoop(vpack, loop, true).is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates) {

@@ -61,24 +61,19 @@ function GeoShapedJsonSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief call within function with "distance" attribute
+/// @brief call DISTANCE function and return documents with "distance" attribute
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance : function () {
-      // Test removed - WITHIN function has been removed
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call near function with "distance" attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testNear : function () {
-      // Test removed - NEAR function has been removed
-      var result = []; 
+      const result = db._query(
+        "FOR x IN " + cn + " FILTER DISTANCE(40, 40, x.lat, x.lon) <= 5000 " +
+        "SORT DISTANCE(40, 40, x.lat, x.lon) " +
+        "RETURN MERGE(x, { distance: DISTANCE(40, 40, x.lat, x.lon) })"
+      ).toArray();
 
       // skip first result (which has a distance of 0)
-      for (var i = 1; i < result.length; ++i) {
-        var doc = result[i];
+      for (let i = 1; i < result.length; ++i) {
+        const doc = result[i];
 
         assertTrue(doc.hasOwnProperty("lat"));
         assertTrue(doc.hasOwnProperty("lon"));
