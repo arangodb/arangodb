@@ -286,8 +286,11 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(
-    std::shared_ptr<RocksDBIndex> rocksDBIndex) {
+Result VectorIndexBuildManager::build() {
+  if (_index.collection().deleted()) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
   rocksdb::Slice upper(_bounds.end());
   rocksdb::ReadOptions ro(false, false);
   ro.prefix_same_as_start = true;
@@ -302,6 +305,9 @@ Result VectorIndexBuildManager::build(
   TrainingResult result;
   constexpr int kMaxRetries = 10;
   for (int retry = 0; retry < kMaxRetries; ++retry) {
+    if (_index.collection().deleted()) {
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+    }
     std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
     trainIt->Seek(_bounds.start());
     try {
@@ -314,10 +320,12 @@ Result VectorIndexBuildManager::build(
       if (!noDocsForTraining || retry == kMaxRetries - 1) {
         throw;
       }
-      // Iterator may not see documents yet (e.g. ensureIndex then insert).
-      // Retry with a fresh iterator after a short delay.
       std::this_thread::sleep_for(std::chrono::milliseconds(50 * (retry + 1)));
     }
+  }
+
+  if (_index.collection().deleted()) {
+    return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)
@@ -328,9 +336,7 @@ Result VectorIndexBuildManager::build(
   _index.applyTrainingResult(std::move(result));
   _index.setBuildState(VectorIndexBuildState::kBuilding);
 
-  auto builder = std::make_shared<RocksDBBuilderIndex>(
-      std::move(rocksDBIndex), _rcoll->meta().numberDocuments(),
-      /*parallelism*/ 2);
+  auto builder = std::make_shared<RocksDBBuilderIndex>(_index);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   std::move(locker.lock()).waitAndGet();

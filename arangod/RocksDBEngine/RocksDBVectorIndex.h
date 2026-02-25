@@ -119,6 +119,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// which would deadlock and cause std::terminate).
   void joinBuildThread() noexcept;
 
+  std::int64_t documentCount() const noexcept {
+    return _documentCount.load(std::memory_order_relaxed);
+  }
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,

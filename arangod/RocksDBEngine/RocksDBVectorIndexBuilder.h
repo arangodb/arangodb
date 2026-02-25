@@ -112,12 +112,13 @@ class VectorIndexTrainer {
 /// Orchestrates the full build pipeline for a vector index: train the FAISS
 /// index from collection documents, apply the result, then bulk-ingest all
 /// vectors using RocksDBBuilderIndex for ingestion + WAL catchup.
-/// Constructed in the background thread with the state it needs.
+/// Does not access collection or index lookup; passes only a reference to
+/// RocksDBBuilderIndex which constructs from RocksDBVectorIndex&.
 class VectorIndexBuildManager {
  public:
-  VectorIndexBuildManager(RocksDBVectorIndex& index);
+  explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build(std::shared_ptr<RocksDBIndex> rocksDBIndex);
+  Result build();
 
  private:
   RocksDBVectorIndex& _index;

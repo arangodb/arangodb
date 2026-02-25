@@ -300,21 +300,15 @@ void RocksDBVectorIndex::tryBuilding() {
     return;  // another thread already started training, or state changed
   }
 
-  auto rocksDBIndex = std::static_pointer_cast<RocksDBIndex>(
-      collection().getPhysical()->lookupIndex(id()));
-  if (rocksDBIndex == nullptr) {
-    setBuildState(VectorIndexBuildState::kUninitialized);
-    return;
-  }
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  _buildThread = std::jthread([this, rocksDBIndex] {
+  _buildThread = std::jthread([this] {
     auto const indexId = id().id();
     try {
       vector::VectorIndexBuildManager builder(*this);
-      if (auto const res = builder.build(std::move(rocksDBIndex)); res.fail()) {
+      if (auto const res = builder.build(); res.fail()) {
         LOG_TOPIC("e164b", ERR, Logger::ENGINES)
             << "[index=" << indexId
             << "] Vector build failed: " << res.errorMessage();
