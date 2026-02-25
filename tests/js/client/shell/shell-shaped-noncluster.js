@@ -61,40 +61,19 @@ function GeoShapedJsonSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief call within function with "distance" attribute
+/// @brief call DISTANCE function and return documents with "distance" attribute
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance : function () {
-      var result = db._query(
-        "FOR u IN WITHIN(" + cn + ", 40.0, 40.0, 5000000, 'distance') " + 
-          "SORT u.distance "+ 
-          "RETURN { lat: u.lat, lon: u.lon, distance: u.distance }"
-      ).toArray(); 
+      const result = db._query(
+        "FOR x IN " + cn + " FILTER DISTANCE(40, 40, x.lat, x.lon) <= 5000 " +
+        "SORT DISTANCE(40, 40, x.lat, x.lon) " +
+        "RETURN MERGE(x, { distance: DISTANCE(40, 40, x.lat, x.lon) })"
+      ).toArray();
 
       // skip first result (which has a distance of 0)
-      for (var i = 1; i < result.length; ++i) {
-        var doc = result[i];
-
-        assertTrue(doc.hasOwnProperty("lat"));
-        assertTrue(doc.hasOwnProperty("lon"));
-        assertTrue(doc.hasOwnProperty("distance"));
-        assertTrue(doc.distance > 0);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call near function with "distance" attribute
-////////////////////////////////////////////////////////////////////////////////
-
-    testNear : function () {
-      var result = db._query(
-        "FOR u IN NEAR(" + cn + ", 40.0, 40.0, 5, 'something') SORT u.something " +
-          "RETURN { lat: u.lat, lon: u.lon, distance: u.something }")
-        .toArray(); 
-
-      // skip first result (which has a distance of 0)
-      for (var i = 1; i < result.length; ++i) {
-        var doc = result[i];
+      for (let i = 1; i < result.length; ++i) {
+        const doc = result[i];
 
         assertTrue(doc.hasOwnProperty("lat"));
         assertTrue(doc.hasOwnProperty("lon"));

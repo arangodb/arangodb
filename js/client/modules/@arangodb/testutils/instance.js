@@ -402,7 +402,7 @@ class instance {
     }
 
     if (this.restKeyFile &&
-        !this.args.hasOwnProperty('server.jwt-secret') &&
+        !this.args.hasOwnProperty('server.jwt-secret-keyfile') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
       this.JWT = fs.read(this.restKeyFile);
@@ -515,8 +515,8 @@ class instance {
         'http.compress-response-threshold':  99999999999,
       });
     }
-    if (this.args.hasOwnProperty('server.jwt-secret')) {
-      this.JWT = this.args['server.jwt-secret'];
+    if (this.args.hasOwnProperty('server.jwt-secret-keyfile') && !this.JWT) {
+      this.JWT = fs.read(this.args['server.jwt-secret-keyfile']);
     } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(this.args['server.jwt-secret-folder']);
       files = files.sort();
@@ -556,6 +556,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-exec.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();
@@ -654,6 +658,10 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = fs.join(this.rootDir, 'jwt-secret-restart.txt');
+      fs.write(kf, this.JWT);
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
     } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(moreArgs['server.jwt-secret-folder']);
       files = files.sort();

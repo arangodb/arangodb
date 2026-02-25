@@ -35,11 +35,11 @@ void RocksDBRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
   handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData, {0, 1});
+      RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData, {1});
   handlerFactory->addPrefixHandler(
       "/_api/replication",
-      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData, {0, 1});
+      RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData, {1});
   handlerFactory->addPrefixHandler(
       "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData,
-      {0, 1});
+      {1});
 }

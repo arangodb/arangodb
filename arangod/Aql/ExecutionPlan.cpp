@@ -871,8 +871,6 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   bool containsCollection = false;
   // replace occurrences of collection names used as function call arguments
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
-  // for example, this will turn `WITHIN(collection, ...)` into
-  // `WITHIN("collection", ...)`
   auto visitor = [this, &containsCollection](AstNode* node) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());

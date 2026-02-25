@@ -50,14 +50,12 @@ if [ "$TRANSPORT" == "ssl" ]; then
   PROT=https
 else
   CURL="curl -sfX"
-  PROT=http  
+  PROT=http
 fi
 
 if [ -z "$JWT_SECRET" ];then
-  AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
   AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
@@ -120,4 +118,3 @@ done
 
 echo
 echo Done, your cluster is gone
-
