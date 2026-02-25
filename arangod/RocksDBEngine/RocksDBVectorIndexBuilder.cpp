@@ -278,9 +278,6 @@ Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
   auto& coll = _index.collection();
   auto const bounds = _rcoll->bounds();
 
-  VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
-                             _index.fields(), coll.name(), _index.id().id());
-
   rocksdb::Slice upper(bounds.end());
   rocksdb::ReadOptions ro(false, false);
   ro.prefix_same_as_start = true;
@@ -288,24 +285,11 @@ Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
 
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
-
-  // Training may be triggered from an insert() call while the enclosing
-  // transaction has not yet committed.  In that case the RocksDB iterator
-  // won't see any documents.  Wait until at least one document is visible.
-  static constexpr int kMaxWaitIterations = 300;
-  static constexpr auto kWaitInterval = std::chrono::milliseconds(100);
-  for (int i = 0; i < kMaxWaitIterations; ++i) {
-    std::unique_ptr<rocksdb::Iterator> probe(_rootDB->NewIterator(ro, docCF));
-    probe->Seek(bounds.start());
-    if (probe->Valid()) {
-      break;
-    }
-    std::this_thread::sleep_for(kWaitInterval);
-  }
-
   std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
   trainIt->Seek(bounds.start());
 
+  VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
+                             _index.fields(), coll.name(), _index.id().id());
   auto result = trainer.train(*trainIt, upper);
 
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)

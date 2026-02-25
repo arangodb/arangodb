@@ -135,9 +135,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() {
-  if (_buildThread.joinable()) {
-    _buildThread.detach();
-  }
+  // TODO(jbajic): Add a way to cancel the build thread in case of db/col/index
+  // being dropped
+  _buildThread.join();
 }
 
 /// @brief Test if this index matches the definition
@@ -340,17 +340,15 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   // During initial fill or deferred training trigger, only count and maybe
   // start building; do not write. During kBuilding we're in fillIndexBackground
   // and must perform the actual insert.
-  if (const auto buildState = _buildState.load(std::memory_order_relaxed);
+  if (const auto buildState = _buildState.load();
       buildState == VectorIndexBuildState::kUninitialized ||
       buildState == VectorIndexBuildState::kTraining) {
     // For non-sparse index, validate that the document has the vector field
     // even when we are not writing yet; otherwise fail early.
-    _documentCount.fetch_add(1, std::memory_order_relaxed);
+    _documentCount.fetch_add(1);
     tryBuilding();
     return {};
   }
-  // kBuilding or kReady: perform the actual insert (kBuilding = fill after
-  // train)
   TRI_ASSERT(_faissIndex != nullptr);
 
   if (_definition.metric == SimilarityMetric::kCosine) {
@@ -468,10 +466,8 @@ RocksDBVectorIndex::bruteForceSearch(
   });
   std::vector<float> distances(topK, minValue);
 
-  aql::AqlFunctionsInternalCache aqlFunctionsInternalCache;
-
   auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
-
+  aql::AqlFunctionsInternalCache aqlFunctionsInternalCache;
   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
                          velocypack::Slice docSlice) -> bool {
     std::vector<float> vec;
@@ -491,9 +487,10 @@ RocksDBVectorIndex::bruteForceSearch(
       ctx.setCurrentDocument(docSlice);
 
       bool mustDestroy{false};
-      aql::AqlValue a = filterExpression->execute(&ctx, mustDestroy);
-      aql::AqlValueGuard guard(a, mustDestroy);
-      if (!a.toBoolean()) {
+      aql::AqlValue expressionEvaluation =
+          filterExpression->execute(&ctx, mustDestroy);
+      aql::AqlValueGuard const guard(expressionEvaluation, mustDestroy);
+      if (!expressionEvaluation.toBoolean()) {
         return true;
       }
     }
@@ -502,7 +499,7 @@ RocksDBVectorIndex::bruteForceSearch(
       faiss::fvec_renorm_L2(dim, 1, vec.data());
     }
 
-    auto id = static_cast<faiss::idx_t>(docId.id());
+    auto const id = static_cast<faiss::idx_t>(docId.id());
 
     if (isDescending) {
       float dist = faiss::fvec_inner_product(inputs.data(), vec.data(), dim);
@@ -686,6 +683,8 @@ Result RocksDBVectorIndex::ingestVectors(
         auto code_size = _faissIndex->code_size;
         std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
 
+        // TODO: since we only use IVTFlat this is just copying the data.
+        //  Probably we want to use some PQ encoding later on.
         _faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
 
         auto encoded = std::make_unique<EncodedVectors>();
@@ -694,6 +693,9 @@ Result RocksDBVectorIndex::ingestVectors(
         encoded->codes = std::move(flat_codes);
         encoded->storedValues = std::move(item->storedValues);
 
+        LOG_VECTOR_INDEX("e167b", INFO, Logger::ENGINES)
+            << "ENCODE encoded " << encoded->docIds.size()
+            << " vectors, code size: " << code_size;
         bool pushBlocked = false;
         std::tie(shouldStop, pushBlocked) =
             encodedChannel.push(std::move(encoded));
