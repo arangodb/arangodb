@@ -22,6 +22,18 @@ defmodule ToastTest.DeploymentRegistry do
     end
   end
 
+  def put_extra_context(suite_module, extra_context) do
+    :ets.insert(@table, {{suite_module, :extra_context}, extra_context})
+    :ok
+  end
+
+  def get_extra_context(suite_module) do
+    case :ets.lookup(@table, {suite_module, :extra_context}) do
+      [{{^suite_module, :extra_context}, ctx}] -> ctx
+      [] -> %{}
+    end
+  end
+
   def clear do
     :ets.delete_all_objects(@table)
     :ok

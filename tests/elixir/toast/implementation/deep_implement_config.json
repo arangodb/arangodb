@@ -29,6 +29,10 @@
     "section-03-rest-client": {
       "status": "complete",
       "commit_hash": "d742514bc49"
+    },
+    "section-04-suite-system": {
+      "status": "complete",
+      "commit_hash": "dfd8b5bd6ab"
     }
   },
   "pre_commit": {

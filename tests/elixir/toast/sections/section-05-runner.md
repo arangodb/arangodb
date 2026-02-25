@@ -617,3 +617,51 @@ After implementation, verify:
 5. An abort in one suite (simulated via the crash monitor callback) does not affect the next suite
 6. The global timeout properly clamps suite timeouts
 7. `mix xref graph` — `lib/toast/` has no reference to `ToastTest.Runner` or `ToastTest.CrashMonitor`
+
+---
+
+## Implementation Notes
+
+### Key Design Decisions
+
+1. **Legacy code preserved**: The old `run/2` entry point and full async scheduling loop (`async_loop`, `do_async_loop`, `wait_until_available`, `spawn_modules`, etc.) are preserved alongside the new `run_suites/2`. This allows gradual migration — suites use the new path while legacy test_helper.exs-based runs still work.
+
+2. **Shared per-test execution**: `finish_module_execution/4` extracts the common abort/max-failures/pending logic used by both `run_module` (suite) and `run_module_legacy` (legacy). Per-test functions (`spawn_test`, `receive_test_reply`, `exec_test_setup`, `exec_test`, `exec_on_exit`, `run_setup_all`) are shared without duplication.
+
+3. **ExUnitCompat isolation**: All new suite-mode code routes through `Compat.*` wrappers. Legacy code retains direct `EM.*` calls. Shared code (`run_setup_all`, `exec_test_setup`) uses Compat since the wrappers are trivial delegates. The `finish_module_execution` shared function uses `EM.*` directly (equivalent).
+
+4. **SIGQUIT handling**: `run_suites/2` wraps execution in `System.trap_signal(:sigquit, ...)` matching the legacy `run/2` pattern.
+
+5. **apply_toast_env scoping**: `apply_toast_env` (System.put_env calls) moved to legacy mode only. Suite mode uses `build_global_opts → Toast.Config.load(opts_to_config_list(opts))` with `--cluster`/`--single` handled via config list mapping.
+
+6. **Extra context from setup_deployment**: `DeploymentRegistry` extended with `put_extra_context`/`get_extra_context`. `Case.ex` merges extra context into test context, with extra context keys overriding base keys.
+
+7. **Per-test health check**: Suite deployment health is checked per-test via `check_config_deployments` in `run_tests_loop` (same path as legacy deployment checks), not per-module.
+
+### Deviations from Plan
+
+- **Custom `between_tests` callback**: The `when is_function(callback, 2)` case is accepted but treated as a no-op (`:ok`). Only `:default` and `false` are implemented. Custom callbacks deferred until a suite needs them.
+- **Test coverage**: Runner orchestration tests (deployment failure, abort scoping, timeout hierarchy) require mocking `Toast.Deployment` which was not set up. Tests cover abort mechanism, SuiteRun struct, ExUnitCompat adapter, and CrashMonitor. Integration tests deferred.
+- **suites/smoke/test_helper.exs**: Deleted. Responsibilities handled by mix task and runner.
+
+### Actual Files Created/Modified
+
+Created:
+- `lib/toast_test/suite_run.ex` (23 lines)
+- `lib/toast_test/exunit_compat.ex` (79 lines)
+- `lib/toast_test/crash_monitor.ex` (14 lines)
+- `suites/smoke/suite.ex` (3 lines)
+- `test/toast_test/runner_test.exs` (10 tests)
+- `test/toast_test/crash_monitor_test.exs` (5 tests)
+
+Modified:
+- `lib/toast_test/runner.ex` (+455/-87 lines)
+- `lib/mix/tasks/toast.ex` (+71/-14 lines)
+- `lib/toast_test/case.ex` (+13/-5 lines)
+- `lib/toast_test/deployment_registry.ex` (+12 lines)
+- `suites/smoke/test_version.exs`, `test_collection.exs`, `test_aql.exs` (migrated to `use Smoke.Suite`)
+
+Deleted:
+- `suites/smoke/test_helper.exs`
+
+Test count: 440 tests, 0 failures (5 excluded)

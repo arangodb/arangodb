@@ -156,8 +156,6 @@ defmodule Mix.Tasks.Toast do
 
     Application.ensure_all_started(:ex_unit)
 
-    apply_toast_env(opts)
-
     {ex_unit_opts, _} = process_opts(opts)
     ExUnit.configure(ex_unit_opts)
 
@@ -214,22 +212,63 @@ defmodule Mix.Tasks.Toast do
         end
       end)
 
-    # Store suite data for the runner (Section 05 will use this)
-    Application.put_env(:toast, :__suite_data__, suite_data)
+    global_opts = build_global_opts(opts, ex_unit_opts)
+    result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
-    # For now, use legacy runner path with all discovered test modules
-    _all_test_modules = Enum.flat_map(suite_data, fn {_suite, modules} -> modules end)
-    ExUnit.Server.modules_loaded(true)
-
-    options =
-      ExUnit.configuration()
-      |> Keyword.merge(ex_unit_opts)
-
-    {stats, _} = ToastTest.Runner.run(options, nil)
-
-    if stats.failures > 0 or ToastTest.Runner.aborted?() do
+    if result.stats.failures > 0 or ToastTest.Runner.aborted?() do
       exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
       System.at_exit(fn _ -> exit({:shutdown, exit_status}) end)
+    end
+  end
+
+  defp build_global_opts(opts, ex_unit_opts) do
+    config = Toast.Config.load(opts_to_config_list(opts))
+
+    global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
+
+    ex_unit_opts
+    |> Keyword.merge(
+      global_deadline: global_deadline,
+      deployment_mode: config.deployment_mode,
+      timeout_factor: config.timeout_factor,
+      build_dir: config.build_dir,
+      work_dir: config.work_dir,
+      startup_timeout: config.startup_timeout,
+      shutdown_timeout: config.shutdown_timeout,
+      show_server_logs: config.show_server_logs,
+      keep_work_dir: config.keep_work_dir
+    )
+  end
+
+  defp opts_to_config_list(opts) do
+    mapping = [
+      build_dir: :build_dir,
+      work_dir: :work_dir,
+      result_dir: :result_dir,
+      show_server_logs: :show_server_logs,
+      global_timeout: :global_timeout,
+      test_timeout: :test_timeout,
+      startup_timeout: :startup_timeout,
+      shutdown_timeout: :shutdown_timeout,
+      timeout_factor: :timeout_factor,
+      keep_work_dir: :keep_work_dir,
+      sanitizer: :explicit_sanitizer,
+      cluster_agents: :cluster_agents,
+      cluster_dbservers: :cluster_dbservers,
+      cluster_coordinators: :cluster_coordinators,
+      replication_factor: :cluster_replication_factor
+    ]
+
+    config_list =
+      for {cli_key, config_key} <- mapping,
+          {:ok, value} <- [Keyword.fetch(opts, cli_key)] do
+        {config_key, value}
+      end
+
+    cond do
+      opts[:cluster] -> Keyword.put(config_list, :deployment_mode, :cluster)
+      opts[:single] -> Keyword.put(config_list, :deployment_mode, :single_server)
+      true -> config_list
     end
   end
 
@@ -378,7 +417,9 @@ defmodule Mix.Tasks.Toast do
 
   ## Legacy mode
 
-  defp run_legacy_mode(files, _opts, ex_unit_opts) do
+  defp run_legacy_mode(files, opts, ex_unit_opts) do
+    apply_toast_env(opts)
+
     test_paths = Mix.Project.config()[:test_paths] || default_test_paths()
 
     for dir <- test_paths do

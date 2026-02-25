@@ -1,5 +1,5 @@
-defmodule SmokeTest.AqlTest do
-  use Toast.TestCase
+defmodule Smoke.AqlTest do
+  use Smoke.Suite
 
   test "simple return", %{client: client} do
     assert {:ok, [1]} = Client.AQL.execute(client, "RETURN 1")

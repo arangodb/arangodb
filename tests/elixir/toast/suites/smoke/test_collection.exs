@@ -1,5 +1,5 @@
-defmodule SmokeTest.CollectionTest do
-  use Toast.TestCase
+defmodule Smoke.CollectionTest do
+  use Smoke.Suite
 
   setup %{client: client} do
     name = "test_coll_#{System.unique_integer([:positive])}"

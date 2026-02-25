@@ -55,17 +55,20 @@ defmodule ToastTest.Case do
   end
 
   setup context do
-    deployment = get_deployment_for_context(context)
-    client = Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)
-    %{deployment: deployment, endpoint: deployment.endpoint, client: client}
+    {deployment, extra_context} = get_deployment_for_context(context)
+    base = %{deployment: deployment, endpoint: deployment.endpoint,
+             client: Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)}
+    Map.merge(base, extra_context)
   end
 
   defp get_deployment_for_context(context) do
     if function_exported?(context.module, :__toast_suite__, 0) do
       suite_module = context.module.__toast_suite__()
-      ToastTest.DeploymentRegistry.get(suite_module)
+      deployment = ToastTest.DeploymentRegistry.get(suite_module)
+      extra_context = ToastTest.DeploymentRegistry.get_extra_context(suite_module)
+      {deployment, extra_context}
     else
-      get_deployment()
+      {get_deployment(), %{}}
     end
   end
 

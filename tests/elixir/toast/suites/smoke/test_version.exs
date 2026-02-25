@@ -1,5 +1,5 @@
-defmodule SmokeTest.VersionTest do
-  use Toast.TestCase
+defmodule Smoke.VersionTest do
+  use Smoke.Suite
 
   test "returns arango server info", %{client: client} do
     assert {:ok, body} = Client.Admin.version(client)
