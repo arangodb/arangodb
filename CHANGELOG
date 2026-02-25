@@ -1,8 +1,6 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
-* Accept `null` as valid value for the `roles` attribute in JWT tokens.
-
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
