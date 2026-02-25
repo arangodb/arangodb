@@ -18,6 +18,8 @@
 
 * Add new API GET /_admin/options-public for new platform UI.
 
+* Fix ES-2824: SEARCH query produces wrong results.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 
