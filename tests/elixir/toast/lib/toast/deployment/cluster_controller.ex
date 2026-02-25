@@ -10,7 +10,9 @@ defmodule Toast.Deployment.ClusterController do
   alias Toast.Deployment.{Factory, Health, ServerInstance}
   alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
 
-  @type status :: :stopped | :starting | :ready | :stopping | :failed
+  @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
+
+  @intentional_exit_signals [nil, 15]
 
   # --- Client API ---
 
@@ -44,6 +46,17 @@ defmodule Toast.Deployment.ClusterController do
   def get_info(server) do
     GenServer.call(server, :get_info)
   end
+
+  def stop_server(server, server_id), do: GenServer.call(server, {:stop_server, server_id})
+  def kill_server(server, server_id), do: GenServer.call(server, {:kill_server, server_id})
+  def pause_server(server, server_id), do: GenServer.call(server, {:pause_server, server_id})
+  def resume_server(server, server_id), do: GenServer.call(server, {:resume_server, server_id})
+
+  def restart_server(server, server_id, opts \\ []),
+    do: GenServer.call(server, {:restart_server, server_id, opts}, 65_000)
+
+  def start_server(server, server_id, opts \\ []),
+    do: GenServer.call(server, {:start_server, server_id, opts}, 65_000)
 
   # --- Server callbacks ---
 
@@ -84,7 +97,8 @@ defmodule Toast.Deployment.ClusterController do
     {:reply, {:error, {:invalid_status, state.status}}, state}
   end
 
-  def handle_call({:shutdown, timeout}, _from, %{status: :ready} = state) do
+  def handle_call({:shutdown, timeout}, _from, %{status: status} = state)
+      when status in [:ready, :degraded] do
     new_state = do_shutdown(state, timeout)
     {:reply, :ok, new_state}
   end
@@ -171,13 +185,157 @@ defmodule Toast.Deployment.ClusterController do
     {:reply, result, state}
   end
 
+  def handle_call({:stop_server, server_id}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id),
+         :ok <- require_server_state(server, :running) do
+      ServerProcess.stop(server.server_pid, 30_000)
+      suspend_server_health_monitor(server)
+      state = update_server(state, server_id, operational_state: :stopped, intentional: true)
+      state = %{state | status: derive_cluster_status(state.servers)}
+      notify_event(state.on_event, {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:kill_server, server_id}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id),
+         :ok <- require_server_state(server, :running) do
+      ServerProcess.kill(server.server_pid)
+      suspend_server_health_monitor(server)
+      state = update_server(state, server_id, operational_state: :killed, intentional: true)
+      state = %{state | status: derive_cluster_status(state.servers)}
+      notify_event(state.on_event, {:server_killed, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:pause_server, server_id}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id),
+         :ok <- require_server_state(server, :running) do
+      ServerProcess.pause(server.server_pid)
+      suspend_server_health_monitor(server)
+      state = update_server(state, server_id, operational_state: :paused, intentional: true)
+      state = %{state | status: derive_cluster_status(state.servers)}
+      notify_event(state.on_event, {:server_paused, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:resume_server, server_id}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id),
+         :ok <- require_server_state(server, :paused) do
+      ServerProcess.resume(server.server_pid)
+      resume_server_health_monitor(server)
+      state = update_server(state, server_id, operational_state: :running, intentional: false)
+      state = %{state | status: derive_cluster_status(state.servers)}
+      notify_event(state.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:restart_server, server_id, opts}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id) do
+      case server.operational_state do
+        :running ->
+          ServerProcess.stop(server.server_pid, 30_000)
+          suspend_server_health_monitor(server)
+
+        :paused ->
+          ServerProcess.kill(server.server_pid)
+          Process.sleep(200)
+          suspend_server_health_monitor(server)
+
+        _stopped_or_crashed ->
+          :ok
+      end
+
+      case ServerProcess.relaunch(server.server_pid, opts) do
+        :ok ->
+          process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
+
+          case Health.wait_until_ready(server.endpoint,
+                 timeout: 60_000,
+                 process_check_fn: process_check_fn
+               ) do
+            :ok ->
+              resume_server_health_monitor(server)
+              state = update_server(state, server_id, operational_state: :running, intentional: false)
+              state = %{state | status: derive_cluster_status(state.servers)}
+              {:reply, :ok, state}
+
+            {:error, reason} ->
+              {:reply, {:error, reason}, state}
+          end
+
+        {:error, reason} ->
+          {:reply, {:error, reason}, state}
+      end
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:start_server, server_id, opts}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id),
+         :ok <- require_server_state_in(server, [:stopped, :killed, :crashed]) do
+      case ServerProcess.relaunch(server.server_pid, opts) do
+        :ok ->
+          process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
+
+          case Health.wait_until_ready(server.endpoint,
+                 timeout: 60_000,
+                 process_check_fn: process_check_fn
+               ) do
+            :ok ->
+              resume_server_health_monitor(server)
+              state = update_server(state, server_id, operational_state: :running, intentional: false)
+              state = %{state | status: derive_cluster_status(state.servers)}
+              {:reply, :ok, state}
+
+            {:error, reason} ->
+              {:reply, {:error, reason}, state}
+          end
+
+        {:error, reason} ->
+          {:reply, {:error, reason}, state}
+      end
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    stop_health_monitor(state, server_id)
-    notify_crash(state.on_crash, crash_info)
-    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-    {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+    server = state.servers[server_id]
+
+    if server && server.intentional do
+      if crash_info.signal in @intentional_exit_signals do
+        Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
+        {:noreply, state}
+      else
+        Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
+        stop_health_monitor(state, server_id)
+        notify_crash(state.on_crash, crash_info)
+        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+        state = update_server(state, server_id, operational_state: :crashed, intentional: false)
+        {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+      end
+    else
+      Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+      stop_health_monitor(state, server_id)
+      notify_crash(state.on_crash, crash_info)
+      notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+      state = if server, do: update_server(state, server_id, operational_state: :crashed), else: state
+      {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+    end
   end
 
   def handle_info({:server_unhealthy, server_id}, state) do
@@ -189,9 +347,10 @@ defmodule Toast.Deployment.ClusterController do
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when reason != :normal do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state)
+      when reason not in [:normal, :shutdown] do
     case find_server_by_health_monitor(state, pid) do
-      {server_id, _server} when state.status == :ready ->
+      {server_id, _server} when state.status in [:ready, :degraded] ->
         Logger.warning("HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting")
         server = state.servers[server_id]
 
@@ -242,6 +401,8 @@ defmodule Toast.Deployment.ClusterController do
            ),
          {:ok, state} <- start_all_health_monitors(state) do
       state = fetch_cluster_id_mapping(state)
+      servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
+      state = %{state | servers: servers}
       Logger.info("Cluster #{state.id} ready")
       {:ok, %{state | status: :ready}}
     else
@@ -301,7 +462,7 @@ defmodule Toast.Deployment.ClusterController do
 
       case Toast.Process.Supervisor.start_server(opts) do
         {:ok, pid} ->
-          updated_server = %{acc.servers[spec.id] | server_pid: pid}
+          updated_server = %{acc.servers[spec.id] | server_pid: pid, launch_spec: spec}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, spec.id, updated_server)}}}
 
         {:error, reason} ->
@@ -596,6 +757,51 @@ defmodule Toast.Deployment.ClusterController do
 
   defp find_server_by_health_monitor(state, pid) do
     Enum.find(state.servers, fn {_id, server} -> server.health_monitor == pid end)
+  end
+
+  # --- Control helpers ---
+
+  defp fetch_server(state, server_id) do
+    case Map.get(state.servers, server_id) do
+      nil -> {:error, :not_found}
+      server -> {:ok, server}
+    end
+  end
+
+  defp require_server_state(server, expected) do
+    if server.operational_state == expected,
+      do: :ok,
+      else: {:error, {:unexpected_state, server.operational_state}}
+  end
+
+  defp require_server_state_in(server, expected_list) do
+    if server.operational_state in expected_list,
+      do: :ok,
+      else: {:error, {:unexpected_state, server.operational_state}}
+  end
+
+  defp update_server(state, server_id, updates) do
+    server = state.servers[server_id]
+    updated = struct!(server, updates)
+    %{state | servers: Map.put(state.servers, server_id, updated)}
+  end
+
+  defp suspend_server_health_monitor(%{health_monitor: nil}), do: :ok
+  defp suspend_server_health_monitor(%{health_monitor: pid}), do: send(pid, :suspend)
+
+  defp resume_server_health_monitor(%{health_monitor: nil}), do: :ok
+  defp resume_server_health_monitor(%{health_monitor: pid}), do: send(pid, :resume)
+
+  defp derive_cluster_status(servers) do
+    server_list = Map.values(servers)
+    states = Enum.map(server_list, & &1.operational_state)
+
+    cond do
+      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) -> :failed
+      Enum.all?(states, &(&1 == :running)) -> :ready
+      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) -> :degraded
+      true -> :ready
+    end
   end
 
   # --- Helpers ---

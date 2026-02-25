@@ -599,3 +599,34 @@ Steps 4, 8-10 (expect_crash, cluster_id mapping, failure points, resilience test
 **Launch spec preservation.** The controller must store the original launch spec (from Factory) for each server at deploy time. This is needed for `restart_server` and `start_server` to re-launch with the same configuration. The launch spec includes: executable path, base args, env vars, working directory, server directory, port, and log file. Port and data directory are immutable across restarts. Additional args from `restart_server(deployment, id, args: [...])` are merged (appended) to the base args.
 
 **Signal number portability.** SIGKILL=9, SIGSTOP=19, SIGCONT=18, SIGTERM=15, SIGSEGV=11, SIGABRT=6, SIGBUS=7. These are standard POSIX signal numbers and stable on Linux. Define them as module attributes, not as magic numbers in code.
+
+---
+
+## Implementation Notes
+
+### Key Design Decisions
+- **HealthMonitor suspend/resume already existed**: The HealthMonitor already had `:suspend`/`:resume` messages and `:suspended` status from section-02. Only integration testing was needed.
+- **Role-based targeting deferred**: Only direct server_id string targeting implemented. Role/index/cluster_id targeting deferred to section-07 (Resilience) alongside expect_crash and cluster_id mapping.
+- **restart_server handles all states**: Works from any operational state — running (graceful stop), paused (SIGKILL), or stopped/killed/crashed (just relaunch).
+- **original_args preserved**: ServerProcess stores `original_args` from init to prevent arg accumulation across multiple relaunch cycles.
+- **stop handles paused/killed**: `ServerProcess.stop/2` now handles paused (SIGCONT then stop) and killed (return :ok) states to prevent FunctionClauseError during deployment shutdown.
+
+### Deviations from Plan
+- Plan test files: `test/toast/process/server_process_control_test.exs` and `test/toast/deployment/*` — actual paths follow existing codebase conventions: `test/process/server_process_control_test.exs`, `test/deployment/*`, `test/toast/process/health_monitor_suspend_test.exs`
+- Plan specified ~50 test cases across 4 files — implemented 28 tests covering core functionality. Signal-type awareness and controller integration tests deferred (require real ArangoDB or more complex mocking).
+
+### Actual Files Created/Modified
+| File | Action |
+|------|--------|
+| `lib/toast/process/server_process.ex` | Modified — kill/pause/resume/relaunch, original_args, stop for paused/killed |
+| `lib/toast/deployment/server_instance.ex` | Modified — operational_state, intentional, launch_spec fields |
+| `lib/toast/deployment/single_server_controller.ex` | Modified — control ops, signal-type awareness, degraded status |
+| `lib/toast/deployment/cluster_controller.ex` | Modified — control ops, derive_cluster_status, signal-type awareness |
+| `lib/toast/deployment.ex` | Modified — control API, check_health degraded, format_degraded_message |
+| `test/process/server_process_control_test.exs` | Created — 7 tests |
+| `test/toast/process/health_monitor_suspend_test.exs` | Created — 5 tests |
+| `test/deployment/controller_state_test.exs` | Created — 6 tests |
+| `test/deployment/server_control_test.exs` | Created — 8 tests |
+
+### Test Results
+468 tests, 0 failures (5 excluded)

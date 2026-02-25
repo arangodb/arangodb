@@ -18,6 +18,9 @@ defmodule Toast.Process.ServerProcess do
   require Logger
 
   @default_stop_timeout 30_000
+  @sigkill 9
+  @sigstop 19
+  @sigcont 18
 
   # --- Types ---
 
@@ -34,7 +37,7 @@ defmodule Toast.Process.ServerProcess do
           name: GenServer.name()
         ]
 
-  @type status :: :starting | :running | :stopping | :stopped | :crashed
+  @type status :: :starting | :running | :stopping | :stopped | :crashed | :paused | :killed
 
   @type crash_info :: %{
           exit_status: non_neg_integer(),
@@ -111,16 +114,31 @@ defmodule Toast.Process.ServerProcess do
     GenServer.call(server, :id)
   end
 
+  @spec kill(GenServer.server()) :: :ok | {:error, :not_running}
+  def kill(server), do: GenServer.call(server, :kill)
+
+  @spec pause(GenServer.server()) :: :ok | {:error, :not_running}
+  def pause(server), do: GenServer.call(server, :pause)
+
+  @spec resume(GenServer.server()) :: :ok | {:error, :not_paused}
+  def resume(server), do: GenServer.call(server, :resume)
+
+  @spec relaunch(GenServer.server(), keyword()) :: :ok | {:error, term()}
+  def relaunch(server, opts \\ []), do: GenServer.call(server, {:relaunch, opts})
+
   # --- Server callbacks ---
 
   @impl true
   def init(opts) do
     Process.flag(:trap_exit, true)
 
+    args = Keyword.get(opts, :args, [])
+
     state = %{
       id: Keyword.fetch!(opts, :id),
       executable: Keyword.fetch!(opts, :executable),
-      args: Keyword.get(opts, :args, []),
+      args: args,
+      original_args: args,
       env: Keyword.get(opts, :env, []),
       working_dir: Keyword.get(opts, :working_dir),
       exec_pid: nil,
@@ -165,6 +183,61 @@ defmodule Toast.Process.ServerProcess do
 
   def handle_call({:stop, _timeout}, _from, %{status: :stopping} = state) do
     {:reply, {:error, :already_stopping}, state}
+  end
+
+  # Paused process: resume (SIGCONT) then proceed with normal stop flow
+  def handle_call({:stop, timeout}, from, %{status: :paused} = state) do
+    :exec.kill(state.os_pid, @sigcont)
+    new_state = do_stop(%{state | status: :running}, timeout, from)
+    {:noreply, new_state}
+  end
+
+  # Killed process is already dead — just return :ok
+  def handle_call({:stop, _timeout}, _from, %{status: :killed} = state) do
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:kill, _from, %{status: status} = state)
+      when status in [:running, :paused] do
+    :exec.kill(state.os_pid, @sigkill)
+    {:reply, :ok, %{state | status: :killed}}
+  end
+
+  def handle_call(:kill, _from, state) do
+    {:reply, {:error, :not_running}, state}
+  end
+
+  def handle_call(:pause, _from, %{status: :running} = state) do
+    :exec.kill(state.os_pid, @sigstop)
+    {:reply, :ok, %{state | status: :paused}}
+  end
+
+  def handle_call(:pause, _from, state) do
+    {:reply, {:error, :not_running}, state}
+  end
+
+  def handle_call(:resume, _from, %{status: :paused} = state) do
+    :exec.kill(state.os_pid, @sigcont)
+    {:reply, :ok, %{state | status: :running}}
+  end
+
+  def handle_call(:resume, _from, state) do
+    {:reply, {:error, :not_paused}, state}
+  end
+
+  def handle_call({:relaunch, opts}, _from, %{status: status} = state)
+      when status in [:stopped, :killed, :crashed] do
+    extra_args = Keyword.get(opts, :args, [])
+    merged_state = %{state | exec_pid: nil, os_pid: nil, args: state.original_args ++ extra_args}
+
+    case do_launch(merged_state) do
+      {:ok, new_state} -> {:reply, :ok, new_state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:relaunch, _opts}, _from, %{status: status} = state) do
+    {:reply, {:error, {:already_launched, status}}, state}
   end
 
   def handle_call(:status, _from, state) do
@@ -226,7 +299,7 @@ defmodule Toast.Process.ServerProcess do
 
   @impl true
   def terminate(_reason, %{exec_pid: pid, status: status})
-      when pid != nil and status in [:running, :stopping] do
+      when pid != nil and status in [:running, :stopping, :paused] do
     :exec.stop(pid)
   catch
     :exit, _ -> :ok
@@ -299,6 +372,9 @@ defmodule Toast.Process.ServerProcess do
             stop_from: nil,
             stop_timer: nil
         }
+
+      :killed ->
+        %{state | exec_pid: nil, os_pid: nil}
 
       _ ->
         crash_info = %{

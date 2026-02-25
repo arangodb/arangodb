@@ -211,6 +211,9 @@ defmodule Toast.Deployment do
       :ready ->
         :ok
 
+      :degraded ->
+        {:error, format_degraded_message(deployment)}
+
       :failed ->
         {:error, format_crash_message(crash_info(deployment))}
 
@@ -218,6 +221,19 @@ defmodule Toast.Deployment do
         {:error, "Deployment not ready (status: #{other})"}
     end
   end
+
+  # --- Server control operations ---
+
+  def stop_server(%__MODULE__{} = d, target), do: controller_call_control(d, :stop_server, target)
+  def kill_server(%__MODULE__{} = d, target), do: controller_call_control(d, :kill_server, target)
+  def pause_server(%__MODULE__{} = d, target), do: controller_call_control(d, :pause_server, target)
+  def resume_server(%__MODULE__{} = d, target), do: controller_call_control(d, :resume_server, target)
+
+  def restart_server(%__MODULE__{} = d, target, opts \\ []),
+    do: controller_call_control(d, :restart_server, target, opts)
+
+  def start_server(%__MODULE__{} = d, target, opts \\ []),
+    do: controller_call_control(d, :start_server, target, opts)
 
   @doc "Retrieve diagnostics collected during shutdown."
   @spec diagnostics(t()) :: map() | nil
@@ -299,6 +315,26 @@ defmodule Toast.Deployment do
       {:ok, content} -> Toast.Diagnostics.CrashLogParser.parse(content)
       {:error, _} -> nil
     end
+  end
+
+  defp controller_call_control(deployment, op, target, opts \\ []) do
+    mod = controller_module(deployment)
+
+    case opts do
+      [] -> apply(mod, op, [deployment.controller, target])
+      opts -> apply(mod, op, [deployment.controller, target, opts])
+    end
+  catch
+    :exit, _ -> {:error, :controller_not_available}
+  end
+
+  defp format_degraded_message(deployment) do
+    downed =
+      servers(deployment)
+      |> Enum.filter(&(&1.operational_state in [:stopped, :killed, :paused]))
+
+    names = Enum.map(downed, & &1.id) |> Enum.join(", ")
+    "Deployment degraded: servers [#{names}] are intentionally down"
   end
 
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000

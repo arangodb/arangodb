@@ -11,7 +11,9 @@ defmodule Toast.Deployment.SingleServerController do
   alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
   alias Toast.PortAllocator
 
-  @type status :: :stopped | :starting | :ready | :stopping | :failed
+  @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
+
+  @intentional_exit_signals [nil, 15]
 
   # --- Client API ---
 
@@ -51,6 +53,17 @@ defmodule Toast.Deployment.SingleServerController do
     GenServer.call(server, :get_info)
   end
 
+  def stop_server(server, server_id), do: GenServer.call(server, {:stop_server, server_id})
+  def kill_server(server, server_id), do: GenServer.call(server, {:kill_server, server_id})
+  def pause_server(server, server_id), do: GenServer.call(server, {:pause_server, server_id})
+  def resume_server(server, server_id), do: GenServer.call(server, {:resume_server, server_id})
+
+  def restart_server(server, server_id, opts \\ []),
+    do: GenServer.call(server, {:restart_server, server_id, opts}, 65_000)
+
+  def start_server(server, server_id, opts \\ []),
+    do: GenServer.call(server, {:start_server, server_id, opts}, 65_000)
+
   # --- Server callbacks ---
 
   @impl true
@@ -86,7 +99,8 @@ defmodule Toast.Deployment.SingleServerController do
     {:reply, {:error, {:invalid_status, state.status}}, state}
   end
 
-  def handle_call({:shutdown, timeout}, _from, %{status: :ready} = state) do
+  def handle_call({:shutdown, timeout}, _from, %{status: status} = state)
+      when status in [:ready, :degraded] do
     new_state = do_shutdown(state, timeout)
     {:reply, :ok, new_state}
   end
@@ -140,19 +154,148 @@ defmodule Toast.Deployment.SingleServerController do
     {:reply, servers, state}
   end
 
+  def handle_call({:stop_server, server_id}, _from, state) do
+    with :ok <- validate_server_id(state, server_id),
+         :ok <- require_operational_state(state, :running) do
+      ServerProcess.stop(state.server.server_pid, 30_000)
+      suspend_health_monitor(state)
+      state = put_server(%{state | status: :degraded}, operational_state: :stopped, intentional: true)
+      notify_event(state.on_event, {:server_stopped, server_id, state.server.pid, nil, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:kill_server, server_id}, _from, state) do
+    with :ok <- validate_server_id(state, server_id),
+         :ok <- require_operational_state(state, :running) do
+      ServerProcess.kill(state.server.server_pid)
+      suspend_health_monitor(state)
+      state = put_server(%{state | status: :degraded}, operational_state: :killed, intentional: true)
+      notify_event(state.on_event, {:server_killed, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:pause_server, server_id}, _from, state) do
+    with :ok <- validate_server_id(state, server_id),
+         :ok <- require_operational_state(state, :running) do
+      ServerProcess.pause(state.server.server_pid)
+      suspend_health_monitor(state)
+      state = put_server(%{state | status: :degraded}, operational_state: :paused, intentional: true)
+      notify_event(state.on_event, {:server_paused, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:resume_server, server_id}, _from, state) do
+    with :ok <- validate_server_id(state, server_id),
+         :ok <- require_operational_state(state, :paused) do
+      ServerProcess.resume(state.server.server_pid)
+      resume_health_monitor(state)
+      state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+      notify_event(state.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+      {:reply, :ok, state}
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:restart_server, server_id, opts}, _from, state) do
+    with :ok <- validate_server_id(state, server_id) do
+      case state.server.operational_state do
+        :running ->
+          ServerProcess.stop(state.server.server_pid, 30_000)
+          suspend_health_monitor(state)
+
+        :paused ->
+          ServerProcess.kill(state.server.server_pid)
+          Process.sleep(200)
+          suspend_health_monitor(state)
+
+        _stopped_or_crashed ->
+          :ok
+      end
+
+      case ServerProcess.relaunch(state.server.server_pid, opts) do
+        :ok ->
+          case wait_for_ready(state, 60_000) do
+            :ok ->
+              resume_health_monitor(state)
+              state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+              {:reply, :ok, state}
+
+            {:error, reason} ->
+              {:reply, {:error, reason}, state}
+          end
+
+        {:error, reason} ->
+          {:reply, {:error, reason}, state}
+      end
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:start_server, server_id, opts}, _from, state) do
+    with :ok <- validate_server_id(state, server_id),
+         :ok <- require_operational_state_in(state, [:stopped, :killed, :crashed]) do
+      case ServerProcess.relaunch(state.server.server_pid, opts) do
+        :ok ->
+          case wait_for_ready(state, 60_000) do
+            :ok ->
+              resume_health_monitor(state)
+              state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+              {:reply, :ok, state}
+
+            {:error, reason} ->
+              {:reply, {:error, reason}, state}
+          end
+
+        {:error, reason} ->
+          {:reply, {:error, reason}, state}
+      end
+    else
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    stop_health_monitor(state)
-    notify_crash(state.on_crash, crash_info)
-    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-    state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}}, health_monitor: nil)
-    {:noreply, state}
+    if state.server.intentional do
+      if crash_info.signal in @intentional_exit_signals do
+        # Intentional stop (SIGTERM or normal exit) -- not a real crash
+        Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
+        {:noreply, state}
+      else
+        # Real crash during intentional shutdown (e.g., SIGSEGV)
+        Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
+        stop_health_monitor(state)
+        notify_crash(state.on_crash, crash_info)
+        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+          operational_state: :crashed, intentional: false, health_monitor: nil)
+        {:noreply, state}
+      end
+    else
+      Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+      stop_health_monitor(state)
+      notify_crash(state.on_crash, crash_info)
+      notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+      state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+        operational_state: :crashed, health_monitor: nil)
+      {:noreply, state}
+    end
   end
 
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, killing process")
-    stop_server(state, 5_000)
+    stop_server_process(state, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
     notify_crash(state.on_crash, crash_info)
     notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
@@ -160,8 +303,9 @@ defmodule Toast.Deployment.SingleServerController do
     {:noreply, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, reason}, state) when reason != :normal do
-    if pid == state.server.health_monitor and state.status == :ready do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state)
+      when reason not in [:normal, :shutdown] do
+    if pid == state.server.health_monitor and state.status in [:ready, :degraded] do
       Logger.warning("HealthMonitor died unexpectedly (#{inspect(reason)}), restarting")
 
       case start_health_monitor(state) do
@@ -189,7 +333,7 @@ defmodule Toast.Deployment.SingleServerController do
          _ = Logger.debug("#{id}: allocated port #{port}"),
          state = put_server(state, port: port, endpoint: "http://127.0.0.1:#{port}"),
          {:ok, launch_spec} <- Factory.build_single_server(state.config, id, port),
-         state = put_server(state, log_file: launch_spec.log_file, server_dir: launch_spec.server_dir),
+         state = put_server(state, log_file: launch_spec.log_file, server_dir: launch_spec.server_dir, launch_spec: launch_spec),
          {:ok, server_pid} <- start_server_process(launch_spec),
          _ = Logger.debug("#{id}: server process started (#{inspect(server_pid)})"),
          :ok <- ServerProcess.launch(server_pid),
@@ -200,7 +344,7 @@ defmodule Toast.Deployment.SingleServerController do
          :ok <- wait_for_ready(state, timeout),
          {:ok, monitor_pid} <- start_health_monitor(state) do
       Logger.info("Deployment #{id} ready at #{state.server.endpoint}")
-      {:ok, put_server(%{state | status: :ready}, health_monitor: monitor_pid)}
+      {:ok, put_server(%{state | status: :ready}, health_monitor: monitor_pid, operational_state: :running)}
     else
       {:error, reason} ->
         Logger.error("Deploy failed for #{id}: #{inspect(reason)}")
@@ -243,7 +387,7 @@ defmodule Toast.Deployment.SingleServerController do
   defp do_cleanup(state, timeout) do
     Logger.debug("Cleaning up #{state.server.id}")
     stop_health_monitor(state)
-    stop_server(state, timeout)
+    stop_server_process(state, timeout)
     notify_event(state.on_event, {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()})
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.server.id}: diagnostics collected")
@@ -266,9 +410,9 @@ defmodule Toast.Deployment.SingleServerController do
     }
   end
 
-  defp stop_server(%{server: %{server_pid: nil}}, _timeout), do: :ok
+  defp stop_server_process(%{server: %{server_pid: nil}}, _timeout), do: :ok
 
-  defp stop_server(%{server: %{server_pid: pid}}, timeout) do
+  defp stop_server_process(%{server: %{server_pid: pid}}, timeout) do
     ServerProcess.stop(pid, timeout)
     DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
   catch
@@ -280,7 +424,7 @@ defmodule Toast.Deployment.SingleServerController do
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.server.id} due to: #{inspect(reason)}")
     stop_health_monitor(state)
-    stop_server(state, 5_000)
+    stop_server_process(state, 5_000)
     put_server(%{state | status: :failed, error: reason}, server_pid: nil, health_monitor: nil)
   end
 
@@ -308,6 +452,30 @@ defmodule Toast.Deployment.SingleServerController do
   catch
     :exit, _ -> :ok
   end
+
+  # --- Control helpers ---
+
+  defp validate_server_id(state, server_id) do
+    if state.server.id == server_id, do: :ok, else: {:error, :not_found}
+  end
+
+  defp require_operational_state(state, expected) do
+    if state.server.operational_state == expected,
+      do: :ok,
+      else: {:error, {:unexpected_state, state.server.operational_state}}
+  end
+
+  defp require_operational_state_in(state, expected_list) do
+    if state.server.operational_state in expected_list,
+      do: :ok,
+      else: {:error, {:unexpected_state, state.server.operational_state}}
+  end
+
+  defp suspend_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
+  defp suspend_health_monitor(%{server: %{health_monitor: pid}}), do: send(pid, :suspend)
+
+  defp resume_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
+  defp resume_health_monitor(%{server: %{health_monitor: pid}}), do: send(pid, :resume)
 
   # --- Helpers ---
 
