@@ -48,6 +48,15 @@ function metricsApiSuite() {
       assertTrue(uptime >= 0, 'uptime should be non-negative');
     },
 
+    test_testing_statistics_wrong_cmd: function () {
+      const cmd = "/_admin/statistics/asd123";
+      const doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertTrue(doc.error);
+      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+    },
+
     test_metrics_contains_expected_metric_names: function () {
       const res = arango.GET_RAW('/_admin/metrics');
       assertEqual(res.code, 200);
@@ -60,6 +69,38 @@ function metricsApiSuite() {
       expected.forEach(function (name) {
         assertTrue(body.indexOf(name) !== -1, 'response should contain metric: ' + name);
       });
+    },
+
+    test_testing_async_requests_: function () {
+      const ASYNC_METRIC = 'arangodb_http_request_statistics_async_requests_total';
+
+      function getAsyncCount() {
+        const res = arango.GET_RAW('/_admin/metrics');
+        assertEqual(res.code, 200);
+        const body = typeof res.body === 'string' ? res.body : String(res.body);
+        const v = internal.parsePrometheusMetric(body, ASYNC_METRIC);
+        return (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
+      }
+
+      let async_requests_1 = getAsyncCount();
+
+      let doc = arango.PUT_RAW('/_api/version', '', { 'X-Arango-Async': 'true' });
+      assertEqual(doc.code, 202);
+
+      internal.sleep(1);
+
+      let async_requests_2 = getAsyncCount();
+      assertTrue(async_requests_2 >= async_requests_1 + 1,
+        'async request should increase async counter: ' + async_requests_1 + ' -> ' + async_requests_2);
+
+      doc = arango.PUT_RAW('/_api/version', '');
+      assertEqual(doc.code, 200);
+
+      internal.sleep(1);
+
+      let async_requests_3 = getAsyncCount();
+      assertEqual(async_requests_2, async_requests_3,
+        'sync request should not increase async counter');
     },
   };
 }

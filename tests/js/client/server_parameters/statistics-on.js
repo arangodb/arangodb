@@ -42,11 +42,27 @@ function testSuite() {
       const res = arango.GET_RAW("/_admin/metrics");
       assertEqual(200, res.code, "GET /_admin/metrics should return 200 when server.statistics is true");
       const body = typeof res.body === 'string' ? res.body : String(res.body);
-      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1);
-      assertTrue(body.indexOf('arangodb_process_statistics_resident_set_size') !== -1);
-      assertTrue(body.indexOf('arangodb_http_request_statistics_total_requests_total') !== -1);
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain time-related metric (uptime)");
       const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
-      assertTrue(uptime !== undefined && uptime > 0, "uptime metric should be present and positive when statistics are on");
+      assertTrue(typeof uptime === 'number' && !Number.isNaN(uptime) && uptime >= 0,
+        "Uptime metric should be present and non-negative");
+
+      assertTrue(uptime > 0, "Statistics should be on (uptime > 0)");
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain server statistics");
+      assertTrue(uptime !== undefined && uptime >= 0, "server-equivalent: server uptime should be valid");
+
+      assertTrue(body.indexOf('arangodb_process_statistics_resident_set_size') !== -1,
+        "Response should contain process/system statistics");
+      const residentSetSize = internal.parsePrometheusMetric(body, 'arangodb_process_statistics_resident_set_size');
+      assertTrue(residentSetSize !== undefined && residentSetSize >= 0,
+        "At least one process statistic (resident_set_size) should be present and valid");
+
+      assertTrue(body.indexOf('arangodb_http_request_statistics_total_requests_total') !== -1,
+        "Fesponse should contain http request statistics");
     },
 
     testMetricsAlwaysThere : function() {
