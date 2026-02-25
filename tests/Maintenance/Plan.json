@@ -565,12 +565,130 @@ R"=(
       "options": {}
     }
   },
-  "AsyncReplication": {},
-  "Views": {
-    "_system": {}
+  "2010088": {
+    "name": "foobaz",
+    "keyOptions": {
+      "allowUserKeys": true,
+      "lastValue": 0,
+      "type": "traditional"
+    },
+    "id": "2010088",
+    "isSystem": false,
+    "isSmart": false,
+    "numberOfShards": 6,
+    "shardKeys": [
+      "_key"
+    ],
+    "statusString": "loaded",
+    "shardingStrategy": "hash",
+    "waitForSync": false,
+    "deleted": false,
+    "type": 2,
+    "indexes": [
+      {
+        "fields": [
+          "_key"
+        ],
+        "id": "0",
+        "sparse": false,
+        "type": "primary",
+        "unique": true
+      }
+    ],
+    "cacheEnabled": false,
+    "replicationFactor": 2,
+    "status": 3,
+    "shards": {
+      "s2010092": [
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
+      ],
+      "s2010091": [
+        "PRMR-3418c83d-0201-4742-a8cd-7d3894811cc2",
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
+      ],
+      "s2010094": [
+        "PRMR-3418c83d-0201-4742-a8cd-7d3894811cc2",
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5"
+      ],
+      "s2010089": [
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
+      ],
+      "s2010090": [
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
+        "PRMR-3418c83d-0201-4742-a8cd-7d3894811cc2"
+      ],
+      "s2010093": [
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3",
+        "PRMR-3418c83d-0201-4742-a8cd-7d3894811cc2"
+      ]
+    }
   },
-  "Version": 50,
-  "Singles": {},
-  "Lock": "UNLOCKED"
+  "2010059": {
+    "name": "_graphs",
+    "keyOptions": {
+      "allowUserKeys": true,
+      "lastValue": 0,
+      "type": "traditional"
+    },
+    "id": "2010059",
+    "isSystem": true,
+    "isSmart": false,
+    "numberOfShards": 1,
+    "shardKeys": [
+      "_key"
+    ],
+    "statusString": "loaded",
+    "shardingStrategy": "hash",
+    "waitForSync": false,
+    "deleted": false,
+    "type": 2,
+    "indexes": [
+      {
+        "fields": [
+          "_key"
+        ],
+        "id": "0",
+        "sparse": false,
+        "type": "primary",
+        "unique": true
+      }
+    ],
+    "cacheEnabled": false,
+    "replicationFactor": 2,
+    "status": 3,
+    "shards": {
+      "s2010060": [
+        "PRMR-37174faa-1b91-4ba3-9d22-cf10513ca4e5",
+        "PRMR-62940941-7b13-4333-86a4-819deacff9e3"
+      ]
+    }
+  }
+}
+},
+"Coordinators": {
+"CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6": "none",
+"CRDN-067429e5-38b7-4917-8b51-0eb170d73079": "none"
+},
+"Databases": {
+"_system": {
+  "id": "1",
+  "name": "_system"
+},
+"foo": {
+  "coordinator": "CRDN-7f7de680-14b9-4337-8c6f-207ef9a366a6",
+  "id": "2010058",
+  "name": "foo",
+  "options": {}
+}
+},
+"AsyncReplication": {},
+"Views": {
+"_system": {}
+},
+"Version": 50,
+"Singles": {},
+"Lock": "UNLOCKED"
 }
 )="
