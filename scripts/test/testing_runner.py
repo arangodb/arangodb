@@ -458,6 +458,7 @@ class TestingRunner:
         except Exception as ex:
             logging.info(f"Failed to create {verb} zip: {str(ex)}")
             self.append_report_txt(f"Failed to create {verb} zip: {str(ex)}")
+        shutil.rmtree(zip_dir)
 
     def cleanup_unneeded_binary_files(self):
         """delete all files not needed for the crashreport binaries"""
@@ -533,6 +534,7 @@ class TestingRunner:
             self.mp_zip_tar(coredumps, core_zip_dir, crash_report_file, 'crash report', 'crashreport')
             for one_file in coredumps:
                 one_file.unlink(missing_ok=True)
+            
         if self.crashed:
             binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
                 f"binaries-{self.cfg.datetime_format}"
