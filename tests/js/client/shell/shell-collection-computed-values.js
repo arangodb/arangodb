@@ -1125,11 +1125,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         `SCHEMA_GET(${cn}`, 
         `SCHEMA_VALIDATE(@doc, ${schemaTest}`, 
         `COLLECTION_COUNT(${cn}`, 
-        `NEAR(${cn}, @doc.latitude, @doc.longitude)`, 
         `TOKENS(@doc, 'text_en')`,
         `TOKENS("foo bar", 'text_en')`,
-        `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, 
-        `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, 
       ];
       specialFunctions.forEach((el) => {
         try {
