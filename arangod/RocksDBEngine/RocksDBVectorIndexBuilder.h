@@ -117,7 +117,7 @@ class VectorIndexBuildManager {
  public:
   VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  Result build();
+  Result build(std::shared_ptr<RocksDBIndex> rocksDBIndex);
 
  private:
   RocksDBVectorIndex& _index;

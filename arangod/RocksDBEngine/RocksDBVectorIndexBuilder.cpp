@@ -24,6 +24,7 @@
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
 #include <chrono>
@@ -285,7 +286,8 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build() {
+Result VectorIndexBuildManager::build(
+    std::shared_ptr<RocksDBIndex> rocksDBIndex) {
   rocksdb::Slice upper(_bounds.end());
   rocksdb::ReadOptions ro(false, false);
   ro.prefix_same_as_start = true;
@@ -326,13 +328,8 @@ Result VectorIndexBuildManager::build() {
   _index.applyTrainingResult(std::move(result));
   _index.setBuildState(VectorIndexBuildState::kBuilding);
 
-  auto wrappedIndex =
-      std::static_pointer_cast<RocksDBIndex>(_rcoll->lookupIndex(_index.id()));
-  if (wrappedIndex == nullptr) {
-    return {TRI_ERROR_INTERNAL, "Internal error: vector index not found"};
-  }
   auto builder = std::make_shared<RocksDBBuilderIndex>(
-      std::move(wrappedIndex), _rcoll->meta().numberDocuments(),
+      std::move(rocksDBIndex), _rcoll->meta().numberDocuments(),
       /*parallelism*/ 2);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);

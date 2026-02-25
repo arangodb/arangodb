@@ -312,11 +312,19 @@ void RocksDBVectorIndex::startBuildThread() {
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  _buildThread = std::jthread([this] {
+  auto rocksDBIndex =
+      std::static_pointer_cast<RocksDBIndex>(_collection.lookupIndex(id()));
+  if (rocksDBIndex == nullptr) {
+    LOG_TOPIC("e164e", ERR, Logger::ENGINES)
+        << "[index=" << id().id() << "] Vector index not found";
+    return;
+  }
+  _buildThread = std::jthread([this, rocksDBIndex] {
+    LOG_DEVEL << "Start build thread";
     auto const indexId = id().id();
     try {
       vector::VectorIndexBuildManager builder(*this);
-      if (auto const res = builder.build(); res.fail()) {
+      if (auto const res = builder.build(std::move(rocksDBIndex)); res.fail()) {
         LOG_TOPIC("e164b", ERR, Logger::ENGINES)
             << "[index=" << indexId
             << "] Vector build failed: " << res.errorMessage();
@@ -341,7 +349,7 @@ void RocksDBVectorIndex::startBuildThread() {
 }
 
 void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
-  _buildState.store(state, std::memory_order_relaxed);
+  _buildState.store(state);
 }
 
 /// @brief inserts a document into the index
