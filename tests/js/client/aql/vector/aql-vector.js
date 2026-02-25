@@ -43,7 +43,7 @@ const {
     waitForAllVectorIndexesBuildState,
     waitForAllVectorIndexesBuildStateOnDBServers,
     withSuffix,
-} = require("@arangodb/testutils/vector-generator");
+} = require("@arangodb/testutils/vector-index-common");
 
 const {
     versionHas

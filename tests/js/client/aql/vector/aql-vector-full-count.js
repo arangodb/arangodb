@@ -36,7 +36,7 @@ const {
     waitForVectorIndexState,
     waitForAllVectorIndexesBuildStateOnDBServers,
     withSuffix,
-} = require("@arangodb/testutils/vector-generator");
+} = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
 const dbName = "vectorDB";
