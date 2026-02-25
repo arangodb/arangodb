@@ -749,8 +749,6 @@ function InsertMultipleDocumentsExplainSuite(params) {
       const queries = [
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: false}`,
-        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwrite: true}`,
-        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwrite: false}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'replace'}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'update'}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'ignore'}`,
@@ -761,8 +759,6 @@ function InsertMultipleDocumentsExplainSuite(params) {
       const queriesWithVariables = [
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: false}`,
-        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwrite: true}`,
-        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwrite: false}`,
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'replace'}`,
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'update'}`,
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'ignore'}`,
