@@ -1329,7 +1329,7 @@ class Parser;
 #include "Aql/AstNode.h"
 #include "Aql/grammar.hpp"
 #include "Aql/Functions.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*

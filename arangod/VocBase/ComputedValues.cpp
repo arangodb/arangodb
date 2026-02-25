@@ -28,7 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Expression.h"
 #include "Aql/LazyConditions.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"

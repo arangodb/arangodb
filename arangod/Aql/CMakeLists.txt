@@ -75,7 +75,6 @@ add_library(arango_aql STATIC
   OptimizerRulesOptionsProvider.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
-  Parser.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
   Quantifier.cpp
@@ -122,8 +121,6 @@ add_library(arango_aql STATIC
   VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  grammar.cpp
-  tokens.cpp
 )
 
 if (USE_V8)
@@ -134,6 +131,7 @@ endif()
 add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
+add_subdirectory(Parser)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql
@@ -148,37 +146,3 @@ target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-################################################################################
-## BISON/FLEX
-################################################################################
-
-#note that we check - in the generated FLEX / BISON files, therefore they are
-#generate inside the source tree
-
-if (USE_MAINTAINER_MODE AND NOT MSVC)
-  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
-
-  add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/tokens.cpp
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${FLEX_EXECUTABLE} -L -otokens.cpp tokens.ll
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
-    VERBATIM
-  )
-
-  add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/grammar.cpp
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
-      ${BISON_EXECUTABLE} grammar.cpp grammar.y
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
-    VERBATIM
-  )
-endif ()
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
-endif ()
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)
-endif ()
