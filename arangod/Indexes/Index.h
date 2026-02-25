@@ -79,7 +79,7 @@ struct FulltextIndexLimits {
   static constexpr int maxSearchWords = 32;
 };
 
-class Index : public std::enable_shared_from_this<Index> {
+class Index {
  public:
   Index() = delete;
   Index(Index const&) = delete;

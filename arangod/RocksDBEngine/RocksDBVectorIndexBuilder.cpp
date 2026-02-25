@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
+#include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
@@ -30,6 +31,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <string>
 #include <thread>
 
 #include "Assertions/Assert.h"
@@ -271,38 +273,55 @@ VectorIndexBuildManager::VectorIndexBuildManager(RocksDBVectorIndex& index)
     : _index(index),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
       _rootDB(_engine.db()->GetRootDB()),
-      _rcoll(
-          static_cast<RocksDBCollection*>(index.collection().getPhysical())) {}
+      _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
+      _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
-  auto& coll = _index.collection();
-  auto const bounds = _rcoll->bounds();
-
-  rocksdb::Slice upper(bounds.end());
+Result VectorIndexBuildManager::build() {
+  rocksdb::Slice upper(_bounds.end());
   rocksdb::ReadOptions ro(false, false);
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
 
   auto* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
-  std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
-  trainIt->Seek(bounds.start());
-
   VectorIndexTrainer trainer(_index.getDefinition(), _index.sparse(),
-                             _index.fields(), coll.name(), _index.id().id());
-  auto result = trainer.train(*trainIt, upper);
+                             _index.fields(), _index.collection().name(),
+                             _index.id().id());
+
+  TrainingResult result;
+  constexpr int kMaxRetries = 10;
+  for (int retry = 0; retry < kMaxRetries; ++retry) {
+    std::unique_ptr<rocksdb::Iterator> trainIt(_rootDB->NewIterator(ro, docCF));
+    trainIt->Seek(_bounds.start());
+    try {
+      result = trainer.train(*trainIt, upper);
+      break;
+    } catch (basics::Exception const& ex) {
+      bool noDocsForTraining =
+          ex.code() == TRI_ERROR_NOT_IMPLEMENTED &&
+          ex.message().find("documents must be present") != std::string::npos;
+      if (!noDocsForTraining || retry == kMaxRetries - 1) {
+        throw;
+      }
+      // Iterator may not see documents yet (e.g. ensureIndex then insert).
+      // Retry with a fresh iterator after a short delay.
+      std::this_thread::sleep_for(std::chrono::milliseconds(50 * (retry + 1)));
+    }
+  }
 
   LOG_TOPIC("e163b", INFO, Logger::ENGINES)
-      << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
+      << "[shard=" << _index.collection().name()
+      << ", index=" << _index.id().id() << "] "
       << "Training complete. Ingesting vectors via RocksDBBuilderIndex.";
 
   _index.applyTrainingResult(std::move(result));
   _index.setBuildState(VectorIndexBuildState::kBuilding);
 
-  TRI_ASSERT(indexSelf != nullptr);
-  auto selfRocksDB = std::static_pointer_cast<RocksDBIndex>(indexSelf);
+  std::shared_ptr<Index> indexPtr = _rcoll->lookupIndex(_index.id());
+  TRI_ASSERT(indexPtr != nullptr);
   auto builder = std::make_shared<RocksDBBuilderIndex>(
-      selfRocksDB, _rcoll->meta().numberDocuments(), /*parallelism*/ 2);
+      std::static_pointer_cast<RocksDBIndex>(std::move(indexPtr)),
+      _rcoll->meta().numberDocuments(), /*parallelism*/ 2);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
   std::move(locker.lock()).waitAndGet();
@@ -310,11 +329,13 @@ Result VectorIndexBuildManager::build(std::shared_ptr<Index> indexSelf) {
 
   if (res.fail()) {
     LOG_TOPIC("e166b", ERR, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
+        << "[shard=" << _index.collection().name()
+        << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
   } else {
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", index=" << _index.id().id() << "] "
+        << "[shard=" << _index.collection().name()
+        << ", index=" << _index.id().id() << "] "
         << "Deferred training and ingestion completed.";
   }
 

@@ -388,6 +388,14 @@ void RocksDBCollection::freeMemory() noexcept {
       // unloading drops any potential caches
       idx->unload();
 
+      // Join vector index build thread before dropping the index so the
+      // destructor does not run in the build thread (self-join would
+      // deadlock and cause std::terminate).
+      // TODO(jbajic): Add a way to gracefully remove the indexes
+      if (idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+        static_cast<RocksDBVectorIndex*>(idx.get())->joinBuildThread();
+      }
+
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         // we keep the primary index object around, because it can
         // be referred to by the collection object with a pointer.

@@ -134,10 +134,23 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
 }
 
-RocksDBVectorIndex::~RocksDBVectorIndex() {
-  // TODO(jbajic): Add a way to cancel the build thread in case of db/col/index
-  // being dropped
+void RocksDBVectorIndex::joinBuildThread() noexcept {
+  if (!_buildThread.joinable()) {
+    return;
+  }
+  // Avoid self-join: if the current thread is the build thread, joining would
+  // deadlock and the runtime can call std::terminate().
+  if (std::this_thread::get_id() == _buildThread.get_id()) {
+    return;
+  }
+  _buildThread.request_stop();
   _buildThread.join();
+}
+
+RocksDBVectorIndex::~RocksDBVectorIndex() {
+  // Join from this thread only if we are not the build thread (otherwise
+  // ~jthread() would run in the build thread and effectively self-join).
+  joinBuildThread();
 }
 
 /// @brief Test if this index matches the definition
@@ -285,32 +298,39 @@ void RocksDBVectorIndex::tryBuilding() {
   if (!shouldTriggerTraining()) {
     return;
   }
-  // Keep this index alive for the build thread without requiring collection
-  // lookup (index may not be registered yet, e.g. during createIndex fill).
-  auto indexSelf = shared_from_this();
   TRI_ASSERT(_buildState == VectorIndexBuildState::kUninitialized);
   setBuildState(VectorIndexBuildState::kTraining);
-  startBuildThread(std::move(indexSelf));
+  startBuildThread();
 }
 
-void RocksDBVectorIndex::startBuildThread(std::shared_ptr<Index> indexSelf) {
+void RocksDBVectorIndex::startBuildThread() {
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
       << " documents). Starting deferred training.";
 
-  _buildThread = std::jthread(
-      [this, indexSelf = std::move(indexSelf), indexId = _iid.id()] {
-        vector::VectorIndexBuildManager builder(*this);
-        if (auto const res = builder.build(indexSelf); res.fail()) {
-          LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-              << "[shard=" << collection().name() << ", index=" << indexId
-              << "] Vector build failed: " << res.errorMessage();
-          setBuildState(VectorIndexBuildState::kUninitialized);
-
-          return;
-        }
-        setBuildState(VectorIndexBuildState::kReady);
-      });
+  _buildThread = std::jthread([this] {
+    auto const indexId = id().id();
+    try {
+      vector::VectorIndexBuildManager builder(*this);
+      if (auto const res = builder.build(); res.fail()) {
+        LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+            << "[index=" << indexId
+            << "] Vector build failed: " << res.errorMessage();
+        this->setBuildState(VectorIndexBuildState::kUninitialized);
+        return;
+      }
+      this->setBuildState(VectorIndexBuildState::kReady);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e164c", ERR, Logger::ENGINES)
+          << "[index=" << indexId
+          << "] Vector build thread exception: " << ex.what();
+      this->setBuildState(VectorIndexBuildState::kUninitialized);
+    } catch (...) {
+      LOG_TOPIC("e164d", ERR, Logger::ENGINES)
+          << "[index=" << indexId << "] Vector build thread unknown exception";
+      this->setBuildState(VectorIndexBuildState::kUninitialized);
+    }
+  });
 #ifdef TRI_HAVE_SYS_PRCTL_H
   pthread_setname_np(_buildThread.native_handle(), "VectorIndexBuilder");
 #endif

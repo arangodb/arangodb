@@ -114,6 +114,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void setBuildState(VectorIndexBuildState state) noexcept;
 
+  /// @brief Join the build thread from another thread (e.g. before dropping the
+  /// index). Must not be called from the build thread itself (avoids self-join
+  /// which would deadlock and cause std::terminate).
+  void joinBuildThread() noexcept;
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -128,7 +133,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void tryBuilding();
 
-  void startBuildThread(std::shared_ptr<Index> indexSelf);
+  void startBuildThread();
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(

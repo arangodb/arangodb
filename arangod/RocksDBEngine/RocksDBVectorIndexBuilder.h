@@ -27,6 +27,7 @@
 #include "Basics/Result.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 
 #include <cstdint>
 #include <memory>
@@ -116,15 +117,14 @@ class VectorIndexBuildManager {
  public:
   explicit VectorIndexBuildManager(RocksDBVectorIndex& index);
 
-  /// @param indexSelf  shared_ptr to this index (keeps it alive; must be
-  ///                   non-null). Passed by the caller to avoid lookup.
-  Result build(std::shared_ptr<Index> indexSelf);
+  Result build();
 
  private:
   RocksDBVectorIndex& _index;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;
   RocksDBCollection* _rcoll;
+  RocksDBKeyBounds const _bounds;
 };
 
 }  // namespace arangodb::vector
