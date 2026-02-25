@@ -97,8 +97,11 @@ function VectorIndexHintsSuite(expectedTrained) {
           value: i,
         });
       }
-      if (seed % 2 === 0) {
-        collection.insert(docs);
+      const batchSize = 100;
+      const numBatches = Math.ceil(docs.length / batchSize);
+      const ensureIndexSlot = seed % (numBatches + 1);
+
+      const ensureIndex = () => {
         collection.ensureIndex({
           name: "vector_l2",
           type: "vector",
@@ -109,7 +112,6 @@ function VectorIndexHintsSuite(expectedTrained) {
             nLists: 5,
           },
         });
-
         collection.ensureIndex({
           name: "vector_l2_secondary",
           type: "vector",
@@ -120,7 +122,6 @@ function VectorIndexHintsSuite(expectedTrained) {
             nLists: 3,
           },
         });
-
         collection.ensureIndex({
           name: "vector_l2_with_filter",
           type: "vector",
@@ -132,41 +133,18 @@ function VectorIndexHintsSuite(expectedTrained) {
             nLists: 4,
           },
         });
-      } else {
-        collection.ensureIndex({
-          name: "vector_l2",
-          type: "vector",
-          fields: ["vector"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 5,
-          },
-        });
+      };
 
-        collection.ensureIndex({
-          name: "vector_l2_secondary",
-          type: "vector",
-          fields: ["vector"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 3,
-          },
-        });
-
-        collection.ensureIndex({
-          name: "vector_l2_with_filter",
-          type: "vector",
-          fields: ["vector"],
-          storedValues: ["value"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 4,
-          },
-        });
-        collection.insert(docs);
+      for (let i = 0; i < numBatches; i++) {
+        if (i === ensureIndexSlot) {
+          ensureIndex();
+        }
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, docs.length);
+        collection.insert(docs.slice(start, end));
+      }
+      if (ensureIndexSlot === numBatches) {
+        ensureIndex();
       }
       const state = expectedTrained ? "ready" : "uninitialized";
       const timeoutSec = expectedTrained ? 60 : 5;

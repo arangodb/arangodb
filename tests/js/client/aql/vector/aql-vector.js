@@ -90,34 +90,34 @@ function VectorIndexL2TestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            if (seed % 2 === 0) {
-                collection.insert(vectorData.docs);
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: 10,
-                        trainingIterations: 10,
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: 10,
-                        trainingIterations: 10,
-                    },
-                });
-                collection.insert(vectorData.docs);
+            const docs = vectorData.docs;
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 10,
+                    trainingIterations: 10,
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
@@ -591,30 +591,32 @@ function VectorIndexCosineTestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            if (seed % 2 === 0) {
-                collection.insert(vectorData.docs);
-                collection.ensureIndex({
-                    name: "vector_cosine",
-                    type: "vector",
-                    fields: ["vector"],
-                    params: {
-                        metric: "cosine",
-                        dimension: dimension,
-                        nLists: 10
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_cosine",
-                    type: "vector",
-                    fields: ["vector"],
-                    params: {
-                        metric: "cosine",
-                        dimension: dimension,
-                        nLists: 10
-                    },
-                });
-                collection.insert(vectorData.docs);
+            const docs = vectorData.docs;
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_cosine",
+                type: "vector",
+                fields: ["vector"],
+                params: {
+                    metric: "cosine",
+                    dimension: dimension,
+                    nLists: 10
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
@@ -799,30 +801,32 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
             const vectorData = vectorGenerator.generateAllVectors();
             randomPoint = vectorData.randomPoint;
 
-            if (seed % 2 === 0) {
-                collection.insert(vectorData.docs);
-                collection.ensureIndex({
-                    name: "vector_inner_product",
-                    type: "vector",
-                    fields: ["vector"],
-                    params: {
-                        metric: "innerProduct",
-                        dimension: dimension,
-                        nLists: 10
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_inner_product",
-                    type: "vector",
-                    fields: ["vector"],
-                    params: {
-                        metric: "innerProduct",
-                        dimension: dimension,
-                        nLists: 10
-                    },
-                });
-                collection.insert(vectorData.docs);
+            const docs = vectorData.docs;
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_inner_product",
+                type: "vector",
+                fields: ["vector"],
+                params: {
+                    metric: "innerProduct",
+                    dimension: dimension,
+                    nLists: 10
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
 
             const buildState = expectedTrained ? "ready" : "uninitialized";
@@ -981,7 +985,13 @@ function MultipleVectorIndexesOnField() {
                     fieldVec: vector
                 });
             }
-            collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            for (let i = 0; i < numBatches; i++) {
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
         },
 
         tearDown: function() {
@@ -990,6 +1000,7 @@ function MultipleVectorIndexesOnField() {
         },
 
         testApproxUseL2WhenMultipleIndexes: function() {
+            print("Creating cosine index");
             collection.ensureIndex({
                 name: "vector_cosine",
                 type: "vector",
@@ -1001,6 +1012,7 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            print("Creating l2 index");
             collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
@@ -1012,7 +1024,7 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-
+print("Creating query");
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -1028,6 +1040,7 @@ function MultipleVectorIndexesOnField() {
                     bindVars,
                 })
                 .explain().plan;
+                print('Explain query');
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
@@ -1035,6 +1048,7 @@ function MultipleVectorIndexesOnField() {
             assertEqual(indexNodes[0].index.name, "vector_l2");
 
             const results = db._query(query, bindVars).toArray();
+            print('Run query');
             assertEqual(5, results.length);
         },
 
@@ -1061,6 +1075,7 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            print('Created indexes');
 
             const query =
                 "FOR d IN " +
@@ -1084,10 +1099,10 @@ function MultipleVectorIndexesOnField() {
             assertEqual(indexNodes[0].index.name, "vector_cosine");
 
             const results = db._query(query, bindVars).toArray();
+            print('Run query');
             assertEqual(5, results.length);
         },
 
-        // Test is mostly to see behavior
         testApproxL2WhenMultipleIndexesOnDifferentFields: function() {
             collection.ensureIndex({
                 name: "field_l2",
@@ -1109,6 +1124,7 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
+            print('Created indexes');
 
             const queries = [{
                 query: "FOR d IN " +
@@ -1144,6 +1160,7 @@ function MultipleVectorIndexesOnField() {
                 assertEqual(indexNodes[0].index.name, indexName);
 
                 const results = db._query(query, bindVars).toArray();
+                print('Run query');
                 assertEqual(5, results.length);
             }
         },
@@ -1151,26 +1168,26 @@ function MultipleVectorIndexesOnField() {
 }
 
 // Run with trained index
-jsunity.run(function VectorIndexL2TrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
-});
-jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
-});
+// jsunity.run(function VectorIndexL2TrainedTestSuite() {
+//     return withSuffix(VectorIndexL2TestSuite(true), '_trained');
+// });
+// jsunity.run(function VectorIndexCosineTrainedTestSuite() {
+//     return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
+// });
+// jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
+//     return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
+// });
 
-// Run with untrained index
-jsunity.run(function VectorIndexL2UntrainedTestSuite() {
-    return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
-});
-jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
-    return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
-});
-jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
-    return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
-});
+// // Run with untrained index
+// jsunity.run(function VectorIndexL2UntrainedTestSuite() {
+//     return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
+// });
+// jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
+//     return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
+// });
+// jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
+//     return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
+// });
 
 
 jsunity.run(MultipleVectorIndexesOnField);

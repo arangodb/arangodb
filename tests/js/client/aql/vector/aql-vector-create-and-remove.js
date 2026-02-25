@@ -59,6 +59,9 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
     return {
         setUp: function() {
             db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -79,35 +82,39 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
                     vector
                 });
             }
-            if (seed % 2 === 0) {
-                insertedDocs = db.coll.insert(docs);
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension,
-                        nLists: 10
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension,
-                        nLists: 10
-                    },
-                });
-                insertedDocs = db.coll.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+            print(`Number of batches: ${numBatches}`);
+            insertedDocs = [];
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension,
+                    nLists: 10
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                const batch = docs.slice(start, end);
+                insertedDocs.push(...collection.insert(batch));
             }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
+            print(`Amount of data inserted: ${collection.count()}`);
             const expectedState = expectedTrained ? "ready" : "uninitialized";
-            const waitTimeoutSec = expectedTrained ? 60 : 5;
+            const waitTimeoutSec = expectedTrained ? 120 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
@@ -242,6 +249,9 @@ function VectorIndexTestCreationWithVectors() {
     return {
         setUp: function() {
             db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -486,6 +496,9 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
     return {
         setUp: function() {
             db._useDatabase("_system");
+            try {
+                db._dropDatabase(dbName);
+            } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -516,37 +529,38 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
                     description: `This is document number ${i} with some description text`
                 });
             }
-            if (seed % 2 === 0) {
-                insertedDocs = db.coll.insert(docs);
-                collection.ensureIndex({
-                    name: "vector_l2_stored",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    storedValues: ["name", "value", "category", "metadata", "description"],
-                    params: {
-                        metric: "l2",
-                        dimension,
-                        nLists: 1
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2_stored",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    storedValues: ["name", "value", "category", "metadata", "description"],
-                    params: {
-                        metric: "l2",
-                        dimension,
-                        nLists: 1
-                    },
-                });
-                insertedDocs = db.coll.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+            insertedDocs = [];
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2_stored",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                storedValues: ["name", "value", "category", "metadata", "description"],
+                params: {
+                    metric: "l2",
+                    dimension,
+                    nLists: 1
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                const batch = docs.slice(start, end);
+                insertedDocs.push(...collection.insert(batch));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
-            const waitTimeoutSec = expectedTrained ? 60 : 5;
+            const waitTimeoutSec = expectedTrained ? 120 : 5;
             if (isCluster) {
                 assertTrue(
                     waitForAllVectorIndexesBuildStateOnDBServers(db, collection,

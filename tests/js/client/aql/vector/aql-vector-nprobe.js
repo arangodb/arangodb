@@ -74,32 +74,32 @@ function VectorIndexL2NprobeTestSuite() {
                     vector
                 });
             }
-            if (seed % 2 === 0) {
-                collection.insert(docs);
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: 300,
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: 300,
-                    },
-                });
-                collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: 300,
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
             const buildState = "ready";
             const waitTimeoutSec = 60;

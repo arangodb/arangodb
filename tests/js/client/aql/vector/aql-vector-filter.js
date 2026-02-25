@@ -155,36 +155,34 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 });
             }
 
-            if (seed % 2 === 0) {
-                collection.insert(docs);
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                });
-                collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: nProbeAndNlists,
+                    trainingIterations: 10,
+                    defaultNProbe: nProbeAndNlists,
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
@@ -703,38 +701,36 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                     val: i
                 });
             }
-            if (seed % 2 === 0) {
-                collection1.insert(docs);
-                collection2.insert(docs);
-                collection1.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                });
-            } else {
-                collection1.ensureIndex({
-                    name: "vector_l2",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                });
-                collection1.insert(docs);
-                collection2.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection1.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: nProbeAndNlists,
+                    trainingIterations: 10,
+                    defaultNProbe: nProbeAndNlists,
+                },
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                const batch = docs.slice(start, end);
+                collection1.insert(batch);
+                collection2.insert(batch);
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;
@@ -845,38 +841,35 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                     floatField: i + 0.5
                 });
             }
-            if (seed % 2 === 0) {
-                collection.insert(docs);
-                collection.ensureIndex({
-                    name: "vector_l2_stored_values",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                    storedValues: ["val", "stringField", "boolField", "floatField"]
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vector_l2_stored_values",
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2",
-                        dimension: dimension,
-                        nLists: nProbeAndNlists,
-                        trainingIterations: 10,
-                        defaultNProbe: nProbeAndNlists,
-                    },
-                    storedValues: ["val", "stringField", "boolField", "floatField"]
-                });
-                collection.insert(docs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vector_l2_stored_values",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: nProbeAndNlists,
+                    trainingIterations: 10,
+                    defaultNProbe: nProbeAndNlists,
+                },
+                storedValues: ["val", "stringField", "boolField", "floatField"]
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
+            }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
             }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 60 : 5;

@@ -72,33 +72,33 @@ function VectorIndexReplicationFailoverTest() {
                 const vector = Array.from({length: dimension}, () => gen());
                 docs.push({vec: vector, value: i});
             }
-            if (seed % 2 === 0) {
-                collection.insert(docs);
-                assertEqual(collection.count(), numberOfDocs);
-                collection.ensureIndex({
-                    name: "vec_idx",
-                    type: "vector",
-                    fields: ["vec"],
-                    params: {
-                        dimension: dimension,
-                        metric: "l2",
-                        nLists: nLists,
-                    }
-                });
-            } else {
-                collection.ensureIndex({
-                    name: "vec_idx",
-                    type: "vector",
-                    fields: ["vec"],
-                    params: {
-                        dimension: dimension,
-                        metric: "l2",
-                        nLists: nLists,
-                    }
-                });
-                collection.insert(docs);
-                assertEqual(collection.count(), numberOfDocs);
+            const batchSize = 100;
+            const numBatches = Math.ceil(docs.length / batchSize);
+            const ensureIndexSlot = seed % (numBatches + 1);
+
+            const ensureIndex = () => collection.ensureIndex({
+                name: "vec_idx",
+                type: "vector",
+                fields: ["vec"],
+                params: {
+                    dimension: dimension,
+                    metric: "l2",
+                    nLists: nLists,
+                }
+            });
+
+            for (let i = 0; i < numBatches; i++) {
+                if (i === ensureIndexSlot) {
+                    ensureIndex();
+                }
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, docs.length);
+                collection.insert(docs.slice(start, end));
             }
+            if (ensureIndexSlot === numBatches) {
+                ensureIndex();
+            }
+            assertEqual(collection.count(), numberOfDocs);
 
             // Verify vector search works on the leader
             const queryVector = Array.from({length: dimension}, () => gen());
