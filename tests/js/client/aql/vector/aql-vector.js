@@ -93,7 +93,7 @@ function VectorIndexL2TestSuite(expectedTrained) {
             const docs = vectorData.docs;
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vector_l2",
@@ -594,7 +594,7 @@ function VectorIndexCosineTestSuite(expectedTrained) {
             const docs = vectorData.docs;
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vector_cosine",
@@ -804,7 +804,7 @@ function VectorIndexInnerProductTestSuite(expectedTrained) {
             const docs = vectorData.docs;
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vector_inner_product",
@@ -1000,7 +1000,6 @@ function MultipleVectorIndexesOnField() {
         },
 
         testApproxUseL2WhenMultipleIndexes: function() {
-            print("Creating cosine index");
             collection.ensureIndex({
                 name: "vector_cosine",
                 type: "vector",
@@ -1012,7 +1011,6 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-            print("Creating l2 index");
             collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
@@ -1024,7 +1022,6 @@ function MultipleVectorIndexesOnField() {
                     nLists: 10
                 },
             });
-print("Creating query");
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -1040,7 +1037,6 @@ print("Creating query");
                     bindVars,
                 })
                 .explain().plan;
-                print('Explain query');
             const indexNodes = plan.nodes.filter(function(n) {
                 return n.type === "EnumerateNearVectorNode";
             });
@@ -1048,7 +1044,6 @@ print("Creating query");
             assertEqual(indexNodes[0].index.name, "vector_l2");
 
             const results = db._query(query, bindVars).toArray();
-            print('Run query');
             assertEqual(5, results.length);
         },
 
@@ -1075,7 +1070,6 @@ print("Creating query");
                     nLists: 10
                 },
             });
-            print('Created indexes');
 
             const query =
                 "FOR d IN " +
@@ -1099,7 +1093,6 @@ print("Creating query");
             assertEqual(indexNodes[0].index.name, "vector_cosine");
 
             const results = db._query(query, bindVars).toArray();
-            print('Run query');
             assertEqual(5, results.length);
         },
 
@@ -1124,7 +1117,6 @@ print("Creating query");
                     nLists: 10
                 },
             });
-            print('Created indexes');
 
             const queries = [{
                 query: "FOR d IN " +
@@ -1160,7 +1152,6 @@ print("Creating query");
                 assertEqual(indexNodes[0].index.name, indexName);
 
                 const results = db._query(query, bindVars).toArray();
-                print('Run query');
                 assertEqual(5, results.length);
             }
         },
@@ -1168,27 +1159,26 @@ print("Creating query");
 }
 
 // Run with trained index
-// jsunity.run(function VectorIndexL2TrainedTestSuite() {
-//     return withSuffix(VectorIndexL2TestSuite(true), '_trained');
-// });
-// jsunity.run(function VectorIndexCosineTrainedTestSuite() {
-//     return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
-// });
-// jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
-//     return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
-// });
+jsunity.run(function VectorIndexL2TrainedTestSuite() {
+    return withSuffix(VectorIndexL2TestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexCosineTrainedTestSuite() {
+    return withSuffix(VectorIndexCosineTestSuite(true), '_trained');
+});
+jsunity.run(function VectorIndexInnerProductTrainedTestSuite() {
+    return withSuffix(VectorIndexInnerProductTestSuite(true), '_trained');
+});
 
-// // Run with untrained index
-// jsunity.run(function VectorIndexL2UntrainedTestSuite() {
-//     return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
-// });
-// jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
-//     return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
-// });
-// jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
-//     return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
-// });
-
+// Run with untrained index
+jsunity.run(function VectorIndexL2UntrainedTestSuite() {
+    return withSuffix(VectorIndexL2TestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexCosineUntrainedTestSuite() {
+    return withSuffix(VectorIndexCosineTestSuite(false), '_untrained');
+});
+jsunity.run(function VectorIndexInnerProductUntrainedTestSuite() {
+    return withSuffix(VectorIndexInnerProductTestSuite(false), '_untrained');
+});
 
 jsunity.run(MultipleVectorIndexesOnField);
 

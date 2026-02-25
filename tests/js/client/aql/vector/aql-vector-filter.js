@@ -157,7 +157,7 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
 
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vector_l2",
@@ -703,7 +703,7 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
             }
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection1.ensureIndex({
                 name: "vector_l2",
@@ -843,7 +843,7 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
             }
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vector_l2_stored_values",
@@ -1063,7 +1063,7 @@ jsunity.run(function VectorIndexL2FilterStoredValuesUntrainedTestSuite() {
     return withSuffix(VectorIndexL2FilterStoredValuesTestSuite(false), '_untrained');
 });
 
-// Trained (FAISS IVF)
+// Trained
 jsunity.run(function VectorIndexL2FilterTrainedTestSuite() {
     return withSuffix(VectorIndexL2FilterTestSuite(true), '_trained');
 });

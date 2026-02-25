@@ -84,8 +84,7 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
             }
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
-            print(`Number of batches: ${numBatches}`);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
             insertedDocs = [];
 
             const ensureIndex = () => collection.ensureIndex({
@@ -112,7 +111,6 @@ function VectorIndexCreateAndRemoveTestSuite(expectedTrained) {
             if (ensureIndexSlot === numBatches) {
                 ensureIndex();
             }
-            print(`Amount of data inserted: ${collection.count()}`);
             const expectedState = expectedTrained ? "ready" : "uninitialized";
             const waitTimeoutSec = expectedTrained ? 120 : 5;
             if (isCluster) {
@@ -531,7 +529,7 @@ function VectorIndexStoredValuesTestSuite(expectedTrained) {
             }
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
             insertedDocs = [];
 
             const ensureIndex = () => collection.ensureIndex({

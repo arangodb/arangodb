@@ -74,7 +74,7 @@ function VectorIndexReplicationFailoverTest() {
             }
             const batchSize = 100;
             const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = seed % (numBatches + 1);
+            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
 
             const ensureIndex = () => collection.ensureIndex({
                 name: "vec_idx",
