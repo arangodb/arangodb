@@ -1,6 +1,6 @@
 defmodule ToastTest.CrashMonitor do
-  @spec handle_crash(Toast.Deployment.t(), map()) :: :ok
-  def handle_crash(_deployment, crash_info) do
+  @spec handle_crash(map()) :: :ok
+  def handle_crash(crash_info) do
     server_id = Map.get(crash_info, :server_id, "unknown")
     signal = Map.get(crash_info, :signal)
     exit_status = Map.get(crash_info, :exit_status)

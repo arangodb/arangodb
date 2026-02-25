@@ -36,8 +36,8 @@ defmodule Toast.Process.HealthMonitorTest do
     end
   end
 
-  describe "suspend/resume" do
-    test "suspend changes status to :suspended" do
+  describe "suspend/1" do
+    test "changes status to :suspended" do
       {:ok, pid} =
         HealthMonitor.start_link(
           server_id: "test",
@@ -46,7 +46,7 @@ defmodule Toast.Process.HealthMonitorTest do
           interval: 60_000
         )
 
-      send(pid, :suspend)
+      HealthMonitor.suspend(pid)
       :sys.get_state(pid)
 
       assert HealthMonitor.status(pid) == :suspended
@@ -54,7 +54,7 @@ defmodule Toast.Process.HealthMonitorTest do
       HealthMonitor.stop(pid)
     end
 
-    test "resume restores monitoring after suspend" do
+    test "is idempotent" do
       {:ok, pid} =
         HealthMonitor.start_link(
           server_id: "test",
@@ -63,56 +63,16 @@ defmodule Toast.Process.HealthMonitorTest do
           interval: 60_000
         )
 
-      send(pid, :suspend)
+      HealthMonitor.suspend(pid)
+      HealthMonitor.suspend(pid)
+      HealthMonitor.suspend(pid)
       :sys.get_state(pid)
       assert HealthMonitor.status(pid) == :suspended
 
-      send(pid, :resume)
-      :sys.get_state(pid)
-      assert HealthMonitor.status(pid) == :healthy
-
       HealthMonitor.stop(pid)
     end
 
-    test "multiple suspends then single resume restores monitoring" do
-      {:ok, pid} =
-        HealthMonitor.start_link(
-          server_id: "test",
-          endpoint: "http://127.0.0.1:1",
-          listener: self(),
-          interval: 60_000
-        )
-
-      send(pid, :suspend)
-      send(pid, :suspend)
-      send(pid, :suspend)
-      :sys.get_state(pid)
-      assert HealthMonitor.status(pid) == :suspended
-
-      send(pid, :resume)
-      :sys.get_state(pid)
-      assert HealthMonitor.status(pid) == :healthy
-
-      HealthMonitor.stop(pid)
-    end
-
-    test "resume when not suspended is a no-op" do
-      {:ok, pid} =
-        HealthMonitor.start_link(
-          server_id: "test",
-          endpoint: "http://127.0.0.1:1",
-          listener: self(),
-          interval: 60_000
-        )
-
-      send(pid, :resume)
-      :sys.get_state(pid)
-      assert HealthMonitor.status(pid) == :healthy
-
-      HealthMonitor.stop(pid)
-    end
-
-    test "suspended monitor does not fire :check messages" do
+    test "stops health check timer" do
       {:ok, pid} =
         HealthMonitor.start_link(
           server_id: "test",
@@ -122,15 +82,73 @@ defmodule Toast.Process.HealthMonitorTest do
           max_failures: 1
         )
 
-      send(pid, :suspend)
+      HealthMonitor.suspend(pid)
       :sys.get_state(pid)
 
-      # Wait enough time for checks to fire if they were going to
       Process.sleep(100)
 
-      # Should still be suspended, not unhealthy
       assert HealthMonitor.status(pid) == :suspended
       refute_received {:server_unhealthy, _}
+
+      HealthMonitor.stop(pid)
+    end
+  end
+
+  describe "resume/1" do
+    test "restores monitoring after suspend" do
+      {:ok, pid} =
+        HealthMonitor.start_link(
+          server_id: "test",
+          endpoint: "http://127.0.0.1:1",
+          listener: self(),
+          interval: 60_000
+        )
+
+      HealthMonitor.suspend(pid)
+      :sys.get_state(pid)
+      assert HealthMonitor.status(pid) == :suspended
+
+      HealthMonitor.resume(pid)
+      :sys.get_state(pid)
+      assert HealthMonitor.status(pid) == :healthy
+
+      HealthMonitor.stop(pid)
+    end
+
+    test "after multiple suspends, single resume restores monitoring" do
+      {:ok, pid} =
+        HealthMonitor.start_link(
+          server_id: "test",
+          endpoint: "http://127.0.0.1:1",
+          listener: self(),
+          interval: 60_000
+        )
+
+      HealthMonitor.suspend(pid)
+      HealthMonitor.suspend(pid)
+      HealthMonitor.suspend(pid)
+      :sys.get_state(pid)
+      assert HealthMonitor.status(pid) == :suspended
+
+      HealthMonitor.resume(pid)
+      :sys.get_state(pid)
+      assert HealthMonitor.status(pid) == :healthy
+
+      HealthMonitor.stop(pid)
+    end
+
+    test "on non-suspended monitor is a no-op" do
+      {:ok, pid} =
+        HealthMonitor.start_link(
+          server_id: "test",
+          endpoint: "http://127.0.0.1:1",
+          listener: self(),
+          interval: 60_000
+        )
+
+      HealthMonitor.resume(pid)
+      :sys.get_state(pid)
+      assert HealthMonitor.status(pid) == :healthy
 
       HealthMonitor.stop(pid)
     end

@@ -22,6 +22,42 @@ This section assumes the following from prior sections are already implemented:
 
 ---
 
+## Review Findings to Address
+
+The architecture and test reviews of sections 01-06 identified several issues that fit naturally into this section's scope. Address these as part of section 07 implementation:
+
+### Bugfixes (prerequisite — apply before main implementation)
+
+These three bugs must be fixed first, as expect_crash and resilience testing depend on correct crash handling:
+
+1. **R1 CRITICAL: on_crash callback arity mismatch** — `CrashMonitor.handle_crash/2` is arity 2, but controllers guard with `is_function(on_crash, 1)`. Neither clause matches, causing FunctionClauseError that crashes the controller. Fix: change to `handle_crash/1` (the `_deployment` param is already ignored) and update the runner capture to `&CrashMonitor.handle_crash/1`. 3-line fix across 2 files.
+
+2. **R2 HIGH: restart_server state inconsistency** — If stop succeeds but `wait_for_ready` times out after relaunch, `operational_state` remains stale. Fix: set `operational_state` to `:stopped` before relaunch attempt, set to `:running` only on successful health check. Apply to both controllers.
+
+3. **R3 HIGH: Deployment.Supervisor max_restarts** — Default `max_restarts: 3` allows controller restarts with empty state while OS processes are still running. Fix: set `max_restarts: 0` in `lib/toast/deployment/supervisor.ex`.
+
+### Folded into this section's implementation
+
+4. **R8: HealthMonitor.suspend/1 and resume/1 public API** — Both controllers currently use raw `send(pid, :suspend)` / `send(pid, :resume)` messages. Add proper public API functions to `Toast.Process.HealthMonitor` and update both controllers to use them. This is needed because expect_crash also needs to suspend/resume monitoring.
+
+5. **Role-based target resolution** (deferred from section-06 interview, item M1) — The section-06 review identified that control operations only accept direct server_id strings, not `role: :dbserver` or `cluster_id: "PRMR-xxx"` targeting. This section already plans cluster_id mapping (7.8) and target resolution. Implement the full `resolve_target/2` function in ClusterController that handles all target forms: string server_id, `[role: atom()]`, `[role: atom(), index: integer()]`, and `[cluster_id: string()]`.
+
+### Test hardening (prerequisite — apply before main implementation)
+
+The test review identified critical coverage gaps in sections 04-06 that should be addressed before building resilience features on top:
+
+6. **Replace `server_control_test.exs` function_exported? tests** — 6 of 7 tests only check `function_exported?/3`, providing zero behavioral confidence. Replace with tests that verify actual control operation behavior (delegation to controller, error handling for dead controllers, error handling for unknown servers).
+
+7. **Add controller state machine tests** — `controller_state_test.exs` has 6 tests at the ServerProcess level but nothing at the controller level. Add tests for: state transitions with intentional flag tracking, signal-type awareness (SIGSEGV vs SIGTERM during intentional stop), ClusterController `:degraded` status derivation, HealthMonitor process monitoring (restart on unexpected death).
+
+8. **Add runner orchestration tests** — The runner is the central component but has only low-level mechanism tests. Add: deployment failure marks all suite tests as `:errored` and proceeds to next suite, suite abort does not affect next suite, timeout hierarchy (global deadline clamps suite timeout), health check between tests rejects `:degraded`/`:failed`. These can use mock deployments.
+
+9. **Fix `test_case_test.exs` to use DeploymentRegistry** — Currently uses `Application.put_env` (deprecated pattern). Update to use ETS `DeploymentRegistry`.
+
+10. **Complete `state_cleanup_test.exs`** — Missing 3 of 6 scenarios: formatter state reset, after_suite callback clearing, port allocator NOT reset.
+
+---
+
 ## Tests
 
 Write tests BEFORE implementing. All tests are unit tests that mock external dependencies (erlexec, HTTP). They run with `mix test` and do not require a running ArangoDB instance.
@@ -307,7 +343,7 @@ A GenServer that records process lifecycle events. It is provided as the `:on_ev
 
 ```elixir
 Toast.Deployment.start(:cluster,
-  on_crash: &ToastTest.CrashMonitor.handle_crash/2,
+  on_crash: &ToastTest.CrashMonitor.handle_crash/1,
   on_event: &ToastTest.ProcessHistory.handle_event/1
 )
 ```
@@ -502,3 +538,47 @@ This section corresponds to Phase 4 steps:
 - **Step 11**: Write resilience test suite as proof-of-concept
 
 **Verification criteria** (from the migration plan): resilience test suite passes -- servers stopped, killed, restarted without false alerts. Expected crash verification works with failure points. Cluster-internal ID mapping enables targeted operations. ProcessHistory correctly correlates diagnostics files to server instances across restarts.
+
+---
+
+## Implementation Notes (Actual)
+
+### What was implemented
+
+1. **R1/R3 bugfixes** — CrashMonitor arity fix and Supervisor max_restarts: 0
+2. **R8: HealthMonitor.suspend/1 and resume/1 public API** — Added functions, updated both controllers
+3. **expect_crash/verify_crash mechanism** — Full implementation in both controllers with:
+   - Expected crash tracking via `expected_crashes` map in controller state
+   - Auto-clear timeout via Process.send_after
+   - Polling verify_crash with GenServer reply-later pattern
+   - Expected crashes bypass on_crash callback but fire notify_event for ProcessHistory
+   - verify_crash timeout cleans up expectation and resumes health monitoring
+4. **FailurePoint module** — REST wrappers for debug failure point API (set/clear/clear_all)
+5. **Resilience suite stubs** — suites/resilience/ with cluster mode definition and lifecycle test stubs
+6. **Test hardening** — server_control_test, state_cleanup_test, test_case_test rewritten/expanded (separate commit)
+
+### What was deferred
+
+- **resolve_target/2** (plan item 5) — Role-based and cluster_id targeting for control ops and failure points. User chose to defer to follow-up. All operations currently accept string server_id only.
+- **Controller state machine tests** (plan item 7) — Requires deployed controller with mock server
+- **Runner orchestration tests** (plan item 8) — Complex mock infrastructure needed
+- **ProcessHistory supervision/cleanup wiring** — ProcessHistory exists but isn't started by runner or cleared by StateCleanup
+- **Server ID mapping tests** (plan item 7.3) — Mapping already implemented in section 06, additional tests deferred
+
+### Files created
+
+- `lib/toast/deployment/failure_point.ex`
+- `test/toast/deployment/expect_crash_test.exs` (15 tests)
+- `test/toast/deployment/failure_point_test.exs` (20 tests)
+- `suites/resilience/suite.ex`
+- `suites/resilience/test_server_lifecycle.exs`
+
+### Files modified
+
+- `lib/toast/deployment.ex` — expect_crash, verify_crash, failure point delegates
+- `lib/toast/deployment/single_server_controller.ex` — expect_crash state machine, HealthMonitor API
+- `lib/toast/deployment/cluster_controller.ex` — same
+- `lib/toast/deployment/supervisor.ex` — max_restarts: 0 (R3)
+- `lib/toast/process/health_monitor.ex` — suspend/1, resume/1
+- `lib/toast_test/crash_monitor.ex` — handle_crash/1 arity fix (R1)
+- `lib/toast_test/runner.ex` — handle_crash/1 reference (R1)

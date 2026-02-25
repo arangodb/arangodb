@@ -17,6 +17,22 @@ Both modules integrate into `stop_and_collect/1` via a multi-step protocol: agen
 
 ---
 
+## Review Findings to Address
+
+The architecture review of sections 01-06 identified one issue that fits naturally into this section's scope:
+
+### R4 MEDIUM: stop_and_collect silently discards errors
+
+**Location**: `lib/toast/deployment.ex` lines 99-113
+
+**Problem**: `stop_and_collect/2` returns `nil` on any shutdown error. The runner discards the return value entirely. Shutdown failures are invisible.
+
+**Fix**: As part of the `stop_and_collect` lifecycle refactoring in this section (adding agency dump pre-shutdown and coredump analysis post-shutdown), change the function to return explicit result tuples: `{:ok, diagnostics}` or `{:error, reason, partial_diagnostics}`. Log a warning on shutdown failure. The runner should capture and report shutdown errors in the suite results rather than silently dropping them.
+
+This is a natural fit because this section already refactors `stop_and_collect` into a multi-step protocol. Adding proper error propagation at the same time avoids a separate refactoring pass.
+
+---
+
 ## Prerequisites
 
 After section-02, the project has:

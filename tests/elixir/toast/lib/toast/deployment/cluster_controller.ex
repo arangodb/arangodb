@@ -76,7 +76,8 @@ defmodule Toast.Deployment.ClusterController do
       diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
       on_event: Keyword.get(opts, :on_event),
-      cluster_id_mapping: %{}
+      cluster_id_mapping: %{},
+      expected_crashes: %{}
     }
 
     {:ok, state}
@@ -257,6 +258,8 @@ defmodule Toast.Deployment.ClusterController do
           :ok
       end
 
+      state = update_server(state, server_id, operational_state: :stopped, intentional: true)
+
       case ServerProcess.relaunch(server.server_pid, opts) do
         :ok ->
           process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
@@ -312,29 +315,74 @@ defmodule Toast.Deployment.ClusterController do
     end
   end
 
-  @impl true
-  def handle_info({:server_crashed, server_id, crash_info}, state) do
-    server = state.servers[server_id]
-
-    if server && server.intentional do
-      if crash_info.signal in @intentional_exit_signals do
-        Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
-        {:noreply, state}
+  def handle_call({:expect_crash, server_id, timeout}, _from, state) do
+    with {:ok, server} <- fetch_server(state, server_id) do
+      if Map.has_key?(state.expected_crashes, server_id) do
+        {:reply, {:error, :already_expected}, state}
       else
-        Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
-        stop_health_monitor(state, server_id)
-        notify_crash(state.on_crash, crash_info)
-        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-        state = update_server(state, server_id, operational_state: :crashed, intentional: false)
-        {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+        suspend_server_health_monitor(server)
+        timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
+        entry = %{timer: timer, crash_info: nil}
+        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
+        {:reply, :ok, state}
       end
     else
-      Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-      stop_health_monitor(state, server_id)
-      notify_crash(state.on_crash, crash_info)
-      notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-      state = if server, do: update_server(state, server_id, operational_state: :crashed), else: state
-      {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:verify_crash, server_id, timeout}, from, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      nil ->
+        {:reply, {:error, :no_expectation}, state}
+
+      %{crash_info: nil} ->
+        deadline = System.monotonic_time(:millisecond) + timeout
+        Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
+        {:noreply, state}
+
+      %{crash_info: crash_info, timer: timer} ->
+        Process.cancel_timer(timer)
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        {:reply, {:ok, crash_info}, state}
+    end
+  end
+
+  @impl true
+  def handle_info({:server_crashed, server_id, crash_info}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{timer: _timer} = entry ->
+        Logger.info("Server #{server_id} crashed as expected")
+        entry = %{entry | crash_info: crash_info}
+        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
+        state = update_server(state, server_id, operational_state: :crashed, intentional: true)
+        state = %{state | status: derive_cluster_status(state.servers)}
+        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+        {:noreply, state}
+
+      nil ->
+        server = state.servers[server_id]
+
+        if server && server.intentional do
+          if crash_info.signal in @intentional_exit_signals do
+            Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
+            {:noreply, state}
+          else
+            Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
+            stop_health_monitor(state, server_id)
+            notify_crash(state.on_crash, crash_info)
+            notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+            state = update_server(state, server_id, operational_state: :crashed, intentional: false)
+            {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+          end
+        else
+          Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+          stop_health_monitor(state, server_id)
+          notify_crash(state.on_crash, crash_info)
+          notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+          state = if server, do: update_server(state, server_id, operational_state: :crashed), else: state
+          {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
+        end
     end
   end
 
@@ -345,6 +393,52 @@ defmodule Toast.Deployment.ClusterController do
     notify_crash(state.on_crash, crash_info)
     notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
+  end
+
+  def handle_info({:expect_crash_timeout, server_id}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{crash_info: nil} ->
+        Logger.warning("Expected crash for #{server_id} timed out")
+
+        case Map.get(state.servers, server_id) do
+          nil -> :ok
+          server -> resume_server_health_monitor(server)
+        end
+
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        {:noreply, state}
+
+      _ ->
+        # Crash already happened or entry already removed -- nothing to do
+        {:noreply, state}
+    end
+  end
+
+  def handle_info({:verify_crash_check, server_id, from, deadline}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{crash_info: nil} ->
+        if System.monotonic_time(:millisecond) < deadline do
+          Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
+          {:noreply, state}
+        else
+          # Timeout — clean up expectation and resume monitoring
+          server = state.servers[server_id]
+          if server, do: resume_server_health_monitor(server)
+          state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+          GenServer.reply(from, {:error, :timeout})
+          {:noreply, state}
+        end
+
+      %{crash_info: crash_info, timer: timer} ->
+        Process.cancel_timer(timer)
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        GenServer.reply(from, {:ok, crash_info})
+        {:noreply, state}
+
+      nil ->
+        GenServer.reply(from, {:error, :no_expectation})
+        {:noreply, state}
+    end
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state)
@@ -787,10 +881,14 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   defp suspend_server_health_monitor(%{health_monitor: nil}), do: :ok
-  defp suspend_server_health_monitor(%{health_monitor: pid}), do: send(pid, :suspend)
+
+  defp suspend_server_health_monitor(%{health_monitor: pid}),
+    do: Toast.Process.HealthMonitor.suspend(pid)
 
   defp resume_server_health_monitor(%{health_monitor: nil}), do: :ok
-  defp resume_server_health_monitor(%{health_monitor: pid}), do: send(pid, :resume)
+
+  defp resume_server_health_monitor(%{health_monitor: pid}),
+    do: Toast.Process.HealthMonitor.resume(pid)
 
   defp derive_cluster_status(servers) do
     server_list = Map.values(servers)

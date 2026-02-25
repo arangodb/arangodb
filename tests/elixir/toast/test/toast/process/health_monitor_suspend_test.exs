@@ -21,28 +21,28 @@ defmodule Toast.Process.HealthMonitorSuspendTest do
   end
 
   test "suspend transitions to :suspended", %{pid: pid} do
-    send(pid, :suspend)
+    HealthMonitor.suspend(pid)
     Process.sleep(50)
     assert HealthMonitor.status(pid) == :suspended
   end
 
   test "resume after suspend transitions back to :healthy", %{pid: pid} do
-    send(pid, :suspend)
+    HealthMonitor.suspend(pid)
     Process.sleep(50)
-    send(pid, :resume)
+    HealthMonitor.resume(pid)
     Process.sleep(50)
     assert HealthMonitor.status(pid) == :healthy
   end
 
   test "resume on non-suspended is a no-op", %{pid: pid} do
-    send(pid, :resume)
+    HealthMonitor.resume(pid)
     Process.sleep(50)
     assert HealthMonitor.status(pid) == :healthy
   end
 
   test "suspend is idempotent", %{pid: pid} do
-    send(pid, :suspend)
-    send(pid, :suspend)
+    HealthMonitor.suspend(pid)
+    HealthMonitor.suspend(pid)
     Process.sleep(50)
     assert HealthMonitor.status(pid) == :suspended
   end

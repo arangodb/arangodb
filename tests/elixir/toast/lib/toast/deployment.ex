@@ -222,6 +222,12 @@ defmodule Toast.Deployment do
     end
   end
 
+  # --- Failure point operations ---
+
+  defdelegate set_failure_point(deployment, target, name), to: Toast.Deployment.FailurePoint, as: :set
+  defdelegate clear_failure_point(deployment, target, name), to: Toast.Deployment.FailurePoint, as: :clear
+  defdelegate clear_all_failure_points(deployment), to: Toast.Deployment.FailurePoint, as: :clear_all
+
   # --- Server control operations ---
 
   def stop_server(%__MODULE__{} = d, target), do: controller_call_control(d, :stop_server, target)
@@ -234,6 +240,22 @@ defmodule Toast.Deployment do
 
   def start_server(%__MODULE__{} = d, target, opts \\ []),
     do: controller_call_control(d, :start_server, target, opts)
+
+  @spec expect_crash(t(), String.t(), keyword()) :: :ok | {:error, term()}
+  def expect_crash(%__MODULE__{controller: pid}, server_id, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 30_000)
+    GenServer.call(pid, {:expect_crash, server_id, timeout}, 10_000)
+  catch
+    :exit, _ -> {:error, :controller_not_available}
+  end
+
+  @spec verify_crash(t(), String.t(), keyword()) :: {:ok, map()} | {:error, atom()}
+  def verify_crash(%__MODULE__{controller: pid}, server_id, opts \\ []) do
+    timeout = Keyword.get(opts, :timeout, 5_000)
+    GenServer.call(pid, {:verify_crash, server_id, timeout}, timeout + 5_000)
+  catch
+    :exit, _ -> {:error, :controller_not_available}
+  end
 
   @doc "Retrieve diagnostics collected during shutdown."
   @spec diagnostics(t()) :: map() | nil

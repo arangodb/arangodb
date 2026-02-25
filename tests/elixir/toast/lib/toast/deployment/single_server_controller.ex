@@ -78,7 +78,8 @@ defmodule Toast.Deployment.SingleServerController do
       error: nil,
       diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
-      on_event: Keyword.get(opts, :on_event)
+      on_event: Keyword.get(opts, :on_event),
+      expected_crashes: %{}
     }
 
     {:ok, state}
@@ -222,6 +223,8 @@ defmodule Toast.Deployment.SingleServerController do
           :ok
       end
 
+      state = put_server(state, operational_state: :stopped, intentional: true)
+
       case ServerProcess.relaunch(state.server.server_pid, opts) do
         :ok ->
           case wait_for_ready(state, 60_000) do
@@ -265,31 +268,73 @@ defmodule Toast.Deployment.SingleServerController do
     end
   end
 
-  @impl true
-  def handle_info({:server_crashed, server_id, crash_info}, state) do
-    if state.server.intentional do
-      if crash_info.signal in @intentional_exit_signals do
-        # Intentional stop (SIGTERM or normal exit) -- not a real crash
-        Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
-        {:noreply, state}
+  def handle_call({:expect_crash, server_id, timeout}, _from, state) do
+    with :ok <- validate_server_id(state, server_id) do
+      if Map.has_key?(state.expected_crashes, server_id) do
+        {:reply, {:error, :already_expected}, state}
       else
-        # Real crash during intentional shutdown (e.g., SIGSEGV)
-        Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
-        stop_health_monitor(state)
-        notify_crash(state.on_crash, crash_info)
-        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-          operational_state: :crashed, intentional: false, health_monitor: nil)
-        {:noreply, state}
+        suspend_health_monitor(state)
+        timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
+        entry = %{timer: timer, crash_info: nil}
+        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
+        {:reply, :ok, state}
       end
     else
-      Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-      stop_health_monitor(state)
-      notify_crash(state.on_crash, crash_info)
-      notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-      state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-        operational_state: :crashed, health_monitor: nil)
-      {:noreply, state}
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
+
+  def handle_call({:verify_crash, server_id, timeout}, from, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      nil ->
+        {:reply, {:error, :no_expectation}, state}
+
+      %{crash_info: nil} ->
+        deadline = System.monotonic_time(:millisecond) + timeout
+        Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
+        {:noreply, state}
+
+      %{crash_info: crash_info, timer: timer} ->
+        Process.cancel_timer(timer)
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        {:reply, {:ok, crash_info}, state}
+    end
+  end
+
+  @impl true
+  def handle_info({:server_crashed, server_id, crash_info}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{timer: _timer} = entry ->
+        Logger.info("Server #{server_id} crashed as expected")
+        entry = %{entry | crash_info: crash_info}
+        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
+        state = put_server(%{state | status: :degraded}, operational_state: :crashed, intentional: true)
+        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+        {:noreply, state}
+
+      nil ->
+        if state.server.intentional do
+          if crash_info.signal in @intentional_exit_signals do
+            Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
+            {:noreply, state}
+          else
+            Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
+            stop_health_monitor(state)
+            notify_crash(state.on_crash, crash_info)
+            notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+            state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+              operational_state: :crashed, intentional: false, health_monitor: nil)
+            {:noreply, state}
+          end
+        else
+          Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
+          stop_health_monitor(state)
+          notify_crash(state.on_crash, crash_info)
+          notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+          state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+            operational_state: :crashed, health_monitor: nil)
+          {:noreply, state}
+        end
     end
   end
 
@@ -301,6 +346,46 @@ defmodule Toast.Deployment.SingleServerController do
     notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     state = put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}}, server_pid: nil, health_monitor: nil)
     {:noreply, state}
+  end
+
+  def handle_info({:expect_crash_timeout, server_id}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{crash_info: nil} ->
+        Logger.warning("Expected crash for #{server_id} timed out")
+        resume_health_monitor(state)
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        {:noreply, state}
+
+      _ ->
+        # Crash already happened or entry already removed -- nothing to do
+        {:noreply, state}
+    end
+  end
+
+  def handle_info({:verify_crash_check, server_id, from, deadline}, state) do
+    case Map.get(state.expected_crashes, server_id) do
+      %{crash_info: nil} ->
+        if System.monotonic_time(:millisecond) < deadline do
+          Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
+          {:noreply, state}
+        else
+          # Timeout — clean up expectation and resume monitoring
+          state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+          resume_health_monitor(state)
+          GenServer.reply(from, {:error, :timeout})
+          {:noreply, state}
+        end
+
+      %{crash_info: crash_info, timer: timer} ->
+        Process.cancel_timer(timer)
+        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
+        GenServer.reply(from, {:ok, crash_info})
+        {:noreply, state}
+
+      nil ->
+        GenServer.reply(from, {:error, :no_expectation})
+        {:noreply, state}
+    end
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state)
@@ -472,10 +557,14 @@ defmodule Toast.Deployment.SingleServerController do
   end
 
   defp suspend_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
-  defp suspend_health_monitor(%{server: %{health_monitor: pid}}), do: send(pid, :suspend)
+
+  defp suspend_health_monitor(%{server: %{health_monitor: pid}}),
+    do: Toast.Process.HealthMonitor.suspend(pid)
 
   defp resume_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
-  defp resume_health_monitor(%{server: %{health_monitor: pid}}), do: send(pid, :resume)
+
+  defp resume_health_monitor(%{server: %{health_monitor: pid}}),
+    do: Toast.Process.HealthMonitor.resume(pid)
 
   # --- Helpers ---
 

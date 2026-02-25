@@ -23,6 +23,6 @@ defmodule Toast.Deployment.Supervisor do
 
   @impl true
   def init(_opts) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+    DynamicSupervisor.init(strategy: :one_for_one, max_restarts: 0)
   end
 end

@@ -8,6 +8,18 @@ This section implements tiered result packaging for CI environments, a post-run 
 
 **Dependencies**: section-05-runner (cross-suite result aggregation, runner exit flow), section-08-diagnostics (coredump reports, agency dumps integrated into `stop_and_collect/1`)
 
+---
+
+## Review Findings to Address
+
+No critical findings from the architecture/test reviews are folded into this section directly, but note:
+
+- **Section 08 now returns explicit result tuples from `stop_and_collect`** (R4 fix). The runner should propagate shutdown errors into the suite results structure. This section's exit code computation and result export must handle the `{:error, reason, partial_diagnostics}` case — a shutdown failure should contribute to exit code 2 (infrastructure failure) and the partial diagnostics should still be packaged.
+
+- **Suite-level result grouping** depends on the runner's cross-suite stats aggregation (section 05). The test review noted that runner orchestration is largely untested. The test hardening work in the section-07 prerequisites addresses this, so by the time this section is implemented, the runner's behavior should be better verified.
+
+---
+
 **Files to create**:
 - `/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast/lib/toast/result_packaging.ex`
 - `/home/mpoeter/dev/arangodb/arango_next4/tests/elixir/toast/lib/toast/analysis/summary.ex`

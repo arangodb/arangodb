@@ -294,7 +294,7 @@ defmodule ToastTest.Runner do
   end
 
   defp build_deployment_opts(suite_config, global_opts) do
-    [on_crash: &ToastTest.CrashMonitor.handle_crash/2]
+    [on_crash: &ToastTest.CrashMonitor.handle_crash/1]
     |> Keyword.merge(
       Keyword.take(suite_config, [
         :server_args,
