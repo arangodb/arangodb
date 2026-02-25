@@ -159,6 +159,15 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex() const {
           TRI_ERROR_BAD_PARAMETER,
           "Index definition not supported. Expected IVF index.");
     }
+    if (static_cast<std::int64_t>(ivfIndex->nlist) != _definition.nLists) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          std::format(
+              "Factory-created IVF index nlist ({}) does not match definition "
+              "nLists ({}). They must match for training and inverted-list "
+              "setup.",
+              ivfIndex->nlist, _definition.nLists));
+    }
 
     return ivfIndex;
   } else {
@@ -320,7 +329,7 @@ Result VectorIndexBuildManager::build() {
   auto wrappedIndex =
       std::static_pointer_cast<RocksDBIndex>(_rcoll->lookupIndex(_index.id()));
   if (wrappedIndex == nullptr) {
-    return {TRI_ERROR_INTERNAL, "Internal error: wrapped index not found"};
+    return {TRI_ERROR_INTERNAL, "Internal error: vector index not found"};
   }
   auto builder = std::make_shared<RocksDBBuilderIndex>(
       std::move(wrappedIndex), _rcoll->meta().numberDocuments(),

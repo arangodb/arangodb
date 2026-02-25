@@ -298,8 +298,12 @@ void RocksDBVectorIndex::tryBuilding() {
   if (!shouldTriggerTraining()) {
     return;
   }
-  TRI_ASSERT(_buildState == VectorIndexBuildState::kUninitialized);
-  setBuildState(VectorIndexBuildState::kTraining);
+  VectorIndexBuildState expected{VectorIndexBuildState::kUninitialized};
+  if (!_buildState.compare_exchange_strong(
+          expected, VectorIndexBuildState::kTraining, std::memory_order_acq_rel,
+          std::memory_order_acquire)) {
+    return;  // another thread already started training, or state changed
+  }
   startBuildThread();
 }
 
@@ -416,7 +420,9 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (_buildState != VectorIndexBuildState::kReady) {
+  if (auto const buildState = _buildState.load();
+      buildState == VectorIndexBuildState::kUninitialized ||
+      buildState == VectorIndexBuildState::kTraining) {
     // Nothing stored in the vector index yet, nothing to remove
     _documentCount.fetch_sub(1, std::memory_order_relaxed);
     return {};

@@ -200,15 +200,6 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     }
 
     return {state(), {}, skipped, {}};
-    skipped += (_collectionCount - _currentProcessedResultCount);
-    LOG_INTERNAL << ADB_HERE
-                 << std::format(
-                        ": skipped={}, currentProcessed={}, nr={}, state={}, "
-                        "hasResults={}, call={}, colCount={}",
-                        skipped, _currentProcessedResultCount,
-                        _infos.getNumberOfResults(), state(), hasResults(),
-                        to_string(call), _collectionCount);
-
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
     auto skipped = skipOutput(AqlCall::Infinity{});
