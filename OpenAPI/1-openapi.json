@@ -24,7 +24,7 @@
     "operationId": "getEngineStats",
     "parameters": [
      {
-      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database.\n",
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database. If the `--server.harden` startup option is enabled,\nadministrate access to the `_system` database is required.\n",
       "example": "_system",
       "in": "path",
       "name": "database-name",
@@ -80,7 +80,43 @@
         }
        }
       },
-      "description": "Missing read access to the given database.\n"
+      "description": "The user account you authenticated with lacks read access to the\nspecified database, the credentials are wrong, or the user account\nis inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The `--server.harden` startup option is enabled but the user account\nyou authenticated with lacks write access to the `_system` database.\n"
      }
     },
     "summary": "Get the storage engine statistics",
@@ -95,7 +131,7 @@
     "operationId": "getPublicStartupOptions",
     "parameters": [
      {
-      "description": "The name of a database. Any database the user has at least read\naccess to can be used.\n",
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database.\n",
       "example": "_system",
       "in": "path",
       "name": "database-name",
@@ -142,14 +178,14 @@
       },
       "description": "An object with public startup option names as keys and their\neffective values.\n"
      },
-     "403": {
+     "401": {
       "content": {
        "application/json": {
         "schema": {
          "properties": {
           "code": {
            "description": "The HTTP response status code.\n",
-           "example": 403,
+           "example": 401,
            "type": "integer"
           },
           "error": {
@@ -176,7 +212,7 @@
         }
        }
       },
-      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the database.\n"
+      "description": "Authentication is enabled and the user account you authenticated with\ndoesn't have at least read access to the specified database, the\ncredentials are wrong, or the user account is inactive.\n"
      },
      "405": {
       "content": {
@@ -510,7 +546,7 @@
   },
   "/_admin/cluster/health": {
    "get": {
-    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)\n    - `Host`: An optional string, specifying the host machine if known.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
+    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)\n    - `Host`: An optional string, specifying the host machine if known.\n    - `SyncTime`: ISO 8601 timestamp of the last sync time reported by the node.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
     "operationId": "getClusterHealth",
     "responses": {
      "200": {
@@ -3425,7 +3461,7 @@
   },
   "/_db/_system/_admin/options": {
    "get": {
-    "description": "Return the effective configuration of the queried _arangod_ instance as\nset by startup options on the command-line and via a configuration file.\n\n{{\u003c security \u003e}}\nThis endpoint may reveal sensitive information about the deployment!\n{{\u003c /security \u003e}}\n\nThe endpoint can only be accessed via the `_system` database.\nIn addition, the `--server.options-api` startup option controls the\nrequired privileges to access the option endpoints and allows you to\ndisable them entirely. The option can have the following values:\n- `disabled`: the option endpoints are disabled\n- `jwt`: the option endpoints can only be accessed using a superuser JWT (default)\n- `admin`: the option endpoints can only be accessed by users with\n  *Administrate* access level for the `_system` database\n- `public`: every user with access to the `_system` database can access\n  the option endpoints\n",
+    "description": "Return the effective configuration of the queried _arangod_ instance as\nset by startup options on the command-line and via a configuration file.\n\n{{\u003c security \u003e}}\nThis endpoint may reveal sensitive information about the deployment!\n{{\u003c /security \u003e}}\n\nThe endpoint can only be accessed via the `_system` database. In addition, the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\ncontrols the required privileges to access the option endpoints and allows\nyou to disable them entirely. The option can have the following values:\n- `disabled`: This endpoint is disabled.\n- `jwt`: This endpoint can only be accessed using a superuser JWT (default).\n- `admin`: This endpoint can only be accessed by users with\n  write access to the `_system` database.\n- `public`: Every user with read access to the `_system` database can\n  access this endpoint.\n",
     "operationId": "getEffectiveStartupOptions",
     "responses": {
      "200": {
@@ -3437,6 +3473,114 @@
        }
       },
       "description": "An object with startup option names as keys and their effective\nvalue as values. The values can be of different data types, typically\nnumbers, strings, or arrays thereof.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You tried to authenticate with user credentials but a superuser token\ncreated from the JWT secret is required (`--server.options-api` set\nto `jwt`), you lack read access to the `_system` database\n(`--server.options-api` set to `public`), the credentials are wrong,\nor the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You don't have write access to the `_system` database\n(`--server.options-api` set to `admin`) or you tried to access the\nendpoint using a database other than `_system`.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
      }
     },
     "summary": "Get the startup option configuration",
@@ -3447,7 +3591,7 @@
   },
   "/_db/_system/_admin/options-description": {
    "get": {
-    "description": "Return the startup options available to configure the queried _arangod_\ninstance, similar to the `--dump-options` startup option.\n\nThe endpoint can only be accessed via the `_system` database.\nIn addition, the `--server.options-api` startup option controls the\nrequired privileges to access the option endpoints and allows you to\ndisable them entirely. The option can have the following values:\n- `disabled`: the option endpoints are disabled\n- `jwt`: the option endpoints can only be accessed using a superuser JWT (default)\n- `admin`: the option endpoints can be accessed by admin users in the `_system`\n  database only.\n- `public`: every user with access to the `_system` database can access\n  the option endpoints.\n",
+    "description": "Return the startup options available to configure the queried _arangod_\ninstance, similar to the `--dump-options` startup option.\n\nThe endpoint can only be accessed via the `_system` database. In addition, the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\ncontrols the required privileges to access the option endpoints and allows\nyou to disable them entirely. The option can have the following values:\n- `disabled`: This endpoint is disabled.\n- `jwt`: This endpoint can only be accessed using a superuser JWT (default).\n- `admin`: This endpoint can only be accessed by users with\n  write access to the `_system` database.\n- `public`: Every user with read access to the `_system` database can\n  access this endpoint.\n",
     "operationId": "getAvailableStartupOptions",
     "responses": {
      "200": {
@@ -3459,6 +3603,114 @@
        }
       },
       "description": "An object with startup option names as keys and sub-objects as values.\nThe structure of each sub-object is as follows:\n- `section` (string): The part before the dot of a startup option\n  (`--section.param`), or `\"\"` if it is a general option that doesn't\n  belong to a section\n- `description` (string): A succinct explanation of the startup option\n- `longDescription` (string, *optional*): Additional details about the\n  startup option if available\n- `category` (string): Either `\"option\"` for regular options or `\"command\"`\n  if using the option performs an action and then terminates the process\n- `hidden` (boolean): Whether the option is uncommon. If yes, then\n  the `--help` command does not list it, but `--help-all` lists every\n  startup option\n- `type` (string): the data type of the option, typically one of\n  `\"uint64\"`, `\"uint32\"`, `\"int64\"`, `\"int32\"`, `\"double\"`, `\"boolean\"`,\n  `\"string\"`, `\"string...\"`\n- `experimental` (boolean): Whether the option relates to a feature\n  that is not ready for production yet\n- `obsolete` (boolean): Whether the option has been deprecated and\n  no effect anymore\n- `enterpriseOnly` (boolean): Whether the option is implemented in\n  the non-public enterprise code.\n- `requiresValue` (boolean): Whether the option can be specified\n  without a value to enable it\n- `os` (array of strings): The operating systems the startup option\n  is supported on, always `[\"linux\"]`\n- `component` (array of strings): A list of server roles the startup\n  option is available on. If it is supported by all cluster node types\n  as well as the single server deployment mode, then the value is\n  `[\"coordinator\", \"dbserver\", \"agent\", \"single\"]`\n- `introducedIn` (array of strings\\|null): A list of versions the\n  startup option has been added in. Does not include later minor and\n  major versions then the current version, and the information may\n  get removed once all listed versions reach their end of life\n- `deprecatedIn` (array of strings\\|null): A list of versions the\n  startup option has been marked for deprecation in. It can still\n  be used until fully removed. Does not include later minor and\n  major versions then the current version, and the information may\n  get removed once all listed versions reach their end of life\n- `values` (string, *optional*):\n  A description of the possible values you can set\n- `default` (any, *optional*): The standard value if the option is not set\n- `dynamic` (boolean): Whether the default value is calculated based\n  on the target host configuration, e.g. available memory\n- `required` (boolean): Whether the option must be specified\n- `base` (number, *optional*): the unit for a numeric option\n- `minValue` (number, *optional*): The minimum value for a numeric option\n- `maxValue` (number, *optional*): The maximum value for a numeric option\n- `minInclusive` (boolean, *optional*): Whether the minimum value is\n  included in the allowed value range\n- `maxInclusive` (boolean, *optional*): Whether the maximum value is\n  included in the allowed value range\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You tried to authenticate with user credentials but a superuser token\nis required, the credentials are wrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You don't have write access to the `_system` database or you tried\nto access the endpoint using a database other than `_system`.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
      }
     },
     "summary": "Get the available startup options",
@@ -3675,6 +3927,613 @@
      }
     },
     "summary": "List the endpoints of a single server (deprecated)",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/crashes": {
+   "get": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nReturn the list of crash dump directory identifiers (UUIDs).\n\nWhen the server crashes, the crash handler writes diagnostic data into\na per-crash directory under `\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`.\nEach dump includes information such as recent API calls and AQL queries,\na backtrace, and system information.\n\nThe server keeps the most recent 10 crash dumps. Older ones are removed\nduring startup.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "listCrashDumps",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "Array of crash dump identifiers (UUIDs).\n",
+           "items": {
+            "format": "uuid",
+            "type": "string"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returns a list of crash dump identifiers (UUIDs).\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "List crash dumps",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/crashes/{crashId}": {
+   "delete": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nDelete a specific crash dump directory and its contents. Crash dumps are\nstored under `\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`. The server keeps the\nmost recent 10 crash dumps. Older ones are removed during startup.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "deleteCrashDump",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The UUID of the crash dump directory to delete.\n",
+      "in": "path",
+      "name": "crashId",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "properties": {
+            "crashId": {
+             "format": "uuid",
+             "type": "string"
+            },
+            "deleted": {
+             "example": true,
+             "type": "boolean"
+            }
+           },
+           "required": [
+            "deleted",
+            "crashId"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash dump was deleted successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the crash dump folder based on the specified `crashId`\ncannot be found.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "Delete a crash dump",
+    "tags": [
+     "Administration"
+    ]
+   },
+   "get": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nReturn the contents of a specific crash dump. The response includes all\nfiles from the crash directory (e.g. `backtrace.txt`, `system_info.txt`,\n`ApiRecording.json`, `AsyncRegistry.json`) as an object mapping filenames\nto their contents. Crash dumps are stored under\n`\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "getCrashDump",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The UUID of the crash dump directory.\n",
+      "in": "path",
+      "name": "crashId",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "properties": {
+            "crashId": {
+             "description": "The crash dump identifier (UUID).\n",
+             "format": "uuid",
+             "type": "string"
+            },
+            "files": {
+             "additionalProperties": {
+              "type": "string"
+             },
+             "description": "Object mapping file names to their contents (e.g.\n`backtrace.txt`, `system_info.txt`, `ApiRecording.json`,\n`Activities.json`, `AsyncRegistry.json`).\n",
+             "type": "object"
+            }
+           },
+           "required": [
+            "crashId",
+            "files"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returns the crash dump contents.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the crash dump folder based on the specified `crashId`\ncannot be found.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "Get a crash dump",
     "tags": [
      "Administration"
     ]
@@ -4042,7 +4901,7 @@
            "type": "string"
           },
           "status": {
-           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is valid for more than 2 weeks.\n- `expiring`: The license is valid for less than 2 weeks.\n- `expired`: The license has expired. In this situation, no new\n  Enterprise Edition features can be utilized.\n- `read-only`: The license is expired over 2 weeks. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
+           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is valid for more than 2 weeks.\n- `expiring`: The license is valid for less than 2 weeks.\n  Not applicable if you use license activation rather than a\n  license key, in which case the transition is directly from\n  `good` to `read-only`.\n- `expired`: The license has expired. In this situation, no new\n  Enterprise Edition features can be utilized.\n- `read-only`: The license is expired over 2 weeks. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
            "enum": [
             "good",
             "expiring",
@@ -5496,48 +6355,6 @@
     "summary": "Get an Analyzer definition",
     "tags": [
      "Analyzers"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/batch": {
-   "post": {
-    "description": "Executes a batch request. A batch request can contain any number of\nother requests that can be sent to ArangoDB in isolation. The benefit of\nusing batch requests is that batching requests requires less client/server\nroundtrips than when sending isolated requests.\n\nAll parts of a batch request are executed serially on the server. The\nserver will return the results of all parts in a single response when all\nparts are finished.\n\nTechnically, a batch request is a multipart HTTP request, with\ncontent-type `multipart/form-data`. A batch request consists of an\nenvelope and the individual batch part actions. Batch part actions\nare \"regular\" HTTP requests, including full header and an optional body.\nMultiple batch parts are separated by a boundary identifier. The\nboundary identifier is declared in the batch envelope. The MIME content-type\nfor each individual batch part must be `application/x-arango-batchpart`.\n\nPlease note that when constructing the individual batch parts, you must\nuse CRLF (`\\r\\n`) as the line terminator as in regular HTTP messages.\n\nThe response sent by the server will be an `HTTP 200` response, with an\noptional error summary header `x-arango-errors`. This header contains the\nnumber of batch part operations that failed with an HTTP error code of at\nleast 400. This header is only present in the response if the number of\nerrors is greater than zero.\n\nThe response sent by the server is a multipart response, too. It contains\nthe individual HTTP responses for all batch parts, including the full HTTP\nresult header (with status code and other potential headers) and an\noptional result body. The individual batch parts in the result are\nseparated using the same boundary value as specified in the request.\n\nThe order of batch parts in the response will be the same as in the\noriginal client request. Client can additionally use the `Content-Id`\nMIME header in a batch part to define an individual id for each batch part.\nThe server will return this id is the batch part responses, too.\n",
-    "operationId": "executeBatchRequest",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "text/plain; charset=utf-8": {
-       "schema": {
-        "description": "The multipart batch request, consisting of the envelope and the individual\nbatch parts.\n"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "is returned if the batch was received successfully. HTTP 200 is returned\neven if one or multiple batch part actions failed.\n"
-     },
-     "400": {
-      "description": "is returned if the batch envelope is malformed or incorrectly formatted.\nThis code will also be returned if the content-type of the overall batch\nrequest or the individual MIME parts is not as expected.\n"
-     },
-     "405": {
-      "description": "is returned when an invalid HTTP method is used.\n"
-     }
-    },
-    "summary": "Execute a batch request",
-    "tags": [
-     "Batch Requests"
     ]
    }
   },
@@ -13643,7 +14460,7 @@
         "schema": {
          "properties": {
           "name": {
-           "description": "will be `rocksdb`\n",
+           "description": "Always `rocksdb`.\n",
            "type": "string"
           }
          },
@@ -13654,7 +14471,43 @@
         }
        }
       },
-      "description": "is returned in all cases.\n"
+      "description": "Successfully retrieved storage engine name.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Missing read access to the given database.\n"
      }
     },
     "summary": "Get the storage engine type",
@@ -30217,10 +31070,6 @@
   {
    "description": "Load JSON data in bulk",
    "name": "Import"
-  },
-  {
-   "description": "Manage microservices written in JavaScript",
-   "name": "Foxx"
   },
   {
    "description": "Execute requests asynchronously",
