@@ -159,7 +159,11 @@ defmodule ToastTest.Case do
     register_formatters()
 
     ExUnit.after_suite(fn stats ->
-      diagnostics = Toast.Deployment.stop_and_collect(deployment)
+      diagnostics =
+        case Toast.Deployment.stop_and_collect(deployment) do
+          {:ok, diag} -> diag
+          {:error, _reason, partial_diag} -> partial_diag
+        end
       Application.put_env(:toast, :__test_diagnostics__, diagnostics)
 
       test_results = Application.get_env(:toast, :__test_results__)

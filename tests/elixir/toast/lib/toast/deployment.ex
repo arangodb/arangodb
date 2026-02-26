@@ -98,23 +98,56 @@ defmodule Toast.Deployment do
   @doc """
   Stop the deployment and return collected diagnostics.
 
-  Diagnostics are collected during shutdown (between server stop and directory cleanup).
-  This function retrieves them before terminating the controller process.
+  Uses a multi-step protocol:
+    1. Agency dump (cluster only, pre-shutdown while agents are alive)
+    2. Shutdown all server processes
+    3. Collect base diagnostics (logs, sanitizer errors) from controller
+    4. Coredump analysis (post-shutdown, separate timeout)
+    5. Merge all diagnostics
+
+  Returns `{:ok, diagnostics}` on success or `{:error, reason, partial_diagnostics}`
+  on shutdown failure (partial diagnostics are still collected when possible).
   """
-  @spec stop_and_collect(t(), keyword()) :: map() | nil
+  @spec stop_and_collect(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop_and_collect(%__MODULE__{controller: pid} = deployment, opts \\ []) do
     mod = controller_module(deployment)
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
     Logger.debug("Stopping deployment #{deployment.id} and collecting diagnostics")
 
-    with :ok <- mod.shutdown(pid, timeout) do
-      diagnostics = mod.get_info(pid)[:diagnostics]
-      DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
-      Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
-      diagnostics
-    else
-      _ -> nil
+    # Step 1: Agency dump (cluster only, pre-shutdown)
+    # Budget: 3 endpoints * per-request timeout * number of agents (fallback attempts)
+    agency_dump =
+      if deployment.mode == :cluster and agency_dump_enabled?(deployment) do
+        agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
+
+        try do
+          ClusterController.dump_agency(pid, agency_timeout)
+        catch
+          :exit, _ -> nil
+        end
+      end
+
+    # Step 2: Shutdown all servers
+    shutdown_result =
+      try do
+        mod.shutdown(pid, timeout)
+      catch
+        :exit, _ -> {:error, :controller_dead}
+      end
+
+    case shutdown_result do
+      :ok ->
+        diagnostics = collect_post_shutdown(mod, pid, deployment, opts, agency_dump)
+        terminate_controller(pid)
+        Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
+        {:ok, diagnostics}
+
+      {:error, reason} ->
+        Logger.warning("Shutdown failed for #{deployment.id}: #{inspect(reason)}")
+        partial = collect_post_shutdown(mod, pid, deployment, opts, agency_dump)
+        terminate_controller(pid)
+        {:error, reason, partial}
     end
   end
 
@@ -270,6 +303,121 @@ defmodule Toast.Deployment do
       nil -> nil
       info -> info[:diagnostics]
     end
+  end
+
+  defp collect_post_shutdown(mod, pid, deployment, opts, agency_dump) do
+    # Step 3: Base diagnostics from controller (logs, sanitizer)
+    base_diagnostics =
+      try do
+        mod.get_info(pid)[:diagnostics]
+      catch
+        :exit, _ -> nil
+      end
+
+    # Step 4: Coredump analysis (post-shutdown, own timeout)
+    coredump_reports = collect_coredumps(deployment, opts)
+
+    # Step 5: Merge
+    merge_diagnostics(base_diagnostics, agency_dump, coredump_reports)
+  end
+
+  defp collect_coredumps(deployment, opts) do
+    debugger = resolve_debugger(deployment, opts)
+
+    case debugger do
+      :none ->
+        []
+
+      {:ok, debugger_module} ->
+        coredump_timeout =
+          Keyword.get(opts, :coredump_timeout, deployment.config.coredump_timeout)
+
+        servers = get_server_info_for_coredumps(deployment)
+
+        Toast.Diagnostics.Coredump.collect(
+          servers: servers,
+          debugger: debugger_module,
+          timeout: coredump_timeout
+        )
+    end
+  end
+
+  defp resolve_debugger(deployment, opts) do
+    configured = Keyword.get(opts, :debugger, deployment.config.debugger)
+
+    case configured do
+      :gdb -> {:ok, Toast.Diagnostics.Coredump.GDB}
+      :lldb -> {:ok, Toast.Diagnostics.Coredump.LLDB}
+      :none -> :none
+      :auto -> Toast.Diagnostics.Coredump.detect_debugger()
+      nil -> Toast.Diagnostics.Coredump.detect_debugger()
+      module when is_atom(module) -> {:ok, module}
+    end
+  end
+
+  defp get_server_info_for_coredumps(deployment) do
+    mod = controller_module(deployment)
+
+    try do
+      info = mod.get_info(deployment.controller)
+
+      # ClusterController returns :servers (map), SingleServerController returns :server (single)
+      server_list =
+        case info do
+          %{servers: servers} when is_map(servers) -> Map.values(servers)
+          %{server: server} when server != nil -> [server]
+          _ -> []
+        end
+
+      server_list
+      |> Enum.filter(& &1.pid)
+      |> Enum.map(fn server ->
+        binary_path =
+          if server.launch_spec, do: server.launch_spec.executable, else: nil
+
+        %{
+          id: server.id,
+          os_pid: server.pid,
+          server_dir: server.server_dir,
+          binary_path: binary_path
+        }
+      end)
+      |> Enum.filter(& &1.binary_path)
+    catch
+      :exit, _ -> []
+    end
+  end
+
+  defp terminate_controller(pid) do
+    try do
+      DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
+    catch
+      :exit, _ -> :ok
+    end
+  end
+
+  defp agency_dump_enabled?(deployment) do
+    deployment.config.dump_agency_on_error
+  end
+
+  defp merge_diagnostics(base, agency_dump, coredump_reports) do
+    result = base || %{}
+
+    result =
+      if agency_dump do
+        Map.put(result, :agency_dump, agency_dump)
+      else
+        result
+      end
+
+    result =
+      if coredump_reports != [] do
+        Map.put(result, :coredump_reports, coredump_reports)
+      else
+        result
+      end
+
+    result
   end
 
   defp extract_crash_info({:server_crashed, crash_info}, log_file) do

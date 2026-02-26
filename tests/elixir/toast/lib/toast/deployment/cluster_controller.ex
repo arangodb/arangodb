@@ -8,7 +8,7 @@ defmodule Toast.Deployment.ClusterController do
   alias Toast.Config
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance}
-  alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
+  alias Toast.Diagnostics.{AgencyDump, CrashLogParser, Sanitizer, ServerLog}
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
@@ -35,6 +35,11 @@ defmodule Toast.Deployment.ClusterController do
   @spec shutdown(GenServer.server(), timeout()) :: :ok | {:error, term()}
   def shutdown(server, timeout \\ 60_000) do
     GenServer.call(server, {:shutdown, timeout}, timeout + 5_000)
+  end
+
+  @spec dump_agency(GenServer.server(), timeout()) :: AgencyDump.t() | nil
+  def dump_agency(server, timeout \\ 60_000) do
+    GenServer.call(server, :dump_agency, timeout)
   end
 
   @spec get_status(GenServer.server()) :: status()
@@ -76,6 +81,7 @@ defmodule Toast.Deployment.ClusterController do
       diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
       on_event: Keyword.get(opts, :on_event),
+      agency_dump: nil,
       cluster_id_mapping: %{},
       expected_crashes: %{}
     }
@@ -134,10 +140,17 @@ defmodule Toast.Deployment.ClusterController do
       coordinator_endpoint: coordinator_endpoint,
       servers: state.servers,
       error: state.error,
-      diagnostics: state.diagnostics
+      diagnostics: state.diagnostics,
+      agency_dump: state.agency_dump
     }
 
     {:reply, info, state}
+  end
+
+  def handle_call(:dump_agency, _from, state) do
+    agents = get_living_agents(state)
+    dump = AgencyDump.capture(agents: agents)
+    {:reply, dump, %{state | agency_dump: dump}}
   end
 
   def handle_call({:get_server, server_id}, _from, state) do
@@ -989,6 +1002,15 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   # --- Helpers ---
+
+  defp get_living_agents(state) do
+    state.agents
+    |> Enum.map(fn id -> state.servers[id] end)
+    |> Enum.filter(fn server ->
+      server && server.operational_state in [:running, nil]
+    end)
+    |> Enum.map(fn server -> %{id: server.id, endpoint: server.endpoint} end)
+  end
 
   defp notify_crash(nil, _crash_info), do: :ok
   defp notify_crash(on_crash, crash_info) when is_function(on_crash, 1), do: on_crash.(crash_info)

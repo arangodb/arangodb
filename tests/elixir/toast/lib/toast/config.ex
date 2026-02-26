@@ -23,7 +23,9 @@ defmodule Toast.Config do
           explicit_sanitizer: String.t() | nil,
           sanitizer: MapSet.t(String.t()),
           api_version: non_neg_integer() | String.t() | nil,
-          debugger: :gdb | :lldb | :auto | nil
+          debugger: :gdb | :lldb | :auto | :none | nil,
+          dump_agency_on_error: boolean(),
+          coredump_timeout: pos_integer()
         }
 
   @default_result_dir "toast-results"
@@ -48,7 +50,9 @@ defmodule Toast.Config do
     explicit_sanitizer: nil,
     sanitizer: MapSet.new(),
     api_version: nil,
-    debugger: :auto
+    debugger: :auto,
+    dump_agency_on_error: true,
+    coredump_timeout: 120_000
   ]
 
   @spec load() :: t()
@@ -87,7 +91,9 @@ defmodule Toast.Config do
       explicit_sanitizer: explicit_sanitizer,
       sanitizer: sanitizer,
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
-      debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]) || :auto
+      debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]) || :auto,
+      dump_agency_on_error: opt_or(opts, :dump_agency_on_error, read_opt_bool("TOAST_DUMP_AGENCY"), local[:dump_agency_on_error]) |> default_true(),
+      coredump_timeout: (opt_or(opts, :coredump_timeout, read_pos_int("TOAST_COREDUMP_TIMEOUT", nil), local[:coredump_timeout]) || 120_000) * factor
     }
 
     Logger.debug(fn ->
@@ -174,6 +180,14 @@ defmodule Toast.Config do
     env(var) == "true"
   end
 
+  defp read_opt_bool(var) do
+    case env(var) do
+      "true" -> true
+      "false" -> false
+      _ -> nil
+    end
+  end
+
   defp read_timeout_factor(sanitizer) do
     case env("TOAST_TIMEOUT_FACTOR") do
       nil -> if MapSet.size(sanitizer) > 0, do: 3, else: 1
@@ -218,6 +232,7 @@ defmodule Toast.Config do
       "gdb" -> :gdb
       "lldb" -> :lldb
       "auto" -> :auto
+      "none" -> :none
       _ -> nil
     end
   end
@@ -225,6 +240,9 @@ defmodule Toast.Config do
   defp default_work_dir do
     Path.join([System.tmp_dir!(), "toast", "run_#{System.unique_integer([:positive])}"])
   end
+
+  defp default_true(nil), do: true
+  defp default_true(val), do: val
 
   defp env(name), do: System.get_env(name)
 end

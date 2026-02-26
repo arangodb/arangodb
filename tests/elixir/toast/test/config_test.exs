@@ -19,6 +19,8 @@ defmodule Toast.ConfigTest do
     TOAST_CLUSTER_REPLICATION_FACTOR
     TOAST_API_VERSION
     TOAST_DEBUGGER
+    TOAST_DUMP_AGENCY
+    TOAST_COREDUMP_TIMEOUT
     TOAST_CI
   )
 
@@ -55,6 +57,8 @@ defmodule Toast.ConfigTest do
       assert config.timeout_factor == 1
       assert config.api_version == nil
       assert config.debugger == :auto
+      assert config.dump_agency_on_error == true
+      assert config.coredump_timeout == 120_000
     end
 
     test "work_dir has unique default under tmp_dir" do
@@ -336,6 +340,45 @@ defmodule Toast.ConfigTest do
     end
   end
 
+  describe "TOAST_DUMP_AGENCY env var" do
+    test "true string sets dump_agency_on_error to true" do
+      System.put_env("TOAST_DUMP_AGENCY", "true")
+      assert Config.load().dump_agency_on_error == true
+    end
+
+    test "false string sets dump_agency_on_error to false" do
+      System.put_env("TOAST_DUMP_AGENCY", "false")
+      assert Config.load().dump_agency_on_error == false
+    end
+
+    test "defaults to true when not set" do
+      assert Config.load().dump_agency_on_error == true
+    end
+
+    test "keyword override" do
+      System.put_env("TOAST_DUMP_AGENCY", "true")
+      config = Config.load(dump_agency_on_error: false)
+      assert config.dump_agency_on_error == false
+    end
+  end
+
+  describe "TOAST_COREDUMP_TIMEOUT env var" do
+    test "parses integer from string" do
+      System.put_env("TOAST_COREDUMP_TIMEOUT", "60000")
+      assert Config.load().coredump_timeout == 60_000
+    end
+
+    test "defaults to 120_000 when not set" do
+      assert Config.load().coredump_timeout == 120_000
+    end
+
+    test "keyword override" do
+      System.put_env("TOAST_COREDUMP_TIMEOUT", "60000")
+      config = Config.load(coredump_timeout: 30_000)
+      assert config.coredump_timeout == 30_000
+    end
+  end
+
   describe ".toast.local.exs" do
     setup do
       path = Path.join(File.cwd!(), ".toast.local.exs")
@@ -376,6 +419,40 @@ defmodule Toast.ConfigTest do
 
       config = Config.load()
       assert config.build_dir == nil
+    end
+
+    # T13: dump_agency_on_error from local config
+    test "reads dump_agency_on_error from .toast.local.exs", %{local_path: path} do
+      File.write!(path, "%{dump_agency_on_error: false}")
+
+      config = Config.load()
+      assert config.dump_agency_on_error == false
+    end
+
+    # T13: coredump_timeout from local config
+    test "reads coredump_timeout from .toast.local.exs", %{local_path: path} do
+      File.write!(path, "%{coredump_timeout: 60000}")
+
+      config = Config.load()
+      assert config.coredump_timeout == 60_000
+    end
+
+    # T13: debugger from local config
+    test "reads debugger from .toast.local.exs", %{local_path: path} do
+      File.write!(path, "%{debugger: :gdb}")
+
+      config = Config.load()
+      assert config.debugger == :gdb
+    end
+
+    test "env vars take precedence over .toast.local.exs for new keys", %{local_path: path} do
+      File.write!(path, "%{dump_agency_on_error: false, coredump_timeout: 60000}")
+      System.put_env("TOAST_DUMP_AGENCY", "true")
+      System.put_env("TOAST_COREDUMP_TIMEOUT", "90000")
+
+      config = Config.load()
+      assert config.dump_agency_on_error == true
+      assert config.coredump_timeout == 90_000
     end
   end
 end
