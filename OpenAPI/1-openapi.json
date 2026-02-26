@@ -31048,11 +31048,7 @@
    "name": "Queries"
   },
   {
-   "description": "Run distributed graph algorithms",
-   "name": "Pregel"
-  },
-  {
-   "description": "Execute JavaScript and Stream Transactions",
+   "description": "Execute Stream Transactions",
    "name": "Transactions"
   },
   {
@@ -31076,19 +31072,11 @@
    "name": "Jobs"
   },
   {
-   "description": "Set up JavaScript code to run periodically or timed",
-   "name": "Tasks"
-  },
-  {
-   "description": "Run multiple operations using a single request",
-   "name": "Batch Requests"
-  },
-  {
    "description": "Control data replication for deployments",
    "name": "Replication"
   },
   {
-   "description": "Access logs, statistics, and metrics",
+   "description": "Access logs, metrics, and activities",
    "name": "Monitoring"
   },
   {
