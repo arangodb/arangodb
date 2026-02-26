@@ -275,15 +275,19 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::dropFulltextIndexes);
 
-  // Hash/skiplist indexes are no longer supported; drop them (use persistent
-  // indexes instead).
-  addTask(upgradeFeature, "dropRedundantHashSkiplistIndexes",
-          "drop hash/skiplist indexes (use persistent instead)",
+  // Hash/skiplist indexes are just aliases for persistent; rewrite their type
+  // in stored definitions.
+  // CLUSTER_DB_SERVER_LOCAL: DB servers rewrite their local RocksDB
+  // definitions. CLUSTER_COORDINATOR_GLOBAL: coordinator updates the agency
+  // plan. CLUSTER_NONE: single server rewrites local RocksDB definitions.
+  addTask(upgradeFeature, "migrateHashSkiplistToPersistent",
+          "convert hash/skiplist indexes to persistent",
           /*system*/ Upgrade::Flags::DATABASE_ALL,
           /*cluster*/ Upgrade::Flags::CLUSTER_NONE |
-              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL,
+              Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::dropRedundantHashSkiplistIndexes);
+          &UpgradeTasks::migrateHashSkiplistToPersistent);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,

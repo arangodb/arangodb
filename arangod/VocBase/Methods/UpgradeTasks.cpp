@@ -29,17 +29,24 @@
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
@@ -51,7 +58,10 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/db.h>
+#include <rocksdb/write_batch.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -650,37 +660,200 @@ Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops all hash and skiplist indexes (no longer supported; use
-/// persistent indexes instead).
+/// @brief On DB/single server: rewrite collection definitions in the RocksDB
+/// definitions column family to change hash/skiplist index types to persistent.
+/// On coordinator: update agency plan to change hash/skiplist index types to
+/// persistent in a single transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result UpgradeTasks::dropRedundantHashSkiplistIndexes(
-    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
-  auto collections = methods::Collections::sorted(vocbase);
+namespace {
 
-  for (auto const& collection : collections) {
-    auto indexes = collection->getPhysical()->getReadyIndexes();
-
-    for (auto const& index : indexes) {
-      auto const indexType = index->type();
-      if (indexType != Index::TRI_IDX_TYPE_HASH_INDEX &&
-          indexType != Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+/// Rewrites a single VPack index array, changing any "hash"/"skiplist" type
+/// entries to "persistent" and appending "_migrated" to their name.
+/// Returns true if any changes were made.
+bool rewriteIndexTypesInArray(velocypack::Slice indexesSlice,
+                              velocypack::Builder& out) {
+  TRI_ASSERT(indexesSlice.isArray());
+  bool hasChange = false;
+  {
+    VPackArrayBuilder arrayGuard(&out);
+    for (velocypack::Slice idx : VPackArrayIterator(indexesSlice)) {
+      if (!idx.isObject()) {
+        out.add(idx);
         continue;
       }
-      LOG_TOPIC("a1b2c", INFO, Logger::STARTUP)
-          << "Dropping obsolete " << index->oldtypeName(indexType) << " index '"
-          << index->id().id() << "' from collection '" << collection->name()
-          << "' - hash/skiplist indexes are no longer supported";
-
-      auto res = methods::Indexes::drop(*collection, index->id()).waitAndGet();
-
-      if (res.fail()) {
-        LOG_TOPIC("a1b2d", ERR, Logger::STARTUP)
-            << "Error dropping hash/skiplist index: " << res.errorMessage();
-        return res;
+      auto typeSlice = idx.get(StaticStrings::IndexType);
+      if (!typeSlice.isString()) {
+        out.add(idx);
+        continue;
       }
+      std::string_view typeStr = typeSlice.stringView();
+      if (typeStr != "hash" && typeStr != "skiplist") {
+        out.add(idx);
+        continue;
+      }
+      hasChange = true;
+      {
+        VPackObjectBuilder objectGuard(&out);
+        for (auto it : VPackObjectIterator(idx)) {
+          std::string_view key = it.key.stringView();
+          if (key == StaticStrings::IndexType) {
+            out.add(key, velocypack::Value("persistent"));
+          } else if (key == StaticStrings::IndexName) {
+            std::string newName = it.value.copyString() + "_migrated";
+            out.add(key, velocypack::Value(newName));
+          } else {
+            out.add(key, it.value);
+          }
+        }
+      }
+    }
+  }
+  return hasChange;
+}
+
+Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
+  auto& selectorFeature = vocbase.server().getFeature<EngineSelectorFeature>();
+  if (!selectorFeature.isRocksDB()) {
+    return {};
+  }
+  auto& engine = selectorFeature.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+  auto* cf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Definitions);
+
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(readOptions, cf));
+
+  auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
+  rocksdb::WriteBatch batch;
+  bool hasBatchEntries = false;
+
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    auto collSlice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    if (basics::VelocyPackHelper::getBooleanValue(
+            collSlice, StaticStrings::DataSourceDeleted, false)) {
+      continue;
+    }
+
+    velocypack::Slice indexesSlice = collSlice.get("indexes");
+    if (!indexesSlice.isArray()) {
+      continue;
+    }
+
+    velocypack::Builder newIndexes;
+    if (!rewriteIndexTypesInArray(indexesSlice, newIndexes)) {
+      continue;
+    }
+
+    std::string collName = VelocyPackHelper::getStringValue(
+        collSlice, StaticStrings::DataSourceName, "");
+    LOG_TOPIC("a1b2c", INFO, Logger::STARTUP) << std::format(
+        "Rewriting hash/skiplist index types to persistent in definitions "
+        "for collection {}",
+        collName);
+
+    velocypack::Builder overwrite;
+    overwrite.openObject();
+    overwrite.add("indexes", newIndexes.slice());
+    overwrite.close();
+
+    velocypack::Builder newCollDef =
+        VPackCollection::merge(collSlice, overwrite.slice(), false);
+
+    auto value = RocksDBValue::Collection(newCollDef.slice());
+    batch.Put(cf, iter->key(), value.string());
+    hasBatchEntries = true;
+  }
+
+  if (hasBatchEntries) {
+    rocksdb::WriteOptions wo;
+    rocksdb::Status s = db->GetRootDB()->Write(wo, &batch);
+    if (!s.ok()) {
+      return Result(
+          TRI_ERROR_INTERNAL,
+          std::format("failed to rewrite hash/skiplist index definitions: {}",
+                      s.ToString()));
     }
   }
 
   return {};
+}
+
+Result convertHashSkiplistIndexesInPlanCoordinator(
+    TRI_vocbase_t& vocbase, arangodb::ClusterFeature& clusterFeature) {
+  auto& agencyCache = clusterFeature.agencyCache();
+  auto [acb, idx] = agencyCache.read(
+      std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+      acb->slice()[0].get(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Collections"});
+
+  if (!databasesSlice.isObject()) {
+    return {};
+  }
+
+  std::vector<AgencyOperation> operations;
+  std::vector<std::shared_ptr<velocypack::Builder>> builders;
+
+  for (auto dbEntry : VPackObjectIterator(databasesSlice)) {
+    std::string const dbName = dbEntry.key.copyString();
+    velocypack::Slice collectionsSlice = dbEntry.value;
+    if (!collectionsSlice.isObject()) {
+      continue;
+    }
+    for (auto collEntry : VPackObjectIterator(collectionsSlice)) {
+      std::string const collId = collEntry.key.copyString();
+      velocypack::Slice coll = collEntry.value;
+      if (!coll.isObject()) {
+        continue;
+      }
+      velocypack::Slice indexesSlice = coll.get("indexes");
+      if (!indexesSlice.isArray()) {
+        continue;
+      }
+
+      auto newIndexesBuilder = std::make_shared<velocypack::Builder>();
+      if (!rewriteIndexTypesInArray(indexesSlice, *newIndexesBuilder)) {
+        continue;
+      }
+
+      builders.push_back(newIndexesBuilder);
+      std::string path =
+          "Plan/Collections/" + dbName + "/" + collId + "/indexes";
+      operations.emplace_back(path, AgencyValueOperationType::SET,
+                              newIndexesBuilder->slice());
+    }
+  }
+
+  if (operations.empty()) {
+    return {};
+  }
+
+  operations.emplace_back("Plan/Version",
+                          AgencySimpleOperationType::INCREMENT_OP);
+  AgencyComm ac(vocbase.server());
+  AgencyWriteTransaction trx(operations);
+  AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+
+  if (!result.successful()) {
+    return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+                  result.errorMessage());
+  }
+  return {};
+}
+
+}  // namespace
+
+Result UpgradeTasks::migrateHashSkiplistToPersistent(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  if (ServerState::instance()->isCoordinator()) {
+    auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
+    return convertHashSkiplistIndexesInPlanCoordinator(vocbase, clusterFeature);
+  }
+  return convertHashSkiplistInDefinitionsColumnFamily(vocbase);
 }
