@@ -1,4 +1,5 @@
 4.0.0 (XXXX-XX-XX)
+------------------
 
 * Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
   `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
