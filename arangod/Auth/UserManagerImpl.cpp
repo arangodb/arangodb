@@ -275,6 +275,14 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             // load was successful reset tries
             tries = 0;
           }
+          if (stpTkn.stop_requested()) {
+            // we need to check the stop token BEFORE waiting for the
+            // globalVersion, otherwise we can have a race where shutdown
+            // already sets globalVersion=max, at the same time we load
+            // globalVersion, successfully fetch the users, and update
+            // internalVersion. In this case we would then wait indefinitely.
+            break;
+          }
           _globalVersion.wait(loadedVersion);
         }
       });
@@ -1000,6 +1008,10 @@ void UserManagerImpl::shutdown() {
     // set global version leads to a wake-up of the update thread
     setGlobalVersion(std::numeric_limits<uint64_t>::max());
     _userCacheUpdateThread.join();
+    // in single server upgrades it can happen that another thread is started
+    // we need to make sure it does not start with globalVersion=max
+    _internalVersion.store(0);
+    _globalVersion.store(0);
   }
 }
 
