@@ -1,7 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* Existing `hash` and `skiplist` indexes are automatically dropped during database
-  upgrade.
+* Existing `hash` and `skiplist` indexes are automatically converted to
+  `persistent` during database upgrade.
 
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
 
