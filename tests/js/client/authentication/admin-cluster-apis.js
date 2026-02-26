@@ -66,13 +66,13 @@ function AuthSuite() {
     const body = typeof res.body === 'string' ? res.body : String(res.body);
   
     assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
-      'metrics response should contain uptime metric');
+      'Response should contain uptime metric');
     const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
     assertTrue(typeof uptime === 'number' && !Number.isNaN(uptime) && uptime >= 0,
       'uptime should be present and non-negative');
   
     assertTrue(body.indexOf('arangodb_process_statistics_') !== -1,
-      'system-equivalent: metrics response should contain process/system statistics');
+      'metrics response should contain process/system statistics');
     const numberOfThreads = internal.parsePrometheusMetric(body, 'arangodb_process_statistics_number_of_threads');
     assertTrue(numberOfThreads !== undefined && numberOfThreads >= 0,
       'At least one process statistic should be present and valid');

@@ -40,7 +40,7 @@ function getStats() {
   };
 }
 
-// Wait for metrics to reflect recent traffic (metrics API has no sync like old statistics).
+// Wait for metrics to reflect recent traffic since the metrics API has no sync mechanism
 function waitForMetricsAggregation(condition, maxWaitMs) {
   maxWaitMs = maxWaitMs || 15000;
   const stepMs = 250;

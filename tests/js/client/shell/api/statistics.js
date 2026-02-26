@@ -37,17 +37,6 @@ function metricsApiSuite() {
       assertEqual(res.code, 200, 'GET /_admin/metrics should return 200');
     },
 
-    test_metrics_contains_uptime: function () {
-      const res = arango.GET_RAW('/_admin/metrics');
-      assertEqual(res.code, 200);
-      const body = typeof res.body === 'string' ? res.body : String(res.body);
-      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
-        'response should contain arangodb_server_statistics_server_uptime_total');
-      const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
-      assertNotUndefined(uptime);
-      assertTrue(uptime >= 0, 'uptime should be non-negative');
-    },
-
     test_testing_statistics_wrong_cmd: function () {
       const cmd = "/_admin/statistics/asd123";
       const doc = arango.GET_RAW(cmd);
