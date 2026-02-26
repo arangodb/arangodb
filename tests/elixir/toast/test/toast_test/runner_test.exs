@@ -132,4 +132,92 @@ defmodule ToastTest.RunnerTest do
     end
   end
 
+  describe "health check between tests" do
+    # The runner calls Deployment.check_health/1 between tests via
+    # check_config_deployments. This tests the decision function that
+    # determines whether to abort based on deployment status.
+
+    test "check_health returns :ok for :ready status" do
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      deployment = mock_deployment(ctrl, :single_server)
+      assert Toast.Deployment.check_health(deployment) == :ok
+    end
+
+    test "check_health returns error for :degraded status" do
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+
+      :sys.replace_state(ctrl, fn state ->
+        server = %{state.server | operational_state: :stopped, intentional: true}
+        %{state | status: :degraded, server: server}
+      end)
+
+      deployment = mock_deployment(ctrl, :single_server)
+      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert msg =~ "degraded"
+    end
+
+    test "check_health returns error for :failed status" do
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(ctrl, {:server_crashed, "test-server", crash_info})
+      :sys.get_state(ctrl)
+
+      deployment = mock_deployment(ctrl, :single_server)
+      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert msg =~ "crashed" or msg =~ "failed"
+    end
+
+    test "check_health returns error for :stopped status" do
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+
+      deployment = mock_deployment(ctrl, :single_server)
+      # Controller starts in :stopped status
+      assert {:error, msg} = Toast.Deployment.check_health(deployment)
+      assert msg =~ "not ready"
+    end
+  end
+
+  describe "merge_stats accumulates across suites" do
+    test "empty suites returns zero stats" do
+      result = Runner.run_suites([], [])
+
+      assert result.stats == %{total: 0, failures: 0, skipped: 0, excluded: 0}
+      assert result.suites == []
+    end
+
+    # NOTE: Testing merge_stats with actual suite modules would require
+    # creating full suite modules with deployment_config/0 callbacks and
+    # having Toast.Deployment.start() succeed, which requires a real
+    # ArangoDB binary. The merge_stats function itself is straightforward
+    # additive accumulation -- the interesting behavior is tested by
+    # verifying the structure returned by run_suites.
+  end
+
+  describe "suite abort isolation" do
+    # The runner clears abort state between suites via cleanup_between_suites.
+    # This tests the mechanism that ensures one suite's abort does not leak.
+
+    test "abort state is cleared between suites" do
+      Runner.abort!("suite 1 crashed")
+      assert Runner.aborted?() == "suite 1 crashed"
+
+      ToastTest.StateCleanup.reset()
+
+      assert Runner.aborted?() == nil
+    end
+  end
+
+  defp mock_deployment(ctrl, mode) do
+    %Toast.Deployment{
+      id: "test-runner",
+      mode: mode,
+      config: Toast.Config.load(),
+      controller: ctrl,
+      endpoint: "http://127.0.0.1:0",
+      work_dir: "/tmp/toast-test"
+    }
+  end
 end

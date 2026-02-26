@@ -31,18 +31,26 @@ defmodule Toast.Deployment.FailurePoint do
 
   # -- High-level (deployment-based) --
 
-  @spec set(Deployment.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  @spec set(Deployment.t(), Deployment.server_target(), String.t()) :: :ok | {:error, term()}
   def set(%Deployment{} = deployment, target, name) when is_binary(target) do
     with {:ok, client} <- Deployment.client(deployment, target) do
       do_set(client, name)
     end
   end
 
-  @spec clear(Deployment.t(), String.t(), String.t()) :: :ok | {:error, term()}
+  def set(%Deployment{} = deployment, target, name) when is_list(target) do
+    apply_to_matching_servers(deployment, target, &do_set(&1, name))
+  end
+
+  @spec clear(Deployment.t(), Deployment.server_target(), String.t()) :: :ok | {:error, term()}
   def clear(%Deployment{} = deployment, target, name) when is_binary(target) do
     with {:ok, client} <- Deployment.client(deployment, target) do
       do_clear(client, name)
     end
+  end
+
+  def clear(%Deployment{} = deployment, target, name) when is_list(target) do
+    apply_to_matching_servers(deployment, target, &do_clear(&1, name))
   end
 
   @spec clear_all(Deployment.t()) :: :ok | {:error, term()}
@@ -60,6 +68,45 @@ defmodule Toast.Deployment.FailurePoint do
       nil -> :ok
       error -> error
     end
+  end
+
+  defp apply_to_matching_servers(deployment, target, fun) do
+    with {:ok, clients} <- resolve_target_clients(deployment, target) do
+      results = Enum.map(clients, fun)
+
+      case Enum.find(results, &match?({:error, _}, &1)) do
+        nil -> :ok
+        error -> error
+      end
+    end
+  end
+
+  defp resolve_target_clients(deployment, [role: role]) do
+    case Deployment.servers(deployment, role: role) do
+      [] -> {:error, {:no_servers_for_role, role}}
+      servers -> {:ok, Enum.map(servers, &Client.new(&1.endpoint))}
+    end
+  end
+
+  defp resolve_target_clients(deployment, [role: role, index: index]) do
+    case Deployment.servers(deployment, role: role) do
+      servers when length(servers) > index ->
+        {:ok, [Client.new(Enum.at(servers, index).endpoint)]}
+
+      _ ->
+        {:error, {:no_server_at_index, role, index}}
+    end
+  end
+
+  defp resolve_target_clients(deployment, [cluster_id: cluster_internal_id]) do
+    case Deployment.server_by_cluster_id(deployment, cluster_internal_id) do
+      {:ok, server} -> {:ok, [Client.new(server.endpoint)]}
+      {:error, _} = err -> err
+    end
+  end
+
+  defp resolve_target_clients(_deployment, target) do
+    {:error, {:invalid_target, target}}
   end
 
   # -- Response handling --

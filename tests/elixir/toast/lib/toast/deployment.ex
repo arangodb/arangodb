@@ -7,6 +7,12 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
 
+  @type server_target ::
+          String.t()
+          | [role: atom()]
+          | [role: atom(), index: non_neg_integer()]
+          | [cluster_id: String.t()]
+
   @type t :: %__MODULE__{
           id: String.t(),
           mode: :single_server | :cluster,

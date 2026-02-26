@@ -538,10 +538,23 @@ defmodule Toast.Deployment.SingleServerController do
     :exit, _ -> :ok
   end
 
+  # --- Target resolution ---
+
+  defp resolve_target(state, server_id) when is_binary(server_id) do
+    if state.server.id == server_id, do: {:ok, server_id}, else: {:error, :not_found}
+  end
+
+  defp resolve_target(state, [role: :single]), do: {:ok, state.server.id}
+  defp resolve_target(_state, [role: role]), do: {:error, {:no_servers_for_role, role}}
+  defp resolve_target(_state, target), do: {:error, {:invalid_target, target}}
+
   # --- Control helpers ---
 
-  defp validate_server_id(state, server_id) do
-    if state.server.id == server_id, do: :ok, else: {:error, :not_found}
+  defp validate_server_id(state, target) do
+    case resolve_target(state, target) do
+      {:ok, _} -> :ok
+      {:error, _} = err -> err
+    end
   end
 
   defp require_operational_state(state, expected) do

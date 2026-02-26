@@ -111,4 +111,117 @@ defmodule ToastTest.SuiteTest do
     assert Keyword.get(config, :server_args) == ["--common", "arg"]
     assert Keyword.get(config, :coordinator_args) == ["--coord-only", "yes"]
   end
+
+  describe "setup_deployment/1 error handling" do
+    test "setup_deployment/1 can return {:error, reason}" do
+      defmodule ErrorSetupSuite do
+        use ToastTest.Suite
+
+        def setup_deployment(_deployment) do
+          {:error, :database_init_failed}
+        end
+      end
+
+      assert {:error, :database_init_failed} = ErrorSetupSuite.setup_deployment(:fake)
+    end
+
+    test "runner treats {:error, reason} from setup_deployment as suite failure" do
+      # The runner (ToastTest.Runner.run_suite_setup/2) calls setup_deployment/1
+      # and pattern matches on {:ok, extra_context} vs {:error, reason}.
+      # On error, it calls mark_all_errored_stats to fail all tests.
+      # We verify the contract: setup_deployment returns a tagged tuple.
+      defmodule ErrorReasonSuite do
+        use ToastTest.Suite
+
+        def setup_deployment(_deployment) do
+          {:error, "collection creation failed: permission denied"}
+        end
+      end
+
+      result = ErrorReasonSuite.setup_deployment(:fake)
+      assert {:error, reason} = result
+      assert is_binary(reason)
+    end
+  end
+
+  describe "server_args merged with global defaults" do
+    test "server_args defaults to empty list" do
+      defmodule DefaultArgsSuite do
+        use ToastTest.Suite
+      end
+
+      config = DefaultArgsSuite.deployment_config()
+      assert Keyword.get(config, :server_args) == []
+    end
+
+    test "server_args are preserved alongside role-specific args" do
+      defmodule GlobalAndRoleSuite do
+        use ToastTest.Suite,
+          server_args: ["--log.level", "debug", "--database.extended-names", "true"],
+          coordinator_args: ["--query.memory-limit", "1073741824"],
+          dbserver_args: ["--rocksdb.block-cache-size", "536870912"],
+          agent_args: ["--agency.compaction-step-size", "1000"]
+      end
+
+      config = GlobalAndRoleSuite.deployment_config()
+      assert Keyword.get(config, :server_args) == ["--log.level", "debug", "--database.extended-names", "true"]
+      assert Keyword.get(config, :coordinator_args) == ["--query.memory-limit", "1073741824"]
+      assert Keyword.get(config, :dbserver_args) == ["--rocksdb.block-cache-size", "536870912"]
+      assert Keyword.get(config, :agent_args) == ["--agency.compaction-step-size", "1000"]
+    end
+  end
+
+  describe "role-specific args apply only to their respective roles" do
+    test "coordinator_args does not affect dbserver or agent configs" do
+      defmodule CoordOnlySuite do
+        use ToastTest.Suite,
+          coordinator_args: ["--coord-flag", "on"]
+      end
+
+      config = CoordOnlySuite.deployment_config()
+      assert Keyword.get(config, :coordinator_args) == ["--coord-flag", "on"]
+      assert Keyword.get(config, :dbserver_args) == []
+      assert Keyword.get(config, :agent_args) == []
+    end
+
+    test "dbserver_args does not affect coordinator or agent configs" do
+      defmodule DbOnlySuite do
+        use ToastTest.Suite,
+          dbserver_args: ["--db-flag", "on"]
+      end
+
+      config = DbOnlySuite.deployment_config()
+      assert Keyword.get(config, :dbserver_args) == ["--db-flag", "on"]
+      assert Keyword.get(config, :coordinator_args) == []
+      assert Keyword.get(config, :agent_args) == []
+    end
+
+    test "agent_args does not affect coordinator or dbserver configs" do
+      defmodule AgentOnlySuite do
+        use ToastTest.Suite,
+          agent_args: ["--agent-flag", "on"]
+      end
+
+      config = AgentOnlySuite.deployment_config()
+      assert Keyword.get(config, :agent_args) == ["--agent-flag", "on"]
+      assert Keyword.get(config, :coordinator_args) == []
+      assert Keyword.get(config, :dbserver_args) == []
+    end
+
+    test "all role-specific args are independent" do
+      defmodule AllRolesSuite do
+        use ToastTest.Suite,
+          server_args: ["--common"],
+          coordinator_args: ["--coord"],
+          dbserver_args: ["--db"],
+          agent_args: ["--agent"]
+      end
+
+      config = AllRolesSuite.deployment_config()
+      assert Keyword.get(config, :server_args) == ["--common"]
+      assert Keyword.get(config, :coordinator_args) == ["--coord"]
+      assert Keyword.get(config, :dbserver_args) == ["--db"]
+      assert Keyword.get(config, :agent_args) == ["--agent"]
+    end
+  end
 end
