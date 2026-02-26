@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-2.
+
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
 
 * Remove deprecated option `--server.jwt-secret` because it is insecure.
@@ -15,8 +17,6 @@
 
 * arangorestore now automatically converts deprecated `fulltext` indexes to
   `inverted` indexes when restoring dumps from older versions.
-
-* Updated ArangoDB Starter to v0.20.0-preview-1.
 
 * Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
   dependencies.
