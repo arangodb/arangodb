@@ -1,10 +1,16 @@
-devel
------
+3.12.9-devel (XXXX-XX-XX)
+-------------------------
 
 * Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
 
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
+
+
+3.12.8 (XXXX-XX-XX)
+-------------------
+
+* Accept `null` as valid value for the `roles` attribute in JWT tokens.
 
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
@@ -13,6 +19,8 @@ devel
 * Updated minimatch to 10.2.1.
 
 * Add new API GET /_admin/options-public for new platform UI.
+
+* Fix ES-2824: SEARCH query produces wrong results.
 
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
