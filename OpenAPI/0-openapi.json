@@ -4854,7 +4854,7 @@
   },
   "/_db/{database-name}/_admin/license": {
    "get": {
-    "description": "View the license information and status of an Enterprise Edition instance.\nCan be called on single servers, Coordinators, and DB-Servers.\n",
+    "description": "View the license information and status of the ArangoDB deployment.\n\nCan be called on single servers, Coordinators, and DB-Servers.\n\nIn the Community Edition before v3.12.5, only `{\"license\":\"none\"}`\nis returned.\n",
     "operationId": "getLicense",
     "parameters": [
      {
@@ -4938,16 +4938,15 @@
            "type": "string"
           },
           "license": {
-           "description": "The encrypted license key in Base64 encoding.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
+           "description": "The encrypted license key in Base64 encoding.\n\nThis attribute is only present if an Enterprise Edition license is applied\n(or has a value of `\"none\"` in the Community Edition before v3.12.5).\n",
            "example": "V0h/W...wEDw==",
            "type": "string"
           },
           "status": {
-           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is valid for more than 2 weeks.\n- `expiring`: The license is valid for less than 2 weeks.\n  Not applicable if you use license activation rather than a\n  license key, in which case the transition is directly from\n  `good` to `read-only`.\n- `expired`: The license has expired. In this situation, no new\n  Enterprise Edition features can be utilized.\n- `read-only`: The license is expired over 2 weeks. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
+           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is still valid for more than a week.\n- `expiring`: The license is valid for less than a week.\n  This status is not applicable if you use license activation\n  (managed license, from v3.12.6 onward) rather than a license key,\n  in which case the transition is directly from `good` to\n  `read-only` when the activation expires.\n- `read-only`: The license has expired. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
            "enum": [
             "good",
             "expiring",
-            "expired",
             "read-only"
            ],
            "example": "good",
@@ -4964,9 +4963,6 @@
            "type": "number"
           }
          },
-         "required": [
-          "upgrading"
-         ],
          "type": "object"
         }
        }
