@@ -36,7 +36,7 @@ function activityRegistryModuleSuite() {
           "id" : "0x7a1c8743c780", 
           "type" : "ActivityRegistryRestHandler", 
           "parent" : {id: "0x0"}, 
-          "metadata" : { 
+          "data" : { 
             "method" : "GET", 
             "url" : "/_admin/activities" 
           } 
@@ -50,7 +50,7 @@ function activityRegistryModuleSuite() {
           "id" : "0x7a1c8743c780", 
           "type" : "ActivityRegistryRestHandler", 
           "parent" : {id: "0x0"}, 
-          "metadata" : { 
+          "data" : { 
             "method" : "GET", 
             "url" : "/_admin/activities" 
           } 
@@ -59,7 +59,7 @@ function activityRegistryModuleSuite() {
           "id": "0x7b9050e26140",
           "type": "RestDumpHandler",
           "parent": {id: "0x0"},
-          "metadata": {
+          "data": {
             "method": "POST",
             "url": "/_api/dump/start"
           }
@@ -76,7 +76,7 @@ function activityRegistryModuleSuite() {
           "id": "0x76620a63b140",
           "type": "RestDumpHandler",
           "parent": {id: "0x0"},
-          "metadata": {
+          "data": {
             "method": "POST",
             "url": "/_api/dump/start"
           }
@@ -85,7 +85,7 @@ function activityRegistryModuleSuite() {
           "id": "0x766238412000",
           "type": "dump context",
           "parent": {id: "0x76620a63b140"},
-          "metadata": {
+          "data": {
             "database": "_system",
             "user": "root",
             "id": "dump-1855655160184832000"
@@ -104,31 +104,31 @@ function activityRegistryModuleSuite() {
           "id": "1",
           "type": "1",
           "parent": {id: "0"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "2",
           "type": "2",
           "parent": {id: "1"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "3",
           "type": "3",
           "parent": {id: "1"},
-          "metadata": {}
+          "data": {}
         },
          {
           "id": "4",
           "type": "4",
           "parent": {id: "2"},
-          "metadata": {}
+          "data": {}
         },
          {
           "id": "5",
           "type": "5",
           "parent": {id: "2"},
-          "metadata": {}
+          "data": {}
         }
     ];
       const lines = activitiesModule.pretty_print(activities).split('\n');
@@ -146,49 +146,49 @@ function activityRegistryModuleSuite() {
           "id": "1",
           "type": "1",
           "parent": {id: "0"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "2",
           "type": "2",
           "parent": {id: "1"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "3",
           "type": "3",
           "parent": {id: "1"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "4",
           "type": "4",
           "parent": {id: "2"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "5",
           "type": "5",
           "parent": {id: "3"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "6",
           "type": "6",
           "parent": {id: "3"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "7",
           "type": "7",
           "parent": {id: "6"},
-          "metadata": {}
+          "data": {}
         },
         {
           "id": "8",
           "type": "8",
           "parent": {id: "1"},
-          "metadata": {}
+          "data": {}
         }
       ];
       const lines = activitiesModule.pretty_print(activities).split('\n');

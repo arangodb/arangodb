@@ -21,13 +21,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Activities/activity.h"
-#include "Containers/Concurrent/Registry.h"
+#include "Activities/ActivityId.h"
+#include "Activities/ActivityHandle.h"
+#include "Activities/IRegistryMetrics.h"
+#include "Containers/Concurrent/metrics.h"
+
+#include "Basics/ErrorT.h"
+#include "Basics/Guarded.h"
+
+#include "Inspection/Status.h"
+
+#include <velocypack/SharedSlice.h>
+
+#include <deque>
+#include <memory>
 
 namespace arangodb::activities {
-using ThreadRegistry = containers::ThreadRegistry<ActivityInRegistry>;
 
-struct Registry : containers::Registry<ActivityInRegistry> {
+struct Registry {
   explicit Registry() = default;
   Registry(Registry const&) = delete;
   Registry(Registry&&) = delete;
@@ -36,20 +47,53 @@ struct Registry : containers::Registry<ActivityInRegistry> {
 
   struct [[nodiscard]] ScopedCurrentlyExecutingActivity;
 
-  static auto currentlyExecutingActivity() noexcept -> ActivityId {
+  auto setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void;
+  auto garbageCollect() -> void;
+
+  static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
     return _currentlyExecutingActivity;
   }
-  static auto setCurrentlyExecutingActivity(ActivityId activity) noexcept
+  static auto setCurrentlyExecutingActivity(ActivityHandle activity) noexcept
       -> void {
     _currentlyExecutingActivity = std::move(activity);
   }
 
+  template<typename T, typename... Args>
+  auto makeActivityWithParent(ActivityHandle parent, Args&&... args)
+      -> T::HandleType {
+    auto id = _activityIdCounter.fetch_add(1);
+    auto activity =
+        std::make_shared<T>(id, std::move(parent), std::forward<Args>(args)...);
+
+    _registry.doUnderLock([this, &activity](auto&& reg) {
+      reg.emplace_front(activity);
+      _metrics->increment_total_nodes();
+      _metrics->increment_registered_nodes();
+    });
+
+    return activity;
+  }
+  template<typename T, typename... Args>
+  auto makeActivity(Args&&... args) -> T::HandleType {
+    return makeActivityWithParent<T>(_currentlyExecutingActivity,
+                                     std::forward<Args>(args)...);
+  }
+
+  auto snapshot()
+      -> errors::ErrorT<inspection::Status, velocypack::SharedSlice>;
+
+  auto findActivityById(ActivityId id) const -> std::optional<ActivityHandle>;
+
  private:
-  static thread_local ActivityId _currentlyExecutingActivity;
+  static thread_local ActivityHandle _currentlyExecutingActivity;
+  static thread_local ActivityHandle _rootActivity;
+  Guarded<std::deque<ActivityHandle>> _registry;
+  std::atomic<ActivityId> _activityIdCounter;
+  std::shared_ptr<IRegistryMetrics> _metrics;
 };
 
 struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
-  explicit ScopedCurrentlyExecutingActivity(ActivityId activity) noexcept;
+  explicit ScopedCurrentlyExecutingActivity(ActivityHandle activity) noexcept;
   ~ScopedCurrentlyExecutingActivity();
 
   ScopedCurrentlyExecutingActivity(ScopedCurrentlyExecutingActivity const&) =
@@ -59,16 +103,16 @@ struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
   auto operator=(ScopedCurrentlyExecutingActivity&&) = delete;
 
  private:
-  ActivityId _oldExecutingActivity;
+  ActivityHandle _oldExecutingActivity;
 };
 
 template<typename Func>
-auto withSetCurrentlyExecutingActivity(ActivityId activity, Func&& func) {
-  return [
-    func = std::forward<Func>(func), activity
-  ]<typename... Args,
-    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+auto withSetCurrentlyExecutingActivity(ActivityHandle activity, Func&& func) {
+  return [func = std::forward<Func>(func),
+          activity]<typename... Args,
+                    typename =
+                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };

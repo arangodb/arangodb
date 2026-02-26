@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -18,33 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Activities/IRegistryMetrics.h"
-#include "Metrics/Fwd.h"
+#include "Activities/GuardedActivity.h"
 
-#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb::activities {
 
-struct RegistryMetrics : IRegistryMetrics {
-  RegistryMetrics(std::shared_ptr<arangodb::metrics::Counter> activities_total,
-                  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
-                      existing_activities)
+using GenericActivityData = std::unordered_map<std::string, std::string>;
 
-      : activities_total{activities_total},
-        existing_activities{existing_activities} {}
-  ~RegistryMetrics() = default;
-  auto increment_total_nodes() -> void override;
-  auto increment_registered_nodes() -> void override;
-  auto store_registered_nodes(std::uint64_t count) -> void override;
-
- private:
-  std::shared_ptr<arangodb::metrics::Counter> activities_total = nullptr;
-  std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>> existing_activities =
-      nullptr;
+struct GenericActivity : GuardedActivity<GenericActivity, GenericActivityData> {
+  GenericActivity(ActivityId id, ActivityHandle parent, ActivityType type,
+                  GenericActivityData data)
+      : GuardedActivity<GenericActivity, GenericActivityData>(
+            std::move(id), std::move(parent), std::move(type),
+            std::move(data)) {}
 };
 
 }  // namespace arangodb::activities

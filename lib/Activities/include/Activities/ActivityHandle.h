@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -18,30 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/Concurrent/Registry.h"
-#include "Activities/activity.h"
-#include "Activities/registry.h"
+#include <memory>
 
 namespace arangodb::activities {
 
-/**
-   Global variable that holds all active activities.
-
-   Includes a list of thread owned lists, one for each initialized
-   thread.
- */
-extern Registry registry;
-
-/**
-   Get thread registry of all active activities on current thread.
-
-   Creates the thread registry when called for the first time and adds it to
-   the global registry.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+struct Activity;
+using ActivityHandle = std::shared_ptr<Activity>;
 
 }  // namespace arangodb::activities

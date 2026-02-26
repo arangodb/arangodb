@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -19,21 +19,35 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "Activities/registry.h"
-#include "Activities/activity.h"
+#include "Activities/ActivityId.h"
+#include "Activities/ActivityHandle.h"
+#include "Activities/ActivityType.h"
+
+#include <velocypack/Builder.h>
+#include <Inspection/Status.h>
 
 namespace arangodb::activities {
 
-Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
-    ActivityId activity) noexcept {
-  _oldExecutingActivity = Registry::currentlyExecutingActivity();
-  Registry::setCurrentlyExecutingActivity(activity);
-}
+struct Activity : std::enable_shared_from_this<Activity> {
+  Activity(ActivityId id, ActivityHandle parent, ActivityType type)
+      : _id(std::move(id)),
+        _parent(std::move(parent)),
+        _type(std::move(type)) {}
+  virtual ~Activity() = default;
 
-Registry::ScopedCurrentlyExecutingActivity::
-    ~ScopedCurrentlyExecutingActivity() {
-  Registry::setCurrentlyExecutingActivity(_oldExecutingActivity);
-}
+  auto id() const noexcept -> ActivityId { return _id; };
+  auto parent() const noexcept -> ActivityHandle { return _parent; }
+  auto type() const noexcept -> ActivityType { return _type; }
+
+  virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
+
+ private:
+  ActivityId _id;
+  ActivityHandle _parent;
+  ActivityType _type;
+  //  std::string _database;
+};
 
 }  // namespace arangodb::activities
