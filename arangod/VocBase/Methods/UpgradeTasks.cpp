@@ -670,11 +670,12 @@ namespace {
 
 /// Rewrites a single VPack index array, changing any "hash"/"skiplist" type
 /// entries to "persistent" and appending "_migrated" to their name.
-/// Returns true if any changes were made.
-bool rewriteIndexTypesInArray(velocypack::Slice indexesSlice,
-                              velocypack::Builder& out) {
+/// Returns std::nullopt if no changes were needed.
+std::optional<velocypack::Builder> rewriteIndexTypesInArray(
+    velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
   bool hasChange = false;
+  velocypack::Builder out;
   {
     VPackArrayBuilder arrayGuard(&out);
     for (velocypack::Slice idx : VPackArrayIterator(indexesSlice)) {
@@ -709,7 +710,10 @@ bool rewriteIndexTypesInArray(velocypack::Slice indexesSlice,
       }
     }
   }
-  return hasChange;
+  if (!hasChange) {
+    return std::nullopt;
+  }
+  return out;
 }
 
 Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
@@ -744,8 +748,8 @@ Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
       continue;
     }
 
-    velocypack::Builder newIndexes;
-    if (!rewriteIndexTypesInArray(indexesSlice, newIndexes)) {
+    auto newIndexes = rewriteIndexTypesInArray(indexesSlice);
+    if (!newIndexes) {
       continue;
     }
 
@@ -758,7 +762,7 @@ Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
 
     velocypack::Builder overwrite;
     overwrite.openObject();
-    overwrite.add("indexes", newIndexes.slice());
+    overwrite.add("indexes", newIndexes->slice());
     overwrite.close();
 
     velocypack::Builder newCollDef =
@@ -783,6 +787,60 @@ Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
   return {};
 }
 
+Result migrateCollectionIndexesInPlan(AgencyComm& ac, AgencyCache& agencyCache,
+                                      std::string const& dbName,
+                                      std::string const& collId) {
+  constexpr static size_t kMaxRetries = 10;
+  auto const indexesPath =
+      std::format("Plan/Collections/{}/{}/indexes", dbName, collId);
+
+  for (size_t attempt = 0; attempt < kMaxRetries; ++attempt) {
+    auto const [acb, readIdx] = agencyCache.read(
+        std::vector<std::string>{AgencyCommHelper::path(indexesPath)});
+
+    velocypack::Slice indexesSlice =
+        acb->slice()[0].get(std::initializer_list<std::string_view>{
+            AgencyCommHelper::path(), "Plan", "Collections", dbName, collId,
+            "indexes"});
+
+    if (!indexesSlice.isArray()) {
+      return {};
+    }
+
+    auto newIndexes = rewriteIndexTypesInArray(indexesSlice);
+    if (!newIndexes) {
+      return {};
+    }
+
+    AgencyOperation setIndexes(indexesPath, AgencyValueOperationType::SET,
+                               newIndexes->slice());
+    AgencyOperation incrVersion("Plan/Version",
+                                AgencySimpleOperationType::INCREMENT_OP);
+    AgencyPrecondition pre(indexesPath, AgencyPrecondition::Type::VALUE,
+                           indexesSlice);
+    AgencyWriteTransaction trx({setIndexes, incrVersion}, pre);
+    AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+
+    if (result.successful()) {
+      return {};
+    }
+
+    LOG_TOPIC("b3c4d", WARN, Logger::STARTUP) << std::format(
+        "Failed to migrate indexes for collection {} in database {} "
+        "(attempt {}/{}): {}",
+        collId, dbName, attempt + 1, kMaxRetries, result.errorMessage());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Wait for cache update
+    agencyCache.waitForLatestCommitIndex().wait();
+  }
+
+  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+                std::format("failed to migrate hash/skiplist indexes for "
+                            "collection {} in database {} after {} attempts",
+                            collId, dbName, kMaxRetries));
+}
+
 Result convertHashSkiplistIndexesInPlanCoordinator(
     TRI_vocbase_t& vocbase, arangodb::ClusterFeature& clusterFeature) {
   auto& agencyCache = clusterFeature.agencyCache();
@@ -797,8 +855,7 @@ Result convertHashSkiplistIndexesInPlanCoordinator(
     return {};
   }
 
-  std::vector<AgencyOperation> operations;
-  std::vector<std::shared_ptr<velocypack::Builder>> builders;
+  AgencyComm ac(vocbase.server());
 
   for (auto dbEntry : VPackObjectIterator(databasesSlice)) {
     std::string const dbName = dbEntry.key.copyString();
@@ -807,43 +864,15 @@ Result convertHashSkiplistIndexesInPlanCoordinator(
       continue;
     }
     for (auto collEntry : VPackObjectIterator(collectionsSlice)) {
-      std::string const collId = collEntry.key.copyString();
-      velocypack::Slice coll = collEntry.value;
-      if (!coll.isObject()) {
-        continue;
+      auto const collId = collEntry.key.copyString();
+      auto res =
+          migrateCollectionIndexesInPlan(ac, agencyCache, dbName, collId);
+      if (res.fail()) {
+        return res;
       }
-      velocypack::Slice indexesSlice = coll.get("indexes");
-      if (!indexesSlice.isArray()) {
-        continue;
-      }
-
-      auto newIndexesBuilder = std::make_shared<velocypack::Builder>();
-      if (!rewriteIndexTypesInArray(indexesSlice, *newIndexesBuilder)) {
-        continue;
-      }
-
-      builders.push_back(newIndexesBuilder);
-      std::string path =
-          "Plan/Collections/" + dbName + "/" + collId + "/indexes";
-      operations.emplace_back(path, AgencyValueOperationType::SET,
-                              newIndexesBuilder->slice());
     }
   }
 
-  if (operations.empty()) {
-    return {};
-  }
-
-  operations.emplace_back("Plan/Version",
-                          AgencySimpleOperationType::INCREMENT_OP);
-  AgencyComm ac(vocbase.server());
-  AgencyWriteTransaction trx(operations);
-  AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
-
-  if (!result.successful()) {
-    return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
-                  result.errorMessage());
-  }
   return {};
 }
 

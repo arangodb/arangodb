@@ -5,5 +5,4 @@ target_sources(arango_vocbase PRIVATE
   Queries.cpp
   Ttl.cpp
   Upgrade.cpp
-  UpgradeTasks.cpp
   Version.cpp)
