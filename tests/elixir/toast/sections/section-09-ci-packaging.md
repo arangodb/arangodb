@@ -458,3 +458,29 @@ Verification criteria:
 - `mix toast.analyze results.json --slow 5` shows the 5 slowest tests
 - Exit codes correctly reflect run outcomes (test with each failure type)
 - Mixed results across suites produce the highest-severity exit code
+
+---
+
+## Implementation Notes (Actual)
+
+### Files created (as planned)
+- `lib/toast/result_packaging.ex` - Tiered packaging + exit code computation
+- `lib/toast/analysis/summary.ex` - Summary formatter
+- `lib/toast/analysis/failures.ex` - Failure details formatter
+- `lib/toast/analysis/crashes.ex` - Crash/sanitizer diagnostics formatter
+- `lib/toast/analysis/performance.ex` - Slowest tests + duration distribution
+- `lib/mix/tasks/toast.analyze.ex` - `mix toast.analyze` CLI task
+- Test files for all of the above (6 test files, ~35 tests total)
+
+### Files modified (beyond plan)
+- `lib/toast_test/runner.ex` - Extended `abort!/1` to accept `{type, reason}` tagged tuples for structured exit code classification. `run_suite/4` now captures diagnostics from `stop_and_collect`, returning `%{stats:, diagnostics:}`. Added `collect_diagnostics/1` helper and `abort_display_reason/1`.
+- `lib/toast_test/crash_monitor.ex` - Uses `{:crash, msg}` tuple for `abort!` call
+- `test/toast_test/crash_monitor_test.exs` - Updated to match new tagged tuple format
+- `lib/mix/tasks/toast.ex` - Added `--ci` flag, env var mapping, structured exit code logic using `match?({:crash, _}, ...)`, sanitizer error detection from diagnostics, CI packaging integration
+- `lib/toast/config.ex` - Added `ci: boolean()` field
+
+### Deviations from plan
+- **ResultExporter not modified**: The existing `export_suites/1` and `render_suites` already handle suite-level grouping with flat test lists per suite. The plan's nested `test_modules` structure was not implemented as the flat structure works for all consumers.
+- **Runner extended**: Plan didn't list runner as a file to modify, but structured abort types and diagnostics threading were necessary for correct exit code computation and sanitizer detection.
+- **gzip fallback**: Shells out to `gzip -c` with file streaming to avoid OOM on large core dumps. Falls back to in-memory only if gzip executable not found.
+- **Tier 2 archive preserves directory structure**: Files archived as `suite_name/filename` to prevent name collisions across suites.

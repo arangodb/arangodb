@@ -9,6 +9,6 @@ defmodule ToastTest.CrashMonitor do
     parts = if signal, do: parts ++ ["(signal: #{signal})"], else: parts
     parts = if exit_status, do: parts ++ ["exit_status=#{exit_status}"], else: parts
 
-    ToastTest.Runner.abort!(Enum.join(parts, " "))
+    ToastTest.Runner.abort!({:crash, Enum.join(parts, " ")})
   end
 end

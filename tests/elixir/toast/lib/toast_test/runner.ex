@@ -50,14 +50,15 @@ defmodule ToastTest.Runner do
     {suite_results, acc_stats} =
       Enum.reduce(suites, {[], %{total: 0, failures: 0, skipped: 0, excluded: 0}}, fn
         {suite_module, test_modules}, {results, acc} ->
-          suite_stats = run_suite(suite_module, test_modules, global_opts, global_deadline)
+          suite_result = run_suite(suite_module, test_modules, global_opts, global_deadline)
 
           result = %{
             suite_module: suite_module,
-            stats: suite_stats
+            stats: suite_result.stats,
+            diagnostics: suite_result.diagnostics
           }
 
-          {[result | results], merge_stats(acc, suite_stats)}
+          {[result | results], merge_stats(acc, suite_result.stats)}
       end)
 
     %{
@@ -95,14 +96,20 @@ defmodule ToastTest.Runner do
     end
   end
 
-  @spec abort!(String.t()) :: :ok
+  @spec abort!(String.t() | {atom(), String.t()}) :: :ok
   def abort!(reason) do
+    display_reason =
+      case reason do
+        {_type, msg} -> msg
+        msg when is_binary(msg) -> msg
+      end
+
     if :ets.insert_new(@abort_table, {:aborted, reason}) do
       IO.puts([
         IO.ANSI.red(),
         "====================================",
         "\n   ",
-        reason,
+        display_reason,
         "\n   !!! Aborting further tests !!!\n",
         "====================================\n",
         IO.ANSI.reset()
@@ -124,7 +131,7 @@ defmodule ToastTest.Runner do
     :ok
   end
 
-  @spec aborted?() :: String.t() | nil
+  @spec aborted?() :: String.t() | {atom(), String.t()} | nil
   def aborted? do
     case :ets.lookup(@abort_table, :aborted) do
       [{:aborted, reason}] -> reason
@@ -170,22 +177,22 @@ defmodule ToastTest.Runner do
             ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
             stats = run_suite_tests(suite_run, test_modules, global_opts)
             run_suite_teardown(suite_module, deployment)
-            Toast.Deployment.stop_and_collect(deployment)
+            diagnostics = collect_diagnostics(deployment)
             cleanup_between_suites()
-            stats
+            %{stats: stats, diagnostics: diagnostics}
 
           {:error, reason} ->
             stats = mark_all_errored_stats(test_modules, reason, global_opts)
-            Toast.Deployment.stop_and_collect(deployment)
+            diagnostics = collect_diagnostics(deployment)
             cleanup_between_suites()
-            stats
+            %{stats: stats, diagnostics: diagnostics}
         end
 
       {:error, reason} ->
         Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
         stats = mark_all_errored_stats(test_modules, reason, global_opts)
         cleanup_between_suites()
-        stats
+        %{stats: stats, diagnostics: nil}
     end
   end
 
@@ -247,8 +254,8 @@ defmodule ToastTest.Runner do
       check_suite_deadline!(config)
 
       cond do
-        aborted?() ->
-          emit_skipped_module(config, module, "Suite aborted: " <> (aborted?() || "unknown"))
+        reason = aborted?() ->
+          emit_skipped_module(config, module, "Suite aborted: " <> abort_display_reason(reason))
 
         max_failures_reached?(config) ->
           :ok
@@ -380,6 +387,14 @@ defmodule ToastTest.Runner do
     stats
   end
 
+  defp collect_diagnostics(deployment) do
+    case Toast.Deployment.stop_and_collect(deployment) do
+      {:ok, diagnostics} -> diagnostics
+      {:error, _reason, partial} -> partial
+      _ -> nil
+    end
+  end
+
   defp cleanup_between_suites do
     ToastTest.StateCleanup.reset()
   end
@@ -484,7 +499,7 @@ defmodule ToastTest.Runner do
 
     if reason = aborted?() do
       drain_running(config, running)
-      drain_remaining_modules(config, "Suite aborted: " <> reason)
+      drain_remaining_modules(config, "Suite aborted: " <> abort_display_reason(reason))
       async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
       {async_stop_time, modules_to_restore}
     else
@@ -520,7 +535,7 @@ defmodule ToastTest.Runner do
           check_suite_deadline!(config)
 
           if reason = aborted?() do
-            emit_skipped_pair(config, pair, "Suite aborted: " <> reason)
+            emit_skipped_pair(config, pair, "Suite aborted: " <> abort_display_reason(reason))
           else
             running = spawn_modules(config, [{nil, [pair]}], false, %{})
             running != %{} and wait_until_available(config, running)
@@ -698,7 +713,7 @@ defmodule ToastTest.Runner do
       run_module_tests(config, test_module, to_run_tests)
 
     if reason = aborted?() do
-      abort_msg = "Suite aborted: " <> reason
+      abort_msg = "Suite aborted: " <> abort_display_reason(reason)
 
       for test <- invalid_tests do
         skipped = %{test | state: {:skipped, abort_msg}}
@@ -1035,7 +1050,7 @@ defmodule ToastTest.Runner do
 
   defp exec_test_setup(%ExUnit.Test{module: module} = test, context) do
     if reason = aborted?() do
-      {:skipped, %{test | state: {:skipped, "Suite aborted: " <> reason}}}
+      {:skipped, %{test | state: {:skipped, "Suite aborted: " <> abort_display_reason(reason)}}}
     else
       {:ok, Compat.get_test_setup(module, context)}
     end
@@ -1120,7 +1135,15 @@ defmodule ToastTest.Runner do
 
   defp check_suite_deadline!(%{suite_deadline: deadline}) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort!("Suite timeout exceeded")
+      abort!({:timeout, "Suite timeout exceeded"})
+    end
+  end
+
+  defp abort_display_reason(reason) do
+    case reason do
+      {_type, msg} -> msg
+      msg when is_binary(msg) -> msg
+      _ -> "unknown"
     end
   end
 

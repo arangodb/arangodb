@@ -25,7 +25,8 @@ defmodule Toast.Config do
           api_version: non_neg_integer() | String.t() | nil,
           debugger: :gdb | :lldb | :auto | :none | nil,
           dump_agency_on_error: boolean(),
-          coredump_timeout: pos_integer()
+          coredump_timeout: pos_integer(),
+          ci: boolean()
         }
 
   @default_result_dir "toast-results"
@@ -52,7 +53,8 @@ defmodule Toast.Config do
     api_version: nil,
     debugger: :auto,
     dump_agency_on_error: true,
-    coredump_timeout: 120_000
+    coredump_timeout: 120_000,
+    ci: false
   ]
 
   @spec load() :: t()
@@ -93,7 +95,8 @@ defmodule Toast.Config do
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
       debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]) || :auto,
       dump_agency_on_error: opt_or(opts, :dump_agency_on_error, read_opt_bool("TOAST_DUMP_AGENCY"), local[:dump_agency_on_error]) |> default_true(),
-      coredump_timeout: (opt_or(opts, :coredump_timeout, read_pos_int("TOAST_COREDUMP_TIMEOUT", nil), local[:coredump_timeout]) || 120_000) * factor
+      coredump_timeout: (opt_or(opts, :coredump_timeout, read_pos_int("TOAST_COREDUMP_TIMEOUT", nil), local[:coredump_timeout]) || 120_000) * factor,
+      ci: opt_or(opts, :ci, read_bool("TOAST_CI"), local[:ci])
     }
 
     Logger.debug(fn ->

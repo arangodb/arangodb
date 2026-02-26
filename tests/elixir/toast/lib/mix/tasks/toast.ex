@@ -96,7 +96,8 @@ defmodule Mix.Tasks.Toast do
     cluster_coordinators: :integer,
     replication_factor: :integer,
     test: :string,
-    no_agency_dump: :boolean
+    no_agency_dump: :boolean,
+    ci: :boolean
   ]
 
   @aliases [
@@ -124,7 +125,8 @@ defmodule Mix.Tasks.Toast do
     cluster_dbservers: "TOAST_CLUSTER_DBSERVERS",
     cluster_coordinators: "TOAST_CLUSTER_COORDINATORS",
     replication_factor: "TOAST_CLUSTER_REPLICATION_FACTOR",
-    no_agency_dump: "TOAST_NO_AGENCY_DUMP"
+    no_agency_dump: "TOAST_NO_AGENCY_DUMP",
+    ci: "TOAST_CI"
   }
 
   # Keys passed through to ExUnit.configure
@@ -212,18 +214,129 @@ defmodule Mix.Tasks.Toast do
         end
       end)
 
-    global_opts = build_global_opts(opts, ex_unit_opts)
+    config = Toast.Config.load(opts_to_config_list(opts))
+    global_opts = build_global_opts(config, ex_unit_opts)
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
-    if result.stats.failures > 0 or ToastTest.Runner.aborted?() do
-      exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
-      System.at_exit(fn _ -> exit({:shutdown, exit_status}) end)
+    abort_reason = ToastTest.Runner.aborted?()
+    has_sanitizer_errors = has_sanitizer_errors?(result.suites)
+
+    run_results = %{
+      test_failures: result.stats.failures,
+      server_crashed: match?({:crash, _}, abort_reason),
+      infrastructure_failure: abort_reason != nil and not match?({:crash, _}, abort_reason),
+      sanitizer_errors: has_sanitizer_errors
+    }
+
+    if config.ci do
+      suite_diagnostics = build_suite_diagnostics(result.suites)
+
+      Toast.ResultPackaging.package(
+        ci: true,
+        result_dir: config.result_dir,
+        work_dir: config.work_dir,
+        suite_diagnostics: suite_diagnostics
+      )
+    end
+
+    exit_code = Toast.ResultPackaging.exit_code(run_results)
+
+    if exit_code > 0 do
+      System.at_exit(fn _ -> exit({:shutdown, exit_code}) end)
     end
   end
 
-  defp build_global_opts(opts, ex_unit_opts) do
-    config = Toast.Config.load(opts_to_config_list(opts))
+  defp has_sanitizer_errors?(suites) do
+    Enum.any?(suites, fn suite ->
+      diag = suite[:diagnostics]
+      diag != nil and has_sanitizer_in_diagnostics?(diag)
+    end)
+  end
 
+  defp has_sanitizer_in_diagnostics?(diagnostics) when is_map(diagnostics) do
+    case Map.get(diagnostics, :sanitizer_errors) do
+      errors when is_list(errors) and errors != [] -> true
+      _ ->
+        # Check cluster diagnostics (map of server_id => diag)
+        Enum.any?(diagnostics, fn
+          {_id, server_diag} when is_map(server_diag) ->
+            case Map.get(server_diag, :sanitizer_errors) do
+              errors when is_list(errors) and errors != [] -> true
+              _ -> false
+            end
+          _ -> false
+        end)
+    end
+  end
+
+  defp has_sanitizer_in_diagnostics?(_), do: false
+
+  defp build_suite_diagnostics(suites) do
+    Enum.map(suites, fn suite ->
+      %{
+        name: suite[:suite_module] |> inspect(),
+        log_files: extract_log_files(suite[:diagnostics]),
+        sanitizer_files: extract_sanitizer_files(suite[:diagnostics]),
+        crash_reports: [],
+        agency_dumps: [],
+        core_dumps: extract_core_dumps(suite[:diagnostics])
+      }
+    end)
+  end
+
+  defp extract_log_files(nil), do: []
+
+  defp extract_log_files(diagnostics) when is_map(diagnostics) do
+    case Map.get(diagnostics, :server) do
+      %{log_file: path} when is_binary(path) -> [path]
+      _ ->
+        diagnostics
+        |> Enum.flat_map(fn
+          {_id, %{server: %{log_file: path}}} when is_binary(path) -> [path]
+          _ -> []
+        end)
+    end
+  end
+
+  defp extract_log_files(_), do: []
+
+  defp extract_sanitizer_files(nil), do: []
+
+  defp extract_sanitizer_files(diagnostics) when is_map(diagnostics) do
+    case Map.get(diagnostics, :sanitizer_errors) do
+      errors when is_list(errors) ->
+        Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
+      _ ->
+        diagnostics
+        |> Enum.flat_map(fn
+          {_id, %{sanitizer_errors: errors}} when is_list(errors) ->
+            Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
+          _ -> []
+        end)
+    end
+  end
+
+  defp extract_sanitizer_files(_), do: []
+
+  defp extract_core_dumps(nil), do: []
+
+  defp extract_core_dumps(diagnostics) when is_map(diagnostics) do
+    case Map.get(diagnostics, :coredump_reports) do
+      reports when is_list(reports) ->
+        Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
+      _ ->
+        diagnostics
+        |> Enum.flat_map(fn
+          {_id, %{coredump_reports: reports}} when is_list(reports) ->
+            Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
+          _ -> []
+        end)
+    end
+  end
+
+  defp extract_core_dumps(_), do: []
+
+  defp build_global_opts(config, ex_unit_opts) do
     global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
 
     ex_unit_opts
@@ -256,7 +369,8 @@ defmodule Mix.Tasks.Toast do
       cluster_agents: :cluster_agents,
       cluster_dbservers: :cluster_dbservers,
       cluster_coordinators: :cluster_coordinators,
-      replication_factor: :cluster_replication_factor
+      replication_factor: :cluster_replication_factor,
+      ci: :ci
     ]
 
     config_list =
