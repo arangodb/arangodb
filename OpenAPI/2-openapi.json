@@ -18,13 +18,13 @@
  },
  "openapi": "3.1.0",
  "paths": {
-  "/_db/{database-name}/_admin/activities": {
+  "/_db/{database-name}/_arango/experimental/_admin/activities": {
    "get": {
-    "description": "Returns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AQLQuery`),\nan optional parent reference, and a `metadata` object. The structure of\n`metadata` depends on the activity type and may be extended in future\nversions.\n",
+    "description": "\u003e **WARNING:**\nThe activities API is incomplete and thus an experimental feature.\n\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AQLQuery`),\nan optional parent reference, and a `metadata` object. The structure of\n`metadata` depends on the activity type and may be extended in future\nversions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, *administrate* access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint is restricted\nto the superuser and you therefore need to authenticate with a token\ncreated from the JWT secret.\n",
     "operationId": "getActivities",
     "parameters": [
      {
-      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and administrator access to the `_system` database.\n",
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
       "example": "_system",
       "in": "path",
       "name": "database-name",
@@ -127,7 +127,7 @@
         }
        }
       },
-      "description": "The request is not authorized because the user account you authenticated\nwith lacks read access for the specified database.\n"
+      "description": "The user account you authenticated with lacks read access for the\nspecified database, the credentials are wrong, or the user account\nis inactive.\n"
      },
      "403": {
       "content": {
@@ -163,7 +163,7 @@
         }
        }
       },
-      "description": "The request is not authorized. By default, administrator access to\nthe `_system` database is required. If the `--activities.only-superuser-enabled`\nstartup option is enabled, a superuser authenticated with a token created\nfrom the JWT secret is required.\n"
+      "description": "The request is not authorized due to a lack of permissions.\nThe reason depends on the setting of the\n`--activities.only-superuser-enabled` startup option:\n\n- `false`: The endpoint is restricted to admin users but the\n  user account you authenticated with lacks write access to the\n  `_system` database.\n- `true`: The endpoint is restricted to the superuser but you didn't\n  authenticate with a token created from the JWT secret.\n"
      },
      "405": {
       "content": {
@@ -202,12 +202,12 @@
       "description": "Returned when an HTTP method other than `GET` is used.\n"
      }
     },
-    "summary": "Get the activities",
+    "summary": "Get the activities (experimental)",
     "tags": [
      "Monitoring"
     ]
    }
-  },
+  }
  },
  "tags": [
   {
