@@ -18,7 +18,7 @@
  },
  "openapi": "3.1.0",
  "paths": {
-  "/_db/{database-name}/_arango/experimental/_admin/activities": {
+  "/_arango/experimental/_db/{database-name}/_admin/activities": {
    "get": {
     "description": "\u003e **WARNING:**\nThe activities API is incomplete and thus an experimental feature.\n\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AQLQuery`),\nan optional parent reference, and a `metadata` object. The structure of\n`metadata` depends on the activity type and may be extended in future\nversions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, *administrate* access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint is restricted\nto the superuser and you therefore need to authenticate with a token\ncreated from the JWT secret.\n",
     "operationId": "getActivities",
@@ -239,11 +239,7 @@
    "name": "Queries"
   },
   {
-   "description": "Run distributed graph algorithms",
-   "name": "Pregel"
-  },
-  {
-   "description": "Execute JavaScript and Stream Transactions",
+   "description": "Execute Stream Transactions",
    "name": "Transactions"
   },
   {
@@ -263,27 +259,15 @@
    "name": "Import"
   },
   {
-   "description": "Manage microservices written in JavaScript",
-   "name": "Foxx"
-  },
-  {
    "description": "Execute requests asynchronously",
    "name": "Jobs"
-  },
-  {
-   "description": "Set up JavaScript code to run periodically or timed",
-   "name": "Tasks"
-  },
-  {
-   "description": "Run multiple operations using a single request",
-   "name": "Batch Requests"
   },
   {
    "description": "Control data replication for deployments",
    "name": "Replication"
   },
   {
-   "description": "Access logs, statistics, and metrics",
+   "description": "Access logs, metrics, and activities",
    "name": "Monitoring"
   },
   {
