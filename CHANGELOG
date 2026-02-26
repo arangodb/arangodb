@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
+
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
