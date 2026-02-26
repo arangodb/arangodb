@@ -530,6 +530,15 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
+    test_checks_unsupported_api_version_0_with_different_endpoint: function() {
+      let cmd = "/_arango/v0/_api/collection";
+      let doc = arango.GET_RAW(cmd);
+
+      // Unsupported API version should return 404 on any endpoint
+      assertEqual(doc.code, 404);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
   };
 }
 

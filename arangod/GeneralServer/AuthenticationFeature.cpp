@@ -255,13 +255,6 @@ other means (e.g. TCP/IP) are not affected by this option.)");
 #endif
 
   options
-      ->addOption("--server.jwt-secret",
-                  "The secret to use when doing JWT authentication.",
-                  new StringParameter(&_options.jwtSecretProgramOption))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
-
-  options
       ->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "
                   "authentication.",
@@ -285,10 +278,6 @@ In single server setups, ArangoDB generates a secret if none is specified.
 
 In cluster deployments which have authentication enabled, a secret must
 be set consistently across all cluster nodes so they can talk to each other.
-
-ArangoDB also supports an `--server.jwt-secret` option to pass the secret
-directly (without a file). However, this is discouraged for security
-reasons.
 
 You can reload JWT secrets from disk without restarting the server or the nodes
 of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
@@ -338,12 +327,6 @@ void AuthenticationFeature::validateOptions(
           << " have " << _options.jwtSecretProgramOption.length();
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (options->processingResult().touched("server.jwt-secret")) {
-    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
   }
 
   // Validate JWT expiry time settings

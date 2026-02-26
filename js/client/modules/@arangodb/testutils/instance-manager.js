@@ -75,6 +75,15 @@ const termSignal = 15;
 
 const instanceRole = inst.instanceRole;
 
+// Write a JWT secret string to a temporary keyfile and return the path.
+function writeJwtSecretToFile(rootDir, secret, suffix) {
+  let dir = fs.join(rootDir, 'jwtSecrets');
+  fs.makeDirectoryRecursive(dir);
+  let filePath = fs.join(dir, 'jwt-secret' + (suffix || '') + '.txt');
+  fs.write(filePath, secret);
+  return filePath;
+}
+
 let instanceCount = 1;
 const seconds = x => x * 1000;
 
@@ -115,11 +124,21 @@ class instanceManager {
     } else {
       this.startupMaxCount = options.startupMaxCount;
     }
+    // In the old times of ArangoDB 3.2 or so there was an option
+    // --server.jwt-secret to give the JWT secret directly on the
+    // command line, which is of course very insecure. Some tests
+    // used to use this feature. If we encounter this setting here,
+    // we write the secret to a temprary keyfile and rather us the
+    // more secure --server.jwt-secret-keyfile option.
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
+      delete addArgs['server.jwt-secret'];
+      let kf = writeJwtSecretToFile(this.rootDir, this.JWT);
+      addArgs['server.jwt-secret-keyfile'] = kf;
     } else if (options.hasOwnProperty('jwtSecret')) {
       this.JWT = options.jwtSecret;
-      addArgs['server.jwt-secret'] = this.JWT;
+      let kf = writeJwtSecretToFile(this.rootDir, this.JWT);
+      addArgs['server.jwt-secret-keyfile'] = kf;
     }
     if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
       let files = fs.list(addArgs['server.jwt-secret-folder']);
@@ -129,7 +148,7 @@ class instanceManager {
     if (this.options.encryptionAtRest) {
       if (this.options.hasOwnProperty('jwtFiles')) {
         this.JWT = fs.read(this.options.jwtFiles[0]);
-      } else if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+      } else if (!addArgs.hasOwnProperty('server.jwt-secret-keyfile')) {
         this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
         fs.makeDirectoryRecursive(this.rootDir);
         fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
@@ -139,7 +158,7 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
-    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
+    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret-keyfile') && addArgs.hasOwnProperty('server.authentication');
     this.hasSetPassvoid = false;
   }
 
@@ -928,6 +947,9 @@ class instanceManager {
     this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+      let kf = writeJwtSecretToFile(this.rootDir, this.JWT, '-restart');
+      delete moreArgs['server.jwt-secret'];
+      moreArgs['server.jwt-secret-keyfile'] = kf;
       this.arangods.forEach(arangod => {
         if (arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
           delete arangod.args['server.jwt-secret-keyfile'];
@@ -1108,15 +1130,6 @@ class instanceManager {
   checkClusterAlive() {
     let httpOptions = _.clone(this.httpJWTAuthOptions);
     httpOptions.returnBodyOnError = true;
-
-    // scrape the jwt token
-    //instanceInfo.authOpts = _.clone(this.options);
-    //if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
-    //  instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
-    //} else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
-    //  instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-    //}
-
 
     let count = 0;
     while (true) {
@@ -1317,7 +1330,7 @@ class instanceManager {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
-          !arangod.args.hasOwnProperty('server.jwt-secret')) {
+          !arangod.args.hasOwnProperty('server.jwt-secret-keyfile')) {
         let fp = arangod.debugGetFailurePoints();
         if (fp.length > 0) {
           failurePoints.push({
