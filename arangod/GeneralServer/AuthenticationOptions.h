@@ -31,6 +31,7 @@ struct AuthenticationOptions {
   bool authenticationUnixSockets = true;
   bool authenticationSystemOnly = true;
   bool active = true;
+  std::string externalRBACservice = "";  // means deactivated RBAC
   double authenticationTimeout = 0.0;
   double sessionTimeout = static_cast<double>(1 * 3600);  // 1 hour in seconds
   double minimalJwtExpiryTime = 10.0;                     // 10 seconds
