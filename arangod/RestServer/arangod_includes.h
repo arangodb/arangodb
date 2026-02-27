@@ -109,7 +109,6 @@
 #include "RestServer/LockfileFeature.h"
 #include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/NonceFeature.h"
 #include "RestServer/PrivilegeFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestartAction.h"

@@ -122,7 +122,6 @@ void ArangodServer::addFeatures(
   addFeature<MaintenanceFeature>();
   addFeature<MaxMapCountFeature>();
   addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);

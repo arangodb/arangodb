@@ -1,11 +1,126 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Existing `hash` and `skiplist` indexes are automatically converted to
+  `persistent` during database upgrade. Converted indexes are renamed by
+  appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
+
+* Removed deprecated logger-follow API endpoint.
+
+* Remove the following commandline options which have been replaced a while ago:
+    - check-version (replaced by "database.check-version")
+    - database.disable-query-tracking (replaced by "query.tracking")
+    - database.query-cache-max-results (replaced by "query.cache-entries")
+    - database.query-cache-mode (replaced by "query.cache-mode")
+    - database.replication-applier (replaced by "replication.auto-start")
+    - javascript.endpoints-blacklist (replaced by "javascript.endpoints-denylist")
+    - javascript.endpoints-whitelist (replaced by "javascript.endpoints-allowlist")
+    - javascript.environment-variables-blacklist (replaced by "javascript.environment-variables-denylist")
+    - javascript.environment-variables-whitelist (replaced by "javascript.environment-variables-allowlist")
+    - javascript.files-whitelist (replaced by "javascript.files-allowlist")
+    - javascript.startup-options-blacklist (replaced by "javascript.startup-options-denylist")
+    - javascript.startup-options-whitelist (replaced by "javascript.startup-options-allowlist")
+    - log.tty (replaced by "log.foreground-tty")
+    - no-server (replaced by "server.rest-server")
+    - rocksdb.delayed_write_rate (replaced by "rocksdb.delayed-write-rate")
+    - scheduler.threads (replaced by "server.maximal-threads")
+    - server.allow-method-override (replaced by "http.allow-method-override")
+    - server.authenticate-system-only (replaced by "server.authentication-system-only")
+    - server.backlog-size (replaced by "tcp.backlog-size")
+    - server.cafile (replaced by "ssl.cafile")
+    - server.disable-replication-applier (replaced by "replication.auto-start")
+    - server.disable-statistics (replaced by "server.statistics")
+    - server.hide-product-header (replaced by "http.hide-product-header")
+    - server.keep-alive-timeout (replaced by "http.keep-alive-timeout")
+    - server.keyfile (replaced by "ssl.keyfile")
+    - server.reuse-address (replaced by "tcp.reuse-address")
+    - server.ssl-cache ((replaced by "ssl.session-cache")
+    - server.ssl-cipher-list (replaced by "ssl.cipher-list")
+    - server.ssl-options (replaced by "ssl.options")
+    - server.ssl-protocol (replaced by "ssl.protocol")
+    - temp-path (replaced by "temp.path")
+    - upgrade (replaced by "database.auto-upgrade")
+
+* Remove the following deprecated commandline options:
+    - agency.pool-size
+    - arangosearch.threads
+    - arangosearch.threads-limit
+    - network.protocol
+    - query.allow-collections-in-expressions
+    - rocksdb.exclusive-writes
+    - log
+
+* Remove the following obsolete commandline options from arangod executable:
+    - query.parallelize-gather-writes
+    - cluster.dbserver-config
+    - cluster.coordinator-config
+    - cluster.data-path
+    - cluster.log-path
+    - cluster.arangod-path
+    - cluster.my-local-info
+    - cluster.my-id
+    - cluster.agency-prefix
+    - server.local-authentication
+    - server.disable-authentication
+    - server.disable-authentication-unix-sockets
+    - http.allow-method-override
+    - http.hide-product-header
+    - replication.active-failover
+    - replication.active-failover-leader-grace-period
+    - database.force-sync-properties
+    - database.throw-collection-not-loaded-error
+    - database.maximal-journal-size
+    - database.index-threads
+    - database.check-30-revisions
+    - database.revision-cache-chunk-size
+    - database.revision-cache-target-size
+    - server.flush-interval
+    - server.check-max-memory-mappings
+    - nonce.size
+    - wal.allow-oversize-entries
+    - wal.use-mlock
+    - wal.directory
+    - wal.historic-logfiles
+    - wal.ignore-logfile-errors
+    - wal.ignore-recovery-errors
+    - wal.flush-timeout
+    - wal.logfile-size
+    - wal.open-logfiles
+    - wal.reserve-logfiles
+    - wal.slots
+    - wal.sync-interval
+    - wal.throttle-when-pending
+    - wal.throttle-wait
+    - ttl.only-loaded-collection
+    - rocksdb.use-range-delete-in-wal
+    - rocksdb.edge-cache
+    - rocksdb.enabled
+    - server.threads
+    - server.max-number-detached-threads
+    - log.content-filter
+    - log.source-filter
+    - log.application
+    - log.facility
+
+* Remove the following deprecated commandline options from client tools
+  arangodump:
+    - envelope
+    - tick-start
+    - tick-end
+  arangorestore:
+    - recycle-ids
+    - envelope  
+
+* Remove /_admin/database/target-version endpoint in favor of /_api/version
+
+* Updated ArangoDB Starter to v0.20.0-preview-2.
 
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
 
 * Remove deprecated option `--server.jwt-secret` because it is insecure.
 
 * COR-146: Added LegacyOptions feature for obsolete options
+
+* Reject creation of Smart Edge collection without `distributeShardsLike`.
 
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
@@ -17,8 +132,6 @@
 
 * arangorestore now automatically converts deprecated `fulltext` indexes to
   `inverted` indexes when restoring dumps from older versions.
-
-* Updated ArangoDB Starter to v0.20.0-preview-1.
 
 * Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
   dependencies.
@@ -35,6 +148,7 @@
     - /_api/simple/remove-by-keys
   Also the following arangosh collection APIs are removed in favor of AQL:
     - byCondition
+    - closedRange
     - geo
     - near
     - within

@@ -58,7 +58,8 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ "$AUTOUPGRADE" == "1" ];then
+if [[ "$AUTOUPGRADE" == "1" || "$AUTOUPGRADE" == "true" ]]; then
+  AUTOUPGRADE="1"
   echo "-- Using autoupgrade procedure"
 fi
 

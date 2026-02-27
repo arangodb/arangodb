@@ -41,9 +41,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  /// @brief handle a follow command for the replication log
-  void handleCommandLoggerFollow() override;
-
   /// @brief handle the command to determine the transactions that were open
   /// at a certain point in time
   void handleCommandDetermineOpenTransactions() override;

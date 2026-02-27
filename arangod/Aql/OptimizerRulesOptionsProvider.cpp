@@ -53,14 +53,6 @@ For example, to turn off the rules `use-indexes-for-sort` and
 The purpose of this startup option is to be able to enable potential future
 experimental optimizer rules, which may be shipped in a disabled-by-default
 state.)");
-
-  options
-      ->addObsoleteOption(
-          "--query.parallelize-gather-writes",
-          "Whether to enable write parallelization for gather nodes.", false)
-      .setLongDescription(
-          "Starting with 3.11 almost all queries support parallelization of "
-          "gather nodes, making this option obsolete.");
 }
 
 }  // namespace arangodb::aql

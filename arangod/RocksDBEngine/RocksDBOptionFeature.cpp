@@ -318,7 +318,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
       _enableBlobGarbageCollection(true),
-      _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
       _partitionFilesForDocumentsCf(false),
       _partitionFilesForPrimaryIndexCf(false),
@@ -339,12 +338,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 void RocksDBOptionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("rocksdb", "RocksDB engine");
-
-  options->addObsoleteOption("--rocksdb.enabled",
-                             "Whether the RocksDB engine is enabled for the "
-                             "persistent index type - this option is obsolete "
-                             "and always active!",
-                             true);
 
   options->addOption("--rocksdb.wal-directory",
                      "Absolute path for RocksDB WAL files. If not set, a "
@@ -528,9 +521,6 @@ prevent WAL files from being moved to the archive and being removed.)");
           arangodb::options::Flags::OnAgent,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("rocksdb.delayed_write_rate",
-                        "rocksdb.delayed-write-rate");
 
   options->addOption("--rocksdb.min-write-buffer-number-to-merge",
                      "The minimum number of write buffers that are merged "
@@ -1048,32 +1038,6 @@ RocksDB internals and performance.)");
 turn it off for operating system versions that are known to have issues with it.
 This option only has an effect on operating systems that support
 `fallocate`.)");
-
-  options
-      ->addOption(
-          "--rocksdb.exclusive-writes",
-          "If enabled, writes are exclusive. This allows the RocksDB engine to "
-          "mimic the collection locking behavior of the now-removed MMFiles "
-          "storage engine, but inhibits concurrent write operations.",
-          new BooleanParameter(&_exclusiveWrites),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setDeprecatedIn(30800)
-      .setLongDescription(R"(This option allows you to make all writes to the
-RocksDB storage exclusive and therefore avoid write-write conflicts.
-
-This option was introduced to open a way to upgrade from the legacy MMFiles to
-the RocksDB storage engine without modifying client application code.
-You should avoid enabling this option as the use of exclusive locks on
-collections introduce a noticeable throughput penalty.
-
-**Note**: The MMFiles engine was removed and this option is a stopgap measure
-only. This option is thus deprecated, and will be removed in a future
-version.)");
 
   TRI_ASSERT(::checksumTypes.contains(_checksumType));
   options
