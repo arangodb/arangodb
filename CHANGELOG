@@ -1,6 +1,9 @@
 devel
 -----
 
+* COR-168: Fixed the projections and filterProjections that were being cleared 
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
 * Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 
