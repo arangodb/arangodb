@@ -54,31 +54,31 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the system database or nullptr on error
-////////////////////////////////////////////////////////////////////////////////
-arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::application_features::ApplicationServer& server) {
-  if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
-    LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
-        << "failure to find feature '"
-        << arangodb::SystemDatabaseFeature::name()
-        << "' while getting the system database";
-
-    return nullptr;
-  }
-  return server.getFeature<arangodb::SystemDatabaseFeature>().use();
-}
-
-}  // namespace
+namespace arangodb::auth {
 
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-namespace arangodb::auth {
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+SystemDatabaseFeature::ptr getSystemDatabase(
+    application_features::ApplicationServer& server) {
+  if (!server.hasFeature<SystemDatabaseFeature>()) {
+    LOG_TOPIC("607b8", WARN, Logger::AUTHENTICATION)
+        << "failure to find feature '" << SystemDatabaseFeature::name()
+        << "' while getting the system database";
+
+    return nullptr;
+  }
+  return server.getFeature<SystemDatabaseFeature>().use();
+}
+
+constexpr auto kVersionMax = std::numeric_limits<uint64_t>::max();
+}  // namespace
 
 UserManagerImpl::UserManagerImpl(
     application_features::ApplicationServer& server)
@@ -183,6 +183,17 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
     return;
   }
 
+  if (_globalVersion.load() == kVersionMax) {
+    // a previous update thread was already shut down, and we don't want to
+    // start another one! This can happen if an upgrade initiates a server
+    // shutdown before some features have been started. This causes
+    // beginShutdown to be called on all features, resulting in shutdown of the
+    // update thread. But afterwards we continue to start the remaining
+    // features, which themselves then might try to again start the update
+    // thread.
+    return;
+  }
+
   namespace chrono = std::chrono;
   using namespace std::chrono_literals;
   {
@@ -229,6 +240,18 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
         auto start = chrono::system_clock::now();
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
+
+          if (loadedVersion == kVersionMax) {
+            // if loadedVersion == kVersionMax a shutdown as been initiated.
+            // we need to check this here BEFORE waiting for the globalVersion,
+            // otherwise we can have a race where shutdown already sets
+            // globalVersion=max, at the same time we load globalVersion,
+            // successfully fetch the users, and update internalVersion. In this
+            // case we would then wait indefinitely.
+            TRI_ASSERT(stpTkn.stop_requested());
+            break;
+          }
+
           // In case of an error while loading the _user collection we do not
           // want to retry too often to prevent additional load on the whole
           // server/cluster
@@ -275,14 +298,7 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             // load was successful reset tries
             tries = 0;
           }
-          if (stpTkn.stop_requested()) {
-            // we need to check the stop token BEFORE waiting for the
-            // globalVersion, otherwise we can have a race where shutdown
-            // already sets globalVersion=max, at the same time we load
-            // globalVersion, successfully fetch the users, and update
-            // internalVersion. In this case we would then wait indefinitely.
-            break;
-          }
+          TRI_ASSERT(loadedVersion != kVersionMax);
           _globalVersion.wait(loadedVersion);
         }
       });
@@ -1006,12 +1022,8 @@ void UserManagerImpl::shutdown() {
   if (_userCacheUpdateThread.joinable()) {
     _userCacheUpdateThread.request_stop();
     // set global version leads to a wake-up of the update thread
-    setGlobalVersion(std::numeric_limits<uint64_t>::max());
+    setGlobalVersion(kVersionMax);
     _userCacheUpdateThread.join();
-    // in single server upgrades it can happen that another thread is started
-    // we need to make sure it does not start with globalVersion=max
-    _internalVersion.store(0);
-    _globalVersion.store(0);
   }
 }
 
