@@ -42,10 +42,14 @@ defmodule Toast.Diagnostics.Coredump.LLDBTest do
       args = LLDB.command("/usr/bin/arangod", "/tmp/core.12345")
 
       assert args == [
-               "-c", "/tmp/core.12345",
-               "-o", "thread backtrace all",
-               "-o", "quit",
-               "--", "/usr/bin/arangod"
+               "-c",
+               "/tmp/core.12345",
+               "-o",
+               "thread backtrace all",
+               "-o",
+               "quit",
+               "--",
+               "/usr/bin/arangod"
              ]
     end
   end

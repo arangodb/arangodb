@@ -33,7 +33,9 @@ defmodule Toast.Diagnostics.CoredumpTest do
     end
 
     test "returns empty list for nonexistent directory" do
-      assert Coredump.discover(server_dir: "/nonexistent/dir/#{System.unique_integer([:positive])}") == []
+      assert Coredump.discover(
+               server_dir: "/nonexistent/dir/#{System.unique_integer([:positive])}"
+             ) == []
     end
 
     test "deduplicates paths", %{dir: dir} do
@@ -103,10 +105,12 @@ defmodule Toast.Diagnostics.CoredumpTest do
         def command(_binary, _core), do: ["no useful output"]
 
         @impl true
-        def parse_output(_output), do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
+        def parse_output(_output),
+          do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
       end
 
-      result = Coredump.analyze("/nonexistent/core", "/nonexistent/binary", debugger: EchoDebugger)
+      result =
+        Coredump.analyze("/nonexistent/core", "/nonexistent/binary", debugger: EchoDebugger)
 
       # echo exits 0 but parse_output returns no threads, so build_report succeeds
       # with an empty report
@@ -127,7 +131,8 @@ defmodule Toast.Diagnostics.CoredumpTest do
         def command(_binary, _core), do: []
 
         @impl true
-        def parse_output(_output), do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
+        def parse_output(_output),
+          do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
       end
 
       result = Coredump.analyze("/fake/core", "/fake/binary", debugger: FailingDebugger)
@@ -175,7 +180,8 @@ defmodule Toast.Diagnostics.CoredumpTest do
         def command(_binary, _core), do: []
 
         @impl true
-        def parse_output(_output), do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
+        def parse_output(_output),
+          do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
       end
 
       result = Coredump.analyze("/fake/core", "/fake/binary", debugger: NoSuchDebugger)
@@ -195,7 +201,9 @@ defmodule Toast.Diagnostics.CoredumpTest do
 
     # T7: collect with server data but no core files
     test "returns empty list when server directory has no core files" do
-      dir = Path.join(System.tmp_dir!(), "toast_collect_test_#{System.unique_integer([:positive])}")
+      dir =
+        Path.join(System.tmp_dir!(), "toast_collect_test_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(dir)
       on_exit(fn -> File.rm_rf!(dir) end)
 
@@ -212,7 +220,12 @@ defmodule Toast.Diagnostics.CoredumpTest do
     # T7: collect with a core file but a debugger that exits non-zero
     # Verifies that analysis errors are handled gracefully (logged, not propagated)
     test "returns empty list when debugger fails to analyze core files" do
-      dir = Path.join(System.tmp_dir!(), "toast_collect_faildbg_#{System.unique_integer([:positive])}")
+      dir =
+        Path.join(
+          System.tmp_dir!(),
+          "toast_collect_faildbg_#{System.unique_integer([:positive])}"
+        )
+
       File.mkdir_p!(dir)
       File.write!(Path.join(dir, "core.77777"), "fake core")
       on_exit(fn -> File.rm_rf!(dir) end)
@@ -227,7 +240,8 @@ defmodule Toast.Diagnostics.CoredumpTest do
         def command(_binary, _core), do: []
 
         @impl true
-        def parse_output(_output), do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
+        def parse_output(_output),
+          do: %{signal: nil, faulting_address: nil, threads: [], crash_thread: nil}
       end
 
       server = %{
@@ -243,7 +257,9 @@ defmodule Toast.Diagnostics.CoredumpTest do
     end
 
     test "skips servers when timeout budget is already exhausted" do
-      dir = Path.join(System.tmp_dir!(), "toast_timeout_skip_#{System.unique_integer([:positive])}")
+      dir =
+        Path.join(System.tmp_dir!(), "toast_timeout_skip_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(dir)
       File.write!(Path.join(dir, "core.33333"), "fake")
       on_exit(fn -> File.rm_rf!(dir) end)
@@ -295,15 +311,22 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
 
   describe "discover/1 with TOAST_COREDUMP_DIR" do
     setup do
-      override_dir = Path.join(System.tmp_dir!(), "toast_override_core_#{System.unique_integer([:positive])}")
-      server_dir = Path.join(System.tmp_dir!(), "toast_server_core_#{System.unique_integer([:positive])}")
+      override_dir =
+        Path.join(System.tmp_dir!(), "toast_override_core_#{System.unique_integer([:positive])}")
+
+      server_dir =
+        Path.join(System.tmp_dir!(), "toast_server_core_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(override_dir)
       File.mkdir_p!(server_dir)
 
       saved = System.get_env("TOAST_COREDUMP_DIR")
 
       on_exit(fn ->
-        if saved, do: System.put_env("TOAST_COREDUMP_DIR", saved), else: System.delete_env("TOAST_COREDUMP_DIR")
+        if saved,
+          do: System.put_env("TOAST_COREDUMP_DIR", saved),
+          else: System.delete_env("TOAST_COREDUMP_DIR")
+
         File.rm_rf!(override_dir)
         File.rm_rf!(server_dir)
       end)
@@ -311,7 +334,10 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
       %{override_dir: override_dir, server_dir: server_dir}
     end
 
-    test "uses override dir exclusively and ignores server_dir", %{override_dir: override_dir, server_dir: server_dir} do
+    test "uses override dir exclusively and ignores server_dir", %{
+      override_dir: override_dir,
+      server_dir: server_dir
+    } do
       File.write!(Path.join(override_dir, "core.override"), "override core")
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
@@ -324,7 +350,10 @@ defmodule Toast.Diagnostics.CoredumpEnvTest do
       refute "core.server" in basenames
     end
 
-    test "returns empty list when override dir has no core files", %{override_dir: override_dir, server_dir: server_dir} do
+    test "returns empty list when override dir has no core files", %{
+      override_dir: override_dir,
+      server_dir: server_dir
+    } do
       File.write!(Path.join(server_dir, "core.server"), "server core")
 
       System.put_env("TOAST_COREDUMP_DIR", override_dir)

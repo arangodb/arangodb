@@ -4,7 +4,8 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
   alias Toast.Diagnostics.CrashMatcher
   alias Toast.Deployment.ServerInstance
 
-  import Toast.DiagnosticsTestHelpers, only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+  import Toast.DiagnosticsTestHelpers,
+    only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
   defp make_crash_report(opts \\ []) do
     %{
@@ -13,7 +14,11 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       crash_header: Keyword.get(opts, :crash_header, "caught unexpected signal 11 (SIGSEGV)"),
       backtrace: Keyword.get(opts, :backtrace, ["frame 0 at 0xdead"]),
       fatal_lines: Keyword.get(opts, :fatal_lines, []),
-      crash_output: Keyword.get(opts, :crash_output, ["caught unexpected signal 11 (SIGSEGV)", "frame 0 at 0xdead"]),
+      crash_output:
+        Keyword.get(opts, :crash_output, [
+          "caught unexpected signal 11 (SIGSEGV)",
+          "frame 0 at 0xdead"
+        ]),
       timestamp: Keyword.get(opts, :timestamp, at(5))
     }
   end
@@ -23,8 +28,18 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       sanitizer_errors: [],
       server_log: %{assertion_failures: [], warnings: []},
       crash_report: Keyword.get(opts, :crash_report, make_crash_report()),
-      server_error: Keyword.get(opts, :server_error, {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}}),
-      server: Keyword.get(opts, :server, %ServerInstance{id: "toast-1", role: :single, log_file: "/tmp/toast/server/log"})
+      server_error:
+        Keyword.get(
+          opts,
+          :server_error,
+          {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}}
+        ),
+      server:
+        Keyword.get(opts, :server, %ServerInstance{
+          id: "toast-1",
+          role: :single,
+          log_file: "/tmp/toast/server/log"
+        })
     }
   end
 
@@ -70,7 +85,9 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
 
       result = CrashMatcher.match(diag, make_test_results([test]))
 
-      assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version"}] = result.matched
+      assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version"}] =
+               result.matched
+
       assert result.unmatched == []
     end
 
@@ -147,7 +164,11 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
           server_log: nil,
           crash_report: crash,
           server_error: {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}},
-          server: %ServerInstance{id: "dbserver-1", role: :dbserver, log_file: "/tmp/toast/dbserver/log"}
+          server: %ServerInstance{
+            id: "dbserver-1",
+            role: :dbserver,
+            log_file: "/tmp/toast/dbserver/log"
+          }
         }
       }
 
@@ -158,19 +179,21 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
     end
 
     test "preserves crash info fields in match entry" do
-      crash = make_crash_report(
-        signal_name: "SIGABRT",
-        signal_number: 6,
-        crash_header: "caught unexpected signal 6 (SIGABRT)",
-        backtrace: ["frame 0 at 0xbeef", "frame 1 at 0xcafe"],
-        fatal_lines: ["fatal error occurred"],
-        crash_output: ["caught unexpected signal 6 (SIGABRT)", "frame 0 at 0xbeef"]
-      )
+      crash =
+        make_crash_report(
+          signal_name: "SIGABRT",
+          signal_number: 6,
+          crash_header: "caught unexpected signal 6 (SIGABRT)",
+          backtrace: ["frame 0 at 0xbeef", "frame 1 at 0xcafe"],
+          fatal_lines: ["fatal error occurred"],
+          crash_output: ["caught unexpected signal 6 (SIGABRT)", "frame 0 at 0xbeef"]
+        )
 
-      diag = make_diagnostics(
-        crash_report: crash,
-        server: %ServerInstance{id: "s1", role: :single, log_file: "/tmp/s1.log"}
-      )
+      diag =
+        make_diagnostics(
+          crash_report: crash,
+          server: %ServerInstance{id: "s1", role: :single, log_file: "/tmp/s1.log"}
+        )
 
       test = make_test(started_at: at(0), finished_at: at(10))
       result = CrashMatcher.match(diag, make_test_results([test]))
@@ -182,7 +205,12 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       assert entry.crash.crash_header == "caught unexpected signal 6 (SIGABRT)"
       assert entry.crash.backtrace == ["frame 0 at 0xbeef", "frame 1 at 0xcafe"]
       assert entry.crash.fatal_lines == ["fatal error occurred"]
-      assert entry.crash.crash_output == ["caught unexpected signal 6 (SIGABRT)", "frame 0 at 0xbeef"]
+
+      assert entry.crash.crash_output == [
+               "caught unexpected signal 6 (SIGABRT)",
+               "frame 0 at 0xbeef"
+             ]
+
       assert entry.crash.log_file == "/tmp/s1.log"
     end
   end

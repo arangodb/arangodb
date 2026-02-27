@@ -118,7 +118,9 @@ defmodule ToastTest.RunnerTest do
     # determines whether to abort based on deployment status.
 
     test "check_health returns :ok for :ready status" do
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
       deployment = mock_deployment(ctrl, :single_server)
@@ -126,7 +128,8 @@ defmodule ToastTest.RunnerTest do
     end
 
     test "check_health returns error for :degraded status" do
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
 
       :sys.replace_state(ctrl, fn state ->
         server = %{state.server | operational_state: :stopped, intentional: true}
@@ -139,7 +142,8 @@ defmodule ToastTest.RunnerTest do
     end
 
     test "check_health returns error for :failed status" do
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, "test-server", crash_info})
@@ -151,7 +155,8 @@ defmodule ToastTest.RunnerTest do
     end
 
     test "check_health returns error for :stopped status" do
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
 
       deployment = mock_deployment(ctrl, :single_server)
       # Controller starts in :stopped status
@@ -224,8 +229,7 @@ defmodule ToastTest.RunnerTest do
         errored = %{
           test
           | state:
-              {:failed,
-               [{:error, RuntimeError.exception("Deployment failed: :test_reason"), []}]}
+              {:failed, [{:error, RuntimeError.exception("Deployment failed: :test_reason"), []}]}
         }
 
         Compat.test_started(manager, errored)

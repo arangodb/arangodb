@@ -22,7 +22,9 @@ defmodule Toast.Client.DocumentTest do
       end
 
       client = client_with_plug(plug)
-      assert {:ok, %{"_key" => "123"}} = Client.Document.insert(client, "users", %{"name" => "Alice"})
+
+      assert {:ok, %{"_key" => "123"}} =
+               Client.Document.insert(client, "users", %{"name" => "Alice"})
     end
   end
 

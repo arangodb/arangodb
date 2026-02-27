@@ -131,7 +131,8 @@ defmodule Toast.Deployment.CrashAbortTest do
       test_pid = self()
       on_crash = fn _deployment, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
 
-      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), on_crash: on_crash)
+      {:ok, pid} =
+        SingleServerController.start_link(config: Toast.Config.load(), on_crash: on_crash)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
@@ -145,7 +146,8 @@ defmodule Toast.Deployment.CrashAbortTest do
       test_pid = self()
       on_event = fn event -> send(test_pid, {:event, event}) end
 
-      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), on_event: on_event)
+      {:ok, pid} =
+        SingleServerController.start_link(config: Toast.Config.load(), on_event: on_event)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})

@@ -20,9 +20,21 @@ defmodule ToastTest.ServerIdMappingTest do
 
       inject_cluster_state(ctrl, %{
         servers: %{
-          "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :running},
-          "dbserver-1" => %ServerInstance{id: "dbserver-1", role: :dbserver, operational_state: :running},
-          "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running}
+          "dbserver-0" => %ServerInstance{
+            id: "dbserver-0",
+            role: :dbserver,
+            operational_state: :running
+          },
+          "dbserver-1" => %ServerInstance{
+            id: "dbserver-1",
+            role: :dbserver,
+            operational_state: :running
+          },
+          "coordinator-0" => %ServerInstance{
+            id: "coordinator-0",
+            role: :coordinator,
+            operational_state: :running
+          }
         },
         cluster_id_mapping: %{
           "dbserver-0" => "PRMR-abc123",
@@ -55,8 +67,16 @@ defmodule ToastTest.ServerIdMappingTest do
 
       inject_cluster_state(ctrl, %{
         servers: %{
-          "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :running},
-          "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running}
+          "dbserver-0" => %ServerInstance{
+            id: "dbserver-0",
+            role: :dbserver,
+            operational_state: :running
+          },
+          "coordinator-0" => %ServerInstance{
+            id: "coordinator-0",
+            role: :coordinator,
+            operational_state: :running
+          }
         },
         cluster_id_mapping: %{
           "dbserver-0" => "PRMR-abc123",
@@ -98,8 +118,16 @@ defmodule ToastTest.ServerIdMappingTest do
           "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
           "agent-1" => %ServerInstance{id: "agent-1", role: :agent, operational_state: :running},
           "agent-2" => %ServerInstance{id: "agent-2", role: :agent, operational_state: :running},
-          "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :running},
-          "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running}
+          "dbserver-0" => %ServerInstance{
+            id: "dbserver-0",
+            role: :dbserver,
+            operational_state: :running
+          },
+          "coordinator-0" => %ServerInstance{
+            id: "coordinator-0",
+            role: :coordinator,
+            operational_state: :running
+          }
         },
         cluster_id_mapping: %{
           "agent-0" => "AGNT-001",
@@ -150,13 +178,14 @@ defmodule ToastTest.ServerIdMappingTest do
       dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
       coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
 
-      %{state |
-        servers: servers,
-        agents: agents,
-        dbservers: dbservers,
-        coordinators: coordinators,
-        cluster_id_mapping: mapping,
-        status: :ready
+      %{
+        state
+        | servers: servers,
+          agents: agents,
+          dbservers: dbservers,
+          coordinators: coordinators,
+          cluster_id_mapping: mapping,
+          status: :ready
       }
     end)
   end

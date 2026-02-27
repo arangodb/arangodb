@@ -53,7 +53,9 @@ defmodule Toast.Utils.FilesystemTest do
     end
 
     test "returns :ok for nonexistent directory" do
-      assert Filesystem.cleanup_server_dirs("/tmp/toast_nonexistent_#{System.unique_integer([:positive])}") == :ok
+      assert Filesystem.cleanup_server_dirs(
+               "/tmp/toast_nonexistent_#{System.unique_integer([:positive])}"
+             ) == :ok
     end
   end
 

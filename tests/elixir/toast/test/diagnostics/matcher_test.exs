@@ -3,7 +3,8 @@ defmodule Toast.Diagnostics.MatcherTest do
 
   alias Toast.Diagnostics.Matcher
 
-  import Toast.DiagnosticsTestHelpers, only: [base_time: 0, at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+  import Toast.DiagnosticsTestHelpers,
+    only: [base_time: 0, at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
   defp at_ms(milliseconds), do: DateTime.add(base_time(), milliseconds, :millisecond)
 
@@ -108,7 +109,14 @@ defmodule Toast.Diagnostics.MatcherTest do
 
       result = Matcher.match([item], make_test_results([test]), :error)
 
-      assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version", error: ^item}] =
+      assert [
+               %{
+                 confidence: :high,
+                 module: SmokeTest.VersionTest,
+                 test: "test server version",
+                 error: ^item
+               }
+             ] =
                result.matched
 
       assert result.unmatched == []

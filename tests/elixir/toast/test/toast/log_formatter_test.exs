@@ -6,7 +6,9 @@ defmodule Toast.LogFormatterTest do
   describe "format/4 (Elixir Logger console callback)" do
     test "formats message with module from MFA metadata" do
       metadata = [mfa: {Toast.SomeModule, :run, 2}]
-      result = LogFormatter.format(:info, "hello world", {{2024, 1, 15}, {10, 30, 0, 0}}, metadata)
+
+      result =
+        LogFormatter.format(:info, "hello world", {{2024, 1, 15}, {10, 30, 0, 0}}, metadata)
 
       output = IO.iodata_to_binary(result)
       assert output == "[info] [Toast.SomeModule] hello world\n"
@@ -38,6 +40,7 @@ defmodule Toast.LogFormatterTest do
 
     test "includes level in output" do
       metadata = [mfa: {Toast.Runner, :run, 1}]
+
       for level <- [:debug, :info, :warning, :error] do
         output = LogFormatter.format(level, "msg", {{2024, 1, 15}, {10, 30, 0, 0}}, metadata)
         assert IO.iodata_to_binary(output) =~ "[#{level}]"
@@ -45,14 +48,15 @@ defmodule Toast.LogFormatterTest do
     end
 
     test "handles nil MFA gracefully" do
-      result = LogFormatter.format(:info, "test", {{2024, 1, 15}, {10, 30, 0, 0}}, [mfa: nil])
+      result = LogFormatter.format(:info, "test", {{2024, 1, 15}, {10, 30, 0, 0}}, mfa: nil)
 
       output = IO.iodata_to_binary(result)
       assert output == "[info] test\n"
     end
 
     test "handles iolist message" do
-      result = LogFormatter.format(:info, ["hello", " ", "world"], {{2024, 1, 15}, {10, 30, 0, 0}}, [])
+      result =
+        LogFormatter.format(:info, ["hello", " ", "world"], {{2024, 1, 15}, {10, 30, 0, 0}}, [])
 
       output = IO.iodata_to_binary(result)
       assert output == "[info] hello world\n"
@@ -62,7 +66,10 @@ defmodule Toast.LogFormatterTest do
       # Pass something that will cause format_module or IO.iodata_to_binary to fail
       # A non-atom level will raise in Atom.to_string, but format has a rescue
       # Actually the rescue catches any error during formatting
-      result = LogFormatter.format(:info, "test", {{2024, 1, 15}, {10, 30, 0, 0}}, [mfa: {"not_an_atom", :f, 1}])
+      result =
+        LogFormatter.format(:info, "test", {{2024, 1, 15}, {10, 30, 0, 0}},
+          mfa: {"not_an_atom", :f, 1}
+        )
 
       output = IO.iodata_to_binary(result)
       # Rescue path produces: [level] message\n

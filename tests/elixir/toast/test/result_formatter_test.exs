@@ -273,7 +273,10 @@ defmodule ToastTest.ResultFormatterTest do
       assert new_state == state
 
       {:noreply, new_state} =
-        ResultFormatter.handle_cast({:module_finished, %ExUnit.TestModule{name: FakeTest, state: nil}}, state)
+        ResultFormatter.handle_cast(
+          {:module_finished, %ExUnit.TestModule{name: FakeTest, state: nil}},
+          state
+        )
 
       assert new_state == state
     end

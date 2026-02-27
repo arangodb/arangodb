@@ -7,11 +7,12 @@ defmodule Toast.DeploymentTestHelpers do
       dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
       coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
 
-      updated = %{state |
-        servers: servers,
-        agents: agents,
-        dbservers: dbservers,
-        coordinators: coordinators
+      updated = %{
+        state
+        | servers: servers,
+          agents: agents,
+          dbservers: dbservers,
+          coordinators: coordinators
       }
 
       case Keyword.get(opts, :status) do

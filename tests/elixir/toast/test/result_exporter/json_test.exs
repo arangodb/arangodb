@@ -58,7 +58,10 @@ defmodule ToastTest.ResultExporter.JSONTest do
           server_id: "toast-1"
         }
       ],
-      server_log: %{assertion_failures: ["assertion failed at foo.cpp:42"], warnings: ["FATAL shutdown"]},
+      server_log: %{
+        assertion_failures: ["assertion failed at foo.cpp:42"],
+        warnings: ["FATAL shutdown"]
+      },
       crash_report: %{
         signal_number: 11,
         signal_name: "SIGSEGV",
@@ -67,7 +70,13 @@ defmodule ToastTest.ResultExporter.JSONTest do
         fatal_lines: ["FATAL error"],
         crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
       },
-      server: %ServerInstance{id: "toast-1", role: :single, pid: 12_345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
+      server: %ServerInstance{
+        id: "toast-1",
+        role: :single,
+        pid: 12_345,
+        endpoint: "http://127.0.0.1:8529",
+        log_file: "/tmp/toast/server/log"
+      }
     }
   end
 
@@ -84,10 +93,23 @@ defmodule ToastTest.ResultExporter.JSONTest do
           fatal_lines: [],
           crash_output: []
         },
-        server: %ServerInstance{id: "agent-1", role: :agent, pid: 10_001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
+        server: %ServerInstance{
+          id: "agent-1",
+          role: :agent,
+          pid: 10_001,
+          endpoint: "http://127.0.0.1:8531",
+          log_file: "/tmp/toast/agent-1/log"
+        }
       },
-      "dbserver-1" => %{single_server_diagnostics() |
-        server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10_002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
+      "dbserver-1" => %{
+        single_server_diagnostics()
+        | server: %ServerInstance{
+            id: "dbserver-1",
+            role: :dbserver,
+            pid: 10_002,
+            endpoint: "http://127.0.0.1:8530",
+            log_file: "/tmp/toast/dbserver-1/log"
+          }
       }
     }
   end
@@ -118,10 +140,38 @@ defmodule ToastTest.ResultExporter.JSONTest do
       results = %{
         base_test_results()
         | tests: [
-            %{module: A, name: "t1", outcome: :skipped, duration_us: 0, failure: nil, tags: %{file: "a.exs", line: 1}},
-            %{module: A, name: "t2", outcome: :excluded, duration_us: 0, failure: nil, tags: %{file: "a.exs", line: 2}},
-            %{module: A, name: "t3", outcome: :invalid, duration_us: 0, failure: nil, tags: %{file: "a.exs", line: 3}},
-            %{module: A, name: "t4", outcome: :passed, duration_us: 1000, failure: nil, tags: %{file: "a.exs", line: 4}}
+            %{
+              module: A,
+              name: "t1",
+              outcome: :skipped,
+              duration_us: 0,
+              failure: nil,
+              tags: %{file: "a.exs", line: 1}
+            },
+            %{
+              module: A,
+              name: "t2",
+              outcome: :excluded,
+              duration_us: 0,
+              failure: nil,
+              tags: %{file: "a.exs", line: 2}
+            },
+            %{
+              module: A,
+              name: "t3",
+              outcome: :invalid,
+              duration_us: 0,
+              failure: nil,
+              tags: %{file: "a.exs", line: 3}
+            },
+            %{
+              module: A,
+              name: "t4",
+              outcome: :passed,
+              duration_us: 1000,
+              failure: nil,
+              tags: %{file: "a.exs", line: 4}
+            }
           ]
       }
 

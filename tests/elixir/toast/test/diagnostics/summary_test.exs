@@ -18,7 +18,13 @@ defmodule Toast.Diagnostics.SummaryTest do
           crash_output: []
         },
         server_error: nil,
-        server: %ServerInstance{id: "toast-42", role: :single, pid: 12_345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
+        server: %ServerInstance{
+          id: "toast-42",
+          role: :single,
+          pid: 12_345,
+          endpoint: "http://127.0.0.1:8529",
+          log_file: "/tmp/toast/server/log"
+        }
       },
       overrides
     )
@@ -42,7 +48,8 @@ defmodule Toast.Diagnostics.SummaryTest do
             ]
           },
           server_error:
-            {:server_crashed, %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+            {:server_crashed,
+             %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
         },
         overrides
       )
@@ -78,12 +85,26 @@ defmodule Toast.Diagnostics.SummaryTest do
 
     test "cluster with one crashed server shows only the crashed server" do
       cluster_diag = %{
-        "agent-1" => base_diagnostics(%{
-          server: %ServerInstance{id: "agent-1", role: :agent, pid: 10_001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
-        }),
-        "dbserver-1" => crashed_diagnostics(%{
-          server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10_002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
-        })
+        "agent-1" =>
+          base_diagnostics(%{
+            server: %ServerInstance{
+              id: "agent-1",
+              role: :agent,
+              pid: 10_001,
+              endpoint: "http://127.0.0.1:8531",
+              log_file: "/tmp/toast/agent-1/log"
+            }
+          }),
+        "dbserver-1" =>
+          crashed_diagnostics(%{
+            server: %ServerInstance{
+              id: "dbserver-1",
+              role: :dbserver,
+              pid: 10_002,
+              endpoint: "http://127.0.0.1:8530",
+              log_file: "/tmp/toast/dbserver-1/log"
+            }
+          })
       }
 
       text = Summary.format_crashed_servers(cluster_diag)
@@ -96,9 +117,11 @@ defmodule Toast.Diagnostics.SummaryTest do
     end
 
     test "shows server header without PID/endpoint when not available" do
-      diag = crashed_diagnostics(%{
-        server: %ServerInstance{id: "toast-99", role: :single, pid: nil, endpoint: nil}
-      })
+      diag =
+        crashed_diagnostics(%{
+          server: %ServerInstance{id: "toast-99", role: :single, pid: nil, endpoint: nil}
+        })
+
       text = Summary.format_crashed_servers(diag)
 
       assert text =~ "  toast-99:\n"
@@ -109,7 +132,8 @@ defmodule Toast.Diagnostics.SummaryTest do
       diag =
         base_diagnostics(%{
           server_error:
-            {:server_crashed, %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+            {:server_crashed,
+             %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
         })
 
       text = Summary.format_crashed_servers(diag)
@@ -251,7 +275,9 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "formats TSAN sanitizer type" do
       match_result = %{
         matched: [],
-        unmatched: [make_sanitizer_error(%{sanitizer_type: :tsan, file_path: "/tmp/tsan.log.arangod.999"})]
+        unmatched: [
+          make_sanitizer_error(%{sanitizer_type: :tsan, file_path: "/tmp/tsan.log.arangod.999"})
+        ]
       }
 
       text = Summary.format_sanitizer_issues(match_result)
@@ -278,7 +304,9 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "includes file path reference" do
       match_result = %{
         matched: [],
-        unmatched: [make_sanitizer_error(%{file_path: "/tmp/toast/run_1/server/alubsan.log.arangod.12345"})]
+        unmatched: [
+          make_sanitizer_error(%{file_path: "/tmp/toast/run_1/server/alubsan.log.arangod.12345"})
+        ]
       }
 
       text = Summary.format_sanitizer_issues(match_result)
@@ -299,7 +327,11 @@ defmodule Toast.Diagnostics.SummaryTest do
             module: SmokeTest.VersionTest,
             test: "test server version",
             confidence: :high,
-            error: make_sanitizer_error(%{sanitizer_type: :tsan, file_path: "/tmp/tsan.log.arangod.12345"})
+            error:
+              make_sanitizer_error(%{
+                sanitizer_type: :tsan,
+                file_path: "/tmp/tsan.log.arangod.12345"
+              })
           }
         ],
         unmatched: []
@@ -325,7 +357,11 @@ defmodule Toast.Diagnostics.SummaryTest do
           crash_header: "caught unexpected signal 11 (SIGSEGV)",
           backtrace: ["frame 0 at 0xdead", "frame 1 at 0xbeef"],
           fatal_lines: [],
-          crash_output: ["caught unexpected signal 11 (SIGSEGV)", "frame 0 at 0xdead", "frame 1 at 0xbeef"],
+          crash_output: [
+            "caught unexpected signal 11 (SIGSEGV)",
+            "frame 0 at 0xdead",
+            "frame 1 at 0xbeef"
+          ],
           log_file: "/tmp/toast/server/log",
           timestamp: ~U[2024-06-15 10:00:05Z]
         },

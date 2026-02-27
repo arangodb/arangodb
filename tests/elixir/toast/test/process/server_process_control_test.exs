@@ -148,5 +148,4 @@ defmodule Toast.Process.ServerProcessControlTest do
       assert state2.original_args == original_args
     end
   end
-
 end

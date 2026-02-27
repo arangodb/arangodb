@@ -61,7 +61,6 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert ServerProcess.status(pid) == :crashed
       assert crash_info.signal == 9
     end
-
   end
 
   # --- SingleServerController state machine tests ---
@@ -94,7 +93,10 @@ defmodule Toast.Deployment.ControllerStateTest do
       %{ctrl: ctrl, id: id, server_pid: server_pid}
     end
 
-    test "stop_server sets operational_state to :stopped and intentional to true", %{ctrl: ctrl, id: id} do
+    test "stop_server sets operational_state to :stopped and intentional to true", %{
+      ctrl: ctrl,
+      id: id
+    } do
       assert :ok = SingleServerController.stop_server(ctrl, id)
       state = :sys.get_state(ctrl)
       assert state.server.operational_state == :stopped
@@ -102,7 +104,10 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert state.status == :degraded
     end
 
-    test "kill_server sets operational_state to :killed and intentional to true", %{ctrl: ctrl, id: id} do
+    test "kill_server sets operational_state to :killed and intentional to true", %{
+      ctrl: ctrl,
+      id: id
+    } do
       assert :ok = SingleServerController.kill_server(ctrl, id)
       state = :sys.get_state(ctrl)
       assert state.server.operational_state == :killed
@@ -156,7 +161,6 @@ defmodule Toast.Deployment.ControllerStateTest do
       # signal 15 is in @intentional_exit_signals, so it is ignored (no state change)
       assert state.server.intentional == true
     end
-
   end
 
   # --- ClusterController state machine tests ---
@@ -170,9 +174,24 @@ defmodule Toast.Deployment.ControllerStateTest do
 
     test "all servers running -> :ready", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running, intentional: false},
-        "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :running, intentional: false},
-        "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running, intentional: false}
+        "agent-0" => %ServerInstance{
+          id: "agent-0",
+          role: :agent,
+          operational_state: :running,
+          intentional: false
+        },
+        "dbserver-0" => %ServerInstance{
+          id: "dbserver-0",
+          role: :dbserver,
+          operational_state: :running,
+          intentional: false
+        },
+        "coordinator-0" => %ServerInstance{
+          id: "coordinator-0",
+          role: :coordinator,
+          operational_state: :running,
+          intentional: false
+        }
       })
 
       # Trigger a stop_server call that exercises derive_cluster_status.
@@ -184,9 +203,24 @@ defmodule Toast.Deployment.ControllerStateTest do
 
     test "some servers intentionally down -> :degraded", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running, intentional: false},
-        "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :stopped, intentional: true},
-        "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running, intentional: false}
+        "agent-0" => %ServerInstance{
+          id: "agent-0",
+          role: :agent,
+          operational_state: :running,
+          intentional: false
+        },
+        "dbserver-0" => %ServerInstance{
+          id: "dbserver-0",
+          role: :dbserver,
+          operational_state: :stopped,
+          intentional: true
+        },
+        "coordinator-0" => %ServerInstance{
+          id: "coordinator-0",
+          role: :coordinator,
+          operational_state: :running,
+          intentional: false
+        }
       })
 
       # derive_cluster_status is called after control operations; simulate it
@@ -198,9 +232,24 @@ defmodule Toast.Deployment.ControllerStateTest do
 
     test "unexpected crash (intentional=false) -> :failed", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running, intentional: false},
-        "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :crashed, intentional: false},
-        "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running, intentional: false}
+        "agent-0" => %ServerInstance{
+          id: "agent-0",
+          role: :agent,
+          operational_state: :running,
+          intentional: false
+        },
+        "dbserver-0" => %ServerInstance{
+          id: "dbserver-0",
+          role: :dbserver,
+          operational_state: :crashed,
+          intentional: false
+        },
+        "coordinator-0" => %ServerInstance{
+          id: "coordinator-0",
+          role: :coordinator,
+          operational_state: :running,
+          intentional: false
+        }
       })
 
       state = :sys.get_state(ctrl)
@@ -209,9 +258,24 @@ defmodule Toast.Deployment.ControllerStateTest do
 
     test "expected crash (intentional=true) -> :degraded", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
-        "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running, intentional: false},
-        "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :crashed, intentional: true},
-        "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running, intentional: false}
+        "agent-0" => %ServerInstance{
+          id: "agent-0",
+          role: :agent,
+          operational_state: :running,
+          intentional: false
+        },
+        "dbserver-0" => %ServerInstance{
+          id: "dbserver-0",
+          role: :dbserver,
+          operational_state: :crashed,
+          intentional: true
+        },
+        "coordinator-0" => %ServerInstance{
+          id: "coordinator-0",
+          role: :coordinator,
+          operational_state: :running,
+          intentional: false
+        }
       })
 
       state = :sys.get_state(ctrl)
@@ -233,7 +297,10 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       # Kill the fake health monitor abnormally
       Process.exit(fake_hm, :abnormal_crash)
-      receive do {:DOWN, _, :process, ^fake_hm, _} -> :ok end
+
+      receive do
+        {:DOWN, _, :process, ^fake_hm, _} -> :ok
+      end
 
       # The controller should receive the DOWN message. Since we cannot start
       # a real health monitor (no real server), the restart attempt will fail,
@@ -264,12 +331,14 @@ defmodule Toast.Deployment.ControllerStateTest do
   # control operations without deploying a real ArangoDB instance.
   defp inject_single_server_state(ctrl, _id, server_pid) do
     :sys.replace_state(ctrl, fn state ->
-      server = %{state.server |
-        server_pid: server_pid,
-        operational_state: :running,
-        intentional: false,
-        pid: ServerProcess.os_pid(server_pid)
+      server = %{
+        state.server
+        | server_pid: server_pid,
+          operational_state: :running,
+          intentional: false,
+          pid: ServerProcess.os_pid(server_pid)
       }
+
       %{state | status: :ready, server: server}
     end)
   end
@@ -296,10 +365,17 @@ defmodule Toast.Deployment.ControllerStateTest do
     states = Enum.map(server_list, & &1.operational_state)
 
     cond do
-      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) -> :failed
-      Enum.all?(states, &(&1 == :running)) -> :ready
-      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) -> :degraded
-      true -> :ready
+      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) ->
+        :failed
+
+      Enum.all?(states, &(&1 == :running)) ->
+        :ready
+
+      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) ->
+        :degraded
+
+      true ->
+        :ready
     end
   end
 end

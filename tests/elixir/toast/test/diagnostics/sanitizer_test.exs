@@ -80,7 +80,8 @@ defmodule Toast.Diagnostics.SanitizerTest do
     end
 
     test "detects alubsan from asan in path" do
-      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-clang-asan-debug") == "alubsan"
+      assert Sanitizer.detect_from_build_dir("/home/user/arangodb/build-clang-asan-debug") ==
+               "alubsan"
     end
 
     test "detects tsan from tsan in path" do
@@ -145,7 +146,9 @@ defmodule Toast.Diagnostics.SanitizerTest do
     end
 
     test "includes suppression file when present" do
-      tmp_dir = Path.join(System.tmp_dir!(), "toast_san_supp_#{System.unique_integer([:positive])}")
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "toast_san_supp_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(tmp_dir)
       supp_file = Path.join(tmp_dir, "lsan_arangodb_suppressions.txt")
       File.write!(supp_file, "leak:some_function\n")

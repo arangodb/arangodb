@@ -97,7 +97,7 @@ defmodule ToastTest.CLIFormatterTest do
     end
 
     test "does not reprint header on subsequent tests" do
-      state = %{init_state() |> with_module_started() | module_header_printed: true}
+      state = %{(init_state() |> with_module_started()) | module_header_printed: true}
       test = make_test()
 
       output =
@@ -287,7 +287,7 @@ defmodule ToastTest.CLIFormatterTest do
     end
 
     test "shows abort-skipped tests when module header was printed" do
-      state = %{init_state() |> with_module_started() | module_header_printed: true}
+      state = %{(init_state() |> with_module_started()) | module_header_printed: true}
       test = make_test(%{state: {:skipped, "Suite aborted: Server crashed: srv-1"}})
 
       output =

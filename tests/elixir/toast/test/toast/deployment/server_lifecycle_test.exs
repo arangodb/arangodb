@@ -29,7 +29,9 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       expected = %{"s1" => %{timer: timer, crash_info: nil}}
       info = crash_info()
 
-      assert {:expected, updated} = ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx())
+      assert {:expected, updated} =
+               ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx())
+
       assert updated["s1"].crash_info == info
       assert updated["s1"].timer == timer
     end
@@ -53,7 +55,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       timer = make_ref()
       expected = %{"s1" => %{timer: timer, crash_info: nil}}
 
-      ServerLifecycle.handle_crash("s1", crash_info(), expected, nil, on_crash_ctx(on_crash: on_crash))
+      ServerLifecycle.handle_crash(
+        "s1",
+        crash_info(),
+        expected,
+        nil,
+        on_crash_ctx(on_crash: on_crash)
+      )
+
       refute_receive :crash_callback, 50
     end
   end
@@ -69,7 +78,14 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       on_crash = fn deployment, info -> send(test_pid, {:crash, deployment, info}) end
       info = crash_info()
 
-      ServerLifecycle.handle_crash("s1", info, %{}, nil, on_crash_ctx(on_crash: on_crash, deployment: :my_dep))
+      ServerLifecycle.handle_crash(
+        "s1",
+        info,
+        %{},
+        nil,
+        on_crash_ctx(on_crash: on_crash, deployment: :my_dep)
+      )
+
       assert_receive {:crash, :my_dep, ^info}
     end
 
@@ -166,7 +182,11 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       info = crash_info()
 
       ServerLifecycle.handle_crash(
-        "s1", info, %{}, server(), on_crash_ctx(on_crash: on_crash, on_event: on_event)
+        "s1",
+        info,
+        %{},
+        server(),
+        on_crash_ctx(on_crash: on_crash, on_event: on_event)
       )
 
       assert_receive {:crash, ^info}
@@ -190,7 +210,8 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       existing = %{"s1" => %{timer: make_ref(), crash_info: nil}}
       srv = server(health_monitor: nil)
 
-      assert {:error, :already_expected} = ServerLifecycle.expect_crash("s1", 5_000, existing, srv)
+      assert {:error, :already_expected} =
+               ServerLifecycle.expect_crash("s1", 5_000, existing, srv)
     end
 
     test "sends :expect_crash_timeout message after timeout" do
@@ -298,6 +319,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
     test "returns {:done, _} with :no_expectation when entry missing" do
       from = spawn_genserver_from()
+
       assert {:done, %{}} =
                ServerLifecycle.handle_verify_crash_check("s1", from, 0, %{}, nil)
     end
@@ -346,12 +368,19 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
   describe "require_state_in/2" do
     test "returns :ok when state is in the list" do
-      assert :ok = ServerLifecycle.require_state_in(server(operational_state: :paused), [:running, :paused])
+      assert :ok =
+               ServerLifecycle.require_state_in(server(operational_state: :paused), [
+                 :running,
+                 :paused
+               ])
     end
 
     test "returns error when state is not in the list" do
       assert {:error, {:unexpected_state, :crashed}} =
-               ServerLifecycle.require_state_in(server(operational_state: :crashed), [:running, :paused])
+               ServerLifecycle.require_state_in(server(operational_state: :crashed), [
+                 :running,
+                 :paused
+               ])
     end
 
     test "returns error for empty list" do
@@ -459,7 +488,12 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
     # Make a call that will capture `from` and send it to us
     Task.async(fn -> GenServer.call(pid, :capture, 5_000) end)
-    receive do {:from, from} -> from after 1_000 -> raise "timeout waiting for from" end
+
+    receive do
+      {:from, from} -> from
+    after
+      1_000 -> raise "timeout waiting for from"
+    end
   end
 
   defp run_verify_crash_check_with_crash do
@@ -475,7 +509,12 @@ defmodule Toast.Deployment.ServerLifecycleTest do
         GenServer.call(pid, :capture, 5_000)
       end)
 
-    from = receive do {:from, f} -> f after 1_000 -> raise "timeout" end
+    from =
+      receive do
+        {:from, f} -> f
+      after
+        1_000 -> raise "timeout"
+      end
 
     expected = %{"s1" => %{timer: timer, crash_info: info}}
 
@@ -498,7 +537,12 @@ defmodule Toast.Deployment.ServerLifecycleTest do
         GenServer.call(pid, :capture, 5_000)
       end)
 
-    from = receive do {:from, f} -> f after 1_000 -> raise "timeout" end
+    from =
+      receive do
+        {:from, f} -> f
+      after
+        1_000 -> raise "timeout"
+      end
 
     {tag, _updated} =
       ServerLifecycle.handle_verify_crash_check("s1", from, deadline, expected, nil)

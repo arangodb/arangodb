@@ -164,7 +164,14 @@ defmodule ToastTest.SuiteTest do
       end
 
       config = GlobalAndRoleSuite.deployment_config()
-      assert Keyword.get(config, :server_args) == ["--log.level", "debug", "--database.extended-names", "true"]
+
+      assert Keyword.get(config, :server_args) == [
+               "--log.level",
+               "debug",
+               "--database.extended-names",
+               "true"
+             ]
+
       assert Keyword.get(config, :coordinator_args) == ["--query.memory-limit", "1073741824"]
       assert Keyword.get(config, :dbserver_args) == ["--rocksdb.block-cache-size", "536870912"]
       assert Keyword.get(config, :agent_args) == ["--agency.compaction-step-size", "1000"]

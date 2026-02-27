@@ -57,7 +57,10 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
           server_id: "toast-1"
         }
       ],
-      server_log: %{assertion_failures: ["assertion failed at foo.cpp:42"], warnings: ["FATAL shutdown"]},
+      server_log: %{
+        assertion_failures: ["assertion failed at foo.cpp:42"],
+        warnings: ["FATAL shutdown"]
+      },
       crash_report: %{
         signal_number: 11,
         signal_name: "SIGSEGV",
@@ -142,10 +145,12 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
       xml = JUnitXML.render(base_test_results(), nil)
 
       # SomeTest: 2 tests, 1 failure, 0 errors, 0 skipped
-      assert xml =~ ~r/<testsuite name="Elixir\.SomeTest" tests="2" failures="1" errors="0" skipped="0"/
+      assert xml =~
+               ~r/<testsuite name="Elixir\.SomeTest" tests="2" failures="1" errors="0" skipped="0"/
 
       # OtherTest: 1 test, 0 failures, 0 errors, 1 skipped
-      assert xml =~ ~r/<testsuite name="Elixir\.OtherTest" tests="1" failures="0" errors="0" skipped="1"/
+      assert xml =~
+               ~r/<testsuite name="Elixir\.OtherTest" tests="1" failures="0" errors="0" skipped="1"/
     end
   end
 
@@ -169,14 +174,18 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     end
 
     test "crash section includes fatal lines" do
-      diag = %{single_server_diagnostics() | crash_report: %{
-        signal_number: 11,
-        signal_name: "SIGSEGV",
-        crash_header: "caught unexpected signal 11",
-        backtrace: [],
-        fatal_lines: ["assertion failed at foo.cpp:42"],
-        crash_output: []
-      }}
+      diag = %{
+        single_server_diagnostics()
+        | crash_report: %{
+            signal_number: 11,
+            signal_name: "SIGSEGV",
+            crash_header: "caught unexpected signal 11",
+            backtrace: [],
+            fatal_lines: ["assertion failed at foo.cpp:42"],
+            crash_output: []
+          }
+      }
+
       xml = JUnitXML.render(base_test_results(), diag)
       assert xml =~ "Fatal lines:"
       assert xml =~ "assertion failed at foo.cpp:42"

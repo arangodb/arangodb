@@ -38,7 +38,12 @@ defmodule Toast.Deployment.FactoryTest do
     end
 
     test "custom server_args override defaults" do
-      config = Config.load(show_server_logs: false, server_args: %{"log.output" => "custom", "extra" => "val"})
+      config =
+        Config.load(
+          show_server_logs: false,
+          server_args: %{"log.output" => "custom", "extra" => "val"}
+        )
+
       result = Factory.build_server_args(config)
 
       assert result["log.output"] == "custom"
@@ -48,7 +53,9 @@ defmodule Toast.Deployment.FactoryTest do
 
   describe "build_single_server/3" do
     setup do
-      tmp_dir = Path.join(System.tmp_dir!(), "toast_factory_test_#{System.unique_integer([:positive])}")
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "toast_factory_test_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(tmp_dir)
       on_exit(fn -> File.rm_rf!(tmp_dir) end)
       %{tmp_dir: tmp_dir}
@@ -101,7 +108,9 @@ defmodule Toast.Deployment.FactoryTest do
 
   describe "build_cluster/2" do
     setup do
-      tmp_dir = Path.join(System.tmp_dir!(), "toast_cluster_test_#{System.unique_integer([:positive])}")
+      tmp_dir =
+        Path.join(System.tmp_dir!(), "toast_cluster_test_#{System.unique_integer([:positive])}")
+
       File.mkdir_p!(tmp_dir)
       on_exit(fn -> File.rm_rf!(tmp_dir) end)
       %{tmp_dir: tmp_dir}
@@ -142,7 +151,12 @@ defmodule Toast.Deployment.FactoryTest do
       assert agent_ids == ["test-cluster-agent-0", "test-cluster-agent-1", "test-cluster-agent-2"]
 
       dbserver_ids = Enum.map(topology.dbservers, & &1.id)
-      assert dbserver_ids == ["test-cluster-dbserver-0", "test-cluster-dbserver-1", "test-cluster-dbserver-2"]
+
+      assert dbserver_ids == [
+               "test-cluster-dbserver-0",
+               "test-cluster-dbserver-1",
+               "test-cluster-dbserver-2"
+             ]
 
       coordinator_ids = Enum.map(topology.coordinators, & &1.id)
       assert coordinator_ids == ["test-cluster-coordinator-0"]

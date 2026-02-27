@@ -39,8 +39,18 @@ defmodule Toast.Analysis.FailuresTest do
         %{
           "name" => "s",
           "tests" => [
-            %{"module" => "A", "name" => "t1", "outcome" => "failed", "failure" => %{"message" => "err1"}},
-            %{"module" => "B", "name" => "t2", "outcome" => "failed", "failure" => %{"message" => "err2"}}
+            %{
+              "module" => "A",
+              "name" => "t1",
+              "outcome" => "failed",
+              "failure" => %{"message" => "err1"}
+            },
+            %{
+              "module" => "B",
+              "name" => "t2",
+              "outcome" => "failed",
+              "failure" => %{"message" => "err2"}
+            }
           ]
         }
       ]

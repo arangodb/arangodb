@@ -90,7 +90,10 @@ defmodule Toast.Client.AQLTest do
       plug = fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(400, Jason.encode!(%{"error" => true, "errorMessage" => "bad query"}))
+        |> Plug.Conn.send_resp(
+          400,
+          Jason.encode!(%{"error" => true, "errorMessage" => "bad query"})
+        )
       end
 
       client = client_with_plug(plug)

@@ -9,10 +9,30 @@ defmodule Toast.Analysis.PerformanceTest do
         %{
           "name" => "smoke",
           "tests" => [
-            %{"module" => "A", "name" => "fast", "outcome" => "passed", "duration_seconds" => 0.1},
-            %{"module" => "A", "name" => "medium", "outcome" => "passed", "duration_seconds" => 3.5},
-            %{"module" => "B", "name" => "slow", "outcome" => "passed", "duration_seconds" => 12.345},
-            %{"module" => "B", "name" => "very_slow", "outcome" => "passed", "duration_seconds" => 45.0}
+            %{
+              "module" => "A",
+              "name" => "fast",
+              "outcome" => "passed",
+              "duration_seconds" => 0.1
+            },
+            %{
+              "module" => "A",
+              "name" => "medium",
+              "outcome" => "passed",
+              "duration_seconds" => 3.5
+            },
+            %{
+              "module" => "B",
+              "name" => "slow",
+              "outcome" => "passed",
+              "duration_seconds" => 12.345
+            },
+            %{
+              "module" => "B",
+              "name" => "very_slow",
+              "outcome" => "passed",
+              "duration_seconds" => 45.0
+            }
           ]
         }
       ]

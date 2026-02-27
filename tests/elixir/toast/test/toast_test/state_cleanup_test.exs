@@ -9,6 +9,7 @@ defmodule ToastTest.StateCleanupTest do
     catch
       :error, :badarg -> :ok
     end
+
     DeploymentRegistry.init()
 
     original_after_suite = Application.get_env(:ex_unit, :after_suite, [])
@@ -43,6 +44,7 @@ defmodule ToastTest.StateCleanupTest do
     catch
       :error, :badarg -> :ok
     end
+
     :ets.new(:toast_suite_abort, [:named_table, :set, :public])
     :ets.insert(:toast_suite_abort, {:aborted, "test reason"})
 
@@ -70,9 +72,11 @@ defmodule ToastTest.StateCleanupTest do
   end
 
   test "reset stops non-standard formatters but preserves CLIFormatters" do
-    {:ok, mock_pid} = GenServer.start_link(ToastTest.StateCleanupTest.MockFormatter, :ok,
-      name: ToastTest.StateCleanupTest.MockFormatter
-    )
+    {:ok, mock_pid} =
+      GenServer.start_link(ToastTest.StateCleanupTest.MockFormatter, :ok,
+        name: ToastTest.StateCleanupTest.MockFormatter
+      )
+
     ref = Process.monitor(mock_pid)
 
     Application.put_env(:ex_unit, :formatters, [
@@ -93,6 +97,7 @@ defmodule ToastTest.StateCleanupTest do
     catch
       :error, :badarg -> :ok
     end
+
     :ets.new(:toast_port_allocator, [:named_table, :set, :public])
     :ets.insert(:toast_port_allocator, {:next_port, 8530})
 

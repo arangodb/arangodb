@@ -93,5 +93,4 @@ defmodule ToastTest.InteractiveTest do
       assert expected_atom == :"test creates a document"
     end
   end
-
 end

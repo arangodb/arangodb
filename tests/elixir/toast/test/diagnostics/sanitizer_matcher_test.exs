@@ -4,11 +4,13 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
   alias Toast.Diagnostics.SanitizerMatcher
   alias Toast.Deployment.ServerInstance
 
-  import Toast.DiagnosticsTestHelpers, only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+  import Toast.DiagnosticsTestHelpers,
+    only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
   defp make_error(opts \\ []) do
     %{
-      content: Keyword.get(opts, :content, "==12345==ERROR: AddressSanitizer: heap-buffer-overflow\n"),
+      content:
+        Keyword.get(opts, :content, "==12345==ERROR: AddressSanitizer: heap-buffer-overflow\n"),
       file_path: Keyword.get(opts, :file_path, "/tmp/toast/server/alubsan.log.arangod.12345"),
       timestamp: Keyword.get(opts, :timestamp, at(5)),
       sanitizer_type: Keyword.get(opts, :sanitizer_type, :alubsan),
@@ -20,7 +22,14 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
     %{
       sanitizer_errors: errors,
       server_log: %{assertion_failures: [], warnings: []},
-      crash_report: %{signal_number: nil, signal_name: nil, crash_header: nil, backtrace: [], fatal_lines: [], crash_output: []},
+      crash_report: %{
+        signal_number: nil,
+        signal_name: nil,
+        crash_header: nil,
+        backtrace: [],
+        fatal_lines: [],
+        crash_output: []
+      },
       server_error: nil,
       server: %ServerInstance{id: "toast-1", role: :single}
     }
@@ -81,7 +90,9 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
 
       result = SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test]))
 
-      assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version"}] = result.matched
+      assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version"}] =
+               result.matched
+
       assert result.unmatched == []
     end
 
@@ -110,7 +121,8 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(12), finished_at: at(20))
 
-      result = SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test1, test2]))
+      result =
+        SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test1, test2]))
 
       assert [%{confidence: :high, test: "test two"}] = result.matched
     end
@@ -122,7 +134,11 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(20), finished_at: at(30))
 
-      result = SanitizerMatcher.match(make_diagnostics([error1, error2]), make_test_results([test1, test2]))
+      result =
+        SanitizerMatcher.match(
+          make_diagnostics([error1, error2]),
+          make_test_results([test1, test2])
+        )
 
       assert length(result.matched) == 2
       tests = Enum.map(result.matched, & &1.test)
@@ -144,10 +160,18 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       error = make_error(timestamp: at(12))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result_low = SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test]), tolerance_seconds: 3)
+      result_low =
+        SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test]),
+          tolerance_seconds: 3
+        )
+
       assert [%{confidence: :low}] = result_low.matched
 
-      result_none = SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test]), tolerance_seconds: 1)
+      result_none =
+        SanitizerMatcher.match(make_diagnostics([error]), make_test_results([test]),
+          tolerance_seconds: 1
+        )
+
       assert result_none.matched == []
       assert length(result_none.unmatched) == 1
     end

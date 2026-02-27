@@ -51,7 +51,9 @@ defmodule ToastTest.ResultExporterTest do
   end
 
   defp make_tmp_dir do
-    path = Path.join(System.tmp_dir!(), "toast_exporter_test_#{System.unique_integer([:positive])}")
+    path =
+      Path.join(System.tmp_dir!(), "toast_exporter_test_#{System.unique_integer([:positive])}")
+
     File.mkdir_p!(path)
 
     on_exit(fn -> File.rm_rf!(path) end)

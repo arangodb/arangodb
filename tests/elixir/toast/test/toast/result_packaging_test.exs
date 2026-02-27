@@ -5,42 +5,90 @@ defmodule Toast.ResultPackagingTest do
 
   describe "exit_code/1" do
     test "returns 0 for all passed" do
-      results = %{test_failures: 0, server_crashed: false, infrastructure_failure: false, sanitizer_errors: false}
+      results = %{
+        test_failures: 0,
+        server_crashed: false,
+        infrastructure_failure: false,
+        sanitizer_errors: false
+      }
+
       assert ResultPackaging.exit_code(results) == 0
     end
 
     test "returns 1 for test failures" do
-      results = %{test_failures: 3, server_crashed: false, infrastructure_failure: false, sanitizer_errors: false}
+      results = %{
+        test_failures: 3,
+        server_crashed: false,
+        infrastructure_failure: false,
+        sanitizer_errors: false
+      }
+
       assert ResultPackaging.exit_code(results) == 1
     end
 
     test "returns 2 for infrastructure failure" do
-      results = %{test_failures: 0, server_crashed: false, infrastructure_failure: true, sanitizer_errors: false}
+      results = %{
+        test_failures: 0,
+        server_crashed: false,
+        infrastructure_failure: true,
+        sanitizer_errors: false
+      }
+
       assert ResultPackaging.exit_code(results) == 2
     end
 
     test "returns 3 for server crash" do
-      results = %{test_failures: 0, server_crashed: true, infrastructure_failure: false, sanitizer_errors: false}
+      results = %{
+        test_failures: 0,
+        server_crashed: true,
+        infrastructure_failure: false,
+        sanitizer_errors: false
+      }
+
       assert ResultPackaging.exit_code(results) == 3
     end
 
     test "returns 4 for sanitizer-only errors" do
-      results = %{test_failures: 0, server_crashed: false, infrastructure_failure: false, sanitizer_errors: true}
+      results = %{
+        test_failures: 0,
+        server_crashed: false,
+        infrastructure_failure: false,
+        sanitizer_errors: true
+      }
+
       assert ResultPackaging.exit_code(results) == 4
     end
 
     test "mixed results: highest severity wins (crash > infrastructure)" do
-      results = %{test_failures: 1, server_crashed: true, infrastructure_failure: true, sanitizer_errors: true}
+      results = %{
+        test_failures: 1,
+        server_crashed: true,
+        infrastructure_failure: true,
+        sanitizer_errors: true
+      }
+
       assert ResultPackaging.exit_code(results) == 3
     end
 
     test "mixed results: infrastructure > sanitizer" do
-      results = %{test_failures: 0, server_crashed: false, infrastructure_failure: true, sanitizer_errors: true}
+      results = %{
+        test_failures: 0,
+        server_crashed: false,
+        infrastructure_failure: true,
+        sanitizer_errors: true
+      }
+
       assert ResultPackaging.exit_code(results) == 2
     end
 
     test "mixed results: sanitizer > test failures" do
-      results = %{test_failures: 5, server_crashed: false, infrastructure_failure: false, sanitizer_errors: true}
+      results = %{
+        test_failures: 5,
+        server_crashed: false,
+        infrastructure_failure: false,
+        sanitizer_errors: true
+      }
+
       assert ResultPackaging.exit_code(results) == 4
     end
   end
@@ -75,7 +123,12 @@ defmodule Toast.ResultPackagingTest do
 
   describe "package/1" do
     test "no-op when ci is false" do
-      assert :ok = ResultPackaging.package(ci: false, result_dir: "/tmp/nonexistent", work_dir: "/tmp/nonexistent")
+      assert :ok =
+               ResultPackaging.package(
+                 ci: false,
+                 result_dir: "/tmp/nonexistent",
+                 work_dir: "/tmp/nonexistent"
+               )
     end
 
     @tag :tmp_dir
@@ -94,13 +147,14 @@ defmodule Toast.ResultPackagingTest do
       File.mkdir_p!(log_dir)
       File.write!(Path.join(log_dir, "toast.log"), "log content")
 
-      assert :ok = ResultPackaging.package(
-        ci: true,
-        result_dir: result_dir,
-        work_dir: work_dir,
-        suite_diagnostics: [],
-        log_file: Path.join(log_dir, "toast.log")
-      )
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 work_dir: work_dir,
+                 suite_diagnostics: [],
+                 log_file: Path.join(log_dir, "toast.log")
+               )
 
       # Tier 1 files should exist in result_dir
       assert File.exists?(Path.join(result_dir, "results.json"))
@@ -127,12 +181,13 @@ defmodule Toast.ResultPackagingTest do
         agency_dumps: []
       }
 
-      assert :ok = ResultPackaging.package(
-        ci: true,
-        result_dir: result_dir,
-        work_dir: work_dir,
-        suite_diagnostics: [suite_diag]
-      )
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 work_dir: work_dir,
+                 suite_diagnostics: [suite_diag]
+               )
 
       assert File.exists?(Path.join(result_dir, "toast-logs.tar.gz"))
     end
@@ -145,12 +200,13 @@ defmodule Toast.ResultPackagingTest do
       File.mkdir_p!(result_dir)
 
       # No core dumps
-      assert :ok = ResultPackaging.package(
-        ci: true,
-        result_dir: result_dir,
-        work_dir: work_dir,
-        suite_diagnostics: []
-      )
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 work_dir: work_dir,
+                 suite_diagnostics: []
+               )
 
       # No .zst or .gz compressed core files should exist
       compressed = Path.wildcard(Path.join(result_dir, "core.*"))
@@ -177,12 +233,13 @@ defmodule Toast.ResultPackagingTest do
         core_dumps: [core_path]
       }
 
-      assert :ok = ResultPackaging.package(
-        ci: true,
-        result_dir: result_dir,
-        work_dir: work_dir,
-        suite_diagnostics: [suite_diag]
-      )
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 result_dir: result_dir,
+                 work_dir: work_dir,
+                 suite_diagnostics: [suite_diag]
+               )
 
       # Should have a compressed core file
       compressed = Path.wildcard(Path.join(result_dir, "core.12345.*"))

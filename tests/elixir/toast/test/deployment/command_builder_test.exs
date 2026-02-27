@@ -104,7 +104,8 @@ defmodule Toast.Deployment.CommandBuilderTest do
     end
 
     test "list values produce repeated flags" do
-      result = CommandBuilder.flatten_custom_args(%{"agency.endpoint" => ["tcp://a:1", "tcp://b:2"]})
+      result =
+        CommandBuilder.flatten_custom_args(%{"agency.endpoint" => ["tcp://a:1", "tcp://b:2"]})
 
       assert result == [
                "--agency.endpoint",

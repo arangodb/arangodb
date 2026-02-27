@@ -9,7 +9,9 @@ defmodule ToastTest.DeploymentRegistryTest do
     catch
       :error, :badarg -> :ok
     end
+
     DeploymentRegistry.init()
+
     on_exit(fn ->
       try do
         :ets.delete(:toast_deployment_registry)
@@ -17,6 +19,7 @@ defmodule ToastTest.DeploymentRegistryTest do
         :error, :badarg -> :ok
       end
     end)
+
     :ok
   end
 

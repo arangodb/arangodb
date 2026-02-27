@@ -14,8 +14,18 @@ defmodule Toast.ServerTestHelpers do
 
     if Process.alive?(pid) do
       ref = Process.monitor(pid)
-      try do GenServer.stop(pid, :normal, 1_000) catch :exit, _ -> :ok end
-      receive do {:DOWN, ^ref, _, _, _} -> :ok after 1_000 -> :ok end
+
+      try do
+        GenServer.stop(pid, :normal, 1_000)
+      catch
+        :exit, _ -> :ok
+      end
+
+      receive do
+        {:DOWN, ^ref, _, _, _} -> :ok
+      after
+        1_000 -> :ok
+      end
     end
   end
 

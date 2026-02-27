@@ -105,7 +105,9 @@ defmodule Toast.Deployment.ClientTest do
       {:ok, pid} = MockController.start_link(servers: [srv1, srv2])
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
-      assert {:ok, client} = Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 1)
+      assert {:ok, client} =
+               Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 1)
+
       assert client.base_url == "http://localhost:9002"
     end
 
@@ -114,7 +116,8 @@ defmodule Toast.Deployment.ClientTest do
       {:ok, pid} = MockController.start_link(servers: [srv])
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
-      assert {:error, :unknown_server} = Deployment.client(deployment(pid, :cluster), role: :coordinator)
+      assert {:error, :unknown_server} =
+               Deployment.client(deployment(pid, :cluster), role: :coordinator)
     end
 
     test "returns {:error, :unknown_server} when index out of range" do
@@ -122,7 +125,8 @@ defmodule Toast.Deployment.ClientTest do
       {:ok, pid} = MockController.start_link(servers: [srv])
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
-      assert {:error, :unknown_server} = Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 5)
+      assert {:error, :unknown_server} =
+               Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 5)
     end
 
     test "returns {:error, :invalid_target} when opts lack :role key" do

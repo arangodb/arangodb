@@ -47,7 +47,8 @@ defmodule Toast.Deployment.ResolveTargetTest do
 
     test "unknown role returns :no_servers_for_role", %{ctrl: ctrl} do
       # :agent role has no servers in our test setup
-      assert {:error, {:no_servers_for_role, :agent}} = ClusterController.stop_server(ctrl, role: :agent)
+      assert {:error, {:no_servers_for_role, :agent}} =
+               ClusterController.stop_server(ctrl, role: :agent)
     end
   end
 
@@ -145,9 +146,14 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
-      assert {:error, {:no_servers_for_role, :dbserver}} = SingleServerController.stop_server(ctrl, role: :dbserver)
-      assert {:error, {:no_servers_for_role, :coordinator}} = SingleServerController.stop_server(ctrl, role: :coordinator)
-      assert {:error, {:no_servers_for_role, :agent}} = SingleServerController.stop_server(ctrl, role: :agent)
+      assert {:error, {:no_servers_for_role, :dbserver}} =
+               SingleServerController.stop_server(ctrl, role: :dbserver)
+
+      assert {:error, {:no_servers_for_role, :coordinator}} =
+               SingleServerController.stop_server(ctrl, role: :coordinator)
+
+      assert {:error, {:no_servers_for_role, :agent}} =
+               SingleServerController.stop_server(ctrl, role: :agent)
     end
   end
 
@@ -168,10 +174,20 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
-      inject_cluster_servers(ctrl, %{
-        "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :paused},
-        "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running}
-      }, status: :ready)
+      inject_cluster_servers(
+        ctrl,
+        %{
+          "dbserver-0" => %ServerInstance{
+            id: "dbserver-0",
+            role: :dbserver,
+            operational_state: :paused
+          },
+          "coordinator-0" => %ServerInstance{
+            id: "coordinator-0",
+            role: :coordinator,
+            operational_state: :running
+          }
+        }, status: :ready)
 
       deployment = cluster_deployment(ctrl)
 

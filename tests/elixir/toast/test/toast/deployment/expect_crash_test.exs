@@ -27,7 +27,11 @@ defmodule Toast.Deployment.ExpectCrashTest.MockController do
   end
 
   defp lookup_response(responses, {:verify_crash, _server_id, _timeout}) do
-    Map.get(responses, :verify_crash, {:ok, %{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}})
+    Map.get(
+      responses,
+      :verify_crash,
+      {:ok, %{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}}
+    )
   end
 
   defp lookup_response(_responses, _msg), do: :ok
@@ -74,7 +78,9 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "returns {:error, :already_expected} from controller", %{pid: pid} do
-      {:ok, pid} = MockController.start_link(responses: %{expect_crash: {:error, :already_expected}})
+      {:ok, pid} =
+        MockController.start_link(responses: %{expect_crash: {:error, :already_expected}})
+
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
       assert {:error, :already_expected} = Deployment.expect_crash(deployment(pid), "s1")

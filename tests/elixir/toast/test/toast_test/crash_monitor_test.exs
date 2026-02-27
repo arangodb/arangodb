@@ -21,7 +21,11 @@ defmodule ToastTest.CrashMonitorTest do
   end
 
   test "handle_crash sets abort with server_id and signal" do
-    CrashMonitor.handle_crash(dummy_deployment(), %{server_id: "db-1", signal: 11, exit_status: 139})
+    CrashMonitor.handle_crash(dummy_deployment(), %{
+      server_id: "db-1",
+      signal: 11,
+      exit_status: 139
+    })
 
     assert {:crash, msg} = Runner.aborted?()
     assert msg =~ "Server db-1 crashed"

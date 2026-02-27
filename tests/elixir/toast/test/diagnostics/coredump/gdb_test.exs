@@ -52,8 +52,10 @@ defmodule Toast.Diagnostics.Coredump.GDBTest do
 
       assert args == [
                "-batch",
-               "-ex", "thread apply all bt full",
-               "-ex", "quit",
+               "-ex",
+               "thread apply all bt full",
+               "-ex",
+               "quit",
                "/usr/bin/arangod",
                "/tmp/core.12345"
              ]
