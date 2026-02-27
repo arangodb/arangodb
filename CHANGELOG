@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Existing `hash` and `skiplist` indexes are automatically converted to
+  `persistent` during database upgrade. Converted indexes are renamed by
+  appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
 
 * Updated ArangoDB Starter to v0.20.0-preview-2.
 
