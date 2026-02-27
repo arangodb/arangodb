@@ -1944,9 +1944,6 @@ void RestoreFeature::collectOptions(
                      "multiple times).",
                      new VectorParameter<StringParameter>(&_options.views));
 
-  options->addObsoleteOption(
-      "--recycle-ids", "collection ids are now handled automatically", false);
-
   options->addOption("--batch-size",
                      "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.chunkSize));
@@ -2016,12 +2013,6 @@ avoiding repeated memory allocations for building new in-memory buffers.)");
 
   options->addOption("--continue", "Continue the restore operation.",
                      new BooleanParameter(&_options.continueRestore));
-
-  options->addObsoleteOption(
-      "--envelope",
-      "wrap each document into a {type, data} envelope "
-      "(this is required for compatibility with v3.7 and before).",
-      false);
 
   options
       ->addOption("--enable-revision-trees",

@@ -172,13 +172,6 @@ GeneralServerFeature::GeneralServerFeature(
 
 void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("no-server", "server.rest-server");
-
   options
       ->addOption("--server.telemetrics-api",
                   "Whether to enable the telemetrics API.",
@@ -240,11 +233,6 @@ batch processing.)");
 
   options->addSection("http", "HTTP server features");
 
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.allow-method-override",
-      "Allow HTTP method override using special headers.", true);
-
   options
       ->addOption("--http.keep-alive-timeout",
                   "The keep-alive timeout for HTTP connections (in seconds).",
@@ -252,11 +240,6 @@ batch processing.)");
       .setLongDescription(R"(Idle keep-alive connections are closed by the
 server automatically when the timeout is reached. A keep-alive-timeout value of
 `0` disables the keep-alive feature entirely.)");
-
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.hide-product-header",
-      "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
 
   options->addOption(
       "--http.trusted-origin",

@@ -90,9 +90,6 @@ class QueryRegistryFeature final
   size_t maxCollectionsPerQuery() const noexcept {
     return _options.maxCollectionsPerQuery;
   }
-  bool allowCollectionsInExpressions() const noexcept {
-    return _options.allowCollectionsInExpressions;
-  }
   bool logFailedQueries() const noexcept { return _options.logFailedQueries; }
   size_t leaseAsyncPrefetchSlots(size_t value) noexcept;
   void returnAsyncPrefetchSlots(size_t value) noexcept;
