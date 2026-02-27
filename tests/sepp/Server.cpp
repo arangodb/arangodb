@@ -191,7 +191,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<MaxMapCountFeature>();
   _server.addFeature<NetworkFeature>(metrics,
                                      network::ConnectionPool::Config{});
-  _server.addFeature<NonceFeature>();
   _server.addFeature<OptionsCheckFeature>();
   _server.addFeature<PrivilegeFeature>();
   _server.addFeature<QueryRegistryFeature>(metrics);

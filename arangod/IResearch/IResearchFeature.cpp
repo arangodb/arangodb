@@ -151,8 +151,6 @@ void IResearchLogTopic::setIResearchLogLevel(LogLevel level) {
   }
 }
 
-std::string const THREADS_PARAM("--arangosearch.threads");
-std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
 std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
 std::string const COMMIT_THREADS_IDLE_PARAM(
     "--arangosearch.commit-threads-idle");
@@ -886,49 +884,6 @@ void IResearchFeature::collectOptions(
   options->addSection("arangosearch", absl::StrCat(name(), " feature"));
 
   options
-      ->addOption(THREADS_PARAM,
-                  "The exact number of threads to use for asynchronous "
-                  "tasks (0 = auto-detect).",
-                  new options::UInt32Parameter(&_options.threads))
-      .setDeprecatedIn(30705)
-      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
-and consolidation thread counts separately via the following options instead:
-
-- `--arangosearch.commit-threads`
-- `--arangosearch.consolidation-threads`
-
-If either `--arangosearch.commit-threads` or
-`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
-`arangosearch.threads-limit` are ignored. If only the legacy options are set,
-then the commit and consolidation thread counts are calculated as follows:
-
-- Maximum: The smaller value out of `--arangosearch.threads` and
-  `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.)");
-
-  options
-      ->addOption(
-          THREADS_LIMIT_PARAM,
-          "The upper limit to the auto-detected number of threads to use "
-          "for asynchronous tasks (0 = use default).",
-          new options::UInt32Parameter(&_options.threadsLimit))
-      .setDeprecatedIn(30705)
-      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
-and consolidation thread counts separately via the following options instead:
-
-- `--arangosearch.commit-threads`
-- `--arangosearch.consolidation-threads`
-
-If either `--arangosearch.commit-threads` or
-`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
-`arangosearch.threads-limit` are ignored. If only the legacy options are set,
-then the commit and consolidation thread counts are calculated as follows:
-
-- Maximum: The smaller value out of `--arangosearch.threads` and
-  `arangosearch.threads-limit` divided by 2, but at least 1.
-- Minimum: the maximum divided by 2, but at least 1.)");
-
-  options
       ->addOption(
           CONSOLIDATION_THREADS_PARAM,
           "The upper limit to the allowed number of consolidation threads "
@@ -1074,28 +1029,11 @@ void IResearchFeature::validateOptions(
   }
 
   auto const& args = options->processingResult();
-  bool const threadsSet = args.touched(THREADS_PARAM);
-  bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
-  bool const commitThreadsSet = args.touched(COMMIT_THREADS_PARAM);
-  bool const consolidationThreadsSet =
-      args.touched(CONSOLIDATION_THREADS_PARAM);
-
   uint32_t threadsLimit = static_cast<uint32_t>(4 * NumberOfCores::getValue());
-
-  if ((threadsLimitSet || threadsSet) && !commitThreadsSet &&
-      !consolidationThreadsSet) {
-    // backwards compatibility
-    threadsLimit = std::min(threadsLimit, _options.threadsLimit);
-    uint32_t const threads =
-        computeThreadsCount(_options.threads, threadsLimit, 4);
-    _options.commitThreads = std::max(threads / 2, 1U);
-    _options.consolidationThreads = _options.commitThreads;
-  } else {
-    _options.commitThreads =
-        computeThreadsCount(_options.commitThreads, threadsLimit, 6);
-    _options.consolidationThreads =
-        computeThreadsCount(_options.consolidationThreads, threadsLimit, 6);
-  }
+  _options.commitThreads =
+      computeThreadsCount(_options.commitThreads, threadsLimit, 6);
+  _options.consolidationThreads =
+      computeThreadsCount(_options.consolidationThreads, threadsLimit, 6);
 
   if (!args.touched(SEARCH_THREADS_LIMIT)) {
     _options.searchExecutionThreadsLimit =

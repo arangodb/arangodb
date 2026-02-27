@@ -48,9 +48,6 @@ EndpointFeature::EndpointFeature(ApplicationServer& server)
 }
 
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.backlog-size", "tcp.backlog-size");
-  options->addOldOption("server.reuse-address", "tcp.reuse-address");
-
   options
       ->addOption("--server.endpoint",
                   "Endpoint for client requests (e.g. "

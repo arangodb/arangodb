@@ -687,11 +687,6 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  // range deletes are now always enabled
-  options->addObsoleteOption(
-      "--rocksdb.use-range-delete-in-wal",
-      "Enable range delete markers in the write-ahead log (WAL).", false);
-
   options
       ->addOption("--rocksdb.debug-logging",
                   "Whether to enable RocksDB debug logging.",
@@ -708,10 +703,6 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
-
-  options->addObsoleteOption("--rocksdb.edge-cache",
-                             "Whether to use the in-memory cache for edges",
-                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",

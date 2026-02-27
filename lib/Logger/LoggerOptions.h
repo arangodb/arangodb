@@ -42,7 +42,6 @@ struct LoggerOptions {
   uint32_t maxEntryLength = 128U * 1048576U;
   uint32_t maxQueuedLogMessages = 16384;
   bool useJson = false;
-  bool useLocalTime = false;
   bool useColor = true;
   bool useControlEscaped = true;
   bool useUnicodeEscaped = false;
@@ -51,11 +50,9 @@ struct LoggerOptions {
   bool processId = true;
   bool threadId = true;
   bool threadName = false;
-  bool performance = false;
   bool keepLogRotate = false;
   bool foregroundTty = false;
   bool forceDirect = false;
-  bool useMicrotime = false;
   bool showIds = true;
   bool showRole = false;
   bool logRequestParameters = true;
