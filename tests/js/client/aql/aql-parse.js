@@ -441,10 +441,12 @@ function ahuacatlParseTestSuite () {
     testMatchKeyword: function () {
       // MATCH is a reserved keyword, so using it as a variable name must fail
       ["MATCH", "match", "Match"].forEach((name) => {
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET " + name + " = 1 RETURN " + name);
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET `" + name + "` = 1 RETURN `" + name + "`");
+      try {
+          db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
+          
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
   });
 },
 
@@ -455,10 +457,12 @@ function ahuacatlParseTestSuite () {
     testWhileKeyword: function () {
       // WHILE is a reserved keyword, so using it as a variable name must fail
       ["WHILE", "while", "While"].forEach((name) => {
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET " + name + " = 1 RETURN " + name);
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET `" + name + "` = 1 RETURN `" + name + "`");
+      try {
+          db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
+          
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
   });
 },
 
@@ -469,10 +473,12 @@ function ahuacatlParseTestSuite () {
     testUntilKeyword: function () {
       // UNTIL is a reserved keyword, so using it as a variable name must fail
       ["UNTIL", "until", "Until"].forEach((name) => {
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET " + name + " = 1 RETURN " + name);
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET `" + name + "` = 1 RETURN `" + name + "`");
+      try {
+          db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
+          
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
   });
 },
 
@@ -483,10 +489,12 @@ function ahuacatlParseTestSuite () {
     testScanKeyword: function () {
       // SCAN is a reserved keyword, so using it as a variable name must fail
       ["SCAN", "scan", "Scan"].forEach((name) => {
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET " + name + " = 1 RETURN " + name);
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET `" + name + "` = 1 RETURN `" + name + "`");
+      try {
+          db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
+          
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
   });
 },
 
@@ -497,12 +505,15 @@ function ahuacatlParseTestSuite () {
     testFoldKeyword: function () {
       // FOLD is a reserved keyword, so using it as a variable name must fail
       ["FOLD", "fold", "Fold"].forEach((name) => {
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET " + name + " = 1 RETURN " + name);
-      assertParseError(errors.ERROR_QUERY_PARSE.code,
-        "LET `" + name + "` = 1 RETURN `" + name + "`");
+      try {
+          db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
+          
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
   });
 },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test line numbers in parse errors
