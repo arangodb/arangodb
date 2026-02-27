@@ -275,13 +275,17 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
               // token.
               auto mutex = std::mutex{};
               auto cv = std::condition_variable{};
-              auto lock = std::unique_lock(mutex);
+              // Note that it is indeed possible that the std::request_stop has
+              // already been called when we get here. In this case the
+              // stop_callback is called right now and here in this thread.
+              // Therefore we must not hold the mutex when we construct the
+              // callback.
               auto cb = std::stop_callback(stpTkn, [&]() noexcept {
                 // We lock and unlock here to make sure that we do not call a
                 // notify while the conditional_variable is currently woken-up
                 // and checking the predicate. This prevents any sleeping barber
                 // scenarios here. If the lock is successful the cv has not yet
-                // woken up but stop_requested is already true If the lock is
+                // woken up but stop_requested is already true. If the lock is
                 // unsuccessful (blocks) we wait here until the cv is finished
                 // with checking the predicate, and we can wake it up again
                 // after it is sleeping/waiting again.
@@ -289,6 +293,7 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
                 mutex.unlock();
                 cv.notify_one();
               });
+              auto lock = std::unique_lock(mutex);
               // The wake-up + lock and the sleep + unlock is guaranteed to
               // happen atomically
               cv.wait_for(lock, 10us * multiplier,
