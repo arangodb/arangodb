@@ -12,6 +12,8 @@
 
 * Remove deprecated option `--server.jwt-secret` because it is insecure.
 
+* Reject creation of Smart Edge collection without `distributeShardsLike`.
+
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
   - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
