@@ -63,75 +63,80 @@ extern int Aqldebug;
     T_SORT = 263,                  /* "SORT declaration"  */
     T_LIMIT = 264,                 /* "LIMIT declaration"  */
     T_WINDOW = 265,                /* "WINDOW declaration"  */
-    T_ASC = 266,                   /* "ASC keyword"  */
-    T_DESC = 267,                  /* "DESC keyword"  */
-    T_IN = 268,                    /* "IN keyword"  */
-    T_WITH = 269,                  /* "WITH keyword"  */
-    T_INTO = 270,                  /* "INTO keyword"  */
-    T_AGGREGATE = 271,             /* "AGGREGATE keyword"  */
-    T_GRAPH = 272,                 /* "GRAPH keyword"  */
-    T_SHORTEST_PATH = 273,         /* "SHORTEST_PATH keyword"  */
-    T_K_SHORTEST_PATHS = 274,      /* "K_SHORTEST_PATHS keyword"  */
-    T_K_PATHS = 275,               /* "K_PATHS keyword"  */
-    T_ALL_SHORTEST_PATHS = 276,    /* "ALL_SHORTEST_PATHS keyword"  */
-    T_DISTINCT = 277,              /* "DISTINCT modifier"  */
-    T_REMOVE = 278,                /* "REMOVE command"  */
-    T_INSERT = 279,                /* "INSERT command"  */
-    T_UPDATE = 280,                /* "UPDATE command"  */
-    T_REPLACE = 281,               /* "REPLACE command"  */
-    T_UPSERT = 282,                /* "UPSERT command"  */
-    T_NULL = 283,                  /* "null"  */
-    T_TRUE = 284,                  /* "true"  */
-    T_FALSE = 285,                 /* "false"  */
-    T_STRING = 286,                /* "identifier"  */
-    T_QUOTED_STRING = 287,         /* "quoted string"  */
-    T_INTEGER = 288,               /* "integer number"  */
-    T_DOUBLE = 289,                /* "number"  */
-    T_PARAMETER = 290,             /* "bind parameter"  */
-    T_DATA_SOURCE_PARAMETER = 291, /* "bind data source parameter"  */
-    T_ASSIGN = 292,                /* "assignment"  */
-    T_NOT = 293,                   /* "not operator"  */
-    T_AND = 294,                   /* "and operator"  */
-    T_OR = 295,                    /* "or operator"  */
-    T_NOT_IN = 296,                /* "not in operator"  */
-    T_REGEX_MATCH = 297,           /* "~= operator"  */
-    T_REGEX_NON_MATCH = 298,       /* "~! operator"  */
-    T_EQ = 299,                    /* "== operator"  */
-    T_NE = 300,                    /* "!= operator"  */
-    T_LT = 301,                    /* "< operator"  */
-    T_GT = 302,                    /* "> operator"  */
-    T_LE = 303,                    /* "<= operator"  */
-    T_GE = 304,                    /* ">= operator"  */
-    T_LIKE = 305,                  /* "like operator"  */
-    T_PLUS = 306,                  /* "+ operator"  */
-    T_MINUS = 307,                 /* "- operator"  */
-    T_TIMES = 308,                 /* "* operator"  */
-    T_DIV = 309,                   /* "/ operator"  */
-    T_MOD = 310,                   /* "% operator"  */
-    T_QUESTION = 311,              /* "?"  */
-    T_COLON = 312,                 /* ":"  */
-    T_SCOPE = 313,                 /* "::"  */
-    T_RANGE = 314,                 /* ".."  */
-    T_COMMA = 315,                 /* ","  */
-    T_OPEN = 316,                  /* "("  */
-    T_CLOSE = 317,                 /* ")"  */
-    T_OBJECT_OPEN = 318,           /* "{"  */
-    T_OBJECT_CLOSE = 319,          /* "}"  */
-    T_ARRAY_OPEN = 320,            /* "["  */
-    T_ARRAY_CLOSE = 321,           /* "]"  */
-    T_OUTBOUND = 322,              /* "outbound modifier"  */
-    T_INBOUND = 323,               /* "inbound modifier"  */
-    T_ANY = 324,                   /* "any modifier"  */
-    T_ALL = 325,                   /* "all modifier"  */
-    T_NONE = 326,                  /* "none modifier"  */
-    T_AT_LEAST = 327,              /* "at least modifier"  */
-    UMINUS = 328,                  /* UMINUS  */
-    UPLUS = 329,                   /* UPLUS  */
-    UNEGATION = 330,               /* UNEGATION  */
-    FUNCCALL = 331,                /* FUNCCALL  */
-    REFERENCE = 332,               /* REFERENCE  */
-    INDEXED = 333,                 /* INDEXED  */
-    EXPANSION = 334                /* EXPANSION  */
+    T_MATCH = 266,                 /* "match declaration"  */
+    T_WHILE = 267,                 /* "while declaration"  */
+    T_UNTIL = 268,                 /* "until declaration"  */
+    T_SCAN = 269,                  /* "scan declaration"  */
+    T_FOLD = 270,                  /* "fold declaration"  */
+    T_ASC = 271,                   /* "ASC keyword"  */
+    T_DESC = 272,                  /* "DESC keyword"  */
+    T_IN = 273,                    /* "IN keyword"  */
+    T_WITH = 274,                  /* "WITH keyword"  */
+    T_INTO = 275,                  /* "INTO keyword"  */
+    T_AGGREGATE = 276,             /* "AGGREGATE keyword"  */
+    T_GRAPH = 277,                 /* "GRAPH keyword"  */
+    T_SHORTEST_PATH = 278,         /* "SHORTEST_PATH keyword"  */
+    T_K_SHORTEST_PATHS = 279,      /* "K_SHORTEST_PATHS keyword"  */
+    T_K_PATHS = 280,               /* "K_PATHS keyword"  */
+    T_ALL_SHORTEST_PATHS = 281,    /* "ALL_SHORTEST_PATHS keyword"  */
+    T_DISTINCT = 282,              /* "DISTINCT modifier"  */
+    T_REMOVE = 283,                /* "REMOVE command"  */
+    T_INSERT = 284,                /* "INSERT command"  */
+    T_UPDATE = 285,                /* "UPDATE command"  */
+    T_REPLACE = 286,               /* "REPLACE command"  */
+    T_UPSERT = 287,                /* "UPSERT command"  */
+    T_NULL = 288,                  /* "null"  */
+    T_TRUE = 289,                  /* "true"  */
+    T_FALSE = 290,                 /* "false"  */
+    T_STRING = 291,                /* "identifier"  */
+    T_QUOTED_STRING = 292,         /* "quoted string"  */
+    T_INTEGER = 293,               /* "integer number"  */
+    T_DOUBLE = 294,                /* "number"  */
+    T_PARAMETER = 295,             /* "bind parameter"  */
+    T_DATA_SOURCE_PARAMETER = 296, /* "bind data source parameter"  */
+    T_ASSIGN = 297,                /* "assignment"  */
+    T_NOT = 298,                   /* "not operator"  */
+    T_AND = 299,                   /* "and operator"  */
+    T_OR = 300,                    /* "or operator"  */
+    T_NOT_IN = 301,                /* "not in operator"  */
+    T_REGEX_MATCH = 302,           /* "~= operator"  */
+    T_REGEX_NON_MATCH = 303,       /* "~! operator"  */
+    T_EQ = 304,                    /* "== operator"  */
+    T_NE = 305,                    /* "!= operator"  */
+    T_LT = 306,                    /* "< operator"  */
+    T_GT = 307,                    /* "> operator"  */
+    T_LE = 308,                    /* "<= operator"  */
+    T_GE = 309,                    /* ">= operator"  */
+    T_LIKE = 310,                  /* "like operator"  */
+    T_PLUS = 311,                  /* "+ operator"  */
+    T_MINUS = 312,                 /* "- operator"  */
+    T_TIMES = 313,                 /* "* operator"  */
+    T_DIV = 314,                   /* "/ operator"  */
+    T_MOD = 315,                   /* "% operator"  */
+    T_QUESTION = 316,              /* "?"  */
+    T_COLON = 317,                 /* ":"  */
+    T_SCOPE = 318,                 /* "::"  */
+    T_RANGE = 319,                 /* ".."  */
+    T_COMMA = 320,                 /* ","  */
+    T_OPEN = 321,                  /* "("  */
+    T_CLOSE = 322,                 /* ")"  */
+    T_OBJECT_OPEN = 323,           /* "{"  */
+    T_OBJECT_CLOSE = 324,          /* "}"  */
+    T_ARRAY_OPEN = 325,            /* "["  */
+    T_ARRAY_CLOSE = 326,           /* "]"  */
+    T_OUTBOUND = 327,              /* "outbound modifier"  */
+    T_INBOUND = 328,               /* "inbound modifier"  */
+    T_ANY = 329,                   /* "any modifier"  */
+    T_ALL = 330,                   /* "all modifier"  */
+    T_NONE = 331,                  /* "none modifier"  */
+    T_AT_LEAST = 332,              /* "at least modifier"  */
+    UMINUS = 333,                  /* UMINUS  */
+    UPLUS = 334,                   /* UPLUS  */
+    UNEGATION = 335,               /* UNEGATION  */
+    FUNCCALL = 336,                /* FUNCCALL  */
+    REFERENCE = 337,               /* REFERENCE  */
+    INDEXED = 338,                 /* INDEXED  */
+    EXPANSION = 339                /* EXPANSION  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -150,7 +155,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 153 "grammar.hpp"
+#line 158 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
