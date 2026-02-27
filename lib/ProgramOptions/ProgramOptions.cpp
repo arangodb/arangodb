@@ -47,9 +47,7 @@ bool skipJsRelatedOption(std::string const& str,
                          arangodb::options::ParseJsOps parseOpt) {
   return (parseOpt == arangodb::options::ParseJsOps::skipJS &&
           (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
-           str.starts_with("foxx.") ||
-           str.starts_with(
-               "--foxx.")));  // TBD: foxx removal needs further discussion
+           str.starts_with("foxx.") || str.starts_with("--foxx.")));
 }
 }  // namespace
 

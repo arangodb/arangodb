@@ -58,8 +58,7 @@ function ReplicationLoggerSuite () {
     getLastLogTick();
   
     var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' || 
-              name === '_sessions');
+      return (name === '_sessions');
     };
 
     var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
