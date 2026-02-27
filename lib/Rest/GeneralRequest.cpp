@@ -408,115 +408,93 @@ velocypack::Options const* GeneralRequest::validationOptions(
   return &basics::VelocyPackHelper::looseRequestValidationOptions;
 }
 
-Result GeneralRequest::detectAndStripApiVersion() {
+void GeneralRequest::detectAndStripApiVersion(char const*& start,
+                                              char const* end) {
   constexpr std::string_view arangoPrefix = "/_arango/";
   constexpr std::string_view experimentalSuffix = "experimental";
 
-  // Check if path starts with /_arango/
-  if (!_requestPath.starts_with(arangoPrefix)) {
-    // No /_arango/ prefix, this is fine
-    return Result();
+  size_t len = static_cast<size_t>(end - start);
+  if (len < arangoPrefix.size() ||
+      std::string_view(start, arangoPrefix.size()) != arangoPrefix) {
+    // No /_arango/ prefix, nothing to do
+    return;
   }
 
-  // Get the part after /_arango/
-  std::string_view remainder =
-      std::string_view(_requestPath).substr(arangoPrefix.size());
+  char const* p = start + arangoPrefix.size();
+  std::string_view remainder(p, static_cast<size_t>(end - p));
 
-  // Prepare generic error message:
-  auto genericErrorMsgMaker = [&]() {
-    return Result(
+  auto throwGenericError = [&]() {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_HTTP_BAD_PARAMETER,
         absl::StrCat("invalid API version prefix: expected '/_arango/vX' or "
                      "'/_arango/experimental', got instead: ",
-                     _requestPath));
+                     std::string_view(start, end - start)));
   };
 
-  // Check for empty remainder (path is exactly "/_arango/" or "/_arango")
+  // Check for empty remainder (path is exactly "/_arango/")
   if (remainder.empty()) {
-    return genericErrorMsgMaker();
+    throwGenericError();
   }
 
   // Check for /_arango/experimental
   if (remainder.starts_with(experimentalSuffix)) {
     size_t suffixEnd = experimentalSuffix.size();
-    // Make sure it's followed by / or is end of string
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
       _requestedApiVersion = ApiVersion::experimentalApiVersion;
-
-      // Strip the prefix, keep the rest of the path
-      if (suffixEnd < remainder.size()) {
-        // There's more path after /experimental
-        setRequestPath(std::string(remainder.substr(suffixEnd)));
-      } else {
-        // Path is exactly /_arango/experimental
-        setRequestPath("/");
-      }
-      return Result();
-    } else {
-      return genericErrorMsgMaker();
+      start = p + suffixEnd;  // advance past "/_arango/experimental"
+      return;
     }
+    throwGenericError();
   }
 
   // Check for /_arango/vX where X is a decimal number
   if (remainder.starts_with('v')) {
     std::string_view afterV = remainder.substr(1);
 
-    // Parse decimal number
     size_t numEnd = 0;
     while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
       ++numEnd;
     }
 
-    if (numEnd > 0) {
-      // We found at least one digit
-      // Make sure it's followed by / or is end of string
-      if (numEnd == afterV.size() || afterV[numEnd] == '/') {
-        // Check for leading zeros: reject if version starts with '0' and has
-        // more than one digit
-        if (afterV[0] == '0' && numEnd > 1) {
-          return Result(
-              TRI_ERROR_HTTP_BAD_PARAMETER,
-              absl::StrCat("invalid API version: version number must not have "
-                           "leading zeros, got path: ",
-                           _requestPath));
-        }
-
-        // Parse the version number
-        std::string versionStr(afterV.substr(0, numEnd));
-        uint64_t version;
-        try {
-          version = std::stoull(versionStr);
-        } catch (std::exception& e) {
-          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        absl::StrCat("invalid API version: failed to parse "
-                                     "version number: ",
-                                     e.what(), ", got path: ", _requestPath));
-        }
-        if (version <= std::numeric_limits<uint32_t>::max()) {
-          _requestedApiVersion = static_cast<uint32_t>(version);
-
-          // Strip the prefix, keep the rest of the path
-          if (numEnd < afterV.size()) {
-            // There's more path after /vX
-            setRequestPath(std::string(afterV.substr(numEnd)));
-          } else {
-            // Path is exactly /_arango/vX
-            setRequestPath("/");
-          }
-          return Result();
-        } else {
-          return Result(
-              TRI_ERROR_HTTP_BAD_PARAMETER,
-              absl::StrCat(
-                  "invalid API version: version number too large, got path: ",
-                  _requestPath));
-        }
+    if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
+      // Check for leading zeros
+      if (afterV[0] == '0' && numEnd > 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_BAD_PARAMETER,
+            absl::StrCat("invalid API version: version number must not have "
+                         "leading zeros, got path: ",
+                         std::string_view(start, end - start)));
       }
+
+      std::string versionStr(afterV.substr(0, numEnd));
+      uint64_t version;
+      try {
+        version = std::stoull(versionStr);
+      } catch (std::exception& e) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_BAD_PARAMETER,
+            absl::StrCat(
+                "invalid API version: failed to parse version number: ",
+                e.what(),
+                ", got path: ", std::string_view(start, end - start)));
+      }
+
+      if (version <= std::numeric_limits<uint32_t>::max()) {
+        _requestedApiVersion = static_cast<uint32_t>(version);
+        start = p + 1 + numEnd;  // advance past "/_arango/vX"
+        return;
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          absl::StrCat("invalid API version: version number too large, "
+                       "got path: ",
+                       std::string_view(start, end - start)));
     }
   }
 
-  // If we get here, we have /_arango/ but it's not followed by a valid format
-  return genericErrorMsgMaker();
+  // /_arango/ present but not followed by a valid format
+  throwGenericError();
 }
 
 }  // namespace arangodb
