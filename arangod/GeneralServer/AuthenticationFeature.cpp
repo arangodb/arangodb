@@ -124,9 +124,6 @@ void AuthenticationFeature::collectOptions(
       "server.disable-authentication-unix-sockets",
       "Whether to use authentication for requests via UNIX domain sockets.",
       false);
-  options->addOldOption("server.authenticate-system-only",
-                        "server.authentication-system-only");
-
   options
       ->addOption("--server.authentication",
                   "Whether to use authentication for all client requests.",
@@ -219,26 +216,6 @@ disabled and instead the old permission system is used.)");
   options->addObsoleteOption(
       "--server.local-authentication",
       "Whether to use ArangoDB's built-in authentication system.", false);
-
-  options
-      ->addOption("--server.authentication-system-only",
-                  "Use HTTP authentication only for requests to /_api and "
-                  "/_admin endpoints.",
-                  new BooleanParameter(&_options.authenticationSystemOnly))
-      .setLongDescription(R"(If you set this option to `true`, then HTTP
-authentication is only required for requests going to URLs starting with `/_`,
-but not for other endpoints. You can thus use this option to expose custom APIs
-of Foxx microservices without HTTP authentication to the outside world, but
-prevent unauthorized access of ArangoDB APIs and the admin interface.
-
-Note that checking the URL is performed after any database name prefix has been
-removed. That means, if the request URL is `/_db/_system/myapp/myaction`, the
-URL `/myapp/myaction` is checked for the `/_` prefix.
-
-Authentication still needs to be enabled for the server via
-`--server.authentication` in order for HTTP authentication to be forced for the
-ArangoDB APIs and the web interface. Only setting
-`--server.authentication-system-only` is not enough.)");
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options
@@ -395,10 +372,6 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_options.active ? "on" : "off");
 
-  if (_options.active && _options.authenticationSystemOnly) {
-    out << " (system only)";
-  }
-
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   out << ", authentication for unix sockets is turned "
       << (_options.authenticationUnixSockets ? "on" : "off");
@@ -427,10 +400,6 @@ bool AuthenticationFeature::isActive() const noexcept {
 
 bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
   return _options.authenticationUnixSockets;
-}
-
-bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
-  return _options.authenticationSystemOnly;
 }
 
 std::string_view AuthenticationFeature::externalRBACservice() const noexcept {

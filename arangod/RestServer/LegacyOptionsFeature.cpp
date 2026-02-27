@@ -139,16 +139,26 @@ void LegacyOptionsFeature::collectOptions(
                              false);
   options->addObsoleteOption("--foxx.enable", "enable Foxx", false);
 
-  // ServerSecurityFeature Foxx options
-  options->addObsoleteOption(
-      "--foxx.api", "Whether to enable the Foxx management REST APIs.", false);
-  options->addObsoleteOption("--foxx.store",
-                             "Whether to enable the Foxx store in the web "
-                             "interface.",
+  // Note: --foxx.api, --foxx.store and --foxx.allow-install-from-remote are
+  // still registered as real options by ServerSecurityFeature.
+
+  // ActionFeature options
+  options->addObsoleteOption("--server.allow-use-database",
+                             "Allow to change the database in REST actions.",
                              false);
-  options->addObsoleteOption("--foxx.allow-install-from-remote",
-                             "Allow installing Foxx apps from remote URLs "
-                             "other than GitHub.",
+
+  // AuthenticationFeature options
+  options->addObsoleteOption(
+      "--server.authentication-system-only",
+      "Use HTTP authentication only for requests to /_api and /_admin "
+      "endpoints.",
+      false);
+  options->addOldOption("server.authenticate-system-only",
+                        "server.authentication-system-only");
+
+  // StatisticsFeature options
+  options->addObsoleteOption("--server.statistics-history",
+                             "Whether to store statistics in the database.",
                              false);
 
   // ScriptFeature options
