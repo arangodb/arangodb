@@ -249,6 +249,7 @@
           args:
             cluster: true
             forceOneShard: true
+            makedataDB: system_oneshard_makedata
             suffix: cluster-oneshard
 
 - chaos:
