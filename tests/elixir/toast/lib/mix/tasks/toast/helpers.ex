@@ -137,13 +137,6 @@ defmodule Mix.Tasks.Toast.Helpers do
   end
 
   @doc """
-  Checks whether any suite directory under `suites_dir` contains a `suite.ex` file.
-  """
-  def has_suite_structure?(suites_dir) do
-    Path.wildcard(Path.join([suites_dir, "*", "suite.ex"])) != []
-  end
-
-  @doc """
   Checks whether any suite in the results has sanitizer errors.
   Handles both single-server and cluster diagnostics layouts.
   """

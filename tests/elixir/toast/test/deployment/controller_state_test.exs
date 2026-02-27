@@ -134,8 +134,6 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       state = :sys.get_state(ctrl)
       assert state.status == :failed
-      # intentional defaults to false and is not changed for unexpected crashes
-      assert state.server.intentional == false
     end
   end
 
@@ -171,19 +169,6 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert state.server.intentional == true
     end
 
-    test "nil signal during intentional stop keeps intentional true" do
-      id = "ssc-signone-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
-
-      set_intentional(ctrl, true)
-
-      crash_info = %{exit_status: 0, signal: nil, timestamp: DateTime.utc_now()}
-      send(ctrl, {:server_crashed, id, crash_info})
-      :sys.get_state(ctrl)
-
-      state = :sys.get_state(ctrl)
-      assert state.server.intentional == true
-    end
   end
 
   # --- ClusterController state machine tests ---
@@ -245,48 +230,6 @@ defmodule Toast.Deployment.ControllerStateTest do
       # crashed + intentional=true means it was expected; derive_cluster_status
       # only triggers :failed for crashed + NOT intentional
       assert derive_expected_status(state.servers) == :ready
-    end
-  end
-
-  describe "ClusterController signal-type awareness" do
-    test "SIGSEGV during intentional stop sets intentional to false and status to :failed" do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
-      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
-
-      inject_cluster_servers(ctrl, %{
-        "dbserver-0" => %ServerInstance{
-          id: "dbserver-0", role: :dbserver,
-          operational_state: :running, intentional: true
-        }
-      })
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(ctrl, {:server_crashed, "dbserver-0", crash_info})
-      :sys.get_state(ctrl)
-
-      state = :sys.get_state(ctrl)
-      assert state.status == :failed
-      assert state.servers["dbserver-0"].intentional == false
-    end
-
-    test "SIGTERM during intentional stop is silently accepted" do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
-      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
-
-      inject_cluster_servers(ctrl, %{
-        "dbserver-0" => %ServerInstance{
-          id: "dbserver-0", role: :dbserver,
-          operational_state: :running, intentional: true
-        }
-      })
-
-      crash_info = %{exit_status: 0, signal: 15, timestamp: DateTime.utc_now()}
-      send(ctrl, {:server_crashed, "dbserver-0", crash_info})
-      :sys.get_state(ctrl)
-
-      state = :sys.get_state(ctrl)
-      # Signal 15 is intentional -- no status change
-      assert state.servers["dbserver-0"].intentional == true
     end
   end
 

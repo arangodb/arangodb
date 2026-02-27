@@ -387,38 +387,6 @@ defmodule Mix.Tasks.ToastTest do
     end
   end
 
-  describe "has_suite_structure?/1" do
-    @tag :tmp_dir
-    test "returns true when suite.ex exists in subdirectory", %{tmp_dir: dir} do
-      suite_dir = Path.join(dir, "smoke")
-      File.mkdir_p!(suite_dir)
-      File.write!(Path.join(suite_dir, "suite.ex"), "")
-
-      assert Helpers.has_suite_structure?(dir)
-    end
-
-    @tag :tmp_dir
-    test "returns false for empty directory", %{tmp_dir: dir} do
-      refute Helpers.has_suite_structure?(dir)
-    end
-
-    @tag :tmp_dir
-    test "returns false when suite.ex is at top level, not in subdirectory", %{tmp_dir: dir} do
-      File.write!(Path.join(dir, "suite.ex"), "")
-
-      refute Helpers.has_suite_structure?(dir)
-    end
-
-    @tag :tmp_dir
-    test "returns false for directories without suite.ex", %{tmp_dir: dir} do
-      sub = Path.join(dir, "smoke")
-      File.mkdir_p!(sub)
-      File.write!(Path.join(sub, "test_foo.exs"), "")
-
-      refute Helpers.has_suite_structure?(dir)
-    end
-  end
-
   describe "has_sanitizer_errors?/1" do
     test "returns false for empty suite list" do
       refute Helpers.has_sanitizer_errors?([])

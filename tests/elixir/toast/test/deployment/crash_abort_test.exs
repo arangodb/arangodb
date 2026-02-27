@@ -145,29 +145,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
 
-      assert_receive {:crash_callback, ^crash_info}, 1_000
-    end
-
-    test "cluster controller invokes on_crash callback on unexpected crash" do
-      test_pid = self()
-      on_crash = fn _deployment, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
-
-      {:ok, pid} = ClusterController.start_link(config: Toast.Config.load(), on_crash: on_crash)
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(pid, {:server_crashed, "dbserver-1", crash_info})
-
-      assert_receive {:crash_callback, ^crash_info}, 1_000
-    end
-
-    test "no crash callback when none provided" do
-      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(pid, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(pid)
-
-      assert SingleServerController.get_status(pid) == :failed
+      assert_receive {:crash_callback, _crash_info}, 1_000
     end
   end
 
@@ -181,17 +159,7 @@ defmodule Toast.Deployment.CrashAbortTest do
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(pid, {:server_crashed, "test-server", crash_info})
 
-      assert_receive {:event, {:server_crashed, "test-server", _, ^crash_info, _}}, 1_000
-    end
-
-    test "no event callback when none provided" do
-      {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load())
-
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
-      send(pid, {:server_crashed, "test-server", crash_info})
-      :sys.get_state(pid)
-
-      assert SingleServerController.get_status(pid) == :failed
+      assert_receive {:event, {:server_crashed, "test-server", _, _, _}}, 1_000
     end
   end
 

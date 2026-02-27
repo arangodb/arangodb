@@ -105,27 +105,6 @@ defmodule Mix.Tasks.Toast do
     b: :build_dir
   ]
 
-  # Maps CLI option keys to TOAST_* environment variable names
-  @toast_env_map %{
-    build_dir: "TOAST_BUILD_DIR",
-    work_dir: "TOAST_WORK_DIR",
-    result_dir: "TOAST_RESULT_DIR",
-    show_server_logs: "TOAST_SHOW_SERVER_LOGS",
-    global_timeout: "TOAST_GLOBAL_TIMEOUT",
-    test_timeout: "TOAST_TEST_TIMEOUT",
-    startup_timeout: "TOAST_STARTUP_TIMEOUT",
-    shutdown_timeout: "TOAST_SHUTDOWN_TIMEOUT",
-    timeout_factor: "TOAST_TIMEOUT_FACTOR",
-    keep_work_dir: "TOAST_KEEP_WORK_DIR",
-    sanitizer: "TOAST_SANITIZER",
-    cluster_agents: "TOAST_CLUSTER_AGENTS",
-    cluster_dbservers: "TOAST_CLUSTER_DBSERVERS",
-    cluster_coordinators: "TOAST_CLUSTER_COORDINATORS",
-    replication_factor: "TOAST_CLUSTER_REPLICATION_FACTOR",
-    no_agency_dump: "TOAST_NO_AGENCY_DUMP",
-    ci: "TOAST_CI"
-  }
-
   @impl Mix.Task
   def run(args) do
     {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
@@ -144,19 +123,8 @@ defmodule Mix.Tasks.Toast do
     ExUnit.configure(ex_unit_opts)
 
     suites_dir = Path.join(File.cwd!(), "suites")
-
-    if File.dir?(suites_dir) and has_suite_structure?(suites_dir) do
-      run_suite_mode(args_rest, opts, ex_unit_opts, suites_dir)
-    else
-      run_legacy_mode(args_rest, opts, ex_unit_opts)
-    end
+    run_suite_mode(args_rest, opts, ex_unit_opts, suites_dir)
   end
-
-  defp has_suite_structure?(suites_dir) do
-    Mix.Tasks.Toast.Helpers.has_suite_structure?(suites_dir)
-  end
-
-  ## Suite mode
 
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
     ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
@@ -334,98 +302,6 @@ defmodule Mix.Tasks.Toast do
   defp validate_namespaces(_test_modules, _suite_module, _suite_dir) do
     # Namespace validation deferred -- requires knowing the suite's root namespace
     :ok
-  end
-
-
-  ## Legacy mode
-
-  defp run_legacy_mode(files, opts, ex_unit_opts) do
-    apply_toast_env(opts)
-
-    test_paths = Mix.Project.config()[:test_paths] || default_test_paths()
-
-    for dir <- test_paths do
-      helper = Path.join(dir, "test_helper.exs")
-      if File.exists?(helper), do: Code.require_file(helper)
-    end
-
-    ExUnit.configure(ex_unit_opts)
-
-    test_pattern = Mix.Project.config()[:test_pattern] || "{test_*,*_test}.exs"
-
-    {test_files, test_opts} =
-      if files != [], do: ExUnit.Filters.parse_paths(files), else: {test_paths, []}
-
-    matched_files = find_test_files(test_files, test_pattern)
-
-    if matched_files == [] do
-      Logger.info("No test files found")
-      ExUnit.Server.modules_loaded(true)
-
-      options =
-        ExUnit.configuration()
-        |> Keyword.merge(ex_unit_opts)
-        |> Keyword.merge(test_opts)
-
-      ToastTest.Runner.run(options, nil)
-    else
-      Logger.info("Loading #{length(matched_files)} test file(s)")
-
-      case Kernel.ParallelCompiler.require(matched_files, return_diagnostics: true) do
-        {:ok, _, _} -> :ok
-        {:error, _, _} -> exit({:shutdown, 1})
-      end
-
-      load_us = ExUnit.Server.modules_loaded(true)
-
-      options =
-        ExUnit.configuration()
-        |> Keyword.merge(ex_unit_opts)
-        |> Keyword.merge(test_opts)
-
-      {stats, _} = ToastTest.Runner.run(options, load_us)
-
-      if stats.failures > 0 or ToastTest.Runner.aborted?() do
-        exit_status = Keyword.get(ex_unit_opts, :exit_status, 2)
-        System.at_exit(fn _ -> exit({:shutdown, exit_status}) end)
-      end
-    end
-  end
-
-  ## Toast environment
-
-  defp apply_toast_env(opts) do
-    cond do
-      opts[:cluster] -> System.put_env("TOAST_DEPLOYMENT_MODE", "cluster")
-      opts[:single] -> System.put_env("TOAST_DEPLOYMENT_MODE", "single_server")
-      true -> :ok
-    end
-
-    Enum.each(@toast_env_map, fn {key, var} ->
-      case Keyword.fetch(opts, key) do
-        {:ok, value} -> System.put_env(var, to_string(value))
-        :error -> :ok
-      end
-    end)
-  end
-
-
-  ## File discovery
-
-  defp find_test_files(paths, pattern) do
-    paths
-    |> Enum.flat_map(fn path ->
-      if File.dir?(path) do
-        Path.wildcard(Path.join(path, "**/" <> pattern))
-      else
-        if File.exists?(path), do: [path], else: []
-      end
-    end)
-    |> Enum.uniq()
-  end
-
-  defp default_test_paths do
-    if File.dir?("suites"), do: ["suites"], else: []
   end
 
 end

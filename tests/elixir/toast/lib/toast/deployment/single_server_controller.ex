@@ -7,13 +7,11 @@ defmodule Toast.Deployment.SingleServerController do
 
   alias Toast.Config
   alias Toast.Process.ServerProcess
-  alias Toast.Deployment.{Factory, Health, ServerInstance}
+  alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
   alias Toast.PortAllocator
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
-
-  @intentional_exit_signals [nil, 15]
 
   # --- Client API ---
 
@@ -157,11 +155,10 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:stop_server, server_id}, _from, state) do
     with :ok <- validate_server_id(state, server_id),
-         :ok <- require_operational_state(state, :running) do
-      ServerProcess.stop(state.server.server_pid, 30_000)
-      suspend_health_monitor(state)
+         :ok <- ServerLifecycle.require_state(state.server, :running) do
+      ServerLifecycle.stop_server(state.server)
       state = put_server(%{state | status: :degraded}, operational_state: :stopped, intentional: true)
-      notify_event(state.on_event, {:server_stopped, server_id, state.server.pid, nil, DateTime.utc_now()})
+      ServerLifecycle.notify_event(state.on_event, {:server_stopped, server_id, state.server.pid, nil, DateTime.utc_now()})
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -170,11 +167,10 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:kill_server, server_id}, _from, state) do
     with :ok <- validate_server_id(state, server_id),
-         :ok <- require_operational_state(state, :running) do
-      ServerProcess.kill(state.server.server_pid)
-      suspend_health_monitor(state)
+         :ok <- ServerLifecycle.require_state(state.server, :running) do
+      ServerLifecycle.kill_server(state.server)
       state = put_server(%{state | status: :degraded}, operational_state: :killed, intentional: true)
-      notify_event(state.on_event, {:server_killed, server_id, DateTime.utc_now()})
+      ServerLifecycle.notify_event(state.on_event, {:server_killed, server_id, DateTime.utc_now()})
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -183,11 +179,10 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:pause_server, server_id}, _from, state) do
     with :ok <- validate_server_id(state, server_id),
-         :ok <- require_operational_state(state, :running) do
-      ServerProcess.pause(state.server.server_pid)
-      suspend_health_monitor(state)
+         :ok <- ServerLifecycle.require_state(state.server, :running) do
+      ServerLifecycle.pause_server(state.server)
       state = put_server(%{state | status: :degraded}, operational_state: :paused, intentional: true)
-      notify_event(state.on_event, {:server_paused, server_id, DateTime.utc_now()})
+      ServerLifecycle.notify_event(state.on_event, {:server_paused, server_id, DateTime.utc_now()})
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -196,11 +191,10 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:resume_server, server_id}, _from, state) do
     with :ok <- validate_server_id(state, server_id),
-         :ok <- require_operational_state(state, :paused) do
-      ServerProcess.resume(state.server.server_pid)
-      resume_health_monitor(state)
+         :ok <- ServerLifecycle.require_state(state.server, :paused) do
+      ServerLifecycle.resume_server(state.server)
       state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
-      notify_event(state.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+      ServerLifecycle.notify_event(state.on_event, {:server_resumed, server_id, DateTime.utc_now()})
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -209,36 +203,16 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:restart_server, server_id, opts}, _from, state) do
     with :ok <- validate_server_id(state, server_id) do
-      case state.server.operational_state do
-        :running ->
-          ServerProcess.stop(state.server.server_pid, 30_000)
-          suspend_health_monitor(state)
-
-        :paused ->
-          ServerProcess.kill(state.server.server_pid)
-          Process.sleep(200)
-          suspend_health_monitor(state)
-
-        _stopped_or_crashed ->
-          :ok
-      end
-
+      ServerLifecycle.stop_before_restart(state.server)
       state = put_server(state, operational_state: :stopped, intentional: true)
 
-      case ServerProcess.relaunch(state.server.server_pid, opts) do
+      case ServerLifecycle.relaunch_and_wait(state.server, opts) do
         :ok ->
-          case wait_for_ready(state, 60_000) do
-            :ok ->
-              resume_health_monitor(state)
-              state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
-              {:reply, :ok, state}
+          state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+          {:reply, :ok, state}
 
-            {:error, reason} ->
-              {:reply, {:error, reason}, state}
-          end
-
-        {:error, reason} ->
-          {:reply, {:error, reason}, state}
+        {:error, _} = err ->
+          {:reply, err, state}
       end
     else
       {:error, _} = err -> {:reply, err, state}
@@ -247,21 +221,14 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:start_server, server_id, opts}, _from, state) do
     with :ok <- validate_server_id(state, server_id),
-         :ok <- require_operational_state_in(state, [:stopped, :killed, :crashed]) do
-      case ServerProcess.relaunch(state.server.server_pid, opts) do
+         :ok <- ServerLifecycle.require_state_in(state.server, [:stopped, :killed, :crashed]) do
+      case ServerLifecycle.relaunch_and_wait(state.server, opts) do
         :ok ->
-          case wait_for_ready(state, 60_000) do
-            :ok ->
-              resume_health_monitor(state)
-              state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
-              {:reply, :ok, state}
+          state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+          {:reply, :ok, state}
 
-            {:error, reason} ->
-              {:reply, {:error, reason}, state}
-          end
-
-        {:error, reason} ->
-          {:reply, {:error, reason}, state}
+        {:error, _} = err ->
+          {:reply, err, state}
       end
     else
       {:error, _} = err -> {:reply, err, state}
@@ -270,14 +237,12 @@ defmodule Toast.Deployment.SingleServerController do
 
   def handle_call({:expect_crash, server_id, timeout}, _from, state) do
     with :ok <- validate_server_id(state, server_id) do
-      if Map.has_key?(state.expected_crashes, server_id) do
-        {:reply, {:error, :already_expected}, state}
-      else
-        suspend_health_monitor(state)
-        timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
-        entry = %{timer: timer, crash_info: nil}
-        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
-        {:reply, :ok, state}
+      case ServerLifecycle.expect_crash(server_id, timeout, state.expected_crashes, state.server) do
+        {:ok, expected_crashes} ->
+          {:reply, :ok, %{state | expected_crashes: expected_crashes}}
+
+        {:error, _} = err ->
+          {:reply, err, state}
       end
     else
       {:error, _} = err -> {:reply, err, state}
@@ -285,56 +250,43 @@ defmodule Toast.Deployment.SingleServerController do
   end
 
   def handle_call({:verify_crash, server_id, timeout}, from, state) do
-    case Map.get(state.expected_crashes, server_id) do
-      nil ->
-        {:reply, {:error, :no_expectation}, state}
+    case ServerLifecycle.verify_crash(server_id, timeout, state.expected_crashes, from) do
+      {:reply, result, expected_crashes} ->
+        {:reply, result, %{state | expected_crashes: expected_crashes}}
 
-      %{crash_info: nil} ->
-        deadline = System.monotonic_time(:millisecond) + timeout
-        Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
-        {:noreply, state}
-
-      %{crash_info: crash_info, timer: timer} ->
-        Process.cancel_timer(timer)
-        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
-        {:reply, {:ok, crash_info}, state}
+      {:noreply, expected_crashes} ->
+        {:noreply, %{state | expected_crashes: expected_crashes}}
     end
   end
 
   @impl true
   def handle_info({:server_crashed, server_id, crash_info}, state) do
-    case Map.get(state.expected_crashes, server_id) do
-      %{timer: _timer} = entry ->
-        Logger.info("Server #{server_id} crashed as expected")
-        entry = %{entry | crash_info: crash_info}
-        state = %{state | expected_crashes: Map.put(state.expected_crashes, server_id, entry)}
+    on_crash_ctx = %{
+      on_crash: state.on_crash,
+      on_event: state.on_event,
+      deployment: build_deployment_from_state(state)
+    }
+
+    case ServerLifecycle.handle_crash(server_id, crash_info, state.expected_crashes, state.server, on_crash_ctx) do
+      {:expected, expected_crashes} ->
+        state = %{state | expected_crashes: expected_crashes}
         state = put_server(%{state | status: :degraded}, operational_state: :crashed, intentional: true)
-        notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
         {:noreply, state}
 
-      nil ->
-        if state.server.intentional do
-          if crash_info.signal in @intentional_exit_signals do
-            Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
-            {:noreply, state}
-          else
-            Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
-            stop_health_monitor(state)
-            notify_crash(state.on_crash, state, crash_info)
-            notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-            state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-              operational_state: :crashed, intentional: false, health_monitor: nil)
-            {:noreply, state}
-          end
-        else
-          Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-          stop_health_monitor(state)
-          notify_crash(state.on_crash, state, crash_info)
-          notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-          state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-            operational_state: :crashed, health_monitor: nil)
-          {:noreply, state}
-        end
+      :intentional_exit ->
+        {:noreply, state}
+
+      :crash_during_intentional_stop ->
+        ServerLifecycle.stop_health_monitor(state.server)
+        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+          operational_state: :crashed, intentional: false, health_monitor: nil)
+        {:noreply, state}
+
+      :unexpected_crash ->
+        ServerLifecycle.stop_health_monitor(state.server)
+        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+          operational_state: :crashed, health_monitor: nil)
+        {:noreply, state}
     end
   end
 
@@ -342,50 +294,26 @@ defmodule Toast.Deployment.SingleServerController do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     stop_server_process(state, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
-    notify_crash(state.on_crash, state, crash_info)
-    notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+    ServerLifecycle.notify_crash(state.on_crash, build_deployment_from_state(state), crash_info)
+    ServerLifecycle.notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     state = put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}}, server_pid: nil, health_monitor: nil)
     {:noreply, state}
   end
 
   def handle_info({:expect_crash_timeout, server_id}, state) do
-    case Map.get(state.expected_crashes, server_id) do
-      %{crash_info: nil} ->
-        Logger.warning("Expected crash for #{server_id} timed out")
-        resume_health_monitor(state)
-        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
-        {:noreply, state}
+    expected_crashes =
+      ServerLifecycle.handle_expect_crash_timeout(server_id, state.expected_crashes, state.server)
 
-      _ ->
-        # Crash already happened or entry already removed -- nothing to do
-        {:noreply, state}
-    end
+    {:noreply, %{state | expected_crashes: expected_crashes}}
   end
 
   def handle_info({:verify_crash_check, server_id, from, deadline}, state) do
-    case Map.get(state.expected_crashes, server_id) do
-      %{crash_info: nil} ->
-        if System.monotonic_time(:millisecond) < deadline do
-          Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
-          {:noreply, state}
-        else
-          # Timeout — clean up expectation and resume monitoring
-          state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
-          resume_health_monitor(state)
-          GenServer.reply(from, {:error, :timeout})
-          {:noreply, state}
-        end
+    {_tag, expected_crashes} =
+      ServerLifecycle.handle_verify_crash_check(
+        server_id, from, deadline, state.expected_crashes, state.server
+      )
 
-      %{crash_info: crash_info, timer: timer} ->
-        Process.cancel_timer(timer)
-        state = %{state | expected_crashes: Map.delete(state.expected_crashes, server_id)}
-        GenServer.reply(from, {:ok, crash_info})
-        {:noreply, state}
-
-      nil ->
-        GenServer.reply(from, {:error, :no_expectation})
-        {:noreply, state}
-    end
+    {:noreply, %{state | expected_crashes: expected_crashes}}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state)
@@ -394,8 +322,11 @@ defmodule Toast.Deployment.SingleServerController do
       Logger.warning("HealthMonitor died unexpectedly (#{inspect(reason)}), restarting")
 
       case start_health_monitor(state) do
-        {:ok, new_pid} -> {:noreply, put_server(state, health_monitor: new_pid)}
-        {:error, _} -> {:noreply, state}
+        {:ok, new_pid} ->
+          {:noreply, put_server(state, health_monitor: new_pid)}
+
+        {:error, _} ->
+          {:noreply, state}
       end
     else
       {:noreply, state}
@@ -425,7 +356,7 @@ defmodule Toast.Deployment.SingleServerController do
          os_pid = ServerProcess.os_pid(server_pid),
          state = put_server(state, server_pid: server_pid, pid: os_pid),
          _ = Logger.info("#{id}: started (os_pid=#{os_pid}), endpoint=#{state.server.endpoint}"),
-         _ = notify_event(state.on_event, {:server_started, id, os_pid, DateTime.utc_now()}),
+         _ = ServerLifecycle.notify_event(state.on_event, {:server_started, id, os_pid, DateTime.utc_now()}),
          :ok <- wait_for_ready(state, timeout),
          {:ok, monitor_pid} <- start_health_monitor(state) do
       Logger.info("Deployment #{id} ready at #{state.server.endpoint}")
@@ -446,7 +377,7 @@ defmodule Toast.Deployment.SingleServerController do
       env: launch_spec.env,
       working_dir: launch_spec.working_dir,
       listener: self(),
-      output_handler: &print_server_output/2
+      output_handler: &ServerLifecycle.print_server_output/2
     ]
 
     Toast.Process.Supervisor.start_server(opts)
@@ -471,9 +402,9 @@ defmodule Toast.Deployment.SingleServerController do
 
   defp do_cleanup(state, timeout) do
     Logger.debug("Cleaning up #{state.server.id}")
-    stop_health_monitor(state)
+    ServerLifecycle.stop_health_monitor(state.server)
     stop_server_process(state, timeout)
-    notify_event(state.on_event, {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()})
+    ServerLifecycle.notify_event(state.on_event, {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()})
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.server.id}: diagnostics collected")
     put_server(%{state | status: :stopped, diagnostics: diagnostics}, server_pid: nil, health_monitor: nil)
@@ -508,7 +439,7 @@ defmodule Toast.Deployment.SingleServerController do
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.server.id} due to: #{inspect(reason)}")
-    stop_health_monitor(state)
+    ServerLifecycle.stop_health_monitor(state.server)
     stop_server_process(state, 5_000)
     put_server(%{state | status: :failed, error: reason}, server_pid: nil, health_monitor: nil)
   end
@@ -530,14 +461,6 @@ defmodule Toast.Deployment.SingleServerController do
     end
   end
 
-  defp stop_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
-
-  defp stop_health_monitor(%{server: %{health_monitor: pid}}) do
-    Toast.Process.HealthMonitor.stop(pid)
-  catch
-    :exit, _ -> :ok
-  end
-
   # --- Target resolution ---
 
   defp resolve_target(state, server_id) when is_binary(server_id) do
@@ -557,39 +480,10 @@ defmodule Toast.Deployment.SingleServerController do
     end
   end
 
-  defp require_operational_state(state, expected) do
-    if state.server.operational_state == expected,
-      do: :ok,
-      else: {:error, {:unexpected_state, state.server.operational_state}}
-  end
-
-  defp require_operational_state_in(state, expected_list) do
-    if state.server.operational_state in expected_list,
-      do: :ok,
-      else: {:error, {:unexpected_state, state.server.operational_state}}
-  end
-
-  defp suspend_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
-
-  defp suspend_health_monitor(%{server: %{health_monitor: pid}}),
-    do: Toast.Process.HealthMonitor.suspend(pid)
-
-  defp resume_health_monitor(%{server: %{health_monitor: nil}}), do: :ok
-
-  defp resume_health_monitor(%{server: %{health_monitor: pid}}),
-    do: Toast.Process.HealthMonitor.resume(pid)
-
   # --- Helpers ---
 
   defp put_server(state, updates) do
     %{state | server: struct!(state.server, updates)}
-  end
-
-  defp notify_crash(nil, _state, _crash_info), do: :ok
-
-  defp notify_crash(on_crash, state, crash_info) when is_function(on_crash, 2) do
-    deployment = build_deployment_from_state(state)
-    on_crash.(deployment, crash_info)
   end
 
   defp build_deployment_from_state(state) do
@@ -601,16 +495,6 @@ defmodule Toast.Deployment.SingleServerController do
       endpoint: state.server.endpoint || "",
       work_dir: state.config.work_dir
     }
-  end
-
-  defp notify_event(nil, _event), do: :ok
-  defp notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)
-
-  defp print_server_output(server_id, data) do
-    data
-    |> String.split("\n")
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.each(&IO.puts("  #{server_id} | #{&1}"))
   end
 
   defp generate_id do

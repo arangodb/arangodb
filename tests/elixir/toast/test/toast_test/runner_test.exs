@@ -246,29 +246,6 @@ defmodule ToastTest.RunnerTest do
   end
 
   describe "check_between_tests dispatch" do
-    # check_between_tests has three dispatch paths:
-    # 1. Legacy mode: %{deployments: [...]} -> check_deployments
-    # 2. Suite mode with between_tests: false -> nil (skip)
-    # 3. Suite mode with suite callback -> call suite_module.between_tests/2
-    # 4. Suite mode default -> check_health
-
-    test "legacy mode checks deployments list" do
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
-      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
-
-      deployment = mock_deployment(ctrl, :single_server)
-
-      # check_between_tests with legacy config uses check_deployments
-      # A ready deployment returns nil (no abort reason)
-      result =
-        case Toast.Deployment.check_health(deployment) do
-          :ok -> nil
-          {:error, reason} -> reason
-        end
-
-      assert result == nil
-    end
-
     test "suite mode with between_tests: false skips check" do
       # When deployment_config returns between_tests: false,
       # check_between_tests returns nil without checking health

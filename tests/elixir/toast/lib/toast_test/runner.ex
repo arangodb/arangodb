@@ -80,35 +80,6 @@ defmodule ToastTest.Runner do
   defp normalize_suite_entry({suite_module, test_modules}),
     do: {suite_module, test_modules, []}
 
-  @spec run(keyword(), non_neg_integer() | nil) :: {map(), nil}
-  def run(opts, load_us) when (is_integer(load_us) or is_nil(load_us)) and is_list(opts) do
-    clear_abort!()
-    runner = self()
-    id = {__MODULE__, runner}
-
-    try do
-      _ =
-        System.trap_signal(:sigquit, id, fn ->
-          ref = Process.monitor(runner)
-          send(runner, {ref, self(), :sigquit})
-
-          receive do
-            ^ref -> :ok
-            {:DOWN, ^ref, _, _, _} -> :ok
-          after
-            5_000 -> :ok
-          end
-
-          Process.demonitor(ref, [:flush])
-          :ok
-        end)
-
-      run_with_trap(opts, load_us)
-    after
-      System.untrap_signal(:sigquit, id)
-    end
-  end
-
   @spec abort!(String.t() | {atom(), String.t()}) :: :ok
   def abort!(reason) do
     display_reason =
@@ -445,72 +416,6 @@ defmodule ToastTest.Runner do
     Compat.module_finished(config.manager, %{test_module | tests: skipped_tests})
   end
 
-  ## Legacy entry point
-
-  defp run_with_trap(opts, load_us) do
-    opts = normalize_opts(opts)
-    {:ok, manager} = EM.start_link()
-    {:ok, stats_pid} = EM.add_handler(manager, ExUnit.RunnerStats, opts)
-    config = configure(opts, manager, self(), stats_pid)
-    :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
-
-    start_time = System.monotonic_time()
-    EM.suite_started(config.manager, opts)
-
-    modules_to_restore =
-      if Keyword.fetch!(opts, :repeat_until_failure) > 0, do: {[], []}, else: nil
-
-    {async_stop_time, modules_to_restore} = async_loop(config, %{}, false, modules_to_restore)
-
-    stop_time = System.monotonic_time()
-
-    if max_failures_reached?(config) do
-      EM.max_failures_reached(config.manager)
-    end
-
-    async_us =
-      async_stop_time &&
-        System.convert_time_unit(async_stop_time - start_time, :native, :microsecond)
-
-    run_us = System.convert_time_unit(stop_time - start_time, :native, :microsecond)
-    times_us = %{async: async_us, load: load_us, run: run_us}
-    EM.suite_finished(config.manager, times_us)
-
-    stats = ExUnit.RunnerStats.stats(stats_pid)
-    EM.stop(config.manager)
-    after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
-    Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
-    {stats, modules_to_restore}
-  end
-
-  defp configure(opts, manager, runner_pid, stats_pid) do
-    Enum.each(opts[:formatters], &EM.add_handler(manager, &1, opts))
-
-    %{
-      capture_log: opts[:capture_log],
-      deployments: load_deployments(),
-      exclude: opts[:exclude],
-      include: opts[:include],
-      manager: manager,
-      max_cases: opts[:max_cases],
-      max_failures: opts[:max_failures],
-      only_test_ids: opts[:only_test_ids],
-      runner_pid: runner_pid,
-      stats_pid: stats_pid,
-      suite_deadline: Application.get_env(:toast, :__suite_deadline__),
-      timeout: opts[:timeout],
-      timeout_factor: Application.get_env(:toast, :__timeout_factor__, 1),
-      trace: opts[:trace]
-    }
-  end
-
-  defp load_deployments do
-    case Application.get_env(:toast, :__test_deployment__) do
-      nil -> []
-      deployment -> [deployment]
-    end
-  end
-
   defp normalize_opts(opts) do
     {include, exclude} = ExUnit.Filters.normalize(opts[:include], opts[:exclude])
 
@@ -519,192 +424,7 @@ defmodule ToastTest.Runner do
     |> Keyword.put(:include, include)
   end
 
-  ## Legacy scheduling
-
-  defp async_loop(config, running, async_once?, modules_to_restore) do
-    check_suite_deadline!(config)
-
-    if reason = aborted?() do
-      drain_running(config, running)
-      drain_remaining_modules(config, "Suite aborted: " <> abort_display_reason(reason))
-      async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
-      {async_stop_time, modules_to_restore}
-    else
-      do_async_loop(config, running, async_once?, modules_to_restore)
-    end
-  end
-
-  defp do_async_loop(config, running, async_once?, modules_to_restore) do
-    available = config.max_cases - map_size(running)
-
-    cond do
-      available <= 0 ->
-        running = wait_until_available(config, running)
-        async_loop(config, running, async_once?, modules_to_restore)
-
-      async_modules = ExUnit.Server.take_async_modules(available) ->
-        running = spawn_modules(config, async_modules, true, running)
-        modules_to_restore = maybe_store_modules(modules_to_restore, :async, async_modules)
-        async_loop(config, running, true, modules_to_restore)
-
-      true ->
-        sync_modules = ExUnit.Server.take_sync_modules()
-        modules_to_restore = maybe_store_modules(modules_to_restore, :sync, sync_modules)
-
-        0 =
-          running
-          |> Enum.reduce(running, fn _, acc -> wait_until_available(config, acc) end)
-          |> map_size()
-
-        async_stop_time = if async_once?, do: System.monotonic_time(), else: nil
-
-        for pair <- sync_modules do
-          check_suite_deadline!(config)
-
-          if reason = aborted?() do
-            emit_skipped_pair(config, pair, "Suite aborted: " <> abort_display_reason(reason))
-          else
-            running = spawn_modules(config, [{nil, [pair]}], false, %{})
-            running != %{} and wait_until_available(config, running)
-          end
-        end
-
-        {async_stop_time, modules_to_restore}
-    end
-  end
-
-  defp wait_until_available(config, running) do
-    receive do
-      {ref, pid, :sigquit} ->
-        sigquit(config, ref, pid, running)
-    after
-      0 ->
-        receive do
-          {ref, pid, :sigquit} ->
-            sigquit(config, ref, pid, running)
-
-          {:DOWN, ref, _, _, _} when is_map_key(running, ref) ->
-            Map.delete(running, ref)
-        end
-    end
-  end
-
-  defp spawn_modules(_config, [], _async?, running) do
-    running
-  end
-
-  defp spawn_modules(config, [{group, modules} | groups], async?, running) do
-    cond do
-      max_failures_reached?(config) ->
-        running
-
-      aborted?() ->
-        running
-
-      modules == [] ->
-        spawn_modules(config, groups, async?, running)
-
-      true ->
-        {pid, ref} =
-          spawn_monitor(fn ->
-            Enum.each(modules, fn {module, params} ->
-              run_module_legacy(config, module, async?, group, params)
-            end)
-          end)
-
-        spawn_modules(config, groups, async?, Map.put(running, ref, pid))
-    end
-  end
-
-  defp maybe_store_modules(nil, _type, _modules), do: nil
-  defp maybe_store_modules({async, sync}, :async, modules), do: {async ++ modules, sync}
-  defp maybe_store_modules({async, sync}, :sync, modules), do: {async, sync ++ modules}
-
-  ## Legacy drain helpers
-
-  defp drain_running(_config, running) do
-    Enum.each(running, fn {ref, _pid} ->
-      receive do
-        {:DOWN, ^ref, _, _, _} -> :ok
-      end
-    end)
-
-    :ok
-  end
-
-  defp drain_remaining_modules(config, reason) do
-    drain_async(config, reason)
-
-    for pair <- ExUnit.Server.take_sync_modules() do
-      emit_skipped_pair(config, pair, reason)
-    end
-  end
-
-  defp drain_async(config, reason) do
-    case ExUnit.Server.take_async_modules(999) do
-      nil ->
-        :ok
-
-      groups ->
-        for {_group, modules} <- groups,
-            pair <- modules do
-          emit_skipped_pair(config, pair, reason)
-        end
-
-        drain_async(config, reason)
-    end
-  end
-
-  defp emit_skipped_pair(config, {module, params}, reason) do
-    emit_skipped_module_legacy(config, module, params, reason)
-  end
-
-  defp emit_skipped_module_legacy(config, module, params, reason) do
-    test_module = %{module.__ex_unit__() | parameters: params}
-    EM.module_started(config.manager, test_module)
-
-    skipped_tests =
-      for test <- test_module.tests do
-        %{test | state: {:skipped, reason}}
-      end
-
-    for test <- skipped_tests do
-      EM.test_started(config.manager, test)
-      EM.test_finished(config.manager, test)
-    end
-
-    EM.module_finished(config.manager, %{test_module | tests: skipped_tests})
-  end
-
-  ## sigquit
-
-  defp sigquit(config, ref, pid, running) do
-    current =
-      Enum.map(running, fn {ref, pid} ->
-        current = safe_pdict_current(pid)
-        Process.exit(pid, :shutdown)
-
-        receive do
-          {:DOWN, ^ref, _, _, _} -> current
-        end
-      end)
-
-    EM.sigquit(config.manager, Enum.reject(current, &is_nil/1))
-    EM.stop(config.manager)
-
-    send(pid, ref)
-    Process.sleep(:infinity)
-  end
-
-  defp safe_pdict_current(pid) do
-    with {:dictionary, dictionary} <- Process.info(pid, :dictionary),
-         {@current_key, current} <- List.keyfind(dictionary, @current_key, 0),
-         do: current
-  rescue
-    _ -> nil
-  end
-
-  ## Running modules (suite mode -- no async, no groups, no params)
+  ## Running modules
 
   defp run_module(config, module) do
     test_module = Compat.get_test_metadata(module)
@@ -716,19 +436,7 @@ defmodule ToastTest.Runner do
     finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests)
   end
 
-  ## Running modules (legacy mode -- async, groups, params)
-
-  defp run_module_legacy(config, module, async?, group, params) do
-    test_module = %{module.__ex_unit__() | parameters: params}
-    EM.module_started(config.manager, test_module)
-
-    {to_run_tests, excluded_and_skipped_tests} =
-      prepare_tests_legacy(config, async?, group, test_module.tests)
-
-    finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests)
-  end
-
-  ## Shared module execution logic (used by both suite and legacy modes)
+  ## Module execution logic
 
   defp finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests) do
     for excluded_or_skipped_test <- excluded_and_skipped_tests do
@@ -795,31 +503,6 @@ defmodule ToastTest.Runner do
     {Enum.reverse(to_run), Enum.reverse(to_skip)}
   end
 
-  defp prepare_tests_legacy(config, async?, group, tests) do
-    include = config.include
-    exclude = config.exclude
-    test_ids = config.only_test_ids
-
-    {to_run, to_skip} =
-      for test <- tests, include_test?(test_ids, test), reduce: {[], []} do
-        {to_run, to_skip} ->
-          tags =
-            Map.merge(test.tags, %{
-              test: test.name,
-              module: test.module,
-              async: async?,
-              test_group: group
-            })
-
-          case ExUnit.Filters.eval(include, exclude, tags, tests) do
-            :ok -> {[%{test | tags: tags} | to_run], to_skip}
-            excluded_or_skipped -> {to_run, [%{test | state: excluded_or_skipped} | to_skip]}
-          end
-      end
-
-    {Enum.reverse(to_run), Enum.reverse(to_skip)}
-  end
-
   defp include_test?(test_ids, test) do
     test_ids == nil or MapSet.member?(test_ids, {test.module, test.name})
   end
@@ -833,7 +516,7 @@ defmodule ToastTest.Runner do
     String.contains?(downcased_name, downcased_pattern)
   end
 
-  ## Module test execution (shared between suite and legacy modes)
+  ## Module test execution
 
   defp run_module_tests(_config, test_module, []) do
     {test_module, [], []}
@@ -943,7 +626,6 @@ defmodule ToastTest.Runner do
       aborted?() ->
         {acc, remaining}
 
-      # Legacy mode has deployments in config; suite mode does not
       reason = check_between_tests(config, prev_test) ->
         abort!(reason)
         {acc, remaining}
@@ -958,9 +640,6 @@ defmodule ToastTest.Runner do
         end
     end
   end
-
-  defp check_between_tests(%{deployments: deployments}, _prev_test),
-    do: check_deployments(deployments)
 
   defp check_between_tests(
          %{suite_run: %{suite_module: suite_module, deployment: deployment}},
@@ -988,15 +667,6 @@ defmodule ToastTest.Runner do
   end
 
   defp check_between_tests(_config, _prev_test), do: nil
-
-  defp check_deployments([]), do: nil
-
-  defp check_deployments([deployment | rest]) do
-    case Toast.Deployment.check_health(deployment) do
-      :ok -> check_deployments(rest)
-      {:error, reason} -> reason
-    end
-  end
 
   defp run_test(config, test, context) do
     EM.test_started(config.manager, test)
