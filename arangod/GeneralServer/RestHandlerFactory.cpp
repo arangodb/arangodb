@@ -55,7 +55,9 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   uint32_t apiVersion = req->requestedApiVersion();
 
   // Check if the requested API version is valid
-  if (apiVersion >= _constructors.size()) {
+  if (apiVersion >= _constructors.size() ||
+      (!ApiVersion::isApiVersionSupported(apiVersion) &&
+       apiVersion != ApiVersion::experimentalApiVersion)) {
     LOG_TOPIC("a8f2e", DEBUG, arangodb::Logger::FIXME)
         << "requested API version " << apiVersion
         << " is not supported (max: " << (_constructors.size() - 1) << ")";

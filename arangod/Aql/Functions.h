@@ -381,8 +381,6 @@ AqlValue GeoEquals(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue GeoArea(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
-AqlValue IsInPolygon(arangodb::aql::ExpressionContext*, AstNode const&,
-                     VPackFunctionParametersView);
 AqlValue GeoPoint(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue GeoMultiPoint(arangodb::aql::ExpressionContext*, AstNode const&,
