@@ -32,12 +32,13 @@ defmodule Toast.Diagnostics.Coredump do
   @doc "Analyze a core file and extract stack traces."
   @spec analyze(Path.t(), Path.t(), keyword()) :: {:ok, Report.t()} | {:error, term()}
   def analyze(core_path, binary_path, opts \\ []) do
-    debugger = Keyword.get_lazy(opts, :debugger, fn ->
-      case detect_debugger() do
-        {:ok, mod} -> mod
-        :none -> nil
-      end
-    end)
+    debugger =
+      Keyword.get_lazy(opts, :debugger, fn ->
+        case detect_debugger() do
+          {:ok, mod} -> mod
+          :none -> nil
+        end
+      end)
 
     timeout = Keyword.get(opts, :timeout, @default_timeout_ms)
 
@@ -88,20 +89,23 @@ defmodule Toast.Diagnostics.Coredump do
       []
     else
       Logger.info("Found #{length(cores)} core file(s) for #{server.id}")
-
       per_core_timeout = max(1_000, div(remaining_ms, length(cores)))
-      analyze_opts = [timeout: per_core_timeout] ++ if(debugger, do: [debugger: debugger], else: [])
 
-      Enum.flat_map(cores, fn core_path ->
-        case analyze(core_path, server.binary_path, analyze_opts) do
-          {:ok, report} ->
-            [report]
+      analyze_opts =
+        [timeout: per_core_timeout] ++ if(debugger, do: [debugger: debugger], else: [])
 
-          {:error, reason} ->
-            Logger.warning("Failed to analyze core #{core_path}: #{inspect(reason)}")
-            []
-        end
-      end)
+      Enum.flat_map(cores, &analyze_core(&1, server.binary_path, analyze_opts))
+    end
+  end
+
+  defp analyze_core(core_path, binary_path, opts) do
+    case analyze(core_path, binary_path, opts) do
+      {:ok, report} ->
+        [report]
+
+      {:error, reason} ->
+        Logger.warning("Failed to analyze core #{core_path}: #{inspect(reason)}")
+        []
     end
   end
 
@@ -257,21 +261,25 @@ defmodule Toast.Diagnostics.Coredump do
 
   defp cores_from_coredumpctl(os_pid) do
     if System.find_executable("coredumpctl") do
-      case cmd_with_timeout("coredumpctl", ["info", to_string(os_pid)], 5_000) do
-        {:ok, output, 0} ->
-          case Regex.run(~r/Storage:\s+(\S+)/, output) do
-            [_, path] -> [String.trim(path)]
-            _ -> []
-          end
-
-        _ ->
-          []
-      end
+      extract_coredumpctl_path(os_pid)
     else
       []
     end
   rescue
     _ -> []
+  end
+
+  defp extract_coredumpctl_path(os_pid) do
+    case cmd_with_timeout("coredumpctl", ["info", to_string(os_pid)], 5_000) do
+      {:ok, output, 0} ->
+        case Regex.run(~r/Storage:\s+(\S+)/, output) do
+          [_, path] -> [String.trim(path)]
+          _ -> []
+        end
+
+      _ ->
+        []
+    end
   end
 
   defp cores_from_fs_pattern(pattern, os_pid) do

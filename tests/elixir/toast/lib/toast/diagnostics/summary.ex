@@ -262,8 +262,7 @@ defmodule Toast.Diagnostics.Summary do
     entries =
       tests
       |> Enum.sort_by(fn t -> {inspect(t.module), t.name} end)
-      |> Enum.map(fn t -> "    #{inspect(t.module)} - #{t.name}" end)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", fn t -> "    #{inspect(t.module)} - #{t.name}" end)
 
     ["  Test failures caused by server crash (not actual test issues):\n#{entries}"]
   end

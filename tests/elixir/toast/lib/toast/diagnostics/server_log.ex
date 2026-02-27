@@ -24,7 +24,11 @@ defmodule Toast.Diagnostics.ServerLog do
         |> maybe_collect_warning(line)
       end)
 
-    %{report | assertion_failures: Enum.reverse(report.assertion_failures), warnings: Enum.reverse(report.warnings)}
+    %{
+      report
+      | assertion_failures: Enum.reverse(report.assertion_failures),
+        warnings: Enum.reverse(report.warnings)
+    }
   end
 
   defp empty_report do

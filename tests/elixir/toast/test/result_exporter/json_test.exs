@@ -67,7 +67,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
         fatal_lines: ["FATAL error"],
         crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
       },
-      server: %ServerInstance{id: "toast-1", role: :single, pid: 12345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
+      server: %ServerInstance{id: "toast-1", role: :single, pid: 12_345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
     }
   end
 
@@ -84,10 +84,10 @@ defmodule ToastTest.ResultExporter.JSONTest do
           fatal_lines: [],
           crash_output: []
         },
-        server: %ServerInstance{id: "agent-1", role: :agent, pid: 10001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
+        server: %ServerInstance{id: "agent-1", role: :agent, pid: 10_001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
       },
       "dbserver-1" => %{single_server_diagnostics() |
-        server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
+        server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10_002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
       }
     }
   end
@@ -219,7 +219,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
       server = result["server_health"]["server"]
       assert server["id"] == "toast-1"
       assert server["role"] == "single"
-      assert server["pid"] == 12345
+      assert server["pid"] == 12_345
       assert server["endpoint"] == "http://127.0.0.1:8529"
     end
 

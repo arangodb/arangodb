@@ -166,7 +166,7 @@ defmodule Toast.ResultPackagingTest do
 
       # Create a fake core dump
       core_path = Path.join(work_dir, "core.12345")
-      File.write!(core_path, String.duplicate("x", 10000))
+      File.write!(core_path, String.duplicate("x", 10_000))
 
       suite_diag = %{
         name: "suite1",

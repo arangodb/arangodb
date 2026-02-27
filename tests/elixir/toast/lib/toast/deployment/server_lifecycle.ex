@@ -81,7 +81,10 @@ defmodule Toast.Deployment.ServerLifecycle do
   # --- Crash handling ---
 
   @spec handle_crash(String.t(), map(), map(), ServerInstance.t() | nil, map()) ::
-          {:expected, map()} | :intentional_exit | :crash_during_intentional_stop | :unexpected_crash
+          {:expected, map()}
+          | :intentional_exit
+          | :crash_during_intentional_stop
+          | :unexpected_crash
   def handle_crash(server_id, crash_info, expected_crashes, server, on_crash_ctx) do
     case Map.get(expected_crashes, server_id) do
       %{timer: _timer} = entry ->
@@ -96,7 +99,11 @@ defmodule Toast.Deployment.ServerLifecycle do
     Logger.info("Server #{server_id} crashed as expected")
     entry = %{entry | crash_info: crash_info}
     expected_crashes = Map.put(expected_crashes, server_id, entry)
-    notify_event(on_crash_ctx.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+
+    notify_event(
+      on_crash_ctx.on_event,
+      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+    )
 
     {:expected, expected_crashes}
   end
@@ -104,18 +111,39 @@ defmodule Toast.Deployment.ServerLifecycle do
   defp handle_unexpected_crash(server_id, crash_info, nil, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
-    notify_event(on_crash_ctx.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+
+    notify_event(
+      on_crash_ctx.on_event,
+      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+    )
+
     :unexpected_crash
   end
 
-  defp handle_unexpected_crash(server_id, crash_info, %ServerInstance{intentional: true} = _server, on_crash_ctx) do
+  defp handle_unexpected_crash(
+         server_id,
+         crash_info,
+         %ServerInstance{intentional: true} = _server,
+         on_crash_ctx
+       ) do
     if crash_info.signal in @intentional_exit_signals do
-      Logger.debug("Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})")
+      Logger.debug(
+        "Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})"
+      )
+
       :intentional_exit
     else
-      Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
+      Logger.error(
+        "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
+      )
+
       notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
-      notify_event(on_crash_ctx.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+
+      notify_event(
+        on_crash_ctx.on_event,
+        {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+      )
+
       :crash_during_intentional_stop
     end
   end
@@ -123,7 +151,12 @@ defmodule Toast.Deployment.ServerLifecycle do
   defp handle_unexpected_crash(server_id, crash_info, %ServerInstance{} = _server, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
     notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
-    notify_event(on_crash_ctx.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+
+    notify_event(
+      on_crash_ctx.on_event,
+      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+    )
+
     :unexpected_crash
   end
 
@@ -173,19 +206,18 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
-  @spec handle_verify_crash_check(String.t(), GenServer.from(), integer(), map(), ServerInstance.t() | nil) ::
+  @spec handle_verify_crash_check(
+          String.t(),
+          GenServer.from(),
+          integer(),
+          map(),
+          ServerInstance.t() | nil
+        ) ::
           {:wait, map()} | {:done, map()}
   def handle_verify_crash_check(server_id, from, deadline, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
       %{crash_info: nil} ->
-        if System.monotonic_time(:millisecond) < deadline do
-          Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
-          {:wait, expected_crashes}
-        else
-          if server, do: resume_health_monitor(server)
-          GenServer.reply(from, {:error, :timeout})
-          {:done, Map.delete(expected_crashes, server_id)}
-        end
+        check_crash_deadline(server_id, from, deadline, expected_crashes, server)
 
       %{crash_info: crash_info, timer: timer} ->
         Process.cancel_timer(timer)
@@ -198,6 +230,17 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  defp check_crash_deadline(server_id, from, deadline, expected_crashes, server) do
+    if System.monotonic_time(:millisecond) < deadline do
+      Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
+      {:wait, expected_crashes}
+    else
+      if server, do: resume_health_monitor(server)
+      GenServer.reply(from, {:error, :timeout})
+      {:done, Map.delete(expected_crashes, server_id)}
+    end
+  end
+
   # --- State validation ---
 
   @spec require_state(ServerInstance.t(), atom()) :: :ok | {:error, {:unexpected_state, atom()}}
@@ -207,7 +250,8 @@ defmodule Toast.Deployment.ServerLifecycle do
       else: {:error, {:unexpected_state, server.operational_state}}
   end
 
-  @spec require_state_in(ServerInstance.t(), [atom()]) :: :ok | {:error, {:unexpected_state, atom()}}
+  @spec require_state_in(ServerInstance.t(), [atom()]) ::
+          :ok | {:error, {:unexpected_state, atom()}}
   def require_state_in(%ServerInstance{} = server, expected_list) do
     if server.operational_state in expected_list,
       do: :ok,

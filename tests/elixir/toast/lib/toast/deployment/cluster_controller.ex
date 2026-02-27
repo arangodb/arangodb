@@ -200,7 +200,9 @@ defmodule Toast.Deployment.ClusterController do
 
   def handle_call({:server_by_cluster_id, cluster_internal_id}, _from, state) do
     result =
-      case Enum.find(state.cluster_id_mapping, fn {_toast_id, cid} -> cid == cluster_internal_id end) do
+      case Enum.find(state.cluster_id_mapping, fn {_toast_id, cid} ->
+             cid == cluster_internal_id
+           end) do
         {toast_id, _} ->
           case Map.get(state.servers, toast_id) do
             nil -> {:error, :not_found}
@@ -215,127 +217,31 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   def handle_call({:stop_server, target}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id),
-             :ok <- ServerLifecycle.require_state(server, :running) do
-          ServerLifecycle.stop_server(server)
-          acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
-          ServerLifecycle.notify_event(acc.on_event, {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()})
-          {:ok, acc}
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_stop_server/2)
   end
 
   def handle_call({:kill_server, target}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id),
-             :ok <- ServerLifecycle.require_state(server, :running) do
-          ServerLifecycle.kill_server(server)
-          acc = update_server(acc, server_id, operational_state: :killed, intentional: true)
-          ServerLifecycle.notify_event(acc.on_event, {:server_killed, server_id, DateTime.utc_now()})
-          {:ok, acc}
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_kill_server/2)
   end
 
   def handle_call({:pause_server, target}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id),
-             :ok <- ServerLifecycle.require_state(server, :running) do
-          ServerLifecycle.pause_server(server)
-          acc = update_server(acc, server_id, operational_state: :paused, intentional: true)
-          ServerLifecycle.notify_event(acc.on_event, {:server_paused, server_id, DateTime.utc_now()})
-          {:ok, acc}
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_pause_server/2)
   end
 
   def handle_call({:resume_server, target}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id),
-             :ok <- ServerLifecycle.require_state(server, :paused) do
-          ServerLifecycle.resume_server(server)
-          acc = update_server(acc, server_id, operational_state: :running, intentional: false)
-          ServerLifecycle.notify_event(acc.on_event, {:server_resumed, server_id, DateTime.utc_now()})
-          {:ok, acc}
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_resume_server/2)
   end
 
   def handle_call({:restart_server, target, opts}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id) do
-          ServerLifecycle.stop_before_restart(server)
-          acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
-
-          case ServerLifecycle.relaunch_and_wait(server, opts) do
-            :ok ->
-              acc = update_server(acc, server_id, operational_state: :running, intentional: false)
-              {:ok, acc}
-
-            {:error, _} = err ->
-              err
-          end
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_restart_server(&1, &2, opts))
   end
 
   def handle_call({:start_server, target, opts}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id),
-             :ok <- ServerLifecycle.require_state_in(server, [:stopped, :killed, :crashed]) do
-          case ServerLifecycle.relaunch_and_wait(server, opts) do
-            :ok ->
-              acc = update_server(acc, server_id, operational_state: :running, intentional: false)
-              {:ok, acc}
-
-            {:error, _} = err ->
-              err
-          end
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_start_server(&1, &2, opts))
   end
 
   def handle_call({:expect_crash, target, timeout}, _from, state) do
-    with {:ok, server_ids} <- resolve_target(state, target) do
-      apply_to_each(server_ids, state, fn server_id, acc ->
-        with {:ok, server} <- fetch_server(acc, server_id) do
-          case ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
-            {:ok, expected_crashes} ->
-              {:ok, %{acc | expected_crashes: expected_crashes}}
-
-            {:error, _} = err ->
-              err
-          end
-        end
-      end)
-    else
-      {:error, _} = err -> {:reply, err, state}
-    end
+    resolve_and_apply(state, target, &do_expect_crash(&1, &2, timeout))
   end
 
   def handle_call({:verify_crash, server_id, timeout}, from, state) do
@@ -358,7 +264,13 @@ defmodule Toast.Deployment.ClusterController do
       deployment: build_deployment_from_state(state)
     }
 
-    case ServerLifecycle.handle_crash(server_id, crash_info, state.expected_crashes, server, on_crash_ctx) do
+    case ServerLifecycle.handle_crash(
+           server_id,
+           crash_info,
+           state.expected_crashes,
+           server,
+           on_crash_ctx
+         ) do
       {:expected, expected_crashes} ->
         state = %{state | expected_crashes: expected_crashes}
         state = update_server(state, server_id, operational_state: :crashed, intentional: true)
@@ -374,7 +286,9 @@ defmodule Toast.Deployment.ClusterController do
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
 
       :unexpected_crash ->
-        state = if server, do: update_server(state, server_id, operational_state: :crashed), else: state
+        state =
+          if server, do: update_server(state, server_id, operational_state: :crashed), else: state
+
         stop_health_monitor(state, server_id)
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
     end
@@ -385,12 +299,18 @@ defmodule Toast.Deployment.ClusterController do
     stop_server_process(state, server_id, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
     ServerLifecycle.notify_crash(state.on_crash, build_deployment_from_state(state), crash_info)
-    ServerLifecycle.notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
+
+    ServerLifecycle.notify_event(
+      state.on_event,
+      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+    )
+
     {:noreply, %{state | status: :failed, error: {:server_unhealthy, server_id}}}
   end
 
   def handle_info({:expect_crash_timeout, server_id}, state) do
     server = Map.get(state.servers, server_id)
+
     expected_crashes =
       ServerLifecycle.handle_expect_crash_timeout(server_id, state.expected_crashes, server)
 
@@ -402,7 +322,11 @@ defmodule Toast.Deployment.ClusterController do
 
     {_tag, expected_crashes} =
       ServerLifecycle.handle_verify_crash_check(
-        server_id, from, deadline, state.expected_crashes, server
+        server_id,
+        from,
+        deadline,
+        state.expected_crashes,
+        server
       )
 
     {:noreply, %{state | expected_crashes: expected_crashes}}
@@ -412,7 +336,10 @@ defmodule Toast.Deployment.ClusterController do
       when reason not in [:normal, :shutdown] do
     case find_server_by_health_monitor(state, pid) do
       {server_id, _server} when state.status in [:ready, :degraded] ->
-        Logger.warning("HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting")
+        Logger.warning(
+          "HealthMonitor for #{server_id} died unexpectedly (#{inspect(reason)}), restarting"
+        )
+
         server = state.servers[server_id]
 
         case start_single_health_monitor(server_id, server.endpoint) do
@@ -541,36 +468,42 @@ defmodule Toast.Deployment.ClusterController do
     results =
       Task.async_stream(
         server_ids,
-        fn server_id ->
-          server = state.servers[server_id]
-
-          with :ok <- ServerProcess.launch(server.server_pid) do
-            os_pid = ServerProcess.os_pid(server.server_pid)
-            Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
-            ServerLifecycle.notify_event(on_event, {:server_started, server_id, os_pid, DateTime.utc_now()})
-
-            if health_check? do
-              process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
-
-              Health.wait_until_ready(server.endpoint,
-                timeout: timeout,
-                process_check_fn: process_check_fn
-              )
-            else
-              :ok
-            end
-            |> case do
-              :ok -> {:ok, {server_id, os_pid}}
-              error -> error
-            end
-          end
-        end,
+        &launch_single_server(state.servers[&1], &1, health_check?, timeout, on_event),
         ordered: false,
         max_concurrency: count,
         timeout: timeout + 5_000
       )
       |> Enum.to_list()
 
+    collect_launch_results(results, state)
+  end
+
+  defp launch_single_server(server, server_id, health_check?, timeout, on_event) do
+    with :ok <- ServerProcess.launch(server.server_pid),
+         os_pid = ServerProcess.os_pid(server.server_pid),
+         _ = Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}"),
+         _ =
+           ServerLifecycle.notify_event(
+             on_event,
+             {:server_started, server_id, os_pid, DateTime.utc_now()}
+           ),
+         :ok <- maybe_health_check(server, health_check?, timeout) do
+      {:ok, {server_id, os_pid}}
+    end
+  end
+
+  defp maybe_health_check(_server, false, _timeout), do: :ok
+
+  defp maybe_health_check(server, true, timeout) do
+    process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
+
+    Health.wait_until_ready(server.endpoint,
+      timeout: timeout,
+      process_check_fn: process_check_fn
+    )
+  end
+
+  defp collect_launch_results(results, state) do
     errors = for {:ok, {:error, reason}} <- results, do: reason
     timeouts = for {:exit, :timeout} <- results, do: :timeout
 
@@ -596,44 +529,46 @@ defmodule Toast.Deployment.ClusterController do
   end
 
   defp fetch_cluster_id_mapping(state) do
-    coordinator_endpoint =
-      case state.coordinators do
-        [first_id | _] -> state.servers[first_id].endpoint
-        [] -> nil
-      end
-
-    case coordinator_endpoint do
-      nil ->
-        state
-
-      endpoint ->
-        url = "#{endpoint}/_admin/cluster/health"
-
-        case Req.get(url) do
-          {:ok, %{status: 200, body: body}} ->
-            health = Map.get(body, "Health", %{})
-
-            mapping =
-              Enum.reduce(health, %{}, fn {cluster_id, info}, acc ->
-                short_name = Map.get(info, "ShortName", "")
-
-                case find_toast_id_by_short_name(state, short_name) do
-                  nil -> acc
-                  toast_id -> Map.put(acc, toast_id, cluster_id)
-                end
-              end)
-
-            %{state | cluster_id_mapping: mapping}
-
-          _ ->
-            Logger.warning("Failed to fetch cluster health for ID mapping")
-            state
-        end
+    case first_coordinator_endpoint(state) do
+      nil -> state
+      endpoint -> fetch_cluster_id_mapping_from(state, endpoint)
     end
   rescue
     e ->
       Logger.warning("Failed to fetch cluster ID mapping: #{Exception.message(e)}")
       state
+  end
+
+  defp first_coordinator_endpoint(state) do
+    case state.coordinators do
+      [first_id | _] -> state.servers[first_id].endpoint
+      [] -> nil
+    end
+  end
+
+  defp fetch_cluster_id_mapping_from(state, endpoint) do
+    url = "#{endpoint}/_admin/cluster/health"
+
+    case Req.get(url) do
+      {:ok, %{status: 200, body: body}} ->
+        mapping = build_id_mapping(state, Map.get(body, "Health", %{}))
+        %{state | cluster_id_mapping: mapping}
+
+      _ ->
+        Logger.warning("Failed to fetch cluster health for ID mapping")
+        state
+    end
+  end
+
+  defp build_id_mapping(state, health) do
+    Enum.reduce(health, %{}, fn {cluster_id, info}, acc ->
+      short_name = Map.get(info, "ShortName", "")
+
+      case find_toast_id_by_short_name(state, short_name) do
+        nil -> acc
+        toast_id -> Map.put(acc, toast_id, cluster_id)
+      end
+    end)
   end
 
   defp find_toast_id_by_short_name(state, short_name) do
@@ -711,7 +646,11 @@ defmodule Toast.Deployment.ClusterController do
           try do
             ServerProcess.stop(server.server_pid, timeout)
             DynamicSupervisor.terminate_child(Toast.Process.Supervisor, server.server_pid)
-            ServerLifecycle.notify_event(on_event, {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()})
+
+            ServerLifecycle.notify_event(
+              on_event,
+              {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
+            )
           catch
             :exit, _ -> :ok
           end
@@ -814,7 +753,7 @@ defmodule Toast.Deployment.ClusterController do
       else: {:error, :not_found}
   end
 
-  defp resolve_target(state, [role: role]) when is_atom(role) do
+  defp resolve_target(state, role: role) when is_atom(role) do
     ids =
       state.servers
       |> Enum.filter(fn {_id, server} -> server.role == role end)
@@ -825,7 +764,7 @@ defmodule Toast.Deployment.ClusterController do
       else: {:ok, ids}
   end
 
-  defp resolve_target(state, [role: role, index: index]) when is_atom(role) and is_integer(index) do
+  defp resolve_target(state, role: role, index: index) when is_atom(role) and is_integer(index) do
     ids =
       state.servers
       |> Enum.filter(fn {_id, server} -> server.role == role end)
@@ -838,7 +777,8 @@ defmodule Toast.Deployment.ClusterController do
     end
   end
 
-  defp resolve_target(state, [cluster_id: cluster_internal_id]) when is_binary(cluster_internal_id) do
+  defp resolve_target(state, cluster_id: cluster_internal_id)
+       when is_binary(cluster_internal_id) do
     case Enum.find(state.cluster_id_mapping, fn {_toast_id, cid} -> cid == cluster_internal_id end) do
       {toast_id, _} ->
         if Map.has_key?(state.servers, toast_id),
@@ -854,7 +794,97 @@ defmodule Toast.Deployment.ClusterController do
     {:error, {:invalid_target, target}}
   end
 
+  defp do_stop_server(server_id, acc) do
+    with {:ok, server} <- fetch_server(acc, server_id),
+         :ok <- ServerLifecycle.require_state(server, :running) do
+      ServerLifecycle.stop_server(server)
+      acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
+
+      ServerLifecycle.notify_event(
+        acc.on_event,
+        {:server_stopped, server_id, server.pid, nil, DateTime.utc_now()}
+      )
+
+      {:ok, acc}
+    end
+  end
+
+  defp do_kill_server(server_id, acc) do
+    with {:ok, server} <- fetch_server(acc, server_id),
+         :ok <- ServerLifecycle.require_state(server, :running) do
+      ServerLifecycle.kill_server(server)
+      acc = update_server(acc, server_id, operational_state: :killed, intentional: true)
+      ServerLifecycle.notify_event(acc.on_event, {:server_killed, server_id, DateTime.utc_now()})
+      {:ok, acc}
+    end
+  end
+
+  defp do_pause_server(server_id, acc) do
+    with {:ok, server} <- fetch_server(acc, server_id),
+         :ok <- ServerLifecycle.require_state(server, :running) do
+      ServerLifecycle.pause_server(server)
+      acc = update_server(acc, server_id, operational_state: :paused, intentional: true)
+      ServerLifecycle.notify_event(acc.on_event, {:server_paused, server_id, DateTime.utc_now()})
+      {:ok, acc}
+    end
+  end
+
+  defp do_resume_server(server_id, acc) do
+    with {:ok, server} <- fetch_server(acc, server_id),
+         :ok <- ServerLifecycle.require_state(server, :paused) do
+      ServerLifecycle.resume_server(server)
+      acc = update_server(acc, server_id, operational_state: :running, intentional: false)
+      ServerLifecycle.notify_event(acc.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+      {:ok, acc}
+    end
+  end
+
+  defp do_restart_server(server_id, acc, opts) do
+    with {:ok, server} <- fetch_server(acc, server_id) do
+      ServerLifecycle.stop_before_restart(server)
+      acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
+      relaunch_server(server_id, acc, server, opts)
+    end
+  end
+
+  defp do_start_server(server_id, acc, opts) do
+    with {:ok, server} <- fetch_server(acc, server_id),
+         :ok <- ServerLifecycle.require_state_in(server, [:stopped, :killed, :crashed]) do
+      relaunch_server(server_id, acc, server, opts)
+    end
+  end
+
+  defp relaunch_server(server_id, acc, server, opts) do
+    case ServerLifecycle.relaunch_and_wait(server, opts) do
+      :ok ->
+        acc = update_server(acc, server_id, operational_state: :running, intentional: false)
+        {:ok, acc}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  defp do_expect_crash(server_id, acc, timeout) do
+    with {:ok, server} <- fetch_server(acc, server_id) do
+      case ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
+        {:ok, expected_crashes} ->
+          {:ok, %{acc | expected_crashes: expected_crashes}}
+
+        {:error, _} = err ->
+          err
+      end
+    end
+  end
+
   # --- Control helpers ---
+
+  defp resolve_and_apply(state, target, fun) do
+    case resolve_target(state, target) do
+      {:ok, server_ids} -> apply_to_each(server_ids, state, fun)
+      {:error, _} = err -> {:reply, err, state}
+    end
+  end
 
   defp apply_to_each(server_ids, state, fun) do
     Enum.reduce_while(server_ids, {:ok, state}, fn server_id, {:ok, acc} ->
@@ -891,10 +921,17 @@ defmodule Toast.Deployment.ClusterController do
     states = Enum.map(server_list, & &1.operational_state)
 
     cond do
-      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) -> :failed
-      Enum.all?(states, &(&1 == :running)) -> :ready
-      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) -> :degraded
-      true -> :ready
+      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) ->
+        :failed
+
+      Enum.all?(states, &(&1 == :running)) ->
+        :ready
+
+      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) ->
+        :degraded
+
+      true ->
+        :ready
     end
   end
 

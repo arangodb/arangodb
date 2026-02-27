@@ -1,4 +1,6 @@
 defmodule ToastTest.StateCleanup do
+  @moduledoc "Resets all shared state (registries, ETS tables, formatters) between suite runs."
+
   @spec reset() :: :ok
   def reset do
     reset_deployment_registry()

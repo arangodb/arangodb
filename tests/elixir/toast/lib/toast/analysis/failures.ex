@@ -33,35 +33,33 @@ defmodule Toast.Analysis.Failures do
   end
 
   defp format_failure(test, idx) do
+    header = format_failure_header(test, idx)
+    failure_lines = format_failure_detail(test["failure"])
+    Enum.join([header | failure_lines], "\n")
+  end
+
+  defp format_failure_header(test, idx) do
     module = test["module"] || "Unknown"
     name = test["name"] || "unknown"
-    suite = test["suite_name"]
-    duration = test["duration_seconds"]
 
     header = "#{idx}) #{module} - #{name}"
-    header = if suite, do: header <> " [#{suite}]", else: header
-    header = if duration, do: header <> " (#{Float.round(duration + 0.0, 3)}s)", else: header
+    header = if test["suite_name"], do: header <> " [#{test["suite_name"]}]", else: header
 
-    lines = [header]
+    case test["duration_seconds"] do
+      nil -> header
+      duration -> header <> " (#{Float.round(duration + 0.0, 3)}s)"
+    end
+  end
 
-    lines =
-      case test["failure"] do
-        nil -> lines
-        failure when is_map(failure) ->
-          lines ++ ["   #{failure["message"] || "no message"}"]
-        failures when is_list(failures) ->
-          Enum.reduce(failures, lines, fn f, acc ->
-            msg = f["message"] || "no message"
-            kind = f["kind"]
-            st = f["stacktrace"]
-            entry = ["   [#{kind}] #{msg}"]
-            entry = if st, do: entry ++ ["   #{truncate(st, 500)}"], else: entry
-            acc ++ entry
-          end)
-        _ -> lines
-      end
+  defp format_failure_detail(nil), do: []
+  defp format_failure_detail(f) when is_map(f), do: ["   #{f["message"] || "no message"}"]
+  defp format_failure_detail(fs) when is_list(fs), do: Enum.flat_map(fs, &format_single_failure/1)
+  defp format_failure_detail(_), do: []
 
-    Enum.join(lines, "\n")
+  defp format_single_failure(f) do
+    msg = f["message"] || "no message"
+    entry = ["   [#{f["kind"]}] #{msg}"]
+    if f["stacktrace"], do: entry ++ ["   #{truncate(f["stacktrace"], 500)}"], else: entry
   end
 
   defp truncate(text, max_len) when is_binary(text) and byte_size(text) > max_len do

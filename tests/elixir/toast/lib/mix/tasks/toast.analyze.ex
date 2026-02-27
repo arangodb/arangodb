@@ -32,9 +32,7 @@ defmodule Mix.Tasks.Toast.Analyze do
           path
 
         [] ->
-          Mix.raise(
-            "Usage: mix toast.analyze <results.json> [--failures] [--crashes] [--slow N]"
-          )
+          Mix.raise("Usage: mix toast.analyze <results.json> [--failures] [--crashes] [--slow N]")
       end
 
     unless File.exists?(file_path) do

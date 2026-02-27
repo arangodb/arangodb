@@ -56,8 +56,13 @@ defmodule ToastTest.Case do
 
   setup context do
     {deployment, extra_context} = get_deployment_for_context(context)
-    base = %{deployment: deployment, endpoint: deployment.endpoint,
-             client: Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)}
+
+    base = %{
+      deployment: deployment,
+      endpoint: deployment.endpoint,
+      client: Toast.Client.new(deployment.endpoint, api_version: deployment.config.api_version)
+    }
+
     Map.merge(base, extra_context)
   end
 
@@ -164,6 +169,7 @@ defmodule ToastTest.Case do
           {:ok, diag} -> diag
           {:error, _reason, partial_diag} -> partial_diag
         end
+
       Application.put_env(:toast, :__test_diagnostics__, diagnostics)
 
       test_results = Application.get_env(:toast, :__test_results__)

@@ -1,4 +1,6 @@
 defmodule Toast.DiagnosticsTestHelpers do
+  @moduledoc false
+
   @base_time ~U[2024-06-15 10:00:00Z]
 
   def base_time, do: @base_time

@@ -1,4 +1,6 @@
 defmodule ToastTest.Runner do
+  @moduledoc "Suite-based test runner for Toast, orchestrating test execution within deployed ArangoDB environments."
+
   # This implementation is largely taken from ExUnit.Runner
   # SPDX-License-Identifier: Apache-2.0
   # SPDX-FileCopyrightText: 2021 The Elixir Team
@@ -363,7 +365,9 @@ defmodule ToastTest.Runner do
       for test <- test_module.tests do
         errored = %{
           test
-          | state: {:failed, [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
+          | state:
+              {:failed,
+               [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
         }
 
         Compat.test_started(manager, errored)
@@ -448,34 +452,46 @@ defmodule ToastTest.Runner do
       run_module_tests(config, test_module, to_run_tests)
 
     if reason = aborted?() do
-      abort_msg = "Suite aborted: " <> abort_display_reason(reason)
-
-      for test <- invalid_tests do
-        skipped = %{test | state: {:skipped, abort_msg}}
-        Compat.test_started(config.manager, skipped)
-        Compat.test_finished(config.manager, skipped)
-      end
-
-      test_module = %{test_module | tests: Enum.reverse(finished_tests, invalid_tests)}
-      Compat.module_finished(config.manager, test_module)
+      finish_aborted_module(config, test_module, invalid_tests, finished_tests, reason)
     else
-      pending_tests =
-        case process_max_failures(config, test_module) do
-          :no -> invalid_tests
-          {:reached, n} -> Enum.take(invalid_tests, n)
-          :surpassed -> nil
-        end
-
-      if pending_tests do
-        for pending_test <- pending_tests do
-          Compat.test_started(config.manager, pending_test)
-          Compat.test_finished(config.manager, pending_test)
-        end
-
-        test_module = %{test_module | tests: Enum.reverse(finished_tests, pending_tests)}
-        Compat.module_finished(config.manager, test_module)
-      end
+      finish_pending_module(config, test_module, invalid_tests, finished_tests)
     end
+  end
+
+  defp finish_aborted_module(config, test_module, invalid_tests, finished_tests, reason) do
+    abort_msg = "Suite aborted: " <> abort_display_reason(reason)
+
+    for test <- invalid_tests do
+      skipped = %{test | state: {:skipped, abort_msg}}
+      Compat.test_started(config.manager, skipped)
+      Compat.test_finished(config.manager, skipped)
+    end
+
+    test_module = %{test_module | tests: Enum.reverse(finished_tests, invalid_tests)}
+    Compat.module_finished(config.manager, test_module)
+  end
+
+  defp finish_pending_module(config, test_module, invalid_tests, finished_tests) do
+    pending_tests =
+      case process_max_failures(config, test_module) do
+        :no -> invalid_tests
+        {:reached, n} -> Enum.take(invalid_tests, n)
+        :surpassed -> nil
+      end
+
+    if pending_tests do
+      emit_pending_tests(config, test_module, pending_tests, finished_tests)
+    end
+  end
+
+  defp emit_pending_tests(config, test_module, pending_tests, finished_tests) do
+    for pending_test <- pending_tests do
+      Compat.test_started(config.manager, pending_test)
+      Compat.test_finished(config.manager, pending_test)
+    end
+
+    test_module = %{test_module | tests: Enum.reverse(finished_tests, pending_tests)}
+    Compat.module_finished(config.manager, test_module)
   end
 
   ## Test preparation
@@ -617,10 +633,11 @@ defmodule ToastTest.Runner do
   defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
     check_suite_deadline!(config)
 
-    prev_test = case acc do
-      [prev | _] -> prev
-      [] -> nil
-    end
+    prev_test =
+      case acc do
+        [prev | _] -> prev
+        [] -> nil
+      end
 
     cond do
       aborted?() ->
@@ -712,18 +729,21 @@ defmodule ToastTest.Runner do
         :timer.tc(
           maybe_capture_log(capture_log, test, fn ->
             context = maybe_create_tmp_dir(context, test)
-
-            case exec_test_setup(test, context) do
-              {:ok, context} -> exec_test(test, context)
-              {:skipped, test} -> test
-              {:error, test} -> test
-            end
+            run_test_with_setup(test, context)
           end)
         )
 
       send(parent_pid, {self(), :test_finished, %{test | time: time}})
       exit(:shutdown)
     end)
+  end
+
+  defp run_test_with_setup(test, context) do
+    case exec_test_setup(test, context) do
+      {:ok, context} -> exec_test(test, context)
+      {:skipped, test} -> test
+      {:error, test} -> test
+    end
   end
 
   defp maybe_capture_log(true, test, fun) do

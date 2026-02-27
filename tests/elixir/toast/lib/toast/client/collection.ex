@@ -1,4 +1,6 @@
 defmodule Toast.Client.Collection do
+  @moduledoc "Collection management operations for ArangoDB."
+
   alias Toast.Client
 
   @spec create(Client.t(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
@@ -21,7 +23,8 @@ defmodule Toast.Client.Collection do
     exclude_system = Keyword.get(opts, :exclude_system, false)
     params = if exclude_system, do: [excludeSystem: true], else: []
 
-    with {:ok, body} <- client |> Client.get("/_api/collection", params: params) |> Client.unwrap() do
+    with {:ok, body} <-
+           client |> Client.get("/_api/collection", params: params) |> Client.unwrap() do
       {:ok, body["result"]}
     end
   end

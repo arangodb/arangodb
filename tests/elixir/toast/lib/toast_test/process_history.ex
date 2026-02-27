@@ -1,4 +1,6 @@
 defmodule ToastTest.ProcessHistory do
+  @moduledoc "GenServer recording process lifecycle events for post-test diagnostics."
+
   use GenServer
 
   @spec start_link(keyword()) :: GenServer.on_start()

@@ -18,12 +18,16 @@ defmodule Toast.Diagnostics.Coredump.GDB do
     lines = String.split(output, "\n")
 
     %{threads: threads, signal: signal, faulting_address: addr, crash_thread: crash_thread} =
-      Enum.reduce(lines, %{threads: [], current: nil, signal: nil, faulting_address: nil, crash_thread: nil}, fn line, acc ->
-        acc
-        |> maybe_parse_signal(line)
-        |> maybe_parse_thread_header(line)
-        |> maybe_parse_frame(line)
-      end)
+      Enum.reduce(
+        lines,
+        %{threads: [], current: nil, signal: nil, faulting_address: nil, crash_thread: nil},
+        fn line, acc ->
+          acc
+          |> maybe_parse_signal(line)
+          |> maybe_parse_thread_header(line)
+          |> maybe_parse_frame(line)
+        end
+      )
       |> Debugger.flush_current_thread()
 
     threads = Debugger.filter_threads(threads, crash_thread)
@@ -93,7 +97,11 @@ defmodule Toast.Diagnostics.Coredump.GDB do
     # Pattern: #N  0x<addr> in <function> ()
     # Pattern: #N  <function> (<args>) at <file>:<line>
     cond do
-      match = Regex.run(~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(.*?\)\s+at\s+(.+):(\d+)/, line) ->
+      match =
+          Regex.run(
+            ~r/^#\d+\s+(?:0x[0-9a-fA-F]+\s+in\s+)?(.+?)\s+\(.*?\)\s+at\s+(.+):(\d+)/,
+            line
+          ) ->
         [_, func, file, line_num] = match
         %{function: String.trim(func), file: file, line: String.to_integer(line_num)}
 

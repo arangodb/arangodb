@@ -183,7 +183,11 @@ defmodule ToastTest.ResultExporter.JSON do
 
   defp build_single_server_health(diag) do
     [
-      health_entry("sanitizer_errors", diag[:sanitizer_errors], &Enum.map(&1, fn e -> build_sanitizer_error(e) end)),
+      health_entry(
+        "sanitizer_errors",
+        diag[:sanitizer_errors],
+        &Enum.map(&1, fn e -> build_sanitizer_error(e) end)
+      ),
       health_entry("crash_report", diag[:crash_report], &build_crash_report/1),
       health_entry("log_issues", diag[:server_log], &build_log_issues/1),
       health_entry("server", diag[:server], &build_server_instance/1)

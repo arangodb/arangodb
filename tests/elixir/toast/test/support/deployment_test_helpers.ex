@@ -1,4 +1,6 @@
 defmodule Toast.DeploymentTestHelpers do
+  @moduledoc false
+
   def inject_cluster_servers(ctrl, servers, opts \\ []) do
     :sys.replace_state(ctrl, fn state ->
       agents = for {id, s} <- servers, s.role == :agent, do: id

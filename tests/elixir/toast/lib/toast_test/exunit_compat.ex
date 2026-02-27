@@ -1,4 +1,6 @@
 defmodule ToastTest.ExUnitCompat do
+  @moduledoc "Compatibility shim for ExUnit internals across Elixir versions."
+
   @supported_elixir "~> 1.19"
 
   unless Version.match?(System.version(), @supported_elixir) do

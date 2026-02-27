@@ -1,4 +1,6 @@
 defmodule ToastTest.CrashMonitor do
+  @moduledoc "Default on_crash callback that aborts the test run when a server crashes unexpectedly."
+
   @spec handle_crash(Toast.Deployment.t(), map()) :: :ok
   def handle_crash(_deployment, crash_info) do
     server_id = Map.get(crash_info, :server_id, "unknown")

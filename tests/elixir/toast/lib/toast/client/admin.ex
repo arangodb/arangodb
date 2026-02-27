@@ -1,4 +1,6 @@
 defmodule Toast.Client.Admin do
+  @moduledoc "Administrative operations for ArangoDB (version, status, shutdown)."
+
   alias Toast.Client
 
   @spec version(Client.t()) :: {:ok, map()} | {:error, term()}

@@ -1,5 +1,5 @@
 defmodule ToastTest.Interactive do
-  @moduledoc false
+  @moduledoc "Runs individual test modules against an existing deployment for interactive debugging."
 
   @spec run(module() | String.t(), keyword()) :: [map()]
   def run(module_or_path, opts \\ [])

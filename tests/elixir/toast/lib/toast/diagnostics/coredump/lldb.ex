@@ -18,7 +18,8 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
     lines = String.split(output, "\n")
 
     %{threads: threads, signal: signal, crash_thread: crash_thread} =
-      Enum.reduce(lines, %{threads: [], current: nil, signal: nil, crash_thread: nil}, fn line, acc ->
+      Enum.reduce(lines, %{threads: [], current: nil, signal: nil, crash_thread: nil}, fn line,
+                                                                                          acc ->
         acc
         |> maybe_parse_thread_header(line)
         |> maybe_parse_frame(line)
@@ -44,7 +45,12 @@ defmodule Toast.Diagnostics.Coredump.LLDB do
         signal = if(is_crash, do: extract_signal(line), else: acc.signal)
         crash_thread = if(is_crash, do: thread_id, else: acc.crash_thread)
 
-        %{acc | current: %{id: thread_id, frames: []}, signal: signal || acc.signal, crash_thread: crash_thread}
+        %{
+          acc
+          | current: %{id: thread_id, frames: []},
+            signal: signal || acc.signal,
+            crash_thread: crash_thread
+        }
 
       _ ->
         acc

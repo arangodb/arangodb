@@ -201,7 +201,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
 
       server = %{
         id: "test-server",
-        os_pid: 99999,
+        os_pid: 99_999,
         server_dir: dir,
         binary_path: "/usr/bin/arangod"
       }
@@ -232,7 +232,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
 
       server = %{
         id: "test-server-faildbg",
-        os_pid: 77777,
+        os_pid: 77_777,
         server_dir: dir,
         binary_path: "/usr/bin/arangod"
       }
@@ -248,7 +248,7 @@ defmodule Toast.Diagnostics.CoredumpTest do
       File.write!(Path.join(dir, "core.33333"), "fake")
       on_exit(fn -> File.rm_rf!(dir) end)
 
-      server = %{id: "s1", os_pid: 33333, server_dir: dir, binary_path: "/usr/bin/arangod"}
+      server = %{id: "s1", os_pid: 33_333, server_dir: dir, binary_path: "/usr/bin/arangod"}
 
       result = Coredump.collect(servers: [server], timeout: 0)
 

@@ -313,32 +313,28 @@ defmodule Toast.Process.ServerProcess do
     cmd = [to_charlist(state.executable) | Enum.map(state.args, &to_charlist/1)]
 
     exec_opts =
-      [:monitor, {:stdin, :null},
-       {:kill_timeout, 5}, {:group, 0}, :kill_group] ++
+      [:monitor, {:stdin, :null}, {:kill_timeout, 5}, {:group, 0}, :kill_group] ++
         if(state.output_handler, do: [:stderr], else: []) ++
         exec_env(state.env) ++
         exec_cd(state.working_dir)
 
     case :exec.run(cmd, exec_opts) do
       {:ok, exec_pid, os_pid} ->
-        Logger.debug(fn ->
-          cmd_line = Enum.join([state.executable | state.args], " ")
-          env_part = if state.env != [], do: "\n  env: #{inspect(state.env)}", else: ""
-          "#{state.id} (os_pid=#{os_pid}) cmd: #{cmd_line}#{env_part}"
-        end)
-
-        {:ok,
-         %{
-           state
-           | exec_pid: exec_pid,
-             os_pid: os_pid,
-             status: :running
-         }}
+        log_launch(state, os_pid)
+        {:ok, %{state | exec_pid: exec_pid, os_pid: os_pid, status: :running}}
 
       {:error, reason} ->
         Logger.error("Failed to launch #{state.id}: #{inspect(reason)}")
         {:error, reason}
     end
+  end
+
+  defp log_launch(state, os_pid) do
+    Logger.debug(fn ->
+      cmd_line = Enum.join([state.executable | state.args], " ")
+      env_part = if state.env != [], do: "\n  env: #{inspect(state.env)}", else: ""
+      "#{state.id} (os_pid=#{os_pid}) cmd: #{cmd_line}#{env_part}"
+    end)
   end
 
   defp do_stop(state, timeout, from) do
@@ -383,9 +379,7 @@ defmodule Toast.Process.ServerProcess do
           timestamp: DateTime.utc_now()
         }
 
-        Logger.error(
-          "#{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})"
-        )
+        Logger.error("#{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})")
 
         notify_listener(state.listener, state.id, crash_info)
 
@@ -397,7 +391,9 @@ defmodule Toast.Process.ServerProcess do
 
   defp decode_exit_reason({:exit_status, status}) do
     case :exec.status(status) do
-      {:status, code} -> {code, nil}
+      {:status, code} ->
+        {code, nil}
+
       {:signal, sig, _core} ->
         signum = signal_to_int(sig)
         {128 + signum, signum}
@@ -424,7 +420,9 @@ defmodule Toast.Process.ServerProcess do
   defp cancel_timer(ref), do: Process.cancel_timer(ref)
 
   defp exec_env([]), do: []
-  defp exec_env(env), do: [{:env, Enum.map(env, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)}]
+
+  defp exec_env(env),
+    do: [{:env, Enum.map(env, fn {k, v} -> {to_charlist(k), to_charlist(v)} end)}]
 
   defp exec_cd(nil), do: []
   defp exec_cd(dir), do: [{:cd, to_charlist(dir)}]

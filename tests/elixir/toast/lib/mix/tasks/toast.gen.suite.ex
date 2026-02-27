@@ -49,7 +49,9 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
   defp parse_mode(nil), do: nil
   defp parse_mode("single_server"), do: :single_server
   defp parse_mode("cluster"), do: :cluster
-  defp parse_mode(other), do: Mix.raise("Invalid mode: #{other}. Use 'single_server' or 'cluster'.")
+
+  defp parse_mode(other),
+    do: Mix.raise("Invalid mode: #{other}. Use 'single_server' or 'cluster'.")
 
   defp create_file(path, content) do
     File.mkdir_p!(Path.dirname(path))

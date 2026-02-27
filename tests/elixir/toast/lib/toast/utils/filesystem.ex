@@ -87,7 +87,9 @@ defmodule Toast.Utils.Filesystem do
 
   defp walk_up(path) do
     Stream.unfold(path, fn
-      nil -> nil
+      nil ->
+        nil
+
       dir ->
         parent = Path.dirname(dir)
         if parent == dir, do: {dir, nil}, else: {dir, parent}

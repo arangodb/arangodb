@@ -42,10 +42,18 @@ defmodule ToastTest.ResultExporter do
       File.mkdir_p!(result_dir)
 
       json_path = Path.join(result_dir, "results.json")
-      File.write!(json_path, JSON.render(results, diagnostics, sanitizer_matching, crash_matching))
+
+      File.write!(
+        json_path,
+        JSON.render(results, diagnostics, sanitizer_matching, crash_matching)
+      )
 
       xml_path = Path.join(result_dir, "results.xml")
-      File.write!(xml_path, JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching))
+
+      File.write!(
+        xml_path,
+        JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching)
+      )
 
       Logger.info("Results written to #{result_dir}")
     else

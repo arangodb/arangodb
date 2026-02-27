@@ -1,4 +1,6 @@
 defmodule ToastTest.SuiteRun do
+  @moduledoc false
+
   defstruct [
     :suite_module,
     :deployment,

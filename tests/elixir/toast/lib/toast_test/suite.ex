@@ -1,4 +1,6 @@
 defmodule ToastTest.Suite do
+  @moduledoc "Behaviour for Toast test suites that define deployment configuration and lifecycle hooks."
+
   @callback deployment_config() :: keyword()
   @callback setup_deployment(Toast.Deployment.t()) :: {:ok, map()} | {:error, term()}
   @callback teardown_deployment(Toast.Deployment.t()) :: :ok

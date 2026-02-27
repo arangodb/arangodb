@@ -89,35 +89,9 @@ defmodule ToastTest.CLIFormatter do
 
   def handle_cast({:module_finished, %ExUnit.TestModule{} = _mod}, state) do
     if state.module_header_printed do
-      # Some tests ran — print normal summary, note skipped count if any
-      elapsed = elapsed_ms(state.module_start_time)
-      mod_name = inspect(state.pending_module.name)
-      count = state.module_test_count
-      test_word = if count == 1, do: "test", else: "tests"
-
-      skip_part =
-        if state.module_skipped_count > 0,
-          do: ", #{state.module_skipped_count} skipped",
-          else: ""
-
-      IO.puts(
-        "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
-          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})"
-      )
+      print_module_summary(state)
     else
-      # Module header was never printed — all tests were excluded or skipped
-      if state.module_skipped_count > 0 do
-        mod_name = inspect(state.pending_module.name)
-        count = state.module_skipped_count
-        test_word = if count == 1, do: "test", else: "tests"
-
-        IO.puts(
-          "#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} " <>
-            "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}"
-        )
-      end
-
-      # Purely filter-excluded modules produce no output
+      print_skipped_module_summary(state)
     end
 
     {:noreply, state}
@@ -154,6 +128,37 @@ defmodule ToastTest.CLIFormatter do
 
   def handle_cast(_msg, state) do
     {:noreply, state}
+  end
+
+  defp print_module_summary(state) do
+    elapsed = elapsed_ms(state.module_start_time)
+    mod_name = inspect(state.pending_module.name)
+    count = state.module_test_count
+    test_word = if count == 1, do: "test", else: "tests"
+
+    skip_part =
+      if state.module_skipped_count > 0,
+        do: ", #{state.module_skipped_count} skipped",
+        else: ""
+
+    IO.puts(
+      "#{timestamp()} #{colorize("[------------]", :cyan, state)} " <>
+        "#{count} #{test_word} from #{colorize(mod_name, :bold, state)} (#{elapsed}ms total#{skip_part})"
+    )
+  end
+
+  defp print_skipped_module_summary(state) do
+    # Module header was never printed — all tests were excluded or skipped
+    if state.module_skipped_count > 0 do
+      mod_name = inspect(state.pending_module.name)
+      count = state.module_skipped_count
+      test_word = if count == 1, do: "test", else: "tests"
+
+      IO.puts(
+        "#{timestamp()} #{colorize("[    SKIPPED ]", :yellow, state)} " <>
+          "#{count} #{test_word} from #{colorize(mod_name, :bold, state)}"
+      )
+    end
   end
 
   # --- Module header (deferred) ---
@@ -269,38 +274,33 @@ defmodule ToastTest.CLIFormatter do
 
     # Abort reason
     if abort_reason do
-      IO.puts(
-        "#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_reason}"
-      )
+      IO.puts("#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_reason}")
     end
 
     # Detail line
-    parts = []
-
-    parts =
-      if c.passed > 0, do: parts ++ [colorize("#{c.passed} passed", :green, state)], else: parts
-
-    parts =
-      if c.failed > 0,
-        do: parts ++ [colorize("#{c.failed} failed", :red, state)],
-        else: parts ++ ["#{c.failed} failed"]
-
-    parts =
-      if c.skipped > 0,
-        do: parts ++ [colorize("#{c.skipped} skipped", :yellow, state)],
-        else: parts
-
-    parts = if c.excluded > 0, do: parts ++ ["#{c.excluded} excluded"], else: parts
-
-    parts =
-      if c.invalid > 0, do: parts ++ [colorize("#{c.invalid} invalid", :red, state)], else: parts
-
-    detail = Enum.join(parts, ", ")
+    detail = build_detail_parts(c, state) |> Enum.join(", ")
 
     IO.puts(
       "#{timestamp()} #{colorize("[============]", :cyan, state)} " <>
         "Ran: #{c.total} tests (#{detail}) (#{elapsed}ms total)"
     )
+  end
+
+  defp build_detail_parts(c, state) do
+    # "failed" is always shown (colored when > 0, plain otherwise)
+    failed_part =
+      if c.failed > 0,
+        do: colorize("#{c.failed} failed", :red, state),
+        else: "#{c.failed} failed"
+
+    [
+      if(c.passed > 0, do: colorize("#{c.passed} passed", :green, state)),
+      failed_part,
+      if(c.skipped > 0, do: colorize("#{c.skipped} skipped", :yellow, state)),
+      if(c.excluded > 0, do: "#{c.excluded} excluded"),
+      if(c.invalid > 0, do: colorize("#{c.invalid} invalid", :red, state))
+    ]
+    |> Enum.reject(&is_nil/1)
   end
 
   defp print_failure_summary(%{failures: []}), do: :ok

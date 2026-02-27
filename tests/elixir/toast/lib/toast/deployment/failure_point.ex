@@ -81,14 +81,14 @@ defmodule Toast.Deployment.FailurePoint do
     end
   end
 
-  defp resolve_target_clients(deployment, [role: role]) do
+  defp resolve_target_clients(deployment, role: role) do
     case Deployment.servers(deployment, role: role) do
       [] -> {:error, {:no_servers_for_role, role}}
       servers -> {:ok, Enum.map(servers, &Client.new(&1.endpoint))}
     end
   end
 
-  defp resolve_target_clients(deployment, [role: role, index: index]) do
+  defp resolve_target_clients(deployment, role: role, index: index) do
     case Deployment.servers(deployment, role: role) do
       servers when length(servers) > index ->
         {:ok, [Client.new(Enum.at(servers, index).endpoint)]}
@@ -98,7 +98,7 @@ defmodule Toast.Deployment.FailurePoint do
     end
   end
 
-  defp resolve_target_clients(deployment, [cluster_id: cluster_internal_id]) do
+  defp resolve_target_clients(deployment, cluster_id: cluster_internal_id) do
     case Deployment.server_by_cluster_id(deployment, cluster_internal_id) do
       {:ok, server} -> {:ok, [Client.new(server.endpoint)]}
       {:error, _} = err -> err

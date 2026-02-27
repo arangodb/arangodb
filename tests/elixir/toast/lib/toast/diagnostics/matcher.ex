@@ -23,7 +23,12 @@ defmodule Toast.Diagnostics.Matcher do
   `:low` if within `tolerance_seconds` after `test_end`, or `:none`.
   """
   @spec calculate_confidence(DateTime.t(), DateTime.t(), DateTime.t(), number()) :: confidence()
-  def calculate_confidence(timestamp, test_start, test_end, tolerance_seconds \\ @default_tolerance_seconds) do
+  def calculate_confidence(
+        timestamp,
+        test_start,
+        test_end,
+        tolerance_seconds \\ @default_tolerance_seconds
+      ) do
     cond do
       DateTime.compare(timestamp, test_start) in [:gt, :eq] and
           DateTime.compare(timestamp, test_end) in [:lt, :eq] ->
@@ -93,22 +98,27 @@ defmodule Toast.Diagnostics.Matcher do
 
   defp find_best_match(%{timestamp: timestamp}, tests, tolerance) do
     result =
-      Enum.reduce_while(tests, {:none, nil}, fn test, {best_conf, _best_test} = acc ->
-        with %DateTime{} <- test[:started_at],
-             %DateTime{} <- test[:finished_at] do
-          case calculate_confidence(timestamp, test.started_at, test.finished_at, tolerance) do
-            :high -> {:halt, {:high, test}}
-            :low when best_conf == :none -> {:cont, {:low, test}}
-            _ -> {:cont, acc}
-          end
-        else
-          _ -> {:cont, acc}
-        end
+      Enum.reduce_while(tests, {:none, nil}, fn test, acc ->
+        match_test_confidence(test, timestamp, tolerance, acc)
       end)
 
     case result do
       {:none, _} -> :no_match
       {confidence, test} -> {:ok, test, confidence}
+    end
+  end
+
+  defp match_test_confidence(test, timestamp, tolerance, {best_conf, _} = acc) do
+    case {test[:started_at], test[:finished_at]} do
+      {%DateTime{} = started, %DateTime{} = finished} ->
+        case calculate_confidence(timestamp, started, finished, tolerance) do
+          :high -> {:halt, {:high, test}}
+          :low when best_conf == :none -> {:cont, {:low, test}}
+          _ -> {:cont, acc}
+        end
+
+      _ ->
+        {:cont, acc}
     end
   end
 end

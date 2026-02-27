@@ -1,4 +1,6 @@
 defmodule Toast.ServerTestHelpers do
+  @moduledoc false
+
   alias Toast.Process.ServerProcess
 
   def cleanup_server(pid) do

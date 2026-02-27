@@ -1,4 +1,6 @@
 defmodule Toast.Client.Index do
+  @moduledoc "Index management operations for ArangoDB collections."
+
   alias Toast.Client
 
   @spec create(Client.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}

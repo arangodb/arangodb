@@ -1,4 +1,6 @@
 defmodule Toast.Client.Document do
+  @moduledoc "Document CRUD operations for ArangoDB collections."
+
   alias Toast.Client
 
   @spec insert(Client.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}

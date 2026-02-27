@@ -1,4 +1,6 @@
 defmodule Toast.Client.AQL do
+  @moduledoc "AQL query execution via the ArangoDB cursor API."
+
   alias Toast.Client
 
   @spec execute(Client.t(), String.t(), map()) :: {:ok, [term()]} | {:error, term()}

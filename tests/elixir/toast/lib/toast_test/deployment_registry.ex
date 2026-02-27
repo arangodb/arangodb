@@ -1,4 +1,6 @@
 defmodule ToastTest.DeploymentRegistry do
+  @moduledoc "ETS-based registry mapping suite modules to their active deployments."
+
   @table :toast_deployment_registry
 
   @spec init() :: :ok

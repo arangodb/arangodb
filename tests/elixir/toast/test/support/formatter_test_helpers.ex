@@ -1,4 +1,6 @@
 defmodule Toast.FormatterTestHelpers do
+  @moduledoc false
+
   def make_test(overrides \\ %{}) do
     defaults = %{
       name: :"test something",

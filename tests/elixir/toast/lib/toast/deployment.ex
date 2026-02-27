@@ -214,9 +214,14 @@ defmodule Toast.Deployment do
   def cluster_id(%__MODULE__{}, _toast_id), do: {:error, :not_cluster}
 
   @doc "Get server info by cluster-internal ID."
-  @spec server_by_cluster_id(t(), String.t()) :: {:ok, ServerInstance.t()} | {:error, :not_found | :not_cluster}
+  @spec server_by_cluster_id(t(), String.t()) ::
+          {:ok, ServerInstance.t()} | {:error, :not_found | :not_cluster}
   def server_by_cluster_id(%__MODULE__{mode: :cluster} = deployment, cluster_internal_id) do
-    controller_call(deployment, {:server_by_cluster_id, cluster_internal_id}, {:error, :not_found})
+    controller_call(
+      deployment,
+      {:server_by_cluster_id, cluster_internal_id},
+      {:error, :not_found}
+    )
   end
 
   def server_by_cluster_id(%__MODULE__{}, _cluster_internal_id), do: {:error, :not_cluster}
@@ -263,9 +268,17 @@ defmodule Toast.Deployment do
 
   # --- Failure point operations ---
 
-  defdelegate set_failure_point(deployment, target, name), to: Toast.Deployment.FailurePoint, as: :set
-  defdelegate clear_failure_point(deployment, target, name), to: Toast.Deployment.FailurePoint, as: :clear
-  defdelegate clear_all_failure_points(deployment), to: Toast.Deployment.FailurePoint, as: :clear_all
+  defdelegate set_failure_point(deployment, target, name),
+    to: Toast.Deployment.FailurePoint,
+    as: :set
+
+  defdelegate clear_failure_point(deployment, target, name),
+    to: Toast.Deployment.FailurePoint,
+    as: :clear
+
+  defdelegate clear_all_failure_points(deployment),
+    to: Toast.Deployment.FailurePoint,
+    as: :clear_all
 
   # --- Server control operations ---
 
@@ -276,10 +289,12 @@ defmodule Toast.Deployment do
   def kill_server(%__MODULE__{} = d, target), do: controller_call_control(d, :kill_server, target)
 
   @spec pause_server(t(), server_target()) :: :ok | {:error, term()}
-  def pause_server(%__MODULE__{} = d, target), do: controller_call_control(d, :pause_server, target)
+  def pause_server(%__MODULE__{} = d, target),
+    do: controller_call_control(d, :pause_server, target)
 
   @spec resume_server(t(), server_target()) :: :ok | {:error, term()}
-  def resume_server(%__MODULE__{} = d, target), do: controller_call_control(d, :resume_server, target)
+  def resume_server(%__MODULE__{} = d, target),
+    do: controller_call_control(d, :resume_server, target)
 
   @spec restart_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def restart_server(%__MODULE__{} = d, target, opts \\ []),
@@ -518,7 +533,7 @@ defmodule Toast.Deployment do
       servers(deployment)
       |> Enum.filter(&(&1.operational_state in [:stopped, :killed, :paused]))
 
-    names = Enum.map(downed, & &1.id) |> Enum.join(", ")
+    names = Enum.map_join(downed, ", ", & &1.id)
     test_context = format_test_context(prev_test)
 
     "Deployment is degraded#{test_context} -- " <>

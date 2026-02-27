@@ -141,25 +141,7 @@ defmodule Mix.Tasks.Toast do
 
     suite_data =
       Enum.flat_map(suite_modules, fn {suite_module, suite_dir} ->
-        {helpers, test_files} = Mix.Tasks.Toast.Helpers.discover_suite_files(suite_dir)
-        compile_helpers(helpers)
-
-        {test_files, line_filters} = Mix.Tasks.Toast.Helpers.apply_file_filters(test_files, file_filters, suite_dir)
-
-        if test_files == [] do
-          []
-        else
-          {test_modules, orphans} = load_test_files(test_files, suite_dir)
-          warn_orphans(orphans, suite_dir)
-          test_modules =
-            Enum.filter(test_modules, fn mod ->
-              function_exported?(mod, :__toast_suite__, 0) and
-                mod.__toast_suite__() == suite_module
-            end)
-
-          suite_opts = Mix.Tasks.Toast.Helpers.build_suite_opts(test_modules, line_filters, test_filter)
-          [{suite_module, test_modules, suite_opts}]
-        end
+        prepare_suite(suite_module, suite_dir, file_filters, test_filter)
       end)
 
     config = Toast.Config.load(Mix.Tasks.Toast.Helpers.opts_to_config_list(opts))
@@ -194,6 +176,32 @@ defmodule Mix.Tasks.Toast do
     end
   end
 
+  defp prepare_suite(suite_module, suite_dir, file_filters, test_filter) do
+    {helpers, test_files} = Mix.Tasks.Toast.Helpers.discover_suite_files(suite_dir)
+    compile_helpers(helpers)
+
+    {test_files, line_filters} =
+      Mix.Tasks.Toast.Helpers.apply_file_filters(test_files, file_filters, suite_dir)
+
+    if test_files == [] do
+      []
+    else
+      build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter)
+    end
+  end
+
+  defp build_suite_entry(suite_module, suite_dir, test_files, line_filters, test_filter) do
+    {test_modules, orphans} = load_test_files(test_files, suite_dir)
+    warn_orphans(orphans, suite_dir)
+
+    test_modules =
+      Enum.filter(test_modules, fn mod ->
+        function_exported?(mod, :__toast_suite__, 0) and mod.__toast_suite__() == suite_module
+      end)
+
+    suite_opts = Mix.Tasks.Toast.Helpers.build_suite_opts(test_modules, line_filters, test_filter)
+    [{suite_module, test_modules, suite_opts}]
+  end
 
   defp build_global_opts(config, ex_unit_opts) do
     global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
@@ -211,7 +219,6 @@ defmodule Mix.Tasks.Toast do
       keep_work_dir: config.keep_work_dir
     )
   end
-
 
   ## Suite discovery helpers
 
@@ -255,7 +262,6 @@ defmodule Mix.Tasks.Toast do
     end
   end
 
-
   defp compile_helpers([]), do: :ok
 
   defp compile_helpers(helpers) do
@@ -264,7 +270,6 @@ defmodule Mix.Tasks.Toast do
       {:error, errors, _} -> Logger.error("Failed to compile helpers: #{inspect(errors)}")
     end
   end
-
 
   defp load_test_files(test_files, suite_dir) do
     case Kernel.ParallelCompiler.require(test_files, return_diagnostics: true) do
@@ -296,5 +301,4 @@ defmodule Mix.Tasks.Toast do
       )
     end
   end
-
 end

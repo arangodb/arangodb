@@ -43,7 +43,12 @@ defmodule Toast.Diagnostics.Sanitizer do
     end)
   end
 
-  def detect(other), do: raise(ArgumentError, "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\"")
+  def detect(other),
+    do:
+      raise(
+        ArgumentError,
+        "invalid sanitizer: #{inspect(other)}, expected \"tsan\" or \"alubsan\""
+      )
 
   @doc """
   Infer sanitizer type from the build directory path.
@@ -104,19 +109,20 @@ defmodule Toast.Diagnostics.Sanitizer do
 
   defp merge_env_options(san_var, base) do
     case System.get_env(san_var) do
-      nil ->
-        base
-
-      existing ->
-        existing
-        |> String.split(":")
-        |> Enum.reduce(base, fn item, acc ->
-          case String.split(item, "=", parts: 2) do
-            [key, value] -> Map.put(acc, key, value)
-            _ -> acc
-          end
-        end)
+      nil -> base
+      existing -> parse_sanitizer_options(existing, base)
     end
+  end
+
+  defp parse_sanitizer_options(options_string, base) do
+    options_string
+    |> String.split(":")
+    |> Enum.reduce(base, fn item, acc ->
+      case String.split(item, "=", parts: 2) do
+        [key, value] -> Map.put(acc, key, value)
+        _ -> acc
+      end
+    end)
   end
 
   defp add_log_path(san_var, options, log_dir) do
@@ -141,12 +147,10 @@ defmodule Toast.Diagnostics.Sanitizer do
   end
 
   defp format_options(options) do
-    options
-    |> Enum.map(fn {key, value} ->
+    Enum.map_join(options, ":", fn {key, value} ->
       safe_value = String.replace(value, ",", "_")
       "#{key}=#{safe_value}"
     end)
-    |> Enum.join(":")
   end
 
   defp collect_log_files(log_dir, base_name, sanitizer_type, server_id) do

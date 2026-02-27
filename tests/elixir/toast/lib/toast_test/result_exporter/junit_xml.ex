@@ -221,18 +221,17 @@ defmodule ToastTest.ResultExporter.JUnitXML do
     if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
       diagnostics
       |> Enum.sort_by(fn {server_id, _} -> server_id end)
-      |> Enum.map_join("\n", fn {server_id, diag} ->
-        section = format_single_diagnostics(diag)
-
-        if section == "" do
-          ""
-        else
-          "[#{server_id}]\n#{section}"
-        end
-      end)
+      |> Enum.map_join("\n", &format_server_diagnostics/1)
       |> String.trim()
     else
       format_single_diagnostics(diagnostics)
+    end
+  end
+
+  defp format_server_diagnostics({server_id, diag}) do
+    case format_single_diagnostics(diag) do
+      "" -> ""
+      section -> "[#{server_id}]\n#{section}"
     end
   end
 
@@ -327,27 +326,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
     parts =
       if matched != [] do
-        grouped = Enum.group_by(matched, fn e -> {e.module, e.test} end)
-
-        entries =
-          grouped
-          |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
-          |> Enum.map(fn {{module, test_name}, entries} ->
-            confidence_label =
-              entries
-              |> Enum.map(& &1.confidence)
-              |> Matcher.confidence_label()
-
-            header = "#{inspect(module)} - #{test_name} (#{confidence_label}):"
-
-            details =
-              Enum.map_join(entries, "\n", fn e ->
-                detail_fn.(Map.fetch!(e, item_key))
-              end)
-
-            "#{header}\n#{details}"
-          end)
-
+        entries = format_grouped_matches(matched, item_key, detail_fn)
         parts ++ ["#{title}:" | entries]
       else
         parts
@@ -355,9 +334,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
     parts =
       if unmatched != [] do
-        entries =
-          Enum.map_join(unmatched, "\n", detail_fn)
-
+        entries = Enum.map_join(unmatched, "\n", detail_fn)
         parts ++ ["#{unmatched_title}:\n#{entries}"]
       else
         parts
@@ -368,6 +345,22 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   defp format_matching_attribution(_title, _unmatched_title, _other, _item_key, _detail_fn),
     do: ""
+
+  defp format_grouped_matches(matched, item_key, detail_fn) do
+    matched
+    |> Enum.group_by(fn e -> {e.module, e.test} end)
+    |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
+    |> Enum.map(&format_match_group(&1, item_key, detail_fn))
+  end
+
+  defp format_match_group({{module, test_name}, entries}, item_key, detail_fn) do
+    confidence_label =
+      entries |> Enum.map(& &1.confidence) |> Matcher.confidence_label()
+
+    header = "#{inspect(module)} - #{test_name} (#{confidence_label}):"
+    details = Enum.map_join(entries, "\n", fn e -> detail_fn.(Map.fetch!(e, item_key)) end)
+    "#{header}\n#{details}"
+  end
 
   defp format_crash_detail(crash) do
     signal = "#{crash.signal_name} (signal #{crash.signal_number})"

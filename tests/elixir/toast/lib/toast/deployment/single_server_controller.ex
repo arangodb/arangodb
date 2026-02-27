@@ -174,8 +174,15 @@ defmodule Toast.Deployment.SingleServerController do
     with :ok <- validate_server_id(state, server_id),
          :ok <- ServerLifecycle.require_state(state.server, :running) do
       ServerLifecycle.stop_server(state.server)
-      state = put_server(%{state | status: :degraded}, operational_state: :stopped, intentional: true)
-      ServerLifecycle.notify_event(state.on_event, {:server_stopped, server_id, state.server.pid, nil, DateTime.utc_now()})
+
+      state =
+        put_server(%{state | status: :degraded}, operational_state: :stopped, intentional: true)
+
+      ServerLifecycle.notify_event(
+        state.on_event,
+        {:server_stopped, server_id, state.server.pid, nil, DateTime.utc_now()}
+      )
+
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -186,8 +193,15 @@ defmodule Toast.Deployment.SingleServerController do
     with :ok <- validate_server_id(state, server_id),
          :ok <- ServerLifecycle.require_state(state.server, :running) do
       ServerLifecycle.kill_server(state.server)
-      state = put_server(%{state | status: :degraded}, operational_state: :killed, intentional: true)
-      ServerLifecycle.notify_event(state.on_event, {:server_killed, server_id, DateTime.utc_now()})
+
+      state =
+        put_server(%{state | status: :degraded}, operational_state: :killed, intentional: true)
+
+      ServerLifecycle.notify_event(
+        state.on_event,
+        {:server_killed, server_id, DateTime.utc_now()}
+      )
+
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -198,8 +212,15 @@ defmodule Toast.Deployment.SingleServerController do
     with :ok <- validate_server_id(state, server_id),
          :ok <- ServerLifecycle.require_state(state.server, :running) do
       ServerLifecycle.pause_server(state.server)
-      state = put_server(%{state | status: :degraded}, operational_state: :paused, intentional: true)
-      ServerLifecycle.notify_event(state.on_event, {:server_paused, server_id, DateTime.utc_now()})
+
+      state =
+        put_server(%{state | status: :degraded}, operational_state: :paused, intentional: true)
+
+      ServerLifecycle.notify_event(
+        state.on_event,
+        {:server_paused, server_id, DateTime.utc_now()}
+      )
+
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -210,8 +231,15 @@ defmodule Toast.Deployment.SingleServerController do
     with :ok <- validate_server_id(state, server_id),
          :ok <- ServerLifecycle.require_state(state.server, :paused) do
       ServerLifecycle.resume_server(state.server)
-      state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
-      ServerLifecycle.notify_event(state.on_event, {:server_resumed, server_id, DateTime.utc_now()})
+
+      state =
+        put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+
+      ServerLifecycle.notify_event(
+        state.on_event,
+        {:server_resumed, server_id, DateTime.utc_now()}
+      )
+
       {:reply, :ok, state}
     else
       {:error, _} = err -> {:reply, err, state}
@@ -219,20 +247,27 @@ defmodule Toast.Deployment.SingleServerController do
   end
 
   def handle_call({:restart_server, server_id, opts}, _from, state) do
-    with :ok <- validate_server_id(state, server_id) do
-      ServerLifecycle.stop_before_restart(state.server)
-      state = put_server(state, operational_state: :stopped, intentional: true)
+    case validate_server_id(state, server_id) do
+      :ok ->
+        ServerLifecycle.stop_before_restart(state.server)
+        state = put_server(state, operational_state: :stopped, intentional: true)
 
-      case ServerLifecycle.relaunch_and_wait(state.server, opts) do
-        :ok ->
-          state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
-          {:reply, :ok, state}
+        case ServerLifecycle.relaunch_and_wait(state.server, opts) do
+          :ok ->
+            state =
+              put_server(%{state | status: :ready},
+                operational_state: :running,
+                intentional: false
+              )
 
-        {:error, _} = err ->
-          {:reply, err, state}
-      end
-    else
-      {:error, _} = err -> {:reply, err, state}
+            {:reply, :ok, state}
+
+          {:error, _} = err ->
+            {:reply, err, state}
+        end
+
+      {:error, _} = err ->
+        {:reply, err, state}
     end
   end
 
@@ -241,7 +276,9 @@ defmodule Toast.Deployment.SingleServerController do
          :ok <- ServerLifecycle.require_state_in(state.server, [:stopped, :killed, :crashed]) do
       case ServerLifecycle.relaunch_and_wait(state.server, opts) do
         :ok ->
-          state = put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+          state =
+            put_server(%{state | status: :ready}, operational_state: :running, intentional: false)
+
           {:reply, :ok, state}
 
         {:error, _} = err ->
@@ -253,16 +290,23 @@ defmodule Toast.Deployment.SingleServerController do
   end
 
   def handle_call({:expect_crash, server_id, timeout}, _from, state) do
-    with :ok <- validate_server_id(state, server_id) do
-      case ServerLifecycle.expect_crash(server_id, timeout, state.expected_crashes, state.server) do
-        {:ok, expected_crashes} ->
-          {:reply, :ok, %{state | expected_crashes: expected_crashes}}
+    case validate_server_id(state, server_id) do
+      :ok ->
+        case ServerLifecycle.expect_crash(
+               server_id,
+               timeout,
+               state.expected_crashes,
+               state.server
+             ) do
+          {:ok, expected_crashes} ->
+            {:reply, :ok, %{state | expected_crashes: expected_crashes}}
 
-        {:error, _} = err ->
-          {:reply, err, state}
-      end
-    else
-      {:error, _} = err -> {:reply, err, state}
+          {:error, _} = err ->
+            {:reply, err, state}
+        end
+
+      {:error, _} = err ->
+        {:reply, err, state}
     end
   end
 
@@ -284,10 +328,19 @@ defmodule Toast.Deployment.SingleServerController do
       deployment: build_deployment_from_state(state)
     }
 
-    case ServerLifecycle.handle_crash(server_id, crash_info, state.expected_crashes, state.server, on_crash_ctx) do
+    case ServerLifecycle.handle_crash(
+           server_id,
+           crash_info,
+           state.expected_crashes,
+           state.server,
+           on_crash_ctx
+         ) do
       {:expected, expected_crashes} ->
         state = %{state | expected_crashes: expected_crashes}
-        state = put_server(%{state | status: :degraded}, operational_state: :crashed, intentional: true)
+
+        state =
+          put_server(%{state | status: :degraded}, operational_state: :crashed, intentional: true)
+
         {:noreply, state}
 
       :intentional_exit ->
@@ -295,14 +348,25 @@ defmodule Toast.Deployment.SingleServerController do
 
       :crash_during_intentional_stop ->
         ServerLifecycle.stop_health_monitor(state.server)
-        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-          operational_state: :crashed, intentional: false, health_monitor: nil)
+
+        state =
+          put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+            operational_state: :crashed,
+            intentional: false,
+            health_monitor: nil
+          )
+
         {:noreply, state}
 
       :unexpected_crash ->
         ServerLifecycle.stop_health_monitor(state.server)
-        state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
-          operational_state: :crashed, health_monitor: nil)
+
+        state =
+          put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
+            operational_state: :crashed,
+            health_monitor: nil
+          )
+
         {:noreply, state}
     end
   end
@@ -312,8 +376,18 @@ defmodule Toast.Deployment.SingleServerController do
     stop_server_process(state, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
     ServerLifecycle.notify_crash(state.on_crash, build_deployment_from_state(state), crash_info)
-    ServerLifecycle.notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
-    state = put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}}, server_pid: nil, health_monitor: nil)
+
+    ServerLifecycle.notify_event(
+      state.on_event,
+      {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
+    )
+
+    state =
+      put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}},
+        server_pid: nil,
+        health_monitor: nil
+      )
+
     {:noreply, state}
   end
 
@@ -327,7 +401,11 @@ defmodule Toast.Deployment.SingleServerController do
   def handle_info({:verify_crash_check, server_id, from, deadline}, state) do
     {_tag, expected_crashes} =
       ServerLifecycle.handle_verify_crash_check(
-        server_id, from, deadline, state.expected_crashes, state.server
+        server_id,
+        from,
+        deadline,
+        state.expected_crashes,
+        state.server
       )
 
     {:noreply, %{state | expected_crashes: expected_crashes}}
@@ -366,18 +444,32 @@ defmodule Toast.Deployment.SingleServerController do
          _ = Logger.debug("#{id}: allocated port #{port}"),
          state = put_server(state, port: port, endpoint: "http://127.0.0.1:#{port}"),
          {:ok, launch_spec} <- Factory.build_single_server(state.config, id, port),
-         state = put_server(state, log_file: launch_spec.log_file, server_dir: launch_spec.server_dir, launch_spec: launch_spec),
+         state =
+           put_server(state,
+             log_file: launch_spec.log_file,
+             server_dir: launch_spec.server_dir,
+             launch_spec: launch_spec
+           ),
          {:ok, server_pid} <- start_server_process(launch_spec),
          _ = Logger.debug("#{id}: server process started (#{inspect(server_pid)})"),
          :ok <- ServerProcess.launch(server_pid),
          os_pid = ServerProcess.os_pid(server_pid),
          state = put_server(state, server_pid: server_pid, pid: os_pid),
          _ = Logger.info("#{id}: started (os_pid=#{os_pid}), endpoint=#{state.server.endpoint}"),
-         _ = ServerLifecycle.notify_event(state.on_event, {:server_started, id, os_pid, DateTime.utc_now()}),
+         _ =
+           ServerLifecycle.notify_event(
+             state.on_event,
+             {:server_started, id, os_pid, DateTime.utc_now()}
+           ),
          :ok <- wait_for_ready(state, timeout),
          {:ok, monitor_pid} <- start_health_monitor(state) do
       Logger.info("Deployment #{id} ready at #{state.server.endpoint}")
-      {:ok, put_server(%{state | status: :ready}, health_monitor: monitor_pid, operational_state: :running)}
+
+      {:ok,
+       put_server(%{state | status: :ready},
+         health_monitor: monitor_pid,
+         operational_state: :running
+       )}
     else
       {:error, reason} ->
         Logger.error("Deploy failed for #{id}: #{inspect(reason)}")
@@ -421,10 +513,19 @@ defmodule Toast.Deployment.SingleServerController do
     Logger.debug("Cleaning up #{state.server.id}")
     ServerLifecycle.stop_health_monitor(state.server)
     stop_server_process(state, timeout)
-    ServerLifecycle.notify_event(state.on_event, {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()})
+
+    ServerLifecycle.notify_event(
+      state.on_event,
+      {:server_stopped, state.server.id, state.server.pid, nil, DateTime.utc_now()}
+    )
+
     diagnostics = collect_diagnostics(state)
     Logger.debug("#{state.server.id}: diagnostics collected")
-    put_server(%{state | status: :stopped, diagnostics: diagnostics}, server_pid: nil, health_monitor: nil)
+
+    put_server(%{state | status: :stopped, diagnostics: diagnostics},
+      server_pid: nil,
+      health_monitor: nil
+    )
   end
 
   defp collect_diagnostics(%{server: %{server_dir: nil}}), do: nil
@@ -484,8 +585,8 @@ defmodule Toast.Deployment.SingleServerController do
     if state.server.id == server_id, do: {:ok, server_id}, else: {:error, :not_found}
   end
 
-  defp resolve_target(state, [role: :single]), do: {:ok, state.server.id}
-  defp resolve_target(_state, [role: role]), do: {:error, {:no_servers_for_role, role}}
+  defp resolve_target(state, role: :single), do: {:ok, state.server.id}
+  defp resolve_target(_state, role: role), do: {:error, {:no_servers_for_role, role}}
   defp resolve_target(_state, target), do: {:error, {:invalid_target, target}}
 
   # --- Control helpers ---

@@ -18,7 +18,7 @@ defmodule Toast.Diagnostics.SummaryTest do
           crash_output: []
         },
         server_error: nil,
-        server: %ServerInstance{id: "toast-42", role: :single, pid: 12345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
+        server: %ServerInstance{id: "toast-42", role: :single, pid: 12_345, endpoint: "http://127.0.0.1:8529", log_file: "/tmp/toast/server/log"}
       },
       overrides
     )
@@ -79,10 +79,10 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "cluster with one crashed server shows only the crashed server" do
       cluster_diag = %{
         "agent-1" => base_diagnostics(%{
-          server: %ServerInstance{id: "agent-1", role: :agent, pid: 10001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
+          server: %ServerInstance{id: "agent-1", role: :agent, pid: 10_001, endpoint: "http://127.0.0.1:8531", log_file: "/tmp/toast/agent-1/log"}
         }),
         "dbserver-1" => crashed_diagnostics(%{
-          server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
+          server: %ServerInstance{id: "dbserver-1", role: :dbserver, pid: 10_002, endpoint: "http://127.0.0.1:8530", log_file: "/tmp/toast/dbserver-1/log"}
         })
       }
 

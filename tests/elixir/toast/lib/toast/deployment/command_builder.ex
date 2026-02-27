@@ -31,6 +31,7 @@ defmodule Toast.Deployment.CommandBuilder do
   @spec role_args(role()) :: [String.t()]
   def role_args(:single), do: ["--server.storage-engine", "rocksdb"]
   def role_args(:agent), do: ["--agency.activate", "true", "--agency.supervision", "true"]
+
   def role_args(role) when role in [:coordinator, :dbserver] do
     ["--cluster.create-waits-for-sync-replication", "false", "--cluster.write-concern", "1"]
   end
@@ -46,12 +47,18 @@ defmodule Toast.Deployment.CommandBuilder do
 
   defp base_args(role, port, paths, repo_root) do
     [
-      "--configuration", config_file(role),
-      "--define", "TOP_DIR=#{repo_root}",
-      "--server.endpoint", "tcp://0.0.0.0:#{port}",
-      "--database.directory", paths.data_dir,
-      "--javascript.app-path", paths.app_dir,
-      "--log.file", paths.log_file
+      "--configuration",
+      config_file(role),
+      "--define",
+      "TOP_DIR=#{repo_root}",
+      "--server.endpoint",
+      "tcp://0.0.0.0:#{port}",
+      "--database.directory",
+      paths.data_dir,
+      "--javascript.app-path",
+      paths.app_dir,
+      "--log.file",
+      paths.log_file
     ]
   end
 

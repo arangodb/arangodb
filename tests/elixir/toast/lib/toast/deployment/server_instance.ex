@@ -20,7 +20,18 @@ defmodule Toast.Deployment.ServerInstance do
         }
 
   @enforce_keys [:id, :role]
-  defstruct [:id, :role, :port, :endpoint, :pid, :log_file, :server_dir,
-             :server_pid, :health_monitor, :operational_state, :launch_spec,
-             intentional: false]
+  defstruct [
+    :id,
+    :role,
+    :port,
+    :endpoint,
+    :pid,
+    :log_file,
+    :server_dir,
+    :server_pid,
+    :health_monitor,
+    :operational_state,
+    :launch_spec,
+    intentional: false
+  ]
 end

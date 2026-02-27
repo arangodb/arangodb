@@ -152,23 +152,28 @@ defmodule Toast.Diagnostics.CrashLogParser do
   end
 
   defp extract_timestamp(line) do
-    with [_, ts_string] <-
-           Regex.run(~r/^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})?)/, String.trim_leading(line)) do
-      case DateTime.from_iso8601(ts_string) do
-        {:ok, dt, _offset} ->
-          dt
-
-        {:error, :missing_offset} ->
-          case NaiveDateTime.from_iso8601(ts_string) do
-            {:ok, ndt} -> DateTime.from_naive!(ndt, "Etc/UTC")
-            _ -> nil
-          end
-
-        _ ->
-          nil
-      end
-    else
+    case Regex.run(
+           ~r/^(\d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})?)/,
+           String.trim_leading(line)
+         ) do
+      [_, ts_string] -> parse_timestamp(ts_string)
       _ -> nil
+    end
+  end
+
+  defp parse_timestamp(ts_string) do
+    case DateTime.from_iso8601(ts_string) do
+      {:ok, dt, _offset} ->
+        dt
+
+      {:error, :missing_offset} ->
+        case NaiveDateTime.from_iso8601(ts_string) do
+          {:ok, ndt} -> DateTime.from_naive!(ndt, "Etc/UTC")
+          _ -> nil
+        end
+
+      _ ->
+        nil
     end
   end
 end

@@ -7,7 +7,8 @@ defmodule Mix.Tasks.Toast.Helpers do
   Parses suite arguments into a suite request (`:all` or list of names)
   and a map of file filters keyed by suite name.
   """
-  @spec parse_suite_args([String.t()], String.t()) :: {:all | [String.t()], %{optional(String.t()) => [String.t()]}}
+  @spec parse_suite_args([String.t()], String.t()) ::
+          {:all | [String.t()], %{optional(String.t()) => [String.t()]}}
   def parse_suite_args([], _suites_dir), do: {:all, %{}}
 
   def parse_suite_args(args, _suites_dir) do
@@ -15,7 +16,8 @@ defmodule Mix.Tasks.Toast.Helpers do
       Enum.reduce(args, {[], %{}}, fn arg, {names, filters} ->
         case String.split(arg, "/", parts: 2) do
           [suite_name, file_spec] ->
-            {[suite_name | names], Map.update(filters, suite_name, [file_spec], &[file_spec | &1])}
+            {[suite_name | names],
+             Map.update(filters, suite_name, [file_spec], &[file_spec | &1])}
 
           [suite_name] ->
             {[suite_name | names], filters}
@@ -106,9 +108,9 @@ defmodule Mix.Tasks.Toast.Helpers do
       |> Enum.filter(&(String.ends_with?(&1, ".ex") and Path.basename(&1) != "suite.ex"))
 
     test_files =
-      all_files
-      |> Enum.filter(&String.ends_with?(&1, ".exs"))
-      |> Enum.filter(&(Path.basename(&1) |> String.starts_with?("test_")))
+      Enum.filter(all_files, fn f ->
+        String.ends_with?(f, ".exs") and String.starts_with?(Path.basename(f), "test_")
+      end)
 
     {helpers, test_files}
   end
@@ -199,17 +201,21 @@ defmodule Mix.Tasks.Toast.Helpers do
   @spec parse_file_specs([String.t()]) :: {[String.t()], [{String.t(), pos_integer()}]}
   def parse_file_specs(file_specs) do
     Enum.reduce(file_specs, {[], []}, fn spec, {files, lines} ->
-      case String.split(spec, ":") do
-        [file, line_str] ->
-          case Integer.parse(line_str) do
-            {line, ""} -> {[file | files], [{file, line} | lines]}
-            _ -> {[file | files], lines}
-          end
-
-        [file] ->
-          {[file | files], lines}
-      end
+      parse_single_file_spec(spec, files, lines)
     end)
+  end
+
+  defp parse_single_file_spec(spec, files, lines) do
+    case String.split(spec, ":") do
+      [file, line_str] ->
+        case Integer.parse(line_str) do
+          {line, ""} -> {[file | files], [{file, line} | lines]}
+          _ -> {[file | files], lines}
+        end
+
+      [file] ->
+        {[file | files], lines}
+    end
   end
 
   # -- Internal helpers --
@@ -220,20 +226,20 @@ defmodule Mix.Tasks.Toast.Helpers do
         true
 
       _ ->
-        Enum.any?(diagnostics, fn
-          {_id, server_diag} when is_map(server_diag) ->
-            case Map.get(server_diag, :sanitizer_errors) do
-              errors when is_list(errors) and errors != [] -> true
-              _ -> false
-            end
-
-          _ ->
-            false
-        end)
+        Enum.any?(diagnostics, &server_has_sanitizer_errors?/1)
     end
   end
 
   defp has_sanitizer_in_diagnostics?(_), do: false
+
+  defp server_has_sanitizer_errors?({_id, server_diag}) when is_map(server_diag) do
+    case Map.get(server_diag, :sanitizer_errors) do
+      errors when is_list(errors) and errors != [] -> true
+      _ -> false
+    end
+  end
+
+  defp server_has_sanitizer_errors?(_), do: false
 
   defp extract_log_files(diagnostics) do
     extract_from_diagnostics(diagnostics, :server, fn

@@ -55,7 +55,7 @@ defmodule ToastTest.ProcessHistoryTest do
   describe "events are timestamped" do
     test "event timestamps are preserved", %{pid: pid, name: name} do
       now = DateTime.utc_now()
-      event = %{type: :crashed, server_id: "s1", os_pid: 12345, timestamp: now}
+      event = %{type: :crashed, server_id: "s1", os_pid: 12_345, timestamp: now}
       GenServer.cast(name, {:event, event})
       :sys.get_state(pid)
 

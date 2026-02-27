@@ -96,8 +96,8 @@ defmodule Toast.Deployment.ResolveTargetTest do
     setup [:start_cluster_with_servers]
 
     test "invalid target format returns :invalid_target", %{ctrl: ctrl} do
-      result = ClusterController.stop_server(ctrl, 12345)
-      assert {:error, {:invalid_target, 12345}} = result
+      result = ClusterController.stop_server(ctrl, 12_345)
+      assert {:error, {:invalid_target, 12_345}} = result
     end
 
     test "empty keyword list returns :invalid_target", %{ctrl: ctrl} do

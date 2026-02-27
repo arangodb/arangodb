@@ -73,6 +73,7 @@ defmodule Toast.Analysis.Crashes do
           Enum.map_join(matched, "\n", fn m ->
             error = m["error"] || %{}
             type = String.upcase(error["sanitizer_type"] || "unknown")
+
             "  #{m["module"]} - #{m["test"]} (#{m["confidence"]}): [#{type}] #{error["server_id"]}"
           end)
 
@@ -101,7 +102,9 @@ defmodule Toast.Analysis.Crashes do
 
   defp format_server_health_crashes(results) do
     case results["server_health"] do
-      nil -> []
+      nil ->
+        []
+
       health when is_map(health) ->
         crash_entries =
           health
@@ -113,45 +116,57 @@ defmodule Toast.Analysis.Crashes do
         else
           ["Server Crashes:\n" <> Enum.join(crash_entries, "\n")]
         end
-      _ -> []
+
+      _ ->
+        []
     end
   end
 
   defp collect_crash_reports(health) when is_map(health) do
     case health["crash_report"] do
       nil ->
-        Enum.flat_map(health, fn
-          {server_id, server_health} when is_map(server_health) ->
-            case server_health["crash_report"] do
-              nil -> []
-              report -> ["  #{server_id}: #{report["signal_name"]} (signal #{report["signal_number"]})"]
-            end
-          _ -> []
-        end)
+        Enum.flat_map(health, &format_server_crash_report/1)
 
       report ->
-        ["  #{report["signal_name"]} (signal #{report["signal_number"]})"]
+        [format_crash_report_line(report)]
     end
+  end
+
+  defp format_server_crash_report({server_id, server_health}) when is_map(server_health) do
+    case server_health["crash_report"] do
+      nil -> []
+      report -> ["  #{server_id}: #{report["signal_name"]} (signal #{report["signal_number"]})"]
+    end
+  end
+
+  defp format_server_crash_report(_), do: []
+
+  defp format_crash_report_line(report) do
+    "  #{report["signal_name"]} (signal #{report["signal_number"]})"
   end
 
   defp format_coredump_reports(results) do
     suites = results["suites"] || []
 
     reports =
-      Enum.flat_map(suites, fn suite ->
-        case suite["diagnostics"] do
-          %{"coredump_reports" => reports} when is_list(reports) and reports != [] ->
-            Enum.map(reports, fn r ->
-              "  #{r["core_path"]}: #{r["signal"]} (#{r["debugger"]})"
-            end)
-          _ -> []
-        end
-      end)
+      Enum.flat_map(suites, &extract_coredump_lines/1)
 
     if reports == [] do
       []
     else
       ["Coredump Reports:\n" <> Enum.join(reports, "\n")]
+    end
+  end
+
+  defp extract_coredump_lines(suite) do
+    case suite["diagnostics"] do
+      %{"coredump_reports" => reports} when is_list(reports) and reports != [] ->
+        Enum.map(reports, fn r ->
+          "  #{r["core_path"]}: #{r["signal"]} (#{r["debugger"]})"
+        end)
+
+      _ ->
+        []
     end
   end
 end

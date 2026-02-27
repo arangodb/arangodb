@@ -11,6 +11,13 @@ defmodule Toast.Diagnostics.Coredump.Report do
           crash_thread: integer() | nil
         }
 
-  defstruct [:core_path, :binary_path, :debugger, :signal,
-             :faulting_address, :crash_thread, threads: []]
+  defstruct [
+    :core_path,
+    :binary_path,
+    :debugger,
+    :signal,
+    :faulting_address,
+    :crash_thread,
+    threads: []
+  ]
 end

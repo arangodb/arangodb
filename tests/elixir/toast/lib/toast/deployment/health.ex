@@ -16,9 +16,7 @@ defmodule Toast.Deployment.Health do
     poll_interval = Keyword.get(opts, :poll_interval, 200)
     deadline = System.monotonic_time(:millisecond) + timeout
 
-    Logger.debug(
-      "Waiting for agency consensus across #{length(agent_endpoints)} agents"
-    )
+    Logger.debug("Waiting for agency consensus across #{length(agent_endpoints)} agents")
 
     agency_poll_loop(agent_endpoints, opts, poll_interval, deadline)
   end
@@ -132,21 +130,43 @@ defmodule Toast.Deployment.Health do
           :ok
 
         {:error, reason} ->
-          now = System.monotonic_time(:millisecond)
-          remaining = max(0, deadline - now)
-
-          if first_attempt do
-            Logger.debug("#{endpoint}: first check failed (#{inspect(reason)}), #{remaining}ms remaining")
-          end
-
-          if now >= deadline do
-            Logger.debug("#{endpoint}: timed out waiting for ready")
-            {:error, :timeout}
-          else
-            Process.sleep(poll_interval)
-            poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, false)
-          end
+          handle_check_failure(
+            endpoint,
+            reason,
+            opts,
+            process_check_fn,
+            poll_interval,
+            deadline,
+            first_attempt
+          )
       end
+    end
+  end
+
+  defp handle_check_failure(
+         endpoint,
+         reason,
+         opts,
+         process_check_fn,
+         poll_interval,
+         deadline,
+         first_attempt
+       ) do
+    now = System.monotonic_time(:millisecond)
+    remaining = max(0, deadline - now)
+
+    if first_attempt do
+      Logger.debug(
+        "#{endpoint}: first check failed (#{inspect(reason)}), #{remaining}ms remaining"
+      )
+    end
+
+    if now >= deadline do
+      Logger.debug("#{endpoint}: timed out waiting for ready")
+      {:error, :timeout}
+    else
+      Process.sleep(poll_interval)
+      poll_loop(endpoint, opts, process_check_fn, poll_interval, deadline, false)
     end
   end
 end

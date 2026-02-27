@@ -62,9 +62,12 @@ defmodule Toast.ResultPackaging do
   defp package_tier1(opts, result_dir) do
     # Copy toast.log if a log_file path is provided and differs from result_dir
     case Keyword.get(opts, :log_file) do
-      nil -> :ok
+      nil ->
+        :ok
+
       log_file ->
         dest = Path.join(result_dir, "toast.log")
+
         if log_file != dest and File.exists?(log_file) do
           File.cp!(log_file, dest)
         end
@@ -110,7 +113,9 @@ defmodule Toast.ResultPackaging do
       end)
 
     case :erl_tar.create(String.to_charlist(archive_path), tar_files, [:compressed]) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, reason} ->
         Logger.warning("Failed to create archive #{archive_path}: #{inspect(reason)}")
     end
@@ -133,7 +138,9 @@ defmodule Toast.ResultPackaging do
       dest = Path.join(result_dir, basename <> ext)
 
       case compress_file(core_path, dest) do
-        {:ok, _} -> :ok
+        {:ok, _} ->
+          :ok
+
         {:error, reason} ->
           Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
       end
