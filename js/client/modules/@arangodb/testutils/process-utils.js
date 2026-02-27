@@ -494,8 +494,8 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'configDir': 'etc/testing',
   });
 
-  if (fs.exists('build') && fs.exists(fs.join('build', 'bin'))) {
-    optionsDefaults.build = 'build';
+  if (fs.exists('build') && fs.exists('build/bin')) {
+    optionsDefaults.build = 'build/bin';
   } else if (fs.exists('bin')) {
     optionsDefaults.build = '.';
   }
