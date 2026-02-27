@@ -23,12 +23,9 @@
 
 #include "CacheManagerFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/SharedPRNGFeature.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
-#include "Basics/operating-system.h"
-#include "Basics/process-utils.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/CacheOptionsFeature.h"
 #include "Cache/CacheOptionsProvider.h"
@@ -37,9 +34,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -50,9 +44,12 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(Server& server,
-                                         CacheOptionsProvider const& provider)
-    : ArangodFeature{server, *this}, _provider(provider) {
+CacheManagerFeature::CacheManagerFeature(ApplicationServer& server,
+                                         CacheOptionsProvider const& provider,
+                                         SharedPRNGFeature& sharedPRNGFeature)
+    : application_features::ApplicationFeature{server, *this},
+      _provider(provider),
+      _sharedPRNGFeature(sharedPRNGFeature) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<CacheOptionsFeature>();
@@ -96,8 +93,8 @@ void CacheManagerFeature::start() {
       << ", max spare allocation: " << _options.maxSpareAllocation
       << ", enable windowed stats: " << _options.enableWindowedStats;
 
-  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager = std::make_unique<Manager>(sharedPRNG, std::move(postFn), _options);
+  _manager = std::make_unique<Manager>(_sharedPRNGFeature, std::move(postFn),
+                                       _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _options.rebalancingInterval);

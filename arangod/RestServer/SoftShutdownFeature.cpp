@@ -22,9 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#ifdef USE_V8
+#include "RestServer/ConsoleFeature.h"
+#include "RestServer/ScriptFeature.h"
+#endif
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -52,8 +57,9 @@ void queueShutdownChecker(std::mutex& mutex,
 
 namespace arangodb {
 
-SoftShutdownFeature::SoftShutdownFeature(Server& server)
-    : ArangodFeature{server, *this} {
+SoftShutdownFeature::SoftShutdownFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
@@ -61,7 +67,7 @@ SoftShutdownFeature::SoftShutdownFeature(Server& server)
   startsAfter<ConsoleFeature>();
   startsAfter<ScriptFeature>();
 #else
-  startsAfter<AgencyFeaturePhase>();
+  startsAfter<application_features::AgencyFeaturePhase>();
 #endif
 
   // We do not yet know if we are a coordinator, so just in case,
@@ -83,7 +89,9 @@ void SoftShutdownTracker::cancelChecker() {
   }
 }
 
-SoftShutdownTracker::SoftShutdownTracker(ArangodServer& server)
+using application_features::ApplicationServer;
+
+SoftShutdownTracker::SoftShutdownTracker(ApplicationServer& server)
     : _server(server), _softShutdownOngoing(false) {
   _checkFunc = [this](bool /*cancelled*/) {
     if (_server.isStopping()) {

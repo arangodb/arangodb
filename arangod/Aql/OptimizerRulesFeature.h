@@ -27,24 +27,27 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
-#include "RestServer/arangod.h"
+#include "Aql/OptimizerRulesOptions.h"
 
 namespace arangodb {
 namespace aql {
 
-class OptimizerRulesFeature final : public ArangodFeature {
+class OptimizerRulesFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "OptimizerRules"; }
 
-  explicit OptimizerRulesFeature(Server& server);
+  explicit OptimizerRulesFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 
   std::vector<std::string> const& optimizerRules() const {
-    return _optimizerRules;
+    return _options.optimizerRules;
   }
 
   /// @brief translate a list of rule ids into rule name
@@ -79,7 +82,7 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void addStorageEngineRules();
   void enableOrDisableRules();
 
-  std::vector<std::string> _optimizerRules;
+  OptimizerRulesOptions _options;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;

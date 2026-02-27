@@ -43,6 +43,7 @@
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
 #endif
 
+#include <format>
 #include <string_view>
 
 // TODO: these includes are here because of lookupToken below.
@@ -381,13 +382,13 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
   if (cursorIt == _cursors.end()) {
     return Result{
         TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format("cursor id {} does not exist in traverser engine {}",
+        std::format("cursor id {} does not exist in traverser engine {}",
                     cursorId, engineId())};
   }
   auto& cursor = cursorIt->second;
   if (cursor._nextBatch != batchId) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  fmt::format("batch id {} is not next batch for cursor id {} "
+                  std::format("batch id {} is not next batch for cursor id {} "
                               "in traverser engine {}",
                               batchId, cursorId, engineId())};
   }

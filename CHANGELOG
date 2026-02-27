@@ -1,5 +1,127 @@
-devel
------
+3.12.9-devel (XXXX-XX-XX)
+-------------------------
+
+* COR-271: If a query uses an OR condition that affects multiple indexes
+  the covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
+
+
+3.12.8 (XXXX-XX-XX)
+-------------------
+
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
+
+* Accept `null` as valid value for the `roles` attribute in JWT tokens.
+
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
+* Updated minimatch to 10.2.1.
+
+* Add new API GET /_admin/options-public for new platform UI.
+
+* Fix ES-2824: SEARCH query produces wrong results.
+
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
+* Add switch `--server.external-rbac-service` to enable role-based access control.
+  For now, it does not do the actual authorization change.
+
+* Updated ArangoDB Starter to v0.19.17.
+
+* Added activities API which shows currently on-going high-level processes in the
+  database and their possible dependencies on each other. Until now only a couple
+  of activities are implemented, e.g. a rest handler is called, an aql query is
+  executed, a collection or an index is created or a dump is on-going.
+
+* BTS-2316: List broken hotbackups and report, why they are broken.
+
+* Fixes BTS-2309: Treat empty object in schema definition as null.
+
+* FE-972: fix sparse option not being sent in vector index creation payload.
+
+* COR-8: Added new coordinator-level metrics for shard replication state:
+  `arangodb_metadata_total_number_of_shards`,
+  `arangodb_metadata_number_follower_shards`,
+  `arangodb_metadata_number_out_of_sync_shards`,
+  `arangodb_metadata_number_not_replicated_shards`, and
+  `arangodb_metadata_shard_followers_out_of_sync_number`.
+
+* Add flag `supportsRBAC` to collections. This is in preparation for RBAC support.
+  Collections which have `supportsRBAC` set to `false` will not be subject to RBAC
+  policies and will always follow the old permission model.
+
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
+* Fixed BTS-2160: Introduced the proper log message when read-only state is reached
+  because of disk-usage and not because of an expired license.
+
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+  results when condition optimization is turned off.
+
+* Upgraded OpenSSL to 3.5.5.
+
+* FE-954: make view validation on UI less strict.
+
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
+* FE-937: fix distribution tab getting stuck on loading.
+
+* Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
+  option on collections with computed values.
+
+* COR-22: Improved crash dumps with additional diagnostic data. Added
+ `ApiRecordingFeature` as a data source to include recent API calls
+ and AQL queries in crash dumps, as well as the async registry for
+ currently existing async operations. New REST API endpoints for crash dump
+ management:
+  - `GET /_admin/crashes`: List all crash dumps
+  - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
+  - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
+
+* Fix runaway io_uring file descriptors.
+
+* Fixed changing writeConcern on a collection
+  could cause subsequent writes to fail due to a stale internal write flag.
+
+* Fixed BTS-2298: Supervision cleanup job now correctly removes shadow collections
+  when deleting broken smart edge collections after a coordinator dies.
+
+* Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
+  least three levels of subqueries it could happen that the executor ended up in a
+  state it could not handle and the query would throw an error.
+  The effect seen by the customer was a hanging database because a lock was held.
+
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
+* Improve the output of fields `dbStats` for every column family
+  when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
+* COR-8: Improved the accuracy of shard metrics on DBservers by updating only
+  metrics for databases with changes, rather than recalculating all metrics.
+  Added new metrics `arangodb_shards_follower_number` to track the number of
+  follower shards on each DBserver and `arangodb_shard_followers_out_of_sync_number`
+  to track follower shards that are out of sync with their leader.
 
 * FE-929, BTS-2289: bump qs from 6.11.2 to 6.14.1 for node_modules and core UI.
 

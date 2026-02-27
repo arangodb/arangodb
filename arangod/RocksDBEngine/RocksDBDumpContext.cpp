@@ -23,6 +23,8 @@
 
 #include "RocksDBDumpContext.h"
 
+#include "Activities/activity.h"
+#include "Activities/registry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -212,7 +214,12 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       _options(std::move(options)),
       _expires(TRI_microtime() + _options.ttl),
       _workItems(_options.parallelism),
-      _channel(_options.prefetchCount) {
+      _channel(_options.prefetchCount),
+      _activity{"RocksDBDump",
+                {{"id", _id}, {"user", _user}, {"database", _database}}} {
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(_activity.id());
+
   // this DatabaseGuard will protect the database object from being deleted
   // while the context is in use. that way we only have to ensure once that the
   // database is there. creating this guard will throw if the database cannot be
@@ -354,6 +361,10 @@ bool RocksDBDumpContext::applyFilter(
     return basics::VelocyPackHelper::equal(documentSlice.get(filter.path),
                                            filter.value.slice(), true);
   });
+}
+
+activities::ActivityId RocksDBDumpContext::activityId() const noexcept {
+  return _activity.id();
 }
 
 std::shared_ptr<RocksDBDumpContext::Batch const> RocksDBDumpContext::next(

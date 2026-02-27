@@ -28,18 +28,19 @@
 #include <libplatform/libplatform.h>
 #include <v8.h>
 
-#include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
+#include "Shell/V8ClientConnection.h"
 
 namespace arangodb {
 
 class V8ClientConnection;
 
-class V8ShellFeature final : public ArangoshFeature {
+class V8ShellFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "V8Shell"; }
 
-  V8ShellFeature(Server& server, std::string const& name);
+  V8ShellFeature(application_features::ApplicationServer& server,
+                 std::string const& name);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
@@ -72,21 +73,21 @@ class V8ShellFeature final : public ArangoshFeature {
   bool runUnitTests(std::vector<std::string> const& files,
                     std::vector<std::string> const& positionals,
                     std::string const& testFilter);
+  void resetConnection() { _connection->setInterrupted(true); }
 
  private:
   void copyInstallationFiles();
-  bool printHello(V8ClientConnection*);
+  bool printHello();
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
-  std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context,
-                                            bool,
-                                            std::vector<std::string> const&,
-                                            bool* promptError = nullptr);
+  void setup(v8::Local<v8::Context>& context, bool,
+             std::vector<std::string> const&, bool* promptError = nullptr);
 
   std::string _name;
   v8::Isolate* _isolate;
   v8::Persistent<v8::Context> _context;
+  std::shared_ptr<V8ClientConnection> _connection;
 };
 
 }  // namespace arangodb

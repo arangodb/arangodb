@@ -26,10 +26,10 @@
 #include "Containers/Concurrent/snapshot.h"
 #include "Containers/Concurrent/metrics.h"
 #include "Inspection/Format.h"
-#include "fmt/core.h"
 
 #include <atomic>
 #include <concepts>
+#include <format>
 #include <memory>
 
 namespace arangodb::containers {
@@ -120,7 +120,7 @@ struct ThreadOwnedList
   }
   auto add(F&& create_data) noexcept -> Node* {
     auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread) << fmt::format(
+    ADB_PROD_ASSERT(current_thread == thread) << std::format(
         "ThreadOwnedList::add was called from thread {} but needs to "
         "be called from ThreadOwnedList's owning thread {}. {}",
         inspection::json(current_thread), inspection::json(thread),
@@ -203,7 +203,7 @@ struct ThreadOwnedList
    */
   auto garbage_collect() noexcept -> void {
     auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread) << fmt::format(
+    ADB_PROD_ASSERT(current_thread == thread) << std::format(
         "ThreadOwnedList::garbage_collect was called from thread {} but needs "
         "to be called from ThreadOwnedList's owning thread {}. {}",
         inspection::json(current_thread), inspection::json(thread),

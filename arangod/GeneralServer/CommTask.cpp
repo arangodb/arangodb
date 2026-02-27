@@ -25,6 +25,7 @@
 
 #include "CommTask.h"
 
+#include "Activities/registry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -69,8 +70,8 @@ constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
-VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
-                                     GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(
+    application_features::ApplicationServer& server, GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -83,7 +84,8 @@ VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
 }
 
 /// Set the appropriate requestContext
-bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
+bool resolveRequestContext(application_features::ApplicationServer& server,
+                           GeneralRequest& req) {
   auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
@@ -449,17 +451,24 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  auto handler =
-      factory->createHandler(server, std::move(request), std::move(response));
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder errorBuilder(buffer);
+  auto handler = factory->createHandler(server, std::move(request),
+                                        std::move(response), errorBuilder);
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
+
+    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       VPackBuffer<uint8_t>());
+                       std::move(buffer));
     return;
   }
+
+  auto activityGuard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      handler->_activity->id());
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
@@ -683,7 +692,9 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
-      << handler->request()->requestPath() << " on lane " << lane;
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -728,6 +739,12 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   handler->trackQueueStart();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+
+  LOG_TOPIC("ecd0b", DEBUG, Logger::REQUESTS)
+      << "Handling async request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
@@ -995,6 +1012,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
   // invalidate the member
+  req.setRoles(authToken.roles());
+  req.setJwtToken(authToken.jwtToken());
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {

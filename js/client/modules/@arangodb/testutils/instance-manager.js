@@ -39,6 +39,7 @@ const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {versionHas} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
+const AsciiTable = require('ascii-table');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
 /* Functions: */
@@ -92,6 +93,8 @@ class instanceManager {
     this.urls = [];
     this.endpoints = [];
     this.endpoint = undefined;
+    this.endpointPorts = [];
+    this.endpointPort = -1;
     this.connectedEndpoint = undefined;
     this.connectionHandle = undefined;
     this.arangods = [];
@@ -118,13 +121,26 @@ class instanceManager {
       this.JWT = options.jwtSecret;
       addArgs['server.jwt-secret'] = this.JWT;
     }
+    if (addArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(addArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(addArgs['server.jwt-secret-folder'], files[0]));
+    }
     if (this.options.encryptionAtRest) {
-      this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
-      fs.makeDirectoryRecursive(this.rootDir);
-      fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+      if (this.options.hasOwnProperty('jwtFiles')) {
+        this.JWT = fs.read(this.options.jwtFiles[0]);
+      } else if (!addArgs.hasOwnProperty('server.jwt-secret')) {
+        this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
+        fs.makeDirectoryRecursive(this.rootDir);
+        fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
+        this.JWT = fs.read(this.restKeyFile);
+      }
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs, this.JWT);
     this.expectAsserts = false;
+    this.forceJWT = addArgs.hasOwnProperty('server.jwt-secret') && addArgs.hasOwnProperty('server.authentication');
+    this.hasSetPassvoid = false;
   }
 
   destructor(cleanup) {
@@ -154,10 +170,13 @@ class instanceManager {
       leader: ln,
       agencyConfig: this.agencyMgr.getStructure(),
       httpAuthOptions: this.httpAuthOptions,
+      httpJWTAuthOptions: this.httpJWTAuthOptions,
       urls: this.urls,
       url: this.url,
       endpoints: this.endpoints,
       endpoint: this.endpoint,
+      endpointPorts: this.endpointPorts,
+      endpointPort: this.endpointPort,
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
@@ -173,10 +192,13 @@ class instanceManager {
     this.addArgs = struct['addArgs'];
     this.rootDir = struct['rootDir'];
     this.httpAuthOptions = struct['httpAuthOptions'];
+    this.httpJWTAuthOptions = struct['httpJWTAuthOptions'];
     this.urls = struct['urls'];
     this.url = struct['url'];
     this.endpoints = struct['endpoints'];
     this.endpoint = struct['endpoint'];
+    this.endpointPorts = struct['endpointPorts'];
+    this.endpointPort = struct['endpointPort'];
     this.restKeyFile = struct['restKeyFile'];
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
@@ -199,17 +221,42 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       if (this.endpoint === arangod.endpoint) {
         arangod.setThisConnectionHandle();
+        this.endpointPort = arangod.port;
       }
     });
+  }
+  dumpSUT(moreText) {
+    const tableColumnHeaders = [
+        "role", "port", "pid", "serverID", "handle", "data directory"
+    ];
+    let resultTable = new AsciiTable("");
+    resultTable.setHeading(tableColumnHeaders);
+    this.arangods.forEach(arangod => {
+      resultTable.addRow([
+        arangod.instanceRole,
+        arangod.port,
+        arangod.pid,
+        arangod.id,
+        arangod.connectionHandle,
+        arangod.dataDir
+      ]);
+    });
+    print(CYAN + resultTable.toString() + RESET);
+    this.arangods[0].dumpConnectionTable(true);
+    this.gatherNetstat();
+    this.printNetstat();
+    print(CYAN + moreText + RESET);
   }
   setPassvoid() {
     if (!arango.isConnected()) {
       throw new Error('connecting the database failed');
     }
     try {
+      this.hasSetPassvoid = true;
       return require('org/arangodb/users').save(this.options.username, this.options.password);
     } catch (ex) {
       if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
+        this.hasSetPassvoid = true;
         return require('org/arangodb/users').update(this.options.username, this.options.password);
       }
       throw ex;
@@ -245,7 +292,9 @@ class instanceManager {
         print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
     }
-    return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+    let ret =  arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+    this.connectionHandle = arango.getConnectionHandle();
+    return ret;
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -323,8 +372,8 @@ class instanceManager {
     });
     this.reconnectMe();
   }
-  debugTerminate() {
-    this.arangods.forEach(arangod => {arangod.debugTerminate();});
+  debugTerminate(msg) {
+    this.arangods.forEach(arangod => {arangod.debugTerminate(msg);});
     return 0;
   }
   checkDebugTerminated() {
@@ -393,6 +442,7 @@ class instanceManager {
                                                instanceRole.agent,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                                this.restKeyFile,
@@ -411,6 +461,7 @@ class instanceManager {
                                                instanceRole.dbServer,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                                this.restKeyFile,
@@ -427,6 +478,7 @@ class instanceManager {
                                                instanceRole.coordinator,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                                this.restKeyFile,
@@ -445,6 +497,7 @@ class instanceManager {
                                                instanceRole.single,
                                                this.addArgs,
                                                this.httpAuthOptions,
+                                               this.httpJWTAuthOptions,
                                                this.protocol,
                                                fs.join(this.rootDir, instanceRole.single + "_" + count),
                                                this.restKeyFile,
@@ -453,6 +506,7 @@ class instanceManager {
                                                this.memlayout[instanceRole.single]));
           this.urls.push(this.arangods[this.arangods.length -1].url);
           this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+          this.endpointPorts.push(this.arangods[this.arangods.length -1].port);
           frontendCount ++;
         }
         this.instanceRoles.push(instanceRole.single);
@@ -460,10 +514,16 @@ class instanceManager {
       if (frontendCount > 0) {
         this.url = this.urls[0];
         this.endpoint = this.endpoints[0];
+        this.endpointPort = this.endpointPorts[0];
       } else {
         this.url = null;
         this.endpoint = null;
+        this.endpointPort = -1;
       };
+      if (this.arangods[0].args.hasOwnProperty('database.password')) {
+        this.hasSetPassvoid = true;
+        this.options.password = this.arangods[0].args['database.password'];
+      }
     } catch (e) {
       print(e, e.stack);
       return false;
@@ -481,7 +541,7 @@ class instanceManager {
       this.arangods.forEach(arangod => {
         arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
-        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
@@ -512,7 +572,7 @@ class instanceManager {
     /// todo
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
-      this.reconnect();
+      this.reconnect(false);
     }
     this.launchFinalize(startTime);
   }
@@ -833,7 +893,7 @@ class instanceManager {
       let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
-          arangod.pingUntilReady(this.httpAuthOptions, deadline);
+          arangod.pingUntilReady(this.httpJWTAuthOptions, deadline);
         } catch (e) {
           this.arangods.forEach( arangod => {
             let status = arangod.status(false);
@@ -853,9 +913,9 @@ class instanceManager {
     }
     this.spawnClusterHealthMonitor();
     if (this.options.cluster) {
-      this.reconnect();
       this._checkServersGOOD();
     }
+    this.reconnect(false);
   }
 
   reStartInstance(moreArgs) {
@@ -865,6 +925,7 @@ class instanceManager {
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
+    this.httpJWTAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs, this.JWT);
     if (moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
       this.arangods.forEach(arangod => {
@@ -875,10 +936,15 @@ class instanceManager {
         }
       });
     }
+    if (moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
+    }
 
     this.arangods.forEach(arangod => {
       arangod._flushPid();
-      arangod.resetAuthHeaders(this.httpAuthOptions, this.JWT);
+      arangod.resetAuthHeaders(this.httpJWTAuthOptions, this.JWT);
     });
 
     let success = true;
@@ -922,7 +988,7 @@ class instanceManager {
       });
       if (role === instanceRole.agent) {
         print("running agency health check");
-        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+        this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions);
       }
     });
   }
@@ -1007,7 +1073,7 @@ class instanceManager {
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
       ) {
-        this.reconnect();
+        this.reconnect(true);
         rc = this._checkServersGOOD();
         if (first) {
           if (!this.options.noStartStopLogs) {
@@ -1033,12 +1099,14 @@ class instanceManager {
         crashUtils.aggregateDebugger(arangod, this.options);
         arangod.waitForExitAfterDebugKill();
       });
+    } else {
+      this.reconnect(false);
     }
     return rc;
   }
 
   checkClusterAlive() {
-    let httpOptions = _.clone(this.httpAuthOptions);
+    let httpOptions = _.clone(this.httpJWTAuthOptions);
     httpOptions.returnBodyOnError = true;
 
     // scrape the jwt token
@@ -1270,9 +1338,10 @@ class instanceManager {
     return failurePoints;
   }
 
-  reconnect()
+  reconnect(privileged)
   {
-    if (this.JWT !== null) {
+    let passvoid = this.hasSetPassvoid ? this.options.password:'';
+    if (this.JWT !== null && (privileged || this.forceJWT)) {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
@@ -1280,20 +1349,19 @@ class instanceManager {
                        `${this.options.password}`,
                        time() < deadline,
                        this.JWT);
+      this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
     if (this.options.hasOwnProperty('server')) {
-      arango.reconnect(this.endpoint, '_system', 'root', '');
+      arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+      this.connectionHandle = arango.getConnectionHandle();
       return true;
     }
 
     try {
       if (this.endpoint !== null) {
-        let passvoid = '';
-        if (this.arangods[0].args.hasOwnProperty('database.password')) {
-          passvoid = this.arangods[0].args['database.password'];
-        }
         arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+        this.connectionHandle = arango.getConnectionHandle();
       } else {
         print("Don't have a frontend instance to connect to");
       }
@@ -1302,9 +1370,11 @@ class instanceManager {
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
         sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
+        this.connectionHandle = arango.getConnectionHandle();
       } else if (e instanceof ArangoError && e.message.search('service unavailable due to startup or maintenance mode') >= 0) {
         sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
+        this.connectionHandle = arango.getConnectionHandle();
       } else {
         throw e;
       }
@@ -1331,6 +1401,7 @@ class instanceManager {
         if (arangod.isRole(instanceRole.coordinator)) {
           this.urls.push(arangod.url);
           this.endpoints.push(arangod.endpoint);
+          this.endpointPorts.push(arangod.port);
         }
       });
       if (this.endpoints.length === 0) {
@@ -1338,16 +1409,20 @@ class instanceManager {
       }
       this.url = this.urls[0];
       this.endpoint = this.endpoints[0];
+      this.endpointPort = this.endpointPorts[0];
     } else if (this.options.agency) {
       this.arangods.forEach(arangod => {
         this.urls.push(arangod.url);
         this.endpoints.push(arangod.endpoint);
+        this.endpointPorts.push(arangod.port);
       });
       this.url = this.urls[0];
       this.endpoint = this.endpoints[0];
+      this.endpointPort = this.endpointPorts[0];
     } else {
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
+      this.endpointPort = this.arangods[0].port;
     }
   }
 
@@ -1569,12 +1644,13 @@ class instanceManager {
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
+      const ct = require('@arangodb/testutils/client-tools');
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
-      let args = pu.makeArgs.arangosh(this.options);
+      let args = ct.makeArgs.arangosh(this.options);
       args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
@@ -1608,6 +1684,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     const search = 'MemTotal:';
     let pos = f.search(search);
     memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
+    print(`defaulting memory to ${memory}`);
   }
   tu.CopyIntoObject(optionsDefaults, {
     'memory': memory,

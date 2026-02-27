@@ -24,6 +24,9 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeatureOptions.h"
 #include "Basics/Utf8Helper.h"
 
 #include <unicode/locid.h>
@@ -45,15 +48,13 @@ class LanguageFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Language"; }
 
-  template<typename Server>
-  explicit LanguageFeature(Server& server)
+  explicit LanguageFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature{server, *this},
         _binaryPath(server.getBinaryPath()),
         _locale(),
-        _langType(basics::LanguageType::INVALID),
-        _forceLanguageCheck(true) {
+        _langType(basics::LanguageType::INVALID) {
     setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+    startsAfter<application_features::GreetingsFeaturePhase>();
   }
 
   ~LanguageFeature();
@@ -74,13 +75,11 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
+  LanguageFeatureOptions _options;
   char const* _binaryPath;
   std::string _icuData;
   icu_64_64::Locale _locale;
-  std::string _defaultLanguage;
-  std::string _icuLanguage;
   basics::LanguageType _langType;
-  bool _forceLanguageCheck;
 };
 
 }  // namespace arangodb

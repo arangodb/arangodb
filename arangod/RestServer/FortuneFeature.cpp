@@ -24,6 +24,7 @@
 #include "RestServer/FortuneFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -66,20 +67,20 @@ static char const* cookies[] = {
 
 }  // namespace
 
-FortuneFeature::FortuneFeature(Server& server)
-    : ArangodFeature{server, *this}, _fortune(false) {
+FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   startsAfter<BootstrapFeature>();
 }
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--fortune", "Show a fortune cookie on startup.",
-      new BooleanParameter(&_fortune),
+      new BooleanParameter(&_options.fortune),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void FortuneFeature::start() {
-  if (!_fortune) {
+  if (!_options.fortune) {
     return;
   }
 

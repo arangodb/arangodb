@@ -88,13 +88,14 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
     Node const& snapshot, Node const& transient, std::string const& type,
     double gracePeriod);
 
-class Supervision : public ServerThread<ArangodServer> {
+class Supervision : public ServerThread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
 
   /// @brief Construct cluster consistency checking
-  Supervision(ArangodServer& server, metrics::MetricsFeature& metrics);
+  Supervision(application_features::ApplicationServer& server,
+              metrics::MetricsFeature& metrics);
 
   /// @brief Default dtor
   ~Supervision();
@@ -164,11 +165,11 @@ class Supervision : public ServerThread<ArangodServer> {
                                    uint64_t rebootID, bool coordinatorFound);
 
   // public only for unit testing:
-  static void deleteBrokenCollection(AgentInterface* agent,
-                                     std::string const& database,
-                                     std::string const& collection,
-                                     std::string const& coordinatorID,
-                                     uint64_t rebootID, bool coordinatorFound);
+  static void deleteBrokenCollection(
+      AgentInterface* agent, std::string const& database,
+      std::string const& collection, std::string const& coordinatorID,
+      std::vector<std::string> const& additionalCollections, uint64_t rebootID,
+      bool coordinatorFound);
 
   // public only for unit testing:
   static void deleteBrokenIndex(AgentInterface* agent,

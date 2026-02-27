@@ -29,7 +29,8 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
-#include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeatureOptions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -48,7 +49,9 @@ class ApplicationServer;
 }  // namespace application_features
 class IOHeartbeatThread;
 class LogicalCollection;
+class ReplicationFeature;
 class StorageEngine;
+class V8DealerFeature;
 
 namespace metrics {
 class MetricsFeature;
@@ -69,7 +72,7 @@ DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
               "Global number of databases");
 
-class DatabaseManagerThread final : public ServerThread<ArangodServer> {
+class DatabaseManagerThread final : public ServerThread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
@@ -77,7 +80,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   /// @brief database manager thread main loop
   /// the purpose of this thread is to physically remove directories of
   /// databases that have been dropped
-  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+  DatabaseManagerThread(application_features::ApplicationServer&,
+                        DatabaseFeature& databaseFeature,
                         StorageEngine& engine);
   ~DatabaseManagerThread() final;
 
@@ -95,13 +99,13 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
 #endif
 };
 
-class DatabaseFeature final : public ArangodFeature {
+class DatabaseFeature final : public application_features::ApplicationFeature {
   friend class DatabaseManagerThread;
 
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
-  explicit DatabaseFeature(Server& server);
+  explicit DatabaseFeature(application_features::ApplicationServer& server);
   ~DatabaseFeature() final;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -175,28 +179,30 @@ class DatabaseFeature final : public ArangodFeature {
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
-  bool ignoreDatafileErrors() const noexcept { return _ignoreDatafileErrors; }
+  bool ignoreDatafileErrors() const noexcept {
+    return _options.ignoreDatafileErrors;
+  }
   bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }
-  bool waitForSync() const noexcept { return _defaultWaitForSync; }
+  bool waitForSync() const noexcept { return _options.defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept {
-    return replication::parseVersion(_defaultReplicationVersion).get();
+    return replication::parseVersion(_options.defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
   /// and indexes
-  bool extendedNames() const noexcept { return _extendedNames; }
+  bool extendedNames() const noexcept { return _options.extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNames(bool value) noexcept { _extendedNames = value; }
+  void extendedNames(bool value) noexcept { _options.extendedNames = value; }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
   void enableUpgrade() noexcept { _upgrade = true; }
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
-  size_t maxDatabases() const noexcept { return _maxDatabases; }
+  size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -211,7 +217,8 @@ class DatabaseFeature final : public ArangodFeature {
   void decrementCollectionCount(size_t count = 1);
 
  private:
-  static void initCalculationVocbase(ArangodServer& server);
+  static void initCalculationVocbase(
+      application_features::ApplicationServer& server);
 
   void stopAppliers();
 
@@ -224,23 +231,14 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  bool _defaultWaitForSync{false};
-  bool _ignoreDatafileErrors{false};
+  DatabaseFeatureOptions _options;
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended names for databases, collections, views and indexes
-  bool _extendedNames{true};
-  bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
-
-  std::string _defaultReplicationVersion{
-      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
-
-  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {

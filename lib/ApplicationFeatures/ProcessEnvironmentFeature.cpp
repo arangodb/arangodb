@@ -39,11 +39,11 @@ void ProcessEnvironmentFeature::collectOptions(
   options->addSection("temp", "temporary files");
 
   options->addOption("--dump-env", "Dump the full environment to the logs.",
-                     new BooleanParameter(&_dumpEnv));
+                     new BooleanParameter(&_options.dumpEnv));
 }
 
 void ProcessEnvironmentFeature::prepare() {
-  if (_dumpEnv) {
+  if (_options.dumpEnv) {
     if (environ == nullptr) {
       return;
     }

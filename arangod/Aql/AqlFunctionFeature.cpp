@@ -23,10 +23,12 @@
 
 #include "AqlFunctionFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/VectorIndexFeature.h"
 
 using namespace arangodb::application_features;
@@ -36,8 +38,8 @@ namespace aql {
 
 using FF = Function::Flags;
 
-AqlFunctionFeature::AqlFunctionFeature(Server& server)
-    : ArangodFeature{server, *this} {
+AqlFunctionFeature::AqlFunctionFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();

@@ -1,0 +1,19 @@
+[/ Copyright (C) 2020 T. Zachary Laine
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+[section Configuration]
+
+You can define _string_max_m_ to be the size in bytes that you want as the
+limit on the size of _ur_ and _r_ nodes when doing in-place insertions.
+
+_Text_ will automatically use concepts to constrain templates when building in
+C++20 mode, if the compiler defines `__cpp_lib_concepts`.  To disable the use
+of concepts, define _disable_concepts_m_.
+
+_Text_ will automatically use coroutines when building in C++20 mode, if the
+compiler defines `__cpp_coroutines`.  To disable the use of coroutines, define
+_disable_coroutines_m_.
+
+[endsect]

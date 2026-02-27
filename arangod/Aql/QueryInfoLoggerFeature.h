@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/QueryInfoLoggerOptions.h"
 
 #include <velocypack/String.h>
 
@@ -32,13 +33,15 @@
 namespace arangodb::aql {
 class QueryInfoLoggerThread;
 
-class QueryInfoLoggerFeature final : public ArangodFeature {
+class QueryInfoLoggerFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "QueryInfoLogger";
   }
 
-  explicit QueryInfoLoggerFeature(Server& server);
+  explicit QueryInfoLoggerFeature(
+      application_features::ApplicationServer& server);
 
   ~QueryInfoLoggerFeature();
 
@@ -56,32 +59,7 @@ class QueryInfoLoggerFeature final : public ArangodFeature {
   void stopThread();
 
   std::unique_ptr<QueryInfoLoggerThread> _loggerThread;
-
-  // maximum number of queries to store before they can be logged
-  size_t _maxBufferedQueries;
-
-  // if false, no logging will happen at all. if true, consider all other config
-  // options.
-  bool _logEnabled;
-
-  // if true, log queries in system database, otherwise only non-system.
-  bool _logSystemDatabaseQueries;
-
-  // if true, log all slow queries (while honoring _logSystemDatabaseQueries).
-  bool _logSlowQueries;
-
-  // probability with which queries are logged. scaled between 0.0 and 100.0.
-  double _logProbability;
-
-  // push interval, specified in milliseconds
-  uint64_t _pushInterval;
-
-  // collection cleanup interval, specified in milliseconds.
-  uint64_t _cleanupInterval;
-
-  // retention time for which queries are kept in the _queries system collection
-  // before they are purged. specified in seconds.
-  double _retentionTime;
+  QueryInfoLoggerOptions _options;
 };
 
 }  // namespace arangodb::aql

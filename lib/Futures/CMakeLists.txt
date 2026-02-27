@@ -4,7 +4,7 @@ add_library(arango_futures STATIC
 target_include_directories(arango_futures
   PUBLIC
   ${PROJECT_SOURCE_DIR}/arangod
-  ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2
+  ${PROJECT_SOURCE_DIR}/3rdParty/function2
   include)
 
 target_link_libraries(arango_futures
