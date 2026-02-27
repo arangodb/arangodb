@@ -474,7 +474,6 @@ std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
-std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
@@ -541,21 +540,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       handleCommandLoggerFirstTick();
-    } else if (command == LoggerFollow) {
-      if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-      if (isCoordinatorError()) {
-        co_return;
-      }
-      // track the number of parallel invocations of the tailing API
-      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
-      // this may throw when too many threads are going into tailing
-      rf.trackTailingStart();
-
-      auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
-
-      handleCommandLoggerFollow();
     } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
@@ -3831,9 +3815,8 @@ RequestLane RestReplicationHandler::lane() const {
       return RequestLane::CLUSTER_INTERNAL;
     }
 
-    if (command == RemoveFollower || command == LoggerFollow ||
-        command == Batch || command == Inventory || command == Revisions ||
-        command == Dump) {
+    if (command == RemoveFollower || command == Batch || command == Inventory ||
+        command == Revisions || command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }
