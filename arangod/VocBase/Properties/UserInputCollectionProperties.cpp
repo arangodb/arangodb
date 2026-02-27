@@ -110,6 +110,18 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     distributeShardsLike = config.defaultDistributeShardsLike;
   }
 
+#ifdef USE_ENTERPRISE
+  // Enterprise only feature, originally, Community can not create smart edge.
+  // Creation of smart edge is only allowed when distributeShardsLike is set.
+  if (isSmart && getType() == TRI_COL_TYPE_EDGE &&
+      (!distributeShardsLike.has_value() ||
+       distributeShardsLike.value().empty())) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Creating a smart edge collection requires a "
+            "'distributeShardsLike' to be set."};
+  }
+#endif
+
   if (!shardKeys.has_value()) {
     setDefaultShardKeys();
   }
