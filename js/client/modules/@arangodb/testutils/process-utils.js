@@ -90,28 +90,18 @@ function setupBinaries (options) {
     let oneSet = {};
 
     oneSet.BIN_DIR = bin_dir;
-    print(oneSet.BIN_DIR);
-    print('1');
     if (fs.exists(fs.join(directory, oneSet.BIN_DIR))) {
-      print(oneSet.BIN_DIR);
-      print('2');
       oneSet.BIN_DIR = fs.join(directory, oneSet.BIN_DIR);
       if (fs.exists(fs.join(oneSet.BIN_DIR, "bin"))) {
-        print(oneSet.BIN_DIR);
-        print('3');
         oneSet.BIN_DIR = fs.join(oneSet.BIN_DIR, "bin");
       }
     } else if (fs.exists(fs.join(directory, "bin"))) {
-      print('4');
       oneSet.BIN_DIR = fs.join(directory, 'bin');
     } else if (fs.exists(fs.join(oneSet.BIN_DIR, 'bin'))) {
       oneSet.BIN_DIR = fs.join(oneSet.BIN_DIR, 'bin');
-      print('5');
     } else {
-      print('6');
       oneSet.BIN_DIR = fs.makeAbsolute(oneSet.BIN_DIR);
     }
-    print(oneSet.BIN_DIR);
     oneSet.TOP_DIR = directory;
     oneSet.UNITTESTS_DIR = fs.join(fs.join(options.build, 'tests'));
     if (!fs.exists(oneSet.UNITTESTS_DIR)) {
