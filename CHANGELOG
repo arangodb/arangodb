@@ -14,6 +14,8 @@
 3.12.8 (XXXX-XX-XX)
 -------------------
 
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
+
 * Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
 
 * Accept `null` as valid value for the `roles` attribute in JWT tokens.
