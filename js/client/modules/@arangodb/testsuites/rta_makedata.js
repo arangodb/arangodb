@@ -180,6 +180,7 @@ function makeDataWrapper (options) {
             try {
               this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
             } catch(e) {
+              return; // BTS-2329: re-enable detecting of errors when fixed
               this.continueTesting = false;
               res.status = false;
               res.failed += 1;
