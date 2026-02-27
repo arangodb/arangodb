@@ -199,13 +199,6 @@ CommTask::Flow CommTask::prepareExecution(
            !ServerState::isDBServerId(_requestSource);
   });
 
-  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
-  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
-    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
-                      req.messageId(), res.errorNumber(), res.errorMessage());
-    return Flow::Abort;
-  }
-
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 

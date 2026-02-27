@@ -241,6 +241,17 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       "indexCoversFilterProjections",
       VPackValue(hasFilter() && _filterProjections.usesCoveringIndex()));
 
+  // per-index covering info for multi-index queries
+  if (_indexes.size() > 1 && !hasFilter() && !projections().empty() &&
+      isProduceResult() && !isLateMaterialized()) {
+    builder.add(VPackValue("perIndexCovering"));
+    VPackArrayBuilder guard(&builder);
+    for (auto const& idx : _indexes) {
+      Projections copy = projections();
+      builder.add(VPackValue(idx->covers(copy)));
+    }
+  }
+
   builder.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&builder);
@@ -372,6 +383,40 @@ std::string_view IndexNode::strategyName(
   return "unknown";
 }
 
+std::vector<PerIndexCovering> IndexNode::computePerIndexCovering() const {
+  if (_indexes.size() <= 1 || hasFilter() || projections().empty() ||
+      !isProduceResult() || isLateMaterialized()) {
+    return {};
+  }
+
+  auto const& baseProjections = projections();
+  auto const& indexes = getIndexes();
+
+  // projections needed for register output (strip entries without a variable)
+  auto forRegisters = [](Projections p) {
+    p.erase(
+        [](Projections::Projection& proj) { return proj.variable == nullptr; });
+    return p;
+  };
+
+  bool anyCovers = false;
+  std::vector<PerIndexCovering> result(indexes.size());
+  for (size_t i = 0; i < indexes.size(); ++i) {
+    Projections copy = baseProjections;
+    if (indexes[i]->covers(copy)) {
+      copy.setCoveringContext(collection()->id(), indexes[i]);
+      result[i].strategy = Strategy::kCovering;
+      result[i].projectionsForRegisters = forRegisters(copy);
+      result[i].projections = std::move(copy);
+      anyCovers = true;
+    } else {
+      result[i].projections = baseProjections;
+      result[i].projectionsForRegisters = forRegisters(baseProjections);
+    }
+  }
+  return anyCovers ? std::move(result) : std::vector<PerIndexCovering>{};
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     ExecutionEngine& engine) const {
@@ -471,12 +516,14 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto registerInfos =
       createRegisterInfos({}, std::move(writableOutputRegisters));
 
+  auto perIndexCovering = computePerIndexCovering();
+
   auto executorInfos = IndexExecutorInfos(
       strategy(), outRegister, engine.getQuery(), collection(), _outVariable,
       filter(), projections(), filterProjections(), std::move(filterVarsToRegs),
       std::move(nonConstExpressions), canReadOwnWrites(), _condition->root(),
       _allCoveredByOneIndex, getIndexes(), _plan->getAst(), this->options(),
-      std::move(filterCoveringVars));
+      std::move(filterCoveringVars), std::move(perIndexCovering));
   return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -703,18 +750,14 @@ transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {
 void IndexNode::prepareProjections() { recalculateProjections(plan()); }
 
 bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
-  auto idx = getSingleIndex();
-  if (idx == nullptr) {
-    // by default, we do not use projections for the filter condition
-    _projections.clear();
-    _filterProjections.clear();
-    return false;
-  }
-
   // this call will clear _projections and _filterProjections
   bool wasUpdated = DocumentProducingNode::recalculateProjections(plan);
 
-  updateProjectionsIndexInfo();
+  auto idx = getSingleIndex();
+  if (idx != nullptr) {
+    // covering index optimization only works with a single index
+    updateProjectionsIndexInfo();
+  }
 
   return wasUpdated;
 }

@@ -1,12 +1,20 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* COR-271: If a query uses an OR condition that affects multiple indexes
+  the covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
 
 3.12.8 (XXXX-XX-XX)
 -------------------
+
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
 
 * Accept `null` as valid value for the `roles` attribute in JWT tokens.
 
