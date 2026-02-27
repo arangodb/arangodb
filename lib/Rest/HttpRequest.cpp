@@ -482,6 +482,9 @@ void HttpRequest::parseUrl(char const* path, size_t length) {
 
   char const* start = tmp.data();
   char const* end = start + tmp.size();
+  // Detect and strip /_arango/vX or /_arango/experimental prefix first,
+  // since it must come before /_db/<dbname>.
+  detectAndStripApiVersion(start, end);
   // look for database name in URL
   if (end - start >= 5) {
     char const* q = start;
