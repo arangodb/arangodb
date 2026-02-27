@@ -126,6 +126,7 @@ defmodule ToastTest.Runner do
 
   ## Stacktrace
 
+  @spec prune_stacktrace(Exception.stacktrace()) :: Exception.stacktrace()
   def prune_stacktrace([{ExUnit.Assertions, _, _, _} | t]), do: prune_stacktrace(t)
   def prune_stacktrace([{ExUnit.Runner, _, _, _} | _]), do: []
   def prune_stacktrace([h | t]), do: [h | prune_stacktrace(t)]

@@ -1,6 +1,7 @@
 defmodule ToastTest.Interactive do
   @moduledoc false
 
+  @spec run(module() | String.t(), keyword()) :: [map()]
   def run(module_or_path, opts \\ [])
 
   def run(path, opts) when is_binary(path) do

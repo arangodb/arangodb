@@ -34,6 +34,7 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
   @internal_prefixes ["__libc_", "__GI_"]
 
   @doc false
+  @spec flush_current_thread(map()) :: map()
   def flush_current_thread(%{current: nil} = acc), do: acc
 
   def flush_current_thread(%{current: current} = acc) do
@@ -42,6 +43,7 @@ defmodule Toast.Diagnostics.Coredump.Debugger do
   end
 
   @doc false
+  @spec filter_threads([thread()], integer() | nil) :: [thread()]
   def filter_threads(threads, crash_thread) do
     Enum.map(threads, fn thread ->
       if thread.id == crash_thread do

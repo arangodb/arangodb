@@ -216,16 +216,19 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Health monitor helpers ---
 
+  @spec suspend_health_monitor(%{health_monitor: pid() | nil}) :: :ok
   def suspend_health_monitor(%{health_monitor: nil}), do: :ok
 
   def suspend_health_monitor(%{health_monitor: pid}),
     do: Toast.Process.HealthMonitor.suspend(pid)
 
+  @spec resume_health_monitor(%{health_monitor: pid() | nil}) :: :ok
   def resume_health_monitor(%{health_monitor: nil}), do: :ok
 
   def resume_health_monitor(%{health_monitor: pid}),
     do: Toast.Process.HealthMonitor.resume(pid)
 
+  @spec stop_health_monitor(%{health_monitor: pid() | nil}) :: :ok
   def stop_health_monitor(%{health_monitor: nil}), do: :ok
 
   def stop_health_monitor(%{health_monitor: pid}) do
@@ -236,9 +239,11 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Notification helpers ---
 
+  @spec notify_event((term() -> term()) | nil, term()) :: :ok
   def notify_event(nil, _event), do: :ok
   def notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)
 
+  @spec notify_crash((term(), term() -> term()) | nil, term(), term()) :: :ok
   def notify_crash(nil, _deployment, _crash_info), do: :ok
 
   def notify_crash(on_crash, deployment, crash_info) when is_function(on_crash, 2) do
@@ -247,6 +252,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Server output ---
 
+  @spec print_server_output(String.t(), String.t()) :: :ok
   def print_server_output(server_id, data) do
     data
     |> String.split("\n")

@@ -7,6 +7,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   Parses suite arguments into a suite request (`:all` or list of names)
   and a map of file filters keyed by suite name.
   """
+  @spec parse_suite_args([String.t()], String.t()) :: {:all | [String.t()], %{optional(String.t()) => [String.t()]}}
   def parse_suite_args([], _suites_dir), do: {:all, %{}}
 
   def parse_suite_args(args, _suites_dir) do
@@ -27,6 +28,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   @doc """
   Processes parsed CLI opts into ExUnit-compatible options.
   """
+  @spec process_opts(keyword()) :: keyword()
   def process_opts(opts) do
     option_keys = [
       :include,
@@ -57,6 +59,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   @doc """
   Maps CLI option keys to Toast.Config keyword list keys.
   """
+  @spec opts_to_config_list(keyword()) :: keyword()
   def opts_to_config_list(opts) do
     mapping = [
       build_dir: :build_dir,
@@ -94,6 +97,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   Classifies files in a suite directory into helpers (.ex, excluding suite.ex)
   and test files (.exs starting with test_).
   """
+  @spec discover_suite_files(String.t()) :: {[String.t()], [String.t()]}
   def discover_suite_files(suite_dir) do
     all_files = Path.wildcard(Path.join(suite_dir, "*"))
 
@@ -113,6 +117,8 @@ defmodule Mix.Tasks.Toast.Helpers do
   Filters test files based on file filter specs from CLI arguments.
   Returns `{filtered_files, line_filters}`.
   """
+  @spec apply_file_filters([String.t()], %{optional(String.t()) => [String.t()]}, String.t()) ::
+          {[String.t()], [{String.t(), pos_integer()}]}
   def apply_file_filters(test_files, filters, _suite_dir) when map_size(filters) == 0,
     do: {test_files, []}
 
@@ -139,6 +145,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   Checks whether any suite in the results has sanitizer errors.
   Handles both single-server and cluster diagnostics layouts.
   """
+  @spec has_sanitizer_errors?([map()]) :: boolean()
   def has_sanitizer_errors?(suites) do
     Enum.any?(suites, fn suite ->
       diag = suite[:diagnostics]
@@ -149,6 +156,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   @doc """
   Builds suite diagnostics from suite results for CI packaging.
   """
+  @spec build_suite_diagnostics([map()]) :: [map()]
   def build_suite_diagnostics(suites) do
     Enum.map(suites, fn suite ->
       %{
@@ -165,6 +173,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   @doc """
   Builds per-suite options from test modules, line filters, and test name pattern.
   """
+  @spec build_suite_opts([module()], [{String.t(), pos_integer()}], String.t() | nil) :: keyword()
   def build_suite_opts(test_modules, line_filters, test_name_pattern) do
     opts = []
 
@@ -187,6 +196,7 @@ defmodule Mix.Tasks.Toast.Helpers do
   Parses file specs like `["test_foo.exs", "test_bar.exs:42"]` into
   `{file_names, line_filters}`.
   """
+  @spec parse_file_specs([String.t()]) :: {[String.t()], [{String.t(), pos_integer()}]}
   def parse_file_specs(file_specs) do
     Enum.reduce(file_specs, {[], []}, fn spec, {files, lines} ->
       case String.split(spec, ":") do

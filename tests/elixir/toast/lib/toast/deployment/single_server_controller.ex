@@ -66,14 +66,20 @@ defmodule Toast.Deployment.SingleServerController do
     GenServer.call(server, :get_info)
   end
 
+  @spec stop_server(GenServer.server(), term()) :: :ok | {:error, term()}
   def stop_server(server, server_id), do: GenServer.call(server, {:stop_server, server_id})
+  @spec kill_server(GenServer.server(), term()) :: :ok | {:error, term()}
   def kill_server(server, server_id), do: GenServer.call(server, {:kill_server, server_id})
+  @spec pause_server(GenServer.server(), term()) :: :ok | {:error, term()}
   def pause_server(server, server_id), do: GenServer.call(server, {:pause_server, server_id})
+  @spec resume_server(GenServer.server(), term()) :: :ok | {:error, term()}
   def resume_server(server, server_id), do: GenServer.call(server, {:resume_server, server_id})
 
+  @spec restart_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
   def restart_server(server, server_id, opts \\ []),
     do: GenServer.call(server, {:restart_server, server_id, opts}, 65_000)
 
+  @spec start_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
   def start_server(server, server_id, opts \\ []),
     do: GenServer.call(server, {:start_server, server_id, opts}, 65_000)
 

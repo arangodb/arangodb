@@ -1,4 +1,5 @@
 defmodule ToastTest.StateCleanup do
+  @spec reset() :: :ok
   def reset do
     reset_deployment_registry()
     reset_abort_table()

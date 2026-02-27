@@ -1,19 +1,23 @@
 defmodule ToastTest.ProcessHistory do
   use GenServer
 
+  @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
     name = Keyword.get(opts, :name, __MODULE__)
     GenServer.start_link(__MODULE__, %{}, name: name)
   end
 
+  @spec handle_event(term()) :: :ok
   def handle_event(event) do
     GenServer.cast(__MODULE__, {:event, event})
   end
 
+  @spec events() :: [term()]
   def events do
     GenServer.call(__MODULE__, :events)
   end
 
+  @spec clear() :: :ok
   def clear do
     GenServer.cast(__MODULE__, :clear)
   end
