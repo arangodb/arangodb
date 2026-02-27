@@ -424,7 +424,7 @@ void AuthenticationFeature::start() {
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
-void AuthenticationFeature::stop() {
+void AuthenticationFeature::beginShutdown() {
   if (_userManager) {
     _userManager->shutdown();
   }
