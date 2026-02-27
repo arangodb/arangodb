@@ -4,6 +4,8 @@
   `persistent` during database upgrade. Converted indexes are renamed by
   appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
 
+* Removed deprecated logger-follow API endpoint.
+
 * Updated ArangoDB Starter to v0.20.0-preview-2.
 
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
