@@ -58,6 +58,8 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
+#include <format>
+#include <optional>
 #include <rocksdb/db.h>
 #include <rocksdb/write_batch.h>
 #include <velocypack/Collection.h>
