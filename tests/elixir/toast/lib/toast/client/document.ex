@@ -3,28 +3,16 @@ defmodule Toast.Client.Document do
 
   @spec insert(Client.t(), String.t(), map()) :: {:ok, map()} | {:error, term()}
   def insert(%Client{} = client, collection, doc) do
-    case Client.post(client, "/_api/document/#{collection}", doc) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
-    end
+    client |> Client.post("/_api/document/#{collection}", doc) |> Client.unwrap()
   end
 
   @spec get(Client.t(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
   def get(%Client{} = client, collection, key) do
-    case Client.get(client, "/_api/document/#{collection}/#{key}") do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
-    end
+    client |> Client.get("/_api/document/#{collection}/#{key}") |> Client.unwrap()
   end
 
   @spec remove(Client.t(), String.t(), String.t()) :: :ok | {:error, term()}
   def remove(%Client{} = client, collection, key) do
-    case Client.delete(client, "/_api/document/#{collection}/#{key}") do
-      {:ok, %{status: status}} when status in 200..299 -> :ok
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
-    end
+    client |> Client.delete("/_api/document/#{collection}/#{key}") |> Client.unwrap_ok()
   end
 end

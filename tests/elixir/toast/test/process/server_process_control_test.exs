@@ -3,6 +3,8 @@ defmodule Toast.Process.ServerProcessControlTest do
 
   alias Toast.Process.ServerProcess
 
+  import Toast.ServerTestHelpers, only: [cleanup_server: 1, os_process_alive?: 1]
+
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
   setup do
@@ -13,7 +15,7 @@ defmodule Toast.Process.ServerProcessControlTest do
   defp start_and_launch(id, extra_opts \\ []) do
     opts = Keyword.merge([id: id, executable: @fake_server, args: ["--port", "0"]], extra_opts)
     {:ok, pid} = ServerProcess.start_link(opts)
-    on_exit(fn -> cleanup(pid) end)
+    on_exit(fn -> cleanup_server(pid) end)
     :ok = ServerProcess.launch(pid)
     pid
   end
@@ -21,24 +23,8 @@ defmodule Toast.Process.ServerProcessControlTest do
   defp start_stopped(id) do
     opts = [id: id, executable: @fake_server, args: ["--port", "0"]]
     {:ok, pid} = ServerProcess.start_link(opts)
-    on_exit(fn -> cleanup(pid) end)
+    on_exit(fn -> cleanup_server(pid) end)
     pid
-  end
-
-  defp cleanup(pid) do
-    if Process.alive?(pid) do
-      try do
-        ServerProcess.stop(pid, 2_000)
-      catch
-        :exit, _ -> :ok
-      end
-    end
-
-    if Process.alive?(pid) do
-      ref = Process.monitor(pid)
-      try do GenServer.stop(pid, :normal, 1_000) catch :exit, _ -> :ok end
-      receive do {:DOWN, ^ref, _, _, _} -> :ok after 1_000 -> :ok end
-    end
   end
 
   describe "kill/1" do
@@ -122,7 +108,7 @@ defmodule Toast.Process.ServerProcessControlTest do
 
       opts = [id: id, executable: @fake_server, args: original_args, env: [{"MY_VAR", "val"}]]
       {:ok, pid} = ServerProcess.start_link(opts)
-      on_exit(fn -> cleanup(pid) end)
+      on_exit(fn -> cleanup_server(pid) end)
       :ok = ServerProcess.launch(pid)
       :ok = ServerProcess.stop(pid, 5_000)
 
@@ -144,7 +130,7 @@ defmodule Toast.Process.ServerProcessControlTest do
 
       opts = [id: id, executable: @fake_server, args: original_args]
       {:ok, pid} = ServerProcess.start_link(opts)
-      on_exit(fn -> cleanup(pid) end)
+      on_exit(fn -> cleanup_server(pid) end)
       :ok = ServerProcess.launch(pid)
       :ok = ServerProcess.stop(pid, 5_000)
 
@@ -163,7 +149,4 @@ defmodule Toast.Process.ServerProcessControlTest do
     end
   end
 
-  defp os_process_alive?(os_pid) do
-    match?({_, 0}, System.cmd("kill", ["-0", to_string(os_pid)], stderr_to_stdout: true))
-  end
 end

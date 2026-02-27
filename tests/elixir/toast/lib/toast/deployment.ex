@@ -269,14 +269,23 @@ defmodule Toast.Deployment do
 
   # --- Server control operations ---
 
+  @spec stop_server(t(), server_target()) :: :ok | {:error, term()}
   def stop_server(%__MODULE__{} = d, target), do: controller_call_control(d, :stop_server, target)
+
+  @spec kill_server(t(), server_target()) :: :ok | {:error, term()}
   def kill_server(%__MODULE__{} = d, target), do: controller_call_control(d, :kill_server, target)
+
+  @spec pause_server(t(), server_target()) :: :ok | {:error, term()}
   def pause_server(%__MODULE__{} = d, target), do: controller_call_control(d, :pause_server, target)
+
+  @spec resume_server(t(), server_target()) :: :ok | {:error, term()}
   def resume_server(%__MODULE__{} = d, target), do: controller_call_control(d, :resume_server, target)
 
+  @spec restart_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def restart_server(%__MODULE__{} = d, target, opts \\ []),
     do: controller_call_control(d, :restart_server, target, opts)
 
+  @spec start_server(t(), server_target(), keyword()) :: :ok | {:error, term()}
   def start_server(%__MODULE__{} = d, target, opts \\ []),
     do: controller_call_control(d, :start_server, target, opts)
 

@@ -26,7 +26,6 @@ defmodule Mix.Tasks.Toast.Helpers do
 
   @doc """
   Processes parsed CLI opts into ExUnit-compatible options.
-  Returns `{ex_unit_opts, nil}`.
   """
   def process_opts(opts) do
     option_keys = [
@@ -52,7 +51,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       |> Keyword.put_new(:exit_status, 2)
       |> Keyword.take(option_keys)
 
-    {[autorun: false] ++ ex_unit_opts, nil}
+    [autorun: false] ++ ex_unit_opts
   end
 
   @doc """
@@ -226,65 +225,53 @@ defmodule Mix.Tasks.Toast.Helpers do
 
   defp has_sanitizer_in_diagnostics?(_), do: false
 
-  defp extract_log_files(nil), do: []
-
-  defp extract_log_files(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :server) do
-      %{log_file: path} when is_binary(path) ->
-        [path]
-
-      _ ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, %{server: %{log_file: path}}} when is_binary(path) -> [path]
-          _ -> []
-        end)
-    end
+  defp extract_log_files(diagnostics) do
+    extract_from_diagnostics(diagnostics, :server, fn
+      %{log_file: path} when is_binary(path) -> [path]
+      _ -> []
+    end)
   end
 
-  defp extract_log_files(_), do: []
-
-  defp extract_sanitizer_files(nil), do: []
-
-  defp extract_sanitizer_files(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :sanitizer_errors) do
+  defp extract_sanitizer_files(diagnostics) do
+    extract_from_diagnostics(diagnostics, :sanitizer_errors, fn
       errors when is_list(errors) ->
-        Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
+        errors |> Enum.map(& &1.file_path) |> Enum.filter(&is_binary/1)
 
       _ ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, %{sanitizer_errors: errors}} when is_list(errors) ->
-            Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
-
-          _ ->
-            []
-        end)
-    end
+        []
+    end)
   end
 
-  defp extract_sanitizer_files(_), do: []
-
-  defp extract_core_dumps(nil), do: []
-
-  defp extract_core_dumps(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :coredump_reports) do
+  defp extract_core_dumps(diagnostics) do
+    extract_from_diagnostics(diagnostics, :coredump_reports, fn
       reports when is_list(reports) ->
-        Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
+        reports |> Enum.map(& &1.core_path) |> Enum.filter(&is_binary/1)
 
       _ ->
+        []
+    end)
+  end
+
+  defp extract_from_diagnostics(nil, _key, _extractor), do: []
+
+  defp extract_from_diagnostics(diagnostics, key, extractor) when is_map(diagnostics) do
+    case Map.get(diagnostics, key) do
+      nil ->
         diagnostics
         |> Enum.flat_map(fn
-          {_id, %{coredump_reports: reports}} when is_list(reports) ->
-            Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
+          {_id, server_diag} when is_map(server_diag) ->
+            extractor.(Map.get(server_diag, key))
 
           _ ->
             []
         end)
+
+      value ->
+        extractor.(value)
     end
   end
 
-  defp extract_core_dumps(_), do: []
+  defp extract_from_diagnostics(_diagnostics, _key, _extractor), do: []
 
   defp build_only_test_ids(test_modules, line_filters) do
     for mod <- test_modules,

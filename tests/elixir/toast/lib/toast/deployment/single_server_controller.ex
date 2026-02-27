@@ -13,6 +13,21 @@ defmodule Toast.Deployment.SingleServerController do
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
+  defmodule State do
+    @moduledoc false
+    @enforce_keys [:config, :server]
+    defstruct [
+      :config,
+      :server,
+      :error,
+      :diagnostics,
+      :on_crash,
+      :on_event,
+      status: :stopped,
+      expected_crashes: %{}
+    ]
+  end
+
   # --- Client API ---
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -69,15 +84,11 @@ defmodule Toast.Deployment.SingleServerController do
     config = Keyword.get(opts, :config, Config.load())
     id = Keyword.get_lazy(opts, :id, &generate_id/0)
 
-    state = %{
+    state = %State{
       config: config,
-      status: :stopped,
       server: %ServerInstance{id: id, role: :single},
-      error: nil,
-      diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
-      on_event: Keyword.get(opts, :on_event),
-      expected_crashes: %{}
+      on_event: Keyword.get(opts, :on_event)
     }
 
     {:ok, state}

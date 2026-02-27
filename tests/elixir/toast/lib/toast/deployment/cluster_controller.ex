@@ -12,6 +12,27 @@ defmodule Toast.Deployment.ClusterController do
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
+  defmodule State do
+    @moduledoc false
+    @enforce_keys [:config]
+    defstruct [
+      :config,
+      :id,
+      :error,
+      :diagnostics,
+      :on_crash,
+      :on_event,
+      :agency_dump,
+      status: :stopped,
+      servers: %{},
+      agents: [],
+      dbservers: [],
+      coordinators: [],
+      cluster_id_mapping: %{},
+      expected_crashes: %{}
+    ]
+  end
+
   # --- Client API ---
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -67,21 +88,11 @@ defmodule Toast.Deployment.ClusterController do
   def init(opts) do
     config = Keyword.get(opts, :config, Config.load())
 
-    state = %{
+    state = %State{
       id: Keyword.get_lazy(opts, :id, &generate_id/0),
       config: config,
-      status: :stopped,
-      servers: %{},
-      agents: [],
-      dbservers: [],
-      coordinators: [],
-      error: nil,
-      diagnostics: nil,
       on_crash: Keyword.get(opts, :on_crash),
-      on_event: Keyword.get(opts, :on_event),
-      agency_dump: nil,
-      cluster_id_mapping: %{},
-      expected_crashes: %{}
+      on_event: Keyword.get(opts, :on_event)
     }
 
     {:ok, state}

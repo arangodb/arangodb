@@ -3,38 +3,14 @@ defmodule Toast.Diagnostics.MatcherTest do
 
   alias Toast.Diagnostics.Matcher
 
-  @base_time ~U[2024-06-15 10:00:00Z]
+  import Toast.DiagnosticsTestHelpers, only: [base_time: 0, at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
-  defp at(seconds), do: DateTime.add(@base_time, seconds, :second)
-
-  defp at_ms(milliseconds), do: DateTime.add(@base_time, milliseconds, :millisecond)
+  defp at_ms(milliseconds), do: DateTime.add(base_time(), milliseconds, :millisecond)
 
   defp make_item(opts \\ []) do
     %{
       timestamp: Keyword.get(opts, :timestamp, at(5)),
       content: Keyword.get(opts, :content, "some diagnostic content")
-    }
-  end
-
-  defp make_test(opts \\ []) do
-    %{
-      module: Keyword.get(opts, :module, SmokeTest.VersionTest),
-      name: Keyword.get(opts, :name, "test server version"),
-      outcome: :passed,
-      duration_us: 1_000_000,
-      failure: nil,
-      started_at: Keyword.get(opts, :started_at, at(0)),
-      finished_at: Keyword.get(opts, :finished_at, at(10)),
-      tags: %{file: "test/version_test.exs", line: 5}
-    }
-  end
-
-  defp make_test_results(tests) do
-    %{
-      suite_started_at: @base_time,
-      suite_finished_at: at(60),
-      times_us: %{run: 60_000_000, async: nil, load: 100_000},
-      tests: tests
     }
   end
 
@@ -302,7 +278,7 @@ defmodule Toast.Diagnostics.MatcherTest do
   describe "match/4 with test_results missing :tests key" do
     test "treats missing :tests key as empty test list" do
       item = make_item(timestamp: at(5))
-      test_results = %{suite_started_at: @base_time}
+      test_results = %{suite_started_at: base_time()}
 
       result = Matcher.match([item], test_results, :error)
 

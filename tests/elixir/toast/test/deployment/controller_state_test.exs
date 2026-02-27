@@ -4,6 +4,9 @@ defmodule Toast.Deployment.ControllerStateTest do
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
 
+  import Toast.ServerTestHelpers, only: [cleanup_server: 1]
+  import Toast.DeploymentTestHelpers, only: [inject_cluster_servers: 2]
+
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
   describe "ServerInstance operational_state" do
@@ -59,21 +62,6 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert crash_info.signal == 9
     end
 
-    defp cleanup_server(pid) do
-      if Process.alive?(pid) do
-        try do
-          ServerProcess.stop(pid, 2_000)
-        catch
-          :exit, _ -> :ok
-        end
-      end
-
-      if Process.alive?(pid) do
-        ref = Process.monitor(pid)
-        try do GenServer.stop(pid, :normal, 1_000) catch :exit, _ -> :ok end
-        receive do {:DOWN, ^ref, _, _, _} -> :ok after 1_000 -> :ok end
-      end
-    end
   end
 
   # --- SingleServerController state machine tests ---
@@ -295,21 +283,6 @@ defmodule Toast.Deployment.ControllerStateTest do
   defp set_ready_with_health_monitor(ctrl, hm_pid) do
     :sys.replace_state(ctrl, fn state ->
       %{state | status: :ready, server: %{state.server | health_monitor: hm_pid}}
-    end)
-  end
-
-  defp inject_cluster_servers(ctrl, servers) do
-    :sys.replace_state(ctrl, fn state ->
-      agents = for {id, s} <- servers, s.role == :agent, do: id
-      dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
-      coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
-
-      %{state |
-        servers: servers,
-        agents: agents,
-        dbservers: dbservers,
-        coordinators: coordinators
-      }
     end)
   end
 

@@ -4,9 +4,7 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
   alias Toast.Diagnostics.SanitizerMatcher
   alias Toast.Deployment.ServerInstance
 
-  @base_time ~U[2024-06-15 10:00:00Z]
-
-  defp at(seconds), do: DateTime.add(@base_time, seconds, :second)
+  import Toast.DiagnosticsTestHelpers, only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
   defp make_error(opts \\ []) do
     %{
@@ -18,19 +16,6 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
     }
   end
 
-  defp make_test(opts \\ []) do
-    %{
-      module: Keyword.get(opts, :module, SmokeTest.VersionTest),
-      name: Keyword.get(opts, :name, "test server version"),
-      outcome: :passed,
-      duration_us: 1_000_000,
-      failure: nil,
-      started_at: Keyword.get(opts, :started_at, at(0)),
-      finished_at: Keyword.get(opts, :finished_at, at(10)),
-      tags: %{file: "test/version_test.exs", line: 5}
-    }
-  end
-
   defp make_diagnostics(errors) do
     %{
       sanitizer_errors: errors,
@@ -38,15 +23,6 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       crash_report: %{signal_number: nil, signal_name: nil, crash_header: nil, backtrace: [], fatal_lines: [], crash_output: []},
       server_error: nil,
       server: %ServerInstance{id: "toast-1", role: :single}
-    }
-  end
-
-  defp make_test_results(tests) do
-    %{
-      suite_started_at: @base_time,
-      suite_finished_at: at(60),
-      times_us: %{run: 60_000_000, async: nil, load: 100_000},
-      tests: tests
     }
   end
 

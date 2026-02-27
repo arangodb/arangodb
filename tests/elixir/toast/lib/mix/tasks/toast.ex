@@ -119,7 +119,7 @@ defmodule Mix.Tasks.Toast do
 
     Application.ensure_all_started(:ex_unit)
 
-    {ex_unit_opts, _} = Mix.Tasks.Toast.Helpers.process_opts(opts)
+    ex_unit_opts = Mix.Tasks.Toast.Helpers.process_opts(opts)
     ExUnit.configure(ex_unit_opts)
 
     suites_dir = Path.join(File.cwd!(), "suites")
@@ -151,8 +151,6 @@ defmodule Mix.Tasks.Toast do
         else
           {test_modules, orphans} = load_test_files(test_files, suite_dir)
           warn_orphans(orphans, suite_dir)
-          validate_namespaces(test_modules, suite_module, suite_dir)
-
           test_modules =
             Enum.filter(test_modules, fn mod ->
               function_exported?(mod, :__toast_suite__, 0) and
@@ -297,11 +295,6 @@ defmodule Mix.Tasks.Toast do
         "#{relative} is not a test file (must start with test_) and is not compiled as a helper (must end in .ex). This file is ignored."
       )
     end
-  end
-
-  defp validate_namespaces(_test_modules, _suite_module, _suite_dir) do
-    # Namespace validation deferred -- requires knowing the suite's root namespace
-    :ok
   end
 
 end

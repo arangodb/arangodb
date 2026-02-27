@@ -4,18 +4,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
   alias Toast.Deployment.SingleServerController, as: Controller
   alias Toast.Deployment.ClusterController
 
-  defp make_deployment(pid, opts) do
-    mode = Keyword.get(opts, :mode, :single_server)
-
-    %Toast.Deployment{
-      id: Keyword.get(opts, :id, "test-lifecycle"),
-      mode: mode,
-      config: Keyword.get(opts, :config, Toast.Config.load()),
-      endpoint: "http://127.0.0.1:0",
-      controller: pid,
-      work_dir: "/tmp/toast-test"
-    }
-  end
+  import Toast.DeploymentTestHelpers, only: [make_deployment: 2]
 
   describe "stop_and_collect/2" do
     test "returns {:ok, empty map} for a controller that never deployed" do

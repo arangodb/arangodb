@@ -3,6 +3,8 @@ defmodule Toast.Deployment.ResolveTargetTest do
 
   alias Toast.Deployment.{ClusterController, SingleServerController, ServerInstance}
 
+  import Toast.DeploymentTestHelpers, only: [inject_cluster_servers: 3]
+
   # resolve_target/2 is private in both controllers. We test it through
   # the public control operations (stop_server, kill_server, etc.) which
   # delegate to resolve_target for target resolution. By examining the
@@ -169,7 +171,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
       inject_cluster_servers(ctrl, %{
         "dbserver-0" => %ServerInstance{id: "dbserver-0", role: :dbserver, operational_state: :paused},
         "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator, operational_state: :running}
-      })
+      }, status: :ready)
 
       deployment = cluster_deployment(ctrl)
 
@@ -209,27 +211,11 @@ defmodule Toast.Deployment.ResolveTargetTest do
       "coordinator-0" => %ServerInstance{id: "coordinator-0", role: :coordinator}
     }
 
-    inject_cluster_servers(ctrl, servers)
+    inject_cluster_servers(ctrl, servers, status: :ready)
 
     on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
     %{ctrl: ctrl}
-  end
-
-  defp inject_cluster_servers(ctrl, servers) do
-    :sys.replace_state(ctrl, fn state ->
-      agents = for {id, s} <- servers, s.role == :agent, do: id
-      dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
-      coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
-
-      %{state |
-        servers: servers,
-        agents: agents,
-        dbservers: dbservers,
-        coordinators: coordinators,
-        status: :ready
-      }
-    end)
   end
 
   defp inject_cluster_id_mapping(ctrl, mapping) do

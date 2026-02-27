@@ -10,30 +10,35 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Server control operations ---
 
+  @spec stop_server(ServerInstance.t()) :: :ok
   def stop_server(%ServerInstance{} = server) do
     ServerProcess.stop(server.server_pid, 30_000)
     suspend_health_monitor(server)
     :ok
   end
 
+  @spec kill_server(ServerInstance.t()) :: :ok
   def kill_server(%ServerInstance{} = server) do
     ServerProcess.kill(server.server_pid)
     suspend_health_monitor(server)
     :ok
   end
 
+  @spec pause_server(ServerInstance.t()) :: :ok
   def pause_server(%ServerInstance{} = server) do
     ServerProcess.pause(server.server_pid)
     suspend_health_monitor(server)
     :ok
   end
 
+  @spec resume_server(ServerInstance.t()) :: :ok
   def resume_server(%ServerInstance{} = server) do
     ServerProcess.resume(server.server_pid)
     resume_health_monitor(server)
     :ok
   end
 
+  @spec stop_before_restart(ServerInstance.t()) :: :ok
   def stop_before_restart(%ServerInstance{} = server) do
     case server.operational_state do
       :running ->
@@ -50,6 +55,7 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  @spec relaunch_and_wait(ServerInstance.t(), keyword()) :: :ok | {:error, term()}
   def relaunch_and_wait(%ServerInstance{} = server, opts) do
     case ServerProcess.relaunch(server.server_pid, opts) do
       :ok ->
@@ -74,6 +80,8 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Crash handling ---
 
+  @spec handle_crash(String.t(), map(), map(), ServerInstance.t() | nil, map()) ::
+          {:expected, map()} | :intentional_exit | :crash_during_intentional_stop | :unexpected_crash
   def handle_crash(server_id, crash_info, expected_crashes, server, on_crash_ctx) do
     case Map.get(expected_crashes, server_id) do
       %{timer: _timer} = entry ->
@@ -121,6 +129,8 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Expect / verify crash protocol ---
 
+  @spec expect_crash(String.t(), timeout(), map(), ServerInstance.t()) ::
+          {:ok, map()} | {:error, :already_expected}
   def expect_crash(server_id, timeout, expected_crashes, %ServerInstance{} = server) do
     if Map.has_key?(expected_crashes, server_id) do
       {:error, :already_expected}
@@ -132,6 +142,8 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  @spec verify_crash(String.t(), timeout(), map(), GenServer.from()) ::
+          {:reply, term(), map()} | {:noreply, map()}
   def verify_crash(server_id, timeout, expected_crashes, from) do
     case Map.get(expected_crashes, server_id) do
       nil ->
@@ -148,6 +160,7 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  @spec handle_expect_crash_timeout(String.t(), map(), ServerInstance.t() | nil) :: map()
   def handle_expect_crash_timeout(server_id, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
       %{crash_info: nil} ->
@@ -160,6 +173,8 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
+  @spec handle_verify_crash_check(String.t(), GenServer.from(), integer(), map(), ServerInstance.t() | nil) ::
+          {:wait, map()} | {:done, map()}
   def handle_verify_crash_check(server_id, from, deadline, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
       %{crash_info: nil} ->
@@ -185,12 +200,14 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- State validation ---
 
+  @spec require_state(ServerInstance.t(), atom()) :: :ok | {:error, {:unexpected_state, atom()}}
   def require_state(%ServerInstance{} = server, expected) do
     if server.operational_state == expected,
       do: :ok,
       else: {:error, {:unexpected_state, server.operational_state}}
   end
 
+  @spec require_state_in(ServerInstance.t(), [atom()]) :: :ok | {:error, {:unexpected_state, atom()}}
   def require_state_in(%ServerInstance{} = server, expected_list) do
     if server.operational_state in expected_list,
       do: :ok,

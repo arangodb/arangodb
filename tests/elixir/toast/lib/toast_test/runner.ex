@@ -5,7 +5,6 @@ defmodule ToastTest.Runner do
   # SPDX-FileCopyrightText: 2012 Plataformatec
 
   alias ToastTest.ExUnitCompat, as: Compat
-  alias ExUnit.EventManager, as: EM
 
   require Logger
 
@@ -440,8 +439,8 @@ defmodule ToastTest.Runner do
 
   defp finish_module_execution(config, test_module, to_run_tests, excluded_and_skipped_tests) do
     for excluded_or_skipped_test <- excluded_and_skipped_tests do
-      EM.test_started(config.manager, excluded_or_skipped_test)
-      EM.test_finished(config.manager, excluded_or_skipped_test)
+      Compat.test_started(config.manager, excluded_or_skipped_test)
+      Compat.test_finished(config.manager, excluded_or_skipped_test)
     end
 
     {test_module, invalid_tests, finished_tests} =
@@ -452,12 +451,12 @@ defmodule ToastTest.Runner do
 
       for test <- invalid_tests do
         skipped = %{test | state: {:skipped, abort_msg}}
-        EM.test_started(config.manager, skipped)
-        EM.test_finished(config.manager, skipped)
+        Compat.test_started(config.manager, skipped)
+        Compat.test_finished(config.manager, skipped)
       end
 
       test_module = %{test_module | tests: Enum.reverse(finished_tests, invalid_tests)}
-      EM.module_finished(config.manager, test_module)
+      Compat.module_finished(config.manager, test_module)
     else
       pending_tests =
         case process_max_failures(config, test_module) do
@@ -468,12 +467,12 @@ defmodule ToastTest.Runner do
 
       if pending_tests do
         for pending_test <- pending_tests do
-          EM.test_started(config.manager, pending_test)
-          EM.test_finished(config.manager, pending_test)
+          Compat.test_started(config.manager, pending_test)
+          Compat.test_finished(config.manager, pending_test)
         end
 
         test_module = %{test_module | tests: Enum.reverse(finished_tests, pending_tests)}
-        EM.module_finished(config.manager, test_module)
+        Compat.module_finished(config.manager, test_module)
       end
     end
   end
@@ -669,16 +668,16 @@ defmodule ToastTest.Runner do
   defp check_between_tests(_config, _prev_test), do: nil
 
   defp run_test(config, test, context) do
-    EM.test_started(config.manager, test)
+    Compat.test_started(config.manager, test)
     test = spawn_test(config, test, context)
 
     case process_max_failures(config, test) do
       :no ->
-        EM.test_finished(config.manager, test)
+        Compat.test_finished(config.manager, test)
         {:ok, test}
 
       {:reached, 1} ->
-        EM.test_finished(config.manager, test)
+        Compat.test_finished(config.manager, test)
         :max_failures_reached
 
       :surpassed ->

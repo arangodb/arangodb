@@ -5,15 +5,9 @@ defmodule Toast.Client.AQL do
   def execute(%Client{} = client, query, bind_vars \\ %{}) do
     body = %{"query" => query, "bindVars" => bind_vars}
 
-    case Client.post(client, "/_api/cursor", body) do
-      {:ok, %{status: 201, body: body}} ->
-        collect_cursor_results(client, body)
-
-      {:ok, resp} ->
-        {:error, %{status: resp.status, body: resp.body}}
-
-      {:error, reason} ->
-        {:error, reason}
+    case client |> Client.post("/_api/cursor", body) |> Client.unwrap(201) do
+      {:ok, body} -> collect_cursor_results(client, body)
+      {:error, _} = err -> err
     end
   end
 
@@ -30,15 +24,12 @@ defmodule Toast.Client.AQL do
   end
 
   defp collect_cursor_pages(client, %{"hasMore" => true, "id" => cursor_id}, acc) do
-    case Client.put(client, "/_api/cursor/#{cursor_id}") do
-      {:ok, %{status: 200, body: next_body}} ->
+    case client |> Client.put("/_api/cursor/#{cursor_id}") |> Client.unwrap(200) do
+      {:ok, next_body} ->
         collect_cursor_pages(client, next_body, [next_body["result"] | acc])
 
-      {:ok, resp} ->
-        {:error, %{status: resp.status, body: resp.body}}
-
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _} = err ->
+        err
     end
   end
 

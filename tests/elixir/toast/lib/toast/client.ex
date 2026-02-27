@@ -90,6 +90,40 @@ defmodule Toast.Client do
   defp version_prefix(version) when is_integer(version), do: "/_arango/v#{version}"
   defp version_prefix(version) when is_binary(version), do: "/_arango/#{version}"
 
+  @spec unwrap(
+          {:ok, Req.Response.t()} | {:error, term()},
+          Range.t() | integer()
+        ) :: {:ok, map()} | :ok | {:error, term()}
+  def unwrap(result, expected_status \\ 200..299)
+
+  def unwrap({:ok, %{status: status, body: body}}, expected)
+      when is_integer(expected) and status == expected,
+      do: {:ok, body}
+
+  def unwrap({:ok, %{status: status, body: body}}, %Range{} = expected) do
+    if status in expected, do: {:ok, body}, else: {:error, %{status: status, body: body}}
+  end
+
+  def unwrap({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
+  def unwrap({:error, _} = err, _expected), do: err
+
+  @spec unwrap_ok(
+          {:ok, Req.Response.t()} | {:error, term()},
+          Range.t() | integer()
+        ) :: :ok | {:error, term()}
+  def unwrap_ok(result, expected_status \\ 200..299)
+
+  def unwrap_ok({:ok, %{status: status}}, expected)
+      when is_integer(expected) and status == expected,
+      do: :ok
+
+  def unwrap_ok({:ok, %{status: status}}, %Range{} = expected) do
+    if status in expected, do: :ok, else: {:error, %{status: status}}
+  end
+
+  def unwrap_ok({:ok, resp}, _expected), do: {:error, %{status: resp.status, body: resp.body}}
+  def unwrap_ok({:error, _} = err, _expected), do: err
+
   defp apply_auth(%__MODULE__{auth: nil}, opts), do: opts
 
   defp apply_auth(%__MODULE__{auth: auth}, opts) do

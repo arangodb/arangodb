@@ -63,7 +63,14 @@ defmodule Toast.Config do
   @spec load(keyword()) :: t()
   def load(opts) do
     local = load_local_config()
+    {build_dir, explicit_sanitizer, sanitizer, factor} = resolve_sanitizer(opts, local)
 
+    build_config(opts, local, build_dir, explicit_sanitizer, sanitizer, factor)
+    |> apply_timeout_factor(factor)
+    |> log_config()
+  end
+
+  defp resolve_sanitizer(opts, local) do
     build_dir = opt_or(opts, :build_dir, env("TOAST_BUILD_DIR"), local[:build_dir])
 
     explicit_sanitizer =
@@ -73,17 +80,21 @@ defmodule Toast.Config do
     sanitizer = opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect(explicit_sanitizer))
     factor = opt_or(opts, :timeout_factor, read_timeout_factor(sanitizer), local[:timeout_factor])
 
-    config = %__MODULE__{
+    {build_dir, explicit_sanitizer, sanitizer, factor}
+  end
+
+  defp build_config(opts, local, build_dir, explicit_sanitizer, sanitizer, factor) do
+    %__MODULE__{
       build_dir: build_dir,
       work_dir: opt_or(opts, :work_dir, env("TOAST_WORK_DIR"), local[:work_dir]) || default_work_dir(),
       result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]) || @default_result_dir,
       deployment_mode: opt_or(opts, :deployment_mode, read_deployment_mode(), local[:deployment_mode]),
       show_server_logs: opt_or(opts, :show_server_logs, read_show_server_logs(), local[:show_server_logs]),
       server_args: Keyword.get(opts, :server_args, local[:server_args] || %{}),
-      global_timeout: opt_or(opts, :global_timeout, read_timeout("TOAST_GLOBAL_TIMEOUT", 3_600_000), local[:global_timeout]) * factor,
-      test_timeout: opt_or(opts, :test_timeout, read_timeout("TOAST_TEST_TIMEOUT", 300_000), local[:test_timeout]) * factor,
-      startup_timeout: opt_or(opts, :startup_timeout, read_timeout("TOAST_STARTUP_TIMEOUT", 60_000), local[:startup_timeout]) * factor,
-      shutdown_timeout: opt_or(opts, :shutdown_timeout, read_timeout("TOAST_SHUTDOWN_TIMEOUT", 60_000), local[:shutdown_timeout]) * factor,
+      global_timeout: opt_or(opts, :global_timeout, read_timeout("TOAST_GLOBAL_TIMEOUT", 3_600_000), local[:global_timeout]),
+      test_timeout: opt_or(opts, :test_timeout, read_timeout("TOAST_TEST_TIMEOUT", 300_000), local[:test_timeout]),
+      startup_timeout: opt_or(opts, :startup_timeout, read_timeout("TOAST_STARTUP_TIMEOUT", 60_000), local[:startup_timeout]),
+      shutdown_timeout: opt_or(opts, :shutdown_timeout, read_timeout("TOAST_SHUTDOWN_TIMEOUT", 60_000), local[:shutdown_timeout]),
       timeout_factor: factor,
       cluster_agents: opt_or(opts, :cluster_agents, read_pos_int("TOAST_CLUSTER_AGENTS", 3), local[:cluster_agents]),
       cluster_dbservers: opt_or(opts, :cluster_dbservers, read_pos_int("TOAST_CLUSTER_DBSERVERS", 3), local[:cluster_dbservers]),
@@ -95,10 +106,23 @@ defmodule Toast.Config do
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
       debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]) || :auto,
       dump_agency_on_error: opt_or(opts, :dump_agency_on_error, read_opt_bool("TOAST_DUMP_AGENCY"), local[:dump_agency_on_error]) |> default_true(),
-      coredump_timeout: (opt_or(opts, :coredump_timeout, read_pos_int("TOAST_COREDUMP_TIMEOUT", nil), local[:coredump_timeout]) || 120_000) * factor,
+      coredump_timeout: opt_or(opts, :coredump_timeout, read_pos_int("TOAST_COREDUMP_TIMEOUT", nil), local[:coredump_timeout]) || 120_000,
       ci: opt_or(opts, :ci, read_bool("TOAST_CI"), local[:ci])
     }
+  end
 
+  defp apply_timeout_factor(config, factor) do
+    %{
+      config
+      | global_timeout: config.global_timeout * factor,
+        test_timeout: config.test_timeout * factor,
+        startup_timeout: config.startup_timeout * factor,
+        shutdown_timeout: config.shutdown_timeout * factor,
+        coredump_timeout: config.coredump_timeout * factor
+    }
+  end
+
+  defp log_config(config) do
     Logger.debug(fn ->
       fields = [
         build_dir: inspect(config.build_dir),

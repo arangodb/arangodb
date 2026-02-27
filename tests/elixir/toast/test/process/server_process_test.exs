@@ -3,6 +3,8 @@ defmodule Toast.Process.ServerProcessTest do
 
   alias Toast.Process.ServerProcess
 
+  import Toast.ServerTestHelpers, only: [cleanup_server: 1, os_process_alive?: 1]
+
   @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
   setup do
@@ -18,38 +20,8 @@ defmodule Toast.Process.ServerProcessTest do
       )
 
     {:ok, pid} = ServerProcess.start_link(opts)
-
-    on_exit(fn ->
-      if Process.alive?(pid) do
-        try do
-          ServerProcess.stop(pid, 2_000)
-        catch
-          :exit, _ -> :ok
-        end
-      end
-
-      if Process.alive?(pid) do
-        ref = Process.monitor(pid)
-
-        try do
-          GenServer.stop(pid, :normal, 1_000)
-        catch
-          :exit, _ -> :ok
-        end
-
-        receive do
-          {:DOWN, ^ref, _, _, _} -> :ok
-        after
-          1_000 -> :ok
-        end
-      end
-    end)
-
+    on_exit(fn -> cleanup_server(pid) end)
     pid
-  end
-
-  defp os_process_alive?(os_pid) do
-    match?({_, 0}, System.cmd("kill", ["-0", to_string(os_pid)], stderr_to_stdout: true))
   end
 
   describe "launch and stop" do

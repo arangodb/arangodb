@@ -105,62 +105,62 @@ defmodule Mix.Tasks.ToastTest do
 
   describe "process_opts/1" do
     test "returns autorun: false in output" do
-      {opts, nil} = Helpers.process_opts([])
+      opts = Helpers.process_opts([])
 
       assert opts[:autorun] == false
     end
 
     test "sets default exit_status to 2" do
-      {opts, _} = Helpers.process_opts([])
+      opts = Helpers.process_opts([])
 
       assert opts[:exit_status] == 2
     end
 
     test "passes through trace" do
-      {opts, _} = Helpers.process_opts(trace: true)
+      opts = Helpers.process_opts(trace: true)
 
       assert opts[:trace] == true
     end
 
     test "passes through max_cases" do
-      {opts, _} = Helpers.process_opts(max_cases: 4)
+      opts = Helpers.process_opts(max_cases: 4)
 
       assert opts[:max_cases] == 4
     end
 
     test "passes through timeout" do
-      {opts, _} = Helpers.process_opts(timeout: 5000)
+      opts = Helpers.process_opts(timeout: 5000)
 
       assert opts[:timeout] == 5000
     end
 
     test "passes through max_failures" do
-      {opts, _} = Helpers.process_opts(max_failures: 3)
+      opts = Helpers.process_opts(max_failures: 3)
 
       assert opts[:max_failures] == 3
     end
 
     test "parses include filters via ExUnit.Filters" do
-      {opts, _} = Helpers.process_opts(include: "slow")
+      opts = Helpers.process_opts(include: "slow")
 
       assert opts[:include] == ExUnit.Filters.parse(["slow"])
     end
 
     test "parses exclude filters via ExUnit.Filters" do
-      {opts, _} = Helpers.process_opts(exclude: "integration")
+      opts = Helpers.process_opts(exclude: "integration")
 
       assert opts[:exclude] == ExUnit.Filters.parse(["integration"])
     end
 
     test "only adds to include and adds :test to exclude" do
-      {opts, _} = Helpers.process_opts(only: "smoke")
+      opts = Helpers.process_opts(only: "smoke")
 
       assert opts[:include] == ExUnit.Filters.parse(["smoke"])
       assert :test in opts[:exclude]
     end
 
     test "only merges with existing include" do
-      {opts, _} = Helpers.process_opts(only: "smoke", include: "fast")
+      opts = Helpers.process_opts(only: "smoke", include: "fast")
 
       include = opts[:include]
       assert :smoke in include or {:smoke, true} in include
@@ -168,31 +168,31 @@ defmodule Mix.Tasks.ToastTest do
     end
 
     test "color true sets colors: [enabled: true]" do
-      {opts, _} = Helpers.process_opts(color: true)
+      opts = Helpers.process_opts(color: true)
 
       assert opts[:colors] == [enabled: true]
     end
 
     test "color false sets colors: [enabled: false]" do
-      {opts, _} = Helpers.process_opts(color: false)
+      opts = Helpers.process_opts(color: false)
 
       assert opts[:colors] == [enabled: false]
     end
 
     test "no color option omits colors key" do
-      {opts, _} = Helpers.process_opts([])
+      opts = Helpers.process_opts([])
 
       refute Keyword.has_key?(opts, :colors)
     end
 
     test "formatter option converts string to module" do
-      {opts, _} = Helpers.process_opts(formatter: "ExUnit.CLIFormatter")
+      opts = Helpers.process_opts(formatter: "ExUnit.CLIFormatter")
 
       assert opts[:formatters] == [ExUnit.CLIFormatter]
     end
 
     test "strips non-ExUnit keys from output" do
-      {opts, _} = Helpers.process_opts(build_dir: "/foo", cluster: true)
+      opts = Helpers.process_opts(build_dir: "/foo", cluster: true)
 
       refute Keyword.has_key?(opts, :build_dir)
       refute Keyword.has_key?(opts, :cluster)

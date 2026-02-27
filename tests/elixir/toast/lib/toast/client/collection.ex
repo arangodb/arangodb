@@ -5,21 +5,14 @@ defmodule Toast.Client.Collection do
   def create(%Client{} = client, name, opts \\ []) do
     type = if Keyword.get(opts, :edge, false), do: 3, else: 2
     body = %{"name" => name, "type" => type}
-
-    case Client.post(client, "/_api/collection", body) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
-    end
+    client |> Client.post("/_api/collection", body) |> Client.unwrap()
   end
 
   @spec drop(Client.t(), String.t()) :: :ok | {:error, term()}
   def drop(%Client{} = client, name) do
     case Client.delete(client, "/_api/collection/#{name}") do
-      {:ok, %{status: status}} when status in 200..299 -> :ok
       {:ok, %{status: 404}} -> :ok
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
+      other -> Client.unwrap_ok(other)
     end
   end
 
@@ -28,10 +21,8 @@ defmodule Toast.Client.Collection do
     exclude_system = Keyword.get(opts, :exclude_system, false)
     params = if exclude_system, do: [excludeSystem: true], else: []
 
-    case Client.get(client, "/_api/collection", params: params) do
-      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body["result"]}
-      {:ok, resp} -> {:error, %{status: resp.status, body: resp.body}}
-      {:error, reason} -> {:error, reason}
+    with {:ok, body} <- client |> Client.get("/_api/collection", params: params) |> Client.unwrap() do
+      {:ok, body["result"]}
     end
   end
 end

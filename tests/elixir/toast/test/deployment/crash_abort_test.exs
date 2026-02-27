@@ -4,18 +4,9 @@ defmodule Toast.Deployment.CrashAbortTest do
   alias Toast.Deployment.{SingleServerController, ClusterController}
   alias Toast.Process.ServerProcess
 
-  @fake_server Path.expand("../support/fake_server.sh", __DIR__)
+  import Toast.DeploymentTestHelpers, only: [make_deployment: 1, make_deployment: 2]
 
-  defp make_deployment(pid, opts \\ []) do
-    %Toast.Deployment{
-      id: Keyword.get(opts, :id, "test-crash"),
-      mode: Keyword.get(opts, :mode, :single_server),
-      config: Toast.Config.load(),
-      endpoint: "http://127.0.0.1:0",
-      controller: pid,
-      work_dir: "/tmp/toast-test"
-    }
-  end
+  @fake_server Path.expand("../support/fake_server.sh", __DIR__)
 
   describe "crash status propagation" do
     test "controller status becomes :failed after crash message" do
