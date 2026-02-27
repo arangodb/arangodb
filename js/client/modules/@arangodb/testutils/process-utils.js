@@ -104,8 +104,11 @@ function setupBinaries (options) {
     } else if (fs.exists(fs.join(directory, "bin"))) {
       print('4');
       oneSet.BIN_DIR = fs.join(directory, 'bin');
-    } else {
+    } else if (fs.exists(fs.join(oneSet.BIN_DIR, 'bin'))) {
+      oneSet.BIN_DIR = fs.join(oneSet.BIN_DIR, 'bin');
       print('5');
+    } else {
+      print('6');
       oneSet.BIN_DIR = fs.makeAbsolute(oneSet.BIN_DIR);
     }
     print(oneSet.BIN_DIR);
