@@ -240,8 +240,6 @@ start() {
       --log.level $LOG_LEVEL_CLUSTER
       --server.descriptors-minimum 0
       --http.trusted-origin all
-      --database.check-version false
-      --database.upgrade-check false
       --experimental-vector-index true
       --rocksdb.enable-statistics true
       --network.compression-method lz4

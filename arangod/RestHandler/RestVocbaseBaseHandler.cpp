@@ -103,26 +103,6 @@ std::string const RestVocbaseBaseHandler::INDEX_PATH = "/_api/index";
 std::string const RestVocbaseBaseHandler::REPLICATION_PATH =
     "/_api/replication";
 
-// simple query all path
-std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
-    "/_api/simple/all";
-
-// simple query all-keys path
-std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
-    "/_api/simple/all-keys";
-
-// simple query by example path
-std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE =
-    "/_api/simple/by-example";
-
-// document batch lookup path
-std::string const RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH =
-    "/_api/simple/lookup-by-keys";
-
-// document batch remove path
-std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
-    "/_api/simple/remove-by-keys";
-
 // tasks path
 std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
 

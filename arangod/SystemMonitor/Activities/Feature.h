@@ -49,10 +49,12 @@ class Feature final : public application_features::ApplicationFeature,
   velocypack::Builder getData() const;
   velocypack::SharedSlice getCrashData() const override;
   std::string_view getDataSourceName() const override { return name(); }
+  bool isOnlySuperUserEnabled() { return _options.isOnlySuperUserEnabled; }
 
  private:
   struct Options {
     size_t gc_timeout{1};
+    bool isOnlySuperUserEnabled{false};
   };
   Options _options;
 

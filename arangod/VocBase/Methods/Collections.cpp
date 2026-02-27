@@ -585,7 +585,7 @@ Collections::create(         // create collection
       collections, ",",
       [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
 
-  activities::Activity activity("createCollections",
+  activities::Activity activity("CreateCollections",
                                 {{"collectionNames", collectionNames}});
 
   // Let's first check if we are allowed to create the collections

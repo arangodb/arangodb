@@ -69,7 +69,6 @@ add_library(arangoserver STATIC
   GeneralServer/SslServerFeature.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
-  RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminDeploymentHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -96,12 +95,11 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsBaseHandler.cpp
   RestHandler/RestOptionsDescriptionHandler.cpp
   RestHandler/RestOptionsHandler.cpp
+  RestHandler/RestPublicOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestQueryPlanCacheHandler.cpp
   RestHandler/RestShutdownHandler.cpp
-  RestHandler/RestSimpleHandler.cpp
-  RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
@@ -113,6 +111,7 @@ add_library(arangoserver STATIC
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
+  RestHandler/RestOpenApiHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp

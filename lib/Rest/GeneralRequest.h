@@ -38,6 +38,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
+#include "Basics/Result.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
@@ -87,6 +88,14 @@ class GeneralRequest {
   // @brief User sending this request
   std::string const& user() const { return _user; }
   void setUser(std::string user);
+
+  /// @brief Roles from JWT token (if authenticated via JWT)
+  std::vector<std::string> const& roles() const { return _roles; }
+  void setRoles(std::vector<std::string> roles);
+
+  /// @brief JWT token string (if authenticated via JWT)
+  std::string const& jwtToken() const { return _jwtToken; }
+  void setJwtToken(std::string token);
 
   /// @brief the request context depends on the application
   std::shared_ptr<RequestContext> requestContext() const {
@@ -203,6 +212,14 @@ class GeneralRequest {
     _authenticationMethod = method;
   }
 
+  /// @brief get the requested API version
+  uint32_t requestedApiVersion() const noexcept { return _requestedApiVersion; }
+
+  /// @brief detect and strip /_arango/vX or /_arango/experimental prefix from
+  /// the request path
+  /// @return Result::OK if successful, error if /_arango prefix is invalid
+  Result detectAndStripApiVersion();
+
  protected:
   static RequestType findRequestType(char const*, size_t const);
   void setValue(std::string key, std::string value);
@@ -222,6 +239,8 @@ class GeneralRequest {
 
   std::string _databaseName;
   std::string _user;
+  std::vector<std::string> _roles;
+  std::string _jwtToken;
 
   std::string _fullUrl;
   std::string _requestPath;
@@ -246,6 +265,9 @@ class GeneralRequest {
   size_t _memoryUsage;
 
   rest::AuthenticationMethod _authenticationMethod;
+
+  // API version requested (0 by default, max for experimental)
+  uint32_t _requestedApiVersion;
 
   // information about the payload
   RequestType _type;         // GET, POST, ..

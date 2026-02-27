@@ -205,7 +205,6 @@ function inventorySuite () {
       c.ensureIndex({ type: "persistent", fields: ["a_su"], unique: true });
       c.ensureIndex({ type: "persistent", fields: ["a_hs1", "a_hs2"], sparse: true });
       c.ensureIndex({ type: "persistent", fields: ["a_ss1", "a_ss2"], sparse: true });
-      c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
       c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
 
       let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
@@ -293,7 +292,7 @@ function inventorySuite () {
         assertEqual(0, collection.indexes.length);
 
         collection = byName["UnitTestsDumpIndexes"];
-        assertEqual(8, collection.indexes.length);
+        assertEqual(7, collection.indexes.length);
 
         assertEqual(["a_uc"], collection.indexes[0].fields);
         assertEqual("persistent", collection.indexes[0].type);
@@ -319,10 +318,10 @@ function inventorySuite () {
         assertEqual("persistent", collection.indexes[5].type);
         assertTrue(collection.indexes[5].sparse);
         assertFalse(collection.indexes[5].unique);
-        assertEqual(["a_f"], collection.indexes[6].fields);
-        assertEqual("fulltext", collection.indexes[6].type);
-        assertEqual(["a_la", "a_lo"], collection.indexes[7].fields);
-        assertEqual("geo", collection.indexes[7].type);
+        // assertEqual(["a_f"], collection.indexes[6].fields);
+        // assertEqual("fulltext", collection.indexes[6].type);
+        assertEqual(["a_la", "a_lo"], collection.indexes[6].fields);
+        assertEqual("geo", collection.indexes[6].type);
         
         collection = byName["UnitTestsDumpViewCollection"];
         assertEqual(2, collection.parameters.type);

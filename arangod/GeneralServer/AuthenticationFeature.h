@@ -61,6 +61,7 @@ class AuthenticationFeature final
 
   bool authenticationUnixSockets() const noexcept;
   bool authenticationSystemOnly() const noexcept;
+  std::string_view externalRBACservice() const noexcept;
 
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept;
@@ -70,10 +71,9 @@ class AuthenticationFeature final
   auth::UserManager* userManager() const noexcept;
 
   bool hasUserdefinedJwt() const;
-#ifdef USE_ENTERPRISE
-  /// verification only secrets
-  std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
-#endif
+  /// verification only secrets (returns active secret, passive secrets,
+  /// isES256)
+  std::tuple<std::string, std::vector<std::string>, bool> jwtSecrets() const;
 
   double sessionTimeout() const { return _options.sessionTimeout; }
   double minimalJwtExpiryTime() const { return _options.minimalJwtExpiryTime; }

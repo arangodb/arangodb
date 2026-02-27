@@ -32,13 +32,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -539,4 +539,88 @@ Result UpgradeTasks::dropPregelQueriesCollection(
     res.reset();
   }
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops old statistics collections: '_statistics', '_statistics15',
+/// '_statisticsRaw'
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropOldStatisticsCollections(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  // Drop collection will revoke the rights of all the users that had rights
+  // on it, so we need a working UserManager here.
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->loadUserCacheAndStartUpdateThread();
+  }
+
+  CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                    .allowDropGraphCollection = true};
+
+  // List of old statistics collections to drop
+  std::vector<std::string> collectionsToDrop = {"_statistics", "_statistics15",
+                                                "_statisticsRaw"};
+
+  Result res;
+  for (auto const& collectionName : collectionsToDrop) {
+    std::shared_ptr<arangodb::LogicalCollection> col;
+    auto lookupRes =
+        arangodb::methods::Collections::lookup(vocbase, collectionName, col);
+    if (col) {
+      auto dropRes = arangodb::methods::Collections::drop(*col, dropOptions);
+      if (dropRes.fail()) {
+        if (!dropRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+          // Only propagate non-expected errors
+          res = dropRes;
+        }
+      }
+    }
+    // If collection doesn't exist (col == nullptr), that's fine, just continue
+    // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND from lookup is also expected
+  }
+
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND is expected if collections don't
+  // exist
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    res.reset();
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops all fulltext indexes (no longer supported since 4.0)
+////////////////////////////////////////////////////////////////////////////////
+
+Result UpgradeTasks::dropFulltextIndexes(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice /*upgradeParams*/) {
+  // On a coordinator, vocbase.collections() returns empty because collections
+  // live in ClusterInfo. Use methods::Collections which handles both cases.
+  auto collections = methods::Collections::sorted(vocbase);
+
+  // Drop all fulltext indexes from all collections.
+  // Uses methods::Indexes::drop which on a coordinator propagates the
+  // drop through the agency so that DBServers pick up the change.
+  for (auto const& collection : collections) {
+    auto indexes = collection->getPhysical()->getReadyIndexes();
+    for (auto const& index : indexes) {
+      if (index->type() == Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+        LOG_TOPIC("d4e3f", WARN, Logger::STARTUP)
+            << "Dropping obsolete fulltext index '" << index->id().id()
+            << "' from collection '" << collection->name()
+            << "' - fulltext indexes are no longer supported";
+
+        auto res =
+            methods::Indexes::drop(*collection, index->id()).waitAndGet();
+
+        if (res.fail()) {
+          LOG_TOPIC("d4e40", ERR, Logger::STARTUP)
+              << "Error dropping fulltext index: " << res.errorMessage();
+          return res;
+        }
+      }
+    }
+  }
+
+  return {};
 }

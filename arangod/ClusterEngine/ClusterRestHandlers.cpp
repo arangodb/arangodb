@@ -34,10 +34,11 @@ void ClusterRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
   handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
-      RestHandlerCreator<ClusterRestCollectionHandler>::createNoData);
+      RestHandlerCreator<ClusterRestCollectionHandler>::createNoData, {1});
   handlerFactory->addPrefixHandler(
       "/_api/replication",
-      RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
+      RestHandlerCreator<ClusterRestReplicationHandler>::createNoData, {1});
   handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<ClusterRestWalHandler>::createNoData);
+      "/_admin/wal", RestHandlerCreator<ClusterRestWalHandler>::createNoData,
+      {1});
 }

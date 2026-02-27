@@ -1747,21 +1747,6 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
       if ((type.isString() &&
            type.stringView() == StaticStrings::IndexNameVector) ==
           doVectorIndexes) {
-        // transform deprecated "hash" or "skiplist" into "persistent"
-        if (type.isString() &&
-            (type.stringView() == "hash" || type.stringView() == "skiplist")) {
-          rebuilder.clear();
-          rebuilder.openObject();
-          rebuilder.add(StaticStrings::IndexType, VPackValue("persistent"));
-          for (auto const& it : VPackObjectIterator(ind)) {
-            if (!it.key.isEqualString(StaticStrings::IndexType)) {
-              rebuilder.add(it.key);
-              rebuilder.add(it.value);
-            }
-          }
-          rebuilder.close();
-          ind = rebuilder.slice();
-        }
         newIndexes.add(ind);
       }
     }

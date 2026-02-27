@@ -1,5 +1,65 @@
-4.0
----
+4.0.0 (XXXX-XX-XX)
+------------------
+
+* Updated ArangoDB Starter to v0.20.0-preview-2.
+
+* Uninstall all routes for API version 0, which no longer exists in 4.0.
+
+* Remove deprecated option `--server.jwt-secret` because it is insecure.
+
+* Remove metrics for V8 contexts:
+  - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  - `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  - `arangodb_v8_context_free`: number of V8 contexts currently free.
+  - `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  - `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
+* arangorestore now automatically converts deprecated `fulltext` indexes to
+  `inverted` indexes when restoring dumps from older versions.
+
+* Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Remove leftovers of arangoimp.
+
+* Remove /_admin/database/target-version endpoint in favor of /_api/version.
+
+* Remove simple query API. This includes the following endpoints:
+    - /_api/simple/all
+    - /_api/simple/all-keys
+    - /_api/simple/by-example
+    - /_api/simple/lookup-by-keys
+    - /_api/simple/remove-by-keys
+  Also the following arangosh collection APIs are removed in favor of AQL:
+    - byCondition
+    - geo
+    - near
+    - within
+    - withinRectangle
+  For convenience the following APIs are retained and have been reimplemented
+  via AQL. However, they are simplified a bit and no longer support `skip` and
+  `limit`:
+    - any
+    - all
+    - range
+    - byExample
+    - firstExample
+    - removeByExample
+    - replaceByExample
+    - updateByExample
+
+* Remove fulltext indexes. Fulltext indexes are no longer supported and have
+  been replaced by ArangoSearch (inverted indexes). Existing fulltext indexes
+  will be automatically dropped during upgrade. The following functionality
+  has been removed:
+  - Fulltext index creation via `ensureFulltextIndex()` and `ensureIndex({type: "fulltext", ...})`
+  - The `FULLTEXT()` AQL function
+  - The `collection.fulltext()` JavaScript method
+  - The `PUT /_api/simple/fulltext` REST API endpoint
+  - The `lookupFulltextIndex()` method
+  Users should migrate to inverted indexes for full-text search functionality.
+
 * Remove _fishBowl collection.
 
 * Remove arangodb/foxx related code.
@@ -44,13 +104,61 @@
 
 * Remove FoxxMaster code.
 
-devel
------
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
 
-* Rebuilt included rclone v1.65.2 with go1.24.12 and non-vulnerable
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
+* Updated minimatch to 10.2.1.
+
+* Add new API GET /_admin/options-public for new platform UI.
+
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
   dependencies.
 
-* Updated ArangoDB Starter to v0.19.16.
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
+* Add switch `--server.external-rbac-service` to enable role-based access control.
+  For now, it does not do the actual authorization change.
+
+* Updated ArangoDB Starter to v0.19.17.
+
+* Added activities API which shows currently on-going high-level processes in the
+  database and their possible dependencies on each other. Until now only a couple
+  of activities are implemented, e.g. a rest handler is called, an aql query is
+  executed, a collection or an index is created or a dump is on-going.
+
+* BTS-2316: List broken hotbackups and report, why they are broken.
+
+* Fixes BTS-2309: Treat empty object in schema definition as null.
+
+* FE-972: fix sparse option not being sent in vector index creation payload.
+
+* COR-8: Added new coordinator-level metrics for shard replication state:
+  `arangodb_metadata_total_number_of_shards`,
+  `arangodb_metadata_number_follower_shards`,
+  `arangodb_metadata_number_out_of_sync_shards`,
+  `arangodb_metadata_number_not_replicated_shards`, and
+  `arangodb_metadata_shard_followers_out_of_sync_number`.
+
+* Add flag `supportsRBAC` to collections. This is in preparation for RBAC support.
+  Collections which have `supportsRBAC` set to `false` will not be subject to RBAC
+  policies and will always follow the old permission model.
+
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
+* Fixed BTS-2160: Introduced the proper log message when read-only state is reached
+  because of disk-usage and not because of an expired license.
+
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+  results when condition optimization is turned off.
 
 * Upgraded OpenSSL to 3.5.5.
 

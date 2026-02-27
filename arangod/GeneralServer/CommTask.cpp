@@ -64,6 +64,7 @@ constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
+constexpr std::string_view pathPrefixOpenApi("/openapi.json");
 
 VocbasePtr lookupDatabaseFromRequest(
     application_features::ApplicationServer& server, GeneralRequest& req) {
@@ -193,6 +194,13 @@ CommTask::Flow CommTask::prepareExecution(
     return !ServerState::isCoordinatorId(_requestSource) &&
            !ServerState::isDBServerId(_requestSource);
   });
+
+  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
+  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
+    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
+                      req.messageId(), res.errorNumber(), res.errorMessage());
+    return Flow::Abort;
+  }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -428,15 +436,19 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
-  auto handler =
-      factory->createHandler(server, std::move(request), std::move(response));
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder errorBuilder(buffer);
+  auto handler = factory->createHandler(server, std::move(request),
+                                        std::move(response), errorBuilder);
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
+
+    // Error details have been written to errorBuilder by createHandler
     sendSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
-                       VPackBuffer<uint8_t>());
+                       std::move(buffer));
     return;
   }
 
@@ -665,7 +677,9 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
-      << handler->request()->requestPath() << " on lane " << lane;
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -710,6 +724,12 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   handler->trackQueueStart();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+
+  LOG_TOPIC("ecd0b", DEBUG, Logger::REQUESTS)
+      << "Handling async request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane
+      << ", requestedApiVersion=" << handler->request()->requestedApiVersion();
+  ;
 
   if (jobId != nullptr) {
     auto& jobManager = _generalServerFeature.jobManager();
@@ -977,6 +997,8 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
   // invalidate the member
+  req.setRoles(authToken.roles());
+  req.setJwtToken(authToken.jwtToken());
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {
