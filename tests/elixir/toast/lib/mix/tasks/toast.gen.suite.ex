@@ -25,7 +25,7 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
         [] -> Mix.raise("Usage: mix toast.gen.suite <name> [--mode single_server|cluster]")
       end
 
-    mode = parse_mode(Keyword.get(opts, :mode, "single_server"))
+    mode = parse_mode(Keyword.get(opts, :mode))
     module_name = Macro.camelize(name)
     suite_dir = Path.join("suites", name)
 
@@ -33,7 +33,7 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
       Mix.raise("Directory #{suite_dir} already exists")
     end
 
-    create_file(Path.join(suite_dir, "test_helper.exs"), test_helper_template(mode))
+    create_file(Path.join(suite_dir, "suite.ex"), suite_template(module_name, mode))
     create_file(Path.join(suite_dir, "test_example.exs"), example_test_template(module_name))
 
     Mix.shell().info("""
@@ -42,10 +42,11 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
 
     Run its tests with:
 
-        TOAST_BUILD_DIR=/path/to/build mix toast #{suite_dir}
+        TOAST_BUILD_DIR=/path/to/build mix toast #{name}
     """)
   end
 
+  defp parse_mode(nil), do: nil
   defp parse_mode("single_server"), do: :single_server
   defp parse_mode("cluster"), do: :cluster
   defp parse_mode(other), do: Mix.raise("Invalid mode: #{other}. Use 'single_server' or 'cluster'.")
@@ -56,13 +57,19 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
     Mix.shell().info("* creating #{path}")
   end
 
-  defp test_helper_template(mode) do
+  defp suite_template(module_name, nil) do
     """
-    ExUnit.start()
+    defmodule #{module_name}.Suite do
+      use ToastTest.Suite
+    end
+    """
+  end
 
-    case Toast.TestCase.setup_suite(:#{mode}) do
-      {:ok, _} -> :ok
-      {:error, _} -> ExUnit.configure(exclude: [:toast_suite])
+  defp suite_template(module_name, mode) do
+    """
+    defmodule #{module_name}.Suite do
+      use ToastTest.Suite,
+        mode: :#{mode}
     end
     """
   end
@@ -70,15 +77,11 @@ defmodule Mix.Tasks.Toast.Gen.Suite do
   defp example_test_template(module_name) do
     """
     defmodule #{module_name}.ExampleTest do
-      use Toast.TestCase
+      use #{module_name}.Suite
 
       test "server is running", %{client: client} do
         assert {:ok, body} = Client.Admin.version(client)
         assert body["server"] == "arango"
-      end
-
-      test "AQL query works", %{client: client} do
-        assert {:ok, [1]} = Client.AQL.execute(client, "RETURN 1")
       end
     end
     """

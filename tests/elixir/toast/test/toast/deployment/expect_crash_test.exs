@@ -141,6 +141,95 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
   end
 
+  describe "expect_crash timeout auto-clear" do
+    test "expectation auto-clears after timeout" do
+      config = Toast.Config.load()
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
+
+      # Set status to :ready so suspend_health_monitor is valid
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      # Expect crash with a very short timeout
+      :ok = GenServer.call(ctrl, {:expect_crash, state_server_id(ctrl), 50})
+
+      # Verify expectation exists
+      state = :sys.get_state(ctrl)
+      assert map_size(state.expected_crashes) == 1
+
+      # Wait for the timeout to fire
+      Process.sleep(100)
+
+      # Expectation should have been auto-cleared
+      state = :sys.get_state(ctrl)
+      assert state.expected_crashes == %{}
+    end
+
+    test "verify_crash returns {:error, :timeout} when no crash occurs within verify timeout" do
+      config = Toast.Config.load()
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
+
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      server_id = state_server_id(ctrl)
+
+      # Expect crash with long timeout so the expect_crash_timeout doesn't fire first
+      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 10_000})
+
+      # verify_crash with short timeout -- no crash will happen
+      result = GenServer.call(ctrl, {:verify_crash, server_id, 200}, 5_000)
+      assert result == {:error, :timeout}
+
+      # After verify timeout, expectation is cleaned up
+      state = :sys.get_state(ctrl)
+      assert state.expected_crashes == %{}
+    end
+
+    test "verify_crash returns {:error, :no_expectation} after expect timeout clears" do
+      config = Toast.Config.load()
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
+
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      server_id = state_server_id(ctrl)
+
+      # Expect crash with very short timeout
+      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 50})
+
+      # Wait for auto-clear
+      Process.sleep(100)
+
+      # Now verify_crash should fail because there is no expectation
+      result = GenServer.call(ctrl, {:verify_crash, server_id, 100}, 5_000)
+      assert result == {:error, :no_expectation}
+    end
+
+    test "crash during expect window is captured and verify_crash succeeds" do
+      config = Toast.Config.load()
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
+
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      server_id = state_server_id(ctrl)
+      :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
+
+      # Simulate crash notification
+      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      send(ctrl, {:server_crashed, server_id, crash_info})
+
+      # Give handle_info time to process
+      Process.sleep(50)
+
+      # verify_crash should return the crash info
+      assert {:ok, returned_info} = GenServer.call(ctrl, {:verify_crash, server_id, 1_000}, 5_000)
+      assert returned_info.signal == 11
+      assert returned_info.exit_status == 139
+    end
+  end
+
   describe "mode independence" do
     setup do
       {:ok, pid} = MockController.start_link()
@@ -162,5 +251,10 @@ defmodule Toast.Deployment.ExpectCrashTest do
       assert {:ok, _} = Deployment.verify_crash(deployment(pid, :cluster), "dbserver-0")
       assert [{:verify_crash, "dbserver-0", 5_000}] = MockController.calls(pid)
     end
+  end
+
+  defp state_server_id(ctrl) do
+    state = :sys.get_state(ctrl)
+    state.server.id
   end
 end

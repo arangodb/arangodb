@@ -14,10 +14,14 @@ defmodule ToastTest.Runner do
 
   ## Public API
 
-  @spec run_suites([{module(), [module()]}], keyword()) :: map()
+  @spec run_suites(
+          [{module(), [module()]} | {module(), [module()], keyword()}],
+          keyword()
+        ) :: map()
   def run_suites(suites, global_opts) do
     clear_abort!()
     ToastTest.DeploymentRegistry.init()
+    start_process_history()
     runner = self()
     id = {__MODULE__, runner}
 
@@ -49,8 +53,11 @@ defmodule ToastTest.Runner do
 
     {suite_results, acc_stats} =
       Enum.reduce(suites, {[], %{total: 0, failures: 0, skipped: 0, excluded: 0}}, fn
-        {suite_module, test_modules}, {results, acc} ->
-          suite_result = run_suite(suite_module, test_modules, global_opts, global_deadline)
+        suite_entry, {results, acc} ->
+          {suite_module, test_modules, suite_opts} = normalize_suite_entry(suite_entry)
+
+          suite_result =
+            run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline)
 
           result = %{
             suite_module: suite_module,
@@ -66,6 +73,12 @@ defmodule ToastTest.Runner do
       stats: acc_stats
     }
   end
+
+  defp normalize_suite_entry({suite_module, test_modules, suite_opts}),
+    do: {suite_module, test_modules, suite_opts}
+
+  defp normalize_suite_entry({suite_module, test_modules}),
+    do: {suite_module, test_modules, []}
 
   @spec run(keyword(), non_neg_integer() | nil) :: {map(), nil}
   def run(opts, load_us) when (is_integer(load_us) or is_nil(load_us)) and is_list(opts) do
@@ -150,7 +163,7 @@ defmodule ToastTest.Runner do
 
   ## Suite execution
 
-  defp run_suite(suite_module, test_modules, global_opts, global_deadline) do
+  defp run_suite(suite_module, test_modules, global_opts, suite_opts, global_deadline) do
     config = suite_module.deployment_config()
     suite_timeout = Keyword.get(config, :timeout, 3_600_000)
     timeout_factor = Keyword.get(global_opts, :timeout_factor, 1)
@@ -175,7 +188,7 @@ defmodule ToastTest.Runner do
         case run_suite_setup(suite_module, deployment) do
           {:ok, extra_context} ->
             ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
-            stats = run_suite_tests(suite_run, test_modules, global_opts)
+            stats = run_suite_tests(suite_run, test_modules, global_opts, suite_opts)
             run_suite_teardown(suite_module, deployment)
             diagnostics = collect_diagnostics(deployment)
             cleanup_between_suites()
@@ -196,7 +209,7 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp run_suite_tests(suite_run, test_modules, global_opts) do
+  defp run_suite_tests(suite_run, test_modules, global_opts, suite_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
     {:ok, manager} = Compat.start_event_manager()
     {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
@@ -205,19 +218,25 @@ defmodule ToastTest.Runner do
       Compat.add_formatter(manager, formatter, opts)
     end
 
+    # Suite-level only_test_ids override global ones
+    only_test_ids =
+      case Keyword.fetch(suite_opts, :only_test_ids) do
+        {:ok, ids} -> ids
+        :error -> opts[:only_test_ids]
+      end
+
     config = %{
       capture_log: opts[:capture_log],
       exclude: opts[:exclude],
       include: opts[:include],
       manager: manager,
       max_failures: opts[:max_failures],
-      only_test_ids: opts[:only_test_ids],
-      rand_algorithm: opts[:rand_algorithm],
+      only_test_ids: only_test_ids,
       runner_pid: self(),
-      seed: opts[:seed],
       stats_pid: stats_pid,
       suite_deadline: suite_run.suite_deadline,
       suite_run: suite_run,
+      test_name_pattern: Keyword.get(suite_opts, :test_name_pattern),
       timeout: opts[:timeout],
       timeout_factor: suite_run.timeout_factor,
       trace: opts[:trace]
@@ -301,7 +320,10 @@ defmodule ToastTest.Runner do
   end
 
   defp build_deployment_opts(suite_config, global_opts) do
-    [on_crash: &ToastTest.CrashMonitor.handle_crash/1]
+    [
+      on_crash: &ToastTest.CrashMonitor.handle_crash/2,
+      on_event: &ToastTest.ProcessHistory.handle_event/1
+    ]
     |> Keyword.merge(
       Keyword.take(suite_config, [
         :server_args,
@@ -399,6 +421,13 @@ defmodule ToastTest.Runner do
     ToastTest.StateCleanup.reset()
   end
 
+  defp start_process_history do
+    case ToastTest.ProcessHistory.start_link(name: ToastTest.ProcessHistory) do
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
+    end
+  end
+
   defp emit_skipped_module(config, module, reason) do
     test_module = Compat.get_test_metadata(module)
     Compat.module_started(config.manager, test_module)
@@ -466,9 +495,7 @@ defmodule ToastTest.Runner do
       max_cases: opts[:max_cases],
       max_failures: opts[:max_failures],
       only_test_ids: opts[:only_test_ids],
-      rand_algorithm: opts[:rand_algorithm],
       runner_pid: runner_pid,
-      seed: opts[:seed],
       stats_pid: stats_pid,
       suite_deadline: Application.get_env(:toast, :__suite_deadline__),
       timeout: opts[:timeout],
@@ -749,9 +776,13 @@ defmodule ToastTest.Runner do
     include = config.include
     exclude = config.exclude
     test_ids = config.only_test_ids
+    name_pattern = Map.get(config, :test_name_pattern)
 
     {to_run, to_skip} =
-      for test <- tests, include_test?(test_ids, test), reduce: {[], []} do
+      for test <- tests,
+          include_test?(test_ids, test),
+          match_test_name?(name_pattern, test),
+          reduce: {[], []} do
         {to_run, to_skip} ->
           tags = Map.merge(test.tags, %{test: test.name, module: test.module})
 
@@ -765,7 +796,6 @@ defmodule ToastTest.Runner do
   end
 
   defp prepare_tests_legacy(config, async?, group, tests) do
-    tests = shuffle(config, tests)
     include = config.include
     exclude = config.exclude
     test_ids = config.only_test_ids
@@ -792,6 +822,15 @@ defmodule ToastTest.Runner do
 
   defp include_test?(test_ids, test) do
     test_ids == nil or MapSet.member?(test_ids, {test.module, test.name})
+  end
+
+  defp match_test_name?(nil, _test), do: true
+
+  defp match_test_name?(pattern, test) do
+    test_name = Atom.to_string(test.name)
+    downcased_name = String.downcase(test_name)
+    downcased_pattern = String.downcase(pattern)
+    String.contains?(downcased_name, downcased_pattern)
   end
 
   ## Module test execution (shared between suite and legacy modes)
@@ -895,12 +934,17 @@ defmodule ToastTest.Runner do
   defp run_tests_loop(config, [test | rest] = remaining, params, context, acc) do
     check_suite_deadline!(config)
 
+    prev_test = case acc do
+      [prev | _] -> prev
+      [] -> nil
+    end
+
     cond do
       aborted?() ->
         {acc, remaining}
 
       # Legacy mode has deployments in config; suite mode does not
-      reason = check_config_deployments(config) ->
+      reason = check_between_tests(config, prev_test) ->
         abort!(reason)
         {acc, remaining}
 
@@ -915,16 +959,35 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp check_config_deployments(%{deployments: deployments}), do: check_deployments(deployments)
+  defp check_between_tests(%{deployments: deployments}, _prev_test),
+    do: check_deployments(deployments)
 
-  defp check_config_deployments(%{suite_run: %{deployment: deployment}}) when deployment != nil do
-    case Toast.Deployment.check_health(deployment) do
-      :ok -> nil
-      {:error, reason} -> reason
+  defp check_between_tests(
+         %{suite_run: %{suite_module: suite_module, deployment: deployment}},
+         prev_test
+       )
+       when deployment != nil do
+    suite_config = suite_module.deployment_config()
+
+    cond do
+      Keyword.get(suite_config, :between_tests) == false ->
+        nil
+
+      function_exported?(suite_module, :between_tests, 2) and prev_test != nil ->
+        case suite_module.between_tests(deployment, prev_test) do
+          :ok -> nil
+          {:error, reason} -> reason
+        end
+
+      true ->
+        case Toast.Deployment.check_health(deployment, prev_test) do
+          :ok -> nil
+          {:error, reason} -> reason
+        end
     end
   end
 
-  defp check_config_deployments(_config), do: nil
+  defp check_between_tests(_config, _prev_test), do: nil
 
   defp check_deployments([]), do: nil
 
@@ -964,7 +1027,7 @@ defmodule ToastTest.Runner do
   end
 
   defp spawn_test_monitor(
-         %{seed: seed, capture_log: capture_log, rand_algorithm: rand_algorithm},
+         %{capture_log: capture_log},
          test,
          parent_pid,
          context
@@ -972,7 +1035,6 @@ defmodule ToastTest.Runner do
     spawn_monitor(fn ->
       Process.set_label({test.case, test.name})
       ExUnit.OnExitHandler.register(self())
-      generate_test_seed(seed, test, rand_algorithm)
       context = context |> Map.merge(test.tags) |> Map.put(:test_pid, self())
       capture_log = Map.get(context, :capture_log, capture_log)
 
@@ -1080,10 +1142,6 @@ defmodule ToastTest.Runner do
 
   ## Helpers
 
-  defp generate_test_seed(seed, %ExUnit.Test{module: module, name: name}, rand_algorithm) do
-    :rand.seed(rand_algorithm, {:erlang.phash2(module), :erlang.phash2(name), seed})
-  end
-
   defp process_max_failures(%{max_failures: :infinity}, _), do: :no
 
   defp process_max_failures(config, %ExUnit.TestModule{state: {:failed, _}, tests: tests}) do
@@ -1145,15 +1203,6 @@ defmodule ToastTest.Runner do
       msg when is_binary(msg) -> msg
       _ -> "unknown"
     end
-  end
-
-  defp shuffle(%{seed: 0}, list) do
-    list
-  end
-
-  defp shuffle(%{seed: seed, rand_algorithm: rand_algorithm}, list) do
-    _ = :rand.seed(rand_algorithm, {seed, seed, seed})
-    Enum.shuffle(list)
   end
 
   defp failed(:error, %ExUnit.MultiError{errors: errors}, _stack) do

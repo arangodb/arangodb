@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Toast do
       mix toast --cluster --cluster-dbservers 2
       mix toast --sanitizer alubsan
       mix toast test/my_test.exs --trace
-      mix toast --exclude slow --seed 12345
+      mix toast --exclude slow
 
   ## Toast Options
 
@@ -40,7 +40,6 @@ defmodule Mix.Tasks.Toast do
       --include       - Include tests matching the filter
       --exclude       - Exclude tests matching the filter
       --only          - Run only tests matching the filter (excludes all others)
-      --seed          - Seed for test randomization (0 disables shuffling)
       --trace         - Enable verbose output
       --max-cases     - Maximum number of test modules to run concurrently
       --timeout       - Timeout per test in milliseconds
@@ -68,7 +67,6 @@ defmodule Mix.Tasks.Toast do
     include: :keep,
     exclude: :keep,
     only: :keep,
-    seed: :integer,
     trace: :boolean,
     max_cases: :integer,
     timeout: :integer,
@@ -103,7 +101,6 @@ defmodule Mix.Tasks.Toast do
   @aliases [
     i: :include,
     e: :exclude,
-    s: :seed,
     t: :trace,
     b: :build_dir
   ]
@@ -129,21 +126,6 @@ defmodule Mix.Tasks.Toast do
     ci: "TOAST_CI"
   }
 
-  # Keys passed through to ExUnit.configure
-  @option_keys [
-    :include,
-    :exclude,
-    :seed,
-    :trace,
-    :max_cases,
-    :timeout,
-    :max_failures,
-    :formatters,
-    :colors,
-    :exit_status,
-    :only_test_ids
-  ]
-
   @impl Mix.Task
   def run(args) do
     {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
@@ -158,7 +140,7 @@ defmodule Mix.Tasks.Toast do
 
     Application.ensure_all_started(:ex_unit)
 
-    {ex_unit_opts, _} = process_opts(opts)
+    {ex_unit_opts, _} = Mix.Tasks.Toast.Helpers.process_opts(opts)
     ExUnit.configure(ex_unit_opts)
 
     suites_dir = Path.join(File.cwd!(), "suites")
@@ -171,7 +153,7 @@ defmodule Mix.Tasks.Toast do
   end
 
   defp has_suite_structure?(suites_dir) do
-    Path.wildcard(Path.join([suites_dir, "*", "suite.ex"])) != []
+    Mix.Tasks.Toast.Helpers.has_suite_structure?(suites_dir)
   end
 
   ## Suite mode
@@ -179,7 +161,7 @@ defmodule Mix.Tasks.Toast do
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
     ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
 
-    {suite_requests, file_filters} = parse_suite_args(args, suites_dir)
+    {suite_requests, file_filters} = Mix.Tasks.Toast.Helpers.parse_suite_args(args, suites_dir)
 
     suite_modules = discover_and_compile_suites(suites_dir, suite_requests)
 
@@ -191,10 +173,10 @@ defmodule Mix.Tasks.Toast do
 
     suite_data =
       Enum.flat_map(suite_modules, fn {suite_module, suite_dir} ->
-        {helpers, test_files} = discover_suite_files(suite_dir)
+        {helpers, test_files} = Mix.Tasks.Toast.Helpers.discover_suite_files(suite_dir)
         compile_helpers(helpers)
 
-        test_files = apply_file_filters(test_files, file_filters, suite_dir)
+        {test_files, line_filters} = Mix.Tasks.Toast.Helpers.apply_file_filters(test_files, file_filters, suite_dir)
 
         if test_files == [] do
           []
@@ -209,17 +191,17 @@ defmodule Mix.Tasks.Toast do
                 mod.__toast_suite__() == suite_module
             end)
 
-          test_modules = apply_test_name_filter(test_modules, test_filter)
-          [{suite_module, test_modules}]
+          suite_opts = Mix.Tasks.Toast.Helpers.build_suite_opts(test_modules, line_filters, test_filter)
+          [{suite_module, test_modules, suite_opts}]
         end
       end)
 
-    config = Toast.Config.load(opts_to_config_list(opts))
+    config = Toast.Config.load(Mix.Tasks.Toast.Helpers.opts_to_config_list(opts))
     global_opts = build_global_opts(config, ex_unit_opts)
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
     abort_reason = ToastTest.Runner.aborted?()
-    has_sanitizer_errors = has_sanitizer_errors?(result.suites)
+    has_sanitizer_errors = Mix.Tasks.Toast.Helpers.has_sanitizer_errors?(result.suites)
 
     run_results = %{
       test_failures: result.stats.failures,
@@ -229,7 +211,7 @@ defmodule Mix.Tasks.Toast do
     }
 
     if config.ci do
-      suite_diagnostics = build_suite_diagnostics(result.suites)
+      suite_diagnostics = Mix.Tasks.Toast.Helpers.build_suite_diagnostics(result.suites)
 
       Toast.ResultPackaging.package(
         ci: true,
@@ -246,95 +228,6 @@ defmodule Mix.Tasks.Toast do
     end
   end
 
-  defp has_sanitizer_errors?(suites) do
-    Enum.any?(suites, fn suite ->
-      diag = suite[:diagnostics]
-      diag != nil and has_sanitizer_in_diagnostics?(diag)
-    end)
-  end
-
-  defp has_sanitizer_in_diagnostics?(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :sanitizer_errors) do
-      errors when is_list(errors) and errors != [] -> true
-      _ ->
-        # Check cluster diagnostics (map of server_id => diag)
-        Enum.any?(diagnostics, fn
-          {_id, server_diag} when is_map(server_diag) ->
-            case Map.get(server_diag, :sanitizer_errors) do
-              errors when is_list(errors) and errors != [] -> true
-              _ -> false
-            end
-          _ -> false
-        end)
-    end
-  end
-
-  defp has_sanitizer_in_diagnostics?(_), do: false
-
-  defp build_suite_diagnostics(suites) do
-    Enum.map(suites, fn suite ->
-      %{
-        name: suite[:suite_module] |> inspect(),
-        log_files: extract_log_files(suite[:diagnostics]),
-        sanitizer_files: extract_sanitizer_files(suite[:diagnostics]),
-        crash_reports: [],
-        agency_dumps: [],
-        core_dumps: extract_core_dumps(suite[:diagnostics])
-      }
-    end)
-  end
-
-  defp extract_log_files(nil), do: []
-
-  defp extract_log_files(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :server) do
-      %{log_file: path} when is_binary(path) -> [path]
-      _ ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, %{server: %{log_file: path}}} when is_binary(path) -> [path]
-          _ -> []
-        end)
-    end
-  end
-
-  defp extract_log_files(_), do: []
-
-  defp extract_sanitizer_files(nil), do: []
-
-  defp extract_sanitizer_files(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :sanitizer_errors) do
-      errors when is_list(errors) ->
-        Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
-      _ ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, %{sanitizer_errors: errors}} when is_list(errors) ->
-            Enum.map(errors, & &1.file_path) |> Enum.filter(&is_binary/1)
-          _ -> []
-        end)
-    end
-  end
-
-  defp extract_sanitizer_files(_), do: []
-
-  defp extract_core_dumps(nil), do: []
-
-  defp extract_core_dumps(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :coredump_reports) do
-      reports when is_list(reports) ->
-        Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
-      _ ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, %{coredump_reports: reports}} when is_list(reports) ->
-            Enum.map(reports, & &1.core_path) |> Enum.filter(&is_binary/1)
-          _ -> []
-        end)
-    end
-  end
-
-  defp extract_core_dumps(_), do: []
 
   defp build_global_opts(config, ex_unit_opts) do
     global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
@@ -353,57 +246,8 @@ defmodule Mix.Tasks.Toast do
     )
   end
 
-  defp opts_to_config_list(opts) do
-    mapping = [
-      build_dir: :build_dir,
-      work_dir: :work_dir,
-      result_dir: :result_dir,
-      show_server_logs: :show_server_logs,
-      global_timeout: :global_timeout,
-      test_timeout: :test_timeout,
-      startup_timeout: :startup_timeout,
-      shutdown_timeout: :shutdown_timeout,
-      timeout_factor: :timeout_factor,
-      keep_work_dir: :keep_work_dir,
-      sanitizer: :explicit_sanitizer,
-      cluster_agents: :cluster_agents,
-      cluster_dbservers: :cluster_dbservers,
-      cluster_coordinators: :cluster_coordinators,
-      replication_factor: :cluster_replication_factor,
-      ci: :ci
-    ]
-
-    config_list =
-      for {cli_key, config_key} <- mapping,
-          {:ok, value} <- [Keyword.fetch(opts, cli_key)] do
-        {config_key, value}
-      end
-
-    cond do
-      opts[:cluster] -> Keyword.put(config_list, :deployment_mode, :cluster)
-      opts[:single] -> Keyword.put(config_list, :deployment_mode, :single_server)
-      true -> config_list
-    end
-  end
 
   ## Suite discovery helpers
-
-  defp parse_suite_args([], _suites_dir), do: {:all, %{}}
-
-  defp parse_suite_args(args, _suites_dir) do
-    {suite_names, file_filters} =
-      Enum.reduce(args, {[], %{}}, fn arg, {names, filters} ->
-        case String.split(arg, "/", parts: 2) do
-          [suite_name, file_spec] ->
-            {[suite_name | names], Map.update(filters, suite_name, [file_spec], &[file_spec | &1])}
-
-          [suite_name] ->
-            {[suite_name | names], filters}
-        end
-      end)
-
-    {Enum.uniq(Enum.reverse(suite_names)), file_filters}
-  end
 
   defp discover_and_compile_suites(suites_dir, suite_requests) do
     suite_files = Path.wildcard(Path.join([suites_dir, "*", "suite.ex"]))
@@ -420,43 +264,31 @@ defmodule Mix.Tasks.Toast do
           end)
       end
 
-    if suite_files == [] do
-      []
-    else
-      case Kernel.ParallelCompiler.compile(suite_files, return_diagnostics: true) do
-        {:ok, modules, _} ->
-          suite_modules =
-            Enum.filter(modules, fn mod ->
-              behaviours = mod.__info__(:attributes)[:behaviour] || []
-              ToastTest.Suite in behaviours
-            end)
+    Enum.flat_map(suite_files, fn suite_file ->
+      compile_single_suite(suite_file)
+    end)
+  end
 
-          Enum.map(suite_modules, fn mod ->
-            source = mod.__info__(:compile)[:source] |> to_string()
-            {mod, Path.dirname(source)}
+  defp compile_single_suite(suite_file) do
+    case Kernel.ParallelCompiler.compile([suite_file], return_diagnostics: true) do
+      {:ok, modules, _} ->
+        suite_modules =
+          Enum.filter(modules, fn mod ->
+            behaviours = mod.__info__(:attributes)[:behaviour] || []
+            ToastTest.Suite in behaviours
           end)
 
-        {:error, errors, _} ->
-          Logger.error("Failed to compile suites: #{inspect(errors)}")
-          []
-      end
+        Enum.map(suite_modules, fn mod ->
+          source = mod.__info__(:compile)[:source] |> to_string()
+          {mod, Path.dirname(source)}
+        end)
+
+      {:error, errors, _} ->
+        Logger.error("Failed to compile suite #{suite_file}: #{inspect(errors)}")
+        []
     end
   end
 
-  defp discover_suite_files(suite_dir) do
-    all_files = Path.wildcard(Path.join(suite_dir, "*"))
-
-    helpers =
-      all_files
-      |> Enum.filter(&(String.ends_with?(&1, ".ex") and Path.basename(&1) != "suite.ex"))
-
-    test_files =
-      all_files
-      |> Enum.filter(&String.ends_with?(&1, ".exs"))
-      |> Enum.filter(&(Path.basename(&1) |> String.starts_with?("test_")))
-
-    {helpers, test_files}
-  end
 
   defp compile_helpers([]), do: :ok
 
@@ -467,28 +299,6 @@ defmodule Mix.Tasks.Toast do
     end
   end
 
-  defp apply_file_filters(test_files, filters, _suite_dir) when map_size(filters) == 0,
-    do: test_files
-
-  defp apply_file_filters(test_files, filters, suite_dir) do
-    suite_name = Path.basename(suite_dir)
-
-    case Map.get(filters, suite_name) do
-      nil ->
-        test_files
-
-      file_specs ->
-        Enum.filter(test_files, fn path ->
-          basename = Path.basename(path)
-
-          Enum.any?(file_specs, fn spec ->
-            # Handle file:line syntax
-            file = String.split(spec, ":") |> hd()
-            basename == file
-          end)
-        end)
-    end
-  end
 
   defp load_test_files(test_files, suite_dir) do
     case Kernel.ParallelCompiler.require(test_files, return_diagnostics: true) do
@@ -526,8 +336,6 @@ defmodule Mix.Tasks.Toast do
     :ok
   end
 
-  defp apply_test_name_filter(modules, nil), do: modules
-  defp apply_test_name_filter(modules, _pattern), do: modules
 
   ## Legacy mode
 
@@ -562,10 +370,6 @@ defmodule Mix.Tasks.Toast do
       ToastTest.Runner.run(options, nil)
     else
       Logger.info("Loading #{length(matched_files)} test file(s)")
-
-      seed = Application.get_env(:ex_unit, :seed) || 0
-      rand_algorithm = Application.get_env(:ex_unit, :rand_algorithm) || :exsss
-      matched_files = shuffle(seed, rand_algorithm, matched_files)
 
       case Kernel.ParallelCompiler.require(matched_files, return_diagnostics: true) do
         {:ok, _, _} -> :ok
@@ -605,68 +409,6 @@ defmodule Mix.Tasks.Toast do
     end)
   end
 
-  ## Option processing
-
-  defp process_opts(opts) do
-    ex_unit_opts =
-      opts
-      |> filter_opts(:include)
-      |> filter_opts(:exclude)
-      |> filter_only()
-      |> formatter_opts()
-      |> color_opts()
-      |> Keyword.put_new(:exit_status, 2)
-      |> Keyword.take(@option_keys)
-
-    {[autorun: false] ++ ex_unit_opts, nil}
-  end
-
-  defp filter_opts(opts, key) do
-    case Keyword.get_values(opts, key) do
-      [] ->
-        opts
-
-      values ->
-        parsed = ExUnit.Filters.parse(values)
-        opts |> Keyword.delete(key) |> Keyword.put(key, parsed)
-    end
-  end
-
-  defp filter_only(opts) do
-    case Keyword.get_values(opts, :only) do
-      [] ->
-        opts
-
-      values ->
-        parsed = ExUnit.Filters.parse(values)
-
-        opts
-        |> Keyword.delete(:only)
-        |> Keyword.update(:include, parsed, &(parsed ++ &1))
-        |> Keyword.update(:exclude, [:test], &[:test | &1])
-    end
-  end
-
-  defp formatter_opts(opts) do
-    case Keyword.get_values(opts, :formatter) do
-      [] ->
-        Keyword.delete(opts, :formatter)
-
-      formatters ->
-        modules = Enum.map(formatters, &Module.concat([&1]))
-        opts |> Keyword.delete(:formatter) |> Keyword.put(:formatters, modules)
-    end
-  end
-
-  defp color_opts(opts) do
-    case Keyword.fetch(opts, :color) do
-      {:ok, enabled?} ->
-        opts |> Keyword.delete(:color) |> Keyword.put(:colors, enabled: enabled?)
-
-      :error ->
-        opts
-    end
-  end
 
   ## File discovery
 
@@ -686,12 +428,4 @@ defmodule Mix.Tasks.Toast do
     if File.dir?("suites"), do: ["suites"], else: []
   end
 
-  ## Shuffling
-
-  defp shuffle(0, _algo, list), do: list
-
-  defp shuffle(seed, algo, list) do
-    :rand.seed(algo, {seed, seed, seed})
-    Enum.shuffle(list)
-  end
 end

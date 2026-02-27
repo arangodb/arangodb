@@ -320,7 +320,7 @@ defmodule Toast.Deployment.SingleServerController do
           else
             Logger.error("Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}")
             stop_health_monitor(state)
-            notify_crash(state.on_crash, crash_info)
+            notify_crash(state.on_crash, state, crash_info)
             notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
             state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
               operational_state: :crashed, intentional: false, health_monitor: nil)
@@ -329,7 +329,7 @@ defmodule Toast.Deployment.SingleServerController do
         else
           Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
           stop_health_monitor(state)
-          notify_crash(state.on_crash, crash_info)
+          notify_crash(state.on_crash, state, crash_info)
           notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
           state = put_server(%{state | status: :failed, error: {:server_crashed, crash_info}},
             operational_state: :crashed, health_monitor: nil)
@@ -342,7 +342,7 @@ defmodule Toast.Deployment.SingleServerController do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     stop_server_process(state, 5_000)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
-    notify_crash(state.on_crash, crash_info)
+    notify_crash(state.on_crash, state, crash_info)
     notify_event(state.on_event, {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()})
     state = put_server(%{state | status: :failed, error: {:server_unhealthy, server_id}}, server_pid: nil, health_monitor: nil)
     {:noreply, state}
@@ -585,8 +585,23 @@ defmodule Toast.Deployment.SingleServerController do
     %{state | server: struct!(state.server, updates)}
   end
 
-  defp notify_crash(nil, _crash_info), do: :ok
-  defp notify_crash(on_crash, crash_info) when is_function(on_crash, 1), do: on_crash.(crash_info)
+  defp notify_crash(nil, _state, _crash_info), do: :ok
+
+  defp notify_crash(on_crash, state, crash_info) when is_function(on_crash, 2) do
+    deployment = build_deployment_from_state(state)
+    on_crash.(deployment, crash_info)
+  end
+
+  defp build_deployment_from_state(state) do
+    %Toast.Deployment{
+      id: state.server.id,
+      mode: :single_server,
+      config: state.config,
+      controller: self(),
+      endpoint: state.server.endpoint || "",
+      work_dir: state.config.work_dir
+    }
+  end
 
   defp notify_event(nil, _event), do: :ok
   defp notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)

@@ -94,21 +94,4 @@ defmodule ToastTest.InteractiveTest do
     end
   end
 
-  # Interactive.run/2 with a module requires the module to implement __ex_unit__/0
-  # (i.e., be a compiled ExUnit test module). This involves ExUnit internals
-  # that cannot be easily mocked without running ExUnit's module compilation.
-  @tag :skip
-  test "run/2 with module executes tests and returns results" do
-    # Requires a fully compiled ExUnit test module with __ex_unit__/0,
-    # which depends on ExUnit.Case's @before_compile hook. Cannot be
-    # unit-tested without running ExUnit's compilation pipeline.
-  end
-
-  # Interactive.run/2 with a file path compiles the file and then runs it.
-  # This requires actual test files on disk with proper ExUnit structure.
-  @tag :skip
-  test "run/2 with file path compiles and runs tests from file" do
-    # Requires Code.compile_file with a valid ExUnit test file,
-    # plus ExUnit internals for __ex_unit__/0. Integration test territory.
-  end
 end

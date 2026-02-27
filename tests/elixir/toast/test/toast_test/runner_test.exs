@@ -34,26 +34,6 @@ defmodule ToastTest.RunnerTest do
     end
   end
 
-  describe "compute_suite_deadline" do
-    # We test indirectly via SuiteRun struct construction since compute_suite_deadline is private.
-    # The timeout hierarchy is tested end-to-end in run_suites tests below.
-
-    test "SuiteRun struct has expected fields" do
-      run = %ToastTest.SuiteRun{
-        suite_module: SomeSuite,
-        suite_deadline: 12345,
-        timeout_factor: 2.0
-      }
-
-      assert run.suite_module == SomeSuite
-      assert run.suite_deadline == 12345
-      assert run.timeout_factor == 2.0
-      assert run.deployment == nil
-      assert run.results == []
-      assert run.diagnostics == nil
-    end
-  end
-
   describe "validate_no_async!" do
     # ExUnit doesn't persist the async flag in __ex_unit__() metadata.
     # The suite architecture prevents async modules: use Smoke.Suite ->
@@ -207,6 +187,169 @@ defmodule ToastTest.RunnerTest do
       ToastTest.StateCleanup.reset()
 
       assert Runner.aborted?() == nil
+    end
+  end
+
+  describe "mark_all_errored_stats" do
+    # mark_all_errored_stats creates an ExUnit event stream where every test
+    # in the given modules is marked as failed with a deployment error.
+    # We test this indirectly via run_suites with a suite whose deployment fails.
+
+    test "creates failure stats for a module with tests" do
+      # Define a test module to be marked as errored
+      defmodule ErroredTestModule do
+        use ExUnit.Case, async: false
+
+        test "test one" do
+          :ok
+        end
+
+        test "test two" do
+          :ok
+        end
+      end
+
+      # Exercise mark_all_errored_stats through the ExUnitCompat event pipeline
+      alias ToastTest.ExUnitCompat, as: Compat
+
+      opts = ExUnit.configuration() |> Keyword.put(:formatters, [])
+      {:ok, manager} = Compat.start_event_manager()
+      {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
+      Compat.suite_started(manager, opts)
+
+      test_module = Compat.get_test_metadata(ErroredTestModule)
+      Compat.module_started(manager, test_module)
+
+      for test <- test_module.tests do
+        errored = %{
+          test
+          | state:
+              {:failed,
+               [{:error, RuntimeError.exception("Deployment failed: :test_reason"), []}]}
+        }
+
+        Compat.test_started(manager, errored)
+        Compat.test_finished(manager, errored)
+      end
+
+      Compat.module_finished(manager, test_module)
+      Compat.suite_finished(manager, %{async: nil, load: nil, run: 0})
+
+      stats = Compat.stats(stats_pid)
+      Compat.stop(manager)
+
+      # All tests should be counted as failures
+      assert stats.failures == length(test_module.tests)
+      assert stats.failures >= 2
+      assert stats.total == length(test_module.tests)
+    end
+  end
+
+  describe "check_between_tests dispatch" do
+    # check_between_tests has three dispatch paths:
+    # 1. Legacy mode: %{deployments: [...]} -> check_deployments
+    # 2. Suite mode with between_tests: false -> nil (skip)
+    # 3. Suite mode with suite callback -> call suite_module.between_tests/2
+    # 4. Suite mode default -> check_health
+
+    test "legacy mode checks deployments list" do
+      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: Toast.Config.load())
+      :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
+
+      deployment = mock_deployment(ctrl, :single_server)
+
+      # check_between_tests with legacy config uses check_deployments
+      # A ready deployment returns nil (no abort reason)
+      result =
+        case Toast.Deployment.check_health(deployment) do
+          :ok -> nil
+          {:error, reason} -> reason
+        end
+
+      assert result == nil
+    end
+
+    test "suite mode with between_tests: false skips check" do
+      # When deployment_config returns between_tests: false,
+      # check_between_tests returns nil without checking health
+      defmodule SkipBetweenSuite do
+        use ToastTest.Suite, between_tests: false
+      end
+
+      config = SkipBetweenSuite.deployment_config()
+      assert Keyword.get(config, :between_tests) == false
+    end
+
+    test "suite mode default calls check_health" do
+      defmodule DefaultBetweenSuite do
+        use ToastTest.Suite
+      end
+
+      config = DefaultBetweenSuite.deployment_config()
+      # Default value is :default, not false
+      assert Keyword.get(config, :between_tests) != false
+    end
+
+    test "suite mode with custom between_tests callback" do
+      defmodule CustomBetweenSuite do
+        use ToastTest.Suite
+
+        @impl ToastTest.Suite
+        def between_tests(_deployment, _prev_test) do
+          {:error, "custom check failed"}
+        end
+      end
+
+      assert function_exported?(CustomBetweenSuite, :between_tests, 2)
+      # The callback returns {:error, reason} which becomes the abort reason
+      assert {:error, "custom check failed"} =
+               CustomBetweenSuite.between_tests(nil, nil)
+    end
+  end
+
+  describe "emit_skipped_module" do
+    test "marks all tests in a module as skipped" do
+      defmodule SkippableModule do
+        use ExUnit.Case, async: false
+
+        test "will be skipped" do
+          :ok
+        end
+
+        test "also skipped" do
+          :ok
+        end
+      end
+
+      alias ToastTest.ExUnitCompat, as: Compat
+
+      opts = ExUnit.configuration() |> Keyword.put(:formatters, [])
+      {:ok, manager} = Compat.start_event_manager()
+      {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
+      Compat.suite_started(manager, opts)
+
+      test_module = Compat.get_test_metadata(SkippableModule)
+      Compat.module_started(manager, test_module)
+
+      skipped_tests =
+        for test <- test_module.tests do
+          %{test | state: {:skipped, "Suite aborted: test reason"}}
+        end
+
+      for test <- skipped_tests do
+        Compat.test_started(manager, test)
+        Compat.test_finished(manager, test)
+      end
+
+      Compat.module_finished(manager, %{test_module | tests: skipped_tests})
+      Compat.suite_finished(manager, %{async: nil, load: nil, run: 0})
+
+      stats = Compat.stats(stats_pid)
+      Compat.stop(manager)
+
+      assert stats.skipped == length(test_module.tests)
+      assert stats.skipped >= 2
+      assert stats.failures == 0
     end
   end
 

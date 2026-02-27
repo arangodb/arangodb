@@ -1,8 +1,8 @@
 defmodule ToastTest.Suite do
   @callback deployment_config() :: keyword()
-  @callback setup_deployment(map()) :: {:ok, map()} | {:error, term()}
-  @callback teardown_deployment(map()) :: :ok
-  @callback between_tests(map(), ExUnit.Test.t()) :: :ok | {:error, term()}
+  @callback setup_deployment(Toast.Deployment.t()) :: {:ok, map()} | {:error, term()}
+  @callback teardown_deployment(Toast.Deployment.t()) :: :ok
+  @callback between_tests(Toast.Deployment.t(), ExUnit.Test.t()) :: :ok | {:error, term()}
   @optional_callbacks [setup_deployment: 1, teardown_deployment: 1, between_tests: 2]
 
   @default_opts [

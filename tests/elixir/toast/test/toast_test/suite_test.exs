@@ -172,43 +172,7 @@ defmodule ToastTest.SuiteTest do
   end
 
   describe "role-specific args apply only to their respective roles" do
-    test "coordinator_args does not affect dbserver or agent configs" do
-      defmodule CoordOnlySuite do
-        use ToastTest.Suite,
-          coordinator_args: ["--coord-flag", "on"]
-      end
-
-      config = CoordOnlySuite.deployment_config()
-      assert Keyword.get(config, :coordinator_args) == ["--coord-flag", "on"]
-      assert Keyword.get(config, :dbserver_args) == []
-      assert Keyword.get(config, :agent_args) == []
-    end
-
-    test "dbserver_args does not affect coordinator or agent configs" do
-      defmodule DbOnlySuite do
-        use ToastTest.Suite,
-          dbserver_args: ["--db-flag", "on"]
-      end
-
-      config = DbOnlySuite.deployment_config()
-      assert Keyword.get(config, :dbserver_args) == ["--db-flag", "on"]
-      assert Keyword.get(config, :coordinator_args) == []
-      assert Keyword.get(config, :agent_args) == []
-    end
-
-    test "agent_args does not affect coordinator or dbserver configs" do
-      defmodule AgentOnlySuite do
-        use ToastTest.Suite,
-          agent_args: ["--agent-flag", "on"]
-      end
-
-      config = AgentOnlySuite.deployment_config()
-      assert Keyword.get(config, :agent_args) == ["--agent-flag", "on"]
-      assert Keyword.get(config, :coordinator_args) == []
-      assert Keyword.get(config, :dbserver_args) == []
-    end
-
-    test "all role-specific args are independent" do
+    test "each role-specific arg list is independent" do
       defmodule AllRolesSuite do
         use ToastTest.Suite,
           server_args: ["--common"],
@@ -222,6 +186,18 @@ defmodule ToastTest.SuiteTest do
       assert Keyword.get(config, :coordinator_args) == ["--coord"]
       assert Keyword.get(config, :dbserver_args) == ["--db"]
       assert Keyword.get(config, :agent_args) == ["--agent"]
+    end
+
+    test "omitted role args default to empty list" do
+      defmodule CoordOnlySuite do
+        use ToastTest.Suite,
+          coordinator_args: ["--coord-flag", "on"]
+      end
+
+      config = CoordOnlySuite.deployment_config()
+      assert Keyword.get(config, :coordinator_args) == ["--coord-flag", "on"]
+      assert Keyword.get(config, :dbserver_args) == []
+      assert Keyword.get(config, :agent_args) == []
     end
   end
 end

@@ -244,14 +244,14 @@ defmodule Toast.Deployment do
   continuously by `Toast.Process.HealthMonitor` — if any server becomes
   unresponsive, the controller is already notified and status set to `:failed`.
   """
-  @spec check_health(t()) :: :ok | {:error, String.t()}
-  def check_health(%__MODULE__{} = deployment) do
+  @spec check_health(t(), ExUnit.Test.t() | nil) :: :ok | {:error, String.t()}
+  def check_health(%__MODULE__{} = deployment, prev_test \\ nil) do
     case status(deployment) do
       :ready ->
         :ok
 
       :degraded ->
-        {:error, format_degraded_message(deployment)}
+        {:error, format_degraded_message(deployment, prev_test)}
 
       :failed ->
         {:error, format_crash_message(crash_info(deployment))}
@@ -504,14 +504,22 @@ defmodule Toast.Deployment do
     :exit, _ -> {:error, :controller_not_available}
   end
 
-  defp format_degraded_message(deployment) do
+  defp format_degraded_message(deployment, prev_test) do
     downed =
       servers(deployment)
       |> Enum.filter(&(&1.operational_state in [:stopped, :killed, :paused]))
 
     names = Enum.map(downed, & &1.id) |> Enum.join(", ")
-    "Deployment degraded: servers [#{names}] are intentionally down"
+    test_context = format_test_context(prev_test)
+
+    "Deployment is degraded#{test_context} -- " <>
+      "servers [#{names}] are still down. " <>
+      "Tests must restore all servers before finishing."
   end
+
+  defp format_test_context(nil), do: ""
+  defp format_test_context(%{name: name}), do: " after test \"#{name}\""
+  defp format_test_context(_), do: ""
 
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000

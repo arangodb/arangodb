@@ -138,7 +138,7 @@ defmodule Toast.Deployment.CrashAbortTest do
   describe "on_crash callback" do
     test "controller invokes on_crash callback on unexpected crash" do
       test_pid = self()
-      on_crash = fn crash_info -> send(test_pid, {:crash_callback, crash_info}) end
+      on_crash = fn _deployment, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
 
       {:ok, pid} = SingleServerController.start_link(config: Toast.Config.load(), on_crash: on_crash)
 
@@ -150,7 +150,7 @@ defmodule Toast.Deployment.CrashAbortTest do
 
     test "cluster controller invokes on_crash callback on unexpected crash" do
       test_pid = self()
-      on_crash = fn crash_info -> send(test_pid, {:crash_callback, crash_info}) end
+      on_crash = fn _deployment, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
 
       {:ok, pid} = ClusterController.start_link(config: Toast.Config.load(), on_crash: on_crash)
 

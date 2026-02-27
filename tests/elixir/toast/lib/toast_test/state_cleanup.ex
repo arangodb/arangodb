@@ -4,6 +4,7 @@ defmodule ToastTest.StateCleanup do
     reset_abort_table()
     reset_after_suite_callbacks()
     reset_formatters()
+    reset_process_history()
   end
 
   defp reset_deployment_registry do
@@ -38,5 +39,11 @@ defmodule ToastTest.StateCleanup do
     end
   catch
     :exit, _ -> :ok
+  end
+
+  defp reset_process_history do
+    if Process.whereis(ToastTest.ProcessHistory) do
+      ToastTest.ProcessHistory.clear()
+    end
   end
 end
