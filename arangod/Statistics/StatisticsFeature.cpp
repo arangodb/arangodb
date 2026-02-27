@@ -214,18 +214,6 @@ DECLARE_GAUGE(arangodb_server_statistics_idle_percent, double,
 DECLARE_GAUGE(
     arangodb_server_statistics_iowait_percent, double,
     "Percentage of time that the system CPUs have been waiting for I/O");
-DECLARE_GAUGE(arangodb_v8_context_alive, double,
-              "Number of V8 contexts currently alive");
-DECLARE_GAUGE(arangodb_v8_context_busy, double,
-              "Number of V8 contexts currently busy");
-DECLARE_GAUGE(arangodb_v8_context_dirty, double,
-              "Number of V8 contexts currently dirty");
-DECLARE_GAUGE(arangodb_v8_context_free, double,
-              "Number of V8 contexts currently free");
-DECLARE_GAUGE(arangodb_v8_context_max, double,
-              "Maximum number of concurrent V8 contexts");
-DECLARE_GAUGE(arangodb_v8_context_min, double,
-              "Minimum number of concurrent V8 contexts");
 DECLARE_GAUGE(arangodb_request_statistics_memory_usage, uint64_t,
               "Memory used by the internal request statistics");
 DECLARE_GAUGE(arangodb_connection_statistics_memory_usage, uint64_t,
@@ -394,24 +382,6 @@ auto const statStrings = std::map<std::string_view,
     {"iowaitPercent",
      {"arangodb_server_statistics_iowait_percent", "gauge",
       "Percentage of time that the system CPUs have been waiting for I/O"}},
-    {"v8ContextAvailable",
-     {"arangodb_v8_context_alive", "gauge",
-      "Number of V8 contexts currently alive"}},
-    {"v8ContextBusy",
-     {"arangodb_v8_context_busy", "gauge",
-      "Number of V8 contexts currently busy"}},
-    {"v8ContextDirty",
-     {"arangodb_v8_context_dirty", "gauge",
-      "Number of V8 contexts currently dirty"}},
-    {"v8ContextFree",
-     {"arangodb_v8_context_free", "gauge",
-      "Number of V8 contexts currently free"}},
-    {"v8ContextMax",
-     {"arangodb_v8_context_max", "gauge",
-      "Maximum number of concurrent V8 contexts"}},
-    {"v8ContextMin",
-     {"arangodb_v8_context_min", "gauge",
-      "Minimum number of concurrent V8 contexts"}},
     {"effectiveCores",
      {"arangodb_server_statistics_effective_cpu_cores", "gauge",
       "Number of effective CPU cores set for the arangod process"}},
@@ -504,12 +474,6 @@ auto const statBuilder = makeStatBuilder({
     {"systemPercent", new arangodb_server_statistics_system_percent()},
     {"idlePercent", new arangodb_server_statistics_idle_percent()},
     {"iowaitPercent", new arangodb_server_statistics_iowait_percent()},
-    {"v8ContextAvailable", new arangodb_v8_context_alive()},
-    {"v8ContextBusy", new arangodb_v8_context_busy()},
-    {"v8ContextDirty", new arangodb_v8_context_dirty()},
-    {"v8ContextFree", new arangodb_v8_context_free()},
-    {"v8ContextMax", new arangodb_v8_context_max()},
-    {"v8ContextMin", new arangodb_v8_context_min()},
 });
 #endif
 

@@ -188,6 +188,29 @@ requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth
 endpoint. Requests with expiry times above this value will be rejected.)");
 
   options
+      ->addOption("--server.external-rbac-service",
+                  "Enable role-based access control (RBAC) and set the "
+                  "external RBAC service endpoint. If the string is empty, "
+                  "RBAC is disabled.",
+                  new StringParameter(&_options.externalRBACservice),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setLongDescription(
+          R"(When set to a non-empty string, this must be the HTTP or HTTPS
+endpoint of an external RBAC authorization service for use by coordinators and single
+servers. In this case, all requests with use role-based-access-control (RBAC) via the
+specified service for authorization decisions. When set to an empty string, RBAC is
+disabled and instead the old permission system is used.)");
+
+  options->addObsoleteOption(
+      "--server.local-authentication",
+      "Whether to use ArangoDB's built-in authentication system.", false);
+
+  options
       ->addOption("--server.authentication-system-only",
                   "Use HTTP authentication only for requests to /_api and "
                   "/_admin endpoints.",
@@ -222,13 +245,6 @@ other means (e.g. TCP/IP) are not affected by this option.)");
 #endif
 
   options
-      ->addOption("--server.jwt-secret",
-                  "The secret to use when doing JWT authentication.",
-                  new StringParameter(&_options.jwtSecretProgramOption))
-      .setDeprecatedIn(30322)
-      .setDeprecatedIn(30402);
-
-  options
       ->addOption("--server.jwt-secret-keyfile",
                   "A file containing the JWT secret to use when doing JWT "
                   "authentication.",
@@ -252,10 +268,6 @@ In single server setups, ArangoDB generates a secret if none is specified.
 
 In cluster deployments which have authentication enabled, a secret must
 be set consistently across all cluster nodes so they can talk to each other.
-
-ArangoDB also supports an `--server.jwt-secret` option to pass the secret
-directly (without a file). However, this is discouraged for security
-reasons.
 
 You can reload JWT secrets from disk without restarting the server or the nodes
 of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
@@ -307,12 +319,6 @@ void AuthenticationFeature::validateOptions(
     }
   }
 
-  if (options->processingResult().touched("server.jwt-secret")) {
-    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
-  }
-
   // Validate JWT expiry time settings
   if (_options.minimalJwtExpiryTime > _options.maximalJwtExpiryTime) {
     LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
@@ -320,6 +326,17 @@ void AuthenticationFeature::validateOptions(
         << ") must not be greater than --auth.maximal-jwt-expiry-time ("
         << _options.maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
+  }
+
+  // Validate RBAC service endpoint
+  if (!_options.externalRBACservice.empty()) {
+    if (!_options.externalRBACservice.starts_with("http://") &&
+        !_options.externalRBACservice.starts_with("https://")) {
+      LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
+          << "--server.external-rbac-service must start with http:// or "
+             "https://";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 
@@ -404,6 +421,10 @@ bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
 
 bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
   return _options.authenticationSystemOnly;
+}
+
+std::string_view AuthenticationFeature::externalRBACservice() const noexcept {
+  return _options.externalRBACservice;
 }
 
 /// @return Cache to deal with authentication tokens

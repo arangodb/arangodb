@@ -96,7 +96,7 @@
     - log.application
     - log.facility
 
-* Remove the following commandline options from client tools
+* Remove the following deprecated commandline options from client tools
   arangodump:
     - envelope
     - tick-start
@@ -107,10 +107,22 @@
 
 * Remove /_admin/database/target-version endpoint in favor of /_api/version
 
+* Updated ArangoDB Starter to v0.20.0-preview-2.
+
+* Uninstall all routes for API version 0, which no longer exists in 4.0.
+
+* Remove deprecated option `--server.jwt-secret` because it is insecure.
+
+* Remove metrics for V8 contexts:
+  - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
+  - `arangodb_v8_context_busy`: number of V8 contexts currently busy.
+  - `arangodb_v8_context_dirty`: number of V8 contexts currently dirty.
+  - `arangodb_v8_context_free`: number of V8 contexts currently free.
+  - `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
+  - `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
+
 * arangorestore now automatically converts deprecated `fulltext` indexes to
   `inverted` indexes when restoring dumps from older versions.
-
-* Updated ArangoDB Starter to v0.20.0-preview-1.
 
 * Upgraded included rclone to v1.73.1 with go1.24.13 and non-vulnerable
   dependencies.
@@ -199,10 +211,35 @@
 
 * Remove FoxxMaster code.
 
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
+
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
+* Updated minimatch to 10.2.1.
+
+* Add new API GET /_admin/options-public for new platform UI.
+
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
+* Add switch `--server.external-rbac-service` to enable role-based access control.
+  For now, it does not do the actual authorization change.
+
+* Updated ArangoDB Starter to v0.19.17.
+
 * Added activities API which shows currently on-going high-level processes in the
   database and their possible dependencies on each other. Until now only a couple
   of activities are implemented, e.g. a rest handler is called, an aql query is
   executed, a collection or an index is created or a dump is on-going.
+
+* BTS-2316: List broken hotbackups and report, why they are broken.
+
+* Fixes BTS-2309: Treat empty object in schema definition as null.
 
 * FE-972: fix sparse option not being sent in vector index creation payload.
 

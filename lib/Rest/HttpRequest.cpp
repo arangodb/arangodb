@@ -106,6 +106,10 @@ HttpRequest::~HttpRequest() {
   if (_vpackBuilder) {
     expected += _vpackBuilder->bufferRef().size();
   }
+  expected += _jwtToken.size();
+  for (auto const& r : _roles) {
+    expected += r.size();
+  }
 
   TRI_ASSERT(_memoryUsage == expected)
       << "expected memory usage: " << expected << ", actual: " << _memoryUsage

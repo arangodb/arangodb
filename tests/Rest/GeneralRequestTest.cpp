@@ -325,7 +325,7 @@ TEST_F(ApiVersionDetectionTest, MaxUint32Minus1) {
 
 // Test: Check that default API version constant is accessible and is 0
 TEST_F(ApiVersionDetectionTest, DefaultApiVersionConstant) {
-  EXPECT_EQ(0u, ApiVersion::defaultApiVersion);
+  EXPECT_EQ(1u, ApiVersion::defaultApiVersion);
 }
 
 // Test: Verify default version is applied to new requests

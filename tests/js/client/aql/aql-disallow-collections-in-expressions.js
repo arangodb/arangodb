@@ -119,12 +119,6 @@ function testSuite() {
       assertEqual(db[cn].count(), result[0]);
     },
 
-    testUseInWithinRectangle: function () {
-      let result = db._query("RETURN WITHIN_RECTANGLE(" + cn + ", -1, -1, 1, 1)").toArray();
-      assertEqual(1, result.length);
-      assertEqual(500, result[0].length);
-    },
-
     testUseInExpressions: function () {
       let queries = [
         "RETURN " + cn,

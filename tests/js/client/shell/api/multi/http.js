@@ -431,14 +431,6 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
-    test_checks_version_endpoint_with_v0_prefix: function() {
-      let cmd = "/_arango/v0/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertCspHeaders(doc);
-    },
-
     test_checks_version_endpoint_with_invalid_prefix_no_version_number: function() {
       let cmd = "/_arango/v/_api/version";
       let doc = arango.GET_RAW(cmd);
@@ -487,16 +479,6 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
-    test_checks_version_endpoint_reports_requested_api_version_v0: function() {
-      let cmd = "/_arango/v0/_api/version";
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
-      assertEqual(doc.parsedBody.requestedApiVersion, "v0");
-      assertCspHeaders(doc);
-    },
-
     test_checks_version_endpoint_reports_requested_api_version_v1: function() {
       let cmd = "/_arango/v1/_api/version";
       let doc = arango.GET_RAW(cmd);
@@ -513,8 +495,8 @@ function API_versioningSuite () {
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('requestedApiVersion'));
-      // Default API version is v0
-      assertEqual(doc.parsedBody.requestedApiVersion, "v0");
+      // Default API version is v1
+      assertEqual(doc.parsedBody.requestedApiVersion, "v1");
       assertCspHeaders(doc);
     },
 
@@ -548,6 +530,15 @@ function API_versioningSuite () {
       assertCspHeaders(doc);
     },
 
+    test_checks_unsupported_api_version_0_with_different_endpoint: function() {
+      let cmd = "/_arango/v0/_api/collection";
+      let doc = arango.GET_RAW(cmd);
+
+      // Unsupported API version should return 404 on any endpoint
+      assertEqual(doc.code, 404);
+      assertTrue(doc.parsedBody.error);
+      assertCspHeaders(doc);
+    },
   };
 }
 
