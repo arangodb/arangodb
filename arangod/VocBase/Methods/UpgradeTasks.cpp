@@ -818,7 +818,8 @@ Result migrateCollectionIndexesInPlan(AgencyComm& ac, AgencyCache& agencyCache,
                                 AgencySimpleOperationType::INCREMENT_OP);
     AgencyPrecondition pre(indexesPath, AgencyPrecondition::Type::VALUE,
                            indexesSlice);
-    AgencyWriteTransaction trx({setIndexes, incrVersion}, pre);
+    AgencyWriteTransaction trx({std::move(setIndexes), std::move(incrVersion)},
+                               std::move(pre));
     AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
     if (result.successful()) {
@@ -844,7 +845,7 @@ Result migrateCollectionIndexesInPlan(AgencyComm& ac, AgencyCache& agencyCache,
 Result convertHashSkiplistIndexesInPlanCoordinator(
     TRI_vocbase_t& vocbase, arangodb::ClusterFeature& clusterFeature) {
   auto& agencyCache = clusterFeature.agencyCache();
-  auto [acb, idx] = agencyCache.read(
+  auto const [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
   velocypack::Slice databasesSlice =
@@ -857,15 +858,15 @@ Result convertHashSkiplistIndexesInPlanCoordinator(
 
   AgencyComm ac(vocbase.server());
 
-  for (auto dbEntry : VPackObjectIterator(databasesSlice)) {
+  for (auto const dbEntry : VPackObjectIterator(databasesSlice)) {
     std::string const dbName = dbEntry.key.copyString();
     velocypack::Slice collectionsSlice = dbEntry.value;
     if (!collectionsSlice.isObject()) {
       continue;
     }
-    for (auto collEntry : VPackObjectIterator(collectionsSlice)) {
+    for (auto const collEntry : VPackObjectIterator(collectionsSlice)) {
       auto const collId = collEntry.key.copyString();
-      auto res =
+      auto const res =
           migrateCollectionIndexesInPlan(ac, agencyCache, dbName, collId);
       if (res.fail()) {
         return res;
