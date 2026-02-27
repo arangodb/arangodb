@@ -64,7 +64,6 @@ constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
-constexpr std::string_view pathPrefixOpenApi("/openapi.json");
 
 VocbasePtr lookupDatabaseFromRequest(
     application_features::ApplicationServer& server, GeneralRequest& req) {
