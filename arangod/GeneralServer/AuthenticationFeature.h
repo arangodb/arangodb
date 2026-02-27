@@ -52,7 +52,7 @@ class AuthenticationFeature final
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void beginShutdown() override final;
+  void stop() override final;
   void unprepare() override final;
 
   static AuthenticationFeature* instance() noexcept;
