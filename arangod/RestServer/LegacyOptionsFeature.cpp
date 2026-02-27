@@ -120,6 +120,34 @@ void LegacyOptionsFeature::collectOptions(
                              "filesystem paths accessible from within "
                              "JavaScript",
                              true);
+  options->addObsoleteOption("--javascript.startup-options-whitelist",
+                             "startup options whose names match this regular "
+                             "expression are allowed",
+                             true);
+  options->addObsoleteOption("--javascript.startup-options-blacklist",
+                             "startup options whose names match this regular "
+                             "expression are denied",
+                             true);
+  options->addObsoleteOption("--javascript.environment-variables-whitelist",
+                             "environment variables that are accessible from "
+                             "within JavaScript",
+                             true);
+  options->addObsoleteOption("--javascript.environment-variables-blacklist",
+                             "environment variables that are not accessible "
+                             "from within JavaScript",
+                             true);
+  options->addObsoleteOption("--javascript.endpoints-whitelist",
+                             "endpoints that can be connected to from within "
+                             "JavaScript",
+                             true);
+  options->addObsoleteOption("--javascript.endpoints-blacklist",
+                             "endpoints that cannot be connected to from "
+                             "within JavaScript",
+                             true);
+  options->addObsoleteOption("--javascript.files-whitelist",
+                             "filesystem paths accessible from within "
+                             "JavaScript",
+                             true);
 
   // V8PlatformFeature options
   options->addObsoleteOption("--javascript.v8-max-heap",
@@ -177,4 +205,8 @@ void LegacyOptionsFeature::collectOptions(
   options->addObsoleteOption("--web-interface.version-check",
                              "Alert the user if new versions are available.",
                              false);
+
+  // NonceFeature options
+  options->addObsoleteOption("--nonce.size",
+                             "the size of the hash array for nonces", true);
 }
