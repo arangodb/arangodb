@@ -29,7 +29,6 @@ if (getOptions === true) {
   return {
     'rocksdb.auto-refill-index-caches-on-modify' : 'false',
     'server.statistics' : 'false',
-    'foxx.queues' : 'false',
   };
 }
 
