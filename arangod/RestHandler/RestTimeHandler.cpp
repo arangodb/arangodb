@@ -43,7 +43,7 @@ RestStatus RestTimeHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));

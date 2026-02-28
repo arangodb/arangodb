@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango, internal */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
