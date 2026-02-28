@@ -14,6 +14,8 @@ function getStatistics() {
   return arango.GET("/_db/_system/_admin/statistics?sync=true");
 }
 
+// testing
+
 function performGETRequest() {
   arango.GET('/_api/version');
 }
