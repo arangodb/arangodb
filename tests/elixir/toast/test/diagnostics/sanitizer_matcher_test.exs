@@ -7,7 +7,7 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
   import Toast.DiagnosticsTestHelpers,
     only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
 
-  defp make_error(opts \\ []) do
+  defp make_error(opts) do
     %{
       content:
         Keyword.get(opts, :content, "==12345==ERROR: AddressSanitizer: heap-buffer-overflow\n"),

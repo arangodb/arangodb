@@ -82,10 +82,10 @@ defmodule Toast.Deployment.Controller.SingleServer do
   def derive_status(servers) do
     case Map.values(servers) do
       [server] ->
-        case server.operational_state do
-          :running -> :ready
-          :crashed when not server.intentional -> :failed
-          _ -> :degraded
+        cond do
+          server.operational_state == :running -> :ready
+          ServerInstance.unexpected_crash?(server) -> :failed
+          true -> :degraded
         end
 
       _ ->
@@ -191,13 +191,15 @@ defmodule Toast.Deployment.Controller.SingleServer do
         sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server.id)
         log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
 
-        %{
+        diagnostics = %{
           sanitizer_errors: sanitizer_errors,
           server_log: if(log_content, do: ServerLog.scan(log_content)),
           crash_report: if(log_content, do: CrashLogParser.parse(log_content)),
           server_error: state.error,
           server: server
         }
+
+        %{server.id => diagnostics}
 
       _ ->
         nil
@@ -209,7 +211,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
     Controller.stop_all_health_monitors(state)
 
     for {server_id, _server} <- state.servers do
-      Controller.stop_server_process(state, server_id, 5_000)
+      Controller.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
     end
 
     %{

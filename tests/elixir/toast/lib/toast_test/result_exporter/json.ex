@@ -106,7 +106,7 @@ defmodule ToastTest.ResultExporter.JSON do
   # --- Summary ---
 
   defp build_summary(tests) do
-    counts = count_outcomes(tests)
+    counts = Enum.frequencies_by(tests, & &1.outcome)
 
     %{
       "total" => length(tests),
@@ -116,10 +116,6 @@ defmodule ToastTest.ResultExporter.JSON do
       "excluded" => Map.get(counts, :excluded, 0),
       "invalid" => Map.get(counts, :invalid, 0)
     }
-  end
-
-  defp count_outcomes(tests) do
-    Enum.frequencies_by(tests, & &1.outcome)
   end
 
   # --- Suites ---
@@ -172,12 +168,14 @@ defmodule ToastTest.ResultExporter.JSON do
   defp build_server_health(nil), do: nil
 
   defp build_server_health(diagnostics) do
-    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
-      Map.new(diagnostics, fn {server_id, diag} ->
-        {server_id, build_single_server_health(diag)}
-      end)
-    else
-      build_single_server_health(diagnostics)
+    entries = Toast.Diagnostics.to_server_entries(diagnostics)
+
+    case entries do
+      [{_id, diag}] ->
+        build_single_server_health(diag)
+
+      _ ->
+        Map.new(entries, fn {server_id, diag} -> {server_id, build_single_server_health(diag)} end)
     end
   end
 

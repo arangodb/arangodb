@@ -4,12 +4,23 @@ defmodule Toast.Analysis.Crashes do
   @doc "Format crash and sanitizer information from parsed results.json data."
   @spec format(map()) :: String.t()
   def format(results) do
-    sections = []
-
-    sections = sections ++ format_crash_matching(results["crash_matching"])
-    sections = sections ++ format_sanitizer_matching(results["sanitizer_matching"])
-    sections = sections ++ format_server_health_crashes(results)
-    sections = sections ++ format_coredump_reports(results)
+    sections =
+      format_matching(
+        results["crash_matching"],
+        "Crash Attribution:",
+        "Unattributed Crashes:",
+        &format_matched_crash/1,
+        &format_unmatched_crash/1
+      ) ++
+        format_matching(
+          results["sanitizer_matching"],
+          "Sanitizer Attribution:",
+          "Unattributed Sanitizer Errors:",
+          &format_matched_sanitizer/1,
+          &format_unmatched_sanitizer/1
+        ) ++
+        format_server_health_crashes(results) ++
+        format_coredump_reports(results)
 
     if sections == [] do
       "No crash or sanitizer issues detected."
@@ -18,40 +29,43 @@ defmodule Toast.Analysis.Crashes do
     end
   end
 
-  defp format_crash_matching(nil), do: []
-  defp format_crash_matching(%{"matched" => [], "unmatched" => []}), do: []
+  # Generic matched/unmatched formatter — single place for this structural pattern.
+  defp format_matching(nil, _, _, _, _), do: []
+  defp format_matching(%{"matched" => [], "unmatched" => []}, _, _, _, _), do: []
 
-  defp format_crash_matching(%{"matched" => matched, "unmatched" => unmatched}) do
-    parts = []
-
-    parts =
+  defp format_matching(
+         %{"matched" => matched, "unmatched" => unmatched},
+         matched_header,
+         unmatched_header,
+         format_matched_fn,
+         format_unmatched_fn
+       ) do
+    matched_section =
       if matched != [] do
-        entries =
-          Enum.map_join(matched, "\n", fn m ->
-            "  #{m["module"]} - #{m["test"]} (#{m["confidence"]}): #{format_crash_brief(m["crash"])}"
-          end)
-
-        parts ++ ["Crash Attribution:\n" <> entries]
+        entries = Enum.map_join(matched, "\n", format_matched_fn)
+        [matched_header <> "\n" <> entries]
       else
-        parts
+        []
       end
 
-    parts =
+    unmatched_section =
       if unmatched != [] do
-        entries =
-          Enum.map_join(unmatched, "\n", fn c ->
-            "  #{format_crash_brief(c)}"
-          end)
-
-        parts ++ ["Unattributed Crashes:\n" <> entries]
+        entries = Enum.map_join(unmatched, "\n", format_unmatched_fn)
+        [unmatched_header <> "\n" <> entries]
       else
-        parts
+        []
       end
 
-    parts
+    matched_section ++ unmatched_section
   end
 
-  defp format_crash_matching(_), do: []
+  defp format_matching(_, _, _, _, _), do: []
+
+  defp format_matched_crash(m) do
+    "  #{m["module"]} - #{m["test"]} (#{m["confidence"]}): #{format_crash_brief(m["crash"])}"
+  end
+
+  defp format_unmatched_crash(c), do: "  #{format_crash_brief(c)}"
 
   defp format_crash_brief(nil), do: "(no details)"
 
@@ -61,44 +75,16 @@ defmodule Toast.Analysis.Crashes do
     "[#{signal}] #{server}"
   end
 
-  defp format_sanitizer_matching(nil), do: []
-  defp format_sanitizer_matching(%{"matched" => [], "unmatched" => []}), do: []
-
-  defp format_sanitizer_matching(%{"matched" => matched, "unmatched" => unmatched}) do
-    parts = []
-
-    parts =
-      if matched != [] do
-        entries =
-          Enum.map_join(matched, "\n", fn m ->
-            error = m["error"] || %{}
-            type = String.upcase(error["sanitizer_type"] || "unknown")
-
-            "  #{m["module"]} - #{m["test"]} (#{m["confidence"]}): [#{type}] #{error["server_id"]}"
-          end)
-
-        parts ++ ["Sanitizer Attribution:\n" <> entries]
-      else
-        parts
-      end
-
-    parts =
-      if unmatched != [] do
-        entries =
-          Enum.map_join(unmatched, "\n", fn e ->
-            type = String.upcase(e["sanitizer_type"] || "unknown")
-            "  [#{type}] #{e["server_id"]} - #{e["file_path"]}"
-          end)
-
-        parts ++ ["Unattributed Sanitizer Errors:\n" <> entries]
-      else
-        parts
-      end
-
-    parts
+  defp format_matched_sanitizer(m) do
+    error = m["error"] || %{}
+    type = String.upcase(error["sanitizer_type"] || "unknown")
+    "  #{m["module"]} - #{m["test"]} (#{m["confidence"]}): [#{type}] #{error["server_id"]}"
   end
 
-  defp format_sanitizer_matching(_), do: []
+  defp format_unmatched_sanitizer(e) do
+    type = String.upcase(e["sanitizer_type"] || "unknown")
+    "  [#{type}] #{e["server_id"]} - #{e["file_path"]}"
+  end
 
   defp format_server_health_crashes(results) do
     case results["server_health"] do

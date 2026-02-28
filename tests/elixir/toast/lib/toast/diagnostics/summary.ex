@@ -2,7 +2,7 @@ defmodule Toast.Diagnostics.Summary do
   @moduledoc "Format diagnostics into human-readable CLI summary sections."
 
   alias Toast.Deployment.ServerInstance
-  alias Toast.Diagnostics.Matcher
+  alias ToastTest.ResultExporter.Shared
 
   @separator String.duplicate("=", 80)
 
@@ -42,17 +42,10 @@ defmodule Toast.Diagnostics.Summary do
   end
 
   defp crashed_server_entries(diagnostics) do
-    if Toast.Diagnostics.cluster_diagnostics?(diagnostics) do
-      diagnostics
-      |> Enum.filter(fn {_id, diag} -> has_crash?(diag) end)
-      |> Enum.map(fn {_id, diag} -> {diag, diag.server} end)
-    else
-      if has_crash?(diagnostics) do
-        [{diagnostics, diagnostics.server}]
-      else
-        []
-      end
-    end
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Enum.filter(fn {_id, diag} -> has_crash?(diag) end)
+    |> Enum.map(fn {_id, diag} -> {diag, diag.server} end)
   end
 
   defp has_crash?(diag) do
@@ -142,15 +135,12 @@ defmodule Toast.Diagnostics.Summary do
   def format_crash_attribution(%{matched: [], unmatched: []}, []), do: nil
 
   def format_crash_attribution(%{matched: matched, unmatched: unmatched}, crash_affected_tests) do
-    format_attribution(
-      "CRASH ATTRIBUTION",
-      IO.ANSI.red(),
-      matched,
-      unmatched,
-      :crash,
-      &format_crash_entry/1,
-      extra_sections: format_crash_affected(crash_affected_tests)
-    )
+    sections =
+      format_matched_sections(matched, :crash, &format_crash_entry/1) ++
+        format_unmatched_section(unmatched, &format_crash_entry/1) ++
+        format_crash_affected(crash_affected_tests)
+
+    wrap_attribution_banner("CRASH ATTRIBUTION", IO.ANSI.red(), sections)
   end
 
   def format_crash_attribution(_, _), do: nil
@@ -166,72 +156,47 @@ defmodule Toast.Diagnostics.Summary do
   def format_sanitizer_issues(%{matched: [], unmatched: []}), do: nil
 
   def format_sanitizer_issues(%{matched: matched, unmatched: unmatched}) do
-    format_attribution(
-      "SANITIZER ISSUES",
-      IO.ANSI.yellow(),
-      matched,
-      unmatched,
-      :error,
-      &format_sanitizer_entry/1
-    )
+    sections =
+      format_matched_sections(matched, :error, &format_sanitizer_entry/1) ++
+        format_unmatched_section(unmatched, &format_sanitizer_entry/1)
+
+    wrap_attribution_banner("SANITIZER ISSUES", IO.ANSI.yellow(), sections)
   end
 
   def format_sanitizer_issues(_), do: nil
 
-  defp format_attribution(title, color, matched, unmatched, item_key, format_entry_fn, opts \\ []) do
-    sections = []
+  defp wrap_attribution_banner(_title, _color, []), do: nil
 
-    sections =
-      if matched != [] do
-        grouped = Enum.group_by(matched, fn e -> {e.module, e.test} end)
-
-        entries =
-          grouped
-          |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
-          |> Enum.map(&format_matched_group(&1, item_key, format_entry_fn))
-
-        sections ++ entries
-      else
-        sections
-      end
-
-    sections =
-      if unmatched != [] do
-        header = "  Not attributed to a specific test:"
-        details = Enum.map(unmatched, format_entry_fn)
-        sections ++ [Enum.join([header | details], "\n")]
-      else
-        sections
-      end
-
-    sections = sections ++ Keyword.get(opts, :extra_sections, [])
-
-    if sections == [] do
-      nil
-    else
-      IO.iodata_to_binary([
-        "\n",
-        color,
-        @separator,
-        "\n #{title}\n",
-        @separator,
-        IO.ANSI.reset(),
-        "\n\n",
-        Enum.join(sections, "\n\n"),
-        "\n"
-      ])
-    end
+  defp wrap_attribution_banner(title, color, sections) do
+    IO.iodata_to_binary([
+      "\n",
+      color,
+      @separator,
+      "\n #{title}\n",
+      @separator,
+      IO.ANSI.reset(),
+      "\n\n",
+      Enum.join(sections, "\n\n"),
+      "\n"
+    ])
   end
 
-  defp format_matched_group({{module, test_name}, entries}, item_key, format_entry_fn) do
-    confidence_label =
-      entries
-      |> Enum.map(& &1.confidence)
-      |> Matcher.confidence_label()
+  defp format_matched_sections([], _item_key, _format_entry_fn), do: []
 
-    header = "  #{inspect(module)} - #{test_name} (#{confidence_label}):"
-    details = Enum.map(entries, fn e -> format_entry_fn.(Map.fetch!(e, item_key)) end)
-    Enum.join([header | details], "\n")
+  defp format_matched_sections(matched, item_key, format_entry_fn) do
+    matched
+    |> Shared.format_grouped_matches(item_key, format_entry_fn)
+    |> Enum.map(fn {header, details} ->
+      Enum.join(["  #{header}:" | details], "\n")
+    end)
+  end
+
+  defp format_unmatched_section([], _format_entry_fn), do: []
+
+  defp format_unmatched_section(unmatched, format_entry_fn) do
+    header = "  Not attributed to a specific test:"
+    details = Enum.map(unmatched, format_entry_fn)
+    [Enum.join([header | details], "\n")]
   end
 
   defp format_crash_entry(crash) do

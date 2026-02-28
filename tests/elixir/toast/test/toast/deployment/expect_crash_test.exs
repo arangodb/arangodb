@@ -77,7 +77,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
       assert [{:expect_crash, "s1", 60_000}] = MockController.calls(pid)
     end
 
-    test "returns {:error, :already_expected} from controller", %{pid: pid} do
+    test "returns {:error, :already_expected} from controller", _context do
       {:ok, pid} =
         MockController.start_link(responses: %{expect_crash: {:error, :already_expected}})
 
@@ -110,7 +110,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
       assert [{:verify_crash, "s1", 15_000}] = MockController.calls(pid)
     end
 
-    test "returns {:ok, crash_info} when crash occurred", %{pid: pid} do
+    test "returns {:ok, crash_info} when crash occurred", _context do
       crash_info = %{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:ok, crash_info}})
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
@@ -118,14 +118,14 @@ defmodule Toast.Deployment.ExpectCrashTest do
       assert {:ok, ^crash_info} = Deployment.verify_crash(deployment(pid), "s1")
     end
 
-    test "returns {:error, :not_crashed} when no crash", %{pid: pid} do
+    test "returns {:error, :not_crashed} when no crash", _context do
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:error, :not_crashed}})
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 
       assert {:error, :not_crashed} = Deployment.verify_crash(deployment(pid), "s1")
     end
 
-    test "returns {:error, :timeout} when verify times out", %{pid: pid} do
+    test "returns {:error, :timeout} when verify times out", _context do
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:error, :timeout}})
       on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
 

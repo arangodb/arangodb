@@ -277,7 +277,7 @@ defmodule Toast.Deployment.Controller do
 
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, killing process")
-    stop_server_process(state, server_id, 5_000)
+    stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
     crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
     ServerLifecycle.notify_crash(state.on_crash, build_deployment_from_state(state), crash_info)
 
@@ -347,7 +347,7 @@ defmodule Toast.Deployment.Controller do
   defp do_stop_server(server_id, acc) do
     with {:ok, server} <- fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
-      ServerLifecycle.stop_server(server)
+      ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
       acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
 
       ServerLifecycle.notify_event(
@@ -391,7 +391,7 @@ defmodule Toast.Deployment.Controller do
 
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
-      ServerLifecycle.stop_before_restart(server)
+      ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
       acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
       relaunch_server(server_id, acc, server, opts)
     end
@@ -405,6 +405,8 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp relaunch_server(server_id, acc, server, opts) do
+    opts = Keyword.put_new(opts, :timeout_factor, acc.config.timeout_factor)
+
     case ServerLifecycle.relaunch_and_wait(server, opts) do
       :ok ->
         acc = update_server(acc, server_id, operational_state: :running, intentional: false)

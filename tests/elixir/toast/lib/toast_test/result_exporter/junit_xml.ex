@@ -1,7 +1,7 @@
 defmodule ToastTest.ResultExporter.JUnitXML do
   @moduledoc "Transform test results and diagnostics into JUnit XML format."
 
-  alias Toast.Diagnostics.Matcher
+  alias ToastTest.ResultExporter.Shared
 
   @doc "Render test results and diagnostics as a JUnit XML string."
   @spec render(map(), map() | nil, map() | nil, map() | nil) :: String.t()
@@ -12,7 +12,10 @@ defmodule ToastTest.ResultExporter.JUnitXML do
     total = length(all_tests)
     failures = count_by_outcome(all_tests, :failed)
     errors = count_by_outcome(all_tests, :invalid)
-    skipped = count_by_outcome(all_tests, :skipped) + count_by_outcome(all_tests, :excluded)
+
+    skipped =
+      count_by_outcome(all_tests, :skipped) + count_by_outcome(all_tests, :excluded)
+
     time = format_duration(test_results.times_us.run)
 
     suite_elements = Enum.map_join(suites, "\n", &render_testsuite/1)
@@ -117,6 +120,10 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   # --- Test cases ---
 
+  def count_by_outcome(tests, outcome) do
+    Enum.count(tests, &(&1.outcome == outcome))
+  end
+
   defp render_testcase(test, classname) do
     name = xml_escape(test.name)
     cn = xml_escape(classname)
@@ -218,13 +225,17 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   end
 
   defp format_diagnostics(diagnostics) do
-    if ToastTest.ResultExporter.cluster_diagnostics?(diagnostics) do
-      diagnostics
-      |> Enum.sort_by(fn {server_id, _} -> server_id end)
-      |> Enum.map_join("\n", &format_server_diagnostics/1)
-      |> String.trim()
-    else
-      format_single_diagnostics(diagnostics)
+    entries = Toast.Diagnostics.to_server_entries(diagnostics)
+
+    case entries do
+      [{_id, diag}] ->
+        format_single_diagnostics(diag)
+
+      _ ->
+        entries
+        |> Enum.sort_by(fn {server_id, _} -> server_id end)
+        |> Enum.map_join("\n", &format_server_diagnostics/1)
+        |> String.trim()
     end
   end
 
@@ -348,18 +359,8 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   defp format_grouped_matches(matched, item_key, detail_fn) do
     matched
-    |> Enum.group_by(fn e -> {e.module, e.test} end)
-    |> Enum.sort_by(fn {{mod, name}, _} -> {inspect(mod), name} end)
-    |> Enum.map(&format_match_group(&1, item_key, detail_fn))
-  end
-
-  defp format_match_group({{module, test_name}, entries}, item_key, detail_fn) do
-    confidence_label =
-      entries |> Enum.map(& &1.confidence) |> Matcher.confidence_label()
-
-    header = "#{inspect(module)} - #{test_name} (#{confidence_label}):"
-    details = Enum.map_join(entries, "\n", fn e -> detail_fn.(Map.fetch!(e, item_key)) end)
-    "#{header}\n#{details}"
+    |> Shared.format_grouped_matches(item_key, detail_fn)
+    |> Enum.map(fn {header, details} -> "#{header}:\n#{Enum.join(details, "\n")}" end)
   end
 
   defp format_crash_detail(crash) do
@@ -373,10 +374,6 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   end
 
   # --- Helpers ---
-
-  defp count_by_outcome(tests, outcome) do
-    Enum.count(tests, &(&1.outcome == outcome))
-  end
 
   defp format_duration(us) do
     :erlang.float_to_binary(us / 1_000_000, decimals: 3)

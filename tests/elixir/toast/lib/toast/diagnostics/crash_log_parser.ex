@@ -123,11 +123,15 @@ defmodule Toast.Diagnostics.CrashLogParser do
     end
   end
 
-  # Match FATAL level in arangod log lines. The format varies:
-  # older: `[pid] FATAL [logid]`
-  # newer: `[pid-tid] R FATAL [logid]` — R is the server role
-  #   (S=single, C=coordinator, P=primary/dbserver, A=agent)
-  defp fatal_line?(line), do: String.contains?(line, " FATAL ")
+  @doc """
+  Check if a log line has FATAL severity.
+
+  Matches both old and new arangod log formats:
+  - older: `[pid] FATAL [logid]`
+  - newer: `[pid-tid] R FATAL [logid]` (R = server role)
+  """
+  @spec fatal_line?(String.t()) :: boolean()
+  def fatal_line?(line), do: String.contains?(line, " FATAL ")
 
   defp extract_signal(text) do
     case Regex.run(~r/caught unexpected signal (\d+) \((\w+)/, text) do

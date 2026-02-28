@@ -83,7 +83,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     states = Enum.map(server_list, & &1.operational_state)
 
     cond do
-      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) ->
+      Enum.any?(server_list, &ServerInstance.unexpected_crash?/1) ->
         :failed
 
       Enum.all?(states, &(&1 == :running)) ->
@@ -477,7 +477,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     Controller.stop_all_health_monitors(state)
     ms = state.mode_state
     all_ids = ms.agents ++ ms.dbservers ++ ms.coordinators
-    stop_servers(all_ids, state, 5_000)
+    stop_servers(all_ids, state, 5_000 * state.config.timeout_factor)
 
     %{
       state

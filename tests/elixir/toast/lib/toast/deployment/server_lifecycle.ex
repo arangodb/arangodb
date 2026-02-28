@@ -8,11 +8,16 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @intentional_exit_signals [nil, 15]
 
+  @base_stop_timeout 30_000
+  @base_relaunch_timeout 60_000
+  @base_sleep_after_kill 200
+
   # --- Server control operations ---
 
-  @spec stop_server(ServerInstance.t()) :: :ok
-  def stop_server(%ServerInstance{} = server) do
-    ServerProcess.stop(server.server_pid, 30_000)
+  @spec stop_server(ServerInstance.t(), keyword()) :: :ok
+  def stop_server(%ServerInstance{} = server, opts \\ []) do
+    factor = Keyword.get(opts, :timeout_factor, 1)
+    ServerProcess.stop(server.server_pid, @base_stop_timeout * factor)
     suspend_health_monitor(server)
     :ok
   end
@@ -38,16 +43,18 @@ defmodule Toast.Deployment.ServerLifecycle do
     :ok
   end
 
-  @spec stop_before_restart(ServerInstance.t()) :: :ok
-  def stop_before_restart(%ServerInstance{} = server) do
+  @spec stop_before_restart(ServerInstance.t(), keyword()) :: :ok
+  def stop_before_restart(%ServerInstance{} = server, opts \\ []) do
+    factor = Keyword.get(opts, :timeout_factor, 1)
+
     case server.operational_state do
       :running ->
-        ServerProcess.stop(server.server_pid, 30_000)
+        ServerProcess.stop(server.server_pid, @base_stop_timeout * factor)
         suspend_health_monitor(server)
 
       :paused ->
         ServerProcess.kill(server.server_pid)
-        Process.sleep(200)
+        Process.sleep(@base_sleep_after_kill * factor)
         suspend_health_monitor(server)
 
       _stopped_or_crashed ->
@@ -57,12 +64,14 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec relaunch_and_wait(ServerInstance.t(), keyword()) :: :ok | {:error, term()}
   def relaunch_and_wait(%ServerInstance{} = server, opts) do
+    factor = Keyword.get(opts, :timeout_factor, 1)
+
     case ServerProcess.relaunch(server.server_pid, opts) do
       :ok ->
         process_check_fn = fn -> ServerProcess.status(server.server_pid) == :running end
 
         case Health.wait_until_ready(server.endpoint,
-               timeout: 60_000,
+               timeout: @base_relaunch_timeout * factor,
                process_check_fn: process_check_fn
              ) do
           :ok ->
@@ -123,9 +132,10 @@ defmodule Toast.Deployment.ServerLifecycle do
   defp handle_unexpected_crash(
          server_id,
          crash_info,
-         %ServerInstance{intentional: true} = _server,
+         %ServerInstance{} = server,
          on_crash_ctx
-       ) do
+       )
+       when server.intentional do
     if crash_info.signal in @intentional_exit_signals do
       Logger.debug(
         "Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})"

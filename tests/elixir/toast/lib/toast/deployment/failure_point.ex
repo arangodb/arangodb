@@ -88,13 +88,9 @@ defmodule Toast.Deployment.FailurePoint do
     end
   end
 
-  defp resolve_target_clients(deployment, role: role, index: index) do
-    case Deployment.servers(deployment, role: role) do
-      servers when length(servers) > index ->
-        {:ok, [Client.new(Enum.at(servers, index).endpoint)]}
-
-      _ ->
-        {:error, {:no_server_at_index, role, index}}
+  defp resolve_target_clients(deployment, [role: _role, index: _index] = target) do
+    with {:ok, client} <- Deployment.client(deployment, target) do
+      {:ok, [client]}
     end
   end
 

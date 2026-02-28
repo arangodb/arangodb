@@ -126,6 +126,28 @@ defmodule Toast.Process.ServerProcess do
   @spec relaunch(GenServer.server(), keyword()) :: :ok | {:error, term()}
   def relaunch(server, opts \\ []), do: GenServer.call(server, {:relaunch, opts})
 
+  # --- Internal state ---
+
+  defmodule State do
+    @moduledoc false
+    @enforce_keys [:id, :executable, :args, :original_args]
+    defstruct [
+      :id,
+      :executable,
+      :args,
+      :original_args,
+      :working_dir,
+      :exec_pid,
+      :os_pid,
+      :listener,
+      :output_handler,
+      :stop_from,
+      :stop_timer,
+      env: [],
+      status: :stopped
+    ]
+  end
+
   # --- Server callbacks ---
 
   @impl true
@@ -134,20 +156,15 @@ defmodule Toast.Process.ServerProcess do
 
     args = Keyword.get(opts, :args, [])
 
-    state = %{
+    state = %State{
       id: Keyword.fetch!(opts, :id),
       executable: Keyword.fetch!(opts, :executable),
       args: args,
       original_args: args,
       env: Keyword.get(opts, :env, []),
       working_dir: Keyword.get(opts, :working_dir),
-      exec_pid: nil,
-      os_pid: nil,
-      status: :stopped,
       listener: Keyword.get(opts, :listener),
-      output_handler: Keyword.get(opts, :output_handler),
-      stop_from: nil,
-      stop_timer: nil
+      output_handler: Keyword.get(opts, :output_handler)
     }
 
     {:ok, state}
@@ -273,8 +290,7 @@ defmodule Toast.Process.ServerProcess do
 
     if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
 
-    {:noreply,
-     %{state | status: :stopped, exec_pid: nil, os_pid: nil, stop_from: nil, stop_timer: nil}}
+    {:noreply, reset_process_state(state, :stopped)}
   end
 
   def handle_info(msg, state) when msg in [:stop_timeout, :kill_timeout] do
@@ -357,17 +373,8 @@ defmodule Toast.Process.ServerProcess do
     case state.status do
       :stopping ->
         Logger.debug("#{state.id} exited during stop (status=#{exit_status})")
-
         if state.stop_from, do: GenServer.reply(state.stop_from, :ok)
-
-        %{
-          state
-          | status: :stopped,
-            exec_pid: nil,
-            os_pid: nil,
-            stop_from: nil,
-            stop_timer: nil
-        }
+        reset_process_state(state, :stopped)
 
       :killed ->
         %{state | exec_pid: nil, os_pid: nil}
@@ -380,10 +387,8 @@ defmodule Toast.Process.ServerProcess do
         }
 
         Logger.error("#{state.id} crashed (status=#{exit_status}, signal=#{inspect(signal)})")
-
         notify_listener(state.listener, state.id, crash_info)
-
-        %{state | status: :crashed, exec_pid: nil, os_pid: nil}
+        reset_process_state(state, :crashed)
     end
   end
 
@@ -418,6 +423,10 @@ defmodule Toast.Process.ServerProcess do
 
   defp cancel_timer(nil), do: :ok
   defp cancel_timer(ref), do: Process.cancel_timer(ref)
+
+  defp reset_process_state(state, new_status) do
+    %{state | status: new_status, exec_pid: nil, os_pid: nil, stop_from: nil, stop_timer: nil}
+  end
 
   defp exec_env([]), do: []
 

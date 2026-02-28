@@ -31,31 +31,29 @@ defmodule Toast.Config do
 
   @default_result_dir "toast-results"
 
-  defstruct [
-    :build_dir,
-    :work_dir,
-    result_dir: @default_result_dir,
-    deployment_mode: :single_server,
-    show_server_logs: false,
-    server_args: %{},
-    global_timeout: 3_600_000,
-    test_timeout: 300_000,
-    startup_timeout: 60_000,
-    shutdown_timeout: 60_000,
-    timeout_factor: 1,
-    cluster_agents: 3,
-    cluster_dbservers: 3,
-    cluster_coordinators: 1,
-    cluster_replication_factor: 2,
-    keep_work_dir: false,
-    explicit_sanitizer: nil,
-    sanitizer: MapSet.new(),
-    api_version: nil,
-    debugger: :auto,
-    dump_agency_on_error: true,
-    coredump_timeout: 120_000,
-    ci: false
-  ]
+  defstruct build_dir: nil,
+            work_dir: nil,
+            result_dir: @default_result_dir,
+            deployment_mode: :single_server,
+            show_server_logs: false,
+            server_args: %{},
+            global_timeout: 3_600_000,
+            test_timeout: 300_000,
+            startup_timeout: 60_000,
+            shutdown_timeout: 60_000,
+            timeout_factor: 1,
+            cluster_agents: 3,
+            cluster_dbservers: 3,
+            cluster_coordinators: 1,
+            cluster_replication_factor: 2,
+            keep_work_dir: false,
+            explicit_sanitizer: nil,
+            sanitizer: MapSet.new(),
+            api_version: nil,
+            debugger: :auto,
+            dump_agency_on_error: true,
+            coredump_timeout: 120_000,
+            ci: false
 
   @spec load() :: t()
   def load, do: load([])
@@ -84,44 +82,42 @@ defmodule Toast.Config do
   end
 
   defp build_config(opts, local, build_dir, explicit_sanitizer, sanitizer, factor) do
-    %__MODULE__{
+    [
       build_dir: build_dir,
       work_dir:
         opt_or(opts, :work_dir, env("TOAST_WORK_DIR"), local[:work_dir]) || default_work_dir(),
-      result_dir:
-        opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]) ||
-          @default_result_dir,
+      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]),
       deployment_mode:
         opt_or(opts, :deployment_mode, read_deployment_mode(), local[:deployment_mode]),
       show_server_logs:
-        opt_or(opts, :show_server_logs, read_show_server_logs(), local[:show_server_logs]),
-      server_args: Keyword.get(opts, :server_args, local[:server_args] || %{}),
+        opt_or(
+          opts,
+          :show_server_logs,
+          read_bool("TOAST_SHOW_SERVER_LOGS"),
+          local[:show_server_logs]
+        ),
+      server_args: Keyword.get(opts, :server_args, local[:server_args]),
       global_timeout:
         opt_or(
           opts,
           :global_timeout,
-          read_timeout("TOAST_GLOBAL_TIMEOUT", 3_600_000),
+          read_pos_int("TOAST_GLOBAL_TIMEOUT"),
           local[:global_timeout]
         ),
       test_timeout:
-        opt_or(
-          opts,
-          :test_timeout,
-          read_timeout("TOAST_TEST_TIMEOUT", 300_000),
-          local[:test_timeout]
-        ),
+        opt_or(opts, :test_timeout, read_pos_int("TOAST_TEST_TIMEOUT"), local[:test_timeout]),
       startup_timeout:
         opt_or(
           opts,
           :startup_timeout,
-          read_timeout("TOAST_STARTUP_TIMEOUT", 60_000),
+          read_pos_int("TOAST_STARTUP_TIMEOUT"),
           local[:startup_timeout]
         ),
       shutdown_timeout:
         opt_or(
           opts,
           :shutdown_timeout,
-          read_timeout("TOAST_SHUTDOWN_TIMEOUT", 60_000),
+          read_pos_int("TOAST_SHUTDOWN_TIMEOUT"),
           local[:shutdown_timeout]
         ),
       timeout_factor: factor,
@@ -129,28 +125,28 @@ defmodule Toast.Config do
         opt_or(
           opts,
           :cluster_agents,
-          read_pos_int("TOAST_CLUSTER_AGENTS", 3),
+          read_pos_int("TOAST_CLUSTER_AGENTS"),
           local[:cluster_agents]
         ),
       cluster_dbservers:
         opt_or(
           opts,
           :cluster_dbservers,
-          read_pos_int("TOAST_CLUSTER_DBSERVERS", 3),
+          read_pos_int("TOAST_CLUSTER_DBSERVERS"),
           local[:cluster_dbservers]
         ),
       cluster_coordinators:
         opt_or(
           opts,
           :cluster_coordinators,
-          read_pos_int("TOAST_CLUSTER_COORDINATORS", 1),
+          read_pos_int("TOAST_CLUSTER_COORDINATORS"),
           local[:cluster_coordinators]
         ),
       cluster_replication_factor:
         opt_or(
           opts,
           :cluster_replication_factor,
-          read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR", 2),
+          read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR"),
           local[:cluster_replication_factor]
         ),
       keep_work_dir:
@@ -158,24 +154,25 @@ defmodule Toast.Config do
       explicit_sanitizer: explicit_sanitizer,
       sanitizer: sanitizer,
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
-      debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]) || :auto,
+      debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]),
       dump_agency_on_error:
         opt_or(
           opts,
           :dump_agency_on_error,
           read_opt_bool("TOAST_DUMP_AGENCY"),
           local[:dump_agency_on_error]
-        )
-        |> default_true(),
+        ),
       coredump_timeout:
         opt_or(
           opts,
           :coredump_timeout,
-          read_pos_int("TOAST_COREDUMP_TIMEOUT", nil),
+          read_pos_int("TOAST_COREDUMP_TIMEOUT"),
           local[:coredump_timeout]
-        ) || 120_000,
+        ),
       ci: opt_or(opts, :ci, read_bool("TOAST_CI"), local[:ci])
-    }
+    ]
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> then(&struct(__MODULE__, &1))
   end
 
   defp apply_timeout_factor(config, factor) do
@@ -266,16 +263,17 @@ defmodule Toast.Config do
   defp read_deployment_mode do
     case env("TOAST_DEPLOYMENT_MODE") do
       "cluster" -> :cluster
+      nil -> nil
       _ -> :single_server
     end
   end
 
-  defp read_show_server_logs do
-    read_bool("TOAST_SHOW_SERVER_LOGS")
-  end
-
   defp read_bool(var) do
-    env(var) == "true"
+    case env(var) do
+      nil -> nil
+      "true" -> true
+      _ -> false
+    end
   end
 
   defp read_opt_bool(var) do
@@ -293,11 +291,9 @@ defmodule Toast.Config do
     end
   end
 
-  defp read_timeout(var, default), do: read_pos_int(var, default)
-
-  defp read_pos_int(var, default) do
+  defp read_pos_int(var) do
     case env(var) do
-      nil -> default
+      nil -> nil
       val -> read_pos_int_value(var, val)
     end
   end
@@ -338,9 +334,6 @@ defmodule Toast.Config do
   defp default_work_dir do
     Path.join([System.tmp_dir!(), "toast", "run_#{System.unique_integer([:positive])}"])
   end
-
-  defp default_true(nil), do: true
-  defp default_true(val), do: val
 
   defp env(name), do: System.get_env(name)
 end

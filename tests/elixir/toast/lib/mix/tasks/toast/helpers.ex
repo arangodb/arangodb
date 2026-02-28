@@ -221,25 +221,17 @@ defmodule Mix.Tasks.Toast.Helpers do
   # -- Internal helpers --
 
   defp has_sanitizer_in_diagnostics?(diagnostics) when is_map(diagnostics) do
-    case Map.get(diagnostics, :sanitizer_errors) do
-      errors when is_list(errors) and errors != [] ->
-        true
-
-      _ ->
-        Enum.any?(diagnostics, &server_has_sanitizer_errors?/1)
-    end
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Enum.any?(fn {_id, diag} ->
+      case Map.get(diag, :sanitizer_errors) do
+        errors when is_list(errors) and errors != [] -> true
+        _ -> false
+      end
+    end)
   end
 
   defp has_sanitizer_in_diagnostics?(_), do: false
-
-  defp server_has_sanitizer_errors?({_id, server_diag}) when is_map(server_diag) do
-    case Map.get(server_diag, :sanitizer_errors) do
-      errors when is_list(errors) and errors != [] -> true
-      _ -> false
-    end
-  end
-
-  defp server_has_sanitizer_errors?(_), do: false
 
   defp extract_log_files(diagnostics) do
     extract_from_diagnostics(diagnostics, :server, fn

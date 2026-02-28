@@ -34,4 +34,13 @@ defmodule Toast.Deployment.ServerInstance do
     :launch_spec,
     intentional: false
   ]
+
+  @doc "Whether this server is in an intentionally non-running state (stopped, killed, or paused by the controller)."
+  @spec intentional_action?(t()) :: boolean()
+  def intentional_action?(%__MODULE__{intentional: intentional}), do: intentional
+
+  @doc "Whether this server has crashed unexpectedly (not as part of an intentional action)."
+  @spec unexpected_crash?(t()) :: boolean()
+  def unexpected_crash?(%__MODULE__{operational_state: :crashed, intentional: false}), do: true
+  def unexpected_crash?(%__MODULE__{}), do: false
 end

@@ -1,6 +1,8 @@
 defmodule Toast.Diagnostics.ServerLog do
   @moduledoc "Scan arangod server logs for non-crash issues."
 
+  alias Toast.Diagnostics.CrashLogParser
+
   @type server_log_report :: %{
           assertion_failures: [String.t()],
           warnings: [String.t()]
@@ -45,8 +47,7 @@ defmodule Toast.Diagnostics.ServerLog do
   end
 
   defp maybe_collect_warning(report, line) do
-    # FATAL lines that are NOT in {crash} topic (crash lines are handled by CrashLogParser)
-    if String.contains?(line, "] FATAL [") and not String.contains?(line, "{crash}") do
+    if CrashLogParser.fatal_line?(line) and not String.contains?(line, "{crash}") do
       content = extract_message(line)
       %{report | warnings: [content | report.warnings]}
     else
