@@ -128,6 +128,12 @@ void RestVersionHandler::getVersion(
 }
 
 RestStatus RestVersionHandler::execute() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
   VPackBuilder result;
 
   ServerSecurityFeature& security =

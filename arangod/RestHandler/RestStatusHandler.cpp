@@ -66,6 +66,12 @@ RestStatusHandler::RestStatusHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
   ServerSecurityFeature& security =
       server().getFeature<ServerSecurityFeature>();
 
