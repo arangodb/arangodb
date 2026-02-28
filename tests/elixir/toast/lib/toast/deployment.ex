@@ -5,7 +5,7 @@ defmodule Toast.Deployment do
 
   alias Toast.Client
   alias Toast.Config
-  alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
+  alias Toast.Deployment.{Controller, ServerInstance}
 
   @type server_target ::
           String.t()
@@ -32,22 +32,24 @@ defmodule Toast.Deployment do
     config = Config.load(opts)
     Logger.info("Starting single server deployment (work_dir=#{config.work_dir})")
 
-    on_crash = Keyword.get(opts, :on_crash)
-    on_event = Keyword.get(opts, :on_event)
-
     controller_opts =
-      [config: config, on_crash: on_crash, on_event: on_event] ++ Keyword.take(opts, [:id])
+      [
+        mode: Controller.SingleServer,
+        config: config,
+        on_crash: Keyword.get(opts, :on_crash),
+        on_event: Keyword.get(opts, :on_event)
+      ] ++ Keyword.take(opts, [:id])
 
     with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
-         :ok <- SingleServerController.deploy(pid, config.startup_timeout) do
-      info = SingleServerController.get_info(pid)
+         :ok <- Controller.deploy(pid, config.startup_timeout) do
+      info = Controller.get_info(pid)
 
       {:ok,
        %__MODULE__{
-         id: info.server.id,
+         id: info.id,
          mode: :single_server,
          config: config,
-         endpoint: info.server.endpoint,
+         endpoint: info[:primary_endpoint] || "",
          controller: pid,
          work_dir: config.work_dir
        }}
@@ -58,22 +60,24 @@ defmodule Toast.Deployment do
     config = Config.load(opts)
     Logger.info("Starting cluster deployment (work_dir=#{config.work_dir})")
 
-    on_crash = Keyword.get(opts, :on_crash)
-    on_event = Keyword.get(opts, :on_event)
-
     controller_opts =
-      [config: config, on_crash: on_crash, on_event: on_event] ++ Keyword.take(opts, [:id])
+      [
+        mode: Controller.Cluster,
+        config: config,
+        on_crash: Keyword.get(opts, :on_crash),
+        on_event: Keyword.get(opts, :on_event)
+      ] ++ Keyword.take(opts, [:id])
 
-    with {:ok, pid} <- Toast.Deployment.Supervisor.start_cluster_controller(controller_opts),
-         :ok <- ClusterController.deploy(pid, config.startup_timeout) do
-      info = ClusterController.get_info(pid)
+    with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
+         :ok <- Controller.deploy(pid, config.startup_timeout) do
+      info = Controller.get_info(pid)
 
       {:ok,
        %__MODULE__{
          id: info.id,
          mode: :cluster,
          config: config,
-         endpoint: info.coordinator_endpoint,
+         endpoint: info[:coordinator_endpoint] || info[:primary_endpoint] || "",
          controller: pid,
          work_dir: config.work_dir
        }}
@@ -86,10 +90,9 @@ defmodule Toast.Deployment do
 
   @spec stop(t(), keyword()) :: :ok | {:error, term()}
   def stop(%__MODULE__{controller: pid} = deployment, opts \\ []) do
-    mod = controller_module(deployment)
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
-    with :ok <- mod.shutdown(pid, timeout) do
+    with :ok <- Controller.shutdown(pid, timeout) do
       DynamicSupervisor.terminate_child(Toast.Deployment.Supervisor, pid)
       :ok
     end
@@ -110,49 +113,45 @@ defmodule Toast.Deployment do
   """
   @spec stop_and_collect(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
   def stop_and_collect(%__MODULE__{controller: pid} = deployment, opts \\ []) do
-    mod = controller_module(deployment)
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
     Logger.debug("Stopping deployment #{deployment.id} and collecting diagnostics")
 
-    # Step 1: Agency dump (cluster only, pre-shutdown)
-    # Budget: 3 endpoints * per-request timeout * number of agents (fallback attempts)
     agency_dump =
       if deployment.mode == :cluster and agency_dump_enabled?(deployment) do
         agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
 
         try do
-          ClusterController.dump_agency(pid, agency_timeout)
+          Controller.dump_agency(pid, agency_timeout)
         catch
           :exit, _ -> nil
         end
       end
 
-    # Step 2: Shutdown all servers
     shutdown_result =
       try do
-        mod.shutdown(pid, timeout)
+        Controller.shutdown(pid, timeout)
       catch
         :exit, _ -> {:error, :controller_dead}
       end
 
     case shutdown_result do
       :ok ->
-        diagnostics = collect_post_shutdown(mod, pid, deployment, opts, agency_dump)
+        diagnostics = collect_post_shutdown(pid, deployment, opts, agency_dump)
         terminate_controller(pid)
         Logger.debug("Deployment #{deployment.id} stopped, diagnostics collected")
         {:ok, diagnostics}
 
       {:error, reason} ->
         Logger.warning("Shutdown failed for #{deployment.id}: #{inspect(reason)}")
-        partial = collect_post_shutdown(mod, pid, deployment, opts, agency_dump)
+        partial = collect_post_shutdown(pid, deployment, opts, agency_dump)
         terminate_controller(pid)
         {:error, reason, partial}
     end
   end
 
   @doc "Query the current deployment status."
-  @spec status(t()) :: SingleServerController.status()
+  @spec status(t()) :: Controller.status()
   def status(deployment) do
     controller_call(deployment, :get_status, :stopped)
   end
@@ -228,17 +227,10 @@ defmodule Toast.Deployment do
 
   @doc "Get crash details if the deployment has failed. Returns :no_crash if healthy."
   @spec crash_info(t()) :: {:ok, map()} | :no_crash
-  def crash_info(%__MODULE__{mode: :single_server} = d) do
+  def crash_info(%__MODULE__{} = d) do
     case controller_call(d, :get_info, nil) do
       nil -> :no_crash
-      info -> extract_crash_info(info.error, info.server.log_file)
-    end
-  end
-
-  def crash_info(%__MODULE__{mode: :cluster} = d) do
-    case controller_call(d, :get_info, nil) do
-      nil -> :no_crash
-      info -> extract_cluster_crash_info(info.error, info.servers)
+      info -> extract_crash_info(info.error, info.servers)
     end
   end
 
@@ -329,23 +321,20 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp collect_post_shutdown(mod, pid, deployment, opts, agency_dump) do
-    # Step 3: Base diagnostics from controller (logs, sanitizer)
+  defp collect_post_shutdown(pid, deployment, opts, agency_dump) do
     base_diagnostics =
       try do
-        mod.get_info(pid)[:diagnostics]
+        Controller.get_info(pid)[:diagnostics]
       catch
         :exit, _ -> nil
       end
 
-    # Step 4: Coredump analysis (post-shutdown, own timeout)
-    coredump_reports = collect_coredumps(deployment, opts)
+    coredump_reports = collect_coredumps(pid, deployment, opts)
 
-    # Step 5: Merge
     merge_diagnostics(base_diagnostics, agency_dump, coredump_reports)
   end
 
-  defp collect_coredumps(deployment, opts) do
+  defp collect_coredumps(pid, deployment, opts) do
     debugger = resolve_debugger(deployment, opts)
 
     case debugger do
@@ -356,7 +345,7 @@ defmodule Toast.Deployment do
         coredump_timeout =
           Keyword.get(opts, :coredump_timeout, deployment.config.coredump_timeout)
 
-        servers = get_server_info_for_coredumps(deployment)
+        servers = get_server_info_for_coredumps(pid)
 
         Toast.Diagnostics.Coredump.collect(
           servers: servers,
@@ -379,17 +368,13 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp get_server_info_for_coredumps(deployment) do
-    mod = controller_module(deployment)
-
+  defp get_server_info_for_coredumps(pid) do
     try do
-      info = mod.get_info(deployment.controller)
+      info = Controller.get_info(pid)
 
-      # ClusterController returns :servers (map), SingleServerController returns :server (single)
       server_list =
         case info do
           %{servers: servers} when is_map(servers) -> Map.values(servers)
-          %{server: server} when server != nil -> [server]
           _ -> []
         end
 
@@ -444,21 +429,7 @@ defmodule Toast.Deployment do
     result
   end
 
-  defp extract_crash_info({:server_crashed, crash_info}, log_file) do
-    log_report = read_and_parse_log(log_file)
-
-    {:ok,
-     %{
-       server_id: nil,
-       server_crash_info: crash_info,
-       log_report: log_report,
-       log_file: log_file
-     }}
-  end
-
-  defp extract_crash_info(_error, _log_file), do: :no_crash
-
-  defp extract_cluster_crash_info({:server_crashed, server_id, crash_info}, servers) do
+  defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do
     server = if servers, do: servers[server_id]
     log_file = if server, do: server.log_file
     log_report = read_and_parse_log(log_file)
@@ -472,7 +443,7 @@ defmodule Toast.Deployment do
      }}
   end
 
-  defp extract_cluster_crash_info(_error, _servers), do: :no_crash
+  defp extract_crash_info(_error, _servers), do: :no_crash
 
   defp format_crash_message(:no_crash) do
     "Deployment failed (no crash details available)"
@@ -518,11 +489,9 @@ defmodule Toast.Deployment do
   end
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
-    mod = controller_module(deployment)
-
     case opts do
-      [] -> apply(mod, op, [deployment.controller, target])
-      opts -> apply(mod, op, [deployment.controller, target, opts])
+      [] -> apply(Controller, op, [deployment.controller, target])
+      opts -> apply(Controller, op, [deployment.controller, target, opts])
     end
   catch
     :exit, _ -> {:error, :controller_not_available}
@@ -547,9 +516,6 @@ defmodule Toast.Deployment do
 
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
-
-  defp controller_module(%__MODULE__{mode: :single_server}), do: SingleServerController
-  defp controller_module(%__MODULE__{mode: :cluster}), do: ClusterController
 
   defp controller_call(%__MODULE__{controller: pid}, function, default) do
     GenServer.call(pid, function)

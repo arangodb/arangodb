@@ -150,7 +150,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
   describe "expect_crash timeout auto-clear" do
     test "expectation auto-clears after timeout" do
       config = Toast.Config.load()
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+
+      {:ok, ctrl} =
+        Toast.Deployment.Controller.start_link(
+          mode: Toast.Deployment.Controller.SingleServer,
+          config: config
+        )
+
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
       # Set status to :ready so suspend_health_monitor is valid
@@ -173,7 +179,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
     test "verify_crash returns {:error, :timeout} when no crash occurs within verify timeout" do
       config = Toast.Config.load()
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+
+      {:ok, ctrl} =
+        Toast.Deployment.Controller.start_link(
+          mode: Toast.Deployment.Controller.SingleServer,
+          config: config
+        )
+
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
@@ -194,7 +206,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
     test "verify_crash returns {:error, :no_expectation} after expect timeout clears" do
       config = Toast.Config.load()
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+
+      {:ok, ctrl} =
+        Toast.Deployment.Controller.start_link(
+          mode: Toast.Deployment.Controller.SingleServer,
+          config: config
+        )
+
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
@@ -214,7 +232,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
     test "crash during expect window is captured and verify_crash succeeds" do
       config = Toast.Config.load()
-      {:ok, ctrl} = Toast.Deployment.SingleServerController.start_link(config: config)
+
+      {:ok, ctrl} =
+        Toast.Deployment.Controller.start_link(
+          mode: Toast.Deployment.Controller.SingleServer,
+          config: config
+        )
+
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
@@ -261,6 +285,6 @@ defmodule Toast.Deployment.ExpectCrashTest do
 
   defp state_server_id(ctrl) do
     state = :sys.get_state(ctrl)
-    state.server.id
+    state.id
   end
 end

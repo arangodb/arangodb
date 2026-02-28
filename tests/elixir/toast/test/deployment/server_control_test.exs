@@ -112,12 +112,12 @@ defmodule Toast.Deployment.ServerControlTest do
       %{pid: pid}
     end
 
-    test "single_server mode routes through SingleServerController", %{pid: pid} do
+    test "single_server mode routes through Controller", %{pid: pid} do
       assert :ok = Deployment.stop_server(deployment(pid, :single_server), "s1")
       assert [{:stop_server, "s1"}] = MockController.calls(pid)
     end
 
-    test "cluster mode routes through ClusterController", %{pid: pid} do
+    test "cluster mode routes through Controller", %{pid: pid} do
       assert :ok = Deployment.stop_server(deployment(pid, :cluster), "s1")
       assert [{:stop_server, "s1"}] = MockController.calls(pid)
     end

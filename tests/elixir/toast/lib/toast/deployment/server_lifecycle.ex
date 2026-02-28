@@ -1,5 +1,5 @@
 defmodule Toast.Deployment.ServerLifecycle do
-  @moduledoc "Shared server lifecycle operations used by both ClusterController and SingleServerController."
+  @moduledoc "Shared server lifecycle operations used by the deployment Controller."
 
   require Logger
 

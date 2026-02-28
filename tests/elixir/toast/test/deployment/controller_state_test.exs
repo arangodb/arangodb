@@ -2,7 +2,7 @@ defmodule Toast.Deployment.ControllerStateTest do
   use ExUnit.Case, async: false
 
   alias Toast.Process.ServerProcess
-  alias Toast.Deployment.{SingleServerController, ClusterController, ServerInstance}
+  alias Toast.Deployment.{Controller, ServerInstance}
 
   import Toast.ServerTestHelpers, only: [cleanup_server: 1]
   import Toast.DeploymentTestHelpers, only: [inject_cluster_servers: 2]
@@ -63,9 +63,9 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  # --- SingleServerController state machine tests ---
+  # --- Controller stop_server sets intentional flag (single server mode) ---
 
-  describe "SingleServerController stop_server sets intentional flag" do
+  describe "Controller (single server) stop_server sets intentional flag" do
     setup do
       id = "ssc-stop-#{System.unique_integer([:positive])}"
 
@@ -80,9 +80,8 @@ defmodule Toast.Deployment.ControllerStateTest do
       :ok = ServerProcess.launch(server_pid)
 
       {:ok, ctrl} =
-        SingleServerController.start_link(config: Toast.Config.load(), id: id)
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      # Inject the server_pid and mark the controller as ready with a running server
       inject_single_server_state(ctrl, id, server_pid)
 
       on_exit(fn ->
@@ -97,10 +96,11 @@ defmodule Toast.Deployment.ControllerStateTest do
       ctrl: ctrl,
       id: id
     } do
-      assert :ok = SingleServerController.stop_server(ctrl, id)
+      assert :ok = Controller.stop_server(ctrl, id)
       state = :sys.get_state(ctrl)
-      assert state.server.operational_state == :stopped
-      assert state.server.intentional == true
+      server = state.servers[id]
+      assert server.operational_state == :stopped
+      assert server.intentional == true
       assert state.status == :degraded
     end
 
@@ -108,18 +108,21 @@ defmodule Toast.Deployment.ControllerStateTest do
       ctrl: ctrl,
       id: id
     } do
-      assert :ok = SingleServerController.kill_server(ctrl, id)
+      assert :ok = Controller.kill_server(ctrl, id)
       state = :sys.get_state(ctrl)
-      assert state.server.operational_state == :killed
-      assert state.server.intentional == true
+      server = state.servers[id]
+      assert server.operational_state == :killed
+      assert server.intentional == true
       assert state.status == :degraded
     end
   end
 
-  describe "SingleServerController unexpected crash clears intentional" do
+  describe "Controller (single server) unexpected crash clears intentional" do
     test "crash without prior stop/kill leaves intentional as false" do
       id = "ssc-unexp-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
+
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, id, crash_info})
@@ -130,13 +133,14 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  describe "SingleServerController signal-type awareness during intentional stop" do
+  describe "Controller (single server) signal-type awareness during intentional stop" do
     test "SIGSEGV (signal 11) during intentional stop clears intentional flag" do
       id = "ssc-sig11-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
 
-      # Manually set intentional to true to simulate a prior stop_server call
-      set_intentional(ctrl, true)
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
+
+      set_intentional(ctrl, id, true)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, id, crash_info})
@@ -144,14 +148,16 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       state = :sys.get_state(ctrl)
       assert state.status == :failed
-      assert state.server.intentional == false
+      assert state.servers[id].intentional == false
     end
 
     test "SIGTERM (signal 15) during intentional stop keeps intentional true" do
       id = "ssc-sig15-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
 
-      set_intentional(ctrl, true)
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
+
+      set_intentional(ctrl, id, true)
 
       crash_info = %{exit_status: 0, signal: 15, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, id, crash_info})
@@ -159,15 +165,17 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       state = :sys.get_state(ctrl)
       # signal 15 is in @intentional_exit_signals, so it is ignored (no state change)
-      assert state.server.intentional == true
+      assert state.servers[id].intentional == true
     end
   end
 
   # --- ClusterController state machine tests ---
 
-  describe "ClusterController derive_cluster_status" do
+  describe "Controller (cluster) derive_cluster_status" do
     setup do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
+
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
       %{ctrl: ctrl}
     end
@@ -194,11 +202,8 @@ defmodule Toast.Deployment.ControllerStateTest do
         }
       })
 
-      # Trigger a stop_server call that exercises derive_cluster_status.
-      # Since we need running servers to call stop_server, test via a less invasive approach:
-      # Just query the status after manually setting the state.
       set_cluster_status(ctrl, :ready)
-      assert ClusterController.get_status(ctrl) == :ready
+      assert Controller.get_status(ctrl) == :ready
     end
 
     test "some servers intentionally down -> :degraded", %{ctrl: ctrl} do
@@ -223,10 +228,7 @@ defmodule Toast.Deployment.ControllerStateTest do
         }
       })
 
-      # derive_cluster_status is called after control operations; simulate it
-      # by checking the derived status directly through :sys manipulation
       state = :sys.get_state(ctrl)
-      # The derive logic: stopped server with intentional=true -> :degraded
       assert derive_expected_status(state.servers) == :degraded
     end
 
@@ -279,44 +281,40 @@ defmodule Toast.Deployment.ControllerStateTest do
       })
 
       state = :sys.get_state(ctrl)
-      # crashed + intentional=true means it was expected; derive_cluster_status
-      # only triggers :failed for crashed + NOT intentional
       assert derive_expected_status(state.servers) == :ready
     end
   end
 
-  describe "SingleServerController HealthMonitor restart on unexpected death" do
+  describe "Controller (single server) HealthMonitor restart on unexpected death" do
     test "restarts health monitor when it dies unexpectedly during :ready" do
       id = "ssc-hm-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
 
-      # Simulate a ready state with a health_monitor pid
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
+
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
       Process.monitor(fake_hm)
-      set_ready_with_health_monitor(ctrl, fake_hm)
+      set_ready_with_health_monitor(ctrl, id, fake_hm)
 
-      # Kill the fake health monitor abnormally
       Process.exit(fake_hm, :abnormal_crash)
 
       receive do
         {:DOWN, _, :process, ^fake_hm, _} -> :ok
       end
 
-      # The controller should receive the DOWN message. Since we cannot start
-      # a real health monitor (no real server), the restart attempt will fail,
-      # but the controller should survive and remain in its current state.
       :sys.get_state(ctrl)
       assert Process.alive?(ctrl)
     end
 
     test "does not restart health monitor on normal shutdown" do
       id = "ssc-hm-normal-#{System.unique_integer([:positive])}"
-      {:ok, ctrl} = SingleServerController.start_link(config: Toast.Config.load(), id: id)
+
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
       fake_hm = spawn(fn -> Process.sleep(:infinity) end)
-      set_ready_with_health_monitor(ctrl, fake_hm)
+      set_ready_with_health_monitor(ctrl, id, fake_hm)
 
-      # Normal exit should NOT trigger restart (reason is :normal or :shutdown)
       Process.exit(fake_hm, :normal)
       Process.sleep(50)
 
@@ -327,31 +325,42 @@ defmodule Toast.Deployment.ControllerStateTest do
 
   # --- Helpers ---
 
-  # Inject a running server into a SingleServerController so we can test
-  # control operations without deploying a real ArangoDB instance.
-  defp inject_single_server_state(ctrl, _id, server_pid) do
+  defp inject_single_server_state(ctrl, id, server_pid) do
     :sys.replace_state(ctrl, fn state ->
+      server =
+        case state.servers[id] do
+          nil -> %ServerInstance{id: id, role: :single}
+          s -> s
+        end
+
       server = %{
-        state.server
+        server
         | server_pid: server_pid,
           operational_state: :running,
           intentional: false,
           pid: ServerProcess.os_pid(server_pid)
       }
 
-      %{state | status: :ready, server: server}
+      %{state | status: :ready, servers: %{id => server}}
     end)
   end
 
-  defp set_intentional(ctrl, value) do
+  defp set_intentional(ctrl, id, value) do
     :sys.replace_state(ctrl, fn state ->
-      %{state | server: %{state.server | intentional: value}}
+      server = state.servers[id] || %ServerInstance{id: id, role: :single}
+      %{state | servers: Map.put(state.servers, id, %{server | intentional: value})}
     end)
   end
 
-  defp set_ready_with_health_monitor(ctrl, hm_pid) do
+  defp set_ready_with_health_monitor(ctrl, id, hm_pid) do
     :sys.replace_state(ctrl, fn state ->
-      %{state | status: :ready, server: %{state.server | health_monitor: hm_pid}}
+      server = state.servers[id] || %ServerInstance{id: id, role: :single}
+
+      %{
+        state
+        | status: :ready,
+          servers: Map.put(state.servers, id, %{server | health_monitor: hm_pid})
+      }
     end)
   end
 
@@ -359,7 +368,6 @@ defmodule Toast.Deployment.ControllerStateTest do
     :sys.replace_state(ctrl, fn state -> %{state | status: status} end)
   end
 
-  # Mirrors the derive_cluster_status/1 private function in ClusterController
   defp derive_expected_status(servers) do
     server_list = Map.values(servers)
     states = Enum.map(server_list, & &1.operational_state)

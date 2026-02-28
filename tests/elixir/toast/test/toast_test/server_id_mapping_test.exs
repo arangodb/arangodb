@@ -2,7 +2,7 @@ defmodule ToastTest.ServerIdMappingTest do
   use ExUnit.Case, async: false
 
   alias Toast.Deployment
-  alias Toast.Deployment.{ClusterController, ServerInstance}
+  alias Toast.Deployment.{Controller, ServerInstance}
 
   test "cluster_id returns error for single server deployment" do
     deployment = single_server_deployment(self())
@@ -16,7 +16,8 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "cluster_id happy path" do
     setup do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       inject_cluster_state(ctrl, %{
         servers: %{
@@ -63,7 +64,8 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "server_by_cluster_id happy path" do
     setup do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       inject_cluster_state(ctrl, %{
         servers: %{
@@ -104,15 +106,14 @@ defmodule ToastTest.ServerIdMappingTest do
 
   describe "cluster_id_mapping populated after server injection" do
     test "mapping reflects all servers in the cluster" do
-      {:ok, ctrl} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, ctrl} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
 
-      # Initially empty
       deployment = cluster_deployment(ctrl)
       assert {:error, :not_found} = Deployment.cluster_id(deployment, "agent-0")
 
-      # Populate mapping
       inject_cluster_state(ctrl, %{
         servers: %{
           "agent-0" => %ServerInstance{id: "agent-0", role: :agent, operational_state: :running},
@@ -138,7 +139,6 @@ defmodule ToastTest.ServerIdMappingTest do
         }
       })
 
-      # Forward and reverse lookups work for all servers
       assert {:ok, "AGNT-001"} = Deployment.cluster_id(deployment, "agent-0")
       assert {:ok, "PRMR-001"} = Deployment.cluster_id(deployment, "dbserver-0")
       assert {:ok, "CRDN-001"} = Deployment.cluster_id(deployment, "coordinator-0")
@@ -178,15 +178,15 @@ defmodule ToastTest.ServerIdMappingTest do
       dbservers = for {id, s} <- servers, s.role == :dbserver, do: id
       coordinators = for {id, s} <- servers, s.role == :coordinator, do: id
 
-      %{
-        state
-        | servers: servers,
-          agents: agents,
+      mode_state = %{
+        state.mode_state
+        | agents: agents,
           dbservers: dbservers,
           coordinators: coordinators,
-          cluster_id_mapping: mapping,
-          status: :ready
+          cluster_id_mapping: mapping
       }
+
+      %{state | servers: servers, mode_state: mode_state, status: :ready}
     end)
   end
 end

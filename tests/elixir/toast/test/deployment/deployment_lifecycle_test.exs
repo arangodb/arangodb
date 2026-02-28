@@ -1,14 +1,15 @@
 defmodule Toast.Deployment.DeploymentLifecycleTest do
   use ExUnit.Case, async: false
 
-  alias Toast.Deployment.SingleServerController, as: Controller
-  alias Toast.Deployment.ClusterController
+  alias Toast.Deployment.Controller
 
   import Toast.DeploymentTestHelpers, only: [make_deployment: 2]
 
   describe "stop_and_collect/2" do
     test "returns {:ok, empty map} for a controller that never deployed" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-collect-never-deployed")
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
@@ -16,7 +17,9 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
     end
 
     test "returns {:ok, empty map} for a controller that was already shut down" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-collect-already-stopped")
 
       :ok = Controller.shutdown(pid)
@@ -26,7 +29,9 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
     end
 
     test "returns {:error, ...} when controller process is dead" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-collect-dead")
 
       GenServer.stop(pid)
@@ -35,21 +40,10 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
                Toast.Deployment.stop_and_collect(deployment)
     end
 
-    # T1: shutdown returns error when controller is in :starting state
     test "returns {:error, {:invalid_status, :starting}, partial} when shutdown fails" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
-      # Force the controller into :starting status via deploy on a non-existent binary.
-      # deploy will fail, leaving status as :failed. But we need :starting.
-      # Instead, we can call shutdown while status is :starting by racing deploy,
-      # but that's fragile. The cleaner route: directly test that calling shutdown
-      # on a controller in a non-shuttable state returns the error through
-      # stop_and_collect. We can set the state to :starting by sending a deploy
-      # that will block. However, a simpler approach: since the shutdown handler
-      # for status :starting returns {:error, {:invalid_status, :starting}},
-      # we can verify this via GenServer state manipulation.
-      #
-      # The most reliable approach: use :sys.replace_state to force :starting status.
       :sys.replace_state(pid, fn state -> %{state | status: :starting} end)
 
       deployment = make_deployment(pid, id: "test-collect-starting")
@@ -60,9 +54,9 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       assert is_map(partial)
     end
 
-    # T2: cluster controller lifecycle — never deployed
     test "returns {:ok, empty map} for a cluster controller that never deployed" do
-      {:ok, pid} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       deployment =
         make_deployment(pid,
@@ -75,9 +69,9 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       assert diagnostics == %{}
     end
 
-    # T2: cluster controller lifecycle — dead controller
     test "returns {:error, :controller_dead, empty map} for a dead cluster controller" do
-      {:ok, pid} = ClusterController.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
       deployment =
         make_deployment(pid,
@@ -92,10 +86,11 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
                Toast.Deployment.stop_and_collect(deployment)
     end
 
-    # T9: dump_agency_on_error: false skips agency dump for cluster
     test "cluster with dump_agency_on_error: false omits agency_dump from result" do
       config = Toast.Config.load(dump_agency_on_error: false)
-      {:ok, pid} = ClusterController.start_link(config: config)
+
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.Cluster, config: config)
 
       deployment =
         make_deployment(pid,
@@ -115,7 +110,10 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
     test "debugger: :none skips coredump collection" do
       config = Toast.Config.load(debugger: :none)
-      {:ok, pid} = Controller.start_link(config: config)
+
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: config)
+
       deployment = make_deployment(pid, id: "test-debugger-none", config: config)
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
@@ -125,14 +123,18 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
   describe "diagnostics/1" do
     test "returns nil for a controller that never deployed" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-diagnostics-clean")
 
       assert Toast.Deployment.diagnostics(deployment) == nil
     end
 
     test "returns nil when controller process is dead" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-diagnostics-dead")
 
       GenServer.stop(pid)
@@ -143,7 +145,9 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
   describe "status/1 with dead controller" do
     test "returns :stopped when controller process has died" do
-      {:ok, pid} = Controller.start_link(config: Toast.Config.load())
+      {:ok, pid} =
+        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
+
       deployment = make_deployment(pid, id: "test-status-dead")
 
       GenServer.stop(pid)
