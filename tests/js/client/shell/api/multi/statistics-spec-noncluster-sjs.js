@@ -120,11 +120,11 @@ function performGETRequest() {
 }
 
 function performPOSTRequest() {
-  arango.POST('/_api/version', {'detail': true});
+  arango.POST('/_api/cursor', {query: 'RETURN 1'});
 }
 
 function performDELETERequest() {
-  arango.DELETE("/_dummy");
+  arango.DELETE('/_api/cursor/nonexistent-id');
 }
 
 describe('request statistics', function () {
