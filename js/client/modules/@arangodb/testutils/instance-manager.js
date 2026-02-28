@@ -1152,7 +1152,7 @@ class instanceManager {
         }
         let url = arangod.url;
         url += '/_api/version';
-        httpOptions.method = 'POST';
+        httpOptions.method = 'GET';
         const reply = download(url, '', httpOptions);
         if (!this.options.noStartStopLogs) {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);

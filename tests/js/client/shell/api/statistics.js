@@ -60,6 +60,10 @@ function metricsApiSuite() {
       });
     },
 
+    ////////////////////////////////////////////////////////////////////////////////;
+    // check request statistics counting of async requests;
+    //////////////////////////////////////////////////////////////////////////////#;
+
     test_testing_async_requests_: function () {
       const ASYNC_METRIC = 'arangodb_http_request_statistics_async_requests_total';
 
@@ -73,8 +77,11 @@ function metricsApiSuite() {
 
       let async_requests_1 = getAsyncCount();
 
-      let doc = arango.PUT_RAW('/_api/version', '', { 'X-Arango-Async': 'true' });
+      // use a simple query endpoint that supports async and sync
+      cmd = "/_api/cursor";
+      doc = arango.POST_RAW(cmd, '{"query":"RETURN 1"}', { "X-Arango-Async": "true" });
       assertEqual(doc.code, 202);
+      assertEqual(doc.parsedBody);
 
       internal.sleep(1);
 
@@ -82,8 +89,10 @@ function metricsApiSuite() {
       assertTrue(async_requests_2 >= async_requests_1 + 1,
         'async request should increase async counter: ' + async_requests_1 + ' -> ' + async_requests_2);
 
-      doc = arango.PUT_RAW('/_api/version', '');
-      assertEqual(doc.code, 200);
+      // same request without async header - synchronous, should return 200
+      cmd = "/_api/cursor";
+      doc = arango.POST_RAW(cmd, '{"query":"RETURN 1"}');
+      assertEqual(doc.code, 201);
 
       internal.sleep(1);
 
