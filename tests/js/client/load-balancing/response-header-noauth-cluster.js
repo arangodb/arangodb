@@ -182,10 +182,6 @@ function ResponseHeadersSuite () {
       }
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
-
-      try {
-        sendRequest('DELETE', `/_api/cursor/${cursorId}`, {}, {}, true);
-      } catch (e) {}
     },
     
     testForwardingNoConnectionHeader: function() {
