@@ -441,6 +441,7 @@ function ahuacatlParseTestSuite () {
     testMatchKeyword: function () {
       // MATCH is a reserved keyword, so using it as a variable name must fail
       ["MATCH", "match", "Match"].forEach((name) => {
+<<<<<<< Updated upstream
       try {
           db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
           
@@ -449,6 +450,12 @@ function ahuacatlParseTestSuite () {
         }
   });
 },
+=======
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+>>>>>>> Stashed changes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test WHILE keyword misuse as variable
@@ -457,6 +464,7 @@ function ahuacatlParseTestSuite () {
     testWhileKeyword: function () {
       // WHILE is a reserved keyword, so using it as a variable name must fail
       ["WHILE", "while", "While"].forEach((name) => {
+<<<<<<< Updated upstream
       try {
           db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
           
@@ -465,6 +473,12 @@ function ahuacatlParseTestSuite () {
         }
   });
 },
+=======
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+>>>>>>> Stashed changes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test UNTIL keyword misuse as variable
@@ -473,6 +487,7 @@ function ahuacatlParseTestSuite () {
     testUntilKeyword: function () {
       // UNTIL is a reserved keyword, so using it as a variable name must fail
       ["UNTIL", "until", "Until"].forEach((name) => {
+<<<<<<< Updated upstream
       try {
           db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
           
@@ -481,6 +496,12 @@ function ahuacatlParseTestSuite () {
         }
   });
 },
+=======
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+>>>>>>> Stashed changes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test SCAN keyword misuse as variable
@@ -489,6 +510,7 @@ function ahuacatlParseTestSuite () {
     testScanKeyword: function () {
       // SCAN is a reserved keyword, so using it as a variable name must fail
       ["SCAN", "scan", "Scan"].forEach((name) => {
+<<<<<<< Updated upstream
       try {
           db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
           
@@ -497,6 +519,12 @@ function ahuacatlParseTestSuite () {
         }
   });
 },
+=======
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+>>>>>>> Stashed changes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test FOLD keyword misuse as variable
@@ -505,6 +533,7 @@ function ahuacatlParseTestSuite () {
     testFoldKeyword: function () {
       // FOLD is a reserved keyword, so using it as a variable name must fail
       ["FOLD", "fold", "Fold"].forEach((name) => {
+<<<<<<< Updated upstream
       try {
           db._parse("LET `" + name + "` = 1 RETURN `" + name + "");
           
@@ -514,6 +543,12 @@ function ahuacatlParseTestSuite () {
   });
 },
 
+=======
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+>>>>>>> Stashed changes
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test line numbers in parse errors
