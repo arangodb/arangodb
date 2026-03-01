@@ -124,7 +124,7 @@ function performPOSTRequest() {
 }
 
 function performDELETERequest() {
-  arango.DELETE('/_api/cursor/nonexistent-id');
+  arango.DELETE('/dummy');
 }
 
 describe('request statistics', function () {

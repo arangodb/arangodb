@@ -138,28 +138,27 @@ function ResponseHeadersSuite () {
       let tries = 0;
       while (++tries < 30) {
         result = sendRequest('PUT', url, {}, {}, false);
-
-        if (result.status === 200) {
+        
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           break;
         }
         require("internal").wait(1.0, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
     },
 
     testForwardingPut: function() {
-      const createUrl = '/_api/cursor';
-      const createBody = { query: 'FOR i IN 1..1000 RETURN i', batchSize: 1 };
+      const createUrl = '/_api/transaction/begin';
+      const createBody = { collections: {} };
 
       let create = sendRequest('POST', createUrl, {}, createBody, true);
       assertFalse(create === undefined || create === {});
       assertEqual(create.status, 201);
-      assertTrue(create.body.hasMore === true);
-      assertNotUndefined(create.body.id);
 
-      const cursorId = create.body.id;
-      let url = `/_api/cursor/${cursorId}`;
+      const transactionId = create.body.result.id;
+      let url = `/_api/transaction/${transactionId}`;
       const headers = { "X-Arango-Async": "store" };
 
       let result = sendRequest('PUT', url, headers, {}, true);
@@ -210,12 +209,13 @@ function ResponseHeadersSuite () {
       while (++tries < 30) {
         result = sendRequest('PUT', url, {}, {}, false);
 
-        if (result.status === 200) {
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           break;
         }
         require("internal").wait(0.5, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
       assertEqual("Keep-Alive", result.headers["connection"]);
     },
@@ -242,12 +242,13 @@ function ResponseHeadersSuite () {
       while (++tries < 30) {
         result = sendRequest('PUT', url, {"Connection": "Close"}, {}, false);
 
-        if (result.status === 200) {
+        // cursor API returns 201 since it is async
+        if (result.status === 201) {
           break;
         }
         require("internal").wait(0.5, false);
       }
-      assertEqual(result.status, 200);
+      assertEqual(result.status, 201);
       assertNotUndefined(result.headers["x-arango-async-id"]);
       assertEqual("Close", result.headers["connection"]);
     },
