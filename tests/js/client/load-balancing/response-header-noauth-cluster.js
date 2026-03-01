@@ -120,11 +120,12 @@ function ResponseHeadersSuite () {
     },
 
     testForwardingPost: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store"
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -139,7 +140,6 @@ function ResponseHeadersSuite () {
         result = sendRequest('PUT', url, {}, {}, false);
 
         if (result.status === 200) {
-          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(1.0, false);
@@ -149,11 +149,20 @@ function ResponseHeadersSuite () {
     },
 
     testForwardingPut: function() {
-      let url = '/_api/version';
-      const headers = {
-        "X-Arango-Async": "store"
-      };
-      let result = sendRequest('PUT', url, headers, null, true);
+      const createUrl = '/_api/cursor';
+      const createBody = { query: 'FOR i IN 1..1000 RETURN i', batchSize: 1 };
+
+      let create = sendRequest('POST', createUrl, {}, createBody, true);
+      assertFalse(create === undefined || create === {});
+      assertEqual(create.status, 201);
+      assertTrue(create.body.hasMore === true);
+      assertNotUndefined(create.body.id);
+
+      const cursorId = create.body.id;
+      let url = `/_api/cursor/${cursorId}`;
+      const headers = { "X-Arango-Async": "store" };
+
+      let result = sendRequest('PUT', url, headers, {}, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
@@ -168,29 +177,31 @@ function ResponseHeadersSuite () {
         result = sendRequest('PUT', url, {}, {}, false);
 
         if (result.status === 200) {
-          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(1.0, false);
       }
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
+
+      try {
+        sendRequest('DELETE', `/_api/cursor/${cursorId}`, {}, {}, true);
+      } catch (e) {}
     },
     
     testForwardingNoConnectionHeader: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store",
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
       assertFalse(result.headers["x-arango-async-id"] === undefined);
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-      // connection header should be filtered out by cluster-internal 
-      // request forwarding, but not from responses given to end users
       assertEqual("Keep-Alive", result.headers["connection"]);
 
       const jobId = result.headers["x-arango-async-id"];
@@ -200,7 +211,6 @@ function ResponseHeadersSuite () {
         result = sendRequest('PUT', url, {}, {}, false);
 
         if (result.status === 200) {
-          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);
@@ -211,20 +221,19 @@ function ResponseHeadersSuite () {
     },
     
     testForwardingConnectionHeaderClose: function() {
-      let url = '/_api/version';
+      let url = '/_api/cursor';
+      const body = { query: 'RETURN 1' };
       const headers = {
         "X-Arango-Async": "store",
         "Connection": "Close"
       };
-      let result = sendRequest('POST', url, headers, null, true);
+      let result = sendRequest('POST', url, headers, body, true);
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.body, {});
       assertEqual(result.status, 202);
       assertFalse(result.headers["x-arango-async-id"] === undefined);
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
-      // connection header should be filtered out by cluster-internal 
-      // request forwarding, but not from responses given to end users
       assertEqual("Close", result.headers["connection"]);
 
       const jobId = result.headers["x-arango-async-id"];
@@ -234,7 +243,6 @@ function ResponseHeadersSuite () {
         result = sendRequest('PUT', url, {"Connection": "Close"}, {}, false);
 
         if (result.status === 200) {
-          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);
