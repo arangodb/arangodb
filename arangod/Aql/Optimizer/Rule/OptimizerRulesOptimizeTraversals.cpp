@@ -39,7 +39,6 @@
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
 
-#include <memory>
 
 namespace {
 
