@@ -8,7 +8,8 @@ defmodule Toast.Deployment.Controller.Cluster do
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller
-  alias Toast.Diagnostics.{AgencyDump, CrashLogParser, Sanitizer, ServerLog}
+  alias Toast.Diagnostics
+  alias Toast.Diagnostics.AgencyDump
 
   @impl true
   def init_servers(_id), do: %{}
@@ -414,23 +415,12 @@ defmodule Toast.Deployment.Controller.Cluster do
     {crashed_id, crashed_info} = extract_crashed_server(state.error)
 
     Map.new(state.servers, fn {server_id, server} ->
-      sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server_id)
-      log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
-
       server_error =
         if server_id == crashed_id,
           do: {:server_crashed, crashed_info},
           else: nil
 
-      diagnostics = %{
-        sanitizer_errors: sanitizer_errors,
-        server_log: if(log_content, do: ServerLog.scan(log_content)),
-        crash_report: if(log_content, do: CrashLogParser.parse(log_content)),
-        server_error: server_error,
-        server: server
-      }
-
-      {server_id, diagnostics}
+      {server_id, Diagnostics.build_server_diagnostics(server, server_error)}
     end)
   end
 

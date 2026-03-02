@@ -44,8 +44,7 @@ defmodule ToastTest.Case do
 
   require Logger
 
-  @env_key :__test_deployment__
-  @unavailable_key :__test_deployment_unavailable__
+  @standalone_key :__standalone__
 
   using do
     quote do
@@ -55,7 +54,9 @@ defmodule ToastTest.Case do
   end
 
   setup context do
-    {deployment, extra_context} = get_deployment_for_context(context)
+    suite_key = resolve_suite_key(context.module)
+    deployment = ToastTest.DeploymentRegistry.get(suite_key)
+    extra_context = ToastTest.DeploymentRegistry.get_extra_context(suite_key)
 
     base = %{
       deployment: deployment,
@@ -66,15 +67,10 @@ defmodule ToastTest.Case do
     Map.merge(base, extra_context)
   end
 
-  defp get_deployment_for_context(context) do
-    if function_exported?(context.module, :__toast_suite__, 0) do
-      suite_module = context.module.__toast_suite__()
-      deployment = ToastTest.DeploymentRegistry.get(suite_module)
-      extra_context = ToastTest.DeploymentRegistry.get_extra_context(suite_module)
-      {deployment, extra_context}
-    else
-      {get_deployment(), %{}}
-    end
+  defp resolve_suite_key(module) do
+    if function_exported?(module, :__toast_suite__, 0),
+      do: module.__toast_suite__(),
+      else: @standalone_key
   end
 
   @doc """
@@ -90,7 +86,7 @@ defmodule ToastTest.Case do
     mode = mode || config.deployment_mode
     setup_timeouts(config)
 
-    case Toast.Deployment.start(mode, opts) do
+    case Toast.Deployment.start(mode, config) do
       {:ok, deployment} ->
         register_deployment(deployment)
         register_after_suite(deployment, config.keep_work_dir)
@@ -115,40 +111,39 @@ defmodule ToastTest.Case do
     mode = mode || config.deployment_mode
     setup_timeouts(config)
 
-    case Toast.Deployment.start(mode, opts) do
+    case Toast.Deployment.start(mode, config) do
       {:ok, deployment} ->
         register_deployment(deployment)
         register_after_suite(deployment, config.keep_work_dir)
         {:ok, deployment}
 
       {:error, reason} ->
-        Application.put_env(:toast, @unavailable_key, true)
         {:error, reason}
     end
   end
 
-  @doc "Register a deployment for test modules to use."
+  @doc "Register a standalone deployment for test modules to use."
   @spec register_deployment(Toast.Deployment.t()) :: :ok
   def register_deployment(deployment) do
-    Application.put_env(:toast, @env_key, deployment)
-    :ok
+    ToastTest.DeploymentRegistry.ensure_init()
+    ToastTest.DeploymentRegistry.put(@standalone_key, deployment)
   end
 
-  @doc "Retrieve the registered deployment."
+  @doc "Retrieve the registered standalone deployment."
   @spec get_deployment() :: Toast.Deployment.t()
   def get_deployment do
-    Application.get_env(:toast, @env_key) ||
-      raise """
-      No deployment registered.
-      Call ToastTest.Case.setup_suite/2 in your test_helper.exs after ExUnit.start().
-      """
+    ToastTest.DeploymentRegistry.ensure_init()
+    ToastTest.DeploymentRegistry.get(@standalone_key)
+  rescue
+    RuntimeError ->
+      reraise """
+             No deployment registered.
+             Call ToastTest.Case.setup_suite/2 in your test_helper.exs after ExUnit.start().
+             """,
+             __STACKTRACE__
   end
 
   defp setup_timeouts(config) do
-    deadline = System.monotonic_time(:millisecond) + config.global_timeout
-    Application.put_env(:toast, :__suite_deadline__, deadline)
-    Application.put_env(:toast, :__timeout_factor__, config.timeout_factor)
-
     exclude = ExUnit.configuration()[:exclude] || []
 
     exclude =

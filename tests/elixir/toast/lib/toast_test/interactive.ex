@@ -16,20 +16,14 @@ defmodule ToastTest.Interactive do
     suite_key =
       if function_exported?(module, :__toast_suite__, 0),
         do: module.__toast_suite__(),
-        else: :interactive
+        else: :__standalone__
 
-    ensure_registry()
+    ToastTest.DeploymentRegistry.ensure_init()
     ToastTest.DeploymentRegistry.put(suite_key, deployment)
 
     test_module = module.__ex_unit__()
     tests = filter_tests(test_module.tests, test_name)
     run_tests(module, tests)
-  end
-
-  defp ensure_registry do
-    if :ets.whereis(:toast_deployment_registry) == :undefined do
-      ToastTest.DeploymentRegistry.init()
-    end
   end
 
   defp filter_tests(tests, nil), do: tests

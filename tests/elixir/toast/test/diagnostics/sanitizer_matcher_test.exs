@@ -20,18 +20,20 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
 
   defp make_diagnostics(errors) do
     %{
-      sanitizer_errors: errors,
-      server_log: %{assertion_failures: [], warnings: []},
-      crash_report: %{
-        signal_number: nil,
-        signal_name: nil,
-        crash_header: nil,
-        backtrace: [],
-        fatal_lines: [],
-        crash_output: []
-      },
-      server_error: nil,
-      server: %ServerInstance{id: "toast-1", role: :single}
+      "toast-1" => %{
+        sanitizer_errors: errors,
+        server_log: %{assertion_failures: [], warnings: []},
+        crash_report: %{
+          signal_number: nil,
+          signal_name: nil,
+          crash_header: nil,
+          backtrace: [],
+          fatal_lines: [],
+          crash_output: []
+        },
+        server_error: nil,
+        server: %ServerInstance{id: "toast-1", role: :single}
+      }
     }
   end
 

@@ -4,7 +4,7 @@ defmodule Toast.Diagnostics.SummaryTest do
   alias Toast.Diagnostics.Summary
   alias Toast.Deployment.ServerInstance
 
-  defp base_diagnostics(overrides \\ %{}) do
+  defp base_diag_entry(overrides \\ %{}) do
     Map.merge(
       %{
         sanitizer_errors: [],
@@ -30,8 +30,14 @@ defmodule Toast.Diagnostics.SummaryTest do
     )
   end
 
-  defp crashed_diagnostics(overrides \\ %{}) do
-    base_diagnostics(
+  defp base_diagnostics(overrides \\ %{}) do
+    entry = base_diag_entry(overrides)
+    server_id = entry.server.id
+    %{server_id => entry}
+  end
+
+  defp crashed_diag_entry(overrides \\ %{}) do
+    base_diag_entry(
       Map.merge(
         %{
           crash_report: %{
@@ -54,6 +60,12 @@ defmodule Toast.Diagnostics.SummaryTest do
         overrides
       )
     )
+  end
+
+  defp crashed_diagnostics(overrides \\ %{}) do
+    entry = crashed_diag_entry(overrides)
+    server_id = entry.server.id
+    %{server_id => entry}
   end
 
   describe "format_crashed_servers/1" do
@@ -86,7 +98,7 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "cluster with one crashed server shows only the crashed server" do
       cluster_diag = %{
         "agent-1" =>
-          base_diagnostics(%{
+          base_diag_entry(%{
             server: %ServerInstance{
               id: "agent-1",
               role: :agent,
@@ -96,7 +108,7 @@ defmodule Toast.Diagnostics.SummaryTest do
             }
           }),
         "dbserver-1" =>
-          crashed_diagnostics(%{
+          crashed_diag_entry(%{
             server: %ServerInstance{
               id: "dbserver-1",
               role: :dbserver,

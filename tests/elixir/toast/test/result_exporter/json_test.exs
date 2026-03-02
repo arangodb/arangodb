@@ -47,7 +47,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
     }
   end
 
-  defp single_server_diagnostics do
+  defp server_diag_entry do
     %{
       sanitizer_errors: [
         %{
@@ -80,6 +80,10 @@ defmodule ToastTest.ResultExporter.JSONTest do
     }
   end
 
+  defp single_server_diagnostics do
+    %{"toast-1" => server_diag_entry()}
+  end
+
   defp cluster_diagnostics do
     %{
       "agent-1" => %{
@@ -102,7 +106,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
         }
       },
       "dbserver-1" => %{
-        single_server_diagnostics()
+        server_diag_entry()
         | server: %ServerInstance{
             id: "dbserver-1",
             role: :dbserver,
@@ -245,28 +249,31 @@ defmodule ToastTest.ResultExporter.JSONTest do
 
       health = result["server_health"]
       assert is_map(health)
+      assert Map.has_key?(health, "toast-1")
 
-      [san_error] = health["sanitizer_errors"]
+      server_health = health["toast-1"]
+
+      [san_error] = server_health["sanitizer_errors"]
       assert san_error["content"] == "ERROR: AddressSanitizer: heap-buffer-overflow"
       assert san_error["sanitizer_type"] == "alubsan"
       assert san_error["timestamp"] == "2024-01-15T10:01:30Z"
 
-      assert health["crash_report"]["signal_number"] == 11
-      assert health["crash_report"]["signal_name"] == "SIGSEGV"
-      assert health["crash_report"]["backtrace"] == ["frame 0 at 0xdead"]
+      assert server_health["crash_report"]["signal_number"] == 11
+      assert server_health["crash_report"]["signal_name"] == "SIGSEGV"
+      assert server_health["crash_report"]["backtrace"] == ["frame 0 at 0xdead"]
 
-      assert health["log_issues"]["assertion_failures"] == ["assertion failed at foo.cpp:42"]
-      assert health["log_issues"]["warnings"] == ["FATAL shutdown"]
+      assert server_health["log_issues"]["assertion_failures"] == ["assertion failed at foo.cpp:42"]
+      assert server_health["log_issues"]["warnings"] == ["FATAL shutdown"]
     end
 
     test "log_file included in server instance" do
       result = JSON.build(base_test_results(), single_server_diagnostics())
-      assert result["server_health"]["server"]["log_file"] == "/tmp/toast/server/log"
+      assert result["server_health"]["toast-1"]["server"]["log_file"] == "/tmp/toast/server/log"
     end
 
     test "server instance included in server_health" do
       result = JSON.build(base_test_results(), single_server_diagnostics())
-      server = result["server_health"]["server"]
+      server = result["server_health"]["toast-1"]["server"]
       assert server["id"] == "toast-1"
       assert server["role"] == "single"
       assert server["pid"] == 12_345
@@ -289,22 +296,12 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
   end
 
-  describe "cluster_diagnostics?/1" do
-    test "returns false for empty map" do
-      refute ToastTest.ResultExporter.cluster_diagnostics?(%{})
+  describe "to_server_entries/1" do
+    test "returns empty list for empty map" do
+      assert Toast.Diagnostics.to_server_entries(%{}) == []
     end
 
-    test "returns false for single-server diagnostics with atom keys" do
-      diagnostics = %{
-        sanitizer_errors: [],
-        server_log: %{assertion_failures: [], warnings: []},
-        crash_report: nil
-      }
-
-      refute ToastTest.ResultExporter.cluster_diagnostics?(diagnostics)
-    end
-
-    test "returns true for cluster diagnostics with string keys and :sanitizer_errors in values" do
+    test "returns entries for diagnostics with string keys and map values" do
       diagnostics = %{
         "agent-1" => %{
           sanitizer_errors: [],
@@ -318,16 +315,31 @@ defmodule ToastTest.ResultExporter.JSONTest do
         }
       }
 
-      assert ToastTest.ResultExporter.cluster_diagnostics?(diagnostics)
+      entries = Toast.Diagnostics.to_server_entries(diagnostics)
+      assert length(entries) == 2
+      ids = Enum.map(entries, &elem(&1, 0))
+      assert "agent-1" in ids
+      assert "dbserver-1" in ids
     end
 
-    test "returns false for map with string keys but values without :sanitizer_errors" do
+    test "filters out non-binary keys" do
       diagnostics = %{
-        "server-1" => %{some_other_key: "value"},
-        "server-2" => %{another_key: "value"}
+        "server-1" => %{sanitizer_errors: []},
+        some_atom_key: "ignored"
       }
 
-      refute ToastTest.ResultExporter.cluster_diagnostics?(diagnostics)
+      entries = Toast.Diagnostics.to_server_entries(diagnostics)
+      assert [{"server-1", _}] = entries
+    end
+
+    test "filters out non-map values" do
+      diagnostics = %{
+        "server-1" => %{sanitizer_errors: []},
+        "not-a-server" => "string value"
+      }
+
+      entries = Toast.Diagnostics.to_server_entries(diagnostics)
+      assert [{"server-1", _}] = entries
     end
   end
 

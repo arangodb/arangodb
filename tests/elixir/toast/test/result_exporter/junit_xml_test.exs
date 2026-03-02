@@ -46,7 +46,7 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     }
   end
 
-  defp single_server_diagnostics do
+  defp server_diag_entry do
     %{
       sanitizer_errors: [
         %{
@@ -70,6 +70,10 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
         crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
       }
     }
+  end
+
+  defp single_server_diagnostics do
+    %{"toast-1" => server_diag_entry()}
   end
 
   describe "well-formed XML" do
@@ -174,8 +178,8 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     end
 
     test "crash section includes fatal lines" do
-      diag = %{
-        single_server_diagnostics()
+      entry = %{
+        server_diag_entry()
         | crash_report: %{
             signal_number: 11,
             signal_name: "SIGSEGV",
@@ -186,7 +190,7 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
           }
       }
 
-      xml = JUnitXML.render(base_test_results(), diag)
+      xml = JUnitXML.render(base_test_results(), %{"toast-1" => entry})
       assert xml =~ "Fatal lines:"
       assert xml =~ "assertion failed at foo.cpp:42"
     end

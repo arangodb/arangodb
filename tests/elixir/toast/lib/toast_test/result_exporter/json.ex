@@ -168,15 +168,9 @@ defmodule ToastTest.ResultExporter.JSON do
   defp build_server_health(nil), do: nil
 
   defp build_server_health(diagnostics) do
-    entries = Toast.Diagnostics.to_server_entries(diagnostics)
-
-    case entries do
-      [{_id, diag}] ->
-        build_single_server_health(diag)
-
-      _ ->
-        Map.new(entries, fn {server_id, diag} -> {server_id, build_single_server_health(diag)} end)
-    end
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Map.new(fn {server_id, diag} -> {server_id, build_single_server_health(diag)} end)
   end
 
   defp build_single_server_health(diag) do

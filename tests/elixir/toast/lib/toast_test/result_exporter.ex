@@ -90,6 +90,4 @@ defmodule ToastTest.ResultExporter do
       :ok
   end
 
-  @doc false
-  defdelegate cluster_diagnostics?(diagnostics), to: Toast.Diagnostics
 end

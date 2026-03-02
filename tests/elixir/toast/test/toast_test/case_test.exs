@@ -3,11 +3,7 @@ defmodule ToastTest.CaseContextTest do
 
   alias ToastTest.DeploymentRegistry
 
-  @deployment_key :__test_deployment__
-
   setup do
-    saved_deployment = Application.get_env(:toast, @deployment_key)
-
     try do
       :ets.delete(:toast_deployment_registry)
     catch
@@ -17,10 +13,6 @@ defmodule ToastTest.CaseContextTest do
     DeploymentRegistry.init()
 
     on_exit(fn ->
-      if saved_deployment,
-        do: Application.put_env(:toast, @deployment_key, saved_deployment),
-        else: Application.delete_env(:toast, @deployment_key)
-
       try do
         :ets.delete(:toast_deployment_registry)
       catch
@@ -28,7 +20,6 @@ defmodule ToastTest.CaseContextTest do
       end
     end)
 
-    Application.delete_env(:toast, @deployment_key)
     :ok
   end
 
@@ -55,11 +46,10 @@ defmodule ToastTest.CaseContextTest do
   end
 
   describe "setup provides deployment context" do
-    test "get_deployment_for_context falls back to Application env when module lacks __toast_suite__" do
+    test "standalone deployment is resolved via registry when module lacks __toast_suite__" do
       deployment = fake_deployment()
       ToastTest.Case.register_deployment(deployment)
 
-      # Simulate what setup/1 does for a module without __toast_suite__
       retrieved = ToastTest.Case.get_deployment()
       assert retrieved.endpoint == "http://localhost:8529"
       assert retrieved.id == "test-1"

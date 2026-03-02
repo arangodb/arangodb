@@ -83,18 +83,12 @@ defmodule ToastTest.Runner do
 
   @spec abort!(String.t() | {atom(), String.t()}) :: :ok
   def abort!(reason) do
-    display_reason =
-      case reason do
-        {_type, msg} -> msg
-        msg when is_binary(msg) -> msg
-      end
-
     if :ets.insert_new(@abort_table, {:aborted, reason}) do
       IO.puts([
         IO.ANSI.red(),
         "====================================",
         "\n   ",
-        display_reason,
+        abort_display_reason(reason),
         "\n   !!! Aborting further tests !!!\n",
         "====================================\n",
         IO.ANSI.reset()
@@ -152,8 +146,10 @@ defmodule ToastTest.Runner do
 
     mode = resolve_deployment_mode(config, global_opts)
     deployment_opts = build_deployment_opts(config, global_opts)
+    toast_config = Toast.Config.load(deployment_opts)
+    callback_opts = Keyword.take(deployment_opts, [:on_crash, :on_event])
 
-    case Toast.Deployment.start(mode, deployment_opts) do
+    case Toast.Deployment.start(mode, toast_config, callback_opts) do
       {:ok, deployment} ->
         suite_run = %{suite_run | deployment: deployment}
         ToastTest.DeploymentRegistry.put(suite_module, deployment)
@@ -671,11 +667,12 @@ defmodule ToastTest.Runner do
   end
 
   @spec check_between_tests(map(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
+  defp check_between_tests(%{suite_run: %{deployment: nil}}, _prev_test), do: :ok
+
   defp check_between_tests(
          %{suite_run: %{suite_module: suite_module, deployment: deployment}},
          prev_test
-       )
-       when deployment != nil do
+       ) do
     suite_config = suite_module.deployment_config()
 
     cond do

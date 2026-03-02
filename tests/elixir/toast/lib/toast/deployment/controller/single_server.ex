@@ -8,7 +8,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller
-  alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
+  alias Toast.Diagnostics
   alias Toast.PortAllocator
 
   @impl true
@@ -188,18 +188,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
         nil
 
       [server] ->
-        sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server.id)
-        log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
-
-        diagnostics = %{
-          sanitizer_errors: sanitizer_errors,
-          server_log: if(log_content, do: ServerLog.scan(log_content)),
-          crash_report: if(log_content, do: CrashLogParser.parse(log_content)),
-          server_error: state.error,
-          server: server
-        }
-
-        %{server.id => diagnostics}
+        %{server.id => Diagnostics.build_server_diagnostics(server, state.error)}
 
       _ ->
         nil

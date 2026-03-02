@@ -109,13 +109,7 @@ defmodule Toast.Analysis.Crashes do
   end
 
   defp collect_crash_reports(health) when is_map(health) do
-    case health["crash_report"] do
-      nil ->
-        Enum.flat_map(health, &format_server_crash_report/1)
-
-      report ->
-        [format_crash_report_line(report)]
-    end
+    Enum.flat_map(health, &format_server_crash_report/1)
   end
 
   defp format_server_crash_report({server_id, server_health}) when is_map(server_health) do
@@ -126,10 +120,6 @@ defmodule Toast.Analysis.Crashes do
   end
 
   defp format_server_crash_report(_), do: []
-
-  defp format_crash_report_line(report) do
-    "  #{report["signal_name"]} (signal #{report["signal_number"]})"
-  end
 
   defp format_coredump_reports(results) do
     suites = results["suites"] || []

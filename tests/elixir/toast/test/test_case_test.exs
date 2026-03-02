@@ -2,18 +2,35 @@ defmodule ToastTest.CaseTest do
   use ExUnit.Case, async: false
 
   alias ToastTest.Case
-
-  @deployment_key :__test_deployment__
+  alias ToastTest.DeploymentRegistry
 
   setup do
-    saved_deployment = Application.get_env(:toast, @deployment_key)
     saved_formatters = Application.get_env(:ex_unit, :formatters)
     saved_result_dir = System.get_env("TOAST_RESULT_DIR")
 
+    # Ensure registry exists and clear standalone entry
+    DeploymentRegistry.ensure_init()
+
+    saved_deployment =
+      try do
+        DeploymentRegistry.get(:__standalone__)
+      rescue
+        RuntimeError -> nil
+      end
+
+    if saved_deployment == nil do
+      # No standalone entry — just clear to ensure clean state
+      DeploymentRegistry.clear()
+    end
+
     on_exit(fn ->
-      if saved_deployment,
-        do: Application.put_env(:toast, @deployment_key, saved_deployment),
-        else: Application.delete_env(:toast, @deployment_key)
+      DeploymentRegistry.ensure_init()
+
+      if saved_deployment do
+        DeploymentRegistry.put(:__standalone__, saved_deployment)
+      else
+        DeploymentRegistry.clear()
+      end
 
       if saved_formatters do
         ExUnit.configure(formatters: saved_formatters)
@@ -24,7 +41,7 @@ defmodule ToastTest.CaseTest do
         else: System.delete_env("TOAST_RESULT_DIR")
     end)
 
-    Application.delete_env(:toast, @deployment_key)
+    DeploymentRegistry.clear()
     :ok
   end
 
@@ -70,11 +87,11 @@ defmodule ToastTest.CaseTest do
       assert retrieved.endpoint == "http://localhost:9529"
     end
 
-    test "stores deployment in Application env under :toast" do
+    test "stores deployment in DeploymentRegistry under standalone key" do
       deployment = fake_deployment()
       Case.register_deployment(deployment)
 
-      raw = Application.get_env(:toast, @deployment_key)
+      raw = DeploymentRegistry.get(:__standalone__)
       assert raw == deployment
     end
   end

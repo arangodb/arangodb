@@ -405,20 +405,20 @@ defmodule Mix.Tasks.ToastTest do
     end
 
     test "returns false when diagnostics has no sanitizer_errors key" do
-      suites = [%{diagnostics: %{server: %{log_file: "/log"}}}]
+      suites = [%{diagnostics: %{"s1" => %{server: %{log_file: "/log"}}}}]
 
       refute Helpers.has_sanitizer_errors?(suites)
     end
 
     test "returns false when sanitizer_errors is empty list" do
-      suites = [%{diagnostics: %{sanitizer_errors: []}}]
+      suites = [%{diagnostics: %{"s1" => %{sanitizer_errors: []}}}]
 
       refute Helpers.has_sanitizer_errors?(suites)
     end
 
     test "returns true for single-server sanitizer errors" do
       suites = [
-        %{diagnostics: %{sanitizer_errors: [%{file_path: "/tmp/san.log"}]}}
+        %{diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/tmp/san.log"}]}}}
       ]
 
       assert Helpers.has_sanitizer_errors?(suites)
@@ -452,15 +452,15 @@ defmodule Mix.Tasks.ToastTest do
 
     test "returns true if any suite has errors among multiple suites" do
       suites = [
-        %{diagnostics: %{sanitizer_errors: []}},
-        %{diagnostics: %{sanitizer_errors: [%{file_path: "/err"}]}}
+        %{diagnostics: %{"s1" => %{sanitizer_errors: []}}},
+        %{diagnostics: %{"s2" => %{sanitizer_errors: [%{file_path: "/err"}]}}}
       ]
 
       assert Helpers.has_sanitizer_errors?(suites)
     end
 
     test "handles suite maps accessed via keyword-style :diagnostics" do
-      suites = [[diagnostics: %{sanitizer_errors: [%{file_path: "/err"}]}]]
+      suites = [[diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/err"}]}}]]
 
       assert Helpers.has_sanitizer_errors?(suites)
     end
@@ -482,7 +482,7 @@ defmodule Mix.Tasks.ToastTest do
       suites = [
         [
           suite_module: MyApp.Test,
-          diagnostics: %{server: %{log_file: "/tmp/arangod.log"}}
+          diagnostics: %{"s1" => %{server: %{log_file: "/tmp/arangod.log"}}}
         ]
       ]
 
@@ -510,10 +510,12 @@ defmodule Mix.Tasks.ToastTest do
         [
           suite_module: MyApp.Test,
           diagnostics: %{
-            sanitizer_errors: [
-              %{file_path: "/tmp/tsan.log"},
-              %{file_path: "/tmp/asan.log"}
-            ]
+            "s1" => %{
+              sanitizer_errors: [
+                %{file_path: "/tmp/tsan.log"},
+                %{file_path: "/tmp/asan.log"}
+              ]
+            }
           }
         ]
       ]
@@ -542,7 +544,7 @@ defmodule Mix.Tasks.ToastTest do
         [
           suite_module: MyApp.Test,
           diagnostics: %{
-            coredump_reports: [%{core_path: "/cores/core.1234"}]
+            "s1" => %{coredump_reports: [%{core_path: "/cores/core.1234"}]}
           }
         ]
       ]
@@ -582,10 +584,12 @@ defmodule Mix.Tasks.ToastTest do
         [
           suite_module: MyApp.Test,
           diagnostics: %{
-            sanitizer_errors: [
-              %{file_path: "/tmp/ok.log"},
-              %{file_path: nil}
-            ]
+            "s1" => %{
+              sanitizer_errors: [
+                %{file_path: "/tmp/ok.log"},
+                %{file_path: nil}
+              ]
+            }
           }
         ]
       ]

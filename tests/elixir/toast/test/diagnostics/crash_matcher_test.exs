@@ -24,7 +24,14 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
   end
 
   defp make_diagnostics(opts \\ []) do
-    %{
+    server =
+      Keyword.get(opts, :server, %ServerInstance{
+        id: "toast-1",
+        role: :single,
+        log_file: "/tmp/toast/server/log"
+      })
+
+    entry = %{
       sanitizer_errors: [],
       server_log: %{assertion_failures: [], warnings: []},
       crash_report: Keyword.get(opts, :crash_report, make_crash_report()),
@@ -34,13 +41,10 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
           :server_error,
           {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}}
         ),
-      server:
-        Keyword.get(opts, :server, %ServerInstance{
-          id: "toast-1",
-          role: :single,
-          log_file: "/tmp/toast/server/log"
-        })
+      server: server
     }
+
+    %{server.id => entry}
   end
 
   defp no_crash_report do

@@ -9,9 +9,20 @@ defmodule ToastTest.DeploymentRegistry do
       :ets.delete(@table)
     end
 
-    :ets.new(@table, [:named_table, :public, :set])
+    init_table()
     :ok
   end
+
+  @spec ensure_init() :: :ok
+  def ensure_init do
+    if :ets.whereis(@table) == :undefined do
+      init_table()
+    end
+
+    :ok
+  end
+
+  defp init_table(), do: :ets.new(@table, [:named_table, :public, :set])
 
   @spec put(module(), Toast.Deployment.t()) :: :ok
   def put(suite_module, deployment) do

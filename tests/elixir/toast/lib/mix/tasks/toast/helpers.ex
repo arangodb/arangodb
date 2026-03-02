@@ -253,20 +253,9 @@ defmodule Mix.Tasks.Toast.Helpers do
   defp extract_from_diagnostics(nil, _key, _extractor), do: []
 
   defp extract_from_diagnostics(diagnostics, key, extractor) when is_map(diagnostics) do
-    case Map.get(diagnostics, key) do
-      nil ->
-        diagnostics
-        |> Enum.flat_map(fn
-          {_id, server_diag} when is_map(server_diag) ->
-            extractor.(Map.get(server_diag, key))
-
-          _ ->
-            []
-        end)
-
-      value ->
-        extractor.(value)
-    end
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Enum.flat_map(fn {_id, server_diag} -> extractor.(Map.get(server_diag, key)) end)
   end
 
   defp extract_from_diagnostics(_diagnostics, _key, _extractor), do: []

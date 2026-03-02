@@ -25,44 +25,38 @@ defmodule Toast.Deployment do
   @enforce_keys [:id, :mode, :config, :controller, :endpoint, :work_dir]
   defstruct [:id, :mode, :config, :controller, :endpoint, :work_dir]
 
-  @spec start(atom(), keyword()) :: {:ok, t()} | {:error, term()}
-  def start(mode \\ :single_server, opts \\ [])
+  @spec start(atom(), Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
+  def start(mode \\ :single_server, config_or_opts \\ [])
 
-  def start(:single_server, opts) do
-    config = Config.load(opts)
-    Logger.info("Starting single server deployment (work_dir=#{config.work_dir})")
-
-    controller_opts =
-      [
-        mode: Controller.SingleServer,
-        config: config,
-        on_crash: Keyword.get(opts, :on_crash),
-        on_event: Keyword.get(opts, :on_event)
-      ] ++ Keyword.take(opts, [:id])
-
-    with {:ok, pid} <- Toast.Deployment.Supervisor.start_controller(controller_opts),
-         :ok <- Controller.deploy(pid, config.startup_timeout) do
-      info = Controller.get_info(pid)
-
-      {:ok,
-       %__MODULE__{
-         id: info.id,
-         mode: :single_server,
-         config: config,
-         endpoint: info[:primary_endpoint] || "",
-         controller: pid,
-         work_dir: config.work_dir
-       }}
-    end
+  def start(mode, %Config{} = config) when mode in [:single_server, :cluster] do
+    do_start(mode, config, [])
   end
 
-  def start(:cluster, opts) do
-    config = Config.load(opts)
-    Logger.info("Starting cluster deployment (work_dir=#{config.work_dir})")
+  def start(mode, opts) when mode in [:single_server, :cluster] and is_list(opts) do
+    do_start(mode, Config.load(opts), opts)
+  end
+
+  def start(mode, _config_or_opts) do
+    {:error, {:unsupported_mode, mode}}
+  end
+
+  @doc """
+  Start a deployment with a pre-loaded config and additional options.
+
+  The `opts` keyword list can include non-config keys like `:on_crash`,
+  `:on_event`, and `:id` that are forwarded to the controller.
+  """
+  @spec start(atom(), Config.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  def start(mode, %Config{} = config, opts) when mode in [:single_server, :cluster] do
+    do_start(mode, config, opts)
+  end
+
+  defp do_start(mode, config, opts) do
+    Logger.info("Starting #{mode} deployment (work_dir=#{config.work_dir})")
 
     controller_opts =
       [
-        mode: Controller.Cluster,
+        mode: mode_module(mode),
         config: config,
         on_crash: Keyword.get(opts, :on_crash),
         on_event: Keyword.get(opts, :on_event)
@@ -75,17 +69,13 @@ defmodule Toast.Deployment do
       {:ok,
        %__MODULE__{
          id: info.id,
-         mode: :cluster,
+         mode: mode,
          config: config,
          endpoint: info[:coordinator_endpoint] || info[:primary_endpoint] || "",
          controller: pid,
          work_dir: config.work_dir
        }}
     end
-  end
-
-  def start(mode, _opts) do
-    {:error, {:unsupported_mode, mode}}
   end
 
   @spec stop(t(), keyword()) :: :ok | {:error, term()}
@@ -410,23 +400,15 @@ defmodule Toast.Deployment do
   end
 
   defp merge_diagnostics(base, agency_dump, coredump_reports) do
-    result = base || %{}
+    optional =
+      [
+        if(agency_dump, do: {:agency_dump, agency_dump}),
+        if(coredump_reports != [], do: {:coredump_reports, coredump_reports})
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Map.new()
 
-    result =
-      if agency_dump do
-        Map.put(result, :agency_dump, agency_dump)
-      else
-        result
-      end
-
-    result =
-      if coredump_reports != [] do
-        Map.put(result, :coredump_reports, coredump_reports)
-      else
-        result
-      end
-
-    result
+    Map.merge(base || %{}, optional)
   end
 
   defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do
@@ -513,6 +495,9 @@ defmodule Toast.Deployment do
 
   defp default_shutdown_timeout(%__MODULE__{mode: :cluster}), do: 60_000
   defp default_shutdown_timeout(%__MODULE__{}), do: 30_000
+
+  defp mode_module(:single_server), do: Controller.SingleServer
+  defp mode_module(:cluster), do: Controller.Cluster
 
   defp controller_call(%__MODULE__{controller: pid}, function, default) do
     GenServer.call(pid, function)
