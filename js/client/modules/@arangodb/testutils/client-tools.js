@@ -399,7 +399,7 @@ function launchPlainSnippetInBG (snippet, key) {
 }
 
 
-function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume, args) {
   let IM = global.instanceManager;
   let globalFn = fs.getTempFile();
   fs.write(globalFn, "x");
@@ -416,6 +416,7 @@ let passvoid = '${IM.options.password}';
 while (fs.exists('${globalFn}')) {
    require('internal').sleep(0.1);
 }
+let args = ${JSON.stringify(args)};
 let testfunc = ${String(snippet)};
 testfunc();
 `;

@@ -206,7 +206,7 @@ function hotBackup_load_backend (options, which, args) {
         //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
-        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
+        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume, args.args) ||
         (function() { sleep(args.noiseDuration); return false; }()) ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||

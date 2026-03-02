@@ -765,9 +765,9 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     }
   }
 
-  spawnStressArangosh(snippet, key, volume) {
+  spawnStressArangosh(snippet, key, volume, args) {
     global.instanceManager = this.instanceManager;
-    return ct.run.spawnStressArangoshInBG(this.clientInstances, snippet, key, volume);
+    return ct.run.spawnStressArangoshInBG(this.clientInstances, snippet, key, volume, args);
   }
   stopStressArangosh() {
     try {
