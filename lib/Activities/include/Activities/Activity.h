@@ -40,9 +40,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };
-  auto parent() const noexcept -> std::optional<ActivityHandle> {
-    return _parent;
-  }
+  auto parent() const noexcept -> ActivityHandle { return _parent; }
   auto parentId() const noexcept -> std::optional<ActivityId> {
     if (_parent == nullptr) {
       return std::nullopt;
