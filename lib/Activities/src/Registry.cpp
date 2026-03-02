@@ -54,7 +54,7 @@ auto Registry::setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void {
 auto Registry::garbageCollect() -> void {
   _registry.doUnderLock([this](auto&& reg) {
     std::erase_if(reg, [](auto&& a) { return a.use_count() == 1; });
-    _metrics->store_registered_nodes(reg.size());
+    store_registered_nodes(reg.size());
   });
 }
 

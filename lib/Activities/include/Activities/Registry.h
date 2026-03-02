@@ -67,8 +67,8 @@ struct Registry {
 
     _registry.doUnderLock([this, &activity](auto &&reg) {
       reg.emplace_front(activity);
-      _metrics->increment_total_nodes();
-      _metrics->increment_registered_nodes();
+      increment_total_nodes();
+      increment_registered_nodes();
     });
 
     return activity;
