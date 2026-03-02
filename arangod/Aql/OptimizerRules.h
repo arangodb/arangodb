@@ -126,11 +126,6 @@ void useIndexForSortRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-/// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
-void interchangeAdjacentEnumerationsRule(Optimizer*,
-                                         std::unique_ptr<ExecutionPlan>,
-                                         OptimizerRule const&);
-
 /// @brief replace single document operations in cluster by special handling
 void substituteClusterSingleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
@@ -263,12 +258,6 @@ void replaceOrWithInRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                            OptimizerRule const&);
-
-/// @brief remove $OLD and $NEW variables from data-modification statements
-/// if not required
-void removeDataModificationOutVariablesRule(Optimizer*,
-                                            std::unique_ptr<ExecutionPlan>,
-                                            OptimizerRule const&);
 
 // replace inaccessible EnumerateCollectionNode with NoResult nodes
 #ifdef USE_ENTERPRISE
