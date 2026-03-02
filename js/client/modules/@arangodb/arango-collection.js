@@ -830,6 +830,15 @@ ArangoCollection.prototype.save =
       }
     });
 
+    if (options.overwrite) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorMessage: "the 'overwrite' option has been removed, use 'overwriteMode' instead"
+      });
+    }
+
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);
 

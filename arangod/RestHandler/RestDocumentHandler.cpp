@@ -203,6 +203,13 @@ async<void> RestDocumentHandler::insertDocument() {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   handleFillIndexCachesValue(opOptions);
 
+  if (_request->parsedValue("overwrite", false)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "the 'overwrite' option has been removed, use "
+                  "'overwriteMode' instead");
+    co_return;
+  }
+
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
   if (!mode.empty()) {
     auto overwriteMode =

@@ -1161,6 +1161,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
                                           : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
+        } else if (name == "overwrite" && value->isTrue()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "the 'overwrite' option has been removed, use "
+              "'overwriteMode' instead");
         } else if (name == StaticStrings::OverwriteMode &&
                    value->isStringValue()) {
           auto overwriteMode =
