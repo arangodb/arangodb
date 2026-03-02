@@ -24,8 +24,12 @@
 
 #include <cstdint>
 
-// TODO: explain why we need this
-
+// This abstract interface for activity metrics is needed because
+// the concrete metrics are created in arangod code and the registry
+// code is inside the lib folder.
+//
+// Registry metrics are created as part of the feature and injected into
+// the registry after the feature is started.
 namespace arangodb::activities {
 
 struct IRegistryMetrics {
