@@ -1128,7 +1128,7 @@ foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
 endforeach()
 
 ################################################################################
-## PATHS, installation, packages, frontend
+## PATHS, installation, packages
 ################################################################################
 
 add_subdirectory(Documentation)

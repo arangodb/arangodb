@@ -267,9 +267,6 @@ You can start the build container as follows in a Bash-like terminal:
 
 In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
-The port mapping is for accessing the web interface in case you want to run a
-development server for working on the frontend.
-
 In the fish shell of the container, run the following commands for a release-like
 build using the officially supported version of the Clang compiler
 (also see the [`VERSIONS`](VERSIONS)):
@@ -293,7 +290,7 @@ On ARM, disable the `USE_LIBUNWIND` option:
 
 To build specific targets instead of all, you can specify them like shown below:
 
-    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangovpack frontend
+    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangovpack
 
 You can find the output files at `build-presets/<preset-name>/`,
 with the compiled executables in the `bin/` subfolder.
@@ -324,72 +321,6 @@ Recommended for Debian-based Linux. First, install dependencies:
 - `libstdc++-14-dev`
 
 After installing, follow the general build steps above.
-
-### Building the Web Interface
-
-The web interface is also known as the Web UI, frontend, or _Aardvark_.
-Building ArangoDB also builds the frontend unless `-DUSE_FRONTEND=Off` was
-specified when configuring CMake or if the `frontend` target was left out for
-the build.
-
-To build the web interface via CMake, you can run the following commands:
-
-    cmake --preset community
-    cmake --build --preset community --target frontend
-
-To remove all installed Node.js modules and start a clean installation, run:
-
-    cmake --build --preset community --target frontend_clean
-
-You can also build the frontend manually without CMake.
-[Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/) need to be
-installed.
-
-    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    yarn install
-    yarn build
-
-To run a development server, go to `js/apps/system/_admin/aardvark/APP/react`
-and run the following command:
-
-    yarn start
-
-It should start your browser and open the web interface at `http://localhost:3000`.
-Changes to any frontend source files trigger an automatic re-build and reload
-the browser tab. If you use the build container, make sure to start it with a
-port mapping for the development server.
-
-#### Cross Origin Policy (CORS) error
-
-Our front-end development server currently runs on port:`3000`, while the backend
-runs on port:`8529` respectively. This implies that when the front-end sends a
-request to the backend would result in Cross-Origin-Policy security checks which
-recently got enforced by some browsers for security reasons. Until recently, we
-never had reports of CORS errors when running both the backend and front-end dev
-servers independently, however, we recently confirmed that this error occurs in
-(Chrome version 98.0.4758.102 and Firefox version 96.0.1).
-
-In case you run into CORS errors while running the development server, here is a quick fix:
-
-Simply stop your already running backend process with the command below:
-
-```bash
-cmd + c
-```
-
-Then restart `arangodb` server with the command below:
-
-```bash
-./build-presets/<preset-name>/bin/arangod ../Arango --http.trusted-origin '*'
-```
-
-Note:
-
-a: `./build-presets/<preset-name>/bin/arangod`: represents the location of `arangodb` binaries in your machine.
-
-b: `../Arango`: is the database directory where the data will be stored.
-
-c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
 #### NPM Dependencies
 
@@ -470,10 +401,6 @@ the following commands in a terminal:
 
 7. When the docs building finishes successfully, you can find the `api-docs.json`
    files in `site/data/<version>/`.
-
-8. Copy the respective `api-docs.json` file into the ArangoDB working copy or
-   installation folder under `js/apps/system/_admin/aardvark/APP/api-docs.json`
-   and refresh the web interface.
 
 ---
 

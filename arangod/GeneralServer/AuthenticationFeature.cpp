@@ -226,8 +226,7 @@ URL `/myapp/myaction` is checked for the `/_` prefix.
 
 Authentication still needs to be enabled for the server via
 `--server.authentication` in order for HTTP authentication to be forced for the
-ArangoDB APIs and the web interface. Only setting
-`--server.authentication-system-only` is not enough.)");
+ArangoDB APIs. Only setting `--server.authentication-system-only` is not enough.)");
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   options

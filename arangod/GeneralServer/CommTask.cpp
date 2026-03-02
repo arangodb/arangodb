@@ -62,7 +62,6 @@ namespace {
 // some static URL path prefixes
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
-constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
 VocbasePtr lookupDatabaseFromRequest(
@@ -831,7 +830,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       std::string const& username = req.user();
 
       if (path == "/" || path.starts_with(::pathPrefixOpen) ||
-          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated

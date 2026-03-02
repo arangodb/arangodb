@@ -68,7 +68,7 @@ function testSuite() {
     },
 
     testForbiddenWithoutJWT: function() {
-      ["/_api/version", "/_admin/version", "/_admin/status", "/_api/collection", "/_admin/aardvark"].forEach((url) => {
+      ["/_api/version", "/_admin/version", "/_admin/status", "/_api/collection"].forEach((url) => {
         let result = request({ url: baseUrl() + url, method: "get" });
         assertEqual(401, result.status);
       });
@@ -82,7 +82,7 @@ function testSuite() {
     },
     
     testDisabledEndpoint: function() {
-      ["/_api/collection", "/_api/transaction", "/_admin/aardvark"].forEach((url) => {
+      ["/_api/collection", "/_api/transaction"].forEach((url) => {
         let result = request({ url: baseUrl() + url, method: "get", auth: { bearer: jwtRoot } });
         assertEqual(503, result.status);
       });

@@ -1,4 +1,4 @@
-*.sh eol=lf 
+*.sh eol=lf
 VERSION eol=lf
 VERSIONS eol=lf
 scripts/unittest eol=lf
@@ -8,7 +8,6 @@ VERSION merge=ours
 STARTER_REV merge=ours
 arangod/Aql/tokens.cpp merge=ours
 arangod/Aql/grammar.cpp merge=ours
-js/apps/system/_admin/aardvark/APP/api-docs.json merge=ours
 js/node/node_modules/* linguist-vendored
 tests/* linguist-vendored
 3rdParty/* linguist-vendored
