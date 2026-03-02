@@ -101,7 +101,7 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
           ast::ReferenceNode ref(indexedValue);
           Variable const* v = ref.getVariable();
           if (reqVar->isEqualTo(*v)) {
-            auto idx = exp->getMemberUnchecked(1);
+            auto idx = indexedAccess.getIndex();
             if (idx->isConstant()) {
               int val = idx->getIntValue();
               if (indexes[val]) {
