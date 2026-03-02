@@ -34,6 +34,15 @@
 
 namespace arangodb::activities {
 
+template<typename F, typename Data>
+concept DataAccessor = requires(F f, Data& m) {
+  {f(m)};
+};
+template<typename F, typename Data>
+concept DataConstAccessor = requires(F f, Data const& m) {
+  {f(m)};
+};
+
 template<typename Derived, typename Data>
 struct GuardedActivity : Activity {
   GuardedActivity(ActivityId id, ActivityHandle parent, ActivityType type,
@@ -43,7 +52,7 @@ struct GuardedActivity : Activity {
 
   struct Snapshot {
     ActivityId id;
-    ActivityId parent;
+    std::optional<ActivityId> parent;
     ActivityType type;
     Data data;
 
@@ -58,9 +67,9 @@ struct GuardedActivity : Activity {
 
   // TODO: overwrite snapshot in RootActivity to get rid of this nullptr check?
   auto snapshot(velocypack::Builder& builder) -> inspection::Status override {
-    auto snap = Snapshot{.id = id(),
-                         .parent = parent() != nullptr ? parent()->id() : 0,
-                         .type = type(),
+    auto snap = Snapshot{.id = id(),            //
+                         .parent = parentId(),  //
+                         .type = type(),        //
                          .data = _data.copy()};
     auto inspector = inspection::VPackSaveInspector<>(builder);
     return inspector.apply(snap);
@@ -69,13 +78,13 @@ struct GuardedActivity : Activity {
   auto copyData() const noexcept -> Data { return _data.copy(); }
 
   template<typename F>
+  requires DataAccessor<F, Data>
   auto getData(F&& getter) const {
     return _data.doUnderLock(std::move(getter));
   }
   template<typename F>
-  auto updateData(F&& mutator) {
-    return _data.doUnderLock(std::move(mutator));
-  }
+  requires DataConstAccessor<F, Data>
+  auto updateData(F&& mutator) { return _data.doUnderLock(std::move(mutator)); }
   using HandleType = std::shared_ptr<Derived>;
 
  protected:

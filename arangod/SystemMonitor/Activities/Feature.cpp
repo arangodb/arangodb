@@ -108,22 +108,7 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
       Default is that admin users are allowed to query the endpoint.)");
 }
 
-struct ActivityOutput {
-  std::string type;
-  ActivityId id;
-  ActivityId parent;
-  std::unordered_map<std::string, std::string> metadata;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActivityOutput& x) {
-  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type),
-                            f.field("parent", x.parent),
-                            f.field("metadata", x.metadata));
-}
-
 velocypack::SharedSlice Feature::getData() const {
-  // TODO: Push throwing further outward to REST handler?
-  // Problem: getCrashData :(
   auto res = registry.snapshot();
   if (res.ok()) {
     return res.get();

@@ -28,6 +28,8 @@
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
 
+#include <optional>
+
 namespace arangodb::activities {
 
 struct Activity : std::enable_shared_from_this<Activity> {
@@ -38,7 +40,16 @@ struct Activity : std::enable_shared_from_this<Activity> {
   virtual ~Activity() = default;
 
   auto id() const noexcept -> ActivityId { return _id; };
-  auto parent() const noexcept -> ActivityHandle { return _parent; }
+  auto parent() const noexcept -> std::optional<ActivityHandle> {
+    return _parent;
+  }
+  auto parentId() const noexcept -> std::optional<ActivityId> {
+    if (_parent == nullptr) {
+      return std::nullopt;
+    } else {
+      return _parent->id();
+    }
+  }
   auto type() const noexcept -> ActivityType { return _type; }
 
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
@@ -47,7 +58,6 @@ struct Activity : std::enable_shared_from_this<Activity> {
   ActivityId _id;
   ActivityHandle _parent;
   ActivityType _type;
-  //  std::string _database;
 };
 
 }  // namespace arangodb::activities
