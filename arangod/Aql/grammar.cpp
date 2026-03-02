@@ -150,19 +150,11 @@ enum yysymbol_kind_t
   YYSYMBOL_T_SORT = 8,                     /* "SORT declaration"  */
   YYSYMBOL_T_LIMIT = 9,                    /* "LIMIT declaration"  */
   YYSYMBOL_T_WINDOW = 10,                  /* "WINDOW declaration"  */
-<<<<<<< Updated upstream
-  YYSYMBOL_T_MATCH = 11,                   /* "match declaration"  */
-  YYSYMBOL_T_WHILE = 12,                   /* "while declaration"  */
-  YYSYMBOL_T_UNTIL = 13,                   /* "until declaration"  */
-  YYSYMBOL_T_SCAN = 14,                    /* "scan declaration"  */
-  YYSYMBOL_T_FOLD = 15,                    /* "fold declaration"  */
-=======
   YYSYMBOL_T_MATCH = 11,                   /* "MATCH declaration"  */
   YYSYMBOL_T_WHILE = 12,                   /* "WHILE declaration"  */
   YYSYMBOL_T_UNTIL = 13,                   /* "UNTIL declaration"  */
   YYSYMBOL_T_SCAN = 14,                    /* "SCAN declaration"  */
   YYSYMBOL_T_FOLD = 15,                    /* "FOLD declaration"  */
->>>>>>> Stashed changes
   YYSYMBOL_T_ASC = 16,                     /* "ASC keyword"  */
   YYSYMBOL_T_DESC = 17,                    /* "DESC keyword"  */
   YYSYMBOL_T_IN = 18,                      /* "IN keyword"  */
@@ -1213,15 +1205,9 @@ static const char *const yytname[] =
   "\"FOR declaration\"", "\"LET declaration\"", "\"FILTER declaration\"",
   "\"RETURN declaration\"", "\"COLLECT declaration\"",
   "\"SORT declaration\"", "\"LIMIT declaration\"",
-<<<<<<< Updated upstream
-  "\"WINDOW declaration\"", "\"match declaration\"",
-  "\"while declaration\"", "\"until declaration\"", "\"scan declaration\"",
-  "\"fold declaration\"", "\"ASC keyword\"", "\"DESC keyword\"",
-=======
   "\"WINDOW declaration\"", "\"MATCH declaration\"",
   "\"WHILE declaration\"", "\"UNTIL declaration\"", "\"SCAN declaration\"",
   "\"FOLD declaration\"", "\"ASC keyword\"", "\"DESC keyword\"",
->>>>>>> Stashed changes
   "\"IN keyword\"", "\"WITH keyword\"", "\"INTO keyword\"",
   "\"AGGREGATE keyword\"", "\"GRAPH keyword\"",
   "\"SHORTEST_PATH keyword\"", "\"K_SHORTEST_PATHS keyword\"",

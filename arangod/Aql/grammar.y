@@ -471,19 +471,11 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_LIMIT "LIMIT declaration"
 %token T_WINDOW "WINDOW declaration"
 
-<<<<<<< Updated upstream
-%token T_MATCH "match declaration"
-%token T_WHILE "while declaration"
-%token T_UNTIL "until declaration"
-%token T_SCAN "scan declaration"
-%token T_FOLD "fold declaration"
-=======
 %token T_MATCH "MATCH declaration"
 %token T_WHILE "WHILE declaration"
 %token T_UNTIL "UNTIL declaration"
 %token T_SCAN "SCAN declaration"
 %token T_FOLD "FOLD declaration"
->>>>>>> Stashed changes
 
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"

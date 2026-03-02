@@ -63,19 +63,11 @@ extern int Aqldebug;
     T_SORT = 263,                  /* "SORT declaration"  */
     T_LIMIT = 264,                 /* "LIMIT declaration"  */
     T_WINDOW = 265,                /* "WINDOW declaration"  */
-<<<<<<< Updated upstream
-    T_MATCH = 266,                 /* "match declaration"  */
-    T_WHILE = 267,                 /* "while declaration"  */
-    T_UNTIL = 268,                 /* "until declaration"  */
-    T_SCAN = 269,                  /* "scan declaration"  */
-    T_FOLD = 270,                  /* "fold declaration"  */
-=======
     T_MATCH = 266,                 /* "MATCH declaration"  */
     T_WHILE = 267,                 /* "WHILE declaration"  */
     T_UNTIL = 268,                 /* "UNTIL declaration"  */
     T_SCAN = 269,                  /* "SCAN declaration"  */
     T_FOLD = 270,                  /* "FOLD declaration"  */
->>>>>>> Stashed changes
     T_ASC = 271,                   /* "ASC keyword"  */
     T_DESC = 272,                  /* "DESC keyword"  */
     T_IN = 273,                    /* "IN keyword"  */
