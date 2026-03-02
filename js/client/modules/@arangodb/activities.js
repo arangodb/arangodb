@@ -64,7 +64,7 @@ function branch_symbol(hierarchy, continuations) {
 }
 
 exports.createForest = function (activities) {
-  const groupedByParent = Map.groupBy(activities, (a) => a.parent.id);
+  const groupedByParent = Map.groupBy(activities, (a) => a.parent);
   const children = new Map(Array.from(groupedByParent).map(([id, children]) => [id, children.map((c) => c.id)]));
   const nodes = new Map(activities.map((a) => {
     return [a.id, {...a, children: children.get(a.id) ?? []}];
