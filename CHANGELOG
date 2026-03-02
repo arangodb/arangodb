@@ -1,15 +1,15 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. The follower now trains and populates
+  the vector index from local documents after initial sync.
+
 * COR-271: If a query uses an OR condition that affects multiple indexes
   the covering index optimisation is now applied.
 
 * COR-168: Fixed the projections and filterProjections that were being cleared
   up when an IndexNode had multiple indexes because of an OR operand in a query.
-
-* COR-255: Fixed vector index not being properly trained on follower shards when
-  replicationFactor is increased. The follower now trains and populates
-  the vector index from local documents after initial sync.
 
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
