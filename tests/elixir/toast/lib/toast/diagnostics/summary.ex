@@ -204,12 +204,11 @@ defmodule Toast.Diagnostics.Summary do
   defp format_crash_entry(crash) do
     signal = "#{crash.signal_name} (signal #{crash.signal_number})"
     preview = truncate_content(Enum.join(crash.crash_output, "\n"))
-    log_ref = if crash.log_file, do: "    (see #{crash.log_file})", else: nil
 
     [
       "    [#{signal}] #{crash.server_id}",
       indent(preview, 6),
-      log_ref
+      if(crash.log_file, do: "    (see #{crash.log_file})")
     ]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n")

@@ -7,6 +7,8 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{Controller, ServerInstance}
 
+  import Toast.Utils, only: [conditional_put: 3, conditional_put: 4]
+
   @type server_target ::
           String.t()
           | [role: atom()]
@@ -400,15 +402,9 @@ defmodule Toast.Deployment do
   end
 
   defp merge_diagnostics(base, agency_dump, coredump_reports) do
-    optional =
-      [
-        if(agency_dump, do: {:agency_dump, agency_dump}),
-        if(coredump_reports != [], do: {:coredump_reports, coredump_reports})
-      ]
-      |> Enum.reject(&is_nil/1)
-      |> Map.new()
-
-    Map.merge(base || %{}, optional)
+    (base || %{})
+    |> conditional_put(:agency_dump, agency_dump)
+    |> conditional_put(:coredump_reports, coredump_reports, coredump_reports != [])
   end
 
   defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do

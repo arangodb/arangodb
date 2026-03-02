@@ -1,6 +1,8 @@
 defmodule ToastTest.ResultExporter.JSON do
   @moduledoc "Transform test results and diagnostics into a JSON report."
 
+  import Toast.Utils, only: [conditional_put: 3, conditional_put: 4]
+
   @toast_version "0.1.0"
 
   @doc "Build a JSON-safe Elixir map from test results and diagnostics."
@@ -17,16 +19,9 @@ defmodule ToastTest.ResultExporter.JSON do
       "server_health" => build_server_health(diagnostics)
     }
 
-    base =
-      case build_sanitizer_matching(sanitizer_matching) do
-        nil -> base
-        matching -> Map.put(base, "sanitizer_matching", matching)
-      end
-
-    case build_crash_matching(crash_matching) do
-      nil -> base
-      matching -> Map.put(base, "crash_matching", matching)
-    end
+    base
+    |> conditional_put("sanitizer_matching", build_sanitizer_matching(sanitizer_matching))
+    |> conditional_put("crash_matching", build_crash_matching(crash_matching))
   end
 
   @doc "Render test results and diagnostics as a JSON string."
@@ -174,22 +169,12 @@ defmodule ToastTest.ResultExporter.JSON do
   end
 
   defp build_single_server_health(diag) do
-    [
-      health_entry(
-        "sanitizer_errors",
-        diag[:sanitizer_errors],
-        &Enum.map(&1, fn e -> build_sanitizer_error(e) end)
-      ),
-      health_entry("crash_report", diag[:crash_report], &build_crash_report/1),
-      health_entry("log_issues", diag[:server_log], &build_log_issues/1),
-      health_entry("server", diag[:server], &build_server_instance/1)
-    ]
-    |> Enum.reject(&is_nil/1)
-    |> Map.new()
+    %{}
+    |> conditional_put("sanitizer_errors", diag[:sanitizer_errors], fn errs -> Enum.map(errs, &build_sanitizer_error/1) end)
+    |> conditional_put("crash_report", diag[:crash_report], &build_crash_report/1)
+    |> conditional_put("log_issues", diag[:server_log], &build_log_issues/1)
+    |> conditional_put("server", diag[:server], &build_server_instance/1)
   end
-
-  defp health_entry(_key, nil, _transform), do: nil
-  defp health_entry(key, value, transform), do: {key, transform.(value)}
 
   defp build_sanitizer_error(error) do
     %{
