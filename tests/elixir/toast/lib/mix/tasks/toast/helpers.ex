@@ -177,21 +177,11 @@ defmodule Mix.Tasks.Toast.Helpers do
   """
   @spec build_suite_opts([module()], [{String.t(), pos_integer()}], String.t() | nil) :: keyword()
   def build_suite_opts(test_modules, line_filters, test_name_pattern) do
-    opts = []
-
-    opts =
-      if test_name_pattern != nil do
-        Keyword.put(opts, :test_name_pattern, test_name_pattern)
-      else
-        opts
-      end
-
-    if line_filters != [] do
-      only_ids = build_only_test_ids(test_modules, line_filters)
-      Keyword.put(opts, :only_test_ids, only_ids)
-    else
-      opts
-    end
+    [
+      if(test_name_pattern != nil, do: {:test_name_pattern, test_name_pattern}),
+      if(line_filters != [], do: {:only_test_ids, build_only_test_ids(test_modules, line_filters)})
+    ]
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """

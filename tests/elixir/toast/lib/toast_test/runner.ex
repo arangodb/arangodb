@@ -184,6 +184,21 @@ defmodule ToastTest.Runner do
 
   defp run_suite_tests(suite_run, test_modules, global_opts, suite_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
+    {manager, stats_pid} = start_event_pipeline(opts)
+
+    config = build_test_config(opts, suite_opts, suite_run, manager, stats_pid)
+
+    :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
+
+    start_time = System.monotonic_time()
+    Compat.suite_started(manager, opts)
+
+    run_suite_modules(config, test_modules)
+
+    collect_suite_stats(config, start_time)
+  end
+
+  defp start_event_pipeline(opts) do
     {:ok, manager} = Compat.start_event_manager()
     {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
 
@@ -191,14 +206,17 @@ defmodule ToastTest.Runner do
       Compat.add_formatter(manager, formatter, opts)
     end
 
-    # Suite-level only_test_ids override global ones
+    {manager, stats_pid}
+  end
+
+  defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid) do
     only_test_ids =
       case Keyword.fetch(suite_opts, :only_test_ids) do
         {:ok, ids} -> ids
         :error -> opts[:only_test_ids]
       end
 
-    config = %{
+    %{
       capture_log: opts[:capture_log],
       exclude: opts[:exclude],
       include: opts[:include],
@@ -214,26 +232,21 @@ defmodule ToastTest.Runner do
       timeout_factor: suite_run.timeout_factor,
       trace: opts[:trace]
     }
+  end
 
-    :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
-
-    start_time = System.monotonic_time()
-    Compat.suite_started(manager, opts)
-
-    run_suite_modules(config, test_modules)
-
+  defp collect_suite_stats(config, start_time) do
     stop_time = System.monotonic_time()
 
     if max_failures_reached?(config) do
-      Compat.max_failures_reached(manager)
+      Compat.max_failures_reached(config.manager)
     end
 
     run_us = System.convert_time_unit(stop_time - start_time, :native, :microsecond)
     times_us = %{async: nil, load: nil, run: run_us}
-    Compat.suite_finished(manager, times_us)
+    Compat.suite_finished(config.manager, times_us)
 
-    stats = Compat.stats(stats_pid)
-    Compat.stop(manager)
+    stats = Compat.stats(config.stats_pid)
+    Compat.stop(config.manager)
 
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
     Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
@@ -349,32 +362,11 @@ defmodule ToastTest.Runner do
 
   defp mark_all_errored_stats(test_modules, reason, global_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    {:ok, manager} = Compat.start_event_manager()
-    {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
-
-    for formatter <- Keyword.get(opts, :formatters, []) do
-      Compat.add_formatter(manager, formatter, opts)
-    end
-
+    {manager, stats_pid} = start_event_pipeline(opts)
     Compat.suite_started(manager, opts)
 
     for module <- test_modules do
-      test_module = Compat.get_test_metadata(module)
-      Compat.module_started(manager, test_module)
-
-      for test <- test_module.tests do
-        errored = %{
-          test
-          | state:
-              {:failed,
-               [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
-        }
-
-        Compat.test_started(manager, errored)
-        Compat.test_finished(manager, errored)
-      end
-
-      Compat.module_finished(manager, test_module)
+      emit_errored_module(manager, module, reason)
     end
 
     times_us = %{async: nil, load: nil, run: 0}
@@ -382,6 +374,25 @@ defmodule ToastTest.Runner do
     stats = Compat.stats(stats_pid)
     Compat.stop(manager)
     stats
+  end
+
+  defp emit_errored_module(manager, module, reason) do
+    test_module = Compat.get_test_metadata(module)
+    Compat.module_started(manager, test_module)
+
+    for test <- test_module.tests do
+      errored = %{
+        test
+        | state:
+            {:failed,
+             [{:error, RuntimeError.exception("Deployment failed: #{inspect(reason)}"), []}]}
+      }
+
+      Compat.test_started(manager, errored)
+      Compat.test_finished(manager, errored)
+    end
+
+    Compat.module_finished(manager, test_module)
   end
 
   defp collect_diagnostics(deployment) do
@@ -639,25 +650,27 @@ defmodule ToastTest.Runner do
         [] -> nil
       end
 
-    cond do
-      aborted?() ->
-        {acc, remaining}
+    if aborted?() do
+      {acc, remaining}
+    else
+      case check_between_tests(config, prev_test) do
+        {:error, reason} ->
+          abort!(reason)
+          {acc, remaining}
 
-      reason = check_between_tests(config, prev_test) ->
-        abort!(reason)
-        {acc, remaining}
+        :ok ->
+          test = %{test | parameters: params}
+          Process.put(@current_key, test)
 
-      true ->
-        test = %{test | parameters: params}
-        Process.put(@current_key, test)
-
-        case run_test(config, test, context) do
-          {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
-          :max_failures_reached -> {acc, rest}
-        end
+          case run_test(config, test, context) do
+            {:ok, test} -> run_tests_loop(config, rest, params, context, [test | acc])
+            :max_failures_reached -> {acc, rest}
+          end
+      end
     end
   end
 
+  @spec check_between_tests(map(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
   defp check_between_tests(
          %{suite_run: %{suite_module: suite_module, deployment: deployment}},
          prev_test
@@ -667,23 +680,17 @@ defmodule ToastTest.Runner do
 
     cond do
       Keyword.get(suite_config, :between_tests) == false ->
-        nil
+        :ok
 
       function_exported?(suite_module, :between_tests, 2) and prev_test != nil ->
-        case suite_module.between_tests(deployment, prev_test) do
-          :ok -> nil
-          {:error, reason} -> reason
-        end
+        suite_module.between_tests(deployment, prev_test)
 
       true ->
-        case Toast.Deployment.check_health(deployment, prev_test) do
-          :ok -> nil
-          {:error, reason} -> reason
-        end
+        Toast.Deployment.check_health(deployment, prev_test)
     end
   end
 
-  defp check_between_tests(_config, _prev_test), do: nil
+  defp check_between_tests(_config, _prev_test), do: :ok
 
   defp run_test(config, test, context) do
     Compat.test_started(config.manager, test)

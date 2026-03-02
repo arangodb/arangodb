@@ -452,31 +452,28 @@ defmodule Toast.Deployment do
   defp format_crash_message({:ok, details}) do
     alias Toast.Diagnostics.CrashLogParser
 
-    parts = ["Server crashed"]
+    [
+      "Server crashed",
+      if(details.server_id, do: "(#{details.server_id})"),
+      if(details.server_crash_info, do: format_crash_exit(details.server_crash_info)),
+      format_crash_log_summary(details.log_report, CrashLogParser)
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
+  end
 
-    parts =
-      if details.server_id,
-        do: parts ++ ["(#{details.server_id})"],
-        else: parts
+  defp format_crash_exit(ci) do
+    signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
+    "exit_status=#{ci.exit_status}#{signal_part}"
+  end
 
-    parts =
-      if details.server_crash_info do
-        ci = details.server_crash_info
-        signal_part = if ci.signal, do: " signal=#{ci.signal}", else: ""
-        parts ++ ["exit_status=#{ci.exit_status}#{signal_part}"]
-      else
-        parts
-      end
+  defp format_crash_log_summary(nil, _), do: nil
 
-    parts =
-      if details.log_report do
-        summary = CrashLogParser.format_summary(details.log_report)
-        if summary != "No crash detected", do: parts ++ ["- #{summary}"], else: parts
-      else
-        parts
-      end
-
-    Enum.join(parts, " ")
+  defp format_crash_log_summary(log_report, parser) do
+    case parser.format_summary(log_report) do
+      "No crash detected" -> nil
+      summary -> "- #{summary}"
+    end
   end
 
   defp read_and_parse_log(nil), do: nil

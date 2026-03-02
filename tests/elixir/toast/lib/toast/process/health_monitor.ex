@@ -74,10 +74,6 @@ defmodule Toast.Process.HealthMonitor do
   end
 
   @impl true
-  def handle_call(:healthy?, _from, state) do
-    {:reply, state.status == :healthy, state}
-  end
-
   def handle_call(:status, _from, state) do
     {:reply, state.status, state}
   end

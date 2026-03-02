@@ -1,3 +1,15 @@
+defmodule Toast.Deployment.ServerLifecycleTest.FromCapture do
+  @moduledoc false
+  use GenServer
+
+  def init(parent), do: {:ok, parent}
+
+  def handle_call(:capture, from, parent) do
+    send(parent, {:from, from})
+    {:noreply, parent}
+  end
+end
+
 defmodule Toast.Deployment.ServerLifecycleTest do
   use ExUnit.Case, async: true
 
@@ -549,17 +561,5 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
     reply = Task.await(task, 1_000)
     {reply, tag}
-  end
-end
-
-defmodule Toast.Deployment.ServerLifecycleTest.FromCapture do
-  @moduledoc false
-  use GenServer
-
-  def init(parent), do: {:ok, parent}
-
-  def handle_call(:capture, from, parent) do
-    send(parent, {:from, from})
-    {:noreply, parent}
   end
 end

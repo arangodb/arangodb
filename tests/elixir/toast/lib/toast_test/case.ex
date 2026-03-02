@@ -205,21 +205,22 @@ defmodule ToastTest.Case do
 
   defp register_formatters do
     current = Application.get_env(:ex_unit, :formatters, [ExUnit.CLIFormatter])
-
-    # Replace ExUnit.CLIFormatter with ToastTest.CLIFormatter
-    formatters = List.delete(current, ExUnit.CLIFormatter)
-
+    # Replace ExUnit.CLIFormatter with ToastTest.CLIFormatter since we want our own output format
     formatters =
-      if ToastTest.CLIFormatter in formatters,
-        do: formatters,
-        else: [ToastTest.CLIFormatter | formatters]
-
-    formatters =
-      if ToastTest.ResultFormatter in formatters,
-        do: formatters,
-        else: formatters ++ [ToastTest.ResultFormatter]
+      current
+      |> List.delete(ExUnit.CLIFormatter)
+      |> ensure_at_front(ToastTest.CLIFormatter)
+      |> ensure_at_end(ToastTest.ResultFormatter)
 
     ExUnit.configure(formatters: formatters)
+  end
+
+  defp ensure_at_front(list, item) do
+    if item in list, do: list, else: [item | list]
+  end
+
+  defp ensure_at_end(list, item) do
+    if item in list, do: list, else: list ++ [item]
   end
 
   defp print_diagnostics_summary(nil), do: :ok

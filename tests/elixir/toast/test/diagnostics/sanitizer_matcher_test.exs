@@ -1,7 +1,7 @@
 defmodule Toast.Diagnostics.SanitizerMatcherTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Diagnostics.SanitizerMatcher
+  alias Toast.Diagnostics.{Matcher, SanitizerMatcher}
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
@@ -37,36 +37,36 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
 
   describe "calculate_confidence/4" do
     test "returns :high when timestamp is within test window" do
-      assert :high == SanitizerMatcher.calculate_confidence(at(5), at(0), at(10))
+      assert :high == Matcher.calculate_confidence(at(5), at(0), at(10))
     end
 
     test "returns :high when timestamp equals test start" do
-      assert :high == SanitizerMatcher.calculate_confidence(at(0), at(0), at(10))
+      assert :high == Matcher.calculate_confidence(at(0), at(0), at(10))
     end
 
     test "returns :high when timestamp equals test end" do
-      assert :high == SanitizerMatcher.calculate_confidence(at(10), at(0), at(10))
+      assert :high == Matcher.calculate_confidence(at(10), at(0), at(10))
     end
 
     test "returns :low when timestamp is within tolerance after test end" do
-      assert :low == SanitizerMatcher.calculate_confidence(at(13), at(0), at(10))
+      assert :low == Matcher.calculate_confidence(at(13), at(0), at(10))
     end
 
     test "returns :low at exactly tolerance boundary" do
-      assert :low == SanitizerMatcher.calculate_confidence(at(15), at(0), at(10))
+      assert :low == Matcher.calculate_confidence(at(15), at(0), at(10))
     end
 
     test "returns :none when timestamp is beyond tolerance" do
-      assert :none == SanitizerMatcher.calculate_confidence(at(16), at(0), at(10))
+      assert :none == Matcher.calculate_confidence(at(16), at(0), at(10))
     end
 
     test "returns :none when timestamp is before test start" do
-      assert :none == SanitizerMatcher.calculate_confidence(at(-1), at(0), at(10))
+      assert :none == Matcher.calculate_confidence(at(-1), at(0), at(10))
     end
 
     test "respects custom tolerance" do
-      assert :low == SanitizerMatcher.calculate_confidence(at(12), at(0), at(10), 3)
-      assert :none == SanitizerMatcher.calculate_confidence(at(14), at(0), at(10), 3)
+      assert :low == Matcher.calculate_confidence(at(12), at(0), at(10), 3)
+      assert :none == Matcher.calculate_confidence(at(14), at(0), at(10), 3)
     end
   end
 

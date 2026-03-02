@@ -272,35 +272,26 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   defp format_crash_section(%{signal_name: nil}), do: nil
 
   defp format_crash_section(report) do
-    parts = [
-      "Crash Report:",
-      "  Signal: #{report.signal_name} (#{report.signal_number})"
-    ]
-
-    parts =
-      case Map.get(report, :crash_output, []) do
-        lines when is_list(lines) and lines != [] ->
-          formatted = Enum.map(lines, &"    #{&1}")
-          parts ++ ["  Crash output:" | formatted]
-
-        _ ->
-          parts ++ [if(report.crash_header, do: "  #{report.crash_header}")]
-      end
-
-    parts =
-      case report.fatal_lines do
-        lines when is_list(lines) and lines != [] ->
-          formatted = Enum.map(lines, &"    #{&1}")
-          parts ++ ["  Fatal lines:" | formatted]
-
-        _ ->
-          parts
-      end
-
-    parts
-    |> Enum.reject(&is_nil/1)
+    (["Crash Report:", "  Signal: #{report.signal_name} (#{report.signal_number})"] ++
+       format_crash_output(report) ++ format_fatal_lines(report.fatal_lines))
     |> Enum.join("\n")
   end
+
+  defp format_crash_output(report) do
+    case Map.get(report, :crash_output, []) do
+      lines when is_list(lines) and lines != [] ->
+        ["  Crash output:" | Enum.map(lines, &"    #{&1}")]
+
+      _ ->
+        if report.crash_header, do: ["  #{report.crash_header}"], else: []
+    end
+  end
+
+  defp format_fatal_lines(lines) when is_list(lines) and lines != [] do
+    ["  Fatal lines:" | Enum.map(lines, &"    #{&1}")]
+  end
+
+  defp format_fatal_lines(_), do: []
 
   defp format_log_section(nil), do: nil
 
@@ -333,25 +324,17 @@ defmodule ToastTest.ResultExporter.JUnitXML do
          item_key,
          detail_fn
        ) do
-    parts = []
+    matched_parts =
+      if matched != [],
+        do: ["#{title}:" | format_grouped_matches(matched, item_key, detail_fn)],
+        else: []
 
-    parts =
-      if matched != [] do
-        entries = format_grouped_matches(matched, item_key, detail_fn)
-        parts ++ ["#{title}:" | entries]
-      else
-        parts
-      end
+    unmatched_parts =
+      if unmatched != [],
+        do: ["#{unmatched_title}:\n#{Enum.map_join(unmatched, "\n", detail_fn)}"],
+        else: []
 
-    parts =
-      if unmatched != [] do
-        entries = Enum.map_join(unmatched, "\n", detail_fn)
-        parts ++ ["#{unmatched_title}:\n#{entries}"]
-      else
-        parts
-      end
-
-    Enum.join(parts, "\n")
+    (matched_parts ++ unmatched_parts) |> Enum.join("\n")
   end
 
   defp format_matching_attribution(_title, _unmatched_title, _other, _item_key, _detail_fn),

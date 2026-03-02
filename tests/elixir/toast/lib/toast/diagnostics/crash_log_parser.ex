@@ -78,7 +78,7 @@ defmodule Toast.Diagnostics.CrashLogParser do
     # Collect FATAL lines that are NOT in {crash} topic — crash-specific fatals
     # are handled separately as crash_header / backtrace.
     if fatal_line?(line) and not String.contains?(line, "{crash}") do
-      content = extract_after_prefix(line)
+      content = extract_log_message(line)
       %{report | fatal_lines: [content | report.fatal_lines]}
     else
       report
@@ -147,8 +147,9 @@ defmodule Toast.Diagnostics.CrashLogParser do
     end
   end
 
-  defp extract_after_prefix(line) do
-    # Extract content after the log topic (e.g., "{general} ", "{crash} ")
+  @doc "Extract message content after the log topic marker (e.g., `{general} `, `{crash} `)."
+  @spec extract_log_message(String.t()) :: String.t()
+  def extract_log_message(line) do
     case Regex.run(~r/\{[^}]+\}\s+(.*)$/, line) do
       [_, content] -> content
       _ -> line

@@ -21,9 +21,6 @@ defmodule Toast.Diagnostics.SanitizerMatcher do
           unmatched: [Toast.Diagnostics.Sanitizer.sanitizer_error()]
         }
 
-  defdelegate calculate_confidence(timestamp, test_start, test_end, tolerance_seconds \\ 5),
-    to: Matcher
-
   @doc """
   Match sanitizer errors from diagnostics to test results by timestamp.
 

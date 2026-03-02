@@ -58,8 +58,12 @@ defmodule Toast.Analysis.Failures do
 
   defp format_single_failure(f) do
     msg = f["message"] || "no message"
-    entry = ["   [#{f["kind"]}] #{msg}"]
-    if f["stacktrace"], do: entry ++ ["   #{truncate(f["stacktrace"], 500)}"], else: entry
+
+    [
+      "   [#{f["kind"]}] #{msg}",
+      if(f["stacktrace"], do: "   #{truncate(f["stacktrace"], 500)}")
+    ]
+    |> Enum.reject(&is_nil/1)
   end
 
   defp truncate(text, max_len) when is_binary(text) and byte_size(text) > max_len do

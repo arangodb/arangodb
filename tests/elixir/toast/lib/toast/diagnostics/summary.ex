@@ -62,13 +62,15 @@ defmodule Toast.Diagnostics.Summary do
     crash = Map.get(diag, :crash_report)
     error = Map.get(diag, :server_error)
 
-    parts = [format_server_header(server)]
-    parts = parts ++ format_signal(crash, error)
-    parts = parts ++ format_crash_output(crash)
-    parts = parts ++ format_fatal_lines(crash)
-    parts = parts ++ format_log_path(diag.server.log_file)
-
-    Enum.join(parts, "\n")
+    [
+      [format_server_header(server)],
+      format_signal(crash, error),
+      format_crash_output(crash),
+      format_fatal_lines(crash),
+      format_log_path(diag.server.log_file)
+    ]
+    |> Enum.concat()
+    |> Enum.join("\n")
   end
 
   defp format_server_header(%ServerInstance{id: id, pid: pid, endpoint: endpoint}) do

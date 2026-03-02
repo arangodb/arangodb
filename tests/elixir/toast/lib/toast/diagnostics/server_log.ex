@@ -39,7 +39,7 @@ defmodule Toast.Diagnostics.ServerLog do
 
   defp maybe_collect_assertion(report, line) do
     if String.contains?(line, "{assertion}") do
-      content = extract_message(line)
+      content = CrashLogParser.extract_log_message(line)
       %{report | assertion_failures: [content | report.assertion_failures]}
     else
       report
@@ -48,18 +48,10 @@ defmodule Toast.Diagnostics.ServerLog do
 
   defp maybe_collect_warning(report, line) do
     if CrashLogParser.fatal_line?(line) and not String.contains?(line, "{crash}") do
-      content = extract_message(line)
+      content = CrashLogParser.extract_log_message(line)
       %{report | warnings: [content | report.warnings]}
     else
       report
-    end
-  end
-
-  defp extract_message(line) do
-    # Extract content after the log topic (e.g., "{general} message here")
-    case Regex.run(~r/\{[^}]+\}\s+(.*)$/, line) do
-      [_, content] -> content
-      _ -> line
     end
   end
 end

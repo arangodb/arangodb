@@ -7,10 +7,15 @@ defmodule ToastTest.CrashMonitor do
     signal = Map.get(crash_info, :signal)
     exit_status = Map.get(crash_info, :exit_status)
 
-    parts = ["Server #{server_id} crashed"]
-    parts = if signal, do: parts ++ ["(signal: #{signal})"], else: parts
-    parts = if exit_status, do: parts ++ ["exit_status=#{exit_status}"], else: parts
+    message =
+      [
+        "Server #{server_id} crashed",
+        if(signal, do: "(signal: #{signal})"),
+        if(exit_status, do: "exit_status=#{exit_status}")
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join(" ")
 
-    ToastTest.Runner.abort!({:crash, Enum.join(parts, " ")})
+    ToastTest.Runner.abort!({:crash, message})
   end
 end

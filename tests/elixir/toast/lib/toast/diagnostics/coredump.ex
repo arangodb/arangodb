@@ -75,9 +75,11 @@ defmodule Toast.Diagnostics.Coredump do
         Logger.warning("Coredump analysis timeout budget exhausted, skipping remaining servers")
         {:halt, acc}
       else
-        {:cont, acc ++ collect_for_server(server, remaining, debugger)}
+        {:cont, [collect_for_server(server, remaining, debugger) | acc]}
       end
     end)
+    |> Enum.concat()
+    |> Enum.reverse()
   end
 
   # --- Private ---

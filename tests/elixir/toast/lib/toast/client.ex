@@ -79,12 +79,13 @@ defmodule Toast.Client do
   end
 
   defp build_url(%__MODULE__{} = client, path) do
-    version = client.api_version
-    parts = []
-    parts = if version, do: parts ++ [version_prefix(version)], else: parts
-    parts = if client.database, do: parts ++ ["/_db/#{client.database}"], else: parts
-    parts = parts ++ [path]
-    Enum.join(parts)
+    [
+      if(client.api_version, do: version_prefix(client.api_version)),
+      if(client.database, do: "/_db/#{client.database}"),
+      path
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join()
   end
 
   defp version_prefix(version) when is_integer(version), do: "/_arango/v#{version}"
