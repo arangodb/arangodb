@@ -63,7 +63,6 @@ jsunity.run(function dump_single_testsuite() {
       "testInvertedIndex",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
-      "testJobsAndQueues",
       "testComputedValues",
 
       // cluster tests:

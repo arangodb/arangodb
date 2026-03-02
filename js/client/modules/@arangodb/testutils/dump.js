@@ -495,111 +495,6 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     return this.validate(this.results.testRestoreOld);
   }
 
-  restoreFoxxComplete(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps with full restore to ' + database);
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.setIncludeSystem(true);
-      this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
-      this.results.restoreFoxxComplete = this.arangorestore();
-      return this.validate(this.results.restoreFoxxComplete);
-    }
-    return true;
-  }
-
-  testFoxxRoutingReady() {
-    if (!this.firstRunOptions.skipServerJS) {
-      for (let i = 0; i < 20; i++) {
-        try {
-          let reply = arango.GET_RAW('/this_route_is_not_here', true);
-          if (reply.code === 404) {
-            print("selfHeal was already executed - Foxx is ready!");
-            return 0;
-          }
-          print(" Not yet ready, retrying: " + reply.parsedBody);
-        } catch (e) {
-          print(" Caught - need to retry. " + JSON.stringify(e));
-        }
-        sleep(3);
-      }
-      throw new Error("020: foxx routeing not ready on time!");
-    }
-    return 0;
-  }
-
-  testFoxxComplete(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after full restore - ' + file);
-      db._useDatabase(database);
-      this.testFoxxRoutingReady();
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxComplete = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxComplete);
-    }
-    return true;
-  }
-
-  restoreFoxxAppsBundle(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps restore _apps then _appbundles');
-      db._useDatabase('_system');
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.restrictToCollection('_apps');
-      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-        return false;
-      }
-      this.restoreConfig.restrictToCollection('_appbundles');
-      // TODO if cluster, switch coordinator!
-      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-      return this.validate(this.results.restoreFoxxAppBundlesStep2);
-    }
-    return true;
-  }
-
-  testFoxxAppsBundle(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after _apps then _appbundles restore - ' + file);
-      db._useDatabase(database);
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxAppBundles = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxAppBundles);
-    }
-    return true;
-  }
-
-  restoreFoxxBundleApps(database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Foxx Apps restore _appbundles then _apps');
-      db._useDatabase(database);
-      this.restoreConfig.setDatabase(database);
-      this.restoreConfig.restrictToCollection('_appbundles');
-      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-        return false;
-      }
-      this.restoreConfig.restrictToCollection('_apps');
-      // TODO if cluster, switch coordinator!
-      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-      return this.validate(this.results.restoreFoxxAppBundlesStep2);
-    }
-    return true;
-  }
-
-  testFoxxBundleApps(file, database) {
-    if (!this.firstRunOptions.skipServerJS) {
-      this.print('Test Foxx Apps after _appbundles then _apps restore - ' + file);
-      db._useDatabase(database);
-      this.addArgs = {'server.database': database};
-      this.results.testFoxxFoxxAppBundles = this.runOneTest(file);
-      this.addArgs = undefined;
-      return this.validate(this.results.testFoxxAppBundles);
-    }
-    return true;
-  }
-
   createHotBackup() {
     this.print("creating backup");
     let cmds = {
@@ -697,7 +592,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
 
   dumpFromRta() {
     let success = true;
-    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
+    const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst'];
     db._useDatabase('_system');
     db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db);}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
