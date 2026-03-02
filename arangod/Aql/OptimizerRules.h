@@ -67,9 +67,6 @@ void removeUnnecessaryFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
 /// @brief remove unused INTO variable from COLLECT, or unused aggregates
-void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                OptimizerRule const&);
-
 /// @brief propagate constant attributes in FILTERs
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
@@ -87,12 +84,6 @@ void moveCalculationsUpRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// beyond FILTER and LIMIT statements
 void moveCalculationsDownRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
-
-/// @brief determine the "right" type of CollectNode and
-/// add a sort node for each COLLECT (may be removed later)
-/// this rule cannot be turned off (otherwise, the query result might be wrong!)
-void specializeCollectRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
 
 /// @brief split and-combined filters and break them into smaller parts
 void splitFiltersRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
