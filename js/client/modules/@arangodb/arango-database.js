@@ -1203,7 +1203,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     error: true,
     code: internal.errors.ERROR_HTTP_NOT_FOUND.code,
     errorNum: internal.errors.ERROR_HTTP_NOT_FOUND.code,
-    errorMessage: 'JavaScript transactions are no longer supported. ' +
+    errorMessage: 'JavaScript transactions have been deprecated. ' +
       'Use streaming transactions (db._createTransaction) instead.'
   });
 };

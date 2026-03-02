@@ -109,7 +109,7 @@ auto RestTransactionHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       } else if (_request->suffixes().empty()) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                      "JavaScript transactions not supported. Use streaming "
+                      "JavaScript transactions have been deprecated. Use streaming "
                       "transactions (POST /_api/transaction/begin)");
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);

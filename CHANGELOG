@@ -137,7 +137,7 @@
 * Reject creation of Smart Edge collection without `distributeShardsLike`.
 
 * COR-134: Remove JS remaining transactions, use streaming transactions
-  as alternative.
+  as replacement.
 
 * Remove metrics for V8 contexts:
   - `arangodb_v8_context_alive`: number of V8 contexts currently alive.
