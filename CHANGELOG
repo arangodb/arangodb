@@ -1,12 +1,22 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* COR-271: If a query uses an OR condition that affects multiple indexes
+  the covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
 
 3.12.8 (XXXX-XX-XX)
 -------------------
+
+* Updated minimatch to 10.2.3.
+
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
 
 * Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
 
@@ -15,8 +25,6 @@
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
 * Fixed BTS-2309: Treat empty object as null with respect to schema.
-
-* Updated minimatch to 10.2.1.
 
 * Add new API GET /_admin/options-public for new platform UI.
 
