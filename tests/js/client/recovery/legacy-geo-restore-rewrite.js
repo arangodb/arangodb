@@ -32,7 +32,6 @@ function addConnectionArgs(args) {
 }
 
 function restoreLegacyGeoFixture() {
-  // arangorestore runs in a different CWD (e.g. CI), so use absolute path
   const inputDir = fs.normalize(fs.makeAbsolute(fixtureDir));
 
   const restoreBin = pu.ARANGORESTORE_BIN || pu.arangorestoreBin || 'arangorestore';
@@ -96,13 +95,15 @@ function testSuite() {
       assertEqual('geo', geoLoc.type);
       assertEqual('geo', geoLatLon.type);
 
-      // Functional check via AQL (avoid SimpleQueryNear / c.near(), which may 404)
       const res = db._query(`
-        FOR d IN NEAR(${cn}, 0, 0, 10)
+        FOR d IN ${cn}
+          LET point = HAS(d, "loc") ? d.loc : GEO_POINT(d.lon, d.lat)
+          SORT GEO_DISTANCE(point, [0, 0]) ASC
+          LIMIT 10
           RETURN d
       `).toArray();
 
-      assertEqual(10, res.length, 'NEAR() should return 10 docs');
+      assertEqual(10, res.length, 'GEO_DISTANCE query should return 10 docs');
     }
   };
 }
