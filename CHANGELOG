@@ -1,6 +1,10 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fixed a bug in arangodump that prevented the `--local-network-threads`
+  startup option from accepting the specified value and potentially
+  overwriting the `--dbserver-worker-threads` setting.
+
 * COR-271: If a query uses an OR condition that affects multiple indexes
   the covering index optimisation is now applied.
 
