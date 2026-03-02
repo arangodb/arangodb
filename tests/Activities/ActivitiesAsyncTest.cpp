@@ -58,6 +58,7 @@ struct ActivitiesAsyncTest : ::testing::Test {
 
   void TearDown() override {
     arangodb::async_registry::get_thread_registry().garbage_collect();
+    arangodb::activities::registry.garbageCollect();
     wait.stop();
     wait2.stop();
     EXPECT_EQ(promise_count_in_registry(), 0);
