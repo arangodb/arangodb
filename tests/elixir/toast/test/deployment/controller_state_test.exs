@@ -176,7 +176,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
-      on_exit(fn -> if Process.alive?(ctrl), do: GenServer.stop(ctrl) end)
+      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
       %{ctrl: ctrl}
     end
 

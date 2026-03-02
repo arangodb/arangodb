@@ -154,7 +154,7 @@ defmodule Toast.Deployment.FailurePointTest do
   describe "set/3" do
     test "returns {:error, :not_found} for unknown server_id" do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
 
       assert {:error, :not_found} = FailurePoint.set(deployment(pid), "nonexistent", "test")
     end
@@ -165,7 +165,7 @@ defmodule Toast.Deployment.FailurePointTest do
   describe "clear/3" do
     test "returns {:error, :not_found} for unknown server_id" do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
 
       assert {:error, :not_found} = FailurePoint.clear(deployment(pid), "nonexistent", "test")
     end
@@ -176,7 +176,7 @@ defmodule Toast.Deployment.FailurePointTest do
   describe "clear_all/1" do
     test "returns :ok when deployment has no servers" do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
 
       assert :ok = FailurePoint.clear_all(deployment(pid))
     end
@@ -211,7 +211,7 @@ defmodule Toast.Deployment.FailurePointTest do
   describe "Deployment delegates" do
     setup do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
+      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
       %{deployment: deployment(pid)}
     end
 
