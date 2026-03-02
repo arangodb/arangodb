@@ -24,13 +24,12 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
-#include "RestServer/arangod.h"
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <string_view>
 
 namespace arangodb {
@@ -68,13 +67,15 @@ class StorageUsageTracker {
   std::atomic<std::uint64_t> _currentUsage;
 };
 
-class TemporaryStorageFeature : public ArangodFeature {
+class TemporaryStorageFeature
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TemporaryStorage";
   }
 
-  explicit TemporaryStorageFeature(Server& server);
+  explicit TemporaryStorageFeature(
+      application_features::ApplicationServer& server);
   ~TemporaryStorageFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -97,14 +98,7 @@ class TemporaryStorageFeature : public ArangodFeature {
  private:
   void cleanupDirectory();
 
-  // parameters that can be configured by the user
-  std::string _basePath;
-  bool _useEncryption;
-  bool _allowHWAcceleration;
-
-  std::uint64_t _maxDiskCapacity;
-  size_t _spillOverThresholdNumRows;
-  size_t _spillOverThresholdMemoryUsage;
+  TemporaryStorageFeatureOptions _options;
 
   // populated only if !_path.empty()
   std::unique_ptr<RocksDBTempStorage> _backend;

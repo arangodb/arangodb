@@ -24,11 +24,13 @@
 #include "StatisticsWorker.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -38,8 +40,6 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/CpuUsageFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -98,7 +98,7 @@ using namespace arangodb;
 using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : ServerThread<ArangodServer>(vocbase.server(), "StatisticsWorker"),
+    : ServerThread(vocbase.server(), "StatisticsWorker"),
       _gcTask(GC_STATS),
       _vocbase(vocbase) {
   _bytesSentDistribution.openArray();

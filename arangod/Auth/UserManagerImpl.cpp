@@ -28,13 +28,13 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
+#include "Basics/application-exit.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
@@ -54,33 +54,34 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the system database or nullptr on error
-////////////////////////////////////////////////////////////////////////////////
-arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::ArangodServer& server) {
-  if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
-    LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
-        << "failure to find feature '"
-        << arangodb::SystemDatabaseFeature::name()
-        << "' while getting the system database";
-
-    return nullptr;
-  }
-  return server.getFeature<arangodb::SystemDatabaseFeature>().use();
-}
-
-}  // namespace
+namespace arangodb::auth {
 
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-namespace arangodb::auth {
+namespace {
 
-UserManagerImpl::UserManagerImpl(ArangodServer& server)
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+SystemDatabaseFeature::ptr getSystemDatabase(
+    application_features::ApplicationServer& server) {
+  if (!server.hasFeature<SystemDatabaseFeature>()) {
+    LOG_TOPIC("607b8", WARN, Logger::AUTHENTICATION)
+        << "failure to find feature '" << SystemDatabaseFeature::name()
+        << "' while getting the system database";
+
+    return nullptr;
+  }
+  return server.getFeature<SystemDatabaseFeature>().use();
+}
+
+constexpr auto kVersionMax = std::numeric_limits<uint64_t>::max();
+}  // namespace
+
+UserManagerImpl::UserManagerImpl(
+    application_features::ApplicationServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 
 UserManagerImpl::~UserManagerImpl() { shutdown(); }
@@ -103,7 +104,8 @@ static UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(
+    application_features::ApplicationServer& server) {
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -181,15 +183,54 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
     return;
   }
 
+  if (_globalVersion.load() == kVersionMax) {
+    // a previous update thread was already shut down, and we don't want to
+    // start another one! This can happen if an upgrade initiates a server
+    // shutdown before some features have been started. This causes
+    // beginShutdown to be called on all features, resulting in shutdown of the
+    // update thread. But afterwards we continue to start the remaining
+    // features, which themselves then might try to again start the update
+    // thread.
+    return;
+  }
+
   namespace chrono = std::chrono;
-  LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
-  auto start = chrono::system_clock::now();
-  while (loadFromDB() == 0) {
-    auto const now = chrono::system_clock::now();
-    if ((now - start) > std::chrono::seconds(3)) {
-      start = chrono::system_clock::now();
-      LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
-          << "Preloading user cache is still in progress.";
+  using namespace std::chrono_literals;
+  {
+    // We want to see if the initial load takes longer,
+    // but we do not want to spam it on every retry. One log every 3 seconds
+    // seems sensible.
+    auto constexpr LogAfterSeconds = std::chrono::seconds(3);
+    // 133 tries are about 2min.
+    uint32_t constexpr MaxRetries = 133;
+
+    LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
+    auto start = chrono::system_clock::now();
+    uint32_t tries = 0;
+    while (loadFromDB() == 0) {
+      if (tries >= MaxRetries) {
+        // If after this we still are not able to load
+        // anything from the _users collections, we should stop. We cant recover
+        // and we are useless without users.
+        LOG_TOPIC("ef78d", ERR, Logger::AUTHENTICATION)
+            << "Preloading user cache failed.";
+        FATAL_ERROR_EXIT();
+      }
+      tries++;
+      auto const now = chrono::system_clock::now();
+      if ((now - start) > LogAfterSeconds) {
+        start = chrono::system_clock::now();
+        LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
+            << "Preloading user cache is still in progress. Tried " << tries
+            << " times";
+      }
+      // This will try ~20 times in the first second, then will reduce to 1 try
+      // per second
+      uint32_t const multiplier = 1u << std::min(tries, 20u);
+      std::this_thread::sleep_for(1us * multiplier);
+      if (_server.isStopping()) {
+        return;
+      }
     }
   }
 
@@ -199,6 +240,18 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
         auto start = chrono::system_clock::now();
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
+
+          if (loadedVersion == kVersionMax) {
+            // if loadedVersion == kVersionMax a shutdown as been initiated.
+            // we need to check this here BEFORE waiting for the globalVersion,
+            // otherwise we can have a race where shutdown already sets
+            // globalVersion=max, at the same time we load globalVersion,
+            // successfully fetch the users, and update internalVersion. In this
+            // case we would then wait indefinitely.
+            TRI_ASSERT(stpTkn.stop_requested());
+            break;
+          }
+
           // In case of an error while loading the _user collection we do not
           // want to retry too often to prevent additional load on the whole
           // server/cluster
@@ -218,18 +271,21 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             // The wait time between retries get longer and longer up until a
             // maximum of ~10sec in between tries.
             uint32_t const multiplier = 1u << std::min(tries, 20u);
-            using namespace std::chrono_literals;
             {  // sleep for "10us * multiplier", but interruptible by the stop
               // token.
               auto mutex = std::mutex{};
               auto cv = std::condition_variable{};
-              auto lock = std::unique_lock(mutex);
+              // Note that it is indeed possible that the std::request_stop has
+              // already been called when we get here. In this case the
+              // stop_callback is called right now and here in this thread.
+              // Therefore we must not hold the mutex when we construct the
+              // callback.
               auto cb = std::stop_callback(stpTkn, [&]() noexcept {
                 // We lock and unlock here to make sure that we do not call a
                 // notify while the conditional_variable is currently woken-up
                 // and checking the predicate. This prevents any sleeping barber
                 // scenarios here. If the lock is successful the cv has not yet
-                // woken up but stop_requested is already true If the lock is
+                // woken up but stop_requested is already true. If the lock is
                 // unsuccessful (blocks) we wait here until the cv is finished
                 // with checking the predicate, and we can wake it up again
                 // after it is sleeping/waiting again.
@@ -237,6 +293,7 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
                 mutex.unlock();
                 cv.notify_one();
               });
+              auto lock = std::unique_lock(mutex);
               // The wake-up + lock and the sleep + unlock is guaranteed to
               // happen atomically
               cv.wait_for(lock, 10us * multiplier,
@@ -246,6 +303,7 @@ void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
             // load was successful reset tries
             tries = 0;
           }
+          TRI_ASSERT(loadedVersion != kVersionMax);
           _globalVersion.wait(loadedVersion);
         }
       });
@@ -469,7 +527,8 @@ void UserManagerImpl::triggerGlobalReload() const {
 }
 
 /// Trigger eventual reload, user facing API call
-void UserManagerImpl::triggerGlobalReload(ArangodServer& server) {
+void UserManagerImpl::triggerGlobalReload(
+    application_features::ApplicationServer& server) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -683,7 +742,8 @@ VPackBuilder UserManagerImpl::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(ArangodServer& server, User const& entry) {
+static Result RemoveUserInternal(
+    application_features::ApplicationServer& server, User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 
@@ -967,7 +1027,7 @@ void UserManagerImpl::shutdown() {
   if (_userCacheUpdateThread.joinable()) {
     _userCacheUpdateThread.request_stop();
     // set global version leads to a wake-up of the update thread
-    setGlobalVersion(std::numeric_limits<uint64_t>::max());
+    setGlobalVersion(kVersionMax);
     _userCacheUpdateThread.join();
   }
 }

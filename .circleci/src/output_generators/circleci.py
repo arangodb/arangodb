@@ -37,7 +37,7 @@ class CircleCIGenerator(OutputGenerator):
 
     # Job-specific bucket overrides
     # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
-    # but CircleCI needs 5 for better parallelization. See tests/test-definitions.yml:74
+    # but CircleCI needs 5 for better parallelization. See tests/tests.yml:74
     BUCKET_OVERRIDES = {
         "replication_sync": 5,
     }

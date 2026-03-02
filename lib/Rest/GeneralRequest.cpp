@@ -24,11 +24,16 @@
 
 #include "GeneralRequest.h"
 
+#include <cctype>
+#include <limits>
+
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Logger/LogMacros.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/RequestContext.h"
 
 using namespace arangodb;
@@ -64,6 +69,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
+      _requestedApiVersion(ApiVersion::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -192,6 +198,23 @@ void GeneralRequest::setDatabaseName(std::string databaseName) {
 
 void GeneralRequest::setUser(std::string user) {
   setStringValue(_user, std::move(user));
+}
+
+void GeneralRequest::setRoles(std::vector<std::string> roles) {
+  size_t oldSize = 0;
+  for (auto const& role : _roles) {
+    oldSize += role.size();
+  }
+  size_t newSize = 0;
+  for (auto const& role : roles) {
+    newSize += role.size();
+  }
+  _roles = std::move(roles);
+  _memoryUsage = _memoryUsage - oldSize + newSize;
+}
+
+void GeneralRequest::setJwtToken(std::string token) {
+  setStringValue(_jwtToken, std::move(token));
 }
 
 void GeneralRequest::setPrefix(std::string prefix) {
@@ -383,6 +406,95 @@ velocypack::Options const* GeneralRequest::validationOptions(
     return &basics::VelocyPackHelper::strictRequestValidationOptions;
   }
   return &basics::VelocyPackHelper::looseRequestValidationOptions;
+}
+
+void GeneralRequest::detectAndStripApiVersion(char const*& start,
+                                              char const* end) {
+  constexpr std::string_view arangoPrefix = "/_arango/";
+  constexpr std::string_view experimentalSuffix = "experimental";
+
+  size_t len = static_cast<size_t>(end - start);
+  if (len < arangoPrefix.size() ||
+      std::string_view(start, arangoPrefix.size()) != arangoPrefix) {
+    // No /_arango/ prefix, nothing to do
+    return;
+  }
+
+  char const* p = start + arangoPrefix.size();
+  std::string_view remainder(p, static_cast<size_t>(end - p));
+
+  auto throwGenericError = [&]() {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        absl::StrCat("invalid API version prefix: expected '/_arango/vX' or "
+                     "'/_arango/experimental', got instead: ",
+                     std::string_view(start, end - start)));
+  };
+
+  // Check for empty remainder (path is exactly "/_arango/")
+  if (remainder.empty()) {
+    throwGenericError();
+  }
+
+  // Check for /_arango/experimental
+  if (remainder.starts_with(experimentalSuffix)) {
+    size_t suffixEnd = experimentalSuffix.size();
+    if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
+      _requestedApiVersion = ApiVersion::experimentalApiVersion;
+      start = p + suffixEnd;  // advance past "/_arango/experimental"
+      return;
+    }
+    throwGenericError();
+  }
+
+  // Check for /_arango/vX where X is a decimal number
+  if (remainder.starts_with('v')) {
+    std::string_view afterV = remainder.substr(1);
+
+    size_t numEnd = 0;
+    while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
+      ++numEnd;
+    }
+
+    if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
+      // Check for leading zeros
+      if (afterV[0] == '0' && numEnd > 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_BAD_PARAMETER,
+            absl::StrCat("invalid API version: version number must not have "
+                         "leading zeros, got path: ",
+                         std::string_view(start, end - start)));
+      }
+
+      std::string versionStr(afterV.substr(0, numEnd));
+      uint64_t version;
+      try {
+        version = std::stoull(versionStr);
+      } catch (std::exception& e) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_BAD_PARAMETER,
+            absl::StrCat(
+                "invalid API version: failed to parse version number: ",
+                e.what(),
+                ", got path: ", std::string_view(start, end - start)));
+      }
+
+      if (version <= std::numeric_limits<uint32_t>::max()) {
+        _requestedApiVersion = static_cast<uint32_t>(version);
+        start = p + 1 + numEnd;  // advance past "/_arango/vX"
+        return;
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          absl::StrCat("invalid API version: version number too large, "
+                       "got path: ",
+                       std::string_view(start, end - start)));
+    }
+  }
+
+  // /_arango/ present but not followed by a valid format
+  throwGenericError();
 }
 
 }  // namespace arangodb

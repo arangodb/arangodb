@@ -145,11 +145,11 @@ auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
     }
     auto const& shardId = maybeShardID.get();
     auto res = basics::StringUtils::try_uint64(indexIdStr);
-    TRI_ASSERT(res.ok()) << fmt::format(
+    TRI_ASSERT(res.ok()) << std::format(
         "Trying to drop index in shard {}, but id is not a number: {}", shardId,
         indexIdStr);
     if (!res.ok()) {
-      LOG_TOPIC("c2969", ERR, Logger::MAINTENANCE) << fmt::format(
+      LOG_TOPIC("c2969", ERR, Logger::MAINTENANCE) << std::format(
           "Trying to drop index in shard {}, but id is not a number: {}",
           shardId, indexIdStr);
       return res.result();

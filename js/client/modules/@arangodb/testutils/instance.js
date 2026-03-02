@@ -37,6 +37,7 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
+const AsciiTable = require('ascii-table');
 
 /* Functions: */
 const {
@@ -106,7 +107,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -133,6 +134,7 @@ class instance {
       }
     }
     this.authHeaders = authHeaders;
+    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -200,6 +202,7 @@ class instance {
       rootDir: this.rootDir,
       protocol: this.protocol,
       authHeaders: this.authHeaders,
+      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
@@ -229,6 +232,7 @@ class instance {
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
     this.authHeaders = struct['authHeaders'];
+    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -280,7 +284,7 @@ class instance {
     }
     return true;
   }
-  
+
   _disconnect() {
     if (this.connectionHandle !== undefined) {
       arango.disconnectHandle(this.connectionHandle);
@@ -291,6 +295,37 @@ class instance {
   resetAuthHeaders(authHeaders, JWT) {
     this.authHeaders = authHeaders;
     this.JWT = JWT;
+  }
+
+  dumpConnectionTable(force) {
+    if (this.options.extremeVerbosity || force === true) {
+      let currentHandle = arango.getConnectionHandle();
+      const tableColumnHeaders = [
+        "selected", "connected", "handle", "endpoint", "localport", "username", "password", "JWT"
+      ];
+      let resultTable = new AsciiTable("");
+      resultTable.setHeading(tableColumnHeaders);
+      let table = arango.getConnectionHandleTable();
+      try {
+        Object.keys(table).forEach(handle => {
+          let active = table[handle]['active'] || handle === currentHandle;
+          let connected = table[handle]['connected'];
+          resultTable.addRow([
+            (active)? "*": "",
+            (connected)? "*": "",
+            handle,
+            table[handle]['endpoint'],
+            table[handle]['localPort'],
+            table[handle]['username'],
+            table[handle]['password'],
+            table[handle]['jwToken']
+          ]);
+        });
+      } catch (ex) {
+        print(ex);
+      }
+      print(CYAN + resultTable.toString() + RESET);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -371,6 +406,7 @@ class instance {
         !this.args.hasOwnProperty('server.jwt-secret') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
+      this.JWT = fs.read(this.restKeyFile);
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
@@ -483,10 +519,14 @@ class instance {
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
+    } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(this.args['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(this.args['server.jwt-secret-folder'], files[0]));
     }
     this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief make this instance an issue of the past.
   // //////////////////////////////////////////////////////////////////////////////
@@ -518,6 +558,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -612,16 +656,20 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
     this._disconnect();
-    
+
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeaders, time() + seconds(60));
+    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -756,6 +804,7 @@ class instance {
                                  true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           } else {
             print(`${Date()} ${this.name} reconnecting ${this.url}`);
@@ -765,6 +814,7 @@ class instance {
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           }
           return;
@@ -797,25 +847,37 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle === arango.getConnectionHandle()) {
-        return true;
+      if (this.connectionHandle === arango.getConnectionHandle()){
+        if (this.endpoint === arango.getEndpoint()) {
+          return true;
+        } else {
+          print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
-      try {
-        return arango.connectHandle(this.connectionHandle);
-      } catch (ex) {
-        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
-        this.connectionHandle = undefined;
+      if (this.connectionHandle !== undefined) {
+        try {
+          this.dumpConnectionTable();
+          return arango.connectHandle(this.connectionHandle);
+        } catch (ex) {
+          print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
     }
     if (this.JWT) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     }
   }
@@ -891,8 +953,10 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?
+            " - maybe OOM killed by the kernel? ": "";
+      print(`${RED}${Date()} ${this.name}: instance already gone${killCause}? ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead${killCause}? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
@@ -1279,7 +1343,7 @@ class instance {
           processStats[x[0]] = parseInt(x[1]);
         }
       }
-      /* 
+      /*
        * sockets: used 1272
        * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
        * UDP: inuse 19 mem 17
@@ -1498,7 +1562,7 @@ class instance {
       }
       return false;
     }
-    return reply.parsedBody === true;   
+    return reply.parsedBody === true;
   }
 
   checkDebugTerminated(waitForExit) {
@@ -1521,7 +1585,7 @@ class instance {
     }
     return false;
   }
-  debugTerminate() {
+  debugTerminate(msg) {
     if (this.pid === null) {
       return;
     }
@@ -1529,7 +1593,10 @@ class instance {
       let reply;
       try {
         this.connect();
-        reply = arango.PUT_RAW('/_admin/debug/crash', '');
+        const body = {
+          message: msg
+        };
+        reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||

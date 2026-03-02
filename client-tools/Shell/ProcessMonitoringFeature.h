@@ -29,10 +29,12 @@
 #include <vector>
 #include <mutex>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
-#include "Shell/arangosh.h"
 #include <absl/cleanup/cleanup.h>
+
+#include "V8ShellFeature.h"
 
 namespace arangodb {
 class ProcessMonitoringFeature;
@@ -51,9 +53,12 @@ class ProcessMonitorThread final : public arangodb::Thread {
   ProcessMonitoringFeature& _processMonitorFeature;
 };
 
-class ProcessMonitoringFeature final : public ArangoshFeature {
+class ProcessMonitoringFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit ProcessMonitoringFeature(Server& server);
+  explicit ProcessMonitoringFeature(
+      application_features::ApplicationServer& server,
+      V8ShellFeature& v8ShellFeature);
   ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
   void validateOptions(
@@ -82,6 +87,8 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 
   void moveMonitoringPIDToAttic(ExternalId const& pid,
                                 ExternalProcessStatus const& exitStatus);
+
+  void resetConnection() { _V8ShellFeature.resetConnection(); }
 
   template<typename Func>
   void visitMonitoring(Func const& func) {
@@ -118,6 +125,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   std::unique_ptr<ProcessMonitorThread> _monitorThread;
 
   bool _enabled;
+  V8ShellFeature& _V8ShellFeature;
 };
 
 }  // namespace arangodb

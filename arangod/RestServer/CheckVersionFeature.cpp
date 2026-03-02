@@ -24,7 +24,8 @@
 #include "CheckVersionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
@@ -33,11 +34,13 @@
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -48,9 +51,9 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(
-    Server& server, int* result, std::span<const size_t> nonServerFeatures)
-    : ArangodFeature{server, *this},
-      _checkVersion(false),
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures)
+    : ApplicationFeature{server, *this},
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -69,14 +72,14 @@ void CheckVersionFeature::collectOptions(
 
   options->addOption(
       "--database.check-version", "Check the version of the database and exit.",
-      new BooleanParameter(&_checkVersion),
+      new BooleanParameter(&_options.checkVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
 
 void CheckVersionFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (!_checkVersion) {
+  if (!_options.checkVersion) {
     return;
   }
 
@@ -98,11 +101,11 @@ void CheckVersionFeature::validateOptions(
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  server().disableFeatures(std::array{ArangodServer::id<EnvironmentFeature>()});
+  server().disableFeatures<EnvironmentFeature>();
 }
 
 void CheckVersionFeature::start() {
-  if (!_checkVersion) {
+  if (!_options.checkVersion) {
     return;
   }
 

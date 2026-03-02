@@ -24,13 +24,14 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
+#include "Cluster/MaintenanceOptions.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 #include "Metrics/Fwd.h"
 
@@ -41,9 +42,25 @@
 #include <shared_mutex>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 namespace maintenance {
 enum ActionState;
+
+/// @brief Statistics about shards in for every database
+struct ShardStatistics {
+  uint64_t shards{0};
+  uint64_t leaderShards{0};
+  uint64_t outOfSyncShards{0};
+  uint64_t notReplicated{0};
+  uint64_t followersOutOfSync{0};
+
+  void increaseNumberOfShards() noexcept { ++shards; }
+  void increaseNumberOfLeaderShards() noexcept { ++leaderShards; }
+  void increaseNumberOfOutOfSyncShards() noexcept { ++outOfSyncShards; }
+  void increaseNumberOfNotReplicatedShards() noexcept { ++notReplicated; }
+  void increaseNumberOfFollowersOutOfSync() noexcept { ++followersOutOfSync; }
+};
 
 // The following is used in multiple Maintenance actions and therefore
 // made available here.
@@ -62,11 +79,11 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public ArangodFeature {
+class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
-  explicit MaintenanceFeature(Server& server);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server);
 
   virtual ~MaintenanceFeature();
 
@@ -158,7 +175,7 @@ class MaintenanceFeature : public ArangodFeature {
   /// increased.
   bool increaseNumberOfSyncShardActionsQueued() noexcept {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
-    return n <= _maximalNumberOfSyncShardActionsQueued;
+    return n <= _options.maximalNumberOfSyncShardActionsQueued;
   }
 
   void decreaseNumberOfSyncShardActionsQueued() noexcept {
@@ -174,6 +191,8 @@ class MaintenanceFeature : public ArangodFeature {
   /// ActionState::COMPLETE or ActionState::FAILED!
   Result requeueAction(std::shared_ptr<maintenance::Action>& action,
                        int newPriority);
+
+  void updateDatabaseStatistics();
 
  protected:
   std::shared_ptr<maintenance::Action> createAction(
@@ -214,7 +233,9 @@ class MaintenanceFeature : public ArangodFeature {
 
   /// @brief Return number of seconds to say "not done" to block retries too
   /// soon
-  uint32_t getSecondsActionsBlock() const { return _secondsActionsBlock; }
+  uint32_t getSecondsActionsBlock() const {
+    return _options.secondsActionsBlock;
+  }
 
   /**
    * @brief Find and return first found not-done action or nullptr
@@ -452,30 +473,11 @@ class MaintenanceFeature : public ArangodFeature {
  protected:
   ClusterFeature* _clusterFeature;
 
-  /// @brief option for forcing this feature to always be enable - used by the
-  /// catch tests
-  bool _forceActivation;
-
-  bool _resignLeadershipOnShutdown;
+  /// @brief All configurable options for MaintenanceFeature
+  MaintenanceOptions _options;
 
   /// @brief detect fresh start
   bool _firstRun;
-
-  /// @brief tunable option for thread pool size
-  uint32_t _maintenanceThreadsMax;
-
-  /// @brief tunable option for number of slow threads
-  uint32_t _maintenanceThreadsSlowMax;
-
-  /// @brief tunable option for number of seconds COMPLETE or FAILED actions
-  /// block
-  ///  duplicates from adding to _actionRegistry
-  int32_t _secondsActionsBlock;
-
-  /// @brief tunable option for number of seconds COMPLETE and FAILED actions
-  /// remain
-  ///  within _actionRegistry
-  int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
@@ -591,7 +593,6 @@ class MaintenanceFeature : public ArangodFeature {
   // still has a SynchronizeShard action queued from its previous life as
   // a shard follower for the shard.
   std::atomic<uint64_t> _numberOfSyncShardActionsQueued = 0;
-  uint64_t _maximalNumberOfSyncShardActionsQueued = 32;
 
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec =
@@ -622,11 +623,17 @@ class MaintenanceFeature : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>*
       _maintenance_action_runtime_msec = nullptr;
 
-  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
   metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_follower_count = nullptr;
+  metrics::Gauge<uint64_t>* _shards_out_of_sync = nullptr;
+  metrics::Gauge<uint64_t>* _followers_out_of_sync_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
   metrics::Counter* _sync_timeouts_total = nullptr;
+
+  // contains statistics about shards for all databases
+  std::unordered_map<std::string, maintenance::ShardStatistics>
+      _databaseShardsStats;
 };
 
 }  // namespace arangodb

@@ -16,6 +16,7 @@ export const INITIAL_VALUES = {
     factory: undefined
   },
   parallelism: 2,
+  sparse: false,
   inBackground: commonFieldsMap.inBackground.initialValue
 };
 
@@ -128,15 +129,11 @@ export const useCreateVectorIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<VectorIndexPayload>();
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
-      type: values.type,
+      ...values,
       fields: [values.fields.trim()],
       storedValues: values.storedValues
         ? values.storedValues.split(",").map(field => field.trim())
-        : undefined,
-      name: values.name,
-      params: values.params,
-      parallelism: values.parallelism,
-      inBackground: values.inBackground
+        : undefined
     });
   };
   return { onCreate };

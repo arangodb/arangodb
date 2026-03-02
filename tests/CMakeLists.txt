@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -233,6 +233,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -260,6 +261,7 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/ManagerTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
+  Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
   VocBase/ComputedValuesTest.cpp
@@ -282,7 +284,7 @@ if (USE_PERF_TESTS)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
     Scheduler/ThreadPoolPerfTest.cpp)
 endif()
-    
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -328,11 +330,11 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_activities
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
-  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
@@ -351,7 +353,6 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
-  fmt
   velocypack_utils
 )
 
@@ -366,7 +367,7 @@ endif ()
 add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
-  target_link_libraries(arangodbtests ${JEMALLOC_LIB})
+  target_link_libraries(arangodbtests jemalloc)
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
     target_link_libraries(arangodbtests ${LIBUNWIND_LIB})
   endif ()
@@ -398,10 +399,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangodbtests v8_build)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests jemalloc_build)
-endif ()
-
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
   "${LIB_EAY_DEBUG_DLL}"
@@ -420,11 +417,12 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
-add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
+add_subdirectory(Scheduler)

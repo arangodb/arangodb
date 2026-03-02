@@ -24,10 +24,13 @@
 #pragma once
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Logger/LoggerFeature.h"
+#include "ApplicationFeatures/ConfigFeatureOptions.h"
+#include "Assertions/ProdAssert.h"
 
 namespace arangodb {
 namespace options {
@@ -42,25 +45,22 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Config"; }
 
-  template<typename Server>
-  ConfigFeature(Server& server, std::string const& progname,
+  ConfigFeature(application_features::ApplicationServer& server,
+                std::string const& progname,
                 std::string const& configFilename = "")
       : application_features::ApplicationFeature{server, *this},
         _version{[&server]() {
-          return server.template hasFeature<VersionFeature>()
-                     ? &server.template getFeature<VersionFeature>()
+          return server.hasFeature<VersionFeature>()
+                     ? &server.getFeature<VersionFeature>()
                      : nullptr;
-        }()},
-        _file(configFilename),
-        _progname(progname),
-        _checkConfiguration(false),
-        _honorNsswitch(false) {
-    static_assert(
-        Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
+        }()} {
+    ADB_PROD_ASSERT(_version != nullptr);
+    _options.file = configFilename;
+    _options.progname = progname;
 
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
-    startsAfter<ShellColorsFeature, Server>();
+    startsAfter<LoggerFeature>();
+    startsAfter<ShellColorsFeature>();
   }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -74,12 +74,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
                       std::string const& progname, char const* binaryPath);
 
   VersionFeature* _version;
-  std::string _file;
-  std::string _progname;
-  std::vector<std::string> _defines;
-  bool _checkConfiguration;
-  bool _honorNsswitch;  // If this is set to true, the internal override is
-                        // deactivated.
+  ConfigFeatureOptions _options;
 };
 
 }  // namespace arangodb

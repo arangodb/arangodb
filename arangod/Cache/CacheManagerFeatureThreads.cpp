@@ -33,9 +33,9 @@
 
 using namespace arangodb;
 
-CacheRebalancerThread::CacheRebalancerThread(ArangodServer& server,
-                                             cache::Manager* manager,
-                                             std::uint64_t interval)
+CacheRebalancerThread::CacheRebalancerThread(
+    application_features::ApplicationServer& server, cache::Manager* manager,
+    std::uint64_t interval)
     : Thread(server, "CacheRebalancerThread"),
       _manager(manager),
       _rebalancer(_manager),

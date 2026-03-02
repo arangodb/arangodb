@@ -39,7 +39,7 @@ parameters:
     description: "Build arangod without serverside JS (also excludes frontend)"
   config-definitions:
     type: string
-    default: test-definitions.yml ui.yml
+    default: tests.yml ui.yml
     description: Space separated list of YAML files with test definitions. Available files
       arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
   config-definitions-branches:
@@ -64,11 +64,11 @@ parameters:
     description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d76ea9cb
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:18"
+    default: "arangodb/ubuntubuildarangodb-devel:19"
     description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
   # Rarely used options
   replication-two:

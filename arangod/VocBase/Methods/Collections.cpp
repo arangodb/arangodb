@@ -71,6 +71,8 @@
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_join.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -587,6 +589,13 @@ Collections::create(         // create collection
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
+  auto collectionNames = absl::StrJoin(
+      collections, ",",
+      [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
+
+  activities::Activity activity("CreateCollections",
+                                {{"collectionNames", collectionNames}});
+
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
@@ -856,7 +865,7 @@ void Collections::applySystemCollectionProperties(
   bool isMock = false;
   if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
     StorageEngine& engine =
-        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
     isMock = (engine.typeName() == "Mock");
   } else {

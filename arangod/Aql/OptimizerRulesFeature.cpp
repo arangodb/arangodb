@@ -28,13 +28,15 @@
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
 #include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerRulesOptionsProvider.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -49,8 +51,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, *this} {
+OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(false);
 #ifdef USE_V8
   startsAfter<V8FeaturePhase>();
@@ -63,37 +65,8 @@ OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
 
 void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  options
-      ->addOption("--query.optimizer-rules",
-                  "Enable or disable specific optimizer rules by default. "
-                  "Specify the rule name prefixed with `-` for disabling, or "
-                  "`+` for enabling.",
-                  new arangodb::options::VectorParameter<
-                      arangodb::options::StringParameter>(&_optimizerRules),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(You can use this option to selectively enable or
-disable AQL query optimizer rules by default. You can specify the option
-multiple times.
-
-For example, to turn off the rules `use-indexes-for-sort` and
-`reduce-extraction-to-projection` by default, use the following:
-
-```
---query.optimizer-rules "-use-indexes-for-sort" --query.optimizer-rules "-reduce-extraction-to-projection"
-```
-
-The purpose of this startup option is to be able to enable potential future
-experimental optimizer rules, which may be shipped in a disabled-by-default
-state.)");
-
-  options
-      ->addObsoleteOption(
-          "--query.parallelize-gather-writes",
-          "Whether to enable write parallelization for gather nodes.", false)
-      .setLongDescription(
-          "Starting with 3.11 almost all queries support parallelization of "
-          "gather nodes, making this option obsolete.");
+  OptimizerRulesOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -739,7 +712,7 @@ a `CollectNode` in the query plan.)");
                R"(Restrict operations to a single shard instead of applying
 them for all shards if a collection operation (`IndexNode` or a
 data modification node) only affects a single shard.
-  
+
 This optimization can be applied for queries that access a collection only once
 in the query, and that do not use traversals, shortest path queries, and that
 do not access collection data dynamically using the `DOCUMENT()`, `FULLTEXT()`,
@@ -996,8 +969,7 @@ int OptimizerRulesFeature::translateRule(std::string_view name) {
 }
 
 void OptimizerRulesFeature::enableOrDisableRules() {
-  // turn off or on specific optimizer rules, based on startup parameters
-  for (auto const& name : _optimizerRules) {
+  for (auto const& name : _options.optimizerRules) {
     std::string_view n(name);
     if (!n.empty() && n.front() == '+') {
       // strip initial + sign

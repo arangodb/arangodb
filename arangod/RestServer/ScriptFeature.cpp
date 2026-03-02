@@ -28,20 +28,19 @@
 #include "ScriptFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -49,15 +48,16 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ScriptFeature::ScriptFeature(Server& server, int* result)
-    : ArangodFeature{server, *this}, _result(result) {
+ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
+    : ApplicationFeature{server, *this}, _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--javascript.script-parameter", "Script parameter.",
-                     new VectorParameter<StringParameter>(&_scriptParameters));
+  options->addOption(
+      "--javascript.script-parameter", "Script parameter.",
+      new VectorParameter<StringParameter>(&_options.scriptParameters));
 }
 
 void ScriptFeature::start() {
@@ -110,10 +110,10 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
               TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1]))
         .FromMaybe(false);
 
-    for (size_t i = 0; i < _scriptParameters.size(); ++i) {
+    for (size_t i = 0; i < _options.scriptParameters.size(); ++i) {
       params
           ->Set(context, (uint32_t)(i + 1),
-                TRI_V8_STD_STRING(isolate, _scriptParameters[i]))
+                TRI_V8_STD_STRING(isolate, _options.scriptParameters[i]))
           .FromMaybe(false);
     }
 

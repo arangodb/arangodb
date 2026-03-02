@@ -327,6 +327,7 @@ function scanTestPaths (paths, options, fun) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
+  allTestCases.sort();
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {

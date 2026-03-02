@@ -25,6 +25,7 @@
 #include "Containers/Concurrent/thread.h"
 
 #include <csignal>
+#include <format>
 #include <iostream>
 #include <source_location>
 
@@ -34,23 +35,23 @@ auto breakpoint() { raise(SIGINT); }
 
 auto format(arangodb::basics::SourceLocationSnapshot const& loc)
     -> std::string {
-  return fmt::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name,
+  return std::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name,
                      loc.line);
 }
 auto format(arangodb::basics::ThreadId const& thread) -> std::string {
-  return fmt::format("LWPID {} (pthread {})", thread.kernel_id,
+  return std::format("LWPID {} (pthread {})", thread.kernel_id,
                      thread.posix_id);
 }
 auto format(arangodb::basics::ThreadInfo const& thread) -> std::string {
-  return fmt::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
+  return std::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
 }
 auto format(PromiseSnapshot const& snapshot) -> std::string {
   if (snapshot.thread == std::nullopt) {
-    return fmt::format("{}, owned by {}, {}", format(snapshot.source_location),
+    return std::format("{}, owned by {}, {}", format(snapshot.source_location),
                        format(snapshot.owning_thread),
                        arangodb::inspection::json(snapshot.state));
   } else {
-    return fmt::format("{}, owned by {}, {} on {}",
+    return std::format("{}, owned by {}, {} on {}",
                        format(snapshot.source_location),
                        format(snapshot.owning_thread),
                        arangodb::inspection::json(snapshot.state),
@@ -88,7 +89,7 @@ int main() {
     return Promise{CurrentRequester{current_thread},
                    std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -100,7 +101,7 @@ int main() {
 
   // works also with a currently non-running promise
   parent->data.running_thread.store(std::nullopt);
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -114,7 +115,7 @@ int main() {
   auto* child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "    ┌ {}\n"
@@ -130,7 +131,7 @@ int main() {
   auto* second_child = thread_registry->add([&]() {
     return Promise{{parent->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "    ┌ {}\n"
@@ -147,7 +148,7 @@ int main() {
   auto* child_of_child = thread_registry->add([&]() {
     return Promise{{child->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "      ┌ {}\n"
@@ -166,7 +167,7 @@ int main() {
   auto* child_of_second_child = thread_registry->add([&]() {
     return Promise{{second_child->data.id()}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "      ┌ {}\n"
@@ -188,7 +189,7 @@ int main() {
     return Promise{{arangodb::basics::ThreadInfo::current()},
                    std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
@@ -220,7 +221,7 @@ int main() {
   auto* parent_on_other_thread = second_thread_registry->add([&]() {
     return Promise{{other_thread}, std::source_location::current()};
   });
-  expected = fmt::format(
+  expected = std::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"

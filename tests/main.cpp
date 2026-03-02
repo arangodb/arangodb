@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 
+#include "Async/Registry/registry_variable.h"
+#include "Activities/activity_registry_variable.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -37,14 +39,15 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
+#include "RestServer/arangod.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 template<class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
-      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
+  TestThread(Function&& f, int i, char* c[])
+      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     std::unique_lock guard{_wait.mutex};
     while (true) {
@@ -144,12 +147,16 @@ int main(int argc, char* argv[]) {
   // assertions in queries
   arangodb::ClusterEngine::Mocking = true;
 
+  // set metrics of registries
+  arangodb::async_registry::registry.set_metrics(nullptr);
+  arangodb::activities::registry.set_metrics(nullptr);
+
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
   auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
-  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();

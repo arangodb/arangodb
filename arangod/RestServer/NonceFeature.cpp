@@ -24,16 +24,16 @@
 #include "NonceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Nonce.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
 
-NonceFeature::NonceFeature(Server& server) : ArangodFeature{server, *this} {
+NonceFeature::NonceFeature(application_features::ApplicationServer& server)
+    : application_features::ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

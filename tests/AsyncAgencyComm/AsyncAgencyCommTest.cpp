@@ -186,7 +186,7 @@ struct AsyncAgencyCommTest
                                             arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(
-        true, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        true, server.getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
   }
 

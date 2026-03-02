@@ -22,32 +22,49 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeaturePhase.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cache/CacheManagerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Replication/ReplicationFeature.h"
+#include "RestServer/CheckVersionFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/FlushFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/LockfileFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/VectorIndexFeature.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "StorageEngine/StorageEngineFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/ManagerFeature.h"
 
 namespace arangodb::application_features {
 
-DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
+DatabaseFeaturePhase::DatabaseFeaturePhase(
+    application_features::ApplicationServer& server)
     : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<BasicFeaturePhaseServer, ArangodServer>();
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter<AuthenticationFeature, ArangodServer>();
-  startsAfter<CacheManagerFeature, ArangodServer>();
-  startsAfter<CheckVersionFeature, ArangodServer>();
-  startsAfter<DatabaseFeature, ArangodServer>();
-  startsAfter<EngineSelectorFeature, ArangodServer>();
-  startsAfter<FlushFeature, ArangodServer>();
-  startsAfter<InitDatabaseFeature, ArangodServer>();
-  startsAfter<LockfileFeature, ArangodServer>();
-  startsAfter<ReplicationFeature, ArangodServer>();
-  startsAfter<RocksDBEngine, ArangodServer>();
-  startsAfter<RocksDBRecoveryManager, ArangodServer>();
-  startsAfter<ServerIdFeature, ArangodServer>();
-  startsAfter<StorageEngineFeature, ArangodServer>();
-  startsAfter<SystemDatabaseFeature, ArangodServer>();
-  startsAfter<transaction::ManagerFeature, ArangodServer>();
-  startsAfter<ViewTypesFeature, ArangodServer>();
-  startsAfter<VectorIndexFeature, ArangodServer>();
+  startsAfter<AuthenticationFeature>();
+  startsAfter<CacheManagerFeature>();
+  startsAfter<CheckVersionFeature>();
+  startsAfter<DatabaseFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<FlushFeature>();
+  startsAfter<InitDatabaseFeature>();
+  startsAfter<LockfileFeature>();
+  startsAfter<ReplicationFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<RocksDBRecoveryManager>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<StorageEngineFeature>();
+  startsAfter<SystemDatabaseFeature>();
+  startsAfter<transaction::ManagerFeature>();
+  startsAfter<ViewTypesFeature>();
+  startsAfter<VectorIndexFeature>();
 }
 
 }  // namespace arangodb::application_features
