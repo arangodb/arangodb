@@ -105,8 +105,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void applyTrainingResult(vector::TrainingResult result);
 
-  Result ingestVectors(rocksdb::DB* rootDB,
-                       std::unique_ptr<rocksdb::Iterator> documentIterator);
+  void clearTrainingResult();
 
   bool hasStoredValues() const noexcept;
 

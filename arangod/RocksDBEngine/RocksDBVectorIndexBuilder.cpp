@@ -347,6 +347,7 @@ Result VectorIndexBuildManager::build() {
         << "[shard=" << _index.collection().name()
         << ", index=" << _index.id().id() << "] "
         << "Vector ingestion failed: " << res.errorMessage();
+    _index.clearTrainingResult();
   } else {
     LOG_TOPIC("e165b", INFO, Logger::ENGINES)
         << "[shard=" << _index.collection().name()

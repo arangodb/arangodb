@@ -72,7 +72,7 @@ function VectorIndexRemainsUntrainedSuite() {
 
         testIndexStartsUntrained: function () {
             const idx = collection.indexes().find(i => i.name === "vec_l2");
-            assertFalse(idx.isTrained, "Index should be untrained on empty collection");
+            assertEqual("uninitialized", idx.buildState, "Index should be untrained on empty collection");
         },
 
         testStaysUntrainedBelowThreshold: function () {
@@ -134,7 +134,7 @@ function VectorIndexDeferredTrainingSuite() {
 
         testTrainingTriggeredAfterThreshold: function () {
             const idxBefore = collection.indexes().find(i => i.name === "vec_l2");
-            assertFalse(idxBefore.isTrained, "Index should start untrained");
+            assertEqual("uninitialized", idxBefore.buildState, "Index should start untrained");
 
             let gen = randomNumberGeneratorFloat(seed);
             let docs = [];
