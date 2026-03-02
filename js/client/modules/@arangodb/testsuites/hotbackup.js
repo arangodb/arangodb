@@ -380,6 +380,7 @@ function hotBackup_aql (options) {
   return hotBackup_load_backend(options, which, {
     noiseScript: function () {
       const errors = require('internal').errors;
+      db._useDatabase('test');
       while (true) {
         try {
           db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
