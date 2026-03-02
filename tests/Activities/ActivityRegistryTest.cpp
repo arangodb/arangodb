@@ -99,7 +99,7 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
       "GenericActivity", GenericActivityData{});
 
   ASSERT_NE(child_activity->parent(), nullptr);
-  ASSERT_EQ(child_activity->parent()->id(), parent_activity->id());
+  ASSERT_EQ(child_activity->parentId().value(), parent_activity->id());
 }
 
 TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
@@ -125,13 +125,13 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
   }
 
   ASSERT_NE(first_child_activity->parent(), nullptr);
-  ASSERT_EQ(first_child_activity->parent()->id(), parent_activity->id());
+  ASSERT_EQ(first_child_activity->parentId().value(), parent_activity->id());
 
   ASSERT_NE(second_child_activity->parent(), nullptr);
-  ASSERT_EQ(second_child_activity->parent()->id(), parent_activity->id());
+  ASSERT_EQ(second_child_activity->parentId().value(), parent_activity->id());
 
   ASSERT_NE(child_of_first_child_activity->parent(), nullptr);
-  ASSERT_EQ(child_of_first_child_activity->parent()->id(),
+  ASSERT_EQ(child_of_first_child_activity->parentId().value(),
             first_child_activity->id());
 }
 

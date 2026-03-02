@@ -29,6 +29,24 @@
 
 namespace arangodb::activities {
 
+auto Registry::increment_total_nodes() -> void {
+  if (_metrics != nullptr) {
+    _metrics->increment_total_nodes();
+  }
+}
+
+auto Registry::increment_registered_nodes() -> void {
+  if (_metrics != nullptr) {
+    _metrics->increment_registered_nodes();
+  }
+}
+
+auto Registry::store_registered_nodes(std::uint64_t count) -> void {
+  if (_metrics != nullptr) {
+    _metrics->store_registered_nodes(count);
+  }
+}
+
 auto Registry::setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void {
   _metrics = std::move(metrics);
 }
