@@ -365,9 +365,7 @@ void RocksDBReplicationContext::removeBlocker(
 
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
-                                               bool includeSystem,
-                                               bool includeFoxxQueues,
-                                               bool global,
+                                               bool includeSystem, bool global,
                                                VPackBuilder& result) {
   auto nameFilter = [&](LogicalCollection const* collection) {
     std::string const& cname = collection->name();
@@ -376,8 +374,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem,
-                                         includeFoxxQueues)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
       // collection is excluded from replication
       return false;
     }

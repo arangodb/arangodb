@@ -261,7 +261,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = false;
@@ -281,14 +280,12 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   Result res;
   if (isGlobal) {
     builder.add(VPackValue("databases"));
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true,
-                            builder);
+    res = ctx->getInventory(_vocbase, includeSystem, true, builder);
   } else {
     ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
     if (collection.empty()) {
       // all collections in database
-      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false,
-                              builder);
+      res = ctx->getInventory(_vocbase, includeSystem, false, builder);
       TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
     } else {
       // single collection/shard in database

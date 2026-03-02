@@ -46,7 +46,7 @@ function MultipleSnippetsInCoordinatorSuite () {
 
     // tests an issue reported via OASIS-24962:
     // when a query is started from within some JavaScript environment
-    // (e.g. console mode or Foxx) and has multiple coordinator snippets,
+    // (e.g. console mode) and has multiple coordinator snippets,
     // only the outermost coordinator snippet can make use of the
     // JavaScript V8 context. The other generated coordinator snippets
     // will believe that they also have access to the JavaScript V8

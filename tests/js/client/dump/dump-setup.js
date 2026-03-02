@@ -48,8 +48,6 @@ const setup = require(base);
   setup.createView();
   setup.createSearch();
   setup.createInvertedIndex();
-  setup.createJobs();
-  setup.createFoxx();
   setup.createAnalyzers();
 
   // those two are related to each other as createSmartArangoSearch depends on createSmartGraph

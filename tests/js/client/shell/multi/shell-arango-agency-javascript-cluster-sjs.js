@@ -28,7 +28,6 @@
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const db = require('internal').db;
-const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const internal = require('internal');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'arango-agency');
@@ -37,45 +36,8 @@ function testSuite() {
   const cn = "UnitTestsTransaction";
 
   return {
-    testAccessFromFoxx : function() {
-      const mount = '/test';
-
-      FoxxManager.install(basePath, mount);
-      try { 
-        // this executes all the calls from inside Foxx
-        let res = arango.GET(`/_db/_system/${mount}/runInsideFoxx`);
-        let results = res.results;
-        let cases = Object.keys(results);
-        assertEqual(1, cases.length);
-        cases.forEach((c) => {
-          assertTrue(results[c], results);
-        });
-      } finally {
-        FoxxManager.uninstall(mount, {force: true});
-      } 
-    },
-    
-    testAccessFromFoxxTransaction : function() {
-      const mount = '/test';
-
-      FoxxManager.install(basePath, mount);
-      try {
-        // this executes a server-side transaction running inside Foxx
-        let res = arango.GET(`/_db/_system/${mount}/runInsideFoxxTransaction`);
-        let results = res.results;
-        let cases = Object.keys(results);
-        assertEqual(1, cases.length);
-        cases.forEach((c) => {
-          assertTrue(results[c], results);
-        });
-      } finally {
-        FoxxManager.uninstall(mount, {force: true});
-      } 
-    },
-    
     testAccessFromTransaction : function() {
-      // this executes a server-side transaction with all the operations,
-      // not using Foxx
+      // this executes a server-side transaction with all the operations
       let results = db._executeTransaction({
         collections: {},
         action: function() {

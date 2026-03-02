@@ -1055,8 +1055,6 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
   std::string const url =
       absl::StrCat("/_api/replication/inventory?includeSystem=",
                    (_options.includeSystemCollections ? "true" : "false"),
-                   "&includeFoxxQueues=",
-                   (_options.includeSystemCollections ? "true" : "false"),
                    "&batchId=", batchId);
 
   return runDump(client, url, dbName, batchId);

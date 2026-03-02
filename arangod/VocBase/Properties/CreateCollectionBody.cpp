@@ -173,8 +173,7 @@ bool isEdgeCollection(VPackSlice fullBody) {
 #endif
 
 static std::unordered_set<std::string_view> knownSystemCollections = {
-    "_analyzers", "_appbundles", "_apps", "_aqlfunctions",
-    "_frontend",  "_graphs",     "_jobs", "_queues"};
+    "_analyzers", "_graphs"};
 
 bool isKnownSystemCollection(std::string_view name) {
   return knownSystemCollections.contains(name);

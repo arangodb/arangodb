@@ -1067,11 +1067,6 @@
         });
       },
 
-      testJobsAndQueues: function () {
-        assertEqual("test", db._jobs.document("test")._key);
-        assertEqual("test", db._queues.document("test")._key);
-      },
-
       testReplicationFactor: function () {
         let c = getCollection("UnitTestsDumpReplicationFactor1");
         let p = c.properties();

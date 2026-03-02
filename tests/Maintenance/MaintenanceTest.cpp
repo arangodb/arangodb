@@ -1096,9 +1096,9 @@ TEST_F(MaintenanceTestActionPhaseOne,
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
+TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_bar) {
   plan = originalPlan;
-  auto cid = collectionMap(plan).at("_system/_queues");
+  auto cid = collectionMap(plan).at("_system/bar");
   auto shards =
       plan->get({"Collections", "_system", cid, "shards"})->children();
   containers::FlatHashSet<std::string> dirty{"_system"};

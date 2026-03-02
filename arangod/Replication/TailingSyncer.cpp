@@ -288,8 +288,8 @@ bool TailingSyncer::isExcludedCollection(
     return true;
   }
 
-  if (TRI_ExcludeCollectionReplication(collectionName, /*includeSystem*/ true,
-                                       _state.applier._includeFoxxQueues)) {
+  if (TRI_ExcludeCollectionReplication(collectionName,
+                                       /*includeSystem*/ true)) {
     return true;
   }
 
@@ -1802,9 +1802,7 @@ void TailingSyncer::fetchLeaderLog(
         "&from=", fetchTick, "&lastScanned=", lastScannedTick,
         (firstRegularTick > fetchTick ? "&firstRegular=" : "&unusedOption="),
         firstRegularTick, "&serverId=", _state.localServerIdString,
-        "&includeSystem=", (_state.applier._includeSystem ? "true" : "false"),
-        "&includeFoxxQueues=",
-        (_state.applier._includeFoxxQueues ? "true" : "false"));
+        "&includeSystem=", (_state.applier._includeSystem ? "true" : "false"));
 
     if (syncerId().value > 0) {
       // we must only send the syncerId along if it is != 0, otherwise we will

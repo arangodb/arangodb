@@ -70,7 +70,7 @@ function verifyClusterInfoSuite() {
     },
     testgetResponsibleServers: function () {
       let shardIDs = [];
-      ["_users", "_graphs", "_apps"].forEach(col => {
+      ["_users", "_graphs"].forEach(col => {
         shardIDs.push(db[col].shards()[0]);
       });
       let ret = ci.getResponsibleServers(shardIDs);

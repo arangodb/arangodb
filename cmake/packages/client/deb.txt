@@ -118,4 +118,3 @@ include(CPack)
 # TODO: missing usr/share/man/man1/arangoimport.1
 # TODO: missing usr/share/man/man1/arangorestore.1
 # TODO: missing usr/share/man/man1/arangosh.1
-# usr/share/man/man8/foxx-manager.8

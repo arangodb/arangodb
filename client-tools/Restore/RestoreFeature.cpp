@@ -577,41 +577,6 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
       arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
-arangodb::Result triggerFoxxHeal(
-    arangodb::httpclient::SimpleHttpClient& httpClient) {
-  using arangodb::Logger;
-  using arangodb::httpclient::SimpleHttpResult;
-  std::string body = "";
-
-  // check if the foxx api is available.
-  std::string statusUrl = "/_admin/status";
-  std::unique_ptr<SimpleHttpResult> response(
-      httpClient.request(arangodb::rest::RequestType::POST, statusUrl,
-                         body.c_str(), body.length()));
-
-  auto res = arangodb::HttpResponseChecker::check(
-      httpClient.getErrorMessage(), response.get(), "check status", body,
-      arangodb::HttpResponseChecker::PayloadType::JSON);
-  if (res.ok() && response) {
-    try {
-      if (!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
-        LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
-            << "skipping foxx self-healing because Foxx API is disabled";
-        return {};
-      }
-    } catch (...) {
-      // API Not available because of older version or whatever
-    }
-  }
-
-  std::string foxxHealUrl = "/_api/foxx/_local/heal";
-  response.reset(httpClient.request(arangodb::rest::RequestType::POST,
-                                    foxxHealUrl, body.c_str(), body.length()));
-  return arangodb::HttpResponseChecker::check(
-      httpClient.getErrorMessage(), response.get(), "trigger self heal", body,
-      arangodb::HttpResponseChecker::PayloadType::JSON);
-}
-
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::RestoreJob>& jobQueue,
@@ -827,7 +792,6 @@ arangodb::Result processInputDirectory(
     std::vector<std::unique_ptr<arangodb::RestoreFeature::RestoreMainJob>> jobs;
     jobs.reserve(collections.size());
 
-    bool didModifyFoxxCollection = false;
     // Step 3: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice collection = b.slice();
@@ -839,13 +803,6 @@ arangodb::Result processInputDirectory(
       VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
         name = params.get("name");
-        // Only these two are relevant for FOXX.
-        if (name.isString() &&
-            (name.isEqualString(arangodb::StaticStrings::AppsCollection) ||
-             name.isEqualString(
-                 arangodb::StaticStrings::AppBundlesCollection))) {
-          didModifyFoxxCollection = true;
-        }
       }
 
       auto job = std::make_unique<arangodb::RestoreFeature::RestoreMainJob>(
@@ -994,22 +951,6 @@ arangodb::Result processInputDirectory(
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
       return firstError;
-    }
-
-    if (didModifyFoxxCollection) {
-      // if we get here we need to trigger foxx heal
-      Result res = ::triggerFoxxHeal(httpClient);
-      if (res.fail()) {
-        LOG_TOPIC("47cd7", WARN, Logger::RESTORE)
-            << "Reloading of Foxx services failed: " << res.errorMessage()
-            << "- in the cluster Foxx services will be available eventually, "
-               "On single servers send "
-            << "a POST to '/_api/foxx/_local/heal' on the current database, "
-            << "with an empty body. Please note that any of this is not "
-               "necessary if the Foxx APIs "
-            << "have been turned off on the server using the option "
-               "`--foxx.api false`.";
-      }
     }
 
     // Last step: reload data into _users. Note: this can change the credentials
