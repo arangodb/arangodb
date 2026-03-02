@@ -3,7 +3,6 @@
 #getent passwd arangodb > /dev/null || adduser -S -G arangodb -D -h /usr/share/arangodb3 -H -s /bin/false -g "ArangoDB Application User" arangodb
 
 install -o root -g root -m 755 -d /var/lib/arangodb3
-install -o root -g root -m 755 -d /var/lib/arangodb3-apps
 # Note that the log dir is 777 such that any user can log there.
 install -o root -g root -m 777 -d /var/log/arangodb3
 

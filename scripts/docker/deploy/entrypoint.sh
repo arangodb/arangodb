@@ -36,7 +36,7 @@ if [ -d /sys/devices/system/node/node1 -a -f /proc/self/numa_maps ]; then
 fi
 
 if [ "$1" = 'arangod' ]; then
-    # /var/lib/arangodb3 and /var/lib/arangodb3-apps must exist and
+    # /var/lib/arangodb3 must exist and
     # be writable by the user under which we run the container.
 
     # Make a copy of the configuration file to patch it, note that this

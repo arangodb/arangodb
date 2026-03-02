@@ -27,11 +27,6 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMA
 set(ARANGODB_DB_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/${CMAKE_PROJECT_NAME}")
 FILE(MAKE_DIRECTORY ${ARANGODB_DB_DIRECTORY})
 
-# apps
-set(ARANGODB_APPS_DIRECTORY "/var/lib/${CMAKE_PROJECT_NAME}-apps")
-set(ARANGODB_FULL_APPS_DIRECTORY "${PROJECT_BINARY_DIR}${ARANGODB_APPS_DIRECTORY}")
-FILE(MAKE_DIRECTORY "${ARANGODB_FULL_APPS_DIRECTORY}")
-
 # logs
 FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/${CMAKE_PROJECT_NAME}")
 
@@ -87,17 +82,6 @@ install(
 install(
   DIRECTORY
     ${ARANGODB_DB_DIRECTORY}
-  DESTINATION
-    ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
-)
-
-################################################################################
-### @brief install apps directory
-################################################################################
-
-install(
-  DIRECTORY
-    ${ARANGODB_FULL_APPS_DIRECTORY}
   DESTINATION
     ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
 )

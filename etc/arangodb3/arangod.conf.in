@@ -1,8 +1,8 @@
 # ArangoDB configuration file
-# 
-# Documentation: 
+#
+# Documentation:
 # https://docs.arango.ai/arangodb/stable/operations/administration/configuration/
-# 
+#
 
 [database]
 directory = @LOCALSTATEDIR@/lib/arangodb3
@@ -43,16 +43,6 @@ statistics = true
 # gid = arangodb
 
 @DEFINEUID@uid = arangodb
-
-
-[javascript]
-startup-directory = @PKGDATADIR@/js
-app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
-# app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb3/apps
-
-# number of V8 contexts available for JavaScript execution. use 0 to 
-# make arangod determine the number of contexts automatically.
-# v8-contexts = 0
 
 [log]
 level = info
