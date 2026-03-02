@@ -166,9 +166,14 @@ void LegacyOptionsFeature::collectOptions(
                              "start",
                              false);
   options->addObsoleteOption("--foxx.enable", "enable Foxx", false);
-
-  // Note: --foxx.api, --foxx.store and --foxx.allow-install-from-remote are
-  // still registered as real options by ServerSecurityFeature.
+  options->addObsoleteOption(
+      "--foxx.api", "whether to enable the Foxx management REST APIs", false);
+  options->addObsoleteOption(
+      "--foxx.store", "whether to enable the Foxx store in the web interface",
+      false);
+  options->addObsoleteOption(
+      "--foxx.allow-install-from-remote",
+      "allow installing Foxx apps from remote URLs other than GitHub", true);
 
   // ActionFeature options
   options->addObsoleteOption("--server.allow-use-database",
