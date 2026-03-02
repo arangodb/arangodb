@@ -42,7 +42,7 @@ if test "$action" = "configure" -a \
         ARANGODB_DEFAULT_ROOT_PASSWORD="$(echo "$RET" | sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g')" \
             /usr/sbin/arango-init-database \
 	            --server.rest-server false \
-				--server.statistics false --foxx.queues false \
+				--server.statistics false \
                 --uid arangodb --gid arangodb || true
     fi
 

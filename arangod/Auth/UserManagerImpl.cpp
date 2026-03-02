@@ -161,7 +161,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 }
 
 /// Convert documents from _system/_users into the format used in
-/// the REST user API and Foxx
+/// the REST user API
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   doc = doc.resolveExternals();
   VPackSlice authDataSlice = doc.get("authData");

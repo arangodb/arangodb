@@ -35,7 +35,7 @@ struct OperationOrigin {
   enum class Type : std::uint8_t {
     // initiated by user via top-level AQL query
     kAQL = 0,
-    // initiated by user via REST call/JavaScript console/Foxx action
+    // initiated by user via REST call/JavaScript console action
     kREST = 1,
     // internal operation (statistics, TTL index removals, etc.)
     kInternal = 2,
