@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-146: Added LegacyOptions feature for obsolete options
+
 * Existing `hash` and `skiplist` indexes are automatically converted to
   `persistent` during database upgrade. Converted indexes are renamed by
   appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
@@ -117,8 +119,6 @@
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
 
 * Remove deprecated option `--server.jwt-secret` because it is insecure.
-
-* COR-146: Added LegacyOptions feature for obsolete options
 
 * Reject creation of Smart Edge collection without `distributeShardsLike`.
 
