@@ -310,10 +310,6 @@ void removeTraversalPathVariable(Optimizer* opt,
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
 
-/// @brief replace FILTER and SORT containing DISTANCE function
-void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                  OptimizerRule const&);
-
 /// @brief make sort node aware of limit to enable internal optimizations
 void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                    OptimizerRule const&);
@@ -396,9 +392,6 @@ DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
 
 void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
-
-void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                         OptimizerRule const&);
 
 void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
