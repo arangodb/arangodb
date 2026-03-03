@@ -6,8 +6,14 @@ defmodule ToastTest.ResultExporter.JSON do
   @toast_version "0.1.0"
 
   @doc "Build a JSON-safe Elixir map from test results and diagnostics."
-  @spec build(map(), map() | nil, map() | nil, map() | nil) :: map()
-  def build(test_results, diagnostics, sanitizer_matching \\ nil, crash_matching \\ nil) do
+  @spec build(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: map()
+  def build(
+        test_results,
+        diagnostics,
+        sanitizer_matching \\ nil,
+        crash_matching \\ nil,
+        log_matching \\ nil
+      ) do
     suites = build_suites(test_results.tests)
 
     base = %{
@@ -22,13 +28,20 @@ defmodule ToastTest.ResultExporter.JSON do
     base
     |> conditional_put("sanitizer_matching", build_sanitizer_matching(sanitizer_matching))
     |> conditional_put("crash_matching", build_crash_matching(crash_matching))
+    |> conditional_put("log_matching", build_log_matching(log_matching))
   end
 
   @doc "Render test results and diagnostics as a JSON string."
-  @spec render(map(), map() | nil, map() | nil, map() | nil) :: String.t()
-  def render(test_results, diagnostics, sanitizer_matching \\ nil, crash_matching \\ nil) do
+  @spec render(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: String.t()
+  def render(
+        test_results,
+        diagnostics,
+        sanitizer_matching \\ nil,
+        crash_matching \\ nil,
+        log_matching \\ nil
+      ) do
     test_results
-    |> build(diagnostics, sanitizer_matching, crash_matching)
+    |> build(diagnostics, sanitizer_matching, crash_matching, log_matching)
     |> format_json()
   end
 
@@ -253,6 +266,38 @@ defmodule ToastTest.ResultExporter.JSON do
   end
 
   defp build_crash_matching(_), do: nil
+
+  # --- Log matching ---
+
+  defp build_log_matching(nil), do: nil
+  defp build_log_matching(%{matched: [], unmatched: []}), do: nil
+
+  defp build_log_matching(%{matched: matched, unmatched: unmatched}) do
+    %{
+      "matched" => Enum.map(matched, &build_log_match_entry/1),
+      "unmatched" => Enum.map(unmatched, &build_log_entry/1)
+    }
+  end
+
+  defp build_log_matching(_), do: nil
+
+  defp build_log_match_entry(entry) do
+    %{
+      "module" => Atom.to_string(entry.module),
+      "test" => entry.test,
+      "confidence" => Atom.to_string(entry.confidence),
+      "log" => build_log_entry(entry.log)
+    }
+  end
+
+  defp build_log_entry(log) do
+    %{
+      "server_id" => log.server_id,
+      "message" => log.message,
+      "kind" => Atom.to_string(log.kind),
+      "timestamp" => if(log.timestamp, do: DateTime.to_iso8601(log.timestamp))
+    }
+  end
 
   defp build_crash_match_entry(entry) do
     %{

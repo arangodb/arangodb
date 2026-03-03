@@ -167,6 +167,26 @@ defmodule Toast.Diagnostics.Summary do
 
   def format_sanitizer_issues(_), do: nil
 
+  @doc """
+  Format log issue attribution for CLI display.
+
+  Returns a formatted string with a "LOG ISSUES" section, or nil if
+  no log issues were detected. Shows matched log entries grouped by test
+  case with confidence level, and unmatched entries separately.
+  """
+  @spec format_log_issues(map()) :: String.t() | nil
+  def format_log_issues(%{matched: [], unmatched: []}), do: nil
+
+  def format_log_issues(%{matched: matched, unmatched: unmatched}) do
+    sections =
+      format_matched_sections(matched, :log, &format_log_entry/1) ++
+        format_unmatched_section(unmatched, &format_log_entry/1)
+
+    wrap_attribution_banner("LOG ISSUES", IO.ANSI.yellow(), sections)
+  end
+
+  def format_log_issues(_), do: nil
+
   defp wrap_attribution_banner(_title, _color, []), do: nil
 
   defp wrap_attribution_banner(title, color, sections) do
@@ -220,6 +240,11 @@ defmodule Toast.Diagnostics.Summary do
     file_ref = "    (see #{error.file_path})"
 
     Enum.join(["    [#{type}] #{error.server_id}", indent(preview, 6), file_ref], "\n")
+  end
+
+  defp format_log_entry(log) do
+    kind = log.kind |> Atom.to_string() |> String.upcase()
+    "    [#{kind}] #{log.server_id} - #{log.message}"
   end
 
   defp format_crash_affected([]), do: []

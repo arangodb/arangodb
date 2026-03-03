@@ -4,8 +4,14 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   alias ToastTest.ResultExporter.Shared
 
   @doc "Render test results and diagnostics as a JUnit XML string."
-  @spec render(map(), map() | nil, map() | nil, map() | nil) :: String.t()
-  def render(test_results, diagnostics, sanitizer_matching \\ nil, crash_matching \\ nil) do
+  @spec render(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: String.t()
+  def render(
+        test_results,
+        diagnostics,
+        sanitizer_matching \\ nil,
+        crash_matching \\ nil,
+        log_matching \\ nil
+      ) do
     suites = group_by_module(test_results.tests)
     all_tests = test_results.tests
 
@@ -19,7 +25,9 @@ defmodule ToastTest.ResultExporter.JUnitXML do
     time = format_duration(test_results.times_us.run)
 
     suite_elements = Enum.map_join(suites, "\n", &render_testsuite/1)
-    system_err = render_system_err(diagnostics, sanitizer_matching, crash_matching)
+
+    system_err =
+      render_system_err(diagnostics, sanitizer_matching, crash_matching, log_matching)
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
@@ -193,9 +201,9 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   # --- system-err for diagnostics ---
 
-  defp render_system_err(nil, _sanitizer_matching, _crash_matching), do: ""
+  defp render_system_err(nil, _sanitizer_matching, _crash_matching, _log_matching), do: ""
 
-  defp render_system_err(diagnostics, sanitizer_matching, crash_matching) do
+  defp render_system_err(diagnostics, sanitizer_matching, crash_matching, log_matching) do
     parts =
       [
         format_diagnostics(diagnostics),
@@ -212,6 +220,13 @@ defmodule ToastTest.ResultExporter.JUnitXML do
           sanitizer_matching,
           :error,
           &format_sanitizer_detail/1
+        ),
+        format_matching_attribution(
+          "Log Issue Attribution",
+          "Unattributed log issues",
+          log_matching,
+          :log,
+          &format_log_detail/1
         )
       ]
       |> Enum.reject(&(&1 == ""))
@@ -356,6 +371,11 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   defp format_sanitizer_detail(error) do
     type = error.sanitizer_type |> Atom.to_string() |> String.upcase()
     "  [#{type}] #{error.server_id} - #{error.file_path}"
+  end
+
+  defp format_log_detail(log) do
+    kind = log.kind |> Atom.to_string() |> String.upcase()
+    "  [#{kind}] #{log.server_id} - #{log.message}"
   end
 
   # --- Helpers ---

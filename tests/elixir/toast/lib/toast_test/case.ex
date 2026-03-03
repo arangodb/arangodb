@@ -166,6 +166,7 @@ defmodule ToastTest.Case do
       test_results = Application.get_env(:toast, :__test_results__)
       sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, test_results)
       crash_matching = Toast.Diagnostics.CrashMatcher.match(diagnostics, test_results)
+      log_matching = Toast.Diagnostics.LogMatcher.match(diagnostics, test_results)
 
       # Only print CRASHED SERVERS when crash attribution has no data
       # (e.g., no crash log to parse). Otherwise attribution replaces it.
@@ -176,7 +177,15 @@ defmodule ToastTest.Case do
       crash_affected = find_crash_affected_tests(crash_matching, test_results)
       print_crash_attribution(crash_matching, crash_affected)
       print_sanitizer_summary(sanitizer_matching)
-      ToastTest.ResultExporter.export(test_results, diagnostics, sanitizer_matching, crash_matching)
+      print_log_issues(log_matching)
+
+      ToastTest.ResultExporter.export(
+        test_results,
+        diagnostics,
+        sanitizer_matching,
+        crash_matching,
+        log_matching
+      )
 
       cond do
         keep_work_dir ->
@@ -259,6 +268,15 @@ defmodule ToastTest.Case do
 
   defp print_sanitizer_summary(sanitizer_matching) do
     case Toast.Diagnostics.Summary.format_sanitizer_issues(sanitizer_matching) do
+      nil -> :ok
+      text -> IO.puts(text)
+    end
+  end
+
+  defp print_log_issues(%{matched: [], unmatched: []}), do: :ok
+
+  defp print_log_issues(log_matching) do
+    case Toast.Diagnostics.Summary.format_log_issues(log_matching) do
       nil -> :ok
       text -> IO.puts(text)
     end

@@ -15,15 +15,21 @@ defmodule ToastTest.ResultExporter do
 
   No-op if results is nil.
   """
-  @spec export(map() | nil, map() | nil, map() | nil, map() | nil) :: :ok
-  def export(results, diagnostics \\ nil, sanitizer_matching \\ nil, crash_matching \\ nil)
+  @spec export(map() | nil, map() | nil, map() | nil, map() | nil, map() | nil) :: :ok
+  def export(
+        results,
+        diagnostics \\ nil,
+        sanitizer_matching \\ nil,
+        crash_matching \\ nil,
+        log_matching \\ nil
+      )
 
-  def export(nil, _diagnostics, _sanitizer_matching, _crash_matching) do
+  def export(nil, _diagnostics, _sanitizer_matching, _crash_matching, _log_matching) do
     Logger.info("No results!")
     :ok
   end
 
-  def export(results, diagnostics, sanitizer_matching, crash_matching) do
+  def export(results, diagnostics, sanitizer_matching, crash_matching, log_matching) do
     result_dir = result_dir()
     File.mkdir_p!(result_dir)
 
@@ -31,14 +37,14 @@ defmodule ToastTest.ResultExporter do
 
     File.write!(
       json_path,
-      JSON.render(results, diagnostics, sanitizer_matching, crash_matching)
+      JSON.render(results, diagnostics, sanitizer_matching, crash_matching, log_matching)
     )
 
     xml_path = Path.join(result_dir, "results.xml")
 
     File.write!(
       xml_path,
-      JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching)
+      JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching, log_matching)
     )
 
     Logger.info("Results written to #{result_dir}")
