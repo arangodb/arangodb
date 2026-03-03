@@ -111,11 +111,11 @@ struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
 
 template<typename Func>
 auto withSetCurrentlyExecutingActivity(ActivityHandle activity, Func&& func) {
-  return [func = std::forward<Func>(func),
-          activity]<typename... Args,
-                    typename =
-                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-             Args&&... args) mutable {
+  return [
+    func = std::forward<Func>(func), activity
+  ]<typename... Args,
+    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+      Args && ... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
