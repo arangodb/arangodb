@@ -658,7 +658,7 @@ class instanceManager {
 
     let result;
     while (true) {
-      let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+      result = arango.POST_RAW('/_admin/cluster/resignLeadership',
                                    { "server": dbServer.shortName, "undoMoves": false });
       // BTS-2329: is 500 a valid code here? and what to do?
       if (result.code !== 500) {
