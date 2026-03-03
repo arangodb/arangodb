@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -18,22 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Metrics.h"
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
+#pragma once
+
+#include <cstdint>
 
 namespace arangodb::activities {
-
-auto RegistryMetrics::increment_total_nodes() -> void {
-  activities_total->count();
+using ActivityId = std::uint64_t;
 }
-auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_activities->fetch_add(1);
-}
-auto RegistryMetrics::store_registered_nodes(std::uint64_t count) -> void {
-  existing_activities->store(count, std::memory_order_relaxed);
-}
-
-}  // namespace arangodb::activities
