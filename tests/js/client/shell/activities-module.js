@@ -209,12 +209,12 @@ function activityRegistryModuleSuite() {
         { "id": 7, "parent": 6 },
       ]);
       assertEqual(forest.items.size, 7);
-      assertEqual(forest.items.get(1), { "id": 1, "children": ["2","3"] });
+      assertEqual(forest.items.get(1), { "id": 1, "children": [2,3] });
       assertEqual(forest.items.get(2), { "id": 2, "parent": 1, "children": []});
       assertEqual(forest.items.get(3), { "id": 3, "parent": 1, "children": []});
-      assertEqual(forest.items.get(4), { "id": 4, "parent": 9, "children": ["5", "6"]});
+      assertEqual(forest.items.get(4), { "id": 4, "parent": 9, "children": [5, 6]});
       assertEqual(forest.items.get(5), { "id": 5, "parent": 4, "children": []});
-      assertEqual(forest.items.get(6), { "id": 6, "parent": 4, "children": ["7"]});
+      assertEqual(forest.items.get(6), { "id": 6, "parent": 4, "children": [7]});
       assertEqual(forest.items.get(7), { "id": 7, "parent": 6, "children": []});
 
       const roots = forest.roots();

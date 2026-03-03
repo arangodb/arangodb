@@ -120,4 +120,14 @@ velocypack::SharedSlice Feature::getData() const {
   }
 }
 
-velocypack::SharedSlice Feature::getCrashData() const { return getData(); }
+velocypack::SharedSlice Feature::getCrashData() const {
+  auto res = registry.snapshot();
+  if (res.ok()) {
+    return getData();
+  } else {
+    // YOLO.  If an exception is thrown here it happens inside crash
+    // data collection and the synthetic text extrusion machine
+    // complains.
+    return velocypack::SharedSlice();
+  }
+}

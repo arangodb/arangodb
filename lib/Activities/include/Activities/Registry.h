@@ -91,8 +91,8 @@ struct Registry {
 
   static thread_local ActivityHandle _currentlyExecutingActivity;
   Guarded<std::deque<ActivityHandle>> _registry;
-  std::atomic<ActivityId> _activityIdCounter;
-  std::shared_ptr<IRegistryMetrics> _metrics;
+  std::atomic<ActivityId> _activityIdCounter{0};
+  std::shared_ptr<IRegistryMetrics> _metrics{nullptr};
 };
 
 struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
@@ -111,11 +111,11 @@ struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {
 
 template<typename Func>
 auto withSetCurrentlyExecutingActivity(ActivityHandle activity, Func&& func) {
-  return [
-    func = std::forward<Func>(func), activity
-  ]<typename... Args,
-    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+  return [func = std::forward<Func>(func),
+          activity]<typename... Args,
+                    typename =
+                        std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
     Registry::ScopedCurrentlyExecutingActivity guard(activity);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
