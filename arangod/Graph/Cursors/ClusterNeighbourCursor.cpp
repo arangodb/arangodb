@@ -1,4 +1,5 @@
 #include "ClusterNeighbourCursor.h"
+#include <velocypack/HashedStringRef.h>
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Basics/VelocyPackHelper.h"
@@ -160,7 +161,8 @@ auto ClusterNeighbourCursor<Step>::next() -> std::vector<Step> {
           << "<ClusterProvider> Neighbor of " << _step.getVertex().getID()
           << " -> " << id.toJson();
 
-      auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
+      auto [edge, needToCache] =
+          _opts.getCache()->persistEdgeData(velocypack::HashedStringRef{id}, e);
       if (needToCache) {
         allCached = false;
       }

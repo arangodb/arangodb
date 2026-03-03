@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterProvider.h"
+#include <velocypack/HashedStringRef.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExecutionBlock.h"
@@ -445,7 +446,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
           << "<ClusterProvider> Neighbor of " << step->getVertex().getID()
           << " -> " << id.toJson();
 
-      auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
+      auto [edge, needToCache] =
+          _opts.getCache()->persistEdgeData(velocypack::HashedStringRef{id}, e);
       if (needToCache) {
         allCached = false;
       }

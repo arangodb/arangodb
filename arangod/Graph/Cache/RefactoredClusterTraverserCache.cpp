@@ -121,14 +121,12 @@ auto RefactoredClusterTraverserCache::persistString(
 }
 
 auto RefactoredClusterTraverserCache::persistEdgeData(
-    velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool> {
-  arangodb::velocypack::HashedStringRef edgeIdRef(
-      edgeSlice.get(StaticStrings::IdString));
-
+    EdgeType const& edge, velocypack::Slice edgeSlice)
+    -> std::pair<velocypack::Slice, bool> {
   ResourceUsageScope guard(_resourceMonitor,
                            ::costPerVertexOrEdgeStringRefSlice);
 
-  auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);
+  auto const [it, inserted] = _edgeData.try_emplace(edge, edgeSlice);
   if (inserted) {
     // now make the TraverserCache responsible for memory tracking
     guard.steal();

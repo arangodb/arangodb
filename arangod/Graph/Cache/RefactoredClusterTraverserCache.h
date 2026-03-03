@@ -71,7 +71,7 @@ class RefactoredClusterTraverserCache {
    * during computation The second entry indicates if the caller need to retain
    * the handed in slice buffer.
    */
-  auto persistEdgeData(velocypack::Slice edgeSlice)
+  auto persistEdgeData(EdgeType const& edge, velocypack::Slice edgeSlice)
       -> std::pair<velocypack::Slice, bool>;
   auto isEdgeCached(EdgeType const& edge) const -> bool;
   auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
