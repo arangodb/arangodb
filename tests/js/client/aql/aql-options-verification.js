@@ -305,7 +305,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
 
-        [prefix + "{ overwrite: true }", "overwrite"],
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
@@ -335,7 +334,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
 
-        [prefix + "{ overwrite: true }", "overwrite"],
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
@@ -365,7 +363,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
 
-        [prefix + "{ overwrite: true }", "overwrite"],
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
@@ -395,7 +392,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ exclusive: true }"],
         [prefix + "{ ignoreErrors: true }"],
 
-        [prefix + "{ overwrite: true }", "overwrite"],
         [prefix + "{ overwriteMode: true }", "overwriteMode"],
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
@@ -433,7 +429,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ useCache: true, readOwnWrites: false }"],
         [prefix + "{ useCache: false, readOwnWrites: false }"],
 
-        [prefix + "{ overwrite: true, readOwnWrites: false }", "overwrite"],
         [prefix + "{ overwriteMode: true, readOwnWrites: false }", "overwriteMode"],
         [prefix + "{ method: 'hash', readOwnWrites: false }", "method"],
         [prefix + "{ tititi: 'piff', readOwnWrites: false }", "tititi"],
@@ -442,6 +437,28 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       ];
 
       checkQueries("UPSERT", queries);
+    },
+
+    testOverwriteOptionThrows: function () {
+      // overwrite: true is actively refused (not just a warning) because the
+      // option has been removed; verify explain() throws with ERROR_BAD_PARAMETER
+      const queries = [
+        "FOR doc IN " + cn + " INSERT {'value': 1} INTO " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " UPDATE doc WITH {'value': 1} IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " REPLACE doc WITH {'value': 1} IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " REMOVE doc IN " + cn + " OPTIONS { overwrite: true }",
+        "FOR doc IN " + cn + " UPSERT { value: 1 } INSERT { value: 1 } UPDATE { value: OLD.value + 1 } IN " + cn + " OPTIONS { overwrite: true }",
+      ];
+
+      queries.forEach((query) => {
+        try {
+          db._createStatement(query).explain();
+          fail("expected exception for overwrite option");
+        } catch (err) {
+          assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum, query);
+          assertMatch(/overwrite/, err.errorMessage, query);
+        }
+      });
     },
 
     testUpsertWithIndexHint: function () {
