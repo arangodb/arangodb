@@ -9,6 +9,8 @@ defmodule Toast.Deployment do
 
   import Toast.Utils, only: [conditional_put: 3, conditional_put: 4]
 
+  @type mode :: :single_server | :cluster
+
   @type server_target ::
           String.t()
           | [role: atom()]
@@ -17,7 +19,7 @@ defmodule Toast.Deployment do
 
   @type t :: %__MODULE__{
           id: String.t(),
-          mode: :single_server | :cluster,
+          mode: mode(),
           config: Config.t(),
           controller: pid(),
           endpoint: String.t(),
@@ -27,8 +29,17 @@ defmodule Toast.Deployment do
   @enforce_keys [:id, :mode, :config, :controller, :endpoint, :work_dir]
   defstruct [:id, :mode, :config, :controller, :endpoint, :work_dir]
 
-  @spec start(atom(), Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start(mode \\ :single_server, config_or_opts \\ [])
+  @doc "Start a single-server deployment."
+  @spec start_single_server(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
+  def start_single_server(config_or_opts \\ []), do: start(:single_server, config_or_opts)
+
+  @doc "Start a cluster deployment."
+  @spec start_cluster(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
+  def start_cluster(config_or_opts \\ []), do: start(:cluster, config_or_opts)
+
+  @doc "Start a deployment with the given mode."
+  @spec start(mode(), Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
+  def start(mode, config_or_opts \\ [])
 
   def start(mode, %Config{} = config) when mode in [:single_server, :cluster] do
     do_start(mode, config, [])
@@ -38,17 +49,13 @@ defmodule Toast.Deployment do
     do_start(mode, Config.load(opts), opts)
   end
 
-  def start(mode, _config_or_opts) do
-    {:error, {:unsupported_mode, mode}}
-  end
-
   @doc """
   Start a deployment with a pre-loaded config and additional options.
 
   The `opts` keyword list can include non-config keys like `:on_crash`,
   `:on_event`, and `:id` that are forwarded to the controller.
   """
-  @spec start(atom(), Config.t(), keyword()) :: {:ok, t()} | {:error, term()}
+  @spec start(mode(), Config.t(), keyword()) :: {:ok, t()} | {:error, term()}
   def start(mode, %Config{} = config, opts) when mode in [:single_server, :cluster] do
     do_start(mode, config, opts)
   end
@@ -314,19 +321,22 @@ defmodule Toast.Deployment do
   end
 
   defp collect_post_shutdown(pid, deployment, opts, agency_dump) do
-    base_diagnostics =
+    info =
       try do
-        Controller.get_info(pid)[:diagnostics]
+        Controller.get_info(pid)
       catch
         :exit, _ -> nil
       end
 
-    coredump_reports = collect_coredumps(pid, deployment, opts)
+    base_diagnostics = if info, do: info[:diagnostics]
+    servers = if info, do: info[:servers], else: %{}
+
+    coredump_reports = collect_coredumps(servers, deployment, opts)
 
     merge_diagnostics(base_diagnostics, agency_dump, coredump_reports)
   end
 
-  defp collect_coredumps(pid, deployment, opts) do
+  defp collect_coredumps(servers, deployment, opts) do
     debugger = resolve_debugger(deployment, opts)
 
     case debugger do
@@ -337,10 +347,11 @@ defmodule Toast.Deployment do
         coredump_timeout =
           Keyword.get(opts, :coredump_timeout, deployment.config.coredump_timeout)
 
-        servers = get_server_info_for_coredumps(pid)
+        pid_history = Keyword.get(opts, :pid_history, %{})
+        server_infos = server_info_for_coredumps(servers, pid_history)
 
         Toast.Diagnostics.Coredump.collect(
-          servers: servers,
+          servers: server_infos,
           debugger: debugger_module,
           timeout: coredump_timeout
         )
@@ -360,33 +371,35 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp get_server_info_for_coredumps(pid) do
-    try do
-      info = Controller.get_info(pid)
+  defp server_info_for_coredumps(servers, pid_history) when is_map(servers) do
+    servers
+    |> Map.values()
+    |> Enum.map(fn server ->
+      binary_path =
+        if server.launch_spec, do: server.launch_spec.executable, else: nil
 
-      server_list =
-        case info do
-          %{servers: servers} when is_map(servers) -> Map.values(servers)
-          _ -> []
-        end
+      historical_pids = Map.get(pid_history, server.id, [])
+      all_pids = merge_pids(server.pid, historical_pids)
 
-      server_list
-      |> Enum.filter(& &1.pid)
-      |> Enum.map(fn server ->
-        binary_path =
-          if server.launch_spec, do: server.launch_spec.executable, else: nil
+      %{
+        id: server.id,
+        os_pid: server.pid,
+        os_pids: all_pids,
+        server_dir: server.server_dir,
+        binary_path: binary_path
+      }
+    end)
+    |> Enum.filter(& &1.binary_path)
+    |> Enum.filter(fn info -> info.os_pids != [] end)
+  end
 
-        %{
-          id: server.id,
-          os_pid: server.pid,
-          server_dir: server.server_dir,
-          binary_path: binary_path
-        }
-      end)
-      |> Enum.filter(& &1.binary_path)
-    catch
-      :exit, _ -> []
-    end
+  defp server_info_for_coredumps(_, _pid_history), do: []
+
+  defp merge_pids(current_pid, historical_pids) do
+    pids = if current_pid, do: [current_pid], else: []
+
+    (pids ++ historical_pids)
+    |> Enum.uniq()
   end
 
   defp terminate_controller(pid) do

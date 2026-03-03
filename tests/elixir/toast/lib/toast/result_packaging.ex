@@ -27,11 +27,11 @@ defmodule Toast.ResultPackaging do
   @doc "Compute exit code from aggregated run results."
   @spec exit_code(map()) :: 0 | 1 | 2 | 3 | 4
   def exit_code(results) do
-    # Severity ordering: 3 (crash) > 2 (infra) > 4 (sanitizer) > 1 (test failures) > 0
+    # Monotonic severity: 4 (crash) > 3 (infra) > 2 (sanitizer) > 1 (test failures) > 0
     cond do
-      results.server_crashed -> 3
-      results.infrastructure_failure -> 2
-      results.sanitizer_errors -> 4
+      results.server_crashed -> 4
+      results.infrastructure_failure -> 3
+      results.sanitizer_errors -> 2
       results.test_failures > 0 -> 1
       true -> 0
     end
@@ -43,17 +43,20 @@ defmodule Toast.ResultPackaging do
     System.find_executable("zstd") != nil
   end
 
-  @doc "Compress a file with zstd, falling back to gzip."
+  @doc "Determine if gzip is available for compression."
+  @spec gzip_available?() :: boolean()
+  def gzip_available? do
+    System.find_executable("gzip") != nil
+  end
+
+  @doc "Compress a file with zstd, falling back to gzip. Returns error if no tool available."
   @spec compress_file(Path.t(), Path.t()) :: {:ok, Path.t()} | {:error, term()}
   def compress_file(source, dest) do
-    if File.exists?(source) do
-      if zstd_available?() do
-        compress_with_zstd(source, dest)
-      else
-        compress_with_gzip(source, dest)
-      end
-    else
-      {:error, :enoent}
+    cond do
+      not File.exists?(source) -> {:error, :enoent}
+      zstd_available?() -> compress_with_zstd(source, dest)
+      gzip_available?() -> compress_with_gzip(source, dest)
+      true -> {:error, :no_compression_tool}
     end
   end
 
@@ -134,19 +137,34 @@ defmodule Toast.ResultPackaging do
 
     Enum.each(core_dumps, fn core_path ->
       basename = Path.basename(core_path)
-      ext = if zstd_available?(), do: ".zst", else: ".gz"
-      dest = Path.join(result_dir, basename <> ext)
 
-      case compress_file(core_path, dest) do
-        {:ok, _} ->
-          :ok
+      case compression_ext() do
+        nil ->
+          Logger.warning(
+            "No compression tool (zstd, gzip) available; copying #{core_path} uncompressed"
+          )
 
-        {:error, reason} ->
-          Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
+          File.cp!(core_path, Path.join(result_dir, basename))
+
+        ext ->
+          dest = Path.join(result_dir, basename <> ext)
+
+          case compress_file(core_path, dest) do
+            {:ok, _} -> :ok
+            {:error, reason} -> Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
+          end
       end
     end)
 
     :ok
+  end
+
+  defp compression_ext do
+    cond do
+      zstd_available?() -> ".zst"
+      gzip_available?() -> ".gz"
+      true -> nil
+    end
   end
 
   # --- Compression helpers ---
@@ -159,23 +177,9 @@ defmodule Toast.ResultPackaging do
   end
 
   defp compress_with_gzip(source, dest) do
-    case System.find_executable("gzip") do
-      nil ->
-        # Last resort: in-memory gzip (only safe for small files)
-        case File.read(source) do
-          {:ok, data} ->
-            File.write!(dest, :zlib.gzip(data))
-            {:ok, dest}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
-
-      _gzip ->
-        case System.cmd("gzip", ["-c", source], into: File.stream!(dest)) do
-          {_, 0} -> {:ok, dest}
-          {_, code} -> {:error, {:gzip_failed, code}}
-        end
+    case System.cmd("gzip", ["-c", source], into: File.stream!(dest)) do
+      {_, 0} -> {:ok, dest}
+      {_, code} -> {:error, {:gzip_failed, code}}
     end
   end
 end

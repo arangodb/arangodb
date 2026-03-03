@@ -16,7 +16,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   alias Toast.Deployment.{ServerLifecycle, ServerInstance}
 
   defp server(overrides \\ []) do
-    defaults = [id: "s1", role: :single, operational_state: :running, intentional: false]
+    defaults = [id: "s1", role: :single, operational_state: :running, expecting_exit: false]
     struct!(ServerInstance, Keyword.merge(defaults, overrides))
   end
 
@@ -111,9 +111,9 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
   end
 
-  describe "handle_crash/5 with intentional server" do
+  describe "handle_crash/5 with expecting_exit server" do
     test "returns :intentional_exit for nil signal" do
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: nil)
 
       assert :intentional_exit =
@@ -121,7 +121,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
 
     test "returns :intentional_exit for SIGTERM (signal 15)" do
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 15)
 
       assert :intentional_exit =
@@ -132,7 +132,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       test_pid = self()
       on_crash = fn _dep, _info -> send(test_pid, :crash_callback) end
 
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 15)
 
       ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_crash: on_crash))
@@ -143,7 +143,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       test_pid = self()
       on_event = fn event -> send(test_pid, {:event, event}) end
 
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 15)
 
       ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_event: on_event))
@@ -151,7 +151,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
 
     test "returns :crash_during_intentional_stop for SIGSEGV (signal 11)" do
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 11)
 
       assert :crash_during_intentional_stop =
@@ -159,7 +159,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
 
     test "returns :crash_during_intentional_stop for SIGABRT (signal 6)" do
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 6)
 
       assert :crash_during_intentional_stop =
@@ -170,7 +170,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       test_pid = self()
       on_crash = fn _dep, info -> send(test_pid, {:crash, info}) end
 
-      srv = server(intentional: true)
+      srv = server(expecting_exit: true)
       info = crash_info(signal: 11)
 
       ServerLifecycle.handle_crash("s1", info, %{}, srv, on_crash_ctx(on_crash: on_crash))
@@ -178,9 +178,9 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
   end
 
-  describe "handle_crash/5 with non-intentional server" do
+  describe "handle_crash/5 with non-expecting_exit server" do
     test "returns :unexpected_crash for a regular running server" do
-      srv = server(intentional: false)
+      srv = server(expecting_exit: false)
       info = crash_info()
 
       assert :unexpected_crash =

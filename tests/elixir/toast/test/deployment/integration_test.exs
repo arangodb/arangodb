@@ -11,7 +11,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
   describe "single server deployment" do
     test "start, query, and stop" do
-      {:ok, deployment} = Toast.Deployment.start(:single_server)
+      {:ok, deployment} = Toast.Deployment.start_single_server()
 
       assert %Toast.Deployment{} = deployment
       assert deployment.mode == :single_server
@@ -35,7 +35,7 @@ defmodule Toast.Deployment.IntegrationTest do
     end
 
     test "server process is gone after stop" do
-      {:ok, deployment} = Toast.Deployment.start(:single_server)
+      {:ok, deployment} = Toast.Deployment.start_single_server()
 
       server_pid = deployment.controller
       info = Controller.get_info(server_pid)
@@ -48,7 +48,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
     test "custom server args are applied" do
       {:ok, deployment} =
-        Toast.Deployment.start(:single_server,
+        Toast.Deployment.start_single_server(
           server_args: %{"server.authentication" => "false"}
         )
 
@@ -62,7 +62,7 @@ defmodule Toast.Deployment.IntegrationTest do
   describe "cluster deployment" do
     @tag timeout: 300_000
     test "start, query, and stop" do
-      {:ok, deployment} = Toast.Deployment.start(:cluster, startup_timeout: 120_000)
+      {:ok, deployment} = Toast.Deployment.start_cluster(startup_timeout: 120_000)
 
       assert %Toast.Deployment{} = deployment
       assert deployment.mode == :cluster
@@ -87,7 +87,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
     @tag timeout: 300_000
     test "controller process is gone after stop" do
-      {:ok, deployment} = Toast.Deployment.start(:cluster, startup_timeout: 120_000)
+      {:ok, deployment} = Toast.Deployment.start_cluster(startup_timeout: 120_000)
 
       assert Controller.get_status(deployment.controller) == :ready
 

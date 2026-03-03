@@ -254,7 +254,7 @@ defmodule Toast.Deployment.Controller do
          ) do
       {:expected, expected_crashes} ->
         state = %{state | expected_crashes: expected_crashes}
-        state = update_server(state, server_id, operational_state: :crashed, intentional: true)
+        state = update_server(state, server_id, operational_state: :crashed, expecting_exit: true)
         state = %{state | status: state.mode.derive_status(state.servers)}
         {:noreply, state}
 
@@ -263,7 +263,7 @@ defmodule Toast.Deployment.Controller do
 
       :crash_during_intentional_stop ->
         stop_health_monitor(state, server_id)
-        state = update_server(state, server_id, operational_state: :crashed, intentional: false)
+        state = update_server(state, server_id, operational_state: :crashed, expecting_exit: false)
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
 
       :unexpected_crash ->
@@ -348,7 +348,7 @@ defmodule Toast.Deployment.Controller do
     with {:ok, server} <- fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
-      acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
+      acc = update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
 
       ServerLifecycle.notify_event(
         acc.on_event,
@@ -363,7 +363,7 @@ defmodule Toast.Deployment.Controller do
     with {:ok, server} <- fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.kill_server(server)
-      acc = update_server(acc, server_id, operational_state: :killed, intentional: true)
+      acc = update_server(acc, server_id, operational_state: :killed, expecting_exit: true)
       ServerLifecycle.notify_event(acc.on_event, {:server_killed, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
@@ -373,7 +373,7 @@ defmodule Toast.Deployment.Controller do
     with {:ok, server} <- fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.pause_server(server)
-      acc = update_server(acc, server_id, operational_state: :paused, intentional: true)
+      acc = update_server(acc, server_id, operational_state: :paused, expecting_exit: true)
       ServerLifecycle.notify_event(acc.on_event, {:server_paused, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
@@ -383,7 +383,7 @@ defmodule Toast.Deployment.Controller do
     with {:ok, server} <- fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :paused) do
       ServerLifecycle.resume_server(server)
-      acc = update_server(acc, server_id, operational_state: :running, intentional: false)
+      acc = update_server(acc, server_id, operational_state: :running, expecting_exit: false)
       ServerLifecycle.notify_event(acc.on_event, {:server_resumed, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
@@ -392,7 +392,7 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-      acc = update_server(acc, server_id, operational_state: :stopped, intentional: true)
+      acc = update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
       relaunch_server(server_id, acc, server, opts)
     end
   end
@@ -409,7 +409,7 @@ defmodule Toast.Deployment.Controller do
 
     case ServerLifecycle.relaunch_and_wait(server, opts) do
       :ok ->
-        acc = update_server(acc, server_id, operational_state: :running, intentional: false)
+        acc = update_server(acc, server_id, operational_state: :running, expecting_exit: false)
         {:ok, acc}
 
       {:error, _} = err ->

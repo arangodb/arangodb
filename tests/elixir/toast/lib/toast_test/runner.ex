@@ -392,7 +392,10 @@ defmodule ToastTest.Runner do
   end
 
   defp collect_diagnostics(deployment) do
-    case Toast.Deployment.stop_and_collect(deployment) do
+    pid_history = ToastTest.ProcessHistory.pids_by_server()
+    opts = [pid_history: pid_history]
+
+    case Toast.Deployment.stop_and_collect(deployment, opts) do
       {:ok, diagnostics} -> diagnostics
       {:error, _reason, partial} -> partial
       _ -> nil

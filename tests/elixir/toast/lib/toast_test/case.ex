@@ -82,18 +82,9 @@ defmodule ToastTest.Case do
   """
   @spec setup_suite!(atom(), keyword()) :: Toast.Deployment.t()
   def setup_suite!(mode \\ nil, opts \\ []) do
-    config = Toast.Config.load(opts)
-    mode = mode || config.deployment_mode
-    setup_timeouts(config)
-
-    case Toast.Deployment.start(mode, config) do
-      {:ok, deployment} ->
-        register_deployment(deployment)
-        register_after_suite(deployment, config.keep_work_dir)
-        deployment
-
-      {:error, reason} ->
-        raise "Failed to start #{mode} deployment: #{inspect(reason)}"
+    case do_setup_suite(mode, opts) do
+      {:ok, deployment} -> deployment
+      {:error, mode, reason} -> raise "Failed to start #{mode} deployment: #{inspect(reason)}"
     end
   end
 
@@ -107,6 +98,13 @@ defmodule ToastTest.Case do
   """
   @spec setup_suite(atom(), keyword()) :: {:ok, Toast.Deployment.t()} | {:error, term()}
   def setup_suite(mode \\ nil, opts \\ []) do
+    case do_setup_suite(mode, opts) do
+      {:ok, deployment} -> {:ok, deployment}
+      {:error, _mode, reason} -> {:error, reason}
+    end
+  end
+
+  defp do_setup_suite(mode, opts) do
     config = Toast.Config.load(opts)
     mode = mode || config.deployment_mode
     setup_timeouts(config)
@@ -118,7 +116,7 @@ defmodule ToastTest.Case do
         {:ok, deployment}
 
       {:error, reason} ->
-        {:error, reason}
+        {:error, mode, reason}
     end
   end
 
@@ -165,14 +163,9 @@ defmodule ToastTest.Case do
           {:error, _reason, partial_diag} -> partial_diag
         end
 
-      Application.put_env(:toast, :__test_diagnostics__, diagnostics)
-
       test_results = Application.get_env(:toast, :__test_results__)
       sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, test_results)
-      Application.put_env(:toast, :__sanitizer_matching__, sanitizer_matching)
-
       crash_matching = Toast.Diagnostics.CrashMatcher.match(diagnostics, test_results)
-      Application.put_env(:toast, :__crash_matching__, crash_matching)
 
       # Only print CRASHED SERVERS when crash attribution has no data
       # (e.g., no crash log to parse). Otherwise attribution replaces it.
@@ -183,7 +176,7 @@ defmodule ToastTest.Case do
       crash_affected = find_crash_affected_tests(crash_matching, test_results)
       print_crash_attribution(crash_matching, crash_affected)
       print_sanitizer_summary(sanitizer_matching)
-      ToastTest.ResultExporter.export()
+      ToastTest.ResultExporter.export(test_results, diagnostics, sanitizer_matching, crash_matching)
 
       cond do
         keep_work_dir ->

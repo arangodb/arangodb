@@ -26,7 +26,18 @@ defmodule Toast.ResultPackagingTest do
       assert ResultPackaging.exit_code(results) == 1
     end
 
-    test "returns 2 for infrastructure failure" do
+    test "returns 2 for sanitizer errors" do
+      results = %{
+        test_failures: 0,
+        server_crashed: false,
+        infrastructure_failure: false,
+        sanitizer_errors: true
+      }
+
+      assert ResultPackaging.exit_code(results) == 2
+    end
+
+    test "returns 3 for infrastructure failure" do
       results = %{
         test_failures: 0,
         server_crashed: false,
@@ -34,26 +45,15 @@ defmodule Toast.ResultPackagingTest do
         sanitizer_errors: false
       }
 
-      assert ResultPackaging.exit_code(results) == 2
+      assert ResultPackaging.exit_code(results) == 3
     end
 
-    test "returns 3 for server crash" do
+    test "returns 4 for server crash" do
       results = %{
         test_failures: 0,
         server_crashed: true,
         infrastructure_failure: false,
         sanitizer_errors: false
-      }
-
-      assert ResultPackaging.exit_code(results) == 3
-    end
-
-    test "returns 4 for sanitizer-only errors" do
-      results = %{
-        test_failures: 0,
-        server_crashed: false,
-        infrastructure_failure: false,
-        sanitizer_errors: true
       }
 
       assert ResultPackaging.exit_code(results) == 4
@@ -67,7 +67,7 @@ defmodule Toast.ResultPackagingTest do
         sanitizer_errors: true
       }
 
-      assert ResultPackaging.exit_code(results) == 3
+      assert ResultPackaging.exit_code(results) == 4
     end
 
     test "mixed results: infrastructure > sanitizer" do
@@ -78,7 +78,7 @@ defmodule Toast.ResultPackagingTest do
         sanitizer_errors: true
       }
 
-      assert ResultPackaging.exit_code(results) == 2
+      assert ResultPackaging.exit_code(results) == 3
     end
 
     test "mixed results: sanitizer > test failures" do
@@ -89,7 +89,7 @@ defmodule Toast.ResultPackagingTest do
         sanitizer_errors: true
       }
 
-      assert ResultPackaging.exit_code(results) == 4
+      assert ResultPackaging.exit_code(results) == 2
     end
   end
 

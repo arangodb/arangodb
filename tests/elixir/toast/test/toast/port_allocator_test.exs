@@ -146,4 +146,103 @@ defmodule Toast.PortAllocatorTest do
       refute next_port in batch_ports
     end
   end
+
+  describe "random strategy" do
+    test "returns {:ok, port} with a positive integer", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, strategy: :random})
+
+      assert {:ok, port} = PortAllocator.allocate(pid)
+      assert is_integer(port)
+      assert port > 0
+    end
+
+    test "allocated port is actually available for binding", context do
+      name = unique_name(context)
+      pid = start_supervised!({PortAllocator, name: name, strategy: :random})
+
+      {:ok, port} = PortAllocator.allocate(pid)
+      assert {:ok, socket} = :gen_tcp.listen(port, [:binary, reuseaddr: true])
+      :gen_tcp.close(socket)
+    end
+
+    test "ports within configured range", context do
+      name = unique_name(context)
+      min = 45_000
+      max = 45_100
+
+      pid =
+        start_supervised!(
+          {PortAllocator, name: name, strategy: :random, min_port: min, max_port: max}
+        )
+
+      for _ <- 1..10 do
+        {:ok, port} = PortAllocator.allocate(pid)
+        assert port >= min
+        assert port <= max
+      end
+    end
+
+    test "multiple allocations never return duplicates", context do
+      name = unique_name(context)
+
+      pid =
+        start_supervised!(
+          {PortAllocator, name: name, strategy: :random, min_port: 46_000, max_port: 46_100}
+        )
+
+      ports =
+        for _ <- 1..10 do
+          {:ok, port} = PortAllocator.allocate(pid)
+          port
+        end
+
+      assert length(Enum.uniq(ports)) == 10
+    end
+
+    test "skips occupied ports", context do
+      name = unique_name(context)
+      # Use a very narrow range so the occupied port must be skipped
+      min = 47_000
+      max = 47_001
+
+      {:ok, blocker} = :gen_tcp.listen(min, [:binary, reuseaddr: true])
+      on_exit(fn -> :gen_tcp.close(blocker) end)
+
+      pid =
+        start_supervised!(
+          {PortAllocator, name: name, strategy: :random, min_port: min, max_port: max}
+        )
+
+      {:ok, port} = PortAllocator.allocate(pid)
+      assert port == max
+    end
+
+    test "batch returns correct count", context do
+      name = unique_name(context)
+
+      pid =
+        start_supervised!(
+          {PortAllocator, name: name, strategy: :random, min_port: 48_000, max_port: 48_100}
+        )
+
+      assert {:ok, ports} = PortAllocator.allocate_batch(pid, 5)
+      assert length(ports) == 5
+      assert MapSet.size(MapSet.new(ports)) == 5
+    end
+
+    test "batch ports don't overlap with subsequent allocations", context do
+      name = unique_name(context)
+
+      pid =
+        start_supervised!(
+          {PortAllocator, name: name, strategy: :random, min_port: 49_000, max_port: 49_100}
+        )
+
+      {:ok, batch_ports} = PortAllocator.allocate_batch(pid, 3)
+      {:ok, next_port} = PortAllocator.allocate(pid)
+
+      refute next_port in batch_ports
+    end
+  end
 end

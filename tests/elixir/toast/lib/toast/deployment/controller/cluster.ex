@@ -34,25 +34,10 @@ defmodule Toast.Deployment.Controller.Cluster do
     with {:ok, topology} <- Factory.build_cluster(state.config, state.id),
          state = init_servers_from_topology(state, topology),
          {:ok, state} <- start_all_server_processes(state, topology),
-         _ = Logger.info("#{state.id}: launching agents"),
-         {:ok, state} <-
-           launch_servers(state, state.mode_state.agents,
-             timeout: Controller.remaining_ms(deadline)
-           ),
-         _ = Logger.info("#{state.id}: waiting for agency consensus"),
+         {:ok, state} <- launch_agents(state, deadline),
          :ok <- wait_for_agency(state, deadline),
-         _ = Logger.info("#{state.id}: agency ready, launching dbservers"),
-         {:ok, state} <-
-           launch_servers(state, state.mode_state.dbservers,
-             health_check: true,
-             timeout: Controller.remaining_ms(deadline)
-           ),
-         _ = Logger.info("#{state.id}: dbservers ready, launching coordinators"),
-         {:ok, state} <-
-           launch_servers(state, state.mode_state.coordinators,
-             health_check: true,
-             timeout: Controller.remaining_ms(deadline)
-           ),
+         {:ok, state} <- launch_dbservers(state, deadline),
+         {:ok, state} <- launch_coordinators(state, deadline),
          {:ok, state} <- start_all_health_monitors(state) do
       state = fetch_cluster_id_mapping(state)
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
@@ -270,6 +255,29 @@ defmodule Toast.Deployment.Controller.Cluster do
     end)
   end
 
+  defp launch_agents(state, deadline) do
+    Logger.info("#{state.id}: launching agents")
+    launch_servers(state, state.mode_state.agents, timeout: Controller.remaining_ms(deadline))
+  end
+
+  defp launch_dbservers(state, deadline) do
+    Logger.info("#{state.id}: launching dbservers")
+
+    launch_servers(state, state.mode_state.dbservers,
+      health_check: true,
+      timeout: Controller.remaining_ms(deadline)
+    )
+  end
+
+  defp launch_coordinators(state, deadline) do
+    Logger.info("#{state.id}: launching coordinators")
+
+    launch_servers(state, state.mode_state.coordinators,
+      health_check: true,
+      timeout: Controller.remaining_ms(deadline)
+    )
+  end
+
   defp launch_servers(state, server_ids, opts) do
     health_check? = Keyword.get(opts, :health_check, false)
     timeout = Keyword.get(opts, :timeout, 60_000)
@@ -292,15 +300,21 @@ defmodule Toast.Deployment.Controller.Cluster do
   defp launch_single_server(server, server_id, health_check?, timeout, on_event) do
     with :ok <- ServerProcess.launch(server.server_pid),
          os_pid = ServerProcess.os_pid(server.server_pid),
-         _ = Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}"),
-         _ =
-           ServerLifecycle.notify_event(
-             on_event,
-             {:server_started, server_id, os_pid, DateTime.utc_now()}
-           ),
+         :ok <- notify_server_started(server_id, server, os_pid, on_event),
          :ok <- maybe_health_check(server, health_check?, timeout) do
       {:ok, {server_id, os_pid}}
     end
+  end
+
+  defp notify_server_started(server_id, server, os_pid, on_event) do
+    Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
+
+    ServerLifecycle.notify_event(
+      on_event,
+      {:server_started, server_id, os_pid, DateTime.utc_now()}
+    )
+
+    :ok
   end
 
   defp maybe_health_check(_server, false, _timeout), do: :ok
@@ -333,6 +347,7 @@ defmodule Toast.Deployment.Controller.Cluster do
   end
 
   defp wait_for_agency(state, deadline) do
+    Logger.info("#{state.id}: waiting for agency consensus")
     agent_endpoints =
       Enum.map(state.mode_state.agents, fn id -> state.servers[id].endpoint end)
 

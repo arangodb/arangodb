@@ -24,29 +24,11 @@ defmodule Toast.Deployment.Controller.SingleServer do
     state = %{state | status: :starting}
 
     with {:ok, port} <- PortAllocator.allocate(),
-         _ = Logger.debug("#{id}: allocated port #{port}"),
-         state = update_server_fields(state, id, port: port, endpoint: "http://127.0.0.1:#{port}"),
+         state = init_server_port(state, id, port),
          {:ok, launch_spec} <- Factory.build_single_server(state.config, id, port),
-         state =
-           update_server_fields(state, id,
-             log_file: launch_spec.log_file,
-             server_dir: launch_spec.server_dir,
-             launch_spec: launch_spec
-           ),
+         state = apply_launch_spec(state, id, launch_spec),
          {:ok, server_pid} <- start_server_process(launch_spec),
-         _ = Logger.debug("#{id}: server process started (#{inspect(server_pid)})"),
-         :ok <- ServerProcess.launch(server_pid),
-         os_pid = ServerProcess.os_pid(server_pid),
-         state = update_server_fields(state, id, server_pid: server_pid, pid: os_pid),
-         _ =
-           Logger.info(
-             "#{id}: started (os_pid=#{os_pid}), endpoint=#{state.servers[id].endpoint}"
-           ),
-         _ =
-           ServerLifecycle.notify_event(
-             state.on_event,
-             {:server_started, id, os_pid, DateTime.utc_now()}
-           ),
+         {:ok, state} <- launch_and_notify(state, id, server_pid),
          :ok <- wait_for_ready(state, id, timeout),
          {:ok, monitor_pid} <-
            Controller.start_single_health_monitor(id, state.servers[id].endpoint) do
@@ -131,6 +113,36 @@ defmodule Toast.Deployment.Controller.SingleServer do
   end
 
   # --- Private helpers ---
+
+  defp init_server_port(state, id, port) do
+    Logger.debug("#{id}: allocated port #{port}")
+    update_server_fields(state, id, port: port, endpoint: "http://127.0.0.1:#{port}")
+  end
+
+  defp apply_launch_spec(state, id, launch_spec) do
+    update_server_fields(state, id,
+      log_file: launch_spec.log_file,
+      server_dir: launch_spec.server_dir,
+      launch_spec: launch_spec
+    )
+  end
+
+  defp launch_and_notify(state, id, server_pid) do
+    Logger.debug("#{id}: server process started (#{inspect(server_pid)})")
+
+    with :ok <- ServerProcess.launch(server_pid) do
+      os_pid = ServerProcess.os_pid(server_pid)
+      Logger.info("#{id}: started (os_pid=#{os_pid}), endpoint=#{state.servers[id].endpoint}")
+
+      ServerLifecycle.notify_event(
+        state.on_event,
+        {:server_started, id, os_pid, DateTime.utc_now()}
+      )
+
+      state = update_server_fields(state, id, server_pid: server_pid, pid: os_pid)
+      {:ok, state}
+    end
+  end
 
   defp start_server_process(launch_spec) do
     opts = [

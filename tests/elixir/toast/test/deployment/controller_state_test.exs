@@ -13,7 +13,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     test "defaults" do
       s = %ServerInstance{id: "s1", role: :single}
       assert s.operational_state == nil
-      assert s.intentional == false
+      assert s.expecting_exit == false
       assert s.launch_spec == nil
     end
 
@@ -63,9 +63,9 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  # --- Controller stop_server sets intentional flag (single server mode) ---
+  # --- Controller stop_server sets expecting_exit flag (single server mode) ---
 
-  describe "Controller (single server) stop_server sets intentional flag" do
+  describe "Controller (single server) stop_server sets expecting_exit flag" do
     setup do
       id = "ssc-stop-#{System.unique_integer([:positive])}"
 
@@ -92,7 +92,7 @@ defmodule Toast.Deployment.ControllerStateTest do
       %{ctrl: ctrl, id: id, server_pid: server_pid}
     end
 
-    test "stop_server sets operational_state to :stopped and intentional to true", %{
+    test "stop_server sets operational_state to :stopped and expecting_exit to true", %{
       ctrl: ctrl,
       id: id
     } do
@@ -100,11 +100,11 @@ defmodule Toast.Deployment.ControllerStateTest do
       state = :sys.get_state(ctrl)
       server = state.servers[id]
       assert server.operational_state == :stopped
-      assert server.intentional == true
+      assert server.expecting_exit == true
       assert state.status == :degraded
     end
 
-    test "kill_server sets operational_state to :killed and intentional to true", %{
+    test "kill_server sets operational_state to :killed and expecting_exit to true", %{
       ctrl: ctrl,
       id: id
     } do
@@ -112,13 +112,13 @@ defmodule Toast.Deployment.ControllerStateTest do
       state = :sys.get_state(ctrl)
       server = state.servers[id]
       assert server.operational_state == :killed
-      assert server.intentional == true
+      assert server.expecting_exit == true
       assert state.status == :degraded
     end
   end
 
-  describe "Controller (single server) unexpected crash clears intentional" do
-    test "crash without prior stop/kill leaves intentional as false" do
+  describe "Controller (single server) unexpected crash clears expecting_exit" do
+    test "crash without prior stop/kill leaves expecting_exit as false" do
       id = "ssc-unexp-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
@@ -133,14 +133,14 @@ defmodule Toast.Deployment.ControllerStateTest do
     end
   end
 
-  describe "Controller (single server) signal-type awareness during intentional stop" do
-    test "SIGSEGV (signal 11) during intentional stop clears intentional flag" do
+  describe "Controller (single server) signal-type awareness during expected exit" do
+    test "SIGSEGV (signal 11) during expected exit clears expecting_exit flag" do
       id = "ssc-sig11-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      set_intentional(ctrl, id, true)
+      set_expecting_exit(ctrl, id, true)
 
       crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, id, crash_info})
@@ -148,16 +148,16 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       state = :sys.get_state(ctrl)
       assert state.status == :failed
-      assert state.servers[id].intentional == false
+      assert state.servers[id].expecting_exit == false
     end
 
-    test "SIGTERM (signal 15) during intentional stop keeps intentional true" do
+    test "SIGTERM (signal 15) during expected exit keeps expecting_exit true" do
       id = "ssc-sig15-#{System.unique_integer([:positive])}"
 
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      set_intentional(ctrl, id, true)
+      set_expecting_exit(ctrl, id, true)
 
       crash_info = %{exit_status: 0, signal: 15, timestamp: DateTime.utc_now()}
       send(ctrl, {:server_crashed, id, crash_info})
@@ -165,7 +165,7 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       state = :sys.get_state(ctrl)
       # signal 15 is in @intentional_exit_signals, so it is ignored (no state change)
-      assert state.servers[id].intentional == true
+      assert state.servers[id].expecting_exit == true
     end
   end
 
@@ -186,19 +186,19 @@ defmodule Toast.Deployment.ControllerStateTest do
           id: "agent-0",
           role: :agent,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         },
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         },
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         }
       })
 
@@ -212,19 +212,19 @@ defmodule Toast.Deployment.ControllerStateTest do
           id: "agent-0",
           role: :agent,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         },
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
           operational_state: :stopped,
-          intentional: true
+          expecting_exit: true
         },
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         }
       })
 
@@ -232,25 +232,25 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert derive_expected_status(state.servers) == :degraded
     end
 
-    test "unexpected crash (intentional=false) -> :failed", %{ctrl: ctrl} do
+    test "unexpected crash (expecting_exit=false) -> :failed", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
         "agent-0" => %ServerInstance{
           id: "agent-0",
           role: :agent,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         },
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
           operational_state: :crashed,
-          intentional: false
+          expecting_exit: false
         },
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         }
       })
 
@@ -258,25 +258,25 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert derive_expected_status(state.servers) == :failed
     end
 
-    test "expected crash (intentional=true) -> :degraded", %{ctrl: ctrl} do
+    test "expected crash (expecting_exit=true) -> :degraded", %{ctrl: ctrl} do
       inject_cluster_servers(ctrl, %{
         "agent-0" => %ServerInstance{
           id: "agent-0",
           role: :agent,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         },
         "dbserver-0" => %ServerInstance{
           id: "dbserver-0",
           role: :dbserver,
           operational_state: :crashed,
-          intentional: true
+          expecting_exit: true
         },
         "coordinator-0" => %ServerInstance{
           id: "coordinator-0",
           role: :coordinator,
           operational_state: :running,
-          intentional: false
+          expecting_exit: false
         }
       })
 
@@ -337,7 +337,7 @@ defmodule Toast.Deployment.ControllerStateTest do
         server
         | server_pid: server_pid,
           operational_state: :running,
-          intentional: false,
+          expecting_exit: false,
           pid: ServerProcess.os_pid(server_pid)
       }
 
@@ -345,10 +345,10 @@ defmodule Toast.Deployment.ControllerStateTest do
     end)
   end
 
-  defp set_intentional(ctrl, id, value) do
+  defp set_expecting_exit(ctrl, id, value) do
     :sys.replace_state(ctrl, fn state ->
       server = state.servers[id] || %ServerInstance{id: id, role: :single}
-      %{state | servers: Map.put(state.servers, id, %{server | intentional: value})}
+      %{state | servers: Map.put(state.servers, id, %{server | expecting_exit: value})}
     end)
   end
 
@@ -373,7 +373,7 @@ defmodule Toast.Deployment.ControllerStateTest do
     states = Enum.map(server_list, & &1.operational_state)
 
     cond do
-      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.intentional)) ->
+      Enum.any?(server_list, &(&1.operational_state == :crashed and not &1.expecting_exit)) ->
         :failed
 
       Enum.all?(states, &(&1 == :running)) ->

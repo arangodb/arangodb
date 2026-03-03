@@ -4,7 +4,7 @@ defmodule Toast.Diagnostics.SummaryTest do
   alias Toast.Diagnostics.Summary
   alias Toast.Deployment.ServerInstance
 
-  defp base_diag_entry(overrides \\ %{}) do
+  defp base_diag_entry(overrides) do
     Map.merge(
       %{
         sanitizer_errors: [],
@@ -36,7 +36,7 @@ defmodule Toast.Diagnostics.SummaryTest do
     %{server_id => entry}
   end
 
-  defp crashed_diag_entry(overrides \\ %{}) do
+  defp crashed_diag_entry(overrides) do
     base_diag_entry(
       Map.merge(
         %{

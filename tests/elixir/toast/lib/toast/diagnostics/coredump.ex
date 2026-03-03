@@ -6,22 +6,29 @@ defmodule Toast.Diagnostics.Coredump do
 
   @default_timeout_ms 30_000
 
-  @doc "Discover core files for a server process."
+  @doc """
+  Discover core files for a server process.
+
+  Accepts either `:os_pid` (single PID) or `:os_pids` (list of PIDs) to
+  search for core dumps from all PIDs that server ever had.
+  """
   @spec discover(keyword()) :: [Path.t()]
   def discover(opts) do
     server_dir = Keyword.fetch!(opts, :server_dir)
-    os_pid = Keyword.get(opts, :os_pid)
+    os_pids = resolve_os_pids(opts)
 
     override_dir = System.get_env("TOAST_COREDUMP_DIR")
 
     paths =
       if override_dir do
-        # When override is set, search only that directory
         cores_in_dir(override_dir)
       else
-        cores_in_dir(server_dir) ++
-          cores_in_tmp(os_pid) ++
-          cores_from_pattern(os_pid)
+        pid_paths =
+          Enum.flat_map(os_pids, fn pid ->
+            cores_in_tmp(pid) ++ cores_from_pattern(pid)
+          end)
+
+        cores_in_dir(server_dir) ++ pid_paths
       end
 
     paths
@@ -84,8 +91,30 @@ defmodule Toast.Diagnostics.Coredump do
 
   # --- Private ---
 
+  defp resolve_os_pids(opts) do
+    case Keyword.get(opts, :os_pids) do
+      pids when is_list(pids) and pids != [] ->
+        pids
+
+      _ ->
+        case Keyword.get(opts, :os_pid) do
+          nil -> []
+          pid -> [pid]
+        end
+    end
+  end
+
   defp collect_for_server(server, remaining_ms, debugger) do
-    cores = discover(server_dir: server.server_dir, os_pid: server.os_pid)
+    discover_opts =
+      case Map.get(server, :os_pids) do
+        pids when is_list(pids) and pids != [] ->
+          [server_dir: server.server_dir, os_pids: pids]
+
+        _ ->
+          [server_dir: server.server_dir, os_pid: server.os_pid]
+      end
+
+    cores = discover(discover_opts)
 
     if cores == [] do
       []

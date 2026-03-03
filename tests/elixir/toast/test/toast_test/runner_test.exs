@@ -144,7 +144,7 @@ defmodule ToastTest.RunnerTest do
           id: id,
           role: :single,
           operational_state: :stopped,
-          intentional: true
+          expecting_exit: true
         }
 
         %{state | status: :degraded, servers: %{id => server}}

@@ -15,7 +15,7 @@ defmodule Toast.Deployment.ServerInstance do
           server_pid: pid() | nil,
           health_monitor: pid() | nil,
           operational_state: operational_state() | nil,
-          intentional: boolean(),
+          expecting_exit: boolean(),
           launch_spec: map() | nil
         }
 
@@ -32,15 +32,15 @@ defmodule Toast.Deployment.ServerInstance do
     :health_monitor,
     :operational_state,
     :launch_spec,
-    intentional: false
+    expecting_exit: false
   ]
 
-  @doc "Whether this server is in an intentionally non-running state (stopped, killed, or paused by the controller)."
-  @spec intentional_action?(t()) :: boolean()
-  def intentional_action?(%__MODULE__{intentional: intentional}), do: intentional
+  @doc "Whether the controller is expecting this server to exit (e.g., after stop, kill, or pause)."
+  @spec expecting_exit?(t()) :: boolean()
+  def expecting_exit?(%__MODULE__{expecting_exit: expecting_exit}), do: expecting_exit
 
-  @doc "Whether this server has crashed unexpectedly (not as part of an intentional action)."
+  @doc "Whether this server has crashed unexpectedly (not as part of an expected exit)."
   @spec unexpected_crash?(t()) :: boolean()
-  def unexpected_crash?(%__MODULE__{operational_state: :crashed, intentional: false}), do: true
+  def unexpected_crash?(%__MODULE__{operational_state: :crashed, expecting_exit: false}), do: true
   def unexpected_crash?(%__MODULE__{}), do: false
 end

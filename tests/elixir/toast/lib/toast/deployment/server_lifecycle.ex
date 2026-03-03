@@ -135,7 +135,7 @@ defmodule Toast.Deployment.ServerLifecycle do
          %ServerInstance{} = server,
          on_crash_ctx
        )
-       when server.intentional do
+       when server.expecting_exit do
     if crash_info.signal in @intentional_exit_signals do
       Logger.debug(
         "Server #{server_id} exited intentionally (signal=#{inspect(crash_info.signal)})"
