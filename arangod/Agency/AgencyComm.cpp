@@ -1308,7 +1308,6 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Plan"));  // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("AsyncReplication", builder);
       addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Databases"));
       {
