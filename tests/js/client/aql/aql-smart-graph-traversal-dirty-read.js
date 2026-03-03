@@ -209,7 +209,10 @@ function SmartGraphTraversalDirtyReadGeneralGraph() {
 
   let suite = {
     setUp: function () {
-      graphs._create(gn, [graphs._relation(en, vn, vn)], [], { numberOfShards: 4 });
+      graphs._create(gn, [graphs._relation(en, vn, vn)], [], {
+        numberOfShards: 4,
+        replicationFactor: 2,
+      });
     },
 
     tearDown : function () {
