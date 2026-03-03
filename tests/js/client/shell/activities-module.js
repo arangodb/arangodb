@@ -49,7 +49,6 @@ function activityRegistryModuleSuite() {
         {
           "id" : "0x7a1c8743c780", 
           "type" : "ActivityRegistryRestHandler", 
-          "parent" : {id: "0x0"}, 
           "data" : { 
             "method" : "GET", 
             "url" : "/_admin/activities" 
@@ -58,7 +57,6 @@ function activityRegistryModuleSuite() {
         {
           "id": "0x7b9050e26140",
           "type": "RestDumpHandler",
-          "parent": {id: "0x0"},
           "data": {
             "method": "POST",
             "url": "/_api/dump/start"
@@ -73,18 +71,17 @@ function activityRegistryModuleSuite() {
     testShowsDependenciesAsTrees: function () {
       const activities = [
         {
-          "id": "0x76620a63b140",
+          "id": 1,
           "type": "RestDumpHandler",
-          "parent": {id: "0x0"},
           "data": {
             "method": "POST",
             "url": "/_api/dump/start"
           }
         },
         {
-          "id": "0x766238412000",
+          "id": 2,
           "type": "dump context",
-          "parent": {id: "0x76620a63b140"},
+          "parent": 1,
           "data": {
             "database": "_system",
             "user": "root",
@@ -101,33 +98,32 @@ function activityRegistryModuleSuite() {
     testPrettyConnectsChildrenInTrees: function () {
       const activities = [
         {
-          "id": "1",
+          "id": 1,
           "type": "1",
-          "parent": {id: "0"},
           "data": {}
         },
         {
-          "id": "2",
+          "id": 2,
           "type": "2",
-          "parent": {id: "1"},
+          "parent": 1,
           "data": {}
         },
         {
-          "id": "3",
+          "id": 3,
           "type": "3",
-          "parent": {id: "1"},
+          "parent": 1,
           "data": {}
         },
          {
-          "id": "4",
+          "id": 4,
           "type": "4",
-          "parent": {id: "2"},
+          "parent": 2,
           "data": {}
         },
          {
-          "id": "5",
+          "id": 5,
           "type": "5",
-          "parent": {id: "2"},
+          "parent": 2,
           "data": {}
         }
     ];
@@ -143,51 +139,50 @@ function activityRegistryModuleSuite() {
     testPrettyConnectsChildrenWithContinuationLineInTree: function () {
       const activities = [
         {
-          "id": "1",
+          "id": 1,
           "type": "1",
-          "parent": {id: "0"},
           "data": {}
         },
         {
-          "id": "2",
+          "id": 2,
           "type": "2",
-          "parent": {id: "1"},
+          "parent": 1,
           "data": {}
         },
         {
-          "id": "3",
+          "id": 3,
           "type": "3",
-          "parent": {id: "1"},
+          "parent": 1,
           "data": {}
         },
         {
-          "id": "4",
+          "id": 4,
           "type": "4",
-          "parent": {id: "2"},
+          "parent": 2,
           "data": {}
         },
         {
-          "id": "5",
+          "id": 5,
           "type": "5",
-          "parent": {id: "3"},
+          "parent": 3,
           "data": {}
         },
         {
-          "id": "6",
+          "id": 6,
           "type": "6",
-          "parent": {id: "3"},
+          "parent": 3,
           "data": {}
         },
         {
-          "id": "7",
+          "id": 7,
           "type": "7",
-          "parent": {id: "6"},
+          "parent": 6,
           "data": {}
         },
         {
-          "id": "8",
+          "id": 8,
           "type": "8",
-          "parent": {id: "1"},
+          "parent": 1,
           "data": {}
         }
       ];
@@ -205,36 +200,36 @@ function activityRegistryModuleSuite() {
 
     testForest: function () {
       const forest = activitiesModule.createForest([
-        { "id": "1", parent: {id: "0x0"}},
-        { "id": "2", "parent": {id: "1"} },
-        { "id": "3", "parent": {id: "1"} },
-        { "id": "4", "parent": {id: "9"} },
-        { "id": "5", "parent": {id: "4"} },
-        { "id": "6", "parent": {id: "4"} },
-        { "id": "7", "parent": {id: "6"} },
+        { "id": 1 },
+        { "id": 2, "parent": 1 },
+        { "id": 3, "parent": 1 },
+        { "id": 4, "parent": 9 },
+        { "id": 5, "parent": 4 },
+        { "id": 6, "parent": 4 },
+        { "id": 7, "parent": 6 },
       ]);
       assertEqual(forest.items.size, 7);
-      assertEqual(forest.items.get("1"), { "id": "1", parent: {id: "0x0"}, "children": ["2","3"] });
-      assertEqual(forest.items.get("2"), { "id": "2", "parent": {id:"1"} , "children": []});
-      assertEqual(forest.items.get("3"), { "id": "3", "parent": {id:"1"} , "children": []});
-      assertEqual(forest.items.get("4"), { "id": "4", "parent": {id:"9"} , "children": ["5", "6"]});
-      assertEqual(forest.items.get("5"), { "id": "5", "parent": {id:"4"} , "children": []});
-      assertEqual(forest.items.get("6"), { "id": "6", "parent": {id:"4"} , "children": ["7"]});
-      assertEqual(forest.items.get("7"), { "id": "7", "parent": {id:"6"} , "children": []});
+      assertEqual(forest.items.get(1), { "id": 1, "children": ["2","3"] });
+      assertEqual(forest.items.get(2), { "id": 2, "parent": 1, "children": []});
+      assertEqual(forest.items.get(3), { "id": 3, "parent": 1, "children": []});
+      assertEqual(forest.items.get(4), { "id": 4, "parent": 9, "children": ["5", "6"]});
+      assertEqual(forest.items.get(5), { "id": 5, "parent": 4, "children": []});
+      assertEqual(forest.items.get(6), { "id": 6, "parent": 4, "children": ["7"]});
+      assertEqual(forest.items.get(7), { "id": 7, "parent": 6, "children": []});
 
       const roots = forest.roots();
       assertEqual(roots.size, 2);
-      assertTrue(roots.has("1"));
-      assertTrue(roots.has("4"));
+      assertTrue(roots.has(1));
+      assertTrue(roots.has(4));
 
       assertEqual(Array.from(forest.iter()).map(({hierarchy, item, continuations}) => ({hierarchy, item})), [
-        {hierarchy: 0, item: {id: "1", parent: {id: "0x0"}, children: ["2", "3"]}},
-        {hierarchy: 1, item: {id: "3", parent: {id: "1"}, children: []}},
-        {hierarchy: 1, item: {id: "2", parent: {id: "1"}, children: []}},
-        {hierarchy: 0, item: {id: "4", parent: {id: "9"}, children: ["5", "6"]}},
-        {hierarchy: 1, item: {id: "6", parent: {id: "4"}, children: ["7"]}},
-        {hierarchy: 2, item: {id: "7", parent: {id: "6"}, children: []}},
-        {hierarchy: 1, item: {id: "5", parent: {id: "4"}, children: []}}
+        {hierarchy: 0, item: {id: 1, children: [2, 3]}},
+        {hierarchy: 1, item: {id: 3, parent: 1, children: []}},
+        {hierarchy: 1, item: {id: 2, parent: 1, children: []}},
+        {hierarchy: 0, item: {id: 4, parent: 9, children: [5, 6]}},
+        {hierarchy: 1, item: {id: 6, parent: 4, children: [7]}},
+        {hierarchy: 2, item: {id: 7, parent: 6, children: []}},
+        {hierarchy: 1, item: {id: 5, parent: 4, children: []}}
       ]);
     },
 

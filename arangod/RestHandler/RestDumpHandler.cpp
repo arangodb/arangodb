@@ -201,8 +201,8 @@ void RestDumpHandler::handleCommandDumpNext() {
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
 
-  auto fetch = activities::make<activities::GenericActivity>(
-      "RocksDBDumpNext",
+  auto fetch = activities::makeWithParent<activities::GenericActivity>(
+      context->activity(), "RocksDBDumpNext",
       std::unordered_map<std::string, std::string>{{"id", id}});
 
   context->extendLifetime();
