@@ -80,6 +80,8 @@ static VPackValue const VP_SET("set");
 
 static std::string_view const PRIMARY("primary");
 static std::string_view const EDGE("edge");
+static std::string_view const HASH("hash");
+static std::string_view const SKIPLIST("skiplist");
 
 namespace {
 
@@ -186,6 +188,13 @@ static VPackBuilder compareIndexes(
       std::string planIdS = planId.copyString();
       std::string planIdWithColl = shname + "/" + planIdS;
       indis.emplace(planIdWithColl);
+
+      // Deprecated index types are converted by the upgrade task.
+      // Skip them here so maintenance does not try to recreate or
+      // drop them while the coordinator migration is in progress.
+      if (ptype == HASH || ptype == SKIPLIST) {
+        continue;
+      }
 
       // See, if we already have an index with the id given in the Plan:
       bool found = false;

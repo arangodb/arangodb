@@ -54,13 +54,6 @@ app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 # make arangod determine the number of contexts automatically.
 # v8-contexts = 0
 
-[foxx]
-# enable Foxx queues in the server
-# queues = true
-
-# interval (seconds) to use for polling jobs in Foxx queues
-# queues-poll-interval = 1
-
 [log]
 level = info
 @COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb3/arangod.log

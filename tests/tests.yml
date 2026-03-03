@@ -613,12 +613,6 @@
       priority: 1000
     requires:
       full: true
-- foxx_manager:
-    options:
-      type: single
-      priority: 500
-    requires:
-      full: true
 - queryCacheAuthorization:
     options:
       type: single

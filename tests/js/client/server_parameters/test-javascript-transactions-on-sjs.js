@@ -35,7 +35,6 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const db = require('internal').db;
-const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const internal = require('internal');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'execute-transaction');
@@ -59,14 +58,6 @@ function testSuite() {
         action: function() { return "ok!"; },
       });
       assertEqual("ok!", res);
-    },
-    
-    testJavaScriptTransactionFromFoxx : function() {
-      const mount = '/test';
-
-      FoxxManager.install(basePath, mount);
-      let res = arango.GET(`/_db/_system/${mount}/execute`);
-      assertEqual({ count: 1 }, res);
     },
     
     testJavaScriptTransactionViaAdminExecute : function() {

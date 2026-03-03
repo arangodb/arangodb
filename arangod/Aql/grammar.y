@@ -471,6 +471,12 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_LIMIT "LIMIT declaration"
 %token T_WINDOW "WINDOW declaration"
 
+%token T_MATCH "MATCH declaration"
+%token T_WHILE "WHILE declaration"
+%token T_UNTIL "UNTIL declaration"
+%token T_SCAN "SCAN declaration"
+%token T_FOLD "FOLD declaration"
+
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
@@ -656,7 +662,11 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <intval> update_or_replace;
 %type <node> quantifier;
 %type <node> upsert_input;
-
+%type <strval> T_MATCH;
+%type <strval> T_WHILE;
+%type <strval> T_UNTIL;
+%type <strval> T_SCAN;
+%type <strval> T_FOLD;
 
 /* define start token of language */
 %start queryStart

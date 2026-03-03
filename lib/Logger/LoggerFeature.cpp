@@ -71,20 +71,7 @@ LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   using namespace arangodb::options;
 
-  options->addOldOption("log.tty", "log.foreground-tty");
   options->addOldOption("log.escape", "log.escape-control-chars");
-
-  options
-      ->addOption("--log",
-                  "Set the topic-specific log level, using `--log level` "
-                  "for the general topic or `--log topic=level` for the "
-                  "specified topic (can be specified multiple times). "
-                  "Available log levels: fatal, error, warning, info, debug, "
-                  "trace.",
-                  new VectorParameter<StringParameter>(&_options.levels),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500);
 
   options->addSection("log", "logging");
 
@@ -328,26 +315,6 @@ downwards-compatibility with previous arangod versions, which did not restrict
 the maximum size of log messages.)");
 
   options
-      ->addOption("--log.use-local-time",
-                  "Use the local timezone instead of UTC.",
-                  new BooleanParameter(&_options.useLocalTime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format local-datestring` instead.)");
-
-  options
-      ->addOption("--log.use-microtime",
-                  "Use Unix timestamps in seconds with microsecond precision.",
-                  new BooleanParameter(&_options.useMicrotime),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500)
-      .setLongDescription(R"(This option is deprecated.
-Use `--log.time-format timestamp-micros` instead.)");
-
-  options
       ->addOption("--log.time-format", "The time format to use in logs.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_options.timeFormatString,
@@ -513,14 +480,6 @@ If you set this option to `auto`, the hostname is automatically determined.)");
       new BooleanParameter(&_options.threadName),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--log.performance",
-                  "Shortcut for `--log.level performance=trace`.",
-                  new BooleanParameter(&_options.performance),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30500);
-
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
     options->addOption("--log.keep-logrotate",
@@ -570,11 +529,6 @@ full, log entries are written synchronously until the queue has space again.)");
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_options.logRequestParameters),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addObsoleteOption("log.content-filter", "", true);
-  options->addObsoleteOption("log.source-filter", "", true);
-  options->addObsoleteOption("log.application", "", true);
-  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -595,10 +549,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
 
     _options.output.push_back(definition);
-  }
-
-  if (_options.performance) {
-    _options.levels.push_back("performance=trace");
   }
 
   if (options->processingResult().touched("log.time-format") &&

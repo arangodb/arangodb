@@ -60,13 +60,10 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
 constexpr std::string_view pathPrefixApiToken("/_api/token/");
-constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
-constexpr std::string_view pathPrefixOpenApi("/openapi.json");
 
 VocbasePtr lookupDatabaseFromRequest(
     application_features::ApplicationServer& server, GeneralRequest& req) {
@@ -321,19 +318,6 @@ CommTask::Flow CommTask::prepareExecution(
                       TRI_ERROR_FORBIDDEN,
                       "not authorized to execute this request");
     return Flow::Abort;
-  }
-
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    if (!(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-          path.starts_with(::pathPrefixApi) ||
-          path.starts_with(::pathPrefixOpen) ||
-          path.starts_with(::pathPrefixOpenApi))) {
-      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_FORBIDDEN,
-                        "access to Foxx apps is turned off on this instance");
-      return Flow::Abort;
-    }
   }
 
   // Step 5: Update global HLC timestamp from authenticated requests

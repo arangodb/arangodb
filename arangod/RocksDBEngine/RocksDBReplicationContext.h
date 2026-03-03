@@ -162,8 +162,7 @@ class RocksDBReplicationContext {
   bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
-                      bool includeFoxxQueues, bool global,
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem, bool global,
                       velocypack::Builder&);
 
   // returns inventory for a single shard (DB server only!)

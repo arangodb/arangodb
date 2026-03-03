@@ -59,9 +59,6 @@ class FlushFeature final : public application_features::ApplicationFeature {
 
   ~FlushFeature();
 
-  void collectOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
   ///        token commit

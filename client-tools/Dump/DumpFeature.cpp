@@ -878,18 +878,6 @@ void DumpFeature::collectOptions(
   options->addOption("--progress", "Show the dump progress.",
                      new BooleanParameter(&_options.progress));
 
-  options->addObsoleteOption(
-      "--envelope",
-      "Wrap each document into a {type, data} envelope "
-      "(this is required for compatibility with v3.7 and before).",
-      false);
-
-  options->addObsoleteOption("--tick-start",
-                             "Only include data after this tick.", true);
-
-  options->addObsoleteOption("--tick-end",
-                             "Last tick to be included in data dump.", true);
-
   options->addOption("--maskings", "A path to a file with masking definitions.",
                      new StringParameter(&_options.maskingsFile));
 
@@ -1066,8 +1054,6 @@ Result DumpFeature::runSingleDump(httpclient::SimpleHttpClient& client,
   // get the cluster inventory
   std::string const url =
       absl::StrCat("/_api/replication/inventory?includeSystem=",
-                   (_options.includeSystemCollections ? "true" : "false"),
-                   "&includeFoxxQueues=",
                    (_options.includeSystemCollections ? "true" : "false"),
                    "&batchId=", batchId);
 

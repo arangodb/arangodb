@@ -740,10 +740,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     if (dbname == StaticStrings::SystemDatabase &&
         cname == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (cname == StaticStrings::QueuesCollection) {
-      return auth::Level::RO;
-    } else if (cname == StaticStrings::FrontendCollection) {
-      return auth::Level::RW;
     }
     return databaseAuthLevel(dbname);
   }

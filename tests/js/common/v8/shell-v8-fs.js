@@ -1113,7 +1113,7 @@ function FileSystemSuite () {
 
     testAdler32Folder : function() {
       const internal = require('internal');
-      const folder = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx'));
+      const folder = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data'));
       try {
         fs.adler32(folder);
         fail();

@@ -1096,16 +1096,16 @@ TEST_F(MaintenanceTestActionPhaseOne,
   }
 }
 
-TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
+TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_bar) {
   plan = originalPlan;
-  auto cid = collectionMap(plan).at("_system/_queues");
+  auto cid = collectionMap(plan).at("_system/bar");
   auto shards =
       plan->get({"Collections", "_system", cid, "shards"})->children();
   containers::FlatHashSet<std::string> dirty{"_system"};
   bool callNotify = false;
 
-  createPlanIndex("_system", cid, "hash", {"someField"}, false, false, false,
-                  plan);
+  createPlanIndex("_system", cid, "persistent", {"someField"}, false, false,
+                  false, plan);
 
   for (auto node : localNodes) {
     std::vector<std::shared_ptr<ActionDescription>> actions;
