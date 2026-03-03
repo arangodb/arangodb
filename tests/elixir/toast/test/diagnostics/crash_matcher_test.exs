@@ -31,10 +31,17 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         log_file: "/tmp/toast/server/log"
       })
 
+    crash = Keyword.get(opts, :crash_report, make_crash_report())
+
+    log_report =
+      Map.merge(crash, %{
+        assertion_failures: [],
+        warnings: []
+      })
+
     entry = %{
       sanitizer_errors: [],
-      server_log: %{assertion_failures: [], warnings: []},
-      crash_report: Keyword.get(opts, :crash_report, make_crash_report()),
+      log_report: log_report,
       server_error:
         Keyword.get(
           opts,
@@ -55,7 +62,9 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       backtrace: [],
       fatal_lines: [],
       crash_output: [],
-      timestamp: nil
+      timestamp: nil,
+      assertion_failures: [],
+      warnings: []
     }
   end
 
@@ -158,15 +167,14 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       cluster_diag = %{
         "agent-1" => %{
           sanitizer_errors: [],
-          server_log: nil,
-          crash_report: no_crash_report(),
+          log_report: no_crash_report(),
           server_error: nil,
           server: %ServerInstance{id: "agent-1", role: :agent}
         },
         "dbserver-1" => %{
           sanitizer_errors: [],
-          server_log: nil,
-          crash_report: crash,
+          log_report:
+            Map.merge(crash, %{assertion_failures: [], warnings: []}),
           server_error: {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}},
           server: %ServerInstance{
             id: "dbserver-1",

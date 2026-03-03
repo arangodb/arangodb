@@ -65,7 +65,7 @@ defmodule Toast.Diagnostics.CrashMatcher do
   end
 
   defp maybe_crash_info(diag) do
-    crash = Map.get(diag, :crash_report)
+    crash = Map.get(diag, :log_report)
     server = Map.get(diag, :server)
 
     if crash && crash.signal_name do

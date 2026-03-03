@@ -58,17 +58,19 @@ defmodule ToastTest.ResultExporter.JSONTest do
           server_id: "toast-1"
         }
       ],
-      server_log: %{
-        assertion_failures: ["assertion failed at foo.cpp:42"],
-        warnings: ["FATAL shutdown"]
-      },
-      crash_report: %{
+      log_report: %{
         signal_number: 11,
         signal_name: "SIGSEGV",
         crash_header: "caught unexpected signal 11",
         backtrace: ["frame 0 at 0xdead"],
         fatal_lines: ["FATAL error"],
-        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
+        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"],
+        assertion_failures: [
+          %{timestamp: nil, message: "assertion failed at foo.cpp:42"}
+        ],
+        warnings: [
+          %{timestamp: nil, message: "FATAL shutdown"}
+        ]
       },
       server: %ServerInstance{
         id: "toast-1",
@@ -88,14 +90,15 @@ defmodule ToastTest.ResultExporter.JSONTest do
     %{
       "agent-1" => %{
         sanitizer_errors: [],
-        server_log: %{assertion_failures: [], warnings: []},
-        crash_report: %{
+        log_report: %{
           signal_number: nil,
           signal_name: nil,
           crash_header: nil,
           backtrace: [],
           fatal_lines: [],
-          crash_output: []
+          crash_output: [],
+          assertion_failures: [],
+          warnings: []
         },
         server: %ServerInstance{
           id: "agent-1",
@@ -305,13 +308,11 @@ defmodule ToastTest.ResultExporter.JSONTest do
       diagnostics = %{
         "agent-1" => %{
           sanitizer_errors: [],
-          server_log: nil,
-          crash_report: nil
+          log_report: nil
         },
         "dbserver-1" => %{
           sanitizer_errors: [%{content: "error"}],
-          server_log: nil,
-          crash_report: nil
+          log_report: nil
         }
       }
 

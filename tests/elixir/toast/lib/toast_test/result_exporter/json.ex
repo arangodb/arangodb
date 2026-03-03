@@ -171,8 +171,8 @@ defmodule ToastTest.ResultExporter.JSON do
   defp build_single_server_health(diag) do
     %{}
     |> conditional_put("sanitizer_errors", diag[:sanitizer_errors], fn errs -> Enum.map(errs, &build_sanitizer_error/1) end)
-    |> conditional_put("crash_report", diag[:crash_report], &build_crash_report/1)
-    |> conditional_put("log_issues", diag[:server_log], &build_log_issues/1)
+    |> conditional_put("crash_report", diag[:log_report], &build_crash_report/1)
+    |> conditional_put("log_issues", diag[:log_report], &build_log_issues/1)
     |> conditional_put("server", diag[:server], &build_server_instance/1)
   end
 
@@ -209,10 +209,13 @@ defmodule ToastTest.ResultExporter.JSON do
 
   defp build_log_issues(log) do
     %{
-      "assertion_failures" => log.assertion_failures,
-      "warnings" => log.warnings
+      "assertion_failures" => Enum.map(log.assertion_failures, &extract_message/1),
+      "warnings" => Enum.map(log.warnings, &extract_message/1)
     }
   end
+
+  defp extract_message(%{message: msg}), do: msg
+  defp extract_message(msg) when is_binary(msg), do: msg
 
   # --- Sanitizer matching ---
 

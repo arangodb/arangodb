@@ -441,13 +441,13 @@ defmodule Toast.Deployment do
   end
 
   defp format_crash_message({:ok, details}) do
-    alias Toast.Diagnostics.CrashLogParser
+    alias Toast.Diagnostics.LogAnalyzer
 
     [
       "Server crashed",
       if(details.server_id, do: "(#{details.server_id})"),
       if(details.server_crash_info, do: format_crash_exit(details.server_crash_info)),
-      format_crash_log_summary(details.log_report, CrashLogParser)
+      format_crash_log_summary(details.log_report, LogAnalyzer)
     ]
     |> Enum.reject(&is_nil/1)
     |> Enum.join(" ")
@@ -467,14 +467,8 @@ defmodule Toast.Deployment do
     end
   end
 
-  defp read_and_parse_log(nil), do: nil
-
-  defp read_and_parse_log(log_file) do
-    case File.read(log_file) do
-      {:ok, content} -> Toast.Diagnostics.CrashLogParser.parse(content)
-      {:error, _} -> nil
-    end
-  end
+  defp read_and_parse_log(log_file),
+    do: Toast.Diagnostics.LogAnalyzer.parse(log_file)
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
     case opts do

@@ -1,7 +1,7 @@
 defmodule Toast.Diagnostics do
   @moduledoc "Shared diagnostics utilities."
 
-  alias Toast.Diagnostics.{CrashLogParser, Sanitizer, ServerLog}
+  alias Toast.Diagnostics.{LogAnalyzer, Sanitizer}
 
   @doc """
   Convert diagnostics to a uniform list of `{server_id, diag}` entries.
@@ -20,18 +20,14 @@ defmodule Toast.Diagnostics do
   @doc """
   Build a diagnostics map for a single server.
 
-  Collects sanitizer errors, scans the server log, and parses crash reports.
-  Returns `%{sanitizer_errors:, server_log:, crash_report:, server_error:, server:}`.
+  Collects sanitizer errors and parses the server log in a single pass.
+  Returns `%{sanitizer_errors:, log_report:, server_error:, server:}`.
   """
   @spec build_server_diagnostics(struct(), term()) :: map()
   def build_server_diagnostics(server, server_error) do
-    sanitizer_errors = Sanitizer.collect_errors(server.server_dir, server.id)
-    log_content = Toast.Utils.Filesystem.read_file_or_nil(server.log_file)
-
     %{
-      sanitizer_errors: sanitizer_errors,
-      server_log: if(log_content, do: ServerLog.scan(log_content)),
-      crash_report: if(log_content, do: CrashLogParser.parse(log_content)),
+      sanitizer_errors: Sanitizer.collect_errors(server.server_dir, server.id),
+      log_report: LogAnalyzer.parse(server.log_file),
       server_error: server_error,
       server: server
     }

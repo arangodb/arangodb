@@ -1,40 +1,51 @@
-defmodule Toast.Diagnostics.CrashLogParser do
-  @moduledoc "Parse arangod log files for crash diagnostics."
+defmodule Toast.Diagnostics.LogAnalyzer do
+  @moduledoc """
+  Single-pass analyzer for arangod server logs.
 
-  @type crash_report :: %{
+  Merges crash log parsing and server log scanning into one pass over the log
+  content, producing a unified report with crash analysis, assertion failures,
+  and non-trivial log warnings.
+  """
+
+  @type log_entry :: %{timestamp: DateTime.t() | nil, message: String.t()}
+
+  @type log_report :: %{
           signal_number: non_neg_integer() | nil,
           signal_name: String.t() | nil,
           crash_header: String.t() | nil,
           backtrace: [String.t()],
           fatal_lines: [String.t()],
           crash_output: [String.t()],
-          timestamp: DateTime.t() | nil
+          timestamp: DateTime.t() | nil,
+          assertion_failures: [log_entry()],
+          warnings: [log_entry()]
         }
 
-  @doc "Parse log content from a string. Prefer `parse_file/1` for large logs."
-  @spec parse(String.t()) :: crash_report()
-  def parse(content) do
-    content
-    |> String.split("\n")
-    |> Enum.reduce(new(), &process_line/2)
-    |> finalize()
+  # Log topic IDs that produce uninteresting noise (arangod internal topics)
+  @uninteresting_topics ["de8f3", "e8b68", "1afb1", "d72fb", "f3108"]
+
+  @doc "Parse a log file. Returns nil if file doesn't exist."
+  @spec parse(Path.t() | nil) :: log_report() | nil
+  def parse(nil), do: nil
+
+  def parse(path) do
+    if File.exists?(path) do
+      path |> File.stream!() |> parse_stream()
+    end
   end
 
-  @doc "Stream a log file and parse crash diagnostics without loading it into memory."
-  @spec parse_file(Path.t()) :: crash_report() | nil
-  def parse_file(path) do
-    if File.exists?(path) do
-      path
-      |> File.stream!()
-      |> Enum.reduce(new(), &process_line/2)
-      |> finalize()
-    end
+  @doc "Parse log lines from any enumerable (e.g., a stream or list of strings)."
+  @spec parse_stream(Enumerable.t()) :: log_report()
+  def parse_stream(lines) do
+    lines
+    |> Enum.reduce(new(), &process_line/2)
+    |> finalize()
   end
 
   @spec has_crash?(String.t()) :: boolean()
   def has_crash?(content), do: String.contains?(content, "{crash}")
 
-  @spec format_summary(crash_report()) :: String.t()
+  @spec format_summary(log_report()) :: String.t()
   def format_summary(%{signal_name: nil}), do: "No crash detected"
 
   def format_summary(%{signal_name: name, signal_number: number, backtrace: bt}) do
@@ -51,7 +62,10 @@ defmodule Toast.Diagnostics.CrashLogParser do
       backtrace: [],
       fatal_lines: [],
       crash_output: [],
-      timestamp: nil
+      timestamp: nil,
+      assertion_failures: [],
+      warnings: [],
+      uninteresting_topics: @uninteresting_topics
     }
   end
 
@@ -61,22 +75,25 @@ defmodule Toast.Diagnostics.CrashLogParser do
     report
     |> maybe_collect_fatal(line)
     |> maybe_collect_crash(line)
+    |> maybe_collect_assertion(line)
+    |> maybe_collect_warning(line)
   end
 
-  @doc "Finalize the accumulator into a crash_report (reverses collected lists)."
-  @spec finalize(map()) :: crash_report()
+  @doc "Finalize the accumulator into a log_report (reverses collected lists, strips internal fields)."
+  @spec finalize(map()) :: log_report()
   def finalize(report) do
-    %{
-      report
-      | fatal_lines: Enum.reverse(report.fatal_lines),
-        backtrace: Enum.reverse(report.backtrace),
-        crash_output: Enum.reverse(report.crash_output)
-    }
+    report
+    |> Map.update!(:fatal_lines, &Enum.reverse/1)
+    |> Map.update!(:backtrace, &Enum.reverse/1)
+    |> Map.update!(:crash_output, &Enum.reverse/1)
+    |> Map.update!(:assertion_failures, &Enum.reverse/1)
+    |> Map.update!(:warnings, &Enum.reverse/1)
+    |> Map.delete(:uninteresting_topics)
   end
+
+  # --- Fatal lines (FATAL non-crash, bare strings for crash diagnostic display) ---
 
   defp maybe_collect_fatal(report, line) do
-    # Collect FATAL lines that are NOT in {crash} topic — crash-specific fatals
-    # are handled separately as crash_header / backtrace.
     if fatal_line?(line) and not String.contains?(line, "{crash}") do
       content = extract_log_message(line)
       %{report | fatal_lines: [content | report.fatal_lines]}
@@ -84,6 +101,8 @@ defmodule Toast.Diagnostics.CrashLogParser do
       report
     end
   end
+
+  # --- Crash analysis ---
 
   defp maybe_collect_crash(report, line) do
     if String.contains?(line, "{crash}") do
@@ -123,6 +142,65 @@ defmodule Toast.Diagnostics.CrashLogParser do
     end
   end
 
+  # --- Assertion failures ---
+
+  defp maybe_collect_assertion(report, line) do
+    if String.contains?(line, "{assertion}") do
+      entry = %{
+        timestamp: extract_timestamp(line),
+        message: extract_log_message(line)
+      }
+
+      %{report | assertion_failures: [entry | report.assertion_failures]}
+    else
+      report
+    end
+  end
+
+  # --- Broadened warning capture (all non-INFO, non-crash, non-trivial lines) ---
+
+  defp maybe_collect_warning(report, line) do
+    cond do
+      info_line?(line) ->
+        report
+
+      String.contains?(line, "{crash}") ->
+        report
+
+      String.contains?(line, "{assertion}") ->
+        report
+
+      uninteresting_topic?(line, report.uninteresting_topics) ->
+        report
+
+      String.contains?(line, "WARNING about to execute:") ->
+        report
+
+      not log_line?(line) ->
+        report
+
+      true ->
+        entry = %{
+          timestamp: extract_timestamp(line),
+          message: extract_log_message(line)
+        }
+
+        %{report | warnings: [entry | report.warnings]}
+    end
+  end
+
+  defp info_line?(line), do: String.contains?(line, " INFO ")
+
+  defp log_line?(line) do
+    Regex.match?(~r/^\s*\d{4}-\d{2}-\d{2}T[\d:.]+/, line)
+  end
+
+  defp uninteresting_topic?(line, topics) do
+    Enum.any?(topics, fn topic -> String.contains?(line, "[#{topic}]") end)
+  end
+
+  # --- Public helpers ---
+
   @doc """
   Check if a log line has FATAL severity.
 
@@ -133,6 +211,17 @@ defmodule Toast.Diagnostics.CrashLogParser do
   @spec fatal_line?(String.t()) :: boolean()
   def fatal_line?(line), do: String.contains?(line, " FATAL ")
 
+  @doc "Extract message content after the log topic marker (e.g., `{general} `, `{crash} `)."
+  @spec extract_log_message(String.t()) :: String.t()
+  def extract_log_message(line) do
+    case Regex.run(~r/\{[^}]+\}\s+(.*)$/, line) do
+      [_, content] -> content
+      _ -> line
+    end
+  end
+
+  # --- Private helpers ---
+
   defp extract_signal(text) do
     case Regex.run(~r/caught unexpected signal (\d+) \((\w+)/, text) do
       [_, number, name] -> {String.to_integer(number), name}
@@ -142,15 +231,6 @@ defmodule Toast.Diagnostics.CrashLogParser do
 
   defp extract_crash_content(line) do
     case String.split(line, "{crash} ", parts: 2) do
-      [_, content] -> content
-      _ -> line
-    end
-  end
-
-  @doc "Extract message content after the log topic marker (e.g., `{general} `, `{crash} `)."
-  @spec extract_log_message(String.t()) :: String.t()
-  def extract_log_message(line) do
-    case Regex.run(~r/\{[^}]+\}\s+(.*)$/, line) do
       [_, content] -> content
       _ -> line
     end

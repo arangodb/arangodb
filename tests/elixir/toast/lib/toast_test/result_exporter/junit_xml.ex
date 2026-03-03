@@ -249,8 +249,8 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   defp format_single_diagnostics(diag) do
     [
       format_sanitizer_section(Map.get(diag, :sanitizer_errors)),
-      format_crash_section(Map.get(diag, :crash_report)),
-      format_log_section(Map.get(diag, :server_log))
+      format_crash_section(Map.get(diag, :log_report)),
+      format_log_section(Map.get(diag, :log_report))
     ]
     |> Enum.reject(&is_nil/1)
     |> Enum.join("\n\n")
@@ -296,8 +296,10 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   defp format_log_section(nil), do: nil
 
   defp format_log_section(log) do
-    a_count = length(log.assertion_failures)
-    w_count = length(log.warnings)
+    assertions = Map.get(log, :assertion_failures, [])
+    warnings = Map.get(log, :warnings, [])
+    a_count = length(assertions)
+    w_count = length(warnings)
 
     if a_count > 0 or w_count > 0 do
       "Log Issues:\n  Assertions: #{a_count}\n  Warnings: #{w_count}"

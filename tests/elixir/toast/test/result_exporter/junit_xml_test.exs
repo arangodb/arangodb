@@ -57,17 +57,19 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
           server_id: "toast-1"
         }
       ],
-      server_log: %{
-        assertion_failures: ["assertion failed at foo.cpp:42"],
-        warnings: ["FATAL shutdown"]
-      },
-      crash_report: %{
+      log_report: %{
         signal_number: 11,
         signal_name: "SIGSEGV",
         crash_header: "caught unexpected signal 11",
         backtrace: ["frame 0 at 0xdead"],
         fatal_lines: ["FATAL error"],
-        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"]
+        crash_output: ["caught unexpected signal 11", "frame 0 at 0xdead"],
+        assertion_failures: [
+          %{timestamp: nil, message: "assertion failed at foo.cpp:42"}
+        ],
+        warnings: [
+          %{timestamp: nil, message: "FATAL shutdown"}
+        ]
       }
     }
   end
@@ -180,13 +182,15 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     test "crash section includes fatal lines" do
       entry = %{
         server_diag_entry()
-        | crash_report: %{
+        | log_report: %{
             signal_number: 11,
             signal_name: "SIGSEGV",
             crash_header: "caught unexpected signal 11",
             backtrace: [],
             fatal_lines: ["assertion failed at foo.cpp:42"],
-            crash_output: []
+            crash_output: [],
+            assertion_failures: [],
+            warnings: []
           }
       }
 

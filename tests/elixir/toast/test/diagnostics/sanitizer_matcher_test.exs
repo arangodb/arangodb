@@ -22,14 +22,15 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
     %{
       "toast-1" => %{
         sanitizer_errors: errors,
-        server_log: %{assertion_failures: [], warnings: []},
-        crash_report: %{
+        log_report: %{
           signal_number: nil,
           signal_name: nil,
           crash_header: nil,
           backtrace: [],
           fatal_lines: [],
-          crash_output: []
+          crash_output: [],
+          assertion_failures: [],
+          warnings: []
         },
         server_error: nil,
         server: %ServerInstance{id: "toast-1", role: :single}
@@ -184,15 +185,13 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       cluster_diag = %{
         "agent-1" => %{
           sanitizer_errors: [],
-          server_log: nil,
-          crash_report: nil,
+          log_report: nil,
           server_error: nil,
           server: %ServerInstance{id: "agent-1", role: :agent}
         },
         "dbserver-1" => %{
           sanitizer_errors: [error],
-          server_log: nil,
-          crash_report: nil,
+          log_report: nil,
           server_error: nil,
           server: %ServerInstance{id: "dbserver-1", role: :dbserver}
         }

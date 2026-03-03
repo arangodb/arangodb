@@ -49,7 +49,7 @@ defmodule Toast.Diagnostics.Summary do
   end
 
   defp has_crash?(diag) do
-    crash = Map.get(diag, :crash_report)
+    crash = Map.get(diag, :log_report)
     error = Map.get(diag, :server_error)
     (crash != nil and crash.signal_name != nil) or crash_error?(error)
   end
@@ -59,7 +59,7 @@ defmodule Toast.Diagnostics.Summary do
   defp crash_error?(_), do: false
 
   defp format_server_crash({diag, server}) do
-    crash = Map.get(diag, :crash_report)
+    crash = Map.get(diag, :log_report)
     error = Map.get(diag, :server_error)
 
     [
