@@ -656,8 +656,16 @@ class instanceManager {
     frontend._disconnect();
     frontend.connect();
 
-    let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
-                                 { "server": dbServer.shortName, "undoMoves": false });
+    let result;
+    while (true) {
+      let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+                                   { "server": dbServer.shortName, "undoMoves": false });
+      // BTS-2329: is 500 a valid code here? and what to do?
+      if (result.code !== 500) {
+        print("retrying resign leadership");
+        break;
+      }
+    }
     if (result.code !== 202) {
       throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
     }
