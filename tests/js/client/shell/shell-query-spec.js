@@ -25,9 +25,9 @@ function sendQuery (count, async) {
     if (async === false) {
       internal.db._query(query, { value: 1 });
     } else {
-      clients.push({client: launchPlainSnippetInBG(
+      clients.push(launchPlainSnippetInBG(
         `try { require('internal').db._query("${query}", {value: 1}, {profile: true}).toArray();} catch {}`,
-        'query_' + i)});
+        'query_' + i));
     }
   }
   if (async === true) {

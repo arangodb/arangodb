@@ -399,7 +399,7 @@ function launchPlainSnippetInBG (snippet, key) {
 }
 
 
-function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
+function spawnStressArangoshInBG (arangoshList, snippet, key, volume, args) {
   let IM = global.instanceManager;
   let globalFn = fs.getTempFile();
   fs.write(globalFn, "x");
@@ -416,6 +416,7 @@ let passvoid = '${IM.options.password}';
 while (fs.exists('${globalFn}')) {
    require('internal').sleep(0.1);
 }
+let args = ${JSON.stringify(args)};
 let testfunc = ${String(snippet)};
 testfunc();
 `;
@@ -497,16 +498,19 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   }
   let client = launchInShellBG(file);
   print(`${CYAN}started client with key '${key}', pid ${client.pid}, args: ${JSON.stringify(client.args)}${RESET}`);
-  return { key, file, client, done: false };
+  client.key = key;
+  client.file = file;
+  client.done = false;
+  return client;
 }
 
 function readClientLogfile(client) {
   // remove file:// from the filename:
-  let fn = client.client.logFile.slice(7);
+  let fn = client.logFile.slice(7);
   if (fs.exists(fn)) {
-    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(fn).toString()}`);
+    return (`${Date()} test client with pid ${client.pid} has failed and wrote a logfile: \n${fs.readFileSync(fn).toString()}`);
   } else {
-    return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
+    return (`${Date()} test client with pid ${client.pid} has failed and did not write a logfile`);
   }
 }
 
@@ -521,16 +525,16 @@ function joinBGShells (options, clients, waitFor, cn) {
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
-        client.status = internal.statusExternal(client.client.pid);
+        client.status = internal.statusExternal(client.pid);
         if (client.status.status !== 'RUNNING') {
-          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          let failed = client.sh.fetchSanFileAfterExit(client.pid);
           IM.serverCrashedLocal |= failed;
           client.failed = failed;
           client.done = true;
         }
         if (client.status.status === 'TERMINATED') {
           client.done = true;
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
           client.failed = (client.status.exit !== 0);
           if (client.failed) {
             haveErrors = true;
@@ -578,17 +582,17 @@ function joinFinishedBGShells(options, clients) {
     if (client.done) {
       done -= 1;
     } else {
-      client.status = internal.statusExternal(client.client.pid);
+      client.status = internal.statusExternal(client.pid);
       if (client.status.status !== 'RUNNING') { 
-        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+        let failed = client.sh.fetchSanFileAfterExit(client.pid);
         IM.serverCrashedLocal |= failed;
         client.failed = failed;
         client.done = true;
       }
-      if (client.status === 'TERMINATED') {
+      if (client.status.status === 'TERMINATED') {
         done -= 1;
         if (client.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
           client.failed = false;
         } else {
           IM.options.cleanup = false;
@@ -604,18 +608,21 @@ function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = clients.length;
+  let success = true;
   clients.forEach(client => {
     client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
       client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
-    } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+    } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
       client.done = true;
-      if (client.exit === 0) {
-        IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+      IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
+      if (client.status.exit === 0) {
         client.failed = false;
       } else {
+        success = false;
         IM.options.cleanup = false;
         client.failed = true;
+        client.message = readClientLogfile(client);
       }
     }
   });
@@ -633,21 +640,22 @@ function joinForceBGShells(options, clients) {
           IM.serverCrashedLocal |= failed;
           client.failed = failed;
           client.done = true;
-        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+        } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
           done -= 1;
           if (client.exit === 0) {
-            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+            IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
             client.failed = false;
           } else {
             IM.options.cleanup = false;
             client.failed = true;
+            success = false;
           }
         }
       }
     });
     internal.sleep(0.5);
   }
-  return done === 0;
+  return done === 0 && success;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -663,9 +671,9 @@ function cleanupBGShells (clients, cn) {
     if (client.failed) {
       print(`${RED}${readClientLogfile(client)}${RESET}`);
       if (fs.exists(logfile)) {
-        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
+        print(`${RED}${Date()} test client with pid ${client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
-        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile${RESET}`);
+        print(`${RED}${Date()} test client with pid ${client.pid} has failed and did not write a logfile${RESET}`);
       }
     } else {
       try {
@@ -677,12 +685,12 @@ function cleanupBGShells (clients, cn) {
     if (!client.done) {
       // hard-kill all running instances
       try {
-        let status = internal.statusExternal(client.client.pid).status;
-        print(`${RED}${Date()} current not done client ${client.client.pid} status: ${status}${RESET}`);
+        let status = internal.statusExternal(client.pid).status;
+        print(`${RED}${Date()} current not done client ${client.pid} status: ${status}${RESET}`);
         if (status === 'RUNNING') {
-          print(`${RED}${Date()} forcefully killing test client with pid ${client.client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
-          internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
-          client.status = internal.statusExternal(client.client.pid);
+          print(`${RED}${Date()} forcefully killing test client with pid ${client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
+          internal.killExternal(client.pid, 9 /*SIGKILL*/);
+          client.status = internal.statusExternal(client.pid);
         }
       } catch (err) { }
     }
