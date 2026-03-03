@@ -755,21 +755,6 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
   return plan;
 }
 
-void ExecutionPlan::readAdditionalDataFromSlice(velocypack::Slice slice) {
-  if (!slice.isObject()) {
-    return;
-  }
-  if (auto rules = slice.get("rules"); rules.isArray()) {
-    for (auto rule : VPackArrayIterator(rules)) {
-      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
-      _appliedRules.push_back(ruleId);
-    }
-  }
-  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
-    _asyncPrefetchNodes = apfn.getNumericValue<size_t>();
-  }
-}
-
 void ExecutionPlan::upgradeGraphNodesToLocal() {
 #ifdef USE_ENTERPRISE
   if (!hasAppliedRule(
