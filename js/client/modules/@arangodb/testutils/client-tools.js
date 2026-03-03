@@ -589,7 +589,7 @@ function joinFinishedBGShells(options, clients) {
         client.failed = failed;
         client.done = true;
       }
-      if (client.status === 'TERMINATED') {
+      if (client.status.status === 'TERMINATED') {
         done -= 1;
         if (client.exit === 0) {
           IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
@@ -640,7 +640,7 @@ function joinForceBGShells(options, clients) {
           IM.serverCrashedLocal |= failed;
           client.failed = failed;
           client.done = true;
-        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+        } else if (client.status.status === 'TERMINATED' || client.status.status === 'NOT-FOUND') {
           done -= 1;
           if (client.exit === 0) {
             IM.serverCrashedLocal |= client.sh.fetchSanFileAfterExit(client.pid);
