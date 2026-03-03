@@ -57,6 +57,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/NodeFinder.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -76,6 +77,12 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/LocalTraversalNode.h"
+#include "Enterprise/Aql/LocalShortestPathNode.h"
+#include "Enterprise/Aql/LocalEnumeratePathsNode.h"
+#endif
 
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
@@ -746,6 +753,90 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
   }
 
   return plan;
+}
+
+void ExecutionPlan::readAdditionalDataFromSlice(velocypack::Slice slice) {
+  if (!slice.isObject()) {
+    return;
+  }
+  if (auto rules = slice.get("rules"); rules.isArray()) {
+    for (auto rule : VPackArrayIterator(rules)) {
+      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+      _appliedRules.push_back(ruleId);
+    }
+  }
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+    _asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+  }
+}
+
+void ExecutionPlan::upgradeGraphNodesToLocal() {
+#ifdef USE_ENTERPRISE
+  if (!hasAppliedRule(
+          static_cast<int>(OptimizerRule::RuleLevel::clusterOneShardRule))) {
+    return;
+  }
+
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
+  findNodesOfType(graphNodes,
+                  {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
+                   ExecutionNode::ENUMERATE_PATHS},
+                  true);
+
+  for (auto* node : graphNodes) {
+    auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+    if (!graphNode->isClusterOneShardRuleEnabled()) {
+      continue;
+    }
+    if (graphNode->isLocalGraphNode()) {
+      continue;
+    }
+
+    aql::Collection const* protoCollection = nullptr;
+    for (auto const* col : graphNode->collections()) {
+      if (!col->isSatellite()) {
+        protoCollection = col;
+        break;
+      }
+    }
+    if (protoCollection == nullptr) {
+      if (graphNode->graph() != nullptr) {
+        protoCollection = graphNode->collection();
+      }
+    }
+    if (protoCollection == nullptr) {
+      continue;
+    }
+
+    LocalGraphNode* localNode = nullptr;
+    switch (node->getType()) {
+      case ExecutionNode::TRAVERSAL: {
+        auto* tn = ExecutionNode::castTo<TraversalNode*>(node);
+        localNode =
+            createNode<LocalTraversalNode>(*this, *tn, *protoCollection);
+        break;
+      }
+      case ExecutionNode::SHORTEST_PATH: {
+        auto* spn = ExecutionNode::castTo<ShortestPathNode*>(node);
+        localNode =
+            createNode<LocalShortestPathNode>(*this, *spn, *protoCollection);
+        break;
+      }
+      case ExecutionNode::ENUMERATE_PATHS: {
+        auto* epn = ExecutionNode::castTo<EnumeratePathsNode*>(node);
+        localNode =
+            createNode<LocalEnumeratePathsNode>(*this, *epn, *protoCollection);
+        break;
+      }
+      default:
+        TRI_ASSERT(false);
+        continue;
+    }
+
+    localNode->enableClusterOneShardRule(true);
+    replaceNode(graphNode, localNode);
+  }
+#endif
 }
 
 /// @brief clone an existing execution plan

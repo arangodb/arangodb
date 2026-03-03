@@ -427,7 +427,7 @@ async<void> Query::prepareQuery() {
       auto const snippets = querySlice.get("nodes");
       prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
                                               variables, snippets);
-      co_await instantiatePlan(snippets);
+      co_await instantiatePlan(querySlice);
 
       TRI_ASSERT(!_plans.empty());
 
@@ -2727,20 +2727,17 @@ void Query::prepareFromVelocyPackWithoutInstantiate(
   enterState(QueryExecutionState::ValueType::PARSING);
 }
 
-async<void> Query::instantiatePlan(velocypack::Slice snippets) {
+async<void> Query::instantiatePlan(velocypack::Slice querySlice) {
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
-    auto plan =
-        ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet, true);
-    TRI_ASSERT(plan != nullptr);
 
-    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
-    _plans.push_back(std::move(plan));
-    co_return;
-  };
+  auto plan =
+      ExecutionPlan::instantiateFromVelocyPack(_ast.get(), querySlice, false);
+  TRI_ASSERT(plan != nullptr);
 
-  // a single snippet
-  co_await instantiateSnippet(snippets);
+  plan->upgradeGraphNodesToLocal();
+
+  co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+  _plans.push_back(std::move(plan));
   TRI_ASSERT(!_snippets.empty());
   TRI_ASSERT(!_trx->state()->isDBServer() || _snippets.back()->engineId() != 0);
 

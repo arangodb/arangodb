@@ -233,7 +233,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                                                velocypack::Slice variables,
                                                velocypack::Slice snippets);
 
-  async<void> instantiatePlan(velocypack::Slice snippets);
+  async<void> instantiatePlan(velocypack::Slice querySlice);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
