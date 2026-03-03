@@ -953,8 +953,10 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?
+            " - maybe OOM killed by the kernel? ": "";
+      print(`${RED}${Date()} ${this.name}: instance already gone${killCause}? ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead${killCause}? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
