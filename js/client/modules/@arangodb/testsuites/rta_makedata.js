@@ -180,7 +180,6 @@ function makeDataWrapper (options) {
             try {
               this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
             } catch(e) {
-              return; // BTS-2329: re-enable detecting of errors when fixed
               this.continueTesting = false;
               res.status = false;
               res.failed += 1;
@@ -233,6 +232,7 @@ function makeDataWrapper (options) {
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  options.cleanup = options.cleanup && localOptions.cleanup && rc.status;
   if (timeout) {
     return {
       failed: 1,
@@ -242,7 +242,6 @@ function makeDataWrapper (options) {
       message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
     };
   }
-  options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
 
