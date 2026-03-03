@@ -150,201 +150,206 @@ enum yysymbol_kind_t
   YYSYMBOL_T_SORT = 8,                     /* "SORT declaration"  */
   YYSYMBOL_T_LIMIT = 9,                    /* "LIMIT declaration"  */
   YYSYMBOL_T_WINDOW = 10,                  /* "WINDOW declaration"  */
-  YYSYMBOL_T_ASC = 11,                     /* "ASC keyword"  */
-  YYSYMBOL_T_DESC = 12,                    /* "DESC keyword"  */
-  YYSYMBOL_T_IN = 13,                      /* "IN keyword"  */
-  YYSYMBOL_T_WITH = 14,                    /* "WITH keyword"  */
-  YYSYMBOL_T_INTO = 15,                    /* "INTO keyword"  */
-  YYSYMBOL_T_AGGREGATE = 16,               /* "AGGREGATE keyword"  */
-  YYSYMBOL_T_GRAPH = 17,                   /* "GRAPH keyword"  */
-  YYSYMBOL_T_SHORTEST_PATH = 18,           /* "SHORTEST_PATH keyword"  */
-  YYSYMBOL_T_K_SHORTEST_PATHS = 19,        /* "K_SHORTEST_PATHS keyword"  */
-  YYSYMBOL_T_K_PATHS = 20,                 /* "K_PATHS keyword"  */
-  YYSYMBOL_T_ALL_SHORTEST_PATHS = 21,      /* "ALL_SHORTEST_PATHS keyword"  */
-  YYSYMBOL_T_DISTINCT = 22,                /* "DISTINCT modifier"  */
-  YYSYMBOL_T_REMOVE = 23,                  /* "REMOVE command"  */
-  YYSYMBOL_T_INSERT = 24,                  /* "INSERT command"  */
-  YYSYMBOL_T_UPDATE = 25,                  /* "UPDATE command"  */
-  YYSYMBOL_T_REPLACE = 26,                 /* "REPLACE command"  */
-  YYSYMBOL_T_UPSERT = 27,                  /* "UPSERT command"  */
-  YYSYMBOL_T_NULL = 28,                    /* "null"  */
-  YYSYMBOL_T_TRUE = 29,                    /* "true"  */
-  YYSYMBOL_T_FALSE = 30,                   /* "false"  */
-  YYSYMBOL_T_STRING = 31,                  /* "identifier"  */
-  YYSYMBOL_T_QUOTED_STRING = 32,           /* "quoted string"  */
-  YYSYMBOL_T_INTEGER = 33,                 /* "integer number"  */
-  YYSYMBOL_T_DOUBLE = 34,                  /* "number"  */
-  YYSYMBOL_T_PARAMETER = 35,               /* "bind parameter"  */
-  YYSYMBOL_T_DATA_SOURCE_PARAMETER = 36,   /* "bind data source parameter"  */
-  YYSYMBOL_T_ASSIGN = 37,                  /* "assignment"  */
-  YYSYMBOL_T_NOT = 38,                     /* "not operator"  */
-  YYSYMBOL_T_AND = 39,                     /* "and operator"  */
-  YYSYMBOL_T_OR = 40,                      /* "or operator"  */
-  YYSYMBOL_T_NOT_IN = 41,                  /* "not in operator"  */
-  YYSYMBOL_T_REGEX_MATCH = 42,             /* "~= operator"  */
-  YYSYMBOL_T_REGEX_NON_MATCH = 43,         /* "~! operator"  */
-  YYSYMBOL_T_EQ = 44,                      /* "== operator"  */
-  YYSYMBOL_T_NE = 45,                      /* "!= operator"  */
-  YYSYMBOL_T_LT = 46,                      /* "< operator"  */
-  YYSYMBOL_T_GT = 47,                      /* "> operator"  */
-  YYSYMBOL_T_LE = 48,                      /* "<= operator"  */
-  YYSYMBOL_T_GE = 49,                      /* ">= operator"  */
-  YYSYMBOL_T_LIKE = 50,                    /* "like operator"  */
-  YYSYMBOL_T_PLUS = 51,                    /* "+ operator"  */
-  YYSYMBOL_T_MINUS = 52,                   /* "- operator"  */
-  YYSYMBOL_T_TIMES = 53,                   /* "* operator"  */
-  YYSYMBOL_T_DIV = 54,                     /* "/ operator"  */
-  YYSYMBOL_T_MOD = 55,                     /* "% operator"  */
-  YYSYMBOL_T_QUESTION = 56,                /* "?"  */
-  YYSYMBOL_T_COLON = 57,                   /* ":"  */
-  YYSYMBOL_T_SCOPE = 58,                   /* "::"  */
-  YYSYMBOL_T_RANGE = 59,                   /* ".."  */
-  YYSYMBOL_T_COMMA = 60,                   /* ","  */
-  YYSYMBOL_T_OPEN = 61,                    /* "("  */
-  YYSYMBOL_T_CLOSE = 62,                   /* ")"  */
-  YYSYMBOL_T_OBJECT_OPEN = 63,             /* "{"  */
-  YYSYMBOL_T_OBJECT_CLOSE = 64,            /* "}"  */
-  YYSYMBOL_T_ARRAY_OPEN = 65,              /* "["  */
-  YYSYMBOL_T_ARRAY_CLOSE = 66,             /* "]"  */
-  YYSYMBOL_T_OUTBOUND = 67,                /* "outbound modifier"  */
-  YYSYMBOL_T_INBOUND = 68,                 /* "inbound modifier"  */
-  YYSYMBOL_T_ANY = 69,                     /* "any modifier"  */
-  YYSYMBOL_T_ALL = 70,                     /* "all modifier"  */
-  YYSYMBOL_T_NONE = 71,                    /* "none modifier"  */
-  YYSYMBOL_T_AT_LEAST = 72,                /* "at least modifier"  */
-  YYSYMBOL_UMINUS = 73,                    /* UMINUS  */
-  YYSYMBOL_UPLUS = 74,                     /* UPLUS  */
-  YYSYMBOL_UNEGATION = 75,                 /* UNEGATION  */
-  YYSYMBOL_FUNCCALL = 76,                  /* FUNCCALL  */
-  YYSYMBOL_REFERENCE = 77,                 /* REFERENCE  */
-  YYSYMBOL_INDEXED = 78,                   /* INDEXED  */
-  YYSYMBOL_EXPANSION = 79,                 /* EXPANSION  */
-  YYSYMBOL_80_ = 80,                       /* '.'  */
-  YYSYMBOL_YYACCEPT = 81,                  /* $accept  */
-  YYSYMBOL_optional_prune_variable = 82,   /* optional_prune_variable  */
-  YYSYMBOL_with_collection = 83,           /* with_collection  */
-  YYSYMBOL_with_collection_list = 84,      /* with_collection_list  */
-  YYSYMBOL_optional_with = 85,             /* optional_with  */
-  YYSYMBOL_86_1 = 86,                      /* $@1  */
-  YYSYMBOL_queryStart = 87,                /* queryStart  */
-  YYSYMBOL_query = 88,                     /* query  */
-  YYSYMBOL_final_statement = 89,           /* final_statement  */
-  YYSYMBOL_optional_statement_block_statements = 90, /* optional_statement_block_statements  */
-  YYSYMBOL_statement_block_statement = 91, /* statement_block_statement  */
-  YYSYMBOL_more_output_variables = 92,     /* more_output_variables  */
-  YYSYMBOL_for_output_variables = 93,      /* for_output_variables  */
-  YYSYMBOL_prune_and_options = 94,         /* prune_and_options  */
-  YYSYMBOL_traversal_graph_info = 95,      /* traversal_graph_info  */
-  YYSYMBOL_shortest_path_graph_info = 96,  /* shortest_path_graph_info  */
-  YYSYMBOL_k_shortest_paths_graph_info = 97, /* k_shortest_paths_graph_info  */
-  YYSYMBOL_k_paths_graph_info = 98,        /* k_paths_graph_info  */
-  YYSYMBOL_all_shortest_paths_graph_info = 99, /* all_shortest_paths_graph_info  */
-  YYSYMBOL_for_statement = 100,            /* for_statement  */
-  YYSYMBOL_101_2 = 101,                    /* $@2  */
-  YYSYMBOL_102_3 = 102,                    /* $@3  */
-  YYSYMBOL_filter_statement = 103,         /* filter_statement  */
-  YYSYMBOL_let_statement = 104,            /* let_statement  */
-  YYSYMBOL_let_list = 105,                 /* let_list  */
-  YYSYMBOL_let_element = 106,              /* let_element  */
-  YYSYMBOL_array_destructuring = 107,      /* array_destructuring  */
-  YYSYMBOL_108_4 = 108,                    /* $@4  */
-  YYSYMBOL_array_destructuring_element = 109, /* array_destructuring_element  */
-  YYSYMBOL_object_destructuring = 110,     /* object_destructuring  */
-  YYSYMBOL_111_5 = 111,                    /* $@5  */
-  YYSYMBOL_object_destructuring_element = 112, /* object_destructuring_element  */
-  YYSYMBOL_count_into = 113,               /* count_into  */
-  YYSYMBOL_collect_variable_list = 114,    /* collect_variable_list  */
-  YYSYMBOL_115_6 = 115,                    /* $@6  */
-  YYSYMBOL_collect_statement = 116,        /* collect_statement  */
-  YYSYMBOL_collect_list = 117,             /* collect_list  */
-  YYSYMBOL_collect_element = 118,          /* collect_element  */
-  YYSYMBOL_collect_optional_into = 119,    /* collect_optional_into  */
-  YYSYMBOL_variable_list = 120,            /* variable_list  */
-  YYSYMBOL_keep = 121,                     /* keep  */
-  YYSYMBOL_122_7 = 122,                    /* $@7  */
-  YYSYMBOL_aggregate = 123,                /* aggregate  */
-  YYSYMBOL_124_8 = 124,                    /* $@8  */
-  YYSYMBOL_aggregate_list = 125,           /* aggregate_list  */
-  YYSYMBOL_aggregate_element = 126,        /* aggregate_element  */
-  YYSYMBOL_aggregate_function_call = 127,  /* aggregate_function_call  */
-  YYSYMBOL_128_9 = 128,                    /* $@9  */
-  YYSYMBOL_sort_statement = 129,           /* sort_statement  */
-  YYSYMBOL_130_10 = 130,                   /* $@10  */
-  YYSYMBOL_sort_list = 131,                /* sort_list  */
-  YYSYMBOL_sort_element = 132,             /* sort_element  */
-  YYSYMBOL_sort_direction = 133,           /* sort_direction  */
-  YYSYMBOL_limit_statement = 134,          /* limit_statement  */
-  YYSYMBOL_window_statement = 135,         /* window_statement  */
-  YYSYMBOL_return_statement = 136,         /* return_statement  */
-  YYSYMBOL_in_or_into_collection = 137,    /* in_or_into_collection  */
-  YYSYMBOL_remove_statement = 138,         /* remove_statement  */
-  YYSYMBOL_insert_statement = 139,         /* insert_statement  */
-  YYSYMBOL_update_parameters = 140,        /* update_parameters  */
-  YYSYMBOL_update_statement = 141,         /* update_statement  */
-  YYSYMBOL_replace_parameters = 142,       /* replace_parameters  */
-  YYSYMBOL_replace_statement = 143,        /* replace_statement  */
-  YYSYMBOL_update_or_replace = 144,        /* update_or_replace  */
-  YYSYMBOL_upsert_input = 145,             /* upsert_input  */
-  YYSYMBOL_upsert_statement = 146,         /* upsert_statement  */
-  YYSYMBOL_147_11 = 147,                   /* $@11  */
-  YYSYMBOL_148_12 = 148,                   /* $@12  */
-  YYSYMBOL_149_13 = 149,                   /* $@13  */
-  YYSYMBOL_quantifier = 150,               /* quantifier  */
-  YYSYMBOL_distinct_expression = 151,      /* distinct_expression  */
-  YYSYMBOL_152_14 = 152,                   /* $@14  */
-  YYSYMBOL_expression = 153,               /* expression  */
-  YYSYMBOL_function_name = 154,            /* function_name  */
-  YYSYMBOL_function_call = 155,            /* function_call  */
-  YYSYMBOL_156_15 = 156,                   /* $@15  */
-  YYSYMBOL_157_16 = 157,                   /* $@16  */
-  YYSYMBOL_operator_unary = 158,           /* operator_unary  */
-  YYSYMBOL_operator_binary = 159,          /* operator_binary  */
-  YYSYMBOL_160_17 = 160,                   /* $@17  */
-  YYSYMBOL_161_18 = 161,                   /* $@18  */
-  YYSYMBOL_operator_ternary = 162,         /* operator_ternary  */
-  YYSYMBOL_163_19 = 163,                   /* $@19  */
-  YYSYMBOL_164_20 = 164,                   /* $@20  */
-  YYSYMBOL_165_21 = 165,                   /* $@21  */
-  YYSYMBOL_optional_function_call_arguments = 166, /* optional_function_call_arguments  */
-  YYSYMBOL_expression_or_query = 167,      /* expression_or_query  */
-  YYSYMBOL_168_22 = 168,                   /* $@22  */
-  YYSYMBOL_function_arguments_list = 169,  /* function_arguments_list  */
-  YYSYMBOL_compound_value = 170,           /* compound_value  */
-  YYSYMBOL_array = 171,                    /* array  */
-  YYSYMBOL_172_23 = 172,                   /* $@23  */
-  YYSYMBOL_optional_array_elements = 173,  /* optional_array_elements  */
-  YYSYMBOL_array_elements_list = 174,      /* array_elements_list  */
-  YYSYMBOL_array_element = 175,            /* array_element  */
-  YYSYMBOL_for_options = 176,              /* for_options  */
-  YYSYMBOL_options = 177,                  /* options  */
-  YYSYMBOL_object = 178,                   /* object  */
-  YYSYMBOL_179_24 = 179,                   /* $@24  */
-  YYSYMBOL_optional_object_elements = 180, /* optional_object_elements  */
-  YYSYMBOL_object_elements_list = 181,     /* object_elements_list  */
-  YYSYMBOL_object_element = 182,           /* object_element  */
-  YYSYMBOL_array_filter_operator = 183,    /* array_filter_operator  */
-  YYSYMBOL_array_map_operator = 184,       /* array_map_operator  */
-  YYSYMBOL_optional_array_filter = 185,    /* optional_array_filter  */
-  YYSYMBOL_optional_array_limit = 186,     /* optional_array_limit  */
-  YYSYMBOL_optional_array_return = 187,    /* optional_array_return  */
-  YYSYMBOL_graph_collection = 188,         /* graph_collection  */
-  YYSYMBOL_graph_collection_list = 189,    /* graph_collection_list  */
-  YYSYMBOL_graph_subject = 190,            /* graph_subject  */
-  YYSYMBOL_191_25 = 191,                   /* $@25  */
-  YYSYMBOL_graph_direction = 192,          /* graph_direction  */
-  YYSYMBOL_graph_direction_steps = 193,    /* graph_direction_steps  */
-  YYSYMBOL_reference = 194,                /* reference  */
-  YYSYMBOL_195_26 = 195,                   /* $@26  */
-  YYSYMBOL_196_27 = 196,                   /* $@27  */
-  YYSYMBOL_197_28 = 197,                   /* $@28  */
-  YYSYMBOL_simple_value = 198,             /* simple_value  */
-  YYSYMBOL_numeric_value = 199,            /* numeric_value  */
-  YYSYMBOL_value_literal = 200,            /* value_literal  */
-  YYSYMBOL_in_or_into_collection_name = 201, /* in_or_into_collection_name  */
-  YYSYMBOL_bind_parameter = 202,           /* bind_parameter  */
-  YYSYMBOL_bind_parameter_datasource_expected = 203, /* bind_parameter_datasource_expected  */
-  YYSYMBOL_object_element_name = 204,      /* object_element_name  */
-  YYSYMBOL_variable_name = 205             /* variable_name  */
+  YYSYMBOL_T_MATCH = 11,                   /* "MATCH declaration"  */
+  YYSYMBOL_T_WHILE = 12,                   /* "WHILE declaration"  */
+  YYSYMBOL_T_UNTIL = 13,                   /* "UNTIL declaration"  */
+  YYSYMBOL_T_SCAN = 14,                    /* "SCAN declaration"  */
+  YYSYMBOL_T_FOLD = 15,                    /* "FOLD declaration"  */
+  YYSYMBOL_T_ASC = 16,                     /* "ASC keyword"  */
+  YYSYMBOL_T_DESC = 17,                    /* "DESC keyword"  */
+  YYSYMBOL_T_IN = 18,                      /* "IN keyword"  */
+  YYSYMBOL_T_WITH = 19,                    /* "WITH keyword"  */
+  YYSYMBOL_T_INTO = 20,                    /* "INTO keyword"  */
+  YYSYMBOL_T_AGGREGATE = 21,               /* "AGGREGATE keyword"  */
+  YYSYMBOL_T_GRAPH = 22,                   /* "GRAPH keyword"  */
+  YYSYMBOL_T_SHORTEST_PATH = 23,           /* "SHORTEST_PATH keyword"  */
+  YYSYMBOL_T_K_SHORTEST_PATHS = 24,        /* "K_SHORTEST_PATHS keyword"  */
+  YYSYMBOL_T_K_PATHS = 25,                 /* "K_PATHS keyword"  */
+  YYSYMBOL_T_ALL_SHORTEST_PATHS = 26,      /* "ALL_SHORTEST_PATHS keyword"  */
+  YYSYMBOL_T_DISTINCT = 27,                /* "DISTINCT modifier"  */
+  YYSYMBOL_T_REMOVE = 28,                  /* "REMOVE command"  */
+  YYSYMBOL_T_INSERT = 29,                  /* "INSERT command"  */
+  YYSYMBOL_T_UPDATE = 30,                  /* "UPDATE command"  */
+  YYSYMBOL_T_REPLACE = 31,                 /* "REPLACE command"  */
+  YYSYMBOL_T_UPSERT = 32,                  /* "UPSERT command"  */
+  YYSYMBOL_T_NULL = 33,                    /* "null"  */
+  YYSYMBOL_T_TRUE = 34,                    /* "true"  */
+  YYSYMBOL_T_FALSE = 35,                   /* "false"  */
+  YYSYMBOL_T_STRING = 36,                  /* "identifier"  */
+  YYSYMBOL_T_QUOTED_STRING = 37,           /* "quoted string"  */
+  YYSYMBOL_T_INTEGER = 38,                 /* "integer number"  */
+  YYSYMBOL_T_DOUBLE = 39,                  /* "number"  */
+  YYSYMBOL_T_PARAMETER = 40,               /* "bind parameter"  */
+  YYSYMBOL_T_DATA_SOURCE_PARAMETER = 41,   /* "bind data source parameter"  */
+  YYSYMBOL_T_ASSIGN = 42,                  /* "assignment"  */
+  YYSYMBOL_T_NOT = 43,                     /* "not operator"  */
+  YYSYMBOL_T_AND = 44,                     /* "and operator"  */
+  YYSYMBOL_T_OR = 45,                      /* "or operator"  */
+  YYSYMBOL_T_NOT_IN = 46,                  /* "not in operator"  */
+  YYSYMBOL_T_REGEX_MATCH = 47,             /* "~= operator"  */
+  YYSYMBOL_T_REGEX_NON_MATCH = 48,         /* "~! operator"  */
+  YYSYMBOL_T_EQ = 49,                      /* "== operator"  */
+  YYSYMBOL_T_NE = 50,                      /* "!= operator"  */
+  YYSYMBOL_T_LT = 51,                      /* "< operator"  */
+  YYSYMBOL_T_GT = 52,                      /* "> operator"  */
+  YYSYMBOL_T_LE = 53,                      /* "<= operator"  */
+  YYSYMBOL_T_GE = 54,                      /* ">= operator"  */
+  YYSYMBOL_T_LIKE = 55,                    /* "like operator"  */
+  YYSYMBOL_T_PLUS = 56,                    /* "+ operator"  */
+  YYSYMBOL_T_MINUS = 57,                   /* "- operator"  */
+  YYSYMBOL_T_TIMES = 58,                   /* "* operator"  */
+  YYSYMBOL_T_DIV = 59,                     /* "/ operator"  */
+  YYSYMBOL_T_MOD = 60,                     /* "% operator"  */
+  YYSYMBOL_T_QUESTION = 61,                /* "?"  */
+  YYSYMBOL_T_COLON = 62,                   /* ":"  */
+  YYSYMBOL_T_SCOPE = 63,                   /* "::"  */
+  YYSYMBOL_T_RANGE = 64,                   /* ".."  */
+  YYSYMBOL_T_COMMA = 65,                   /* ","  */
+  YYSYMBOL_T_OPEN = 66,                    /* "("  */
+  YYSYMBOL_T_CLOSE = 67,                   /* ")"  */
+  YYSYMBOL_T_OBJECT_OPEN = 68,             /* "{"  */
+  YYSYMBOL_T_OBJECT_CLOSE = 69,            /* "}"  */
+  YYSYMBOL_T_ARRAY_OPEN = 70,              /* "["  */
+  YYSYMBOL_T_ARRAY_CLOSE = 71,             /* "]"  */
+  YYSYMBOL_T_OUTBOUND = 72,                /* "outbound modifier"  */
+  YYSYMBOL_T_INBOUND = 73,                 /* "inbound modifier"  */
+  YYSYMBOL_T_ANY = 74,                     /* "any modifier"  */
+  YYSYMBOL_T_ALL = 75,                     /* "all modifier"  */
+  YYSYMBOL_T_NONE = 76,                    /* "none modifier"  */
+  YYSYMBOL_T_AT_LEAST = 77,                /* "at least modifier"  */
+  YYSYMBOL_UMINUS = 78,                    /* UMINUS  */
+  YYSYMBOL_UPLUS = 79,                     /* UPLUS  */
+  YYSYMBOL_UNEGATION = 80,                 /* UNEGATION  */
+  YYSYMBOL_FUNCCALL = 81,                  /* FUNCCALL  */
+  YYSYMBOL_REFERENCE = 82,                 /* REFERENCE  */
+  YYSYMBOL_INDEXED = 83,                   /* INDEXED  */
+  YYSYMBOL_EXPANSION = 84,                 /* EXPANSION  */
+  YYSYMBOL_85_ = 85,                       /* '.'  */
+  YYSYMBOL_YYACCEPT = 86,                  /* $accept  */
+  YYSYMBOL_optional_prune_variable = 87,   /* optional_prune_variable  */
+  YYSYMBOL_with_collection = 88,           /* with_collection  */
+  YYSYMBOL_with_collection_list = 89,      /* with_collection_list  */
+  YYSYMBOL_optional_with = 90,             /* optional_with  */
+  YYSYMBOL_91_1 = 91,                      /* $@1  */
+  YYSYMBOL_queryStart = 92,                /* queryStart  */
+  YYSYMBOL_query = 93,                     /* query  */
+  YYSYMBOL_final_statement = 94,           /* final_statement  */
+  YYSYMBOL_optional_statement_block_statements = 95, /* optional_statement_block_statements  */
+  YYSYMBOL_statement_block_statement = 96, /* statement_block_statement  */
+  YYSYMBOL_more_output_variables = 97,     /* more_output_variables  */
+  YYSYMBOL_for_output_variables = 98,      /* for_output_variables  */
+  YYSYMBOL_prune_and_options = 99,         /* prune_and_options  */
+  YYSYMBOL_traversal_graph_info = 100,     /* traversal_graph_info  */
+  YYSYMBOL_shortest_path_graph_info = 101, /* shortest_path_graph_info  */
+  YYSYMBOL_k_shortest_paths_graph_info = 102, /* k_shortest_paths_graph_info  */
+  YYSYMBOL_k_paths_graph_info = 103,       /* k_paths_graph_info  */
+  YYSYMBOL_all_shortest_paths_graph_info = 104, /* all_shortest_paths_graph_info  */
+  YYSYMBOL_for_statement = 105,            /* for_statement  */
+  YYSYMBOL_106_2 = 106,                    /* $@2  */
+  YYSYMBOL_107_3 = 107,                    /* $@3  */
+  YYSYMBOL_filter_statement = 108,         /* filter_statement  */
+  YYSYMBOL_let_statement = 109,            /* let_statement  */
+  YYSYMBOL_let_list = 110,                 /* let_list  */
+  YYSYMBOL_let_element = 111,              /* let_element  */
+  YYSYMBOL_array_destructuring = 112,      /* array_destructuring  */
+  YYSYMBOL_113_4 = 113,                    /* $@4  */
+  YYSYMBOL_array_destructuring_element = 114, /* array_destructuring_element  */
+  YYSYMBOL_object_destructuring = 115,     /* object_destructuring  */
+  YYSYMBOL_116_5 = 116,                    /* $@5  */
+  YYSYMBOL_object_destructuring_element = 117, /* object_destructuring_element  */
+  YYSYMBOL_count_into = 118,               /* count_into  */
+  YYSYMBOL_collect_variable_list = 119,    /* collect_variable_list  */
+  YYSYMBOL_120_6 = 120,                    /* $@6  */
+  YYSYMBOL_collect_statement = 121,        /* collect_statement  */
+  YYSYMBOL_collect_list = 122,             /* collect_list  */
+  YYSYMBOL_collect_element = 123,          /* collect_element  */
+  YYSYMBOL_collect_optional_into = 124,    /* collect_optional_into  */
+  YYSYMBOL_variable_list = 125,            /* variable_list  */
+  YYSYMBOL_keep = 126,                     /* keep  */
+  YYSYMBOL_127_7 = 127,                    /* $@7  */
+  YYSYMBOL_aggregate = 128,                /* aggregate  */
+  YYSYMBOL_129_8 = 129,                    /* $@8  */
+  YYSYMBOL_aggregate_list = 130,           /* aggregate_list  */
+  YYSYMBOL_aggregate_element = 131,        /* aggregate_element  */
+  YYSYMBOL_aggregate_function_call = 132,  /* aggregate_function_call  */
+  YYSYMBOL_133_9 = 133,                    /* $@9  */
+  YYSYMBOL_sort_statement = 134,           /* sort_statement  */
+  YYSYMBOL_135_10 = 135,                   /* $@10  */
+  YYSYMBOL_sort_list = 136,                /* sort_list  */
+  YYSYMBOL_sort_element = 137,             /* sort_element  */
+  YYSYMBOL_sort_direction = 138,           /* sort_direction  */
+  YYSYMBOL_limit_statement = 139,          /* limit_statement  */
+  YYSYMBOL_window_statement = 140,         /* window_statement  */
+  YYSYMBOL_return_statement = 141,         /* return_statement  */
+  YYSYMBOL_in_or_into_collection = 142,    /* in_or_into_collection  */
+  YYSYMBOL_remove_statement = 143,         /* remove_statement  */
+  YYSYMBOL_insert_statement = 144,         /* insert_statement  */
+  YYSYMBOL_update_parameters = 145,        /* update_parameters  */
+  YYSYMBOL_update_statement = 146,         /* update_statement  */
+  YYSYMBOL_replace_parameters = 147,       /* replace_parameters  */
+  YYSYMBOL_replace_statement = 148,        /* replace_statement  */
+  YYSYMBOL_update_or_replace = 149,        /* update_or_replace  */
+  YYSYMBOL_upsert_input = 150,             /* upsert_input  */
+  YYSYMBOL_upsert_statement = 151,         /* upsert_statement  */
+  YYSYMBOL_152_11 = 152,                   /* $@11  */
+  YYSYMBOL_153_12 = 153,                   /* $@12  */
+  YYSYMBOL_154_13 = 154,                   /* $@13  */
+  YYSYMBOL_quantifier = 155,               /* quantifier  */
+  YYSYMBOL_distinct_expression = 156,      /* distinct_expression  */
+  YYSYMBOL_157_14 = 157,                   /* $@14  */
+  YYSYMBOL_expression = 158,               /* expression  */
+  YYSYMBOL_function_name = 159,            /* function_name  */
+  YYSYMBOL_function_call = 160,            /* function_call  */
+  YYSYMBOL_161_15 = 161,                   /* $@15  */
+  YYSYMBOL_162_16 = 162,                   /* $@16  */
+  YYSYMBOL_operator_unary = 163,           /* operator_unary  */
+  YYSYMBOL_operator_binary = 164,          /* operator_binary  */
+  YYSYMBOL_165_17 = 165,                   /* $@17  */
+  YYSYMBOL_166_18 = 166,                   /* $@18  */
+  YYSYMBOL_operator_ternary = 167,         /* operator_ternary  */
+  YYSYMBOL_168_19 = 168,                   /* $@19  */
+  YYSYMBOL_169_20 = 169,                   /* $@20  */
+  YYSYMBOL_170_21 = 170,                   /* $@21  */
+  YYSYMBOL_optional_function_call_arguments = 171, /* optional_function_call_arguments  */
+  YYSYMBOL_expression_or_query = 172,      /* expression_or_query  */
+  YYSYMBOL_173_22 = 173,                   /* $@22  */
+  YYSYMBOL_function_arguments_list = 174,  /* function_arguments_list  */
+  YYSYMBOL_compound_value = 175,           /* compound_value  */
+  YYSYMBOL_array = 176,                    /* array  */
+  YYSYMBOL_177_23 = 177,                   /* $@23  */
+  YYSYMBOL_optional_array_elements = 178,  /* optional_array_elements  */
+  YYSYMBOL_array_elements_list = 179,      /* array_elements_list  */
+  YYSYMBOL_array_element = 180,            /* array_element  */
+  YYSYMBOL_for_options = 181,              /* for_options  */
+  YYSYMBOL_options = 182,                  /* options  */
+  YYSYMBOL_object = 183,                   /* object  */
+  YYSYMBOL_184_24 = 184,                   /* $@24  */
+  YYSYMBOL_optional_object_elements = 185, /* optional_object_elements  */
+  YYSYMBOL_object_elements_list = 186,     /* object_elements_list  */
+  YYSYMBOL_object_element = 187,           /* object_element  */
+  YYSYMBOL_array_filter_operator = 188,    /* array_filter_operator  */
+  YYSYMBOL_array_map_operator = 189,       /* array_map_operator  */
+  YYSYMBOL_optional_array_filter = 190,    /* optional_array_filter  */
+  YYSYMBOL_optional_array_limit = 191,     /* optional_array_limit  */
+  YYSYMBOL_optional_array_return = 192,    /* optional_array_return  */
+  YYSYMBOL_graph_collection = 193,         /* graph_collection  */
+  YYSYMBOL_graph_collection_list = 194,    /* graph_collection_list  */
+  YYSYMBOL_graph_subject = 195,            /* graph_subject  */
+  YYSYMBOL_196_25 = 196,                   /* $@25  */
+  YYSYMBOL_graph_direction = 197,          /* graph_direction  */
+  YYSYMBOL_graph_direction_steps = 198,    /* graph_direction_steps  */
+  YYSYMBOL_reference = 199,                /* reference  */
+  YYSYMBOL_200_26 = 200,                   /* $@26  */
+  YYSYMBOL_201_27 = 201,                   /* $@27  */
+  YYSYMBOL_202_28 = 202,                   /* $@28  */
+  YYSYMBOL_simple_value = 203,             /* simple_value  */
+  YYSYMBOL_numeric_value = 204,            /* numeric_value  */
+  YYSYMBOL_value_literal = 205,            /* value_literal  */
+  YYSYMBOL_in_or_into_collection_name = 206, /* in_or_into_collection_name  */
+  YYSYMBOL_bind_parameter = 207,           /* bind_parameter  */
+  YYSYMBOL_bind_parameter_datasource_expected = 208, /* bind_parameter_datasource_expected  */
+  YYSYMBOL_object_element_name = 209,      /* object_element_name  */
+  YYSYMBOL_variable_name = 210             /* variable_name  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -757,7 +762,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 } // namespace
 
 
-#line 760 "grammar.cpp"
+#line 765 "grammar.cpp"
 
 
 #ifdef short
@@ -1084,10 +1089,10 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  7
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   2004
+#define YYLAST   2005
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  81
+#define YYNTOKENS  86
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  125
 /* YYNRULES -- Number of rules.  */
@@ -1096,7 +1101,7 @@ union yyalloc
 #define YYNSTATES  541
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK   334
+#define YYMAXUTOK   339
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -1114,7 +1119,7 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,    80,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,    85,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -1143,44 +1148,44 @@ static const yytype_int8 yytranslate[] =
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
       55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
-      75,    76,    77,    78,    79
+      75,    76,    77,    78,    79,    80,    81,    82,    83,    84
 };
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   667,   667,   673,   683,   686,   692,   696,   700,   707,
-     709,   709,   721,   726,   731,   733,   736,   739,   742,   745,
-     751,   753,   758,   760,   762,   764,   766,   768,   770,   772,
-     774,   776,   778,   780,   785,   792,   799,   802,   805,   811,
-     818,   842,   865,   878,   884,   890,   896,   905,   905,  1017,
-    1017,  1058,  1070,  1082,  1094,  1109,  1117,  1122,  1124,  1129,
-    1133,  1141,  1152,  1152,  1162,  1165,  1168,  1171,  1174,  1179,
-    1179,  1189,  1193,  1197,  1201,  1205,  1209,  1214,  1225,  1225,
-    1236,  1246,  1259,  1283,  1338,  1357,  1388,  1390,  1395,  1402,
-    1405,  1408,  1417,  1430,  1446,  1446,  1461,  1461,  1471,  1473,
-    1478,  1485,  1485,  1497,  1497,  1508,  1511,  1517,  1523,  1526,
-    1529,  1532,  1538,  1543,  1550,  1565,  1583,  1591,  1594,  1600,
-    1610,  1620,  1628,  1639,  1644,  1652,  1663,  1668,  1671,  1677,
-    1680,  1686,  1702,  1686,  1749,  1749,  1808,  1811,  1814,  1820,
-    1820,  1830,  1836,  1839,  1842,  1845,  1848,  1851,  1857,  1860,
-    1873,  1873,  1880,  1880,  1890,  1893,  1896,  1902,  1902,  1908,
-    1908,  1914,  1917,  1920,  1923,  1926,  1929,  1932,  1935,  1938,
-    1941,  1944,  1947,  1950,  1953,  1960,  1967,  1973,  1979,  1985,
-    1992,  1995,  1998,  2001,  2004,  2007,  2010,  2013,  2016,  2020,
-    2024,  2028,  2032,  2036,  2040,  2044,  2051,  2087,  2051,  2095,
-    2095,  2128,  2130,  2135,  2138,  2138,  2158,  2161,  2167,  2170,
-    2176,  2176,  2185,  2187,  2189,  2194,  2196,  2201,  2207,  2210,
-    2235,  2255,  2258,  2273,  2273,  2282,  2284,  2286,  2291,  2293,
-    2298,  2314,  2318,  2322,  2326,  2330,  2334,  2338,  2342,  2346,
-    2350,  2354,  2358,  2368,  2375,  2378,  2384,  2387,  2393,  2396,
-    2400,  2404,  2408,  2416,  2419,  2422,  2428,  2431,  2437,  2440,
-    2443,  2447,  2453,  2457,  2464,  2470,  2470,  2479,  2486,  2490,
-    2499,  2502,  2505,  2511,  2514,  2520,  2552,  2555,  2558,  2562,
-    2571,  2571,  2588,  2603,  2616,  2629,  2629,  2674,  2674,  2732,
-    2735,  2741,  2745,  2752,  2755,  2758,  2761,  2764,  2770,  2775,
-    2780,  2791,  2799,  2806,  2814,  2822,  2825,  2830
+       0,   677,   677,   683,   693,   696,   702,   706,   710,   717,
+     719,   719,   731,   736,   741,   743,   746,   749,   752,   755,
+     761,   763,   768,   770,   772,   774,   776,   778,   780,   782,
+     784,   786,   788,   790,   795,   802,   809,   812,   815,   821,
+     828,   852,   875,   888,   894,   900,   906,   915,   915,  1027,
+    1027,  1068,  1080,  1092,  1104,  1119,  1127,  1132,  1134,  1139,
+    1143,  1151,  1162,  1162,  1172,  1175,  1178,  1181,  1184,  1189,
+    1189,  1199,  1203,  1207,  1211,  1215,  1219,  1224,  1235,  1235,
+    1246,  1256,  1269,  1293,  1348,  1367,  1401,  1403,  1408,  1415,
+    1418,  1421,  1430,  1443,  1459,  1459,  1474,  1474,  1484,  1486,
+    1491,  1498,  1498,  1510,  1510,  1521,  1524,  1530,  1536,  1539,
+    1542,  1545,  1551,  1556,  1563,  1578,  1596,  1604,  1607,  1613,
+    1623,  1633,  1641,  1652,  1657,  1665,  1676,  1681,  1684,  1690,
+    1693,  1699,  1715,  1699,  1762,  1762,  1821,  1824,  1827,  1833,
+    1833,  1843,  1849,  1852,  1855,  1858,  1861,  1864,  1870,  1873,
+    1886,  1886,  1893,  1893,  1903,  1906,  1909,  1915,  1915,  1921,
+    1921,  1927,  1930,  1933,  1936,  1939,  1942,  1945,  1948,  1951,
+    1954,  1957,  1960,  1963,  1966,  1973,  1980,  1986,  1992,  1998,
+    2005,  2008,  2011,  2014,  2017,  2020,  2023,  2026,  2029,  2033,
+    2037,  2041,  2045,  2049,  2053,  2057,  2064,  2100,  2064,  2108,
+    2108,  2141,  2143,  2148,  2151,  2151,  2171,  2174,  2180,  2183,
+    2189,  2189,  2198,  2200,  2202,  2207,  2209,  2214,  2220,  2223,
+    2248,  2268,  2271,  2286,  2286,  2295,  2297,  2299,  2304,  2306,
+    2311,  2327,  2331,  2335,  2339,  2343,  2347,  2351,  2355,  2359,
+    2363,  2367,  2371,  2381,  2388,  2391,  2397,  2400,  2406,  2409,
+    2413,  2417,  2421,  2429,  2432,  2435,  2441,  2444,  2450,  2453,
+    2456,  2460,  2466,  2470,  2477,  2483,  2483,  2492,  2499,  2503,
+    2512,  2515,  2518,  2524,  2527,  2533,  2565,  2568,  2571,  2575,
+    2584,  2584,  2601,  2616,  2629,  2642,  2642,  2687,  2687,  2745,
+    2748,  2754,  2758,  2765,  2768,  2771,  2774,  2777,  2783,  2788,
+    2793,  2804,  2812,  2819,  2827,  2835,  2838,  2843
 };
 #endif
 
@@ -1200,7 +1205,9 @@ static const char *const yytname[] =
   "\"FOR declaration\"", "\"LET declaration\"", "\"FILTER declaration\"",
   "\"RETURN declaration\"", "\"COLLECT declaration\"",
   "\"SORT declaration\"", "\"LIMIT declaration\"",
-  "\"WINDOW declaration\"", "\"ASC keyword\"", "\"DESC keyword\"",
+  "\"WINDOW declaration\"", "\"MATCH declaration\"",
+  "\"WHILE declaration\"", "\"UNTIL declaration\"", "\"SCAN declaration\"",
+  "\"FOLD declaration\"", "\"ASC keyword\"", "\"DESC keyword\"",
   "\"IN keyword\"", "\"WITH keyword\"", "\"INTO keyword\"",
   "\"AGGREGATE keyword\"", "\"GRAPH keyword\"",
   "\"SHORTEST_PATH keyword\"", "\"K_SHORTEST_PATHS keyword\"",
@@ -1264,7 +1271,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-459)
+#define YYPACT_NINF (-478)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -1278,61 +1285,61 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-      20,  -459,  -459,    52,   115,  -459,   617,  -459,  -459,  -459,
-    -459,  -459,    -4,  -459,    76,    76,  1863,  1749,   159,  -459,
-    1863,  1863,  1863,  1863,  1863,  1863,   101,  -459,  -459,  -459,
-    -459,  -459,   251,  -459,  -459,  -459,  -459,  -459,    16,    24,
-      28,    29,    73,   115,  -459,  -459,  -459,  -459,     8,    74,
-    -459,  -459,  -459,    33,  -459,    62,   106,   111,  -459,  -459,
-    -459,   100,  -459,  -459,  -459,  -459,  -459,  1863,    50,  1863,
-    1863,  1863,  -459,  -459,  1579,   130,  -459,  -459,  -459,  -459,
-    -459,  -459,  -459,    75,  -459,  -459,  -459,  -459,  -459,  1579,
-     107,  -459,   129,   135,   181,  1863,   917,   961,   187,  1006,
-    1006,  -459,   734,  -459,   781,  -459,  -459,  -459,  -459,   135,
-     129,   173,   181,  -459,   135,    76,   135,   334,    76,  1863,
-    1863,  1863,  -459,  -459,  -459,  -459,  1050,  -459,    27,  1863,
-    1863,    67,  -459,  -459,  1863,  1863,  1863,  1863,  1863,  1863,
-    1863,  1863,  1863,  1863,  1863,  1863,  1863,  1863,  1863,   155,
-    1863,  -459,  -459,  -459,   152,   242,   191,  -459,  1787,   171,
-    1863,   213,   135,   199,  -459,   203,  -459,   232,   129,   210,
-    -459,   643,  1863,   199,  -459,  1901,   178,   129,   129,  1863,
-     129,  1863,   129,  1863,   248,   237,  -459,   199,   129,  -459,
-     129,    21,   218,  -459,   -27,  -459,  -459,  -459,  -459,  -459,
-    -459,  -459,  -459,  -459,  -459,  -459,   825,   151,  1711,  -459,
-    1579,  1579,  1579,  1825,  -459,   222,   228,   238,   249,   250,
-     252,  -459,   253,   259,  1863,   262,   271,   277,   278,   280,
-     241,   279,  -459,   284,  1579,   276,   286,  -459,   430,  1863,
-    1863,  1863,  1863,  1863,   430,   302,   302,   302,   302,   186,
-     186,   186,   186,   302,   239,   239,  -459,  -459,  -459,  1863,
-     287,   206,  1863,  1863,  1863,  1863,  1863,  1863,  1863,  1863,
-    1863,  -459,  1825,  -459,  -459,  1094,   291,   299,  -459,  -459,
-    1579,   135,   311,  -459,   322,  -459,   135,  1863,  -459,  1863,
-    -459,  -459,  -459,  -459,  -459,  -459,  1579,   187,   174,    40,
-     608,  -459,  -459,  -459,  -459,  -459,  -459,  -459,  1006,  -459,
-    1006,  -459,  1579,  1863,  1863,   135,  -459,  -459,   135,  -459,
-      76,    76,  -459,   342,   255,   343,  -459,  1863,  1863,  1863,
-    1863,   687,  1579,   246,  -459,  -459,   315,  -459,  1863,  1863,
-    1863,  1863,  1863,  1863,  1138,  1863,  1863,  1863,  1863,  1863,
-    -459,    27,  1863,  -459,  1863,   302,   302,   302,  1666,  1623,
-    1182,  1863,  1227,   430,   430,   302,   302,   186,   186,   186,
-     186,   314,  -459,  -459,   535,  -459,   535,  -459,   135,   346,
-    -459,  1579,  -459,  -459,   129,   129,   354,   873,  1579,   319,
-    -459,  -459,  -459,  -459,  -459,  -459,  1939,  -459,  1863,  -459,
-    1271,  1315,  1359,  1403,   158,  -459,   321,  -459,   184,  -459,
-    -459,  -459,  1863,  1579,  1579,  1579,  1579,  1579,  1579,   330,
-    1579,  1579,  1579,  1579,  1579,  -459,  1579,  -459,  -459,  1579,
-     456,  -459,  1863,   328,   386,   483,   326,   384,  -459,  -459,
-    -459,   172,  -459,  -459,  1863,  -459,  -459,  1863,   135,   110,
-     365,  1579,   361,  1447,  1863,  1863,  1863,  1863,  -459,  -459,
-    -459,  -459,  -459,  -459,  -459,  1863,  1863,  1863,  1863,  1863,
-    1863,  1863,  1863,  1863,  1863,  1579,  1863,  1863,  1863,  -459,
-    1863,   394,  -459,   873,  1006,  -459,   199,  1863,  1863,   687,
-     687,   687,   687,   118,  1579,  1579,   430,   430,   302,   302,
-     186,   186,   186,   186,  1491,  1579,  1579,  1535,  1863,   340,
-    1825,  1863,   129,  -459,  1579,  1579,   129,   129,   129,   129,
-    -459,   347,   407,  1863,  1579,  -459,   351,  1006,  -459,  -459,
-    -459,  -459,  -459,   118,  1863,  1579,  -459,   129,  -459,  1579,
-    -459
+      17,  -478,  -478,    48,    37,  -478,   481,  -478,  -478,  -478,
+    -478,  -478,    -7,  -478,    16,    16,  1859,  1703,    69,  -478,
+    1859,  1859,  1859,  1859,  1859,  1859,    70,  -478,  -478,  -478,
+    -478,  -478,   259,  -478,  -478,  -478,  -478,  -478,    20,    24,
+      27,    28,    31,    37,  -478,  -478,  -478,  -478,   -28,    41,
+    -478,  -478,  -478,     3,  -478,    34,    39,    75,  -478,  -478,
+    -478,   -17,  -478,  -478,  -478,  -478,  -478,  1859,    67,  1859,
+    1859,  1859,  -478,  -478,  1533,   146,  -478,  -478,  -478,  -478,
+    -478,  -478,  -478,   -23,  -478,  -478,  -478,  -478,  -478,  1533,
+     100,  -478,   105,   107,   133,  1859,   871,   915,   139,   960,
+     960,  -478,   688,  -478,   735,  -478,  -478,  -478,  -478,   107,
+     105,   128,   133,  -478,   107,    16,   107,  1741,    16,  1859,
+    1859,  1859,  -478,  -478,  -478,  -478,  1004,  -478,   547,  1859,
+    1859,   138,  -478,  -478,  1859,  1859,  1859,  1859,  1859,  1859,
+    1859,  1859,  1859,  1859,  1859,  1859,  1859,  1859,  1859,   106,
+    1859,  -478,  -478,  -478,   141,   216,   130,  -478,  1783,   158,
+    1859,   150,   107,   145,  -478,   155,  -478,   180,   105,   165,
+    -478,   597,  1859,   145,  -478,  1897,   178,   105,   105,  1859,
+     105,  1859,   105,  1859,   207,   200,  -478,   145,   105,  -478,
+     105,    86,   182,  -478,   104,  -478,  -478,  -478,  -478,  -478,
+    -478,  -478,  -478,  -478,  -478,  -478,   779,    83,  1665,  -478,
+    1533,  1533,  1533,  1821,  -478,   194,   183,   201,   212,   213,
+     219,  -478,   222,   223,  1859,   233,   239,   240,   247,   248,
+     227,   251,  -478,   257,  1533,   228,   263,  -478,  1659,  1859,
+    1859,  1859,  1859,  1859,  1659,   297,   297,   297,   297,    90,
+      90,    90,    90,   297,   234,   234,  -478,  -478,  -478,  1859,
+     272,   131,  1859,  1859,  1859,  1859,  1859,  1859,  1859,  1859,
+    1859,  -478,  1821,  -478,  -478,  1048,   274,   279,  -478,  -478,
+    1533,   107,   276,  -478,   300,  -478,   107,  1859,  -478,  1859,
+    -478,  -478,  -478,  -478,  -478,  -478,  1533,   139,   174,    35,
+     367,  -478,  -478,  -478,  -478,  -478,  -478,  -478,   960,  -478,
+     960,  -478,  1533,  1859,  1859,   107,  -478,  -478,   107,  -478,
+      16,    16,  -478,   303,   237,   308,  -478,  1859,  1859,  1859,
+    1859,   641,  1533,   280,  -478,  -478,   281,  -478,  1859,  1859,
+    1859,  1859,  1859,  1859,  1092,  1859,  1859,  1859,  1859,  1859,
+    -478,   547,  1859,  -478,  1859,   297,   297,   297,  1620,  1577,
+    1136,  1859,  1181,  1659,  1659,   297,   297,    90,    90,    90,
+      90,   285,  -478,  -478,   535,  -478,   535,  -478,   107,   323,
+    -478,  1533,  -478,  -478,   105,   105,   333,   827,  1533,   298,
+    -478,  -478,  -478,  -478,  -478,  -478,  1935,  -478,  1859,  -478,
+    1225,  1269,  1313,  1357,   160,  -478,   299,  -478,   192,  -478,
+    -478,  -478,  1859,  1533,  1533,  1533,  1533,  1533,  1533,   304,
+    1533,  1533,  1533,  1533,  1533,  -478,  1533,  -478,  -478,  1533,
+     254,  -478,  1859,   302,   360,   478,   307,   370,  -478,  -478,
+    -478,   172,  -478,  -478,  1859,  -478,  -478,  1859,   107,    95,
+     345,  1533,   327,  1401,  1859,  1859,  1859,  1859,  -478,  -478,
+    -478,  -478,  -478,  -478,  -478,  1859,  1859,  1859,  1859,  1859,
+    1859,  1859,  1859,  1859,  1859,  1533,  1859,  1859,  1859,  -478,
+    1859,   378,  -478,   827,   960,  -478,   145,  1859,  1859,   641,
+     641,   641,   641,    99,  1533,  1533,  1659,  1659,   297,   297,
+      90,    90,    90,    90,  1445,  1533,  1533,  1489,  1859,   314,
+    1821,  1859,   105,  -478,  1533,  1533,   105,   105,   105,   105,
+    -478,   321,   382,  1859,  1533,  -478,   322,   960,  -478,  -478,
+    -478,  -478,  -478,    99,  1859,  1533,  -478,   105,  -478,  1533,
+    -478
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -1400,19 +1407,19 @@ static const yytype_int16 yydefact[] =
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
-    -459,  -459,    14,  -459,  -459,  -459,  -459,  -114,  -459,  -459,
-    -459,  -459,  -459,  -459,  -459,  -459,  -459,  -459,  -459,  -459,
-    -459,  -459,  -459,  -459,  -459,   296,    -3,  -459,    94,     0,
-    -459,   103,   387,  -459,  -459,  -459,  -459,   132,   -74,  -459,
-    -459,  -459,   -15,  -459,  -459,    46,  -459,  -459,  -459,  -459,
-    -459,   136,  -459,  -459,  -459,  -459,   -79,  -459,  -459,  -459,
-    -459,  -459,  -459,   -57,  -459,  -459,  -459,  -459,  -459,  -132,
-    -459,  -459,   -16,    48,  -459,  -459,  -459,  -459,  -459,  -459,
-    -459,  -459,  -459,  -459,  -459,  -254,    22,  -459,  -459,  -459,
-    -459,  -459,  -459,  -459,    78,  -459,  -108,   -11,  -459,  -459,
-    -459,    79,  -459,  -459,    57,  -459,  -459,  -458,  -459,  -211,
-    -459,   -98,  -459,  -459,  -459,  -459,  -459,  -459,  -459,   264,
-     260,   -14,    18,  -459,   102
+    -478,  -478,    14,  -478,  -478,  -478,  -478,  -114,  -478,  -478,
+    -478,  -478,  -478,  -478,  -478,  -478,  -478,  -478,  -478,  -478,
+    -478,  -478,  -478,  -478,  -478,   273,    -3,  -478,    71,     0,
+    -478,    82,   361,  -478,  -478,  -478,  -478,   115,   -62,  -478,
+    -478,  -478,   -15,  -478,  -478,    29,  -478,  -478,  -478,  -478,
+    -478,   113,  -478,  -478,  -478,  -478,   -79,  -478,  -478,  -478,
+    -478,  -478,  -478,   -77,  -478,  -478,  -478,  -478,  -478,  -277,
+    -478,  -478,   -16,    33,  -478,  -478,  -478,  -478,  -478,  -478,
+    -478,  -478,  -478,  -478,  -478,  -254,     1,  -478,  -478,  -478,
+    -478,  -478,  -478,  -478,    60,  -478,  -108,   -11,  -478,  -478,
+    -478,    64,  -478,  -478,    42,  -478,  -478,  -477,  -478,  -232,
+    -478,   -98,  -478,  -478,  -478,  -478,  -478,  -478,  -478,   250,
+     243,   -14,    18,  -478,   102
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -1439,109 +1446,149 @@ static const yytype_int16 yydefgoto[] =
 static const yytype_int16 yytable[] =
 {
       74,    89,   186,   189,    96,    97,    99,   100,   102,   104,
-      98,    50,   108,   215,    51,   107,   -15,   112,   371,   207,
-     168,   178,    13,   180,   -16,   182,    44,     8,   -17,   -18,
-      13,     9,    10,   321,     1,   520,   216,   217,   190,   322,
-    -299,   218,   219,  -299,  -299,  -299,  -299,  -299,  -299,  -299,
-    -299,   122,     7,   124,   125,   126,    43,   113,   220,   221,
-     288,    13,   222,  -299,  -299,  -299,  -299,  -299,   116,   306,
-     307,  -299,   309,   -19,   311,   538,   -15,   223,   -15,   171,
-     316,   318,   317,   174,   -16,   319,   -16,   117,   -17,   -18,
-     -17,   -18,   224,   118,   225,   226,   227,   228,   229,   119,
-    -299,   206,  -299,   210,   211,   212,   105,    45,   326,   239,
-     240,   123,   193,   234,   238,   195,    52,   241,   244,   245,
+      98,    50,   108,   215,    51,   107,   520,   112,   371,   207,
+     -15,   178,    13,   180,   -16,   182,    44,   -17,   -18,     8,
+      13,   -19,   168,     9,    10,  -299,     1,   116,  -299,  -299,
+    -299,  -299,  -299,  -299,  -299,  -299,  -148,   158,     7,  -148,
+     190,   122,    45,   124,   125,   126,   538,   113,    43,   117,
+     288,    13,   159,  -299,  -299,  -299,  -299,  -299,   118,   306,
+     307,  -299,   309,     8,   311,   105,   119,     9,    10,   171,
+     316,   120,   317,   174,    46,   -15,    47,   -15,    90,   -16,
+      91,   -16,   -17,   -18,   -17,   -18,   -19,   434,   -19,   434,
+    -299,   206,  -299,   210,   211,   212,   327,   328,   326,   329,
+      65,    66,   193,   234,   238,   195,    52,   121,   244,   245,
      246,   247,   248,   249,   250,   251,   252,   253,   254,   255,
-     256,   257,   258,   -19,   261,   -19,    65,    66,   161,    46,
-     158,    47,   275,   120,   280,   279,     8,  -307,   121,   405,
-       9,    10,   285,     9,    10,   159,   296,   295,  -148,   238,
-     163,  -148,   297,   308,    72,   310,    45,   312,  -148,   327,
-     328,  -148,   329,    90,  -298,    91,   285,  -298,  -298,  -298,
-    -298,  -298,  -298,  -298,  -298,   198,   199,   200,   156,   458,
-     459,   157,   331,    65,    66,   167,   109,  -298,  -298,  -298,
-    -298,  -298,   278,    91,   187,  -298,    65,    66,   344,   302,
-     303,   185,  -199,   262,   304,   462,   192,   196,   197,    65,
-      66,   411,   271,   355,   356,   357,   358,   359,   281,   384,
-     156,   385,  -148,   482,  -298,  -148,  -298,   144,   145,   146,
-     147,   148,   434,   360,   434,   150,   362,   363,   364,   365,
-     366,   367,   368,   369,   370,   263,   526,   144,   145,   146,
-     147,   148,    72,   286,   284,    90,   109,    91,  -137,   287,
-     289,   381,   313,   171,   314,   320,   442,   443,   516,   517,
-     518,   519,   383,   264,   337,   338,   265,   266,   267,   268,
-     269,   270,   146,   147,   148,   339,  -137,   387,   388,  -137,
-    -137,  -137,  -137,  -137,  -137,   350,   340,   341,   410,  -305,
-     342,   400,   401,   402,   403,   130,   343,   392,   193,   345,
-     393,   195,   413,   414,   415,   416,   417,   418,   346,   420,
-     421,   422,   423,   424,   347,   348,   426,   349,   234,   351,
-     131,   352,   353,   134,   361,   429,   354,   373,   139,   140,
-     141,   142,   375,   144,   145,   146,   147,   148,   435,   379,
-     435,   150,    58,    59,    60,    61,    62,    63,    64,    65,
-      66,   378,    67,   396,   398,   412,   431,   439,   444,   448,
-     451,   461,   453,   377,    68,    69,    70,   465,   167,   476,
-     460,   477,   479,   480,   463,    71,   486,    72,   487,    73,
-     508,   198,   199,   200,   528,   512,   525,   533,   529,   530,
-     531,   532,   534,   536,   209,   395,   475,   390,   380,   110,
-     192,   391,   394,   196,   438,   382,   511,   441,   483,   540,
-     425,   484,   427,   437,   464,   294,   305,     0,   489,   490,
+     256,   257,   258,   123,   261,   405,   161,  -307,    72,     9,
+      10,   163,   275,    45,   280,   279,   144,   145,   146,   147,
+     148,   318,   285,   109,   150,   319,   296,   295,  -148,   238,
+      91,  -148,   297,   308,   187,   310,   271,   312,  -199,   321,
+     281,   198,   199,   200,  -298,   322,   285,  -298,  -298,  -298,
+    -298,  -298,  -298,  -298,  -298,   239,   240,   144,   145,   146,
+     147,   148,   331,   241,   278,   167,   458,   459,    65,    66,
+      65,    66,  -298,  -298,  -298,  -298,  -298,   262,   344,   156,
+    -298,   185,   157,    72,   302,   303,   192,   196,   197,   304,
+     286,   411,   287,   355,   356,   357,   358,   359,   462,   384,
+     289,   385,    65,    66,   263,   156,   313,  -148,   482,  -298,
+    -148,  -298,   314,   360,   320,   338,   362,   363,   364,   365,
+     366,   367,   368,   369,   370,  -137,   526,   516,   517,   518,
+     519,   337,   264,   339,   284,   265,   266,   267,   268,   269,
+     270,   381,   467,   171,   340,   341,   442,   443,    90,   109,
+      91,  -305,   383,  -137,   342,   343,  -137,  -137,  -137,  -137,
+    -137,  -137,   146,   147,   148,   345,   350,   387,   388,   353,
+     468,   346,   347,   469,   470,   471,   472,   473,   474,   348,
+     349,   400,   401,   402,   403,   130,   351,   392,   193,   352,
+     393,   195,   413,   414,   415,   416,   417,   418,   354,   420,
+     421,   422,   423,   424,   361,   373,   426,   375,   234,   396,
+     131,   378,   379,   134,   398,   429,   412,   410,   139,   140,
+     141,   142,   431,   144,   145,   146,   147,   148,   435,   439,
+     435,   150,   444,   448,   461,   477,   465,  -300,   476,   487,
+    -300,  -300,  -300,  -300,  -300,  -300,  -300,  -300,   479,   480,
+     451,   486,   453,   377,   508,   525,   533,   534,   167,   536,
+     460,   209,   395,   110,   463,  -300,  -300,  -300,  -300,  -300,
+     391,   380,   382,  -300,   528,   512,   511,   438,   529,   530,
+     531,   532,   441,   464,   427,   425,   475,   390,   437,   305,
+     192,   294,   394,   196,     0,     0,     0,     0,   483,   540,
+       0,   484,  -300,     0,  -300,     0,     0,     0,   489,   490,
      491,   492,     0,     0,     0,     0,     0,     0,   537,   494,
      495,   496,   497,   498,   499,   500,   501,   502,   503,     0,
-     504,   505,   506,     0,   507,     0,     0,     0,     0,   467,
-       0,   514,   515,     0,     0,   513,   139,   140,   141,   142,
-     284,   144,   145,   146,   147,   148,     0,     0,   478,   150,
-       0,     0,   524,     0,     0,   527,   130,   468,   452,     0,
-     469,   470,   471,   472,   473,   474,     0,   535,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,   539,     0,
+     504,   505,   506,     0,   507,     0,     0,     0,     0,     0,
+       0,   514,   515,     0,     0,   513,     0,     0,     0,     0,
+     284,     0,     0,   478,    14,    15,    16,    17,    18,    19,
+      20,    21,   524,     0,     0,   527,   130,     0,   452,     0,
+       0,     0,     0,     0,     0,     0,     0,   535,     0,    22,
+      23,    24,    25,    26,     0,     0,     0,     0,   539,     0,
        0,   131,   132,   133,   134,   135,   136,   137,   138,   139,
      140,   141,   142,   143,   144,   145,   146,   147,   148,   149,
      432,     0,   150,     0,     0,     0,     0,     0,     0,     0,
-     485,     0,   151,   152,   153,   154,     0,     0,     0,     0,
-       0,     0,     0,    58,    59,    60,    61,    62,    63,    64,
-      65,    66,     0,    67,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,    68,    69,    70,     0,     0,
-       0,     0,     0,     0,     0,     0,    71,     0,    72,     0,
-      73,     0,     0,     0,   151,   152,   153,   433,  -300,     0,
-       0,  -300,  -300,  -300,  -300,  -300,  -300,  -300,  -300,     0,
-      14,    15,    16,    17,    18,    19,    20,    21,     0,     0,
-       0,  -300,  -300,  -300,  -300,  -300,     0,     0,     0,  -300,
-      22,    23,    24,    25,    26,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,   290,   291,   130,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,  -300,     0,
-    -300,    58,    59,    60,     0,    62,    63,    64,    65,    66,
+     485,     0,   151,   152,   153,   154,   216,   217,     0,     0,
+       0,     0,     0,     0,     0,     0,   218,   219,    58,    59,
+      60,    61,    62,    63,    64,    65,    66,     0,    67,     0,
+       0,     0,     0,   220,   221,     0,     0,   222,     0,     0,
+      68,    69,    70,     0,     0,     0,     0,     0,     0,     0,
+       0,    71,   223,    72,     0,    73,     0,     0,     0,   151,
+     152,   153,   433,   290,   291,   130,     0,   224,     0,   225,
+     226,   227,   228,   229,     0,     0,     0,     0,     0,     0,
+      58,    59,    60,     0,    62,    63,    64,    65,    66,     0,
+     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   143,   144,   145,   146,   147,   148,   149,   130,
+       0,   150,     0,   404,     0,     0,     0,     0,     0,     0,
+       0,   151,   152,   153,   154,     0,     0,   405,     0,     0,
+       0,     9,    10,     0,   131,   132,   133,   134,   135,   136,
+     137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
+     147,   148,   149,     0,     0,   150,   175,   179,   176,     0,
+       0,     0,     0,   198,   199,   324,   152,   153,   154,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,   131,   132,   133,   134,   135,   136,   137,   138,   139,
      140,   141,   142,   143,   144,   145,   146,   147,   148,   149,
-     130,     0,   150,     0,   404,     0,     0,     0,     0,     0,
-       0,     0,   151,   152,   153,   154,     0,     0,   405,     0,
-       0,     0,     9,    10,     0,   131,   132,   133,   134,   135,
-     136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
-     146,   147,   148,   149,     0,     0,   150,   175,   179,   176,
-       0,     0,     0,     0,   198,   199,   324,   152,   153,   154,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,   150,   175,   181,   176,     0,     0,     0,     0,
+       0,     0,   151,   152,   153,   154,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   131,   132,
+     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
+     143,   144,   145,   146,   147,   148,   149,   130,     0,   150,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   151,
+     152,   153,   154,     0,     0,     0,     0,     0,     0,     0,
        0,     0,   131,   132,   133,   134,   135,   136,   137,   138,
      139,   140,   141,   142,   143,   144,   145,   146,   147,   148,
-     149,     0,     0,   150,   175,   181,   176,     0,     0,     0,
-       0,     0,     0,   151,   152,   153,   154,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,   131,
-     132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
-     142,   143,   144,   145,   146,   147,   148,   149,   130,     0,
-     150,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     151,   152,   153,   154,     0,     0,     0,     0,     0,     0,
+     149,     0,     0,   150,     0,   130,     0,     0,     0,     0,
+       0,   198,   199,   324,   152,   153,   154,   445,   446,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   143,   144,   145,   146,   147,   148,   149,   130,
+       0,   150,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   151,   152,   153,   154,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   131,   132,   133,   134,   135,   136,
+     137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
+     147,   148,   149,   130,   173,   150,   172,     0,     0,     0,
+       0,     0,     0,     0,     0,   151,   152,   153,   154,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   131,   132,
+     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
+     143,   144,   145,   146,   147,   148,   149,     0,   175,   150,
+     176,     0,     0,     0,     0,     0,     0,     0,     0,   151,
+     152,   153,   154,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,   131,   132,   133,   134,   135,   136,   137,
      138,   139,   140,   141,   142,   143,   144,   145,   146,   147,
-     148,   149,     0,     0,   150,     0,   130,     0,     0,     0,
-       0,     0,   198,   199,   324,   152,   153,   154,   445,   446,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     148,   149,   130,     0,   150,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   151,   152,   153,   154,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   131,   132,   133,
+     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
+     144,   145,   146,   147,   148,   149,   130,     0,   150,     0,
+       0,   214,     0,     0,     0,     0,     0,     0,   151,   152,
+     153,   154,     0,     0,     0,     0,     0,     0,     0,     0,
        0,   131,   132,   133,   134,   135,   136,   137,   138,   139,
      140,   141,   142,   143,   144,   145,   146,   147,   148,   149,
-     130,     0,   150,     0,     0,     0,     0,     0,     0,     0,
+     130,     0,   150,     0,     0,     0,     0,     0,     0,   372,
        0,     0,   151,   152,   153,   154,     0,     0,     0,     0,
        0,     0,     0,     0,     0,   131,   132,   133,   134,   135,
      136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
-     146,   147,   148,   149,   130,   173,   150,   172,     0,     0,
-       0,     0,     0,     0,     0,     0,   151,   152,   153,   154,
+     146,   147,   148,   149,   130,     0,   150,     0,     0,     0,
+       0,     0,     0,   419,     0,     0,   151,   152,   153,   154,
        0,     0,     0,     0,     0,     0,     0,     0,     0,   131,
      132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
-     142,   143,   144,   145,   146,   147,   148,   149,     0,   175,
-     150,   176,     0,     0,     0,     0,     0,     0,     0,     0,
+     142,   143,   144,   145,   146,   147,   148,   149,   428,   130,
+     150,     0,     0,     0,     0,     0,     0,     0,     0,     0,
      151,   152,   153,   154,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   131,   132,   133,   134,   135,   136,
+     137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
+     147,   148,   149,   130,     0,   150,     0,     0,   430,     0,
+       0,     0,     0,     0,     0,   151,   152,   153,   154,     0,
+       0,   454,     0,     0,     0,     0,     0,     0,   131,   132,
+     133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
+     143,   144,   145,   146,   147,   148,   149,   130,     0,   150,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,   151,
+     152,   153,   154,     0,     0,   455,     0,     0,     0,     0,
+       0,     0,   131,   132,   133,   134,   135,   136,   137,   138,
+     139,   140,   141,   142,   143,   144,   145,   146,   147,   148,
+     149,   130,     0,   150,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,   151,   152,   153,   154,     0,     0,   456,
+       0,     0,     0,     0,     0,     0,   131,   132,   133,   134,
+     135,   136,   137,   138,   139,   140,   141,   142,   143,   144,
+     145,   146,   147,   148,   149,   130,     0,   150,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,   151,   152,   153,
+     154,     0,     0,   457,     0,     0,     0,     0,     0,     0,
+     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   143,   144,   145,   146,   147,   148,   149,   130,
+       0,   150,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,   151,   152,   153,   154,     0,     0,   488,     0,     0,
        0,     0,     0,     0,   131,   132,   133,   134,   135,   136,
      137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
      147,   148,   149,   130,     0,   150,     0,     0,     0,     0,
@@ -1549,398 +1596,358 @@ static const yytype_int16 yytable[] =
        0,     0,     0,     0,     0,     0,     0,     0,   131,   132,
      133,   134,   135,   136,   137,   138,   139,   140,   141,   142,
      143,   144,   145,   146,   147,   148,   149,   130,     0,   150,
-       0,     0,   214,     0,     0,     0,     0,     0,     0,   151,
+       0,     0,   522,     0,     0,     0,     0,     0,     0,   151,
      152,   153,   154,     0,     0,     0,     0,     0,     0,     0,
        0,     0,   131,   132,   133,   134,   135,   136,   137,   138,
      139,   140,   141,   142,   143,   144,   145,   146,   147,   148,
-     149,   130,     0,   150,     0,     0,     0,     0,     0,     0,
-     372,     0,     0,   151,   152,   153,   154,     0,     0,     0,
+     149,   130,     0,   150,   523,     0,     0,     0,     0,     0,
+       0,     0,     0,   151,   152,   153,   154,     0,     0,     0,
        0,     0,     0,     0,     0,     0,   131,   132,   133,   134,
      135,   136,   137,   138,   139,   140,   141,   142,   143,   144,
      145,   146,   147,   148,   149,   130,     0,   150,     0,     0,
-       0,     0,     0,     0,   419,     0,     0,   151,   152,   153,
+       0,     0,     0,     0,     0,     0,     0,   151,   152,   153,
      154,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     131,   132,   133,   134,   135,   136,   137,   138,   139,   140,
-     141,   142,   143,   144,   145,   146,   147,   148,   149,   428,
-     130,   150,     0,     0,     0,     0,     0,     0,     0,     0,
+     131,   132,     0,   134,   135,   136,   137,   138,   139,   140,
+     141,   142,   143,   144,   145,   146,   147,   148,   130,     0,
+       0,   150,     0,     0,     0,     0,     0,     0,     0,     0,
        0,   151,   152,   153,   154,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,   131,   132,   133,   134,   135,
-     136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
-     146,   147,   148,   149,   130,     0,   150,     0,     0,   430,
-       0,     0,     0,     0,     0,     0,   151,   152,   153,   154,
-       0,     0,   454,     0,     0,     0,     0,     0,     0,   131,
-     132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
-     142,   143,   144,   145,   146,   147,   148,   149,   130,     0,
-     150,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     151,   152,   153,   154,     0,     0,   455,     0,     0,     0,
-       0,     0,     0,   131,   132,   133,   134,   135,   136,   137,
+       0,     0,     0,   131,     0,     0,   134,   135,   136,   137,
      138,   139,   140,   141,   142,   143,   144,   145,   146,   147,
-     148,   149,   130,     0,   150,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,   151,   152,   153,   154,     0,     0,
-     456,     0,     0,     0,     0,     0,     0,   131,   132,   133,
-     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
-     144,   145,   146,   147,   148,   149,   130,     0,   150,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,   151,   152,
-     153,   154,     0,     0,   457,     0,     0,     0,     0,     0,
-       0,   131,   132,   133,   134,   135,   136,   137,   138,   139,
-     140,   141,   142,   143,   144,   145,   146,   147,   148,   149,
-     130,     0,   150,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,   151,   152,   153,   154,     0,     0,   488,     0,
-       0,     0,     0,     0,     0,   131,   132,   133,   134,   135,
-     136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
-     146,   147,   148,   149,   130,     0,   150,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,   151,   152,   153,   154,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,   131,
-     132,   133,   134,   135,   136,   137,   138,   139,   140,   141,
-     142,   143,   144,   145,   146,   147,   148,   149,   130,     0,
-     150,     0,     0,   522,     0,     0,     0,     0,     0,     0,
-     151,   152,   153,   154,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,   131,   132,   133,   134,   135,   136,   137,
-     138,   139,   140,   141,   142,   143,   144,   145,   146,   147,
-     148,   149,   130,     0,   150,   523,     0,     0,     0,     0,
-       0,     0,     0,     0,   151,   152,   153,   154,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,   131,   132,   133,
-     134,   135,   136,   137,   138,   139,   140,   141,   142,   143,
-     144,   145,   146,   147,   148,   149,   130,     0,   150,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,   151,   152,
-     153,   154,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,   131,   132,     0,   134,   135,   136,   137,   138,   139,
-     140,   141,   142,   143,   144,   145,   146,   147,   148,   130,
-       0,     0,   150,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,   151,   152,   153,   154,     0,     0,     0,     0,
-       0,     0,     0,     0,   131,     0,     0,   134,   135,   136,
-     137,   138,   139,   140,   141,   142,   143,   144,   145,   146,
-     147,   148,     0,     0,     0,   150,     0,     0,     0,     0,
-       0,   330,     0,     0,     0,   151,   152,   153,   154,    58,
-      59,    60,    61,    62,    63,    64,    65,    66,     0,    67,
+     148,     0,     0,     0,   150,     0,     0,     0,     0,     0,
+     330,     0,     0,     0,   151,   152,   153,   154,    58,    59,
+      60,    61,    62,    63,    64,    65,    66,     0,    67,     0,
+     139,   140,   141,   142,     0,   144,   145,   146,   147,   148,
+      68,    69,    70,   150,     0,     0,     0,     0,     0,     0,
+      87,    71,     0,    72,     0,    73,    58,    59,    60,    61,
+      62,    63,    64,    65,    66,     0,    67,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    68,    69,
+      70,     0,     0,     0,     0,     0,     0,     0,     0,    71,
+       0,    72,     0,    73,    58,    59,    60,    61,    62,    63,
+      64,    65,    66,     0,    67,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,    68,    69,    70,     0,
+       0,     0,     0,     0,     0,     0,     0,    71,     0,    72,
+       0,    73,     0,   198,   199,   200,    58,    59,    60,    61,
+      62,    63,    64,    65,    66,     0,    67,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,    68,    69,
+      70,   273,     0,     0,   274,     0,     0,     0,     0,    71,
+       0,    72,     0,    73,    58,    59,    60,    61,    62,    63,
+      64,    65,    66,     0,    67,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,    68,    69,    70,     0,
+       0,     0,     0,     0,     0,     0,     0,    71,  -201,    72,
+       0,    73,    58,    59,    60,    61,    62,    63,    64,    65,
+      66,     0,    67,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,    68,    69,    70,     0,     0,     0,
+       0,     0,     0,     0,     0,    71,     0,    72,     0,    73,
+      58,    59,    60,   298,   299,    63,    64,    65,   300,     0,
+      67,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,    68,    69,    70,     0,     0,     0,     0,     0,
+       0,     0,     0,    71,     0,    72,     0,    73,    58,    59,
+      60,   449,    62,    63,    64,    65,    66,     0,    67,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    68,    69,    70,     0,     0,     0,     0,     0,     0,
-       0,    87,    71,     0,    72,     0,    73,    58,    59,    60,
-      61,    62,    63,    64,    65,    66,     0,    67,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,    68,
-      69,    70,     0,     0,     0,     0,     0,     0,     0,     0,
-      71,     0,    72,     0,    73,    58,    59,    60,    61,    62,
-      63,    64,    65,    66,     0,    67,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,    68,    69,    70,
-     273,     0,     0,   274,     0,     0,     0,     0,    71,     0,
-      72,     0,    73,    58,    59,    60,    61,    62,    63,    64,
-      65,    66,     0,    67,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,    68,    69,    70,     0,     0,
-       0,     0,     0,     0,     0,     0,    71,  -201,    72,     0,
-      73,    58,    59,    60,    61,    62,    63,    64,    65,    66,
-       0,    67,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,    68,    69,    70,     0,     0,     0,     0,
-       0,     0,     0,     0,    71,     0,    72,     0,    73,    58,
-      59,    60,   298,   299,    63,    64,    65,   300,     0,    67,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,    68,    69,    70,     0,     0,     0,     0,     0,     0,
-       0,     0,    71,     0,    72,     0,    73,    58,    59,    60,
-     449,    62,    63,    64,    65,    66,     0,    67,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,    68,
-      69,    70,     0,     0,     0,     0,     0,     0,     0,     0,
-      71,     0,    72,     0,    73
+      68,    69,    70,     0,     0,     0,     0,     0,     0,     0,
+       0,    71,     0,    72,     0,    73
 };
 
 static const yytype_int16 yycheck[] =
 {
       16,    17,   110,   111,    20,    21,    22,    23,    24,    25,
-      21,    14,    26,   127,    14,    26,     0,    32,   272,   117,
-      94,   100,     4,   102,     0,   104,    12,    31,     0,     0,
-      12,    35,    36,    60,    14,   493,     9,    10,   112,    66,
-       0,    14,    15,     3,     4,     5,     6,     7,     8,     9,
-      10,    67,     0,    69,    70,    71,    60,    43,    31,    32,
-     168,    43,    35,    23,    24,    25,    26,    27,    60,   177,
-     178,    31,   180,     0,   182,   533,    60,    50,    62,    95,
-     188,    60,   190,    98,    60,    64,    62,    13,    60,    60,
-      62,    62,    65,    60,    67,    68,    69,    70,    71,    37,
-      60,   117,    62,   119,   120,   121,     5,    31,   206,    42,
-      43,    61,   115,   129,   130,   115,    14,    50,   134,   135,
+      21,    14,    26,   127,    14,    26,   493,    32,   272,   117,
+       0,   100,     4,   102,     0,   104,    12,     0,     0,    36,
+      12,     0,    94,    40,    41,     0,    19,    65,     3,     4,
+       5,     6,     7,     8,     9,    10,    63,    70,     0,    66,
+     112,    67,    36,    69,    70,    71,   533,    43,    65,    18,
+     168,    43,    85,    28,    29,    30,    31,    32,    65,   177,
+     178,    36,   180,    36,   182,     5,    42,    40,    41,    95,
+     188,    42,   190,    98,    68,    65,    70,    67,    19,    65,
+      21,    67,    65,    65,    67,    67,    65,   374,    67,   376,
+      65,   117,    67,   119,   120,   121,    23,    24,   206,    26,
+      40,    41,   115,   129,   130,   115,    14,    42,   134,   135,
      136,   137,   138,   139,   140,   141,   142,   143,   144,   145,
-     146,   147,   148,    60,   150,    62,    35,    36,    31,    63,
-      65,    65,   158,    37,   160,   159,    31,    37,    37,    31,
-      35,    36,   163,    35,    36,    80,   172,   171,    58,   175,
-      31,    61,   173,   179,    63,   181,    31,   183,    58,    18,
-      19,    61,    21,    14,     0,    16,   187,     3,     4,     5,
-       6,     7,     8,     9,    10,    67,    68,    69,    58,    31,
-      32,    61,   208,    35,    36,    93,    15,    23,    24,    25,
-      26,    27,    31,    16,    31,    31,    35,    36,   224,    31,
-      32,   109,    57,    61,    36,    31,   114,   115,   116,    35,
-      36,   335,    31,   239,   240,   241,   242,   243,    15,   308,
-      58,   310,    58,    61,    60,    61,    62,    51,    52,    53,
-      54,    55,   374,   259,   376,    59,   262,   263,   264,   265,
-     266,   267,   268,   269,   270,    13,   510,    51,    52,    53,
-      54,    55,    63,    60,   162,    14,    15,    16,    13,    37,
-      60,   287,    24,   289,    37,    57,   384,   385,   489,   490,
-     491,   492,   297,    41,    62,    57,    44,    45,    46,    47,
-      48,    49,    53,    54,    55,    57,    41,   313,   314,    44,
-      45,    46,    47,    48,    49,    64,    57,    57,    62,    57,
-      57,   327,   328,   329,   330,    13,    57,   320,   321,    57,
-     320,   321,   338,   339,   340,   341,   342,   343,    57,   345,
-     346,   347,   348,   349,    57,    57,   352,    57,   354,    60,
-      38,    57,    66,    41,    57,   361,    60,    56,    46,    47,
-      48,    49,    53,    51,    52,    53,    54,    55,   374,    37,
-     376,    59,    28,    29,    30,    31,    32,    33,    34,    35,
-      36,    60,    38,    31,    31,    60,    62,    31,    24,    60,
-     396,    60,   398,   281,    50,    51,    52,    57,   286,    61,
-     404,     5,    66,     9,   408,    61,    31,    63,    37,    65,
-       6,    67,    68,    69,   512,   484,    66,    60,   516,   517,
-     518,   519,     5,    62,   118,   321,   432,   315,   286,    32,
-     318,   318,   320,   321,   378,   289,   483,   379,   444,   537,
-     351,   447,   354,   376,   412,   171,   176,    -1,   454,   455,
+     146,   147,   148,    66,   150,    36,    36,    42,    68,    40,
+      41,    36,   158,    36,   160,   159,    56,    57,    58,    59,
+      60,    65,   163,    20,    64,    69,   172,   171,    63,   175,
+      21,    66,   173,   179,    36,   181,    36,   183,    62,    65,
+      20,    72,    73,    74,     0,    71,   187,     3,     4,     5,
+       6,     7,     8,     9,    10,    47,    48,    56,    57,    58,
+      59,    60,   208,    55,    36,    93,    36,    37,    40,    41,
+      40,    41,    28,    29,    30,    31,    32,    66,   224,    63,
+      36,   109,    66,    68,    36,    37,   114,   115,   116,    41,
+      65,   335,    42,   239,   240,   241,   242,   243,    36,   308,
+      65,   310,    40,    41,    18,    63,    29,    63,    66,    65,
+      66,    67,    42,   259,    62,    62,   262,   263,   264,   265,
+     266,   267,   268,   269,   270,    18,   510,   489,   490,   491,
+     492,    67,    46,    62,   162,    49,    50,    51,    52,    53,
+      54,   287,    18,   289,    62,    62,   384,   385,    19,    20,
+      21,    62,   297,    46,    62,    62,    49,    50,    51,    52,
+      53,    54,    58,    59,    60,    62,    69,   313,   314,    71,
+      46,    62,    62,    49,    50,    51,    52,    53,    54,    62,
+      62,   327,   328,   329,   330,    18,    65,   320,   321,    62,
+     320,   321,   338,   339,   340,   341,   342,   343,    65,   345,
+     346,   347,   348,   349,    62,    61,   352,    58,   354,    36,
+      43,    65,    42,    46,    36,   361,    65,    67,    51,    52,
+      53,    54,    67,    56,    57,    58,    59,    60,   374,    36,
+     376,    64,    29,    65,    65,     5,    62,     0,    66,    42,
+       3,     4,     5,     6,     7,     8,     9,    10,    71,     9,
+     396,    36,   398,   281,     6,    71,    65,     5,   286,    67,
+     404,   118,   321,    32,   408,    28,    29,    30,    31,    32,
+     318,   286,   289,    36,   512,   484,   483,   378,   516,   517,
+     518,   519,   379,   412,   354,   351,   432,   315,   376,   176,
+     318,   171,   320,   321,    -1,    -1,    -1,    -1,   444,   537,
+      -1,   447,    65,    -1,    67,    -1,    -1,    -1,   454,   455,
      456,   457,    -1,    -1,    -1,    -1,    -1,    -1,   527,   465,
      466,   467,   468,   469,   470,   471,   472,   473,   474,    -1,
-     476,   477,   478,    -1,   480,    -1,    -1,    -1,    -1,    13,
-      -1,   487,   488,    -1,    -1,   486,    46,    47,    48,    49,
-     378,    51,    52,    53,    54,    55,    -1,    -1,     5,    59,
-      -1,    -1,   508,    -1,    -1,   511,    13,    41,   396,    -1,
-      44,    45,    46,    47,    48,    49,    -1,   523,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   534,    -1,
-      -1,    38,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
-       5,    -1,    59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-     448,    -1,    69,    70,    71,    72,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    28,    29,    30,    31,    32,    33,    34,
-      35,    36,    -1,    38,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    50,    51,    52,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    61,    -1,    63,    -1,
-      65,    -1,    -1,    -1,    69,    70,    71,    72,     0,    -1,
-      -1,     3,     4,     5,     6,     7,     8,     9,    10,    -1,
-       3,     4,     5,     6,     7,     8,     9,    10,    -1,    -1,
-      -1,    23,    24,    25,    26,    27,    -1,    -1,    -1,    31,
-      23,    24,    25,    26,    27,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    11,    12,    13,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    60,    -1,
-      62,    28,    29,    30,    -1,    32,    33,    34,    35,    36,
-      -1,    38,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
-      13,    -1,    59,    -1,    17,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    69,    70,    71,    72,    -1,    -1,    31,    -1,
-      -1,    -1,    35,    36,    -1,    38,    39,    40,    41,    42,
+     476,   477,   478,    -1,   480,    -1,    -1,    -1,    -1,    -1,
+      -1,   487,   488,    -1,    -1,   486,    -1,    -1,    -1,    -1,
+     378,    -1,    -1,     5,     3,     4,     5,     6,     7,     8,
+       9,    10,   508,    -1,    -1,   511,    18,    -1,   396,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,   523,    -1,    28,
+      29,    30,    31,    32,    -1,    -1,    -1,    -1,   534,    -1,
+      -1,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,    61,
+       5,    -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+     448,    -1,    74,    75,    76,    77,     9,    10,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    19,    20,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,    -1,    43,    -1,
+      -1,    -1,    -1,    36,    37,    -1,    -1,    40,    -1,    -1,
+      55,    56,    57,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    66,    55,    68,    -1,    70,    -1,    -1,    -1,    74,
+      75,    76,    77,    16,    17,    18,    -1,    70,    -1,    72,
+      73,    74,    75,    76,    -1,    -1,    -1,    -1,    -1,    -1,
+      33,    34,    35,    -1,    37,    38,    39,    40,    41,    -1,
       43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
-      53,    54,    55,    56,    -1,    -1,    59,    13,    14,    15,
-      -1,    -1,    -1,    -1,    67,    68,    69,    70,    71,    72,
+      53,    54,    55,    56,    57,    58,    59,    60,    61,    18,
+      -1,    64,    -1,    22,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    74,    75,    76,    77,    -1,    -1,    36,    -1,    -1,
+      -1,    40,    41,    -1,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,    61,    -1,    -1,    64,    18,    19,    20,    -1,
+      -1,    -1,    -1,    72,    73,    74,    75,    76,    77,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    38,    39,    40,    41,    42,    43,    44,    45,
-      46,    47,    48,    49,    50,    51,    52,    53,    54,    55,
-      56,    -1,    -1,    59,    13,    14,    15,    -1,    -1,    -1,
-      -1,    -1,    -1,    69,    70,    71,    72,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    38,
-      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
-      49,    50,    51,    52,    53,    54,    55,    56,    13,    -1,
-      59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      69,    70,    71,    72,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    38,    39,    40,    41,    42,    43,    44,
+      -1,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,    61,
+      -1,    -1,    64,    18,    19,    20,    -1,    -1,    -1,    -1,
+      -1,    -1,    74,    75,    76,    77,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    43,    44,
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    -1,    -1,    59,    -1,    13,    -1,    -1,    -1,
-      -1,    -1,    67,    68,    69,    70,    71,    72,    25,    26,
+      55,    56,    57,    58,    59,    60,    61,    18,    -1,    64,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    74,
+      75,    76,    77,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    43,    44,    45,    46,    47,    48,    49,    50,
+      51,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+      61,    -1,    -1,    64,    -1,    18,    -1,    -1,    -1,    -1,
+      -1,    72,    73,    74,    75,    76,    77,    30,    31,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    38,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
-      13,    -1,    59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    69,    70,    71,    72,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    38,    39,    40,    41,    42,
       43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
-      53,    54,    55,    56,    13,    14,    59,    60,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    69,    70,    71,    72,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    38,
-      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
-      49,    50,    51,    52,    53,    54,    55,    56,    -1,    13,
-      59,    15,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      69,    70,    71,    72,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    38,    39,    40,    41,    42,    43,
-      44,    45,    46,    47,    48,    49,    50,    51,    52,    53,
-      54,    55,    56,    13,    -1,    59,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    69,    70,    71,    72,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    38,    39,
-      40,    41,    42,    43,    44,    45,    46,    47,    48,    49,
-      50,    51,    52,    53,    54,    55,    56,    13,    -1,    59,
-      -1,    -1,    62,    -1,    -1,    -1,    -1,    -1,    -1,    69,
-      70,    71,    72,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    38,    39,    40,    41,    42,    43,    44,    45,
+      53,    54,    55,    56,    57,    58,    59,    60,    61,    18,
+      -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    74,    75,    76,    77,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,    61,    18,    19,    64,    65,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    74,    75,    76,    77,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    43,    44,
+      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
+      55,    56,    57,    58,    59,    60,    61,    -1,    18,    64,
+      20,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    74,
+      75,    76,    77,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    43,    44,    45,    46,    47,    48,    49,
+      50,    51,    52,    53,    54,    55,    56,    57,    58,    59,
+      60,    61,    18,    -1,    64,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    74,    75,    76,    77,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    43,    44,    45,
       46,    47,    48,    49,    50,    51,    52,    53,    54,    55,
-      56,    13,    -1,    59,    -1,    -1,    -1,    -1,    -1,    -1,
-      66,    -1,    -1,    69,    70,    71,    72,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    38,    39,    40,    41,
-      42,    43,    44,    45,    46,    47,    48,    49,    50,    51,
-      52,    53,    54,    55,    56,    13,    -1,    59,    -1,    -1,
-      -1,    -1,    -1,    -1,    66,    -1,    -1,    69,    70,    71,
-      72,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      38,    39,    40,    41,    42,    43,    44,    45,    46,    47,
+      56,    57,    58,    59,    60,    61,    18,    -1,    64,    -1,
+      -1,    67,    -1,    -1,    -1,    -1,    -1,    -1,    74,    75,
+      76,    77,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,    61,
+      18,    -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,    71,
+      -1,    -1,    74,    75,    76,    77,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    43,    44,    45,    46,    47,
       48,    49,    50,    51,    52,    53,    54,    55,    56,    57,
-      13,    59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    69,    70,    71,    72,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    38,    39,    40,    41,    42,
-      43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
-      53,    54,    55,    56,    13,    -1,    59,    -1,    -1,    62,
-      -1,    -1,    -1,    -1,    -1,    -1,    69,    70,    71,    72,
-      -1,    -1,    31,    -1,    -1,    -1,    -1,    -1,    -1,    38,
-      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
-      49,    50,    51,    52,    53,    54,    55,    56,    13,    -1,
-      59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      69,    70,    71,    72,    -1,    -1,    31,    -1,    -1,    -1,
-      -1,    -1,    -1,    38,    39,    40,    41,    42,    43,    44,
-      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    13,    -1,    59,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    69,    70,    71,    72,    -1,    -1,
-      31,    -1,    -1,    -1,    -1,    -1,    -1,    38,    39,    40,
-      41,    42,    43,    44,    45,    46,    47,    48,    49,    50,
-      51,    52,    53,    54,    55,    56,    13,    -1,    59,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    69,    70,
-      71,    72,    -1,    -1,    31,    -1,    -1,    -1,    -1,    -1,
-      -1,    38,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
-      13,    -1,    59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    69,    70,    71,    72,    -1,    -1,    31,    -1,
-      -1,    -1,    -1,    -1,    -1,    38,    39,    40,    41,    42,
-      43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
-      53,    54,    55,    56,    13,    -1,    59,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    69,    70,    71,    72,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    38,
-      39,    40,    41,    42,    43,    44,    45,    46,    47,    48,
-      49,    50,    51,    52,    53,    54,    55,    56,    13,    -1,
-      59,    -1,    -1,    62,    -1,    -1,    -1,    -1,    -1,    -1,
-      69,    70,    71,    72,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    38,    39,    40,    41,    42,    43,    44,
-      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
-      55,    56,    13,    -1,    59,    60,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    69,    70,    71,    72,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    38,    39,    40,
-      41,    42,    43,    44,    45,    46,    47,    48,    49,    50,
-      51,    52,    53,    54,    55,    56,    13,    -1,    59,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    69,    70,
-      71,    72,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    38,    39,    -1,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    13,
-      -1,    -1,    59,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    69,    70,    71,    72,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    38,    -1,    -1,    41,    42,    43,
+      58,    59,    60,    61,    18,    -1,    64,    -1,    -1,    -1,
+      -1,    -1,    -1,    71,    -1,    -1,    74,    75,    76,    77,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    43,
       44,    45,    46,    47,    48,    49,    50,    51,    52,    53,
-      54,    55,    -1,    -1,    -1,    59,    -1,    -1,    -1,    -1,
-      -1,    20,    -1,    -1,    -1,    69,    70,    71,    72,    28,
-      29,    30,    31,    32,    33,    34,    35,    36,    -1,    38,
+      54,    55,    56,    57,    58,    59,    60,    61,    62,    18,
+      64,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      74,    75,    76,    77,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,    61,    18,    -1,    64,    -1,    -1,    67,    -1,
+      -1,    -1,    -1,    -1,    -1,    74,    75,    76,    77,    -1,
+      -1,    36,    -1,    -1,    -1,    -1,    -1,    -1,    43,    44,
+      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
+      55,    56,    57,    58,    59,    60,    61,    18,    -1,    64,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    74,
+      75,    76,    77,    -1,    -1,    36,    -1,    -1,    -1,    -1,
+      -1,    -1,    43,    44,    45,    46,    47,    48,    49,    50,
+      51,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+      61,    18,    -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    74,    75,    76,    77,    -1,    -1,    36,
+      -1,    -1,    -1,    -1,    -1,    -1,    43,    44,    45,    46,
+      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
+      57,    58,    59,    60,    61,    18,    -1,    64,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    74,    75,    76,
+      77,    -1,    -1,    36,    -1,    -1,    -1,    -1,    -1,    -1,
+      43,    44,    45,    46,    47,    48,    49,    50,    51,    52,
+      53,    54,    55,    56,    57,    58,    59,    60,    61,    18,
+      -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    74,    75,    76,    77,    -1,    -1,    36,    -1,    -1,
+      -1,    -1,    -1,    -1,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,    61,    18,    -1,    64,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    74,    75,    76,    77,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    43,    44,
+      45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
+      55,    56,    57,    58,    59,    60,    61,    18,    -1,    64,
+      -1,    -1,    67,    -1,    -1,    -1,    -1,    -1,    -1,    74,
+      75,    76,    77,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    43,    44,    45,    46,    47,    48,    49,    50,
+      51,    52,    53,    54,    55,    56,    57,    58,    59,    60,
+      61,    18,    -1,    64,    65,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    74,    75,    76,    77,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    43,    44,    45,    46,
+      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
+      57,    58,    59,    60,    61,    18,    -1,    64,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    74,    75,    76,
+      77,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      43,    44,    -1,    46,    47,    48,    49,    50,    51,    52,
+      53,    54,    55,    56,    57,    58,    59,    60,    18,    -1,
+      -1,    64,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    74,    75,    76,    77,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    43,    -1,    -1,    46,    47,    48,    49,
+      50,    51,    52,    53,    54,    55,    56,    57,    58,    59,
+      60,    -1,    -1,    -1,    64,    -1,    -1,    -1,    -1,    -1,
+      25,    -1,    -1,    -1,    74,    75,    76,    77,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,    -1,    43,    -1,
+      51,    52,    53,    54,    -1,    56,    57,    58,    59,    60,
+      55,    56,    57,    64,    -1,    -1,    -1,    -1,    -1,    -1,
+      27,    66,    -1,    68,    -1,    70,    33,    34,    35,    36,
+      37,    38,    39,    40,    41,    -1,    43,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    55,    56,
+      57,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    66,
+      -1,    68,    -1,    70,    33,    34,    35,    36,    37,    38,
+      39,    40,    41,    -1,    43,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    55,    56,    57,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    66,    -1,    68,
+      -1,    70,    -1,    72,    73,    74,    33,    34,    35,    36,
+      37,    38,    39,    40,    41,    -1,    43,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    55,    56,
+      57,    58,    -1,    -1,    61,    -1,    -1,    -1,    -1,    66,
+      -1,    68,    -1,    70,    33,    34,    35,    36,    37,    38,
+      39,    40,    41,    -1,    43,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    55,    56,    57,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    66,    67,    68,
+      -1,    70,    33,    34,    35,    36,    37,    38,    39,    40,
+      41,    -1,    43,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    55,    56,    57,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    66,    -1,    68,    -1,    70,
+      33,    34,    35,    36,    37,    38,    39,    40,    41,    -1,
+      43,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    55,    56,    57,    -1,    -1,    -1,    -1,    -1,
+      -1,    -1,    -1,    66,    -1,    68,    -1,    70,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,    -1,    43,    -1,
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    50,    51,    52,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    22,    61,    -1,    63,    -1,    65,    28,    29,    30,
-      31,    32,    33,    34,    35,    36,    -1,    38,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    50,
-      51,    52,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      61,    -1,    63,    -1,    65,    28,    29,    30,    31,    32,
-      33,    34,    35,    36,    -1,    38,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    50,    51,    52,
-      53,    -1,    -1,    56,    -1,    -1,    -1,    -1,    61,    -1,
-      63,    -1,    65,    28,    29,    30,    31,    32,    33,    34,
-      35,    36,    -1,    38,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    50,    51,    52,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    61,    62,    63,    -1,
-      65,    28,    29,    30,    31,    32,    33,    34,    35,    36,
-      -1,    38,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    50,    51,    52,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    61,    -1,    63,    -1,    65,    28,
-      29,    30,    31,    32,    33,    34,    35,    36,    -1,    38,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    50,    51,    52,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    61,    -1,    63,    -1,    65,    28,    29,    30,
-      31,    32,    33,    34,    35,    36,    -1,    38,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    50,
-      51,    52,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      61,    -1,    63,    -1,    65
+      55,    56,    57,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
+      -1,    66,    -1,    68,    -1,    70
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
-       0,    14,    85,    87,    86,    88,    90,     0,    31,    35,
-      36,    83,    84,   203,     3,     4,     5,     6,     7,     8,
-       9,    10,    23,    24,    25,    26,    27,    89,    91,   100,
-     103,   104,   114,   116,   129,   134,   135,   136,   138,   139,
-     141,   143,   146,    60,    83,    31,    63,    65,    92,    93,
-     107,   110,   205,   105,   106,   107,   110,   205,    28,    29,
-      30,    31,    32,    33,    34,    35,    36,    38,    50,    51,
-      52,    61,    63,    65,   153,   154,   155,   158,   159,   162,
-     170,   171,   178,   194,   199,   200,   202,    22,   151,   153,
-      14,    16,   113,   115,   123,   130,   153,   153,   178,   153,
-     153,   140,   153,   142,   153,     5,   145,   178,   202,    15,
-     113,   119,   123,    83,   111,   108,    60,    13,    60,    37,
-      37,    37,   153,    61,   153,   153,   153,   195,   179,   172,
-      13,    38,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    52,    53,    54,    55,    56,
-      59,    69,    70,    71,    72,   150,    58,    61,    65,    80,
-     152,    31,   124,    31,   177,   117,   118,   205,   119,   131,
-     132,   153,    60,    14,   123,    13,    15,   137,   137,    14,
-     137,    14,   137,   147,   149,   205,   177,    31,   121,   177,
-     119,   112,   205,   107,   109,   110,   205,   205,    67,    68,
-      69,    95,    96,    97,    98,    99,   153,   192,   193,   106,
-     153,   153,   153,   157,    62,    88,     9,    10,    14,    15,
-      31,    32,    35,    50,    65,    67,    68,    69,    70,    71,
-     180,   181,   182,   204,   153,   173,   174,   175,   153,    42,
-      43,    50,   161,   160,   153,   153,   153,   153,   153,   153,
-     153,   153,   153,   153,   153,   153,   153,   153,   153,   163,
-     165,   153,    61,    13,    41,    44,    45,    46,    47,    48,
-      49,    31,   156,    53,    56,   153,   183,   184,    31,   202,
-     153,    15,   125,   126,   205,   178,    60,    37,   177,    60,
-      11,    12,   133,   198,   200,   202,   153,   178,    31,    32,
-      36,   201,    31,    32,    36,   201,   177,   177,   153,   177,
-     153,   177,   153,    24,    37,   122,   177,   177,    60,    64,
-      57,    60,    66,   102,    69,   101,   192,    18,    19,    21,
-      20,   153,   153,   166,   167,   168,   169,    62,    57,    57,
-      57,    57,    57,    57,   153,    57,    57,    57,    57,    57,
-      64,    60,    57,    66,    60,   153,   153,   153,   153,   153,
-     153,    57,   153,   153,   153,   153,   153,   153,   153,   153,
-     153,   166,    66,    56,   196,    53,   197,   205,    60,    37,
-     118,   153,   132,   123,   137,   137,   148,   153,   153,   120,
-     205,   112,   107,   110,   205,   109,    31,    94,    31,   176,
-     153,   153,   153,   153,    17,    31,   188,   190,   192,   203,
-      62,    88,    60,   153,   153,   153,   153,   153,   153,    66,
-     153,   153,   153,   153,   153,   182,   153,   175,    57,   153,
-      62,    62,     5,    72,   150,   153,   185,   185,   126,    31,
-     127,   154,   177,   177,    24,    25,    26,   144,    60,    31,
-      82,   153,   205,   153,    31,    31,    31,    31,    31,    32,
-     202,    60,    31,   202,   167,    57,   164,    13,    41,    44,
-      45,    46,    47,    48,    49,   153,    61,     5,     5,    66,
-       9,   186,    61,   153,   153,   205,    31,    37,    31,   153,
-     153,   153,   153,   191,   153,   153,   153,   153,   153,   153,
-     153,   153,   153,   153,   153,   153,   153,   153,     6,   187,
-     128,   144,   137,   178,   153,   153,   190,   190,   190,   190,
-     188,   189,    62,    60,   153,    66,   166,   153,   177,   177,
-     177,   177,   177,    60,     5,   153,    62,   137,   188,   153,
-     177
+       0,    19,    90,    92,    91,    93,    95,     0,    36,    40,
+      41,    88,    89,   208,     3,     4,     5,     6,     7,     8,
+       9,    10,    28,    29,    30,    31,    32,    94,    96,   105,
+     108,   109,   119,   121,   134,   139,   140,   141,   143,   144,
+     146,   148,   151,    65,    88,    36,    68,    70,    97,    98,
+     112,   115,   210,   110,   111,   112,   115,   210,    33,    34,
+      35,    36,    37,    38,    39,    40,    41,    43,    55,    56,
+      57,    66,    68,    70,   158,   159,   160,   163,   164,   167,
+     175,   176,   183,   199,   204,   205,   207,    27,   156,   158,
+      19,    21,   118,   120,   128,   135,   158,   158,   183,   158,
+     158,   145,   158,   147,   158,     5,   150,   183,   207,    20,
+     118,   124,   128,    88,   116,   113,    65,    18,    65,    42,
+      42,    42,   158,    66,   158,   158,   158,   200,   184,   177,
+      18,    43,    44,    45,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,    61,
+      64,    74,    75,    76,    77,   155,    63,    66,    70,    85,
+     157,    36,   129,    36,   182,   122,   123,   210,   124,   136,
+     137,   158,    65,    19,   128,    18,    20,   142,   142,    19,
+     142,    19,   142,   152,   154,   210,   182,    36,   126,   182,
+     124,   117,   210,   112,   114,   115,   210,   210,    72,    73,
+      74,   100,   101,   102,   103,   104,   158,   197,   198,   111,
+     158,   158,   158,   162,    67,    93,     9,    10,    19,    20,
+      36,    37,    40,    55,    70,    72,    73,    74,    75,    76,
+     185,   186,   187,   209,   158,   178,   179,   180,   158,    47,
+      48,    55,   166,   165,   158,   158,   158,   158,   158,   158,
+     158,   158,   158,   158,   158,   158,   158,   158,   158,   168,
+     170,   158,    66,    18,    46,    49,    50,    51,    52,    53,
+      54,    36,   161,    58,    61,   158,   188,   189,    36,   207,
+     158,    20,   130,   131,   210,   183,    65,    42,   182,    65,
+      16,    17,   138,   203,   205,   207,   158,   183,    36,    37,
+      41,   206,    36,    37,    41,   206,   182,   182,   158,   182,
+     158,   182,   158,    29,    42,   127,   182,   182,    65,    69,
+      62,    65,    71,   107,    74,   106,   197,    23,    24,    26,
+      25,   158,   158,   171,   172,   173,   174,    67,    62,    62,
+      62,    62,    62,    62,   158,    62,    62,    62,    62,    62,
+      69,    65,    62,    71,    65,   158,   158,   158,   158,   158,
+     158,    62,   158,   158,   158,   158,   158,   158,   158,   158,
+     158,   171,    71,    61,   201,    58,   202,   210,    65,    42,
+     123,   158,   137,   128,   142,   142,   153,   158,   158,   125,
+     210,   117,   112,   115,   210,   114,    36,    99,    36,   181,
+     158,   158,   158,   158,    22,    36,   193,   195,   197,   208,
+      67,    93,    65,   158,   158,   158,   158,   158,   158,    71,
+     158,   158,   158,   158,   158,   187,   158,   180,    62,   158,
+      67,    67,     5,    77,   155,   158,   190,   190,   131,    36,
+     132,   159,   182,   182,    29,    30,    31,   149,    65,    36,
+      87,   158,   210,   158,    36,    36,    36,    36,    36,    37,
+     207,    65,    36,   207,   172,    62,   169,    18,    46,    49,
+      50,    51,    52,    53,    54,   158,    66,     5,     5,    71,
+       9,   191,    66,   158,   158,   210,    36,    42,    36,   158,
+     158,   158,   158,   196,   158,   158,   158,   158,   158,   158,
+     158,   158,   158,   158,   158,   158,   158,   158,     6,   192,
+     133,   149,   142,   183,   158,   158,   195,   195,   195,   195,
+     193,   194,    67,    65,   158,    71,   171,   158,   182,   182,
+     182,   182,   182,    65,     5,   158,    67,   142,   193,   158,
+     182
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_uint8 yyr1[] =
 {
-       0,    81,    82,    82,    83,    83,    84,    84,    84,    85,
-      86,    85,    87,    88,    89,    89,    89,    89,    89,    89,
-      90,    90,    91,    91,    91,    91,    91,    91,    91,    91,
-      91,    91,    91,    91,    92,    92,    93,    93,    93,    94,
-      94,    94,    95,    96,    97,    98,    99,   101,   100,   102,
-     100,   100,   100,   100,   100,   103,   104,   105,   105,   106,
-     106,   106,   108,   107,   109,   109,   109,   109,   109,   111,
-     110,   112,   112,   112,   112,   112,   112,   113,   115,   114,
-     116,   116,   116,   116,   116,   116,   117,   117,   118,   119,
-     119,   119,   120,   120,   122,   121,   124,   123,   125,   125,
-     126,   128,   127,   130,   129,   131,   131,   132,   133,   133,
-     133,   133,   134,   134,   135,   135,   136,   137,   137,   138,
-     139,   140,   140,   141,   142,   142,   143,   144,   144,   145,
-     145,   147,   148,   146,   149,   146,   150,   150,   150,   152,
-     151,   151,   153,   153,   153,   153,   153,   153,   154,   154,
-     156,   155,   157,   155,   158,   158,   158,   160,   159,   161,
-     159,   159,   159,   159,   159,   159,   159,   159,   159,   159,
-     159,   159,   159,   159,   159,   159,   159,   159,   159,   159,
-     159,   159,   159,   159,   159,   159,   159,   159,   159,   159,
-     159,   159,   159,   159,   159,   159,   163,   164,   162,   165,
-     162,   166,   166,   167,   168,   167,   169,   169,   170,   170,
-     172,   171,   173,   173,   173,   174,   174,   175,   176,   176,
-     176,   177,   177,   179,   178,   180,   180,   180,   181,   181,
-     182,   182,   182,   182,   182,   182,   182,   182,   182,   182,
-     182,   182,   182,   182,   183,   183,   184,   184,   185,   185,
-     185,   185,   185,   186,   186,   186,   187,   187,   188,   188,
-     188,   188,   189,   189,   190,   191,   190,   190,   190,   190,
-     192,   192,   192,   193,   193,   194,   194,   194,   194,   194,
-     195,   194,   194,   194,   194,   196,   194,   197,   194,   198,
-     198,   199,   199,   200,   200,   200,   200,   200,   201,   201,
-     201,   202,   202,   203,   203,   204,   204,   205
+       0,    86,    87,    87,    88,    88,    89,    89,    89,    90,
+      91,    90,    92,    93,    94,    94,    94,    94,    94,    94,
+      95,    95,    96,    96,    96,    96,    96,    96,    96,    96,
+      96,    96,    96,    96,    97,    97,    98,    98,    98,    99,
+      99,    99,   100,   101,   102,   103,   104,   106,   105,   107,
+     105,   105,   105,   105,   105,   108,   109,   110,   110,   111,
+     111,   111,   113,   112,   114,   114,   114,   114,   114,   116,
+     115,   117,   117,   117,   117,   117,   117,   118,   120,   119,
+     121,   121,   121,   121,   121,   121,   122,   122,   123,   124,
+     124,   124,   125,   125,   127,   126,   129,   128,   130,   130,
+     131,   133,   132,   135,   134,   136,   136,   137,   138,   138,
+     138,   138,   139,   139,   140,   140,   141,   142,   142,   143,
+     144,   145,   145,   146,   147,   147,   148,   149,   149,   150,
+     150,   152,   153,   151,   154,   151,   155,   155,   155,   157,
+     156,   156,   158,   158,   158,   158,   158,   158,   159,   159,
+     161,   160,   162,   160,   163,   163,   163,   165,   164,   166,
+     164,   164,   164,   164,   164,   164,   164,   164,   164,   164,
+     164,   164,   164,   164,   164,   164,   164,   164,   164,   164,
+     164,   164,   164,   164,   164,   164,   164,   164,   164,   164,
+     164,   164,   164,   164,   164,   164,   168,   169,   167,   170,
+     167,   171,   171,   172,   173,   172,   174,   174,   175,   175,
+     177,   176,   178,   178,   178,   179,   179,   180,   181,   181,
+     181,   182,   182,   184,   183,   185,   185,   185,   186,   186,
+     187,   187,   187,   187,   187,   187,   187,   187,   187,   187,
+     187,   187,   187,   187,   188,   188,   189,   189,   190,   190,
+     190,   190,   190,   191,   191,   191,   192,   192,   193,   193,
+     193,   193,   194,   194,   195,   196,   195,   195,   195,   195,
+     197,   197,   197,   198,   198,   199,   199,   199,   199,   199,
+     200,   199,   199,   199,   199,   201,   199,   202,   199,   203,
+     203,   204,   204,   205,   205,   205,   205,   205,   206,   206,
+     206,   207,   207,   208,   208,   209,   209,   210
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
@@ -2834,18 +2841,18 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* optional_prune_variable: expression  */
-#line 667 "grammar.y"
+#line 677 "grammar.y"
                {
       AstNode* node = parser->ast()->createNodeArray();
       node->addMember(parser->ast()->createNodeNop());
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 2844 "grammar.cpp"
+#line 2851 "grammar.cpp"
     break;
 
   case 3: /* optional_prune_variable: variable_name "assignment" expression  */
-#line 673 "grammar.y"
+#line 683 "grammar.y"
                                       {
       AstNode* node = parser->ast()->createNodeArray();
       AstNode* variableNode = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
@@ -2853,240 +2860,240 @@ yyreduce:
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;    
   }
-#line 2856 "grammar.cpp"
+#line 2863 "grammar.cpp"
     break;
 
   case 4: /* with_collection: "identifier"  */
-#line 683 "grammar.y"
+#line 693 "grammar.y"
              {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 2864 "grammar.cpp"
+#line 2871 "grammar.cpp"
     break;
 
   case 5: /* with_collection: bind_parameter_datasource_expected  */
-#line 686 "grammar.y"
+#line 696 "grammar.y"
                                        {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 2872 "grammar.cpp"
+#line 2879 "grammar.cpp"
     break;
 
   case 6: /* with_collection_list: with_collection  */
-#line 692 "grammar.y"
+#line 702 "grammar.y"
                      {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2881 "grammar.cpp"
+#line 2888 "grammar.cpp"
     break;
 
   case 7: /* with_collection_list: with_collection_list "," with_collection  */
-#line 696 "grammar.y"
+#line 706 "grammar.y"
                                                   {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2890 "grammar.cpp"
+#line 2897 "grammar.cpp"
     break;
 
   case 8: /* with_collection_list: with_collection_list with_collection  */
-#line 700 "grammar.y"
+#line 710 "grammar.y"
                                           {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 2899 "grammar.cpp"
-    break;
-
-  case 9: /* optional_with: %empty  */
-#line 707 "grammar.y"
-                 {
-     }
 #line 2906 "grammar.cpp"
     break;
 
+  case 9: /* optional_with: %empty  */
+#line 717 "grammar.y"
+                 {
+     }
+#line 2913 "grammar.cpp"
+    break;
+
   case 10: /* $@1: %empty  */
-#line 709 "grammar.y"
+#line 719 "grammar.y"
             {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
      }
-#line 2915 "grammar.cpp"
+#line 2922 "grammar.cpp"
     break;
 
   case 11: /* optional_with: "WITH keyword" $@1 with_collection_list  */
-#line 712 "grammar.y"
+#line 722 "grammar.y"
                             {
       auto node = static_cast<AstNode*>(parser->popStack());
       auto const& resolver = parser->query().resolver();
       auto withNode = parser->ast()->createNodeWithCollections(node, resolver);
       parser->ast()->addOperation(withNode);
      }
-#line 2926 "grammar.cpp"
-    break;
-
-  case 12: /* queryStart: optional_with query  */
-#line 721 "grammar.y"
-                        {
-    }
 #line 2933 "grammar.cpp"
     break;
 
-  case 13: /* query: optional_statement_block_statements final_statement  */
-#line 726 "grammar.y"
-                                                        {
+  case 12: /* queryStart: optional_with query  */
+#line 731 "grammar.y"
+                        {
     }
 #line 2940 "grammar.cpp"
     break;
 
-  case 14: /* final_statement: return_statement  */
-#line 731 "grammar.y"
-                     {
+  case 13: /* query: optional_statement_block_statements final_statement  */
+#line 736 "grammar.y"
+                                                        {
     }
 #line 2947 "grammar.cpp"
     break;
 
+  case 14: /* final_statement: return_statement  */
+#line 741 "grammar.y"
+                     {
+    }
+#line 2954 "grammar.cpp"
+    break;
+
   case 15: /* final_statement: remove_statement  */
-#line 733 "grammar.y"
+#line 743 "grammar.y"
                      {
       parser->ast()->scopes()->endNested();
     }
-#line 2955 "grammar.cpp"
+#line 2962 "grammar.cpp"
     break;
 
   case 16: /* final_statement: insert_statement  */
-#line 736 "grammar.y"
+#line 746 "grammar.y"
                      {
       parser->ast()->scopes()->endNested();
     }
-#line 2963 "grammar.cpp"
+#line 2970 "grammar.cpp"
     break;
 
   case 17: /* final_statement: update_statement  */
-#line 739 "grammar.y"
+#line 749 "grammar.y"
                      {
       parser->ast()->scopes()->endNested();
     }
-#line 2971 "grammar.cpp"
+#line 2978 "grammar.cpp"
     break;
 
   case 18: /* final_statement: replace_statement  */
-#line 742 "grammar.y"
+#line 752 "grammar.y"
                       {
       parser->ast()->scopes()->endNested();
     }
-#line 2979 "grammar.cpp"
+#line 2986 "grammar.cpp"
     break;
 
   case 19: /* final_statement: upsert_statement  */
-#line 745 "grammar.y"
+#line 755 "grammar.y"
                      {
       parser->ast()->scopes()->endNested();
-    }
-#line 2987 "grammar.cpp"
-    break;
-
-  case 20: /* optional_statement_block_statements: %empty  */
-#line 751 "grammar.y"
-                {
     }
 #line 2994 "grammar.cpp"
     break;
 
-  case 21: /* optional_statement_block_statements: optional_statement_block_statements statement_block_statement  */
-#line 753 "grammar.y"
-                                                                  {
+  case 20: /* optional_statement_block_statements: %empty  */
+#line 761 "grammar.y"
+                {
     }
 #line 3001 "grammar.cpp"
     break;
 
-  case 22: /* statement_block_statement: for_statement  */
-#line 758 "grammar.y"
-                  {
+  case 21: /* optional_statement_block_statements: optional_statement_block_statements statement_block_statement  */
+#line 763 "grammar.y"
+                                                                  {
     }
 #line 3008 "grammar.cpp"
     break;
 
-  case 23: /* statement_block_statement: let_statement  */
-#line 760 "grammar.y"
+  case 22: /* statement_block_statement: for_statement  */
+#line 768 "grammar.y"
                   {
     }
 #line 3015 "grammar.cpp"
     break;
 
-  case 24: /* statement_block_statement: filter_statement  */
-#line 762 "grammar.y"
-                     {
+  case 23: /* statement_block_statement: let_statement  */
+#line 770 "grammar.y"
+                  {
     }
 #line 3022 "grammar.cpp"
     break;
 
-  case 25: /* statement_block_statement: collect_statement  */
-#line 764 "grammar.y"
-                      {
+  case 24: /* statement_block_statement: filter_statement  */
+#line 772 "grammar.y"
+                     {
     }
 #line 3029 "grammar.cpp"
     break;
 
-  case 26: /* statement_block_statement: sort_statement  */
-#line 766 "grammar.y"
-                   {
+  case 25: /* statement_block_statement: collect_statement  */
+#line 774 "grammar.y"
+                      {
     }
 #line 3036 "grammar.cpp"
     break;
 
-  case 27: /* statement_block_statement: limit_statement  */
-#line 768 "grammar.y"
-                    {
+  case 26: /* statement_block_statement: sort_statement  */
+#line 776 "grammar.y"
+                   {
     }
 #line 3043 "grammar.cpp"
     break;
 
-  case 28: /* statement_block_statement: window_statement  */
-#line 770 "grammar.y"
-                     {
+  case 27: /* statement_block_statement: limit_statement  */
+#line 778 "grammar.y"
+                    {
     }
 #line 3050 "grammar.cpp"
     break;
 
-  case 29: /* statement_block_statement: remove_statement  */
-#line 772 "grammar.y"
+  case 28: /* statement_block_statement: window_statement  */
+#line 780 "grammar.y"
                      {
     }
 #line 3057 "grammar.cpp"
     break;
 
-  case 30: /* statement_block_statement: insert_statement  */
-#line 774 "grammar.y"
+  case 29: /* statement_block_statement: remove_statement  */
+#line 782 "grammar.y"
                      {
     }
 #line 3064 "grammar.cpp"
     break;
 
-  case 31: /* statement_block_statement: update_statement  */
-#line 776 "grammar.y"
+  case 30: /* statement_block_statement: insert_statement  */
+#line 784 "grammar.y"
                      {
     }
 #line 3071 "grammar.cpp"
     break;
 
-  case 32: /* statement_block_statement: replace_statement  */
-#line 778 "grammar.y"
-                      {
+  case 31: /* statement_block_statement: update_statement  */
+#line 786 "grammar.y"
+                     {
     }
 #line 3078 "grammar.cpp"
     break;
 
-  case 33: /* statement_block_statement: upsert_statement  */
-#line 780 "grammar.y"
-                     {
+  case 32: /* statement_block_statement: replace_statement  */
+#line 788 "grammar.y"
+                      {
     }
 #line 3085 "grammar.cpp"
     break;
 
+  case 33: /* statement_block_statement: upsert_statement  */
+#line 790 "grammar.y"
+                     {
+    }
+#line 3092 "grammar.cpp"
+    break;
+
   case 34: /* more_output_variables: variable_name  */
-#line 785 "grammar.y"
+#line 795 "grammar.y"
                   {
       auto wrapperNode = parser->ast()->createNodeArray();
       parser->pushArray(wrapperNode);
@@ -3094,44 +3101,44 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       parser->pushArrayElement(node);
     }
-#line 3097 "grammar.cpp"
+#line 3104 "grammar.cpp"
     break;
 
   case 35: /* more_output_variables: more_output_variables "," variable_name  */
-#line 792 "grammar.y"
+#line 802 "grammar.y"
                                                   {
       AstNode* node = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       parser->pushArrayElement(node);
     }
-#line 3106 "grammar.cpp"
+#line 3113 "grammar.cpp"
     break;
 
   case 36: /* for_output_variables: more_output_variables  */
-#line 799 "grammar.y"
+#line 809 "grammar.y"
                           {
       (yyval.node) = parser->popArray();
     }
-#line 3114 "grammar.cpp"
+#line 3121 "grammar.cpp"
     break;
 
   case 37: /* for_output_variables: array_destructuring  */
-#line 802 "grammar.y"
+#line 812 "grammar.y"
                         {
       (yyval.node) = parser->ast()->createNodeDestructuring((yyvsp[0].node), /*isObject*/ false);
     }
-#line 3122 "grammar.cpp"
+#line 3129 "grammar.cpp"
     break;
 
   case 38: /* for_output_variables: object_destructuring  */
-#line 805 "grammar.y"
+#line 815 "grammar.y"
                          {
       (yyval.node) = parser->ast()->createNodeDestructuring((yyvsp[0].node), /*isObject*/ true);
     }
-#line 3130 "grammar.cpp"
+#line 3137 "grammar.cpp"
     break;
 
   case 39: /* prune_and_options: %empty  */
-#line 811 "grammar.y"
+#line 821 "grammar.y"
                                                    {
       auto node = static_cast<AstNode*>(parser->peekStack());
       // Prune
@@ -3139,11 +3146,11 @@ yyreduce:
       // Options
       node->addMember(parser->ast()->createNodeNop());
     }
-#line 3142 "grammar.cpp"
+#line 3149 "grammar.cpp"
     break;
 
   case 40: /* prune_and_options: "identifier" optional_prune_variable  */
-#line 818 "grammar.y"
+#line 828 "grammar.y"
                                      {
       std::string_view operation((yyvsp[-1].strval).value, (yyvsp[-1].strval).length);
 
@@ -3168,11 +3175,11 @@ yyreduce:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
       }
     }
-#line 3171 "grammar.cpp"
+#line 3178 "grammar.cpp"
     break;
 
   case 41: /* prune_and_options: "identifier" optional_prune_variable "identifier" object  */
-#line 842 "grammar.y"
+#line 852 "grammar.y"
                                                      {
       /* prune and options */
       std::string_view operation((yyvsp[-3].strval).value, (yyvsp[-3].strval).length);
@@ -3193,11 +3200,11 @@ yyreduce:
       // Options
       node->addMember((yyvsp[0].node));
     }
-#line 3196 "grammar.cpp"
+#line 3203 "grammar.cpp"
     break;
 
   case 42: /* traversal_graph_info: graph_direction_steps expression graph_subject  */
-#line 865 "grammar.y"
+#line 875 "grammar.y"
                                                    {
       auto infoNode = parser->ast()->createNodeArray();
       // Direction
@@ -3208,46 +3215,46 @@ yyreduce:
       infoNode->addMember((yyvsp[0].node));
       (yyval.node) = infoNode;
     }
-#line 3211 "grammar.cpp"
+#line 3218 "grammar.cpp"
     break;
 
   case 43: /* shortest_path_graph_info: graph_direction "SHORTEST_PATH keyword" expression "identifier" expression graph_subject options  */
-#line 878 "grammar.y"
+#line 888 "grammar.y"
                                                                                          {
       (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), 1), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 3219 "grammar.cpp"
+#line 3226 "grammar.cpp"
     break;
 
   case 44: /* k_shortest_paths_graph_info: graph_direction "K_SHORTEST_PATHS keyword" expression "identifier" expression graph_subject options  */
-#line 884 "grammar.y"
+#line 894 "grammar.y"
                                                                                             {
       (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), 1), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 3227 "grammar.cpp"
+#line 3234 "grammar.cpp"
     break;
 
   case 45: /* k_paths_graph_info: graph_direction_steps "K_PATHS keyword" expression "identifier" expression graph_subject options  */
-#line 890 "grammar.y"
+#line 900 "grammar.y"
                                                                                          {
       (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, (yyvsp[-6].node), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 3235 "grammar.cpp"
+#line 3242 "grammar.cpp"
     break;
 
   case 46: /* all_shortest_paths_graph_info: graph_direction "ALL_SHORTEST_PATHS keyword" expression "identifier" expression graph_subject options  */
-#line 896 "grammar.y"
+#line 906 "grammar.y"
                                                                                               {
       auto nodeStart = parser->ast()->createNodeValueInt(0);
       auto nodeEnd = parser->ast()->createNodeValueInt(INT64_MAX-1);
       auto nodeRange = parser->ast()->createNodeRange(nodeStart, nodeEnd);
       (yyval.node) = ::buildShortestPathInfo(parser, (yyvsp[-3].strval).value, parser->ast()->createNodeDirection((yyvsp[-6].intval), nodeRange), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node), yyloc);
     }
-#line 3246 "grammar.cpp"
+#line 3253 "grammar.cpp"
     break;
 
   case 47: /* $@2: %empty  */
-#line 905 "grammar.y"
+#line 915 "grammar.y"
                                                {
       AstNode* variablesNode = static_cast<AstNode*>((yyvsp[-2].node));
       ::validateForOutVariables(parser, variablesNode, 1, 1, /*allowDestructuring*/ true, "Collections and views FOR loops", yyloc);
@@ -3273,11 +3280,11 @@ yyreduce:
       // condition
       parser->lazyConditions().pushForceInline();
     }
-#line 3276 "grammar.cpp"
+#line 3283 "grammar.cpp"
     break;
 
   case 48: /* for_statement: "FOR declaration" for_output_variables "IN keyword" expression $@2 for_options  */
-#line 929 "grammar.y"
+#line 939 "grammar.y"
                   {
       parser->lazyConditions().popForceInline();
 
@@ -3366,11 +3373,11 @@ yyreduce:
         }
       }
     }
-#line 3369 "grammar.cpp"
+#line 3376 "grammar.cpp"
     break;
 
   case 49: /* $@3: %empty  */
-#line 1017 "grammar.y"
+#line 1027 "grammar.y"
                                                          {
       // Traversal
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
@@ -3389,11 +3396,11 @@ yyreduce:
       // evaluating the PRUNE condition, which must remain a single condition
       parser->lazyConditions().pushForceInline();
     }
-#line 3392 "grammar.cpp"
+#line 3399 "grammar.cpp"
     break;
 
   case 50: /* for_statement: "FOR declaration" for_output_variables "IN keyword" traversal_graph_info $@3 prune_and_options  */
-#line 1034 "grammar.y"
+#line 1044 "grammar.y"
                         {
       parser->lazyConditions().popForceInline();
 
@@ -3418,11 +3425,11 @@ yyreduce:
         parser->ast()->addOperation(pruneLetVariableName);
       }
     }
-#line 3421 "grammar.cpp"
+#line 3428 "grammar.cpp"
     break;
 
   case 51: /* for_statement: "FOR declaration" for_output_variables "IN keyword" shortest_path_graph_info  */
-#line 1058 "grammar.y"
+#line 1068 "grammar.y"
                                                              {
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
@@ -3435,11 +3442,11 @@ yyreduce:
       auto node = parser->ast()->createNodeShortestPath(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3438 "grammar.cpp"
+#line 3445 "grammar.cpp"
     break;
 
   case 52: /* for_statement: "FOR declaration" for_output_variables "IN keyword" k_shortest_paths_graph_info  */
-#line 1070 "grammar.y"
+#line 1080 "grammar.y"
                                                                 {
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
@@ -3452,11 +3459,11 @@ yyreduce:
       auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3455 "grammar.cpp"
+#line 3462 "grammar.cpp"
     break;
 
   case 53: /* for_statement: "FOR declaration" for_output_variables "IN keyword" k_paths_graph_info  */
-#line 1082 "grammar.y"
+#line 1092 "grammar.y"
                                                        {
       // K Paths
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
@@ -3469,11 +3476,11 @@ yyreduce:
       auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3472 "grammar.cpp"
+#line 3479 "grammar.cpp"
     break;
 
   case 54: /* for_statement: "FOR declaration" for_output_variables "IN keyword" all_shortest_paths_graph_info  */
-#line 1094 "grammar.y"
+#line 1104 "grammar.y"
                                                                   {
       // All Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>((yyvsp[-2].node));
@@ -3486,51 +3493,51 @@ yyreduce:
       auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::AllShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
-#line 3489 "grammar.cpp"
+#line 3496 "grammar.cpp"
     break;
 
   case 55: /* filter_statement: "FILTER declaration" expression  */
-#line 1109 "grammar.y"
+#line 1119 "grammar.y"
                         {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter((yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3499 "grammar.cpp"
-    break;
-
-  case 56: /* let_statement: "LET declaration" let_list  */
-#line 1117 "grammar.y"
-                   {
-    }
 #line 3506 "grammar.cpp"
     break;
 
-  case 57: /* let_list: let_element  */
-#line 1122 "grammar.y"
-                {
+  case 56: /* let_statement: "LET declaration" let_list  */
+#line 1127 "grammar.y"
+                   {
     }
 #line 3513 "grammar.cpp"
     break;
 
-  case 58: /* let_list: let_list "," let_element  */
-#line 1124 "grammar.y"
-                                 {
+  case 57: /* let_list: let_element  */
+#line 1132 "grammar.y"
+                {
     }
 #line 3520 "grammar.cpp"
     break;
 
+  case 58: /* let_list: let_list "," let_element  */
+#line 1134 "grammar.y"
+                                 {
+    }
+#line 3527 "grammar.cpp"
+    break;
+
   case 59: /* let_element: variable_name "assignment" expression  */
-#line 1129 "grammar.y"
+#line 1139 "grammar.y"
                                       {
       auto node = parser->ast()->createNodeLet((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node), true);
       parser->ast()->addOperation(node);
     }
-#line 3529 "grammar.cpp"
+#line 3536 "grammar.cpp"
     break;
 
   case 60: /* let_element: array_destructuring "assignment" expression  */
-#line 1133 "grammar.y"
+#line 1143 "grammar.y"
                                             {
       std::string nextName = parser->ast()->variables()->nextName();
       auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), (yyvsp[0].node), false);
@@ -3539,11 +3546,11 @@ yyreduce:
       arangodb::containers::SmallVector<AstNode const*, 8> paths;
       ::destructureArray(parser, nextName, paths, (yyvsp[-2].node));
     }
-#line 3542 "grammar.cpp"
+#line 3549 "grammar.cpp"
     break;
 
   case 61: /* let_element: object_destructuring "assignment" expression  */
-#line 1141 "grammar.y"
+#line 1151 "grammar.y"
                                              {
       std::string nextName = parser->ast()->variables()->nextName();
       auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), (yyvsp[0].node), false);
@@ -3552,138 +3559,138 @@ yyreduce:
       arangodb::containers::SmallVector<AstNode const*, 8> paths;
       ::destructureObject(parser, nextName, paths, (yyvsp[-2].node));
     }
-#line 3555 "grammar.cpp"
+#line 3562 "grammar.cpp"
     break;
 
   case 62: /* $@4: %empty  */
-#line 1152 "grammar.y"
+#line 1162 "grammar.y"
                  {
       AstNode* node = parser->ast()->createNodeArray();
       node->setIntValue(1);
       parser->pushStack(node);
     }
-#line 3565 "grammar.cpp"
+#line 3572 "grammar.cpp"
     break;
 
   case 63: /* array_destructuring: "[" $@4 array_destructuring_element "]"  */
-#line 1156 "grammar.y"
+#line 1166 "grammar.y"
                                                 {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 3573 "grammar.cpp"
+#line 3580 "grammar.cpp"
     break;
 
   case 64: /* array_destructuring_element: %empty  */
-#line 1162 "grammar.y"
+#line 1172 "grammar.y"
                 {
       parser->pushArrayElement(parser->ast()->createNodeValueNull());
     }
-#line 3581 "grammar.cpp"
+#line 3588 "grammar.cpp"
     break;
 
   case 65: /* array_destructuring_element: variable_name  */
-#line 1165 "grammar.y"
+#line 1175 "grammar.y"
                   {
       parser->pushArrayElement(parser->ast()->createNodeVariable({(yyvsp[0].strval).value, (yyvsp[0].strval).length}, true));
     }
-#line 3589 "grammar.cpp"
+#line 3596 "grammar.cpp"
     break;
 
   case 66: /* array_destructuring_element: array_destructuring  */
-#line 1168 "grammar.y"
+#line 1178 "grammar.y"
                         {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3597 "grammar.cpp"
+#line 3604 "grammar.cpp"
     break;
 
   case 67: /* array_destructuring_element: object_destructuring  */
-#line 1171 "grammar.y"
+#line 1181 "grammar.y"
                          {
       parser->pushArrayElement((yyvsp[0].node));
-    }
-#line 3605 "grammar.cpp"
-    break;
-
-  case 68: /* array_destructuring_element: array_destructuring_element "," array_destructuring_element  */
-#line 1174 "grammar.y"
-                                                                    {
     }
 #line 3612 "grammar.cpp"
     break;
 
+  case 68: /* array_destructuring_element: array_destructuring_element "," array_destructuring_element  */
+#line 1184 "grammar.y"
+                                                                    {
+    }
+#line 3619 "grammar.cpp"
+    break;
+
   case 69: /* $@5: %empty  */
-#line 1179 "grammar.y"
+#line 1189 "grammar.y"
                   {
       AstNode* node = parser->ast()->createNodeArray();
       node->setIntValue(2);
       parser->pushStack(node);
     }
-#line 3622 "grammar.cpp"
+#line 3629 "grammar.cpp"
     break;
 
   case 70: /* object_destructuring: "{" $@5 object_destructuring_element "}"  */
-#line 1183 "grammar.y"
+#line 1193 "grammar.y"
                                                   {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 3630 "grammar.cpp"
+#line 3637 "grammar.cpp"
     break;
 
   case 71: /* object_destructuring_element: %empty  */
-#line 1189 "grammar.y"
+#line 1199 "grammar.y"
                 {
       parser->pushArrayElement(parser->ast()->createNodeValueNull());
       parser->pushArrayElement(parser->ast()->createNodeValueNull());
     }
-#line 3639 "grammar.cpp"
+#line 3646 "grammar.cpp"
     break;
 
   case 72: /* object_destructuring_element: variable_name  */
-#line 1193 "grammar.y"
+#line 1203 "grammar.y"
                   {
       parser->pushArrayElement(parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length));
       parser->pushArrayElement(parser->ast()->createNodeVariable({(yyvsp[0].strval).value, (yyvsp[0].strval).length}, true));
     }
-#line 3648 "grammar.cpp"
+#line 3655 "grammar.cpp"
     break;
 
   case 73: /* object_destructuring_element: variable_name ":" variable_name  */
-#line 1197 "grammar.y"
+#line 1207 "grammar.y"
                                         {
       parser->pushArrayElement(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       parser->pushArrayElement(parser->ast()->createNodeVariable({(yyvsp[0].strval).value, (yyvsp[0].strval).length}, true));
     }
-#line 3657 "grammar.cpp"
+#line 3664 "grammar.cpp"
     break;
 
   case 74: /* object_destructuring_element: variable_name ":" object_destructuring  */
-#line 1201 "grammar.y"
+#line 1211 "grammar.y"
                                                {
       parser->pushArrayElement(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3666 "grammar.cpp"
+#line 3673 "grammar.cpp"
     break;
 
   case 75: /* object_destructuring_element: variable_name ":" array_destructuring  */
-#line 1205 "grammar.y"
+#line 1215 "grammar.y"
                                               {
       parser->pushArrayElement(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 3675 "grammar.cpp"
-    break;
-
-  case 76: /* object_destructuring_element: object_destructuring_element "," object_destructuring_element  */
-#line 1209 "grammar.y"
-                                                                      {
-    }
 #line 3682 "grammar.cpp"
     break;
 
+  case 76: /* object_destructuring_element: object_destructuring_element "," object_destructuring_element  */
+#line 1219 "grammar.y"
+                                                                      {
+    }
+#line 3689 "grammar.cpp"
+    break;
+
   case 77: /* count_into: "WITH keyword" "identifier" "INTO keyword" variable_name  */
-#line 1214 "grammar.y"
+#line 1224 "grammar.y"
                                          {
       std::string_view operation((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       if (!::caseInsensitiveEqual(operation, "COUNT")) {
@@ -3692,30 +3699,30 @@ yyreduce:
 
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 3695 "grammar.cpp"
+#line 3702 "grammar.cpp"
     break;
 
   case 78: /* $@6: %empty  */
-#line 1225 "grammar.y"
+#line 1235 "grammar.y"
               {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3704 "grammar.cpp"
+#line 3711 "grammar.cpp"
     break;
 
   case 79: /* collect_variable_list: "COLLECT declaration" $@6 collect_list  */
-#line 1228 "grammar.y"
+#line 1238 "grammar.y"
                    {
       auto list = static_cast<AstNode*>(parser->popStack());
       TRI_ASSERT(list != nullptr);
       (yyval.node) = list;
     }
-#line 3714 "grammar.cpp"
+#line 3721 "grammar.cpp"
     break;
 
   case 80: /* collect_statement: "COLLECT declaration" count_into options  */
-#line 1236 "grammar.y"
+#line 1246 "grammar.y"
                                  {
       /* COLLECT WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
@@ -3726,11 +3733,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3729 "grammar.cpp"
+#line 3736 "grammar.cpp"
     break;
 
   case 81: /* collect_statement: collect_variable_list count_into options  */
-#line 1246 "grammar.y"
+#line 1256 "grammar.y"
                                              {
       /* COLLECT var = expr WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
@@ -3744,11 +3751,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollectCount((yyvsp[-2].node), (yyvsp[-1].strval).value, (yyvsp[-1].strval).length, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3747 "grammar.cpp"
+#line 3754 "grammar.cpp"
     break;
 
   case 82: /* collect_statement: "COLLECT declaration" aggregate collect_optional_into options  */
-#line 1259 "grammar.y"
+#line 1269 "grammar.y"
                                                       {
       /* AGGREGATE var = expr OPTIONS ... */
       VarSet variablesIntroduced{};
@@ -3773,11 +3780,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3776 "grammar.cpp"
+#line 3783 "grammar.cpp"
     break;
 
   case 83: /* collect_statement: collect_variable_list aggregate collect_optional_into options  */
-#line 1283 "grammar.y"
+#line 1293 "grammar.y"
                                                                   {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
       VarSet variablesIntroduced{};
@@ -3833,11 +3840,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), (yyvsp[-2].node), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3836 "grammar.cpp"
+#line 3843 "grammar.cpp"
     break;
 
   case 84: /* collect_statement: collect_variable_list collect_optional_into options  */
-#line 1338 "grammar.y"
+#line 1348 "grammar.y"
                                                         {
       /* COLLECT var = expr INTO var OPTIONS ... */
       VarSet variablesIntroduced{};
@@ -3857,11 +3864,11 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-2].node), parser->ast()->createNodeArray(), into, intoExpression, nullptr, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3860 "grammar.cpp"
+#line 3867 "grammar.cpp"
     break;
 
   case 85: /* collect_statement: collect_variable_list collect_optional_into keep options  */
-#line 1357 "grammar.y"
+#line 1367 "grammar.y"
                                                              {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
       VarSet variablesIntroduced{};
@@ -3877,6 +3884,9 @@ yyreduce:
       }
 
       if ((yyvsp[-2].node) != nullptr && (yyvsp[-2].node)->type == NODE_TYPE_ARRAY) {
+        if ((yyvsp[-1].node) != nullptr) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' with 'INTO' and projection expression", yylloc.first_line, yylloc.first_column);
+        }
         ::checkCollectVariables(parser, "INTO", (yyvsp[-2].node)->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
         
@@ -3890,61 +3900,61 @@ yyreduce:
       auto node = parser->ast()->createNodeCollect((yyvsp[-3].node), parser->ast()->createNodeArray(), into, intoExpression, (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 3893 "grammar.cpp"
+#line 3903 "grammar.cpp"
     break;
 
   case 86: /* collect_list: collect_element  */
-#line 1388 "grammar.y"
+#line 1401 "grammar.y"
                     {
     }
-#line 3900 "grammar.cpp"
+#line 3910 "grammar.cpp"
     break;
 
   case 87: /* collect_list: collect_list "," collect_element  */
-#line 1390 "grammar.y"
+#line 1403 "grammar.y"
                                          {
     }
-#line 3907 "grammar.cpp"
+#line 3917 "grammar.cpp"
     break;
 
   case 88: /* collect_element: variable_name "assignment" expression  */
-#line 1395 "grammar.y"
+#line 1408 "grammar.y"
                                       {
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 3916 "grammar.cpp"
+#line 3926 "grammar.cpp"
     break;
 
   case 89: /* collect_optional_into: %empty  */
-#line 1402 "grammar.y"
+#line 1415 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 3924 "grammar.cpp"
+#line 3934 "grammar.cpp"
     break;
 
   case 90: /* collect_optional_into: "INTO keyword" variable_name  */
-#line 1405 "grammar.y"
+#line 1418 "grammar.y"
                          {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 3932 "grammar.cpp"
+#line 3942 "grammar.cpp"
     break;
 
   case 91: /* collect_optional_into: "INTO keyword" variable_name "assignment" expression  */
-#line 1408 "grammar.y"
+#line 1421 "grammar.y"
                                              {
       auto node = parser->ast()->createNodeArray();
       node->addMember(parser->ast()->createNodeValueString((yyvsp[-2].strval).value, (yyvsp[-2].strval).length));
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 3943 "grammar.cpp"
+#line 3953 "grammar.cpp"
     break;
 
   case 92: /* variable_list: variable_name  */
-#line 1417 "grammar.y"
+#line 1430 "grammar.y"
                   {
       std::string_view variableName((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!parser->ast()->scopes()->existsVariable(variableName)) {
@@ -3958,11 +3968,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 3961 "grammar.cpp"
+#line 3971 "grammar.cpp"
     break;
 
   case 93: /* variable_list: variable_list "," variable_name  */
-#line 1430 "grammar.y"
+#line 1443 "grammar.y"
                                         {
       std::string_view variableName((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!parser->ast()->scopes()->existsVariable(variableName)) {
@@ -3976,11 +3986,11 @@ yyreduce:
       node->setFlag(FLAG_KEEP_VARIABLENAME);
       parser->pushArrayElement(node);
     }
-#line 3979 "grammar.cpp"
+#line 3989 "grammar.cpp"
     break;
 
   case 94: /* $@7: %empty  */
-#line 1446 "grammar.y"
+#line 1459 "grammar.y"
              {
       std::string_view operation((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (!::caseInsensitiveEqual(operation, "KEEP")) {
@@ -3990,175 +4000,175 @@ yyreduce:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 3993 "grammar.cpp"
+#line 4003 "grammar.cpp"
     break;
 
   case 95: /* keep: "identifier" $@7 variable_list  */
-#line 1454 "grammar.y"
+#line 1467 "grammar.y"
                     {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 4002 "grammar.cpp"
+#line 4012 "grammar.cpp"
     break;
 
   case 96: /* $@8: %empty  */
-#line 1461 "grammar.y"
+#line 1474 "grammar.y"
                 {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4011 "grammar.cpp"
+#line 4021 "grammar.cpp"
     break;
 
   case 97: /* aggregate: "AGGREGATE keyword" $@8 aggregate_list  */
-#line 1464 "grammar.y"
+#line 1477 "grammar.y"
                      {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 4020 "grammar.cpp"
+#line 4030 "grammar.cpp"
     break;
 
   case 98: /* aggregate_list: aggregate_element  */
-#line 1471 "grammar.y"
+#line 1484 "grammar.y"
                       {
     }
-#line 4027 "grammar.cpp"
+#line 4037 "grammar.cpp"
     break;
 
   case 99: /* aggregate_list: aggregate_list "," aggregate_element  */
-#line 1473 "grammar.y"
+#line 1486 "grammar.y"
                                              {
     }
-#line 4034 "grammar.cpp"
+#line 4044 "grammar.cpp"
     break;
 
   case 100: /* aggregate_element: variable_name "assignment" aggregate_function_call  */
-#line 1478 "grammar.y"
+#line 1491 "grammar.y"
                                                    {
       auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
       parser->pushArrayElement(node);
     }
-#line 4043 "grammar.cpp"
+#line 4053 "grammar.cpp"
     break;
 
   case 101: /* $@9: %empty  */
-#line 1485 "grammar.y"
+#line 1498 "grammar.y"
                          {
       parser->pushStack((yyvsp[-1].strval).value);
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4053 "grammar.cpp"
+#line 4063 "grammar.cpp"
     break;
 
   case 102: /* aggregate_function_call: function_name "(" $@9 optional_function_call_arguments ")"  */
-#line 1489 "grammar.y"
+#line 1502 "grammar.y"
                                                               {
       auto list = static_cast<AstNode const*>(parser->popStack());
       // this works because the function name here is always NUL-terminated
       (yyval.node) = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 4063 "grammar.cpp"
+#line 4073 "grammar.cpp"
     break;
 
   case 103: /* $@10: %empty  */
-#line 1497 "grammar.y"
+#line 1510 "grammar.y"
            {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 4072 "grammar.cpp"
+#line 4082 "grammar.cpp"
     break;
 
   case 104: /* sort_statement: "SORT declaration" $@10 sort_list  */
-#line 1500 "grammar.y"
+#line 1513 "grammar.y"
                 {
       auto list = static_cast<AstNode const*>(parser->popStack());
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 4082 "grammar.cpp"
+#line 4092 "grammar.cpp"
     break;
 
   case 105: /* sort_list: sort_element  */
-#line 1508 "grammar.y"
+#line 1521 "grammar.y"
                  {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4090 "grammar.cpp"
+#line 4100 "grammar.cpp"
     break;
 
   case 106: /* sort_list: sort_list "," sort_element  */
-#line 1511 "grammar.y"
+#line 1524 "grammar.y"
                                    {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 4098 "grammar.cpp"
+#line 4108 "grammar.cpp"
     break;
 
   case 107: /* sort_element: expression sort_direction  */
-#line 1517 "grammar.y"
+#line 1530 "grammar.y"
                               {
       (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].node));
     }
-#line 4106 "grammar.cpp"
+#line 4116 "grammar.cpp"
     break;
 
   case 108: /* sort_direction: %empty  */
-#line 1523 "grammar.y"
+#line 1536 "grammar.y"
                 {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 4114 "grammar.cpp"
+#line 4124 "grammar.cpp"
     break;
 
   case 109: /* sort_direction: "ASC keyword"  */
-#line 1526 "grammar.y"
+#line 1539 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 4122 "grammar.cpp"
+#line 4132 "grammar.cpp"
     break;
 
   case 110: /* sort_direction: "DESC keyword"  */
-#line 1529 "grammar.y"
+#line 1542 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 4130 "grammar.cpp"
+#line 4140 "grammar.cpp"
     break;
 
   case 111: /* sort_direction: simple_value  */
-#line 1532 "grammar.y"
+#line 1545 "grammar.y"
                  {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4138 "grammar.cpp"
+#line 4148 "grammar.cpp"
     break;
 
   case 112: /* limit_statement: "LIMIT declaration" expression  */
-#line 1538 "grammar.y"
+#line 1551 "grammar.y"
                        {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4148 "grammar.cpp"
+#line 4158 "grammar.cpp"
     break;
 
   case 113: /* limit_statement: "LIMIT declaration" expression "," expression  */
-#line 1543 "grammar.y"
+#line 1556 "grammar.y"
                                           {
       auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4157 "grammar.cpp"
+#line 4167 "grammar.cpp"
     break;
 
   case 114: /* window_statement: "WINDOW declaration" object aggregate  */
-#line 1550 "grammar.y"
+#line 1563 "grammar.y"
                               {
       /* WINDOW {preceding:2, following:2} AGGREGATE x = AVG(x) */
       
@@ -4174,11 +4184,11 @@ yyreduce:
       auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/nullptr, /*aggrs*/(yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4177 "grammar.cpp"
+#line 4187 "grammar.cpp"
     break;
 
   case 115: /* window_statement: "WINDOW declaration" expression "WITH keyword" object aggregate  */
-#line 1565 "grammar.y"
+#line 1578 "grammar.y"
                                                 {
     /* WINDOW rangeVar WITH {preceding:"1d", following:"1d"} AGGREGATE x = AVG(x) */
     
@@ -4194,37 +4204,37 @@ yyreduce:
     auto node = parser->ast()->createNodeWindow(/*spec*/(yyvsp[-1].node), /*range*/(yyvsp[-3].node), /*aggrs*/(yyvsp[0].node));
     parser->ast()->addOperation(node);
   }
-#line 4197 "grammar.cpp"
+#line 4207 "grammar.cpp"
     break;
 
   case 116: /* return_statement: "RETURN declaration" distinct_expression  */
-#line 1583 "grammar.y"
+#line 1596 "grammar.y"
                                  {
       auto node = parser->ast()->createNodeReturn((yyvsp[0].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 4207 "grammar.cpp"
+#line 4217 "grammar.cpp"
     break;
 
   case 117: /* in_or_into_collection: "IN keyword" in_or_into_collection_name  */
-#line 1591 "grammar.y"
+#line 1604 "grammar.y"
                                     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4215 "grammar.cpp"
+#line 4225 "grammar.cpp"
     break;
 
   case 118: /* in_or_into_collection: "INTO keyword" in_or_into_collection_name  */
-#line 1594 "grammar.y"
+#line 1607 "grammar.y"
                                       {
        (yyval.node) = (yyvsp[0].node);
      }
-#line 4223 "grammar.cpp"
+#line 4233 "grammar.cpp"
     break;
 
   case 119: /* remove_statement: "REMOVE command" expression in_or_into_collection options  */
-#line 1600 "grammar.y"
+#line 1613 "grammar.y"
                                                       {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4232,11 +4242,11 @@ yyreduce:
       auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4235 "grammar.cpp"
+#line 4245 "grammar.cpp"
     break;
 
   case 120: /* insert_statement: "INSERT command" expression in_or_into_collection options  */
-#line 1610 "grammar.y"
+#line 1623 "grammar.y"
                                                       {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4244,11 +4254,11 @@ yyreduce:
       auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4247 "grammar.cpp"
+#line 4257 "grammar.cpp"
     break;
 
   case 121: /* update_parameters: expression in_or_into_collection options  */
-#line 1620 "grammar.y"
+#line 1633 "grammar.y"
                                              {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4257,11 +4267,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4260 "grammar.cpp"
+#line 4270 "grammar.cpp"
     break;
 
   case 122: /* update_parameters: expression "WITH keyword" expression in_or_into_collection options  */
-#line 1628 "grammar.y"
+#line 1641 "grammar.y"
                                                                {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4270,18 +4280,18 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4273 "grammar.cpp"
+#line 4283 "grammar.cpp"
     break;
 
   case 123: /* update_statement: "UPDATE command" update_parameters  */
-#line 1639 "grammar.y"
+#line 1652 "grammar.y"
                                {
     }
-#line 4280 "grammar.cpp"
+#line 4290 "grammar.cpp"
     break;
 
   case 124: /* replace_parameters: expression in_or_into_collection options  */
-#line 1644 "grammar.y"
+#line 1657 "grammar.y"
                                              {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4290,11 +4300,11 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4293 "grammar.cpp"
+#line 4303 "grammar.cpp"
     break;
 
   case 125: /* replace_parameters: expression "WITH keyword" expression in_or_into_collection options  */
-#line 1652 "grammar.y"
+#line 1665 "grammar.y"
                                                                {
       if (!parser->configureWriteQuery((yyvsp[-1].node), (yyvsp[0].node))) {
         YYABORT;
@@ -4303,50 +4313,50 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
       parser->ast()->addOperation(node);
     }
-#line 4306 "grammar.cpp"
+#line 4316 "grammar.cpp"
     break;
 
   case 126: /* replace_statement: "REPLACE command" replace_parameters  */
-#line 1663 "grammar.y"
+#line 1676 "grammar.y"
                                  {
     }
-#line 4313 "grammar.cpp"
+#line 4323 "grammar.cpp"
     break;
 
   case 127: /* update_or_replace: "UPDATE command"  */
-#line 1668 "grammar.y"
+#line 1681 "grammar.y"
              {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-#line 4321 "grammar.cpp"
+#line 4331 "grammar.cpp"
     break;
 
   case 128: /* update_or_replace: "REPLACE command"  */
-#line 1671 "grammar.y"
+#line 1684 "grammar.y"
               {
       (yyval.intval) = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-#line 4329 "grammar.cpp"
+#line 4339 "grammar.cpp"
     break;
 
   case 129: /* upsert_input: object  */
-#line 1677 "grammar.y"
+#line 1690 "grammar.y"
            {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4337 "grammar.cpp"
+#line 4347 "grammar.cpp"
     break;
 
   case 130: /* upsert_input: bind_parameter  */
-#line 1680 "grammar.y"
+#line 1693 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4345 "grammar.cpp"
+#line 4355 "grammar.cpp"
     break;
 
   case 131: /* $@11: %empty  */
-#line 1686 "grammar.y"
+#line 1699 "grammar.y"
                       {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
@@ -4364,11 +4374,11 @@ yyreduce:
       parser->ast()->addOperation(forNode);
       parser->pushStack(forNode);
     }
-#line 4367 "grammar.cpp"
+#line 4377 "grammar.cpp"
     break;
 
   case 132: /* $@12: %empty  */
-#line 1702 "grammar.y"
+#line 1715 "grammar.y"
                  {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
@@ -4401,11 +4411,11 @@ yyreduce:
 
       parser->pushStack(forNode);
     }
-#line 4404 "grammar.cpp"
+#line 4414 "grammar.cpp"
     break;
 
   case 133: /* upsert_statement: "UPSERT command" "FILTER declaration" $@11 expression $@12 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
-#line 1733 "grammar.y"
+#line 1746 "grammar.y"
                                                                                      {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, (yyvsp[-1].node));
@@ -4422,11 +4432,11 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(Variable::NAME_OLD), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
-#line 4425 "grammar.cpp"
+#line 4435 "grammar.cpp"
     break;
 
   case 134: /* $@13: %empty  */
-#line 1749 "grammar.y"
+#line 1762 "grammar.y"
                           {
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
@@ -4468,11 +4478,11 @@ yyreduce:
 
       parser->pushStack(forNode);
     }
-#line 4471 "grammar.cpp"
+#line 4481 "grammar.cpp"
     break;
 
   case 135: /* upsert_statement: "UPSERT command" upsert_input $@13 "INSERT command" expression update_or_replace expression in_or_into_collection options  */
-#line 1789 "grammar.y"
+#line 1802 "grammar.y"
                                                                                      {
       AstNode* forNode = static_cast<AstNode*>(parser->popStack());
       forNode->changeMember(1, (yyvsp[-1].node));
@@ -4489,35 +4499,35 @@ yyreduce:
       auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>((yyvsp[-3].intval)), parser->ast()->createNodeReference(Variable::NAME_OLD), (yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), upsertOptionsNode, canReadOwnWrites);
       parser->ast()->addOperation(node);
     }
-#line 4492 "grammar.cpp"
+#line 4502 "grammar.cpp"
     break;
 
   case 136: /* quantifier: "all modifier"  */
-#line 1808 "grammar.y"
+#line 1821 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kAll);
     }
-#line 4500 "grammar.cpp"
+#line 4510 "grammar.cpp"
     break;
 
   case 137: /* quantifier: "any modifier"  */
-#line 1811 "grammar.y"
+#line 1824 "grammar.y"
           {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kAny);
     }
-#line 4508 "grammar.cpp"
+#line 4518 "grammar.cpp"
     break;
 
   case 138: /* quantifier: "none modifier"  */
-#line 1814 "grammar.y"
+#line 1827 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeQuantifier(Quantifier::Type::kNone);
     }
-#line 4516 "grammar.cpp"
+#line 4526 "grammar.cpp"
     break;
 
   case 139: /* $@14: %empty  */
-#line 1820 "grammar.y"
+#line 1833 "grammar.y"
                {
       auto const scopeType = parser->ast()->scopes()->type();
 
@@ -4526,83 +4536,83 @@ yyreduce:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "cannot use DISTINCT modifier on top-level query element", yylloc.first_line, yylloc.first_column);
       }
     }
-#line 4529 "grammar.cpp"
+#line 4539 "grammar.cpp"
     break;
 
   case 140: /* distinct_expression: "DISTINCT modifier" $@14 expression  */
-#line 1827 "grammar.y"
+#line 1840 "grammar.y"
                  {
       (yyval.node) = parser->ast()->createNodeDistinct((yyvsp[0].node));
     }
-#line 4537 "grammar.cpp"
+#line 4547 "grammar.cpp"
     break;
 
   case 141: /* distinct_expression: expression  */
-#line 1830 "grammar.y"
+#line 1843 "grammar.y"
                {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4545 "grammar.cpp"
+#line 4555 "grammar.cpp"
     break;
 
   case 142: /* expression: operator_unary  */
-#line 1836 "grammar.y"
+#line 1849 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4553 "grammar.cpp"
+#line 4563 "grammar.cpp"
     break;
 
   case 143: /* expression: operator_binary  */
-#line 1839 "grammar.y"
+#line 1852 "grammar.y"
                     {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4561 "grammar.cpp"
+#line 4571 "grammar.cpp"
     break;
 
   case 144: /* expression: operator_ternary  */
-#line 1842 "grammar.y"
+#line 1855 "grammar.y"
                      {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4569 "grammar.cpp"
+#line 4579 "grammar.cpp"
     break;
 
   case 145: /* expression: value_literal  */
-#line 1845 "grammar.y"
+#line 1858 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4577 "grammar.cpp"
+#line 4587 "grammar.cpp"
     break;
 
   case 146: /* expression: reference  */
-#line 1848 "grammar.y"
+#line 1861 "grammar.y"
               {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 4585 "grammar.cpp"
+#line 4595 "grammar.cpp"
     break;
 
   case 147: /* expression: expression ".." expression  */
-#line 1851 "grammar.y"
+#line 1864 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4593 "grammar.cpp"
+#line 4603 "grammar.cpp"
     break;
 
   case 148: /* function_name: "identifier"  */
-#line 1857 "grammar.y"
+#line 1870 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 4601 "grammar.cpp"
+#line 4611 "grammar.cpp"
     break;
 
   case 149: /* function_name: function_name "::" "identifier"  */
-#line 1860 "grammar.y"
+#line 1873 "grammar.y"
                                    {
       std::string temp((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
       temp.append("::");
@@ -4613,209 +4623,209 @@ yyreduce:
       (yyval.strval).value = p;
       (yyval.strval).length = temp.size();
     }
-#line 4616 "grammar.cpp"
+#line 4626 "grammar.cpp"
     break;
 
   case 150: /* $@15: %empty  */
-#line 1873 "grammar.y"
+#line 1886 "grammar.y"
                          {
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     }
-#line 4625 "grammar.cpp"
+#line 4635 "grammar.cpp"
     break;
 
   case 151: /* function_call: function_name "(" $@15 optional_function_call_arguments ")"  */
-#line 1876 "grammar.y"
+#line 1889 "grammar.y"
                                                               {
       auto args = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall(/*function name*/ {(yyvsp[-4].strval).value, (yyvsp[-4].strval).length}, args, false);
     }
-#line 4634 "grammar.cpp"
+#line 4644 "grammar.cpp"
     break;
 
   case 152: /* $@16: %empty  */
-#line 1880 "grammar.y"
+#line 1893 "grammar.y"
                   {
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     }
-#line 4643 "grammar.cpp"
+#line 4653 "grammar.cpp"
     break;
 
   case 153: /* function_call: "like operator" "(" $@16 optional_function_call_arguments ")"  */
-#line 1883 "grammar.y"
+#line 1896 "grammar.y"
                                                               {
       auto args = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", args, false);
     }
-#line 4652 "grammar.cpp"
+#line 4662 "grammar.cpp"
     break;
 
   case 154: /* operator_unary: "+ operator" expression  */
-#line 1890 "grammar.y"
+#line 1903 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node)));
     }
-#line 4660 "grammar.cpp"
+#line 4670 "grammar.cpp"
     break;
 
   case 155: /* operator_unary: "- operator" expression  */
-#line 1893 "grammar.y"
+#line 1906 "grammar.y"
                                     {
       (yyval.node) = parser->ast()->optimizeUnaryOperatorArithmetic(parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node)));
     }
-#line 4668 "grammar.cpp"
+#line 4678 "grammar.cpp"
     break;
 
   case 156: /* operator_unary: "not operator" expression  */
-#line 1896 "grammar.y"
+#line 1909 "grammar.y"
                                      {
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
     }
-#line 4676 "grammar.cpp"
+#line 4686 "grammar.cpp"
     break;
 
   case 157: /* $@17: %empty  */
-#line 1902 "grammar.y"
+#line 1915 "grammar.y"
                     {
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ true);
     }
-#line 4684 "grammar.cpp"
+#line 4694 "grammar.cpp"
     break;
 
   case 158: /* operator_binary: expression "or operator" $@17 expression  */
-#line 1904 "grammar.y"
+#line 1917 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, previous.condition, (yyvsp[0].node));
     }
-#line 4693 "grammar.cpp"
+#line 4703 "grammar.cpp"
     break;
 
   case 159: /* $@18: %empty  */
-#line 1908 "grammar.y"
+#line 1921 "grammar.y"
                      {
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ false);
     }
-#line 4701 "grammar.cpp"
+#line 4711 "grammar.cpp"
     break;
 
   case 160: /* operator_binary: expression "and operator" $@18 expression  */
-#line 1910 "grammar.y"
+#line 1923 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, previous.condition, (yyvsp[0].node));
     }
-#line 4710 "grammar.cpp"
+#line 4720 "grammar.cpp"
     break;
 
   case 161: /* operator_binary: expression "+ operator" expression  */
-#line 1914 "grammar.y"
+#line 1927 "grammar.y"
                                  {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4718 "grammar.cpp"
+#line 4728 "grammar.cpp"
     break;
 
   case 162: /* operator_binary: expression "- operator" expression  */
-#line 1917 "grammar.y"
+#line 1930 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4726 "grammar.cpp"
+#line 4736 "grammar.cpp"
     break;
 
   case 163: /* operator_binary: expression "* operator" expression  */
-#line 1920 "grammar.y"
+#line 1933 "grammar.y"
                                   {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4734 "grammar.cpp"
+#line 4744 "grammar.cpp"
     break;
 
   case 164: /* operator_binary: expression "/ operator" expression  */
-#line 1923 "grammar.y"
+#line 1936 "grammar.y"
                                 {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4742 "grammar.cpp"
+#line 4752 "grammar.cpp"
     break;
 
   case 165: /* operator_binary: expression "% operator" expression  */
-#line 1926 "grammar.y"
+#line 1939 "grammar.y"
                                 {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4750 "grammar.cpp"
+#line 4760 "grammar.cpp"
     break;
 
   case 166: /* operator_binary: expression "== operator" expression  */
-#line 1929 "grammar.y"
+#line 1942 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4758 "grammar.cpp"
+#line 4768 "grammar.cpp"
     break;
 
   case 167: /* operator_binary: expression "!= operator" expression  */
-#line 1932 "grammar.y"
+#line 1945 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4766 "grammar.cpp"
+#line 4776 "grammar.cpp"
     break;
 
   case 168: /* operator_binary: expression "< operator" expression  */
-#line 1935 "grammar.y"
+#line 1948 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4774 "grammar.cpp"
+#line 4784 "grammar.cpp"
     break;
 
   case 169: /* operator_binary: expression "> operator" expression  */
-#line 1938 "grammar.y"
+#line 1951 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4782 "grammar.cpp"
+#line 4792 "grammar.cpp"
     break;
 
   case 170: /* operator_binary: expression "<= operator" expression  */
-#line 1941 "grammar.y"
+#line 1954 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4790 "grammar.cpp"
+#line 4800 "grammar.cpp"
     break;
 
   case 171: /* operator_binary: expression ">= operator" expression  */
-#line 1944 "grammar.y"
+#line 1957 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4798 "grammar.cpp"
+#line 4808 "grammar.cpp"
     break;
 
   case 172: /* operator_binary: expression "IN keyword" expression  */
-#line 1947 "grammar.y"
+#line 1960 "grammar.y"
                                {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4806 "grammar.cpp"
+#line 4816 "grammar.cpp"
     break;
 
   case 173: /* operator_binary: expression "not in operator" expression  */
-#line 1950 "grammar.y"
+#line 1963 "grammar.y"
                                    {
       (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 4814 "grammar.cpp"
+#line 4824 "grammar.cpp"
     break;
 
   case 174: /* operator_binary: expression "not operator" "like operator" expression  */
-#line 1953 "grammar.y"
+#line 1966 "grammar.y"
                                        {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
@@ -4823,11 +4833,11 @@ yyreduce:
       AstNode* expression = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 4826 "grammar.cpp"
+#line 4836 "grammar.cpp"
     break;
 
   case 175: /* operator_binary: expression "not operator" "~= operator" expression  */
-#line 1960 "grammar.y"
+#line 1973 "grammar.y"
                                               {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
@@ -4835,44 +4845,44 @@ yyreduce:
       AstNode* expression = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
-#line 4838 "grammar.cpp"
+#line 4848 "grammar.cpp"
     break;
 
   case 176: /* operator_binary: expression "not operator" "~! operator" expression  */
-#line 1967 "grammar.y"
+#line 1980 "grammar.y"
                                                   {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-3].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
     }
-#line 4849 "grammar.cpp"
+#line 4859 "grammar.cpp"
     break;
 
   case 177: /* operator_binary: expression "like operator" expression  */
-#line 1973 "grammar.y"
+#line 1986 "grammar.y"
                                  {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
     }
-#line 4860 "grammar.cpp"
+#line 4870 "grammar.cpp"
     break;
 
   case 178: /* operator_binary: expression "~= operator" expression  */
-#line 1979 "grammar.y"
+#line 1992 "grammar.y"
                                         {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
       arguments->addMember((yyvsp[0].node));
       (yyval.node) = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
     }
-#line 4871 "grammar.cpp"
+#line 4881 "grammar.cpp"
     break;
 
   case 179: /* operator_binary: expression "~! operator" expression  */
-#line 1985 "grammar.y"
+#line 1998 "grammar.y"
                                             {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember((yyvsp[-2].node));
@@ -4880,147 +4890,147 @@ yyreduce:
       AstNode* node = parser->ast()->createNodeFunctionCall("REGEX_TEST", arguments, false);
       (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
-#line 4883 "grammar.cpp"
+#line 4893 "grammar.cpp"
     break;
 
   case 180: /* operator_binary: expression quantifier "== operator" expression  */
-#line 1992 "grammar.y"
+#line 2005 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4891 "grammar.cpp"
+#line 4901 "grammar.cpp"
     break;
 
   case 181: /* operator_binary: expression quantifier "!= operator" expression  */
-#line 1995 "grammar.y"
+#line 2008 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4899 "grammar.cpp"
+#line 4909 "grammar.cpp"
     break;
 
   case 182: /* operator_binary: expression quantifier "< operator" expression  */
-#line 1998 "grammar.y"
+#line 2011 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4907 "grammar.cpp"
+#line 4917 "grammar.cpp"
     break;
 
   case 183: /* operator_binary: expression quantifier "> operator" expression  */
-#line 2001 "grammar.y"
+#line 2014 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4915 "grammar.cpp"
+#line 4925 "grammar.cpp"
     break;
 
   case 184: /* operator_binary: expression quantifier "<= operator" expression  */
-#line 2004 "grammar.y"
+#line 2017 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4923 "grammar.cpp"
+#line 4933 "grammar.cpp"
     break;
 
   case 185: /* operator_binary: expression quantifier ">= operator" expression  */
-#line 2007 "grammar.y"
+#line 2020 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4931 "grammar.cpp"
+#line 4941 "grammar.cpp"
     break;
 
   case 186: /* operator_binary: expression quantifier "IN keyword" expression  */
-#line 2010 "grammar.y"
+#line 2023 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4939 "grammar.cpp"
+#line 4949 "grammar.cpp"
     break;
 
   case 187: /* operator_binary: expression quantifier "not in operator" expression  */
-#line 2013 "grammar.y"
+#line 2026 "grammar.y"
                                               {
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-3].node), (yyvsp[0].node), (yyvsp[-2].node));
     }
-#line 4947 "grammar.cpp"
+#line 4957 "grammar.cpp"
     break;
 
   case 188: /* operator_binary: expression "at least modifier" "(" expression ")" "== operator" expression  */
-#line 2016 "grammar.y"
+#line 2029 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 4956 "grammar.cpp"
+#line 4966 "grammar.cpp"
     break;
 
   case 189: /* operator_binary: expression "at least modifier" "(" expression ")" "!= operator" expression  */
-#line 2020 "grammar.y"
+#line 2033 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 4965 "grammar.cpp"
+#line 4975 "grammar.cpp"
     break;
 
   case 190: /* operator_binary: expression "at least modifier" "(" expression ")" "< operator" expression  */
-#line 2024 "grammar.y"
+#line 2037 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 4974 "grammar.cpp"
+#line 4984 "grammar.cpp"
     break;
 
   case 191: /* operator_binary: expression "at least modifier" "(" expression ")" "> operator" expression  */
-#line 2028 "grammar.y"
+#line 2041 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 4983 "grammar.cpp"
+#line 4993 "grammar.cpp"
     break;
 
   case 192: /* operator_binary: expression "at least modifier" "(" expression ")" "<= operator" expression  */
-#line 2032 "grammar.y"
+#line 2045 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 4992 "grammar.cpp"
+#line 5002 "grammar.cpp"
     break;
 
   case 193: /* operator_binary: expression "at least modifier" "(" expression ")" ">= operator" expression  */
-#line 2036 "grammar.y"
+#line 2049 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5001 "grammar.cpp"
+#line 5011 "grammar.cpp"
     break;
 
   case 194: /* operator_binary: expression "at least modifier" "(" expression ")" "IN keyword" expression  */
-#line 2040 "grammar.y"
+#line 2053 "grammar.y"
                                                                     {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5010 "grammar.cpp"
+#line 5020 "grammar.cpp"
     break;
 
   case 195: /* operator_binary: expression "at least modifier" "(" expression ")" "not in operator" expression  */
-#line 2044 "grammar.y"
+#line 2057 "grammar.y"
                                                                         {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, (yyvsp[-6].node), (yyvsp[0].node), quantifier);
     }
-#line 5019 "grammar.cpp"
+#line 5029 "grammar.cpp"
     break;
 
   case 196: /* $@19: %empty  */
-#line 2051 "grammar.y"
+#line 2064 "grammar.y"
                           {
       // ternary operator: 
       //   condition ? true part : false part
@@ -5058,30 +5068,30 @@ yyreduce:
       // condition is falsy.
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ false);
     }
-#line 5061 "grammar.cpp"
+#line 5071 "grammar.cpp"
     break;
 
   case 197: /* $@20: %empty  */
-#line 2087 "grammar.y"
+#line 2100 "grammar.y"
                          {
       LazyCondition previous = parser->lazyConditions().pop();
       // negate the condition and push the negated version onto the stack
       parser->lazyConditions().push(previous.condition, /*negated*/ true);
     }
-#line 5071 "grammar.cpp"
+#line 5081 "grammar.cpp"
     break;
 
   case 198: /* operator_ternary: expression "?" $@19 expression ":" $@20 expression  */
-#line 2091 "grammar.y"
+#line 2104 "grammar.y"
                  {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeTernaryOperator(previous.condition, (yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 5080 "grammar.cpp"
+#line 5090 "grammar.cpp"
     break;
 
   case 199: /* $@21: %empty  */
-#line 2095 "grammar.y"
+#line 2108 "grammar.y"
                           {
       // shortcut ternary operator: 
       //   condition ? : false part
@@ -5109,42 +5119,42 @@ yyreduce:
       // condition is falsy.
       parser->lazyConditions().push((yyvsp[-1].node), /*negated*/ true);
     }
-#line 5112 "grammar.cpp"
+#line 5122 "grammar.cpp"
     break;
 
   case 200: /* operator_ternary: expression "?" $@21 ":" expression  */
-#line 2121 "grammar.y"
+#line 2134 "grammar.y"
                          {
       LazyCondition previous = parser->lazyConditions().pop();
       (yyval.node) = parser->ast()->createNodeTernaryOperator(previous.condition, (yyvsp[0].node));
     }
-#line 5121 "grammar.cpp"
+#line 5131 "grammar.cpp"
     break;
 
   case 201: /* optional_function_call_arguments: %empty  */
-#line 2128 "grammar.y"
+#line 2141 "grammar.y"
                 {
     }
-#line 5128 "grammar.cpp"
+#line 5138 "grammar.cpp"
     break;
 
   case 202: /* optional_function_call_arguments: function_arguments_list  */
-#line 2130 "grammar.y"
+#line 2143 "grammar.y"
                             {
     }
-#line 5135 "grammar.cpp"
+#line 5145 "grammar.cpp"
     break;
 
   case 203: /* expression_or_query: expression  */
-#line 2135 "grammar.y"
+#line 2148 "grammar.y"
                {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5143 "grammar.cpp"
+#line 5153 "grammar.cpp"
     break;
 
   case 204: /* $@22: %empty  */
-#line 2138 "grammar.y"
+#line 2151 "grammar.y"
     {
       parser->lazyConditions().flushAssignments();
 
@@ -5153,11 +5163,11 @@ yyreduce:
 
       parser->lazyConditions().flushFilters();
     }
-#line 5156 "grammar.cpp"
+#line 5166 "grammar.cpp"
     break;
 
   case 205: /* expression_or_query: $@22 query  */
-#line 2145 "grammar.y"
+#line 2158 "grammar.y"
             {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -5168,111 +5178,111 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
-#line 5171 "grammar.cpp"
+#line 5181 "grammar.cpp"
     break;
 
   case 206: /* function_arguments_list: expression_or_query  */
-#line 2158 "grammar.y"
+#line 2171 "grammar.y"
                         {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5179 "grammar.cpp"
+#line 5189 "grammar.cpp"
     break;
 
   case 207: /* function_arguments_list: function_arguments_list "," expression_or_query  */
-#line 2161 "grammar.y"
+#line 2174 "grammar.y"
                                                         {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5187 "grammar.cpp"
+#line 5197 "grammar.cpp"
     break;
 
   case 208: /* compound_value: array  */
-#line 2167 "grammar.y"
+#line 2180 "grammar.y"
           {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5195 "grammar.cpp"
+#line 5205 "grammar.cpp"
     break;
 
   case 209: /* compound_value: object  */
-#line 2170 "grammar.y"
+#line 2183 "grammar.y"
            {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5203 "grammar.cpp"
+#line 5213 "grammar.cpp"
     break;
 
   case 210: /* $@23: %empty  */
-#line 2176 "grammar.y"
+#line 2189 "grammar.y"
                  {
       auto node = parser->ast()->createNodeArray();
       parser->pushArray(node);
     }
-#line 5212 "grammar.cpp"
+#line 5222 "grammar.cpp"
     break;
 
   case 211: /* array: "[" $@23 optional_array_elements "]"  */
-#line 2179 "grammar.y"
+#line 2192 "grammar.y"
                                             {
       (yyval.node) = parser->popArray();
     }
-#line 5220 "grammar.cpp"
+#line 5230 "grammar.cpp"
     break;
 
   case 212: /* optional_array_elements: %empty  */
-#line 2185 "grammar.y"
+#line 2198 "grammar.y"
                 {
     }
-#line 5227 "grammar.cpp"
+#line 5237 "grammar.cpp"
     break;
 
   case 213: /* optional_array_elements: array_elements_list  */
-#line 2187 "grammar.y"
+#line 2200 "grammar.y"
                         {
     }
-#line 5234 "grammar.cpp"
+#line 5244 "grammar.cpp"
     break;
 
   case 214: /* optional_array_elements: array_elements_list ","  */
-#line 2189 "grammar.y"
+#line 2202 "grammar.y"
                                 {
     }
-#line 5241 "grammar.cpp"
+#line 5251 "grammar.cpp"
     break;
 
   case 215: /* array_elements_list: array_element  */
-#line 2194 "grammar.y"
+#line 2207 "grammar.y"
                   {
     }
-#line 5248 "grammar.cpp"
+#line 5258 "grammar.cpp"
     break;
 
   case 216: /* array_elements_list: array_elements_list "," array_element  */
-#line 2196 "grammar.y"
+#line 2209 "grammar.y"
                                               {
     }
-#line 5255 "grammar.cpp"
+#line 5265 "grammar.cpp"
     break;
 
   case 217: /* array_element: expression  */
-#line 2201 "grammar.y"
+#line 2214 "grammar.y"
                {
       parser->pushArrayElement((yyvsp[0].node));
     }
-#line 5263 "grammar.cpp"
+#line 5273 "grammar.cpp"
     break;
 
   case 218: /* for_options: %empty  */
-#line 2207 "grammar.y"
+#line 2220 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5271 "grammar.cpp"
+#line 5281 "grammar.cpp"
     break;
 
   case 219: /* for_options: "identifier" expression  */
-#line 2210 "grammar.y"
+#line 2223 "grammar.y"
                         {
       std::string_view operation((yyvsp[-1].strval).value, (yyvsp[-1].strval).length);
       TRI_ASSERT((yyvsp[0].node) != nullptr);
@@ -5298,11 +5308,11 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 5301 "grammar.cpp"
+#line 5311 "grammar.cpp"
     break;
 
   case 220: /* for_options: "identifier" expression "identifier" expression  */
-#line 2235 "grammar.y"
+#line 2248 "grammar.y"
                                             {
       std::string_view operation((yyvsp[-3].strval).value, (yyvsp[-3].strval).length);
       TRI_ASSERT((yyvsp[-2].node) != nullptr);
@@ -5320,19 +5330,19 @@ yyreduce:
       node->addMember((yyvsp[0].node));
       (yyval.node) = node;
     }
-#line 5323 "grammar.cpp"
+#line 5333 "grammar.cpp"
     break;
 
   case 221: /* options: %empty  */
-#line 2255 "grammar.y"
+#line 2268 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5331 "grammar.cpp"
+#line 5341 "grammar.cpp"
     break;
 
   case 222: /* options: "identifier" object  */
-#line 2258 "grammar.y"
+#line 2271 "grammar.y"
                     {
       std::string_view operation((yyvsp[-1].strval).value, (yyvsp[-1].strval).length);
       TRI_ASSERT((yyvsp[0].node) != nullptr);
@@ -5345,63 +5355,63 @@ yyreduce:
 
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5348 "grammar.cpp"
+#line 5358 "grammar.cpp"
     break;
 
   case 223: /* $@24: %empty  */
-#line 2273 "grammar.y"
+#line 2286 "grammar.y"
                   {
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
     }
-#line 5357 "grammar.cpp"
+#line 5367 "grammar.cpp"
     break;
 
   case 224: /* object: "{" $@24 optional_object_elements "}"  */
-#line 2276 "grammar.y"
+#line 2289 "grammar.y"
                                               {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 5365 "grammar.cpp"
+#line 5375 "grammar.cpp"
     break;
 
   case 225: /* optional_object_elements: %empty  */
-#line 2282 "grammar.y"
+#line 2295 "grammar.y"
                 {
     }
-#line 5372 "grammar.cpp"
+#line 5382 "grammar.cpp"
     break;
 
   case 226: /* optional_object_elements: object_elements_list  */
-#line 2284 "grammar.y"
+#line 2297 "grammar.y"
                          {
     }
-#line 5379 "grammar.cpp"
+#line 5389 "grammar.cpp"
     break;
 
   case 227: /* optional_object_elements: object_elements_list ","  */
-#line 2286 "grammar.y"
+#line 2299 "grammar.y"
                                  {
     }
-#line 5386 "grammar.cpp"
+#line 5396 "grammar.cpp"
     break;
 
   case 228: /* object_elements_list: object_element  */
-#line 2291 "grammar.y"
+#line 2304 "grammar.y"
                    {
     }
-#line 5393 "grammar.cpp"
+#line 5403 "grammar.cpp"
     break;
 
   case 229: /* object_elements_list: object_elements_list "," object_element  */
-#line 2293 "grammar.y"
+#line 2306 "grammar.y"
                                                 {
     }
-#line 5400 "grammar.cpp"
+#line 5410 "grammar.cpp"
     break;
 
   case 230: /* object_element: "identifier"  */
-#line 2298 "grammar.y"
+#line 2311 "grammar.y"
              {
       // attribute-name-only (comparable to JS enhanced object literals, e.g. { foo, bar })
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
@@ -5418,110 +5428,110 @@ yyreduce:
       auto node = ast->createNodeReference(variable);
       parser->pushObjectElement((yyvsp[0].strval).value, (yyvsp[0].strval).length, node);
     }
-#line 5421 "grammar.cpp"
+#line 5431 "grammar.cpp"
     break;
 
   case 231: /* object_element: "inbound modifier" ":" expression  */
-#line 2314 "grammar.y"
+#line 2327 "grammar.y"
                                  {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5430 "grammar.cpp"
+#line 5440 "grammar.cpp"
     break;
 
   case 232: /* object_element: "outbound modifier" ":" expression  */
-#line 2318 "grammar.y"
+#line 2331 "grammar.y"
                                   {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5439 "grammar.cpp"
+#line 5449 "grammar.cpp"
     break;
 
   case 233: /* object_element: "any modifier" ":" expression  */
-#line 2322 "grammar.y"
+#line 2335 "grammar.y"
                              {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5448 "grammar.cpp"
+#line 5458 "grammar.cpp"
     break;
 
   case 234: /* object_element: "all modifier" ":" expression  */
-#line 2326 "grammar.y"
+#line 2339 "grammar.y"
                              {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5457 "grammar.cpp"
+#line 5467 "grammar.cpp"
     break;
 
   case 235: /* object_element: "none modifier" ":" expression  */
-#line 2330 "grammar.y"
+#line 2343 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5466 "grammar.cpp"
+#line 5476 "grammar.cpp"
     break;
 
   case 236: /* object_element: "like operator" ":" expression  */
-#line 2334 "grammar.y"
+#line 2347 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5475 "grammar.cpp"
+#line 5485 "grammar.cpp"
     break;
 
   case 237: /* object_element: "INTO keyword" ":" expression  */
-#line 2338 "grammar.y"
+#line 2351 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5484 "grammar.cpp"
+#line 5494 "grammar.cpp"
     break;
 
   case 238: /* object_element: "WITH keyword" ":" expression  */
-#line 2342 "grammar.y"
+#line 2355 "grammar.y"
                               {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5493 "grammar.cpp"
+#line 5503 "grammar.cpp"
     break;
 
   case 239: /* object_element: "WINDOW declaration" ":" expression  */
-#line 2346 "grammar.y"
+#line 2359 "grammar.y"
                                 {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5502 "grammar.cpp"
+#line 5512 "grammar.cpp"
     break;
 
   case 240: /* object_element: "LIMIT declaration" ":" expression  */
-#line 2350 "grammar.y"
+#line 2363 "grammar.y"
                                {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5511 "grammar.cpp"
+#line 5521 "grammar.cpp"
     break;
 
   case 241: /* object_element: object_element_name ":" expression  */
-#line 2354 "grammar.y"
+#line 2367 "grammar.y"
                                            {
       // attribute-name : attribute-value
       parser->pushObjectElement((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, (yyvsp[0].node));
     }
-#line 5520 "grammar.cpp"
+#line 5530 "grammar.cpp"
     break;
 
   case 242: /* object_element: "bind parameter" ":" expression  */
-#line 2358 "grammar.y"
+#line 2371 "grammar.y"
                                    {
       // bind-parameter : attribute-value
       std::string_view name((yyvsp[-2].strval).value, (yyvsp[-2].strval).length);
@@ -5532,219 +5542,219 @@ yyreduce:
       auto param = parser->ast()->createNodeParameter(name);
       parser->pushObjectElement(param, (yyvsp[0].node));
     }
-#line 5535 "grammar.cpp"
+#line 5545 "grammar.cpp"
     break;
 
   case 243: /* object_element: "[" expression "]" ":" expression  */
-#line 2368 "grammar.y"
+#line 2381 "grammar.y"
                                                              {
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement((yyvsp[-3].node), (yyvsp[0].node));
     }
-#line 5544 "grammar.cpp"
+#line 5554 "grammar.cpp"
     break;
 
   case 244: /* array_filter_operator: "?"  */
-#line 2375 "grammar.y"
+#line 2388 "grammar.y"
                {
       (yyval.intval) = 1;
     }
-#line 5552 "grammar.cpp"
+#line 5562 "grammar.cpp"
     break;
 
   case 245: /* array_filter_operator: array_filter_operator "?"  */
-#line 2378 "grammar.y"
+#line 2391 "grammar.y"
                                      {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 5560 "grammar.cpp"
+#line 5570 "grammar.cpp"
     break;
 
   case 246: /* array_map_operator: "* operator"  */
-#line 2384 "grammar.y"
+#line 2397 "grammar.y"
             {
       (yyval.intval) = 1;
     }
-#line 5568 "grammar.cpp"
+#line 5578 "grammar.cpp"
     break;
 
   case 247: /* array_map_operator: array_map_operator "* operator"  */
-#line 2387 "grammar.y"
+#line 2400 "grammar.y"
                                {
       (yyval.intval) = (yyvsp[-1].intval) + 1;
     }
-#line 5576 "grammar.cpp"
+#line 5586 "grammar.cpp"
     break;
 
   case 248: /* optional_array_filter: %empty  */
-#line 2393 "grammar.y"
+#line 2406 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5584 "grammar.cpp"
+#line 5594 "grammar.cpp"
     break;
 
   case 249: /* optional_array_filter: "FILTER declaration" expression  */
-#line 2396 "grammar.y"
+#line 2409 "grammar.y"
                         {
       // FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter(nullptr, (yyvsp[0].node));
     }
-#line 5593 "grammar.cpp"
+#line 5603 "grammar.cpp"
     break;
 
   case 250: /* optional_array_filter: quantifier "FILTER declaration" expression  */
-#line 2400 "grammar.y"
+#line 2413 "grammar.y"
                                    {
       // ALL|ANY|NONE|AT LEAST FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5602 "grammar.cpp"
+#line 5612 "grammar.cpp"
     break;
 
   case 251: /* optional_array_filter: "at least modifier" "(" expression ")" "FILTER declaration" expression  */
-#line 2404 "grammar.y"
+#line 2417 "grammar.y"
                                                              {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, (yyvsp[-3].node));
       (yyval.node) = parser->ast()->createNodeArrayFilter(quantifier, (yyvsp[0].node));
     }
-#line 5611 "grammar.cpp"
+#line 5621 "grammar.cpp"
     break;
 
   case 252: /* optional_array_filter: expression "FILTER declaration" expression  */
-#line 2408 "grammar.y"
+#line 2421 "grammar.y"
                                    {
       // 1    FILTER filter-condition
       // 2..5 FILTER filter-condition
       (yyval.node) = parser->ast()->createNodeArrayFilter((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5621 "grammar.cpp"
+#line 5631 "grammar.cpp"
     break;
 
   case 253: /* optional_array_limit: %empty  */
-#line 2416 "grammar.y"
+#line 2429 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5629 "grammar.cpp"
+#line 5639 "grammar.cpp"
     break;
 
   case 254: /* optional_array_limit: "LIMIT declaration" expression  */
-#line 2419 "grammar.y"
+#line 2432 "grammar.y"
                        {
       (yyval.node) = parser->ast()->createNodeArrayLimit(nullptr, (yyvsp[0].node));
     }
-#line 5637 "grammar.cpp"
+#line 5647 "grammar.cpp"
     break;
 
   case 255: /* optional_array_limit: "LIMIT declaration" expression "," expression  */
-#line 2422 "grammar.y"
+#line 2435 "grammar.y"
                                           {
       (yyval.node) = parser->ast()->createNodeArrayLimit((yyvsp[-2].node), (yyvsp[0].node));
     }
-#line 5645 "grammar.cpp"
+#line 5655 "grammar.cpp"
     break;
 
   case 256: /* optional_array_return: %empty  */
-#line 2428 "grammar.y"
+#line 2441 "grammar.y"
                 {
       (yyval.node) = nullptr;
     }
-#line 5653 "grammar.cpp"
+#line 5663 "grammar.cpp"
     break;
 
   case 257: /* optional_array_return: "RETURN declaration" expression  */
-#line 2431 "grammar.y"
+#line 2444 "grammar.y"
                         {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5661 "grammar.cpp"
+#line 5671 "grammar.cpp"
     break;
 
   case 258: /* graph_collection: "identifier"  */
-#line 2437 "grammar.y"
+#line 2450 "grammar.y"
              {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5669 "grammar.cpp"
+#line 5679 "grammar.cpp"
     break;
 
   case 259: /* graph_collection: bind_parameter_datasource_expected  */
-#line 2440 "grammar.y"
+#line 2453 "grammar.y"
                                        {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5677 "grammar.cpp"
+#line 5687 "grammar.cpp"
     break;
 
   case 260: /* graph_collection: graph_direction "identifier"  */
-#line 2443 "grammar.y"
+#line 2456 "grammar.y"
                              {
       auto tmp = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), tmp);
     }
-#line 5686 "grammar.cpp"
+#line 5696 "grammar.cpp"
     break;
 
   case 261: /* graph_collection: graph_direction bind_parameter  */
-#line 2447 "grammar.y"
+#line 2460 "grammar.y"
                                    {
       (yyval.node) = parser->ast()->createNodeCollectionDirection((yyvsp[-1].intval), (yyvsp[0].node));
     }
-#line 5694 "grammar.cpp"
+#line 5704 "grammar.cpp"
     break;
 
   case 262: /* graph_collection_list: graph_collection  */
-#line 2453 "grammar.y"
+#line 2466 "grammar.y"
                       {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 5703 "grammar.cpp"
+#line 5713 "grammar.cpp"
     break;
 
   case 263: /* graph_collection_list: graph_collection_list "," graph_collection  */
-#line 2457 "grammar.y"
+#line 2470 "grammar.y"
                                                     {
        auto node = static_cast<AstNode*>(parser->peekStack());
        node->addMember((yyvsp[0].node));
      }
-#line 5712 "grammar.cpp"
+#line 5722 "grammar.cpp"
     break;
 
   case 264: /* graph_subject: graph_collection  */
-#line 2464 "grammar.y"
+#line 2477 "grammar.y"
                      {
       auto node = parser->ast()->createNodeArray();
       node->addMember((yyvsp[0].node));
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 5723 "grammar.cpp"
+#line 5733 "grammar.cpp"
     break;
 
   case 265: /* $@25: %empty  */
-#line 2470 "grammar.y"
+#line 2483 "grammar.y"
                              {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
       node->addMember((yyvsp[-1].node));
     }
-#line 5733 "grammar.cpp"
+#line 5743 "grammar.cpp"
     break;
 
   case 266: /* graph_subject: graph_collection "," $@25 graph_collection_list  */
-#line 2474 "grammar.y"
+#line 2487 "grammar.y"
                             {
       auto node = static_cast<AstNode*>(parser->popStack());
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollectionList(node, resolver);
     }
-#line 5743 "grammar.cpp"
+#line 5753 "grammar.cpp"
     break;
 
   case 267: /* graph_subject: "GRAPH keyword" bind_parameter  */
-#line 2479 "grammar.y"
+#line 2492 "grammar.y"
                            {
       // graph name
       if ((yyvsp[0].node)->type == NODE_TYPE_PARAMETER) {
@@ -5752,69 +5762,69 @@ yyreduce:
       }
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5755 "grammar.cpp"
+#line 5765 "grammar.cpp"
     break;
 
   case 268: /* graph_subject: "GRAPH keyword" "quoted string"  */
-#line 2486 "grammar.y"
+#line 2499 "grammar.y"
                             {
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5764 "grammar.cpp"
+#line 5774 "grammar.cpp"
     break;
 
   case 269: /* graph_subject: "GRAPH keyword" "identifier"  */
-#line 2490 "grammar.y"
+#line 2503 "grammar.y"
                      {
       // graph name
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 5773 "grammar.cpp"
+#line 5783 "grammar.cpp"
     break;
 
   case 270: /* graph_direction: "outbound modifier"  */
-#line 2499 "grammar.y"
+#line 2512 "grammar.y"
                {
       (yyval.intval) = 2;
     }
-#line 5781 "grammar.cpp"
+#line 5791 "grammar.cpp"
     break;
 
   case 271: /* graph_direction: "inbound modifier"  */
-#line 2502 "grammar.y"
+#line 2515 "grammar.y"
               {
       (yyval.intval) = 1;
     }
-#line 5789 "grammar.cpp"
+#line 5799 "grammar.cpp"
     break;
 
   case 272: /* graph_direction: "any modifier"  */
-#line 2505 "grammar.y"
+#line 2518 "grammar.y"
           {
       (yyval.intval) = 0;
     }
-#line 5797 "grammar.cpp"
+#line 5807 "grammar.cpp"
     break;
 
   case 273: /* graph_direction_steps: graph_direction  */
-#line 2511 "grammar.y"
+#line 2524 "grammar.y"
                     {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), 1);
     }
-#line 5805 "grammar.cpp"
+#line 5815 "grammar.cpp"
     break;
 
   case 274: /* graph_direction_steps: expression graph_direction  */
-#line 2514 "grammar.y"
+#line 2527 "grammar.y"
                                                 {
       (yyval.node) = parser->ast()->createNodeDirection((yyvsp[0].intval), (yyvsp[-1].node));
     }
-#line 5813 "grammar.cpp"
+#line 5823 "grammar.cpp"
     break;
 
   case 275: /* reference: "identifier"  */
-#line 2520 "grammar.y"
+#line 2533 "grammar.y"
              {
       // variable or collection or view
       auto ast = parser->ast();
@@ -5847,36 +5857,36 @@ yyreduce:
 
       (yyval.node) = node;
     }
-#line 5850 "grammar.cpp"
+#line 5860 "grammar.cpp"
     break;
 
   case 276: /* reference: compound_value  */
-#line 2552 "grammar.y"
+#line 2565 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5858 "grammar.cpp"
+#line 5868 "grammar.cpp"
     break;
 
   case 277: /* reference: bind_parameter  */
-#line 2555 "grammar.y"
+#line 2568 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5866 "grammar.cpp"
+#line 5876 "grammar.cpp"
     break;
 
   case 278: /* reference: function_call  */
-#line 2558 "grammar.y"
+#line 2571 "grammar.y"
                   {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 5875 "grammar.cpp"
+#line 5885 "grammar.cpp"
     break;
 
   case 279: /* reference: "(" expression ")"  */
-#line 2562 "grammar.y"
+#line 2575 "grammar.y"
                               {
       if ((yyvsp[-1].node)->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -5886,11 +5896,11 @@ yyreduce:
         (yyval.node) = (yyvsp[-1].node);
       }
     }
-#line 5889 "grammar.cpp"
+#line 5899 "grammar.cpp"
     break;
 
   case 280: /* $@26: %empty  */
-#line 2571 "grammar.y"
+#line 2584 "grammar.y"
            {
       parser->lazyConditions().flushAssignments();
 
@@ -5899,11 +5909,11 @@ yyreduce:
       
       parser->lazyConditions().flushFilters();
     }
-#line 5902 "grammar.cpp"
+#line 5912 "grammar.cpp"
     break;
 
   case 281: /* reference: "(" $@26 query ")"  */
-#line 2578 "grammar.y"
+#line 2591 "grammar.y"
                     {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -5914,11 +5924,11 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeSubqueryReference(variableName, node);
     }
-#line 5917 "grammar.cpp"
+#line 5927 "grammar.cpp"
     break;
 
   case 282: /* reference: reference '.' "identifier"  */
-#line 2588 "grammar.y"
+#line 2601 "grammar.y"
                                            {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       // named variable access, e.g. variable.reference
@@ -5934,11 +5944,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), name);
       }
     }
-#line 5937 "grammar.cpp"
+#line 5947 "grammar.cpp"
     break;
 
   case 283: /* reference: reference '.' bind_parameter  */
-#line 2603 "grammar.y"
+#line 2616 "grammar.y"
                                                  {
       // named variable access, e.g. variable.@reference
       if ((yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -5952,11 +5962,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
       }
     }
-#line 5955 "grammar.cpp"
+#line 5965 "grammar.cpp"
     break;
 
   case 284: /* reference: reference "[" expression "]"  */
-#line 2616 "grammar.y"
+#line 2629 "grammar.y"
                                                                   {
       // indexed variable access, e.g. variable[index]
       if ((yyvsp[-3].node)->type == NODE_TYPE_EXPANSION) {
@@ -5970,11 +5980,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
       }
     }
-#line 5973 "grammar.cpp"
+#line 5983 "grammar.cpp"
     break;
 
   case 285: /* $@27: %empty  */
-#line 2629 "grammar.y"
+#line 2642 "grammar.y"
                                                  {
       // variable expansion, e.g. variable[?], with optional FILTER clause
       if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -6002,11 +6012,11 @@ yyreduce:
       // condition
       parser->lazyConditions().pushForceInline();
     }
-#line 6005 "grammar.cpp"
+#line 6015 "grammar.cpp"
     break;
 
   case 286: /* reference: reference "[" array_filter_operator $@27 optional_array_filter "]"  */
-#line 2655 "grammar.y"
+#line 2668 "grammar.y"
                                                           {
       parser->lazyConditions().popForceInline();
 
@@ -6026,11 +6036,11 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeBooleanExpansion((yyvsp[-3].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-1].node));
       }
     }
-#line 6029 "grammar.cpp"
+#line 6039 "grammar.cpp"
     break;
 
   case 287: /* $@28: %empty  */
-#line 2674 "grammar.y"
+#line 2687 "grammar.y"
                                               {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ((yyvsp[0].intval) > 1 && (yyvsp[-2].node)->type == NODE_TYPE_EXPANSION) {
@@ -6058,11 +6068,11 @@ yyreduce:
       // condition
       parser->lazyConditions().pushForceInline();
     }
-#line 6061 "grammar.cpp"
+#line 6071 "grammar.cpp"
     break;
 
   case 288: /* reference: reference "[" array_map_operator $@28 optional_array_filter optional_array_limit optional_array_return "]"  */
-#line 2700 "grammar.y"
+#line 2713 "grammar.y"
                                                                                                      {
       parser->lazyConditions().popForceInline();
 
@@ -6092,96 +6102,86 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeExpansion((yyvsp[-5].intval), iterator, parser->ast()->createNodeReference(variable->name), (yyvsp[-3].node), (yyvsp[-2].node), (yyvsp[-1].node));
       }
     }
-#line 6095 "grammar.cpp"
+#line 6105 "grammar.cpp"
     break;
 
   case 289: /* simple_value: value_literal  */
-#line 2732 "grammar.y"
+#line 2745 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6103 "grammar.cpp"
+#line 6113 "grammar.cpp"
     break;
 
   case 290: /* simple_value: bind_parameter  */
-#line 2735 "grammar.y"
+#line 2748 "grammar.y"
                    {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6111 "grammar.cpp"
+#line 6121 "grammar.cpp"
     break;
 
   case 291: /* numeric_value: "integer number"  */
-#line 2741 "grammar.y"
+#line 2754 "grammar.y"
               {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6120 "grammar.cpp"
+#line 6130 "grammar.cpp"
     break;
 
   case 292: /* numeric_value: "number"  */
-#line 2745 "grammar.y"
+#line 2758 "grammar.y"
              {
       TRI_ASSERT((yyvsp[0].node) != nullptr);
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6129 "grammar.cpp"
+#line 6139 "grammar.cpp"
     break;
 
   case 293: /* value_literal: "quoted string"  */
-#line 2752 "grammar.y"
+#line 2765 "grammar.y"
                     {
       (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval).value, (yyvsp[0].strval).length);
     }
-#line 6137 "grammar.cpp"
+#line 6147 "grammar.cpp"
     break;
 
   case 294: /* value_literal: numeric_value  */
-#line 2755 "grammar.y"
+#line 2768 "grammar.y"
                   {
       (yyval.node) = (yyvsp[0].node);
     }
-#line 6145 "grammar.cpp"
+#line 6155 "grammar.cpp"
     break;
 
   case 295: /* value_literal: "null"  */
-#line 2758 "grammar.y"
+#line 2771 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 6153 "grammar.cpp"
+#line 6163 "grammar.cpp"
     break;
 
   case 296: /* value_literal: "true"  */
-#line 2761 "grammar.y"
+#line 2774 "grammar.y"
            {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 6161 "grammar.cpp"
+#line 6171 "grammar.cpp"
     break;
 
   case 297: /* value_literal: "false"  */
-#line 2764 "grammar.y"
+#line 2777 "grammar.y"
             {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
-    }
-#line 6169 "grammar.cpp"
-    break;
-
-  case 298: /* in_or_into_collection_name: "identifier"  */
-#line 2770 "grammar.y"
-             {
-      std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
-      auto const& resolver = parser->query().resolver();
-      (yyval.node) = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
     }
 #line 6179 "grammar.cpp"
     break;
 
-  case 299: /* in_or_into_collection_name: "quoted string"  */
-#line 2775 "grammar.y"
-                    {
+  case 298: /* in_or_into_collection_name: "identifier"  */
+#line 2783 "grammar.y"
+             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       auto const& resolver = parser->query().resolver();
       (yyval.node) = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
@@ -6189,8 +6189,18 @@ yyreduce:
 #line 6189 "grammar.cpp"
     break;
 
+  case 299: /* in_or_into_collection_name: "quoted string"  */
+#line 2788 "grammar.y"
+                    {
+      std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
+      auto const& resolver = parser->query().resolver();
+      (yyval.node) = parser->ast()->createNodeCollection(resolver, name, arangodb::AccessMode::Type::WRITE);
+    }
+#line 6199 "grammar.cpp"
+    break;
+
   case 300: /* in_or_into_collection_name: "bind data source parameter"  */
-#line 2780 "grammar.y"
+#line 2793 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6199,11 +6209,11 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6202 "grammar.cpp"
+#line 6212 "grammar.cpp"
     break;
 
   case 301: /* bind_parameter: "bind data source parameter"  */
-#line 2791 "grammar.y"
+#line 2804 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6212,20 +6222,20 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6215 "grammar.cpp"
+#line 6225 "grammar.cpp"
     break;
 
   case 302: /* bind_parameter: "bind parameter"  */
-#line 2799 "grammar.y"
+#line 2812 "grammar.y"
                 {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeParameter(name);
     }
-#line 6224 "grammar.cpp"
+#line 6234 "grammar.cpp"
     break;
 
   case 303: /* bind_parameter_datasource_expected: "bind data source parameter"  */
-#line 2806 "grammar.y"
+#line 2819 "grammar.y"
                             {
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       if (name.size() < 2 || name.front() != '@') {
@@ -6234,45 +6244,45 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6237 "grammar.cpp"
+#line 6247 "grammar.cpp"
     break;
 
   case 304: /* bind_parameter_datasource_expected: "bind parameter"  */
-#line 2814 "grammar.y"
+#line 2827 "grammar.y"
                 {
       // convert normal value bind parameter into datasource bind parameter
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 6247 "grammar.cpp"
+#line 6257 "grammar.cpp"
     break;
 
   case 305: /* object_element_name: "identifier"  */
-#line 2822 "grammar.y"
+#line 2835 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6255 "grammar.cpp"
+#line 6265 "grammar.cpp"
     break;
 
   case 306: /* object_element_name: "quoted string"  */
-#line 2825 "grammar.y"
+#line 2838 "grammar.y"
                     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6263 "grammar.cpp"
+#line 6273 "grammar.cpp"
     break;
 
   case 307: /* variable_name: "identifier"  */
-#line 2830 "grammar.y"
+#line 2843 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 6271 "grammar.cpp"
+#line 6281 "grammar.cpp"
     break;
 
 
-#line 6275 "grammar.cpp"
+#line 6285 "grammar.cpp"
 
       default: break;
     }
