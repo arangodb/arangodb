@@ -435,6 +435,66 @@ function ahuacatlParseTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test MATCH keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testMatchKeyword: function () {
+      // MATCH is a reserved keyword, so using it as a variable name must fail
+      ["MATCH", "match", "Match"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test WHILE keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testWhileKeyword: function () {
+      // WHILE is a reserved keyword, so using it as a variable name must fail
+      ["WHILE", "while", "While"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test UNTIL keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testUntilKeyword: function () {
+      // UNTIL is a reserved keyword, so using it as a variable name must fail
+      ["UNTIL", "until", "Until"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SCAN keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testScanKeyword: function () {
+      // SCAN is a reserved keyword, so using it as a variable name must fail
+      ["SCAN", "scan", "Scan"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test FOLD keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testFoldKeyword: function () {
+      // FOLD is a reserved keyword, so using it as a variable name must fail
+      ["FOLD", "fold", "Fold"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test line numbers in parse errors
 ////////////////////////////////////////////////////////////////////////////////
 
