@@ -1,6 +1,10 @@
 3.12.9-devel (XXXX-XX-XX)
 -------------------------
 
+* Fixed a bug in arangodump that prevented the `--local-network-threads`
+  startup option from accepting the specified value and potentially
+  overwriting the `--dbserver-worker-threads` setting.
+
 * COR-271: If a query uses an OR condition that affects multiple indexes
   the covering index optimisation is now applied.
 
@@ -14,6 +18,10 @@
 3.12.8 (XXXX-XX-XX)
 -------------------
 
+* Updated minimatch to 10.2.3.
+
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
+
 * Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
 
 * Accept `null` as valid value for the `roles` attribute in JWT tokens.
@@ -21,8 +29,6 @@
 * Serve OpenAPI spec on /_arango/vX/openapi.json .
 
 * Fixed BTS-2309: Treat empty object as null with respect to schema.
-
-* Updated minimatch to 10.2.1.
 
 * Add new API GET /_admin/options-public for new platform UI.
 
