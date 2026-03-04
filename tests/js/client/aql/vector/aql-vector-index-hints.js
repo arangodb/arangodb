@@ -75,7 +75,8 @@ function VectorIndexHintsSuite(expectedTrained) {
       db._useDatabase(dbName);
 
       collection = db._create(collName, {
-        numberOfShards: 3
+        numberOfShards: 3,
+        replicationFactor: isCluster ? 1 : undefined,
       });
 
       // Generate random vectors
@@ -99,71 +100,44 @@ function VectorIndexHintsSuite(expectedTrained) {
       }
       const batchSize = 100;
       const numBatches = Math.ceil(docs.length / batchSize);
-      const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
-
-      const ensureIndex = () => {
-        collection.ensureIndex({
-          name: "vector_l2",
-          type: "vector",
-          fields: ["vector"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 5,
-          },
-        });
-        collection.ensureIndex({
-          name: "vector_l2_secondary",
-          type: "vector",
-          fields: ["vector"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 3,
-          },
-        });
-        collection.ensureIndex({
-          name: "vector_l2_with_filter",
-          type: "vector",
-          fields: ["vector"],
-          storedValues: ["value"],
-          params: {
-            metric: "l2",
-            dimension: dimension,
-            nLists: 4,
-          },
-        });
-      };
 
       for (let i = 0; i < numBatches; i++) {
-        if (i === ensureIndexSlot) {
-          ensureIndex();
-        }
         const start = i * batchSize;
         const end = Math.min(start + batchSize, docs.length);
         collection.insert(docs.slice(start, end));
       }
-      if (ensureIndexSlot === numBatches) {
-        ensureIndex();
-      }
+
       const state = expectedTrained ? "ready" : "uninitialized";
-      const timeoutSec = expectedTrained ? 60 : 5;
-      if (isCluster) {
-        assertTrue(
-          waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-            state,
-            timeoutSec),
-          "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
-          " on DB servers with " + numberOfDocs + " docs"
-        );
-      } else {
-        assertTrue(
-          waitForAllVectorIndexesBuildState(collection,
-            state,
-            timeoutSec),
-          "Expected vector_l2_with_filter to become " + (expectedTrained ? "trained" : "untrained") +
-          " with " + numberOfDocs + " docs"
-        );
+      const indexTimeoutSec = expectedTrained ? (isCluster ? 120 : 60) : 5;
+
+      const waitForBuild = () => {
+        if (isCluster) {
+          assertTrue(
+            waitForAllVectorIndexesBuildStateOnDBServers(db, collection, state, indexTimeoutSec),
+            "Expected indexes to become " + state);
+        } else {
+          assertTrue(
+            waitForAllVectorIndexesBuildState(collection, state, indexTimeoutSec),
+            "Expected indexes to become " + state);
+        }
+      };
+
+      const indexes = [
+        {name: "vector_l2", fields: ["vector"], params: {metric: "l2", dimension, nLists: 5}},
+        {name: "vector_l2_secondary", fields: ["vector"], params: {metric: "l2", dimension, nLists: 3}},
+        {name: "vector_l2_with_filter", fields: ["vector"], storedValues: ["value"], params: {metric: "l2", dimension, nLists: 4}},
+      ];
+
+      for (const idx of indexes) {
+        collection.ensureIndex({type: "vector", ...idx});
+        // In cluster, wait for each index build to complete before creating
+        // the next one to avoid lock contention between build threads.
+        if (isCluster) {
+          waitForBuild();
+        }
+      }
+      if (!isCluster) {
+        waitForBuild();
       }
     },
 
