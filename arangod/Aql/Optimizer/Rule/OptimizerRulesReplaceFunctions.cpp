@@ -495,10 +495,11 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
       fargs->addMember(arr);
     }
   }
-  AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs, true);
+  AstNode* geoContainsCall =
+      ast->createNodeFunctionCall("GEO_CONTAINS", fargs, true);
 
   // FILTER part
-  AstNode* filterNode = ast->createNodeFilter(fcall);
+  AstNode* filterNode = ast->createNodeFilter(geoContainsCall);
 
   // RETURN part
   AstNode* returnNode =
