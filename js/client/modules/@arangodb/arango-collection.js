@@ -824,11 +824,20 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "isRestore"].forEach(function(key) {
       if (options[key]) {
         url = appendBoolParameter(url, key, options[key]);
       }
     });
+
+    if (options.overwrite) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorNum: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
+        errorMessage: "the 'overwrite' option has been removed, use 'overwriteMode' instead"
+      });
+    }
 
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);

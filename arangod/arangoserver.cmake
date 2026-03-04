@@ -72,7 +72,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAdminDeploymentHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
-  RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp

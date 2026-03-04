@@ -38,10 +38,9 @@ const db = internal.db;
 
 function testSuite() {
   return {
-    testStatisticApi : function() {
-      let value = arango.GET("/_admin/statistics");
-      assertTrue(value.error);
-      assertEqual(404, value.code);
+    testMetricsApiAvailableWhenStatisticsOff : function() {
+      const res = arango.GET_RAW("/_admin/metrics");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200 even when server.statistics is false");
     },
 
     testMetricsAlwaysThere : function() {

@@ -38,13 +38,31 @@ const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 function testSuite() {
   return {
-    testStatisticApi : function() {
-      let value = arango.GET("/_admin/statistics");
-      assertTrue(value.hasOwnProperty("time"));
-      assertTrue(value.hasOwnProperty("enabled"));
-      assertTrue(value.hasOwnProperty("server"));
-      assertTrue(value.hasOwnProperty("system"));
-      assertTrue(value.enabled);
+    testMetricsApiWhenStatisticsOn : function() {
+      const res = arango.GET_RAW("/_admin/metrics");
+      assertEqual(200, res.code, "GET /_admin/metrics should return 200 when server.statistics is true");
+      const body = typeof res.body === 'string' ? res.body : String(res.body);
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain uptime");
+      const uptime = internal.parsePrometheusMetric(body, 'arangodb_server_statistics_server_uptime_total');
+      assertTrue(typeof uptime === 'number' && !Number.isNaN(uptime) && uptime >= 0,
+        "uptime should be present and non-negative");
+
+      assertTrue(uptime > 0, "Statistics should be uptime > 0");
+
+      assertTrue(body.indexOf('arangodb_server_statistics_server_uptime_total') !== -1,
+        "Response should contain server statistics");
+      assertTrue(uptime !== undefined && uptime >= 0, "server-equivalent: server uptime should be valid");
+
+      assertTrue(body.indexOf('arangodb_process_statistics_resident_set_size') !== -1,
+        "Response should contain process/system statistics");
+      const residentSetSize = internal.parsePrometheusMetric(body, 'arangodb_process_statistics_resident_set_size');
+      assertTrue(residentSetSize !== undefined && residentSetSize >= 0,
+        "At least one process statistic should be present and valid");
+
+      assertTrue(body.indexOf('arangodb_http_request_statistics_total_requests_total') !== -1,
+        "Response should contain http request statistics");
     },
 
     testMetricsAlwaysThere : function() {

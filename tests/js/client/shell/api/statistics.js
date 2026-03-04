@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, SYS_IS_V8_BUILD */
+/* global arango, assertTrue, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,108 +27,72 @@
 'use strict';
 
 const internal = require('internal');
-const sleep = internal.sleep;
-const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
-const jsunity = require("jsunity");
+const jsunity = require('jsunity');
 
-let  api = "/_admin/";
-
-////////////////////////////////////////////////////////////////////////////////;
-// check statistics-description availability;
-//////////////////////////////////////////////////////////////////////////////#;
-function calculating_statisticsSuite () {
+function metricsApiSuite() {
   return {
 
-    test_testing_statistics_description_correct_cmd: function() {
-      let cmd = "/_admin/statistics-description";
-      let doc = arango.GET_RAW(cmd) ;
-
-      assertEqual(doc.code, 200);
+    test_metrics_returns_200: function () {
+      const res = arango.GET_RAW('/_admin/metrics');
+      assertEqual(res.code, 200, 'GET /_admin/metrics should return 200');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // check statistics-description for wrong user interaction;
-    //////////////////////////////////////////////////////////////////////////////#;
-
-    test_testing_statistics_description_wrong_cmd: function() {
-      let cmd = "/_admin/statistics-description/asd123";
-      let doc = arango.GET_RAW(cmd) ;
+    test_testing_statistics_wrong_cmd: function () {
+      const cmd = "/_admin/statistics/asd123";
+      const doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.error);
       assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // check statistics availability;
-    //////////////////////////////////////////////////////////////////////////////#;
-
-    test_testing_statistics_correct_cmd: function() {
-      let cmd = "/_admin/statistics";
-      let doc = arango.GET_RAW(cmd) ;
-      assertEqual(doc.code, 200);
-      assertTrue(doc.parsedBody['server']['uptime'] > 0);
+    test_metrics_contains_expected_metric_names: function () {
+      const res = arango.GET_RAW('/_admin/metrics');
+      assertEqual(res.code, 200);
+      const body = typeof res.body === 'string' ? res.body : String(res.body);
+      const expected = [
+        'arangodb_server_statistics_server_uptime_total',
+        'arangodb_process_statistics_resident_set_size',
+        'arangodb_process_statistics_number_of_threads'
+      ];
+      expected.forEach(function (name) {
+        assertTrue(body.indexOf(name) !== -1, 'response should contain metric: ' + name);
+      });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // check statistics for wrong user interaction;
-    //////////////////////////////////////////////////////////////////////////////#;
+    test_testing_async_requests_: function () {
+      const ASYNC_METRIC = 'arangodb_http_request_statistics_async_requests_total';
 
-    test_testing_statistics_wrong_cmd: function() {
-      let cmd = "/_admin/statistics/asd123";
-      let doc = arango.GET_RAW(cmd) ;
+      function getAsyncCount() {
+        const res = arango.GET_RAW('/_admin/metrics');
+        assertEqual(res.code, 200);
+        const body = typeof res.body === 'string' ? res.body : String(res.body);
+        const v = internal.parsePrometheusMetric(body, ASYNC_METRIC);
+        return (typeof v === 'number' && !Number.isNaN(v)) ? v : 0;
+      }
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertTrue(doc.error);
-      assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-    },
+      let async_requests_1 = getAsyncCount();
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // check request statistics counting of async requests;
-    //////////////////////////////////////////////////////////////////////////////#;
-
-    test_testing_async_requests_: function() {
-      // get stats;
-      let cmd = "/_admin/statistics";
-      let doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      let async_requests_1 = doc.parsedBody['http']['requestsAsync'];
-
-      // get version async - should increase async counter;
-      cmd = "/_api/version";
-      doc = arango.PUT_RAW(cmd, "", { "X-Arango-Async": "true" });
+      let doc = arango.PUT_RAW('/_api/version', '', { 'X-Arango-Async': 'true' });
       assertEqual(doc.code, 202);
-      // assertTrue(doc.headers.hasOwnProperty(("x-arango-async-id")));
-      // assertMatch(doc.headers["x-arango-async-id"], /^\d+$/);
-      assertEqual(doc.parsedBody);
 
-      sleep(1);
+      internal.sleep(1);
 
-      // get stats;
-      cmd = "/_admin/statistics";
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      let async_requests_2 = doc.parsedBody['http']['requestsAsync'];
-      assertEqual(async_requests_1, async_requests_1);
+      let async_requests_2 = getAsyncCount();
+      assertTrue(async_requests_2 >= async_requests_1 + 1,
+        'async request should increase async counter: ' + async_requests_1 + ' -> ' + async_requests_2);
 
-      // get version async - should not increase async counter;
-      cmd = "/_api/version";
-      doc = arango.PUT_RAW(cmd, "");
+      doc = arango.PUT_RAW('/_api/version', '');
       assertEqual(doc.code, 200);
 
-      sleep(1);
+      internal.sleep(1);
 
-      // get stats;
-      cmd = "/_admin/statistics";
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      let async_requests_3 = doc.parsedBody['http']['requestsAsync'];
-      assertEqual(async_requests_2, async_requests_3);
+      let async_requests_3 = getAsyncCount();
+      assertEqual(async_requests_2, async_requests_3,
+        'sync request should not increase async counter');
     },
-
   };
 }
 
-jsunity.run(calculating_statisticsSuite);
+jsunity.run(metricsApiSuite);
 return jsunity.done();

@@ -58,7 +58,6 @@
 #include "RestHandler/RestAdminDeploymentHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
-#include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAccessTokenHandler.h"
@@ -826,11 +825,6 @@ void GeneralServerFeature::defineRemainingHandlers(
       "/_admin/server",
       RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData, {1});
 
-  f.addHandler(
-      "/_admin/statistics",
-      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
-      {1});
-
   f.addPrefixHandler(
       "/_admin/metrics",
       RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData, {1});
@@ -838,11 +832,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/usage-metrics",
       RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData, {1});
-
-  f.addHandler(
-      "/_admin/statistics-description",
-      RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData,
-      {1});
 
   f.addPrefixHandler(
       "/_admin/license",

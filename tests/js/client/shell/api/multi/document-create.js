@@ -934,7 +934,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&waitForSync=false&returnOld=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&waitForSync=false&returnOld=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -989,7 +989,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `{ "_key" : "${key}",  "Hallo" : "ULF" }`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 
@@ -1054,7 +1054,7 @@ function known_collection_identifier__overwrite_EQ_trueSuite () {
       assertEqual(etag, `\"${rev}\"`);
       assertEqual(location, `/_db/_system/_api/document/${did}`);
 
-      cmd = `/_api/document?collection=${cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true`;
+      cmd = `/_api/document?collection=${cn}&overwriteMode=replace&returnNew=true&returnOld=true&waitForSync=true`;
       body = `[{ "_key" : "${key}",  "Hallo" : "ULF" }, { "_key" : "${key}",  "Hallo" : "ULFINE" }]`;
       let newdoc = arango.POST_RAW(cmd, body, {});
 

@@ -334,8 +334,6 @@ std::string const RestAdminClusterHandler::UniqId = "uniqId";
 std::string const RestAdminClusterHandler::Maintenance = "maintenance";
 std::string const RestAdminClusterHandler::NodeVersion = "nodeVersion";
 std::string const RestAdminClusterHandler::NodeEngine = "nodeEngine";
-std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
-std::string const RestAdminClusterHandler::Statistics = "statistics";
 std::string const RestAdminClusterHandler::ShardDistribution =
     "shardDistribution";
 std::string const RestAdminClusterHandler::CollectionShardDistribution =
@@ -412,12 +410,6 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     } else if (command == NodeEngine) {
       co_await handleNodeEngine();
-      co_return;
-    } else if (command == NodeStatistics) {
-      co_await handleNodeStatistics();
-      co_return;
-    } else if (command == Statistics) {
-      co_await handleStatistics();
       co_return;
     } else if (command == ShardDistribution) {
       handleShardDistribution();
@@ -1372,16 +1364,8 @@ async<void> RestAdminClusterHandler::handleNodeVersion() {
   co_return co_await handleProxyGetRequest("/_api/version", "ServerID");
 }
 
-async<void> RestAdminClusterHandler::handleNodeStatistics() {
-  co_return co_await handleProxyGetRequest("/_admin/statistics", "ServerID");
-}
-
 async<void> RestAdminClusterHandler::handleNodeEngine() {
   co_return co_await handleProxyGetRequest("/_api/engine", "ServerID");
-}
-
-async<void> RestAdminClusterHandler::handleStatistics() {
-  co_return co_await handleProxyGetRequest("/_admin/statistics", "DBserver");
 }
 
 void RestAdminClusterHandler::handleShardDistribution() {
