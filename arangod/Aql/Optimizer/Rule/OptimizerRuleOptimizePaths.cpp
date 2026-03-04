@@ -16,7 +16,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleOptimizePaths.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleOptimizePaths.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -31,7 +31,6 @@
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
-
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesOptimizeTraversals.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesOptimizeTraversals.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -38,7 +38,6 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
-
 
 namespace {
 
@@ -373,7 +372,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
-
 
 // remove filter nodes already covered by a traversal
 void arangodb::aql::removeFiltersCoveredByTraversal(

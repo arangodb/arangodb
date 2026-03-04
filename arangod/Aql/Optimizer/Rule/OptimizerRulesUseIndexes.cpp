@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesUseIndexes.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesUseIndexes.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -44,11 +44,9 @@
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
-
 
 struct SortToIndexNode final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -668,4 +666,3 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     opt->addPlan(std::move(plan), rule, modified);
   }
 }
-
