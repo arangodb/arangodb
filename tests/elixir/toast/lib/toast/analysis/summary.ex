@@ -5,12 +5,12 @@ defmodule Toast.Analysis.Summary do
   @spec format(map()) :: String.t()
   def format(results) do
     summary = results["summary"]
-    suites = results["suites"] || []
+    modules = results["modules"] || %{}
 
     lines = [
       format_totals(summary),
       format_duration(results),
-      format_suite_breakdown(suites)
+      format_module_breakdown(modules)
     ]
 
     Enum.join(lines, "\n")
@@ -26,24 +26,23 @@ defmodule Toast.Analysis.Summary do
   end
 
   defp format_duration(results) do
-    seconds = results["duration_seconds"] || 0
+    seconds = get_in(results, ["test_run", "duration_seconds"]) || 0
     "Duration: #{format_time(seconds)}"
   end
 
-  defp format_suite_breakdown([]), do: ""
+  defp format_module_breakdown(modules) when map_size(modules) == 0, do: ""
 
-  defp format_suite_breakdown(suites) do
+  defp format_module_breakdown(modules) do
     lines =
-      Enum.map(suites, fn suite ->
-        name = suite["name"]
-        tests = suite["tests"] || []
+      Enum.map(modules, fn {name, mod} ->
+        tests = mod["tests"] || []
         passed = Enum.count(tests, &(&1["outcome"] == "passed"))
         failed = Enum.count(tests, &(&1["outcome"] == "failed"))
-        duration = suite["duration_seconds"] || 0
+        duration = mod["duration_seconds"] || 0
         "  #{name}: #{passed} passed, #{failed} failed (#{format_time(duration)})"
       end)
 
-    "Suite breakdown:\n" <> Enum.join(lines, "\n")
+    "Module breakdown:\n" <> Enum.join(lines, "\n")
   end
 
   defp format_time(seconds) when is_number(seconds) do

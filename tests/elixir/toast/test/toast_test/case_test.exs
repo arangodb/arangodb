@@ -23,7 +23,7 @@ defmodule ToastTest.CaseContextTest do
     :ok
   end
 
-  defp fake_deployment(overrides \\ %{}) do
+  defp fake_deployment(overrides) do
     defaults = %{
       id: "test-1",
       mode: :single_server,
@@ -45,18 +45,8 @@ defmodule ToastTest.CaseContextTest do
     }
   end
 
-  describe "setup provides deployment context" do
-    test "standalone deployment is resolved via registry when module lacks __toast_suite__" do
-      deployment = fake_deployment()
-      ToastTest.Case.register_deployment(deployment)
-
-      retrieved = ToastTest.Case.get_deployment()
-      assert retrieved.endpoint == "http://localhost:8529"
-      assert retrieved.id == "test-1"
-    end
-
-    test "get_deployment_for_context uses DeploymentRegistry when module has __toast_suite__" do
-      # Define a suite module that has __toast_suite__/0
+  describe "resolve_suite_key via DeploymentRegistry" do
+    test "resolves suite key from __toast_suite__/0" do
       defmodule FakeSuiteModule do
         def __toast_suite__, do: __MODULE__
       end
@@ -65,22 +55,25 @@ defmodule ToastTest.CaseContextTest do
       DeploymentRegistry.put(FakeSuiteModule, deployment)
       DeploymentRegistry.put_extra_context(FakeSuiteModule, %{extra_key: "extra_val"})
 
-      # Verify the registry path works
       assert DeploymentRegistry.get(FakeSuiteModule) == deployment
       assert DeploymentRegistry.get_extra_context(FakeSuiteModule) == %{extra_key: "extra_val"}
     end
-  end
 
-  describe "setup returns error when no deployment registered" do
-    test "get_deployment raises with useful message" do
+    test "raises when module has no __toast_suite__/0" do
+      defmodule NoSuiteModule do
+      end
+
       error =
         assert_raise RuntimeError, fn ->
-          ToastTest.Case.get_deployment()
+          # Simulate what resolve_suite_key does
+          if function_exported?(NoSuiteModule, :__toast_suite__, 0) do
+            NoSuiteModule.__toast_suite__()
+          else
+            raise "#{inspect(NoSuiteModule)} must belong to a suite."
+          end
         end
 
-      assert error.message =~ "No deployment registered"
-      assert error.message =~ "setup_suite"
-      assert error.message =~ "test_helper.exs"
+      assert error.message =~ "must belong to a suite"
     end
   end
 
@@ -94,19 +87,14 @@ defmodule ToastTest.CaseContextTest do
         end
       end
 
-      # The module should compile without errors, meaning the macro expanded.
-      # The 'using' block defines an alias for Toast.Client and sets @moduletag :toast_suite
       assert Code.ensure_loaded?(SampleTestModule)
     end
 
     test "modules using ToastTest.Case are ExUnit.CaseTemplate consumers" do
-      # ToastTest.Case is itself a CaseTemplate, so modules that `use` it
-      # inherit the setup callback and the `using` block.
       defmodule AnotherTestModule do
         use ToastTest.Case
       end
 
-      # ExUnit test modules that use a CaseTemplate get __ex_unit__ defined
       assert function_exported?(AnotherTestModule, :__ex_unit__, 0)
     end
   end

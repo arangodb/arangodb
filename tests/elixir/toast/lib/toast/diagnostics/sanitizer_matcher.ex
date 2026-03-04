@@ -22,27 +22,27 @@ defmodule Toast.Diagnostics.SanitizerMatcher do
         }
 
   @doc """
-  Match sanitizer errors from diagnostics to test results by timestamp.
+  Match sanitizer errors from diagnostics to tests by timestamp.
 
   Extracts all sanitizer errors from `diagnostics` (handles both single-server
-  and cluster structures) and attempts to match each to a test case from
-  `test_results`. Returns matched entries (grouped with test info and confidence)
-  and unmatched errors.
+  and cluster structures) and attempts to match each to a test from `tests`.
+  Returns matched entries (grouped with test info and confidence) and unmatched
+  errors.
 
   ## Options
 
     * `:tolerance_seconds` — seconds after test end for low-confidence match (default: 5)
   """
-  @spec match(map() | nil, map() | nil, keyword()) :: match_result()
-  def match(diagnostics, test_results, opts \\ [])
+  @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
+  def match(diagnostics, tests, opts \\ [])
 
-  def match(nil, _test_results, _opts), do: Matcher.empty_result()
+  def match(nil, _tests, _opts), do: Matcher.empty_result()
   def match(_diagnostics, nil, _opts), do: Matcher.empty_result()
 
-  def match(diagnostics, test_results, opts) do
+  def match(diagnostics, tests, opts) do
     diagnostics
     |> extract_all_errors()
-    |> Matcher.match(test_results, :error, opts)
+    |> Matcher.match(tests, :error, opts)
   end
 
   defp extract_all_errors(diagnostics) do

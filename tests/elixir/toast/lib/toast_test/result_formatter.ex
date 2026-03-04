@@ -12,7 +12,7 @@ defmodule ToastTest.ResultFormatter do
     {:ok,
      %{
        suite_started_at: DateTime.utc_now(),
-       tests: [],
+       modules: %{},
        test_start_times: %{},
        config: opts
      }}
@@ -34,15 +34,28 @@ defmodule ToastTest.ResultFormatter do
     key = {test.module, test.name}
     started_at = state.test_start_times[key]
     result = extract_test_result(test, started_at)
-    {:noreply, %{state | tests: [result | state.tests]}}
+    modules = Map.update(state.modules, test.module, [result], &[result | &1])
+    {:noreply, %{state | modules: modules}}
   end
 
   def handle_cast({:suite_finished, times_us}, state) do
+    modules =
+      Map.new(state.modules, fn {mod, tests} ->
+        tests = Enum.reverse(tests)
+
+        {mod,
+         %{
+           tests: tests,
+           started_at: tests |> Enum.map(& &1.started_at) |> Enum.reject(&is_nil/1) |> min_datetime(),
+           finished_at: tests |> Enum.map(& &1.finished_at) |> Enum.reject(&is_nil/1) |> max_datetime()
+         }}
+      end)
+
     results = %{
-      suite_started_at: state.suite_started_at,
-      suite_finished_at: DateTime.utc_now(),
+      started_at: state.suite_started_at,
+      finished_at: DateTime.utc_now(),
       times_us: times_us,
-      tests: Enum.reverse(state.tests)
+      modules: modules
     }
 
     Application.put_env(:toast, @env_key, results)
@@ -52,6 +65,17 @@ defmodule ToastTest.ResultFormatter do
   def handle_cast(_msg, state) do
     {:noreply, state}
   end
+
+  @doc "Flatten hierarchical module results to a flat test list."
+  def flat_tests(%{modules: modules}) do
+    Enum.flat_map(modules, fn {_mod, %{tests: tests}} -> tests end)
+  end
+
+  defp min_datetime([]), do: nil
+  defp min_datetime(dts), do: Enum.min(dts, DateTime)
+
+  defp max_datetime([]), do: nil
+  defp max_datetime(dts), do: Enum.max(dts, DateTime)
 
   # --- Result extraction ---
 

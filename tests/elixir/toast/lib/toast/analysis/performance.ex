@@ -4,13 +4,11 @@ defmodule Toast.Analysis.Performance do
   @doc "Format slowest tests. n defaults to 10."
   @spec format(map(), non_neg_integer()) :: String.t()
   def format(results, n \\ 10) do
-    suites = results["suites"] || []
+    modules = results["modules"] || %{}
 
     all_tests =
-      Enum.flat_map(suites, fn suite ->
-        tests = suite["tests"] || []
-        suite_name = suite["name"]
-        Enum.map(tests, &Map.put(&1, "suite_name", suite_name))
+      Enum.flat_map(modules, fn {_module_name, mod} ->
+        mod["tests"] || []
       end)
 
     slowest =

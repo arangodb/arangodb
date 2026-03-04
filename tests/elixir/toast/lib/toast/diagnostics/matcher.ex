@@ -46,8 +46,9 @@ defmodule Toast.Diagnostics.Matcher do
   @doc """
   Match timestamped items to test cases.
 
-  `items` is a list of maps, each with a `:timestamp` field. `item_key`
-  determines the key used in match entries (e.g., `:error` or `:crash`).
+  `items` is a list of maps, each with a `:timestamp` field. `tests` is a
+  flat list of test result maps. `item_key` determines the key used in match
+  entries (e.g., `:error` or `:crash`).
 
   Returns `%{matched: [%{module, test, confidence, <item_key>: item}], unmatched: [item]}`.
 
@@ -55,15 +56,14 @@ defmodule Toast.Diagnostics.Matcher do
 
     * `:tolerance_seconds` — seconds after test end for low-confidence match (default: 5)
   """
-  @spec match([map()], map() | nil, atom(), keyword()) :: map()
-  def match(items, test_results, item_key, opts \\ [])
+  @spec match([map()], [map()] | nil, atom(), keyword()) :: map()
+  def match(items, tests, item_key, opts \\ [])
 
-  def match([], _test_results, _item_key, _opts), do: empty_result()
+  def match([], _tests, _item_key, _opts), do: empty_result()
   def match(_items, nil, _item_key, _opts), do: empty_result()
 
-  def match(items, test_results, item_key, opts) do
+  def match(items, tests, item_key, opts) do
     tolerance = Keyword.get(opts, :tolerance_seconds, @default_tolerance_seconds)
-    tests = Map.get(test_results, :tests, [])
 
     {matched, unmatched} =
       Enum.reduce(items, {[], []}, fn item, {matched_acc, unmatched_acc} ->

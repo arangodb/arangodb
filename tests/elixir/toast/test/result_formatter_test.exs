@@ -6,10 +6,10 @@ defmodule ToastTest.ResultFormatterTest do
   import Toast.FormatterTestHelpers, only: [make_test: 0, make_test: 1]
 
   describe "init/1" do
-    test "returns initial state with empty tests list" do
+    test "returns initial state with empty modules map" do
       {:ok, state} = ResultFormatter.init([])
 
-      assert state.tests == []
+      assert state.modules == %{}
       assert %DateTime{} = state.suite_started_at
       assert state.config == []
     end
@@ -35,7 +35,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.module == FakeTest
       assert result.name == "test something"
       assert result.outcome == :passed
@@ -62,7 +62,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "ExUnit.AssertionError"
@@ -79,7 +79,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :skipped
       assert result.failure == %{message: "not implemented yet"}
     end
@@ -92,7 +92,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :excluded
       assert result.failure == %{message: "requires cluster"}
     end
@@ -105,7 +105,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :invalid
       assert result.failure == nil
     end
@@ -124,10 +124,10 @@ defmodule ToastTest.ResultFormatterTest do
 
       results = Application.get_env(:toast, :__test_results__)
       assert results != nil
-      assert %DateTime{} = results.suite_started_at
-      assert %DateTime{} = results.suite_finished_at
+      assert %DateTime{} = results.started_at
+      assert %DateTime{} = results.finished_at
       assert results.times_us == times_us
-      assert [result] = results.tests
+      assert %{FakeTest => %{tests: [result]}} = results.modules
       assert result.name == "test something"
     end
   end
@@ -140,7 +140,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       test1 = make_test(%{name: :"test first", time: 10_000})
       test2 = make_test(%{name: :"test second", time: 20_000})
-      test3 = make_test(%{name: :"test third", time: 30_000})
+      test3 = make_test(%{name: :"test third", time: 30_000, module: OtherTest})
 
       {:noreply, state} = ResultFormatter.handle_cast({:test_finished, test1}, state)
       {:noreply, state} = ResultFormatter.handle_cast({:test_finished, test2}, state)
@@ -150,8 +150,12 @@ defmodule ToastTest.ResultFormatterTest do
         ResultFormatter.handle_cast({:suite_finished, %{async: 0, sync: 60_000}}, state)
 
       results = Application.get_env(:toast, :__test_results__)
-      names = Enum.map(results.tests, & &1.name)
-      assert names == ["test first", "test second", "test third"]
+
+      fake_names = Enum.map(results.modules[FakeTest].tests, & &1.name)
+      assert fake_names == ["test first", "test second"]
+
+      other_names = Enum.map(results.modules[OtherTest].tests, & &1.name)
+      assert other_names == ["test third"]
     end
   end
 
@@ -169,7 +173,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "exit"
@@ -190,7 +194,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "throw"
@@ -211,7 +215,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "ErlangError"
@@ -233,7 +237,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "EXIT"
@@ -253,7 +257,7 @@ defmodule ToastTest.ResultFormatterTest do
 
       {:noreply, new_state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
-      assert [result] = new_state.tests
+      assert [result] = new_state.modules[FakeTest]
       assert result.outcome == :failed
       assert [failure] = result.failure
       assert failure.kind == "EXIT"

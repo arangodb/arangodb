@@ -4,15 +4,19 @@ defmodule Toast.Analysis.FailuresTest do
   alias Toast.Analysis.Failures
 
   test "no failures returns message" do
-    results = %{"suites" => [%{"name" => "smoke", "tests" => [%{"outcome" => "passed"}]}]}
+    results = %{
+      "modules" => %{
+        "Elixir.Smoke.VersionTest" => %{"tests" => [%{"outcome" => "passed"}]}
+      }
+    }
+
     assert Failures.format(results) == "No failures."
   end
 
   test "formats failure details" do
     results = %{
-      "suites" => [
-        %{
-          "name" => "smoke",
+      "modules" => %{
+        "Elixir.Smoke.VersionTest" => %{
           "tests" => [
             %{
               "module" => "Elixir.Smoke.VersionTest",
@@ -23,7 +27,7 @@ defmodule Toast.Analysis.FailuresTest do
             }
           ]
         }
-      ]
+      }
     }
 
     output = Failures.format(results)
@@ -35,16 +39,19 @@ defmodule Toast.Analysis.FailuresTest do
 
   test "formats multiple failures with index" do
     results = %{
-      "suites" => [
-        %{
-          "name" => "s",
+      "modules" => %{
+        "A" => %{
           "tests" => [
             %{
               "module" => "A",
               "name" => "t1",
               "outcome" => "failed",
               "failure" => %{"message" => "err1"}
-            },
+            }
+          ]
+        },
+        "B" => %{
+          "tests" => [
             %{
               "module" => "B",
               "name" => "t2",
@@ -53,7 +60,7 @@ defmodule Toast.Analysis.FailuresTest do
             }
           ]
         }
-      ]
+      }
     }
 
     output = Failures.format(results)

@@ -12,8 +12,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
         crash_matching \\ nil,
         log_matching \\ nil
       ) do
-    suites = group_by_module(test_results.tests)
-    all_tests = test_results.tests
+    all_tests = all_tests_from_modules(test_results.modules)
 
     total = length(all_tests)
     failures = count_by_outcome(all_tests, :failed)
@@ -24,7 +23,10 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
     time = format_duration(test_results.times_us.run)
 
-    suite_elements = Enum.map_join(suites, "\n", &render_testsuite/1)
+    suite_elements =
+      test_results.modules
+      |> Enum.sort_by(fn {mod, _} -> Atom.to_string(mod) end)
+      |> Enum.map_join("\n", &render_testsuite/1)
 
     system_err =
       render_system_err(diagnostics, sanitizer_matching, crash_matching, log_matching)
@@ -40,75 +42,13 @@ defmodule ToastTest.ResultExporter.JUnitXML do
     |> Enum.join("\n")
   end
 
-  @doc "Render suite-level results as JUnit XML."
-  @spec render_suites(map()) :: String.t()
-  def render_suites(suite_results) do
-    all_tests = Enum.flat_map(suite_results.suites, & &1.tests)
-    total = length(all_tests)
-    failures = count_by_outcome(all_tests, :failed)
-    errors = count_by_outcome(all_tests, :errored)
-    skipped = count_by_outcome(all_tests, :skipped)
-    time = format_duration(suite_results.global_duration_us)
-
-    suite_elements =
-      Enum.map_join(suite_results.suites, "\n", fn suite ->
-        render_suite_testsuite(suite)
-      end)
-
-    [
-      ~s(<?xml version="1.0" encoding="UTF-8"?>),
-      ~s(<testsuites name="toast" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
-      suite_elements,
-      ~s(</testsuites>)
-    ]
-    |> Enum.reject(&(&1 == ""))
-    |> Enum.join("\n")
-  end
-
-  defp render_suite_testsuite(suite) do
-    name = suite.name
-    tests = suite.tests
-    total = length(tests)
-    failures = count_by_outcome(tests, :failed)
-    errors = count_by_outcome(tests, :errored)
-    skipped = count_by_outcome(tests, :skipped)
-    time = format_duration(suite.duration_us)
-
-    cases =
-      Enum.map_join(tests, "\n", fn test ->
-        classname = Atom.to_string(test.module)
-        test_name = xml_escape(test.name)
-        cn = xml_escape(classname)
-        t = format_duration(test.duration_us)
-
-        case test.outcome do
-          :passed ->
-            ~s(    <testcase name="#{test_name}" classname="#{cn}" time="#{t}"/>)
-
-          :failed ->
-            ~s(    <testcase name="#{test_name}" classname="#{cn}" time="#{t}">\n      <failure/>\n    </testcase>)
-
-          :errored ->
-            ~s(    <testcase name="#{test_name}" classname="#{cn}" time="#{t}">\n      <error/>\n    </testcase>)
-
-          :skipped ->
-            ~s(    <testcase name="#{test_name}" classname="#{cn}" time="#{t}">\n      <skipped/>\n    </testcase>)
-        end
-      end)
-
-    [
-      ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
-      cases,
-      ~s(  </testsuite>)
-    ]
-    |> Enum.join("\n")
-  end
-
   # --- Test suites ---
 
-  defp group_by_module(tests), do: Enum.group_by(tests, & &1.module)
+  defp all_tests_from_modules(modules) do
+    Enum.flat_map(modules, fn {_mod, %{tests: tests}} -> tests end)
+  end
 
-  defp render_testsuite({module, tests}) do
+  defp render_testsuite({module, %{tests: tests}}) do
     name = Atom.to_string(module)
     total = length(tests)
     failures = count_by_outcome(tests, :failed)

@@ -4,13 +4,11 @@ defmodule Toast.Analysis.CrashesTest do
   alias Toast.Analysis.Crashes
 
   test "no crashes returns message" do
-    results = %{"suites" => []}
-    assert Crashes.format(results) == "No crash or sanitizer issues detected."
+    assert Crashes.format(%{}) == "No crash or sanitizer issues detected."
   end
 
   test "formats crash attribution" do
     results = %{
-      "suites" => [],
       "crash_matching" => %{
         "matched" => [
           %{
@@ -32,7 +30,6 @@ defmodule Toast.Analysis.CrashesTest do
 
   test "formats sanitizer attribution" do
     results = %{
-      "suites" => [],
       "sanitizer_matching" => %{
         "matched" => [],
         "unmatched" => [

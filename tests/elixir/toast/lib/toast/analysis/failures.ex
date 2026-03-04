@@ -4,16 +4,12 @@ defmodule Toast.Analysis.Failures do
   @doc "Format failure details from parsed results.json data."
   @spec format(map()) :: String.t()
   def format(results) do
-    suites = results["suites"] || []
+    modules = results["modules"] || %{}
 
     failed_tests =
-      Enum.flat_map(suites, fn suite ->
-        tests = suite["tests"] || []
-        suite_name = suite["name"]
-
-        tests
-        |> Enum.filter(&(&1["outcome"] == "failed"))
-        |> Enum.map(&Map.put(&1, "suite_name", suite_name))
+      Enum.flat_map(modules, fn {_module_name, mod} ->
+        tests = mod["tests"] || []
+        Enum.filter(tests, &(&1["outcome"] == "failed"))
       end)
 
     if failed_tests == [] do
@@ -43,7 +39,6 @@ defmodule Toast.Analysis.Failures do
     name = test["name"] || "unknown"
 
     header = "#{idx}) #{module} - #{name}"
-    header = if test["suite_name"], do: header <> " [#{test["suite_name"]}]", else: header
 
     case test["duration_seconds"] do
       nil -> header

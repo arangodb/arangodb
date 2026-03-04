@@ -5,9 +5,8 @@ defmodule Toast.Analysis.PerformanceTest do
 
   defp sample_results do
     %{
-      "suites" => [
-        %{
-          "name" => "smoke",
+      "modules" => %{
+        "A" => %{
           "tests" => [
             %{
               "module" => "A",
@@ -20,7 +19,11 @@ defmodule Toast.Analysis.PerformanceTest do
               "name" => "medium",
               "outcome" => "passed",
               "duration_seconds" => 3.5
-            },
+            }
+          ]
+        },
+        "B" => %{
+          "tests" => [
             %{
               "module" => "B",
               "name" => "slow",
@@ -35,7 +38,7 @@ defmodule Toast.Analysis.PerformanceTest do
             }
           ]
         }
-      ]
+      }
     }
   end
 
@@ -55,7 +58,7 @@ defmodule Toast.Analysis.PerformanceTest do
   end
 
   test "handles empty results" do
-    output = Performance.format(%{"suites" => []})
+    output = Performance.format(%{"modules" => %{}})
     assert output =~ "No tests found"
   end
 end

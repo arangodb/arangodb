@@ -28,16 +28,16 @@ defmodule Toast.Diagnostics.LogMatcher do
           unmatched: [log_entry()]
         }
 
-  @spec match(map() | nil, map() | nil, keyword()) :: match_result()
-  def match(diagnostics, test_results, opts \\ [])
+  @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
+  def match(diagnostics, tests, opts \\ [])
 
-  def match(nil, _test_results, _opts), do: Matcher.empty_result()
+  def match(nil, _tests, _opts), do: Matcher.empty_result()
   def match(_diagnostics, nil, _opts), do: Matcher.empty_result()
 
-  def match(diagnostics, test_results, opts) do
+  def match(diagnostics, tests, opts) do
     entries = extract_log_entries(diagnostics)
     {with_ts, without_ts} = Enum.split_with(entries, & &1.timestamp)
-    result = Matcher.match(with_ts, test_results, :log, opts)
+    result = Matcher.match(with_ts, tests, :log, opts)
     %{result | unmatched: result.unmatched ++ without_ts}
   end
 

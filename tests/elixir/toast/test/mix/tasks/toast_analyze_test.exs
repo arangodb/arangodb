@@ -8,9 +8,9 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
     path = Path.join(tmp_dir, "results.json")
 
     results = %{
-      "duration_seconds" => 10.5,
+      "test_run" => %{"duration_seconds" => 10.5},
       "summary" => %{"total" => 5, "passed" => 4, "failed" => 1, "skipped" => 0},
-      "suites" => []
+      "modules" => %{}
     }
 
     File.write!(path, encode_json(results))
@@ -24,9 +24,8 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
     path = Path.join(tmp_dir, "results.json")
 
     results = %{
-      "suites" => [
-        %{
-          "name" => "smoke",
+      "modules" => %{
+        "Elixir.Test" => %{
           "tests" => [
             %{
               "module" => "Elixir.Test",
@@ -36,7 +35,7 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
             }
           ]
         }
-      ]
+      }
     }
 
     File.write!(path, encode_json(results))
@@ -51,7 +50,6 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
     path = Path.join(tmp_dir, "results.json")
 
     results = %{
-      "suites" => [],
       "crash_matching" => %{
         "matched" => [
           %{
@@ -76,9 +74,8 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
     path = Path.join(tmp_dir, "results.json")
 
     results = %{
-      "suites" => [
-        %{
-          "name" => "s",
+      "modules" => %{
+        "A" => %{
           "tests" => [
             %{
               "module" => "A",
@@ -94,7 +91,7 @@ defmodule Mix.Tasks.Toast.AnalyzeTest do
             }
           ]
         }
-      ]
+      }
     }
 
     File.write!(path, encode_json(results))

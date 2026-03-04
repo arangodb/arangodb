@@ -5,7 +5,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
-    only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+    only: [at: 1, make_test: 0, make_test: 1]
 
   defp make_crash_report(opts \\ []) do
     %{
@@ -70,7 +70,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
 
   describe "match/3" do
     test "returns empty result for nil diagnostics" do
-      assert %{matched: [], unmatched: []} == CrashMatcher.match(nil, make_test_results([]))
+      assert %{matched: [], unmatched: []} == CrashMatcher.match(nil, [])
     end
 
     test "returns empty result for nil test_results" do
@@ -79,14 +79,14 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
 
     test "returns empty result when no crash" do
       diag = make_diagnostics(crash_report: no_crash_report(), server_error: nil)
-      result = CrashMatcher.match(diag, make_test_results([make_test()]))
+      result = CrashMatcher.match(diag, [make_test()])
       assert result == %{matched: [], unmatched: []}
     end
 
     test "returns crash as unmatched when crash has no timestamp" do
       crash = make_crash_report(timestamp: nil)
       diag = make_diagnostics(crash_report: crash)
-      result = CrashMatcher.match(diag, make_test_results([make_test()]))
+      result = CrashMatcher.match(diag, [make_test()])
       assert result.matched == []
       assert [%{server_id: "toast-1", timestamp: nil}] = result.unmatched
     end
@@ -96,7 +96,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       diag = make_diagnostics(crash_report: crash)
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = CrashMatcher.match(diag, make_test_results([test]))
+      result = CrashMatcher.match(diag, [test])
 
       assert [%{confidence: :high, module: SmokeTest.VersionTest, test: "test server version"}] =
                result.matched
@@ -109,7 +109,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       diag = make_diagnostics(crash_report: crash)
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = CrashMatcher.match(diag, make_test_results([test]))
+      result = CrashMatcher.match(diag, [test])
 
       assert [%{confidence: :low}] = result.matched
       assert result.unmatched == []
@@ -120,7 +120,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       diag = make_diagnostics(crash_report: crash)
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = CrashMatcher.match(diag, make_test_results([test]))
+      result = CrashMatcher.match(diag, [test])
 
       assert result.matched == []
       assert [%{server_id: "toast-1"}] = result.unmatched
@@ -132,7 +132,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(12), finished_at: at(20))
 
-      result = CrashMatcher.match(diag, make_test_results([test1, test2]))
+      result = CrashMatcher.match(diag, [test1, test2])
 
       assert [%{confidence: :high, test: "test two"}] = result.matched
     end
@@ -142,7 +142,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       diag = make_diagnostics(crash_report: crash)
       test = make_test(started_at: nil, finished_at: nil)
 
-      result = CrashMatcher.match(diag, make_test_results([test]))
+      result = CrashMatcher.match(diag, [test])
 
       assert result.matched == []
       assert length(result.unmatched) == 1
@@ -153,10 +153,10 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       diag = make_diagnostics(crash_report: crash)
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result_low = CrashMatcher.match(diag, make_test_results([test]), tolerance_seconds: 3)
+      result_low = CrashMatcher.match(diag, [test], tolerance_seconds: 3)
       assert [%{confidence: :low}] = result_low.matched
 
-      result_none = CrashMatcher.match(diag, make_test_results([test]), tolerance_seconds: 1)
+      result_none = CrashMatcher.match(diag, [test], tolerance_seconds: 1)
       assert result_none.matched == []
       assert length(result_none.unmatched) == 1
     end
@@ -185,7 +185,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
       }
 
       test = make_test(started_at: at(0), finished_at: at(10))
-      result = CrashMatcher.match(cluster_diag, make_test_results([test]))
+      result = CrashMatcher.match(cluster_diag, [test])
 
       assert [%{confidence: :high, crash: %{server_id: "dbserver-1"}}] = result.matched
     end
@@ -208,7 +208,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         )
 
       test = make_test(started_at: at(0), finished_at: at(10))
-      result = CrashMatcher.match(diag, make_test_results([test]))
+      result = CrashMatcher.match(diag, [test])
 
       assert [entry] = result.matched
       assert entry.crash.server_id == "s1"

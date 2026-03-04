@@ -5,16 +5,15 @@ defmodule Toast.Analysis.SummaryTest do
 
   defp sample_results do
     %{
-      "duration_seconds" => 95.5,
+      "test_run" => %{"duration_seconds" => 95.5},
       "summary" => %{
         "total" => 55,
         "passed" => 53,
         "failed" => 2,
         "skipped" => 0
       },
-      "suites" => [
-        %{
-          "name" => "smoke",
+      "modules" => %{
+        "Elixir.Smoke.VersionTest" => %{
           "duration_seconds" => 12.3,
           "tests" => [
             %{"outcome" => "passed"},
@@ -22,8 +21,7 @@ defmodule Toast.Analysis.SummaryTest do
             %{"outcome" => "passed"}
           ]
         },
-        %{
-          "name" => "shell_server",
+        "Elixir.ShellServer.CrudTest" => %{
           "duration_seconds" => 83.2,
           "tests" => [
             %{"outcome" => "passed"},
@@ -31,7 +29,7 @@ defmodule Toast.Analysis.SummaryTest do
             %{"outcome" => "failed"}
           ]
         }
-      ]
+      }
     }
   end
 
@@ -45,9 +43,9 @@ defmodule Toast.Analysis.SummaryTest do
     assert output =~ "Duration: 1m"
   end
 
-  test "formats suite breakdown" do
+  test "formats module breakdown" do
     output = Summary.format(sample_results())
-    assert output =~ "smoke: 3 passed, 0 failed"
-    assert output =~ "shell_server: 1 passed, 2 failed"
+    assert output =~ "Elixir.Smoke.VersionTest: 3 passed, 0 failed"
+    assert output =~ "Elixir.ShellServer.CrudTest: 1 passed, 2 failed"
   end
 end

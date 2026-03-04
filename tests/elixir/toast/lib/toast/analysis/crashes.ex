@@ -19,8 +19,7 @@ defmodule Toast.Analysis.Crashes do
           &format_matched_sanitizer/1,
           &format_unmatched_sanitizer/1
         ) ++
-        format_server_health_crashes(results) ++
-        format_coredump_reports(results)
+        format_server_health_crashes(results)
 
     if sections == [] do
       "No crash or sanitizer issues detected."
@@ -88,13 +87,6 @@ defmodule Toast.Analysis.Crashes do
 
   defp format_server_crash_report(_), do: []
 
-  defp format_coredump_reports(results) do
-    results["suites"]
-    |> List.wrap()
-    |> Enum.flat_map(&extract_coredump_lines/1)
-    |> format_section("Coredump Reports:")
-  end
-
   defp format_section([], _header), do: []
   defp format_section(entries, header), do: [header <> "\n" <> Enum.join(entries, "\n")]
 
@@ -102,11 +94,4 @@ defmodule Toast.Analysis.Crashes do
 
   defp format_section(items, header, formatter),
     do: [header <> "\n" <> Enum.map_join(items, "\n", formatter)]
-
-  defp extract_coredump_lines(suite) do
-    suite
-    |> get_in(["diagnostics", "coredump_reports"])
-    |> List.wrap()
-    |> Enum.map(fn r -> "  #{r["core_path"]}: #{r["signal"]} (#{r["debugger"]})" end)
-  end
 end

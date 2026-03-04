@@ -5,7 +5,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
-    only: [at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+    only: [at: 1, make_test: 0, make_test: 1]
 
   defp make_log_report(opts \\ []) do
     %{
@@ -48,7 +48,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
 
   describe "match/3" do
     test "returns empty result for nil diagnostics" do
-      assert %{matched: [], unmatched: []} == LogMatcher.match(nil, make_test_results([]))
+      assert %{matched: [], unmatched: []} == LogMatcher.match(nil, [])
     end
 
     test "returns empty result for nil test_results" do
@@ -58,7 +58,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
 
     test "returns empty result when no log entries" do
       diag = make_diagnostics(log_report: make_log_report())
-      result = LogMatcher.match(diag, make_test_results([make_test()]))
+      result = LogMatcher.match(diag, [make_test()])
       assert result == %{matched: [], unmatched: []}
     end
 
@@ -67,7 +67,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(warnings: [warning]))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert [%{confidence: :high, log: %{kind: :warning, message: "disk almost full"}}] =
                result.matched
@@ -80,7 +80,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(assertion_failures: [assertion]))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert [%{confidence: :high, log: %{kind: :assertion, message: "invariant broken"}}] =
                result.matched
@@ -91,7 +91,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(warnings: [warning]))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert [%{confidence: :low}] = result.matched
       assert result.unmatched == []
@@ -102,7 +102,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(warnings: [warning]))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert result.matched == []
       assert [%{server_id: "toast-1", kind: :warning}] = result.unmatched
@@ -113,7 +113,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(warnings: [warning]))
       test = make_test()
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert result.matched == []
       assert [%{timestamp: nil, message: "no ts"}] = result.unmatched
@@ -130,7 +130,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
 
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert length(result.matched) == 2
       kinds = Enum.map(result.matched, & &1.log.kind) |> Enum.sort()
@@ -157,7 +157,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       }
 
       test = make_test(started_at: at(0), finished_at: at(10))
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert length(result.matched) == 2
 
@@ -179,7 +179,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
         }
       }
 
-      result = LogMatcher.match(diag, make_test_results([make_test()]))
+      result = LogMatcher.match(diag, [make_test()])
       assert result == %{matched: [], unmatched: []}
     end
 
@@ -188,10 +188,10 @@ defmodule Toast.Diagnostics.LogMatcherTest do
       diag = make_diagnostics(log_report: make_log_report(warnings: [warning]))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result_low = LogMatcher.match(diag, make_test_results([test]), tolerance_seconds: 3)
+      result_low = LogMatcher.match(diag, [test], tolerance_seconds: 3)
       assert [%{confidence: :low}] = result_low.matched
 
-      result_none = LogMatcher.match(diag, make_test_results([test]), tolerance_seconds: 1)
+      result_none = LogMatcher.match(diag, [test], tolerance_seconds: 1)
       assert result_none.matched == []
       assert length(result_none.unmatched) == 1
     end
@@ -206,7 +206,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
         )
 
       test = make_test(started_at: at(0), finished_at: at(10))
-      result = LogMatcher.match(diag, make_test_results([test]))
+      result = LogMatcher.match(diag, [test])
 
       assert [entry] = result.matched
       assert entry.log.server_id == "srv-42"

@@ -19,19 +19,25 @@ defmodule ToastTest.ResultExporterTest do
 
   defp sample_results do
     %{
-      suite_started_at: DateTime.utc_now(),
-      suite_finished_at: DateTime.utc_now(),
+      started_at: DateTime.utc_now(),
+      finished_at: DateTime.utc_now(),
       times_us: %{async: 0, load: 1000, run: 5000},
-      tests: [
-        %{
-          module: FakeTest,
-          name: "test passes",
-          outcome: :passed,
-          duration_us: 1000,
-          failure: nil,
-          tags: %{file: "test/fake.exs", line: 1}
+      modules: %{
+        FakeTest => %{
+          tests: [
+            %{
+              module: FakeTest,
+              name: "test passes",
+              outcome: :passed,
+              duration_us: 1000,
+              failure: nil,
+              tags: %{file: "test/fake.exs", line: 1}
+            }
+          ],
+          started_at: DateTime.utc_now(),
+          finished_at: DateTime.utc_now()
         }
-      ]
+      }
     }
   end
 
@@ -58,25 +64,25 @@ defmodule ToastTest.ResultExporterTest do
     end
   end
 
-  describe "export/1 when no results" do
+  describe "export/2 when no results" do
     test "is a no-op when results are nil" do
       tmp = make_tmp_dir()
       System.put_env("TOAST_RESULT_DIR", tmp)
 
-      assert :ok = ResultExporter.export(nil)
+      assert :ok = ResultExporter.export("test", nil)
       assert File.ls!(tmp) == []
     end
   end
 
-  describe "export/1 with results" do
-    test "writes results.json and results.xml" do
+  describe "export/2 with results" do
+    test "writes test.json and test.xml" do
       tmp = make_tmp_dir()
       System.put_env("TOAST_RESULT_DIR", tmp)
 
-      assert :ok = ResultExporter.export(sample_results())
+      assert :ok = ResultExporter.export("test", sample_results())
 
-      json_path = Path.join(tmp, "results.json")
-      xml_path = Path.join(tmp, "results.xml")
+      json_path = Path.join(tmp, "test.json")
+      xml_path = Path.join(tmp, "test.xml")
 
       assert File.exists?(json_path)
       assert File.exists?(xml_path)
@@ -86,10 +92,10 @@ defmodule ToastTest.ResultExporterTest do
       tmp = make_tmp_dir()
       System.put_env("TOAST_RESULT_DIR", tmp)
 
-      ResultExporter.export(sample_results())
+      ResultExporter.export("test", sample_results())
 
-      json_content = File.read!(Path.join(tmp, "results.json"))
-      xml_content = File.read!(Path.join(tmp, "results.xml"))
+      json_content = File.read!(Path.join(tmp, "test.json"))
+      xml_content = File.read!(Path.join(tmp, "test.xml"))
 
       assert byte_size(json_content) > 0
       assert byte_size(xml_content) > 0
@@ -99,9 +105,9 @@ defmodule ToastTest.ResultExporterTest do
       tmp = make_tmp_dir()
       System.put_env("TOAST_RESULT_DIR", tmp)
 
-      ResultExporter.export(sample_results())
+      ResultExporter.export("test", sample_results())
 
-      json_content = File.read!(Path.join(tmp, "results.json"))
+      json_content = File.read!(Path.join(tmp, "test.json"))
       assert json_content =~ "toast_version"
       assert json_content =~ "test_run"
       assert json_content =~ "test passes"
@@ -111,9 +117,9 @@ defmodule ToastTest.ResultExporterTest do
       tmp = make_tmp_dir()
       System.put_env("TOAST_RESULT_DIR", tmp)
 
-      ResultExporter.export(sample_results())
+      ResultExporter.export("test", sample_results())
 
-      xml_content = File.read!(Path.join(tmp, "results.xml"))
+      xml_content = File.read!(Path.join(tmp, "test.xml"))
       assert xml_content =~ "<?xml"
       assert xml_content =~ "<testsuites"
       assert xml_content =~ "test passes"
@@ -124,9 +130,9 @@ defmodule ToastTest.ResultExporterTest do
       nested = Path.join(tmp, "nested/deep/dir")
       System.put_env("TOAST_RESULT_DIR", nested)
 
-      ResultExporter.export(sample_results())
+      ResultExporter.export("test", sample_results())
 
-      assert File.exists?(Path.join(nested, "results.json"))
+      assert File.exists?(Path.join(nested, "test.json"))
     end
 
     test "includes diagnostics when available" do
@@ -139,19 +145,19 @@ defmodule ToastTest.ResultExporterTest do
         server_log: nil
       }
 
-      assert :ok = ResultExporter.export(sample_results(), diagnostics)
+      assert :ok = ResultExporter.export("test", sample_results(), diagnostics)
 
-      json_content = File.read!(Path.join(tmp, "results.json"))
+      json_content = File.read!(Path.join(tmp, "test.json"))
       assert json_content =~ "server_health"
     end
   end
 
-  describe "export/1 error handling" do
+  describe "export/2 error handling" do
     test "returns :ok when writing to an unwritable path" do
       System.put_env("TOAST_RESULT_DIR", "/proc/toast_nonexistent_dir")
 
       # Should not crash, returns :ok via rescue
-      assert :ok = ResultExporter.export(sample_results())
+      assert :ok = ResultExporter.export("test", sample_results())
     end
   end
 end

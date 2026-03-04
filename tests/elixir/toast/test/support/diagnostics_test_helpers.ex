@@ -20,12 +20,4 @@ defmodule Toast.DiagnosticsTestHelpers do
     }
   end
 
-  def make_test_results(tests) do
-    %{
-      suite_started_at: @base_time,
-      suite_finished_at: at(60),
-      times_us: %{run: 60_000_000, async: nil, load: 100_000},
-      tests: tests
-    }
-  end
 end

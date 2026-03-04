@@ -4,7 +4,7 @@ defmodule Toast.Diagnostics.MatcherTest do
   alias Toast.Diagnostics.Matcher
 
   import Toast.DiagnosticsTestHelpers,
-    only: [base_time: 0, at: 1, make_test: 0, make_test: 1, make_test_results: 1]
+    only: [base_time: 0, at: 1, make_test: 0, make_test: 1]
 
   defp at_ms(milliseconds), do: DateTime.add(base_time(), milliseconds, :millisecond)
 
@@ -87,7 +87,7 @@ defmodule Toast.Diagnostics.MatcherTest do
 
   describe "match/4 with empty or nil inputs" do
     test "returns empty result for empty item list" do
-      result = Matcher.match([], make_test_results([make_test()]), :error)
+      result = Matcher.match([], [make_test()], :error)
       assert result == %{matched: [], unmatched: []}
     end
 
@@ -107,7 +107,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert [
                %{
@@ -126,7 +126,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(13))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert [%{confidence: :low}] = result.matched
       assert result.unmatched == []
@@ -136,7 +136,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(30))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert result.matched == []
       assert result.unmatched == [item]
@@ -151,7 +151,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(20), finished_at: at(30))
 
-      result = Matcher.match([item1, item2], make_test_results([test1, test2]), :crash)
+      result = Matcher.match([item1, item2], [test1, test2], :crash)
 
       assert length(result.matched) == 2
       names = Enum.map(result.matched, & &1.test)
@@ -165,7 +165,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item2 = make_item(timestamp: at(7), content: "second")
 
       test = make_test(started_at: at(0), finished_at: at(10))
-      result = Matcher.match([item1, item2], make_test_results([test]), :error)
+      result = Matcher.match([item1, item2], [test], :error)
 
       assert length(result.matched) == 2
       assert Enum.all?(result.matched, &(&1.confidence == :high))
@@ -180,7 +180,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(20), finished_at: at(30))
 
-      result = Matcher.match([item1, item2, item3], make_test_results([test1, test2]), :error)
+      result = Matcher.match([item1, item2, item3], [test1, test2], :error)
 
       assert [%{test: "test one"}, %{test: "test two"}] = result.matched
       assert [^item2] = result.unmatched
@@ -192,7 +192,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(12), finished_at: at(20))
 
-      result = Matcher.match([item], make_test_results([test1, test2]), :error)
+      result = Matcher.match([item], [test1, test2], :error)
 
       assert [%{confidence: :high, test: "test two"}] = result.matched
     end
@@ -203,7 +203,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       test1 = make_test(name: "test one", started_at: at(0), finished_at: at(10))
       test2 = make_test(name: "test two", started_at: at(3), finished_at: at(8))
 
-      result = Matcher.match([item], make_test_results([test1, test2]), :error)
+      result = Matcher.match([item], [test1, test2], :error)
 
       # Should halt at first high-confidence match (test1)
       assert [%{confidence: :high, test: "test one"}] = result.matched
@@ -215,7 +215,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
       assert [entry] = result.matched
       assert Map.has_key?(entry, :error)
       assert entry.error == item
@@ -225,7 +225,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :crash)
+      result = Matcher.match([item], [test], :crash)
       assert [entry] = result.matched
       assert Map.has_key?(entry, :crash)
       assert entry.crash == item
@@ -235,7 +235,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :custom_key)
+      result = Matcher.match([item], [test], :custom_key)
       assert [entry] = result.matched
       assert Map.has_key?(entry, :custom_key)
     end
@@ -246,7 +246,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: nil, finished_at: nil)
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert result.matched == []
       assert result.unmatched == [item]
@@ -256,7 +256,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: nil, finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert result.matched == []
       assert result.unmatched == [item]
@@ -266,7 +266,7 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(5))
       test = make_test(started_at: at(0), finished_at: nil)
 
-      result = Matcher.match([item], make_test_results([test]), :error)
+      result = Matcher.match([item], [test], :error)
 
       assert result.matched == []
       assert result.unmatched == [item]
@@ -277,18 +277,17 @@ defmodule Toast.Diagnostics.MatcherTest do
       bad_test = make_test(name: "broken", started_at: nil, finished_at: nil)
       good_test = make_test(name: "good", started_at: at(0), finished_at: at(10))
 
-      result = Matcher.match([item], make_test_results([bad_test, good_test]), :error)
+      result = Matcher.match([item], [bad_test, good_test], :error)
 
       assert [%{confidence: :high, test: "good"}] = result.matched
     end
   end
 
-  describe "match/4 with test_results missing :tests key" do
-    test "treats missing :tests key as empty test list" do
+  describe "match/4 with empty test list" do
+    test "returns all items as unmatched for empty test list" do
       item = make_item(timestamp: at(5))
-      test_results = %{suite_started_at: base_time()}
 
-      result = Matcher.match([item], test_results, :error)
+      result = Matcher.match([item], [], :error)
 
       assert result.matched == []
       assert result.unmatched == [item]
@@ -300,10 +299,10 @@ defmodule Toast.Diagnostics.MatcherTest do
       item = make_item(timestamp: at(12))
       test = make_test(started_at: at(0), finished_at: at(10))
 
-      result_low = Matcher.match([item], make_test_results([test]), :error, tolerance_seconds: 3)
+      result_low = Matcher.match([item], [test], :error, tolerance_seconds: 3)
       assert [%{confidence: :low}] = result_low.matched
 
-      result_none = Matcher.match([item], make_test_results([test]), :error, tolerance_seconds: 1)
+      result_none = Matcher.match([item], [test], :error, tolerance_seconds: 1)
       assert result_none.matched == []
       assert length(result_none.unmatched) == 1
     end

@@ -154,25 +154,27 @@ defmodule ToastTest.Runner do
         suite_run = %{suite_run | deployment: deployment}
         ToastTest.DeploymentRegistry.put(suite_module, deployment)
 
-        case run_suite_setup(suite_module, deployment) do
-          {:ok, extra_context} ->
-            ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
-            stats = run_suite_tests(suite_run, test_modules, global_opts, suite_opts)
-            run_suite_teardown(suite_module, deployment)
-            diagnostics = collect_diagnostics(deployment)
-            cleanup_between_suites()
-            %{stats: stats, diagnostics: diagnostics}
+        {stats, test_results} =
+          case run_suite_setup(suite_module, deployment) do
+            {:ok, extra_context} ->
+              ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
+              result = run_suite_tests(suite_run, test_modules, global_opts, suite_opts)
+              run_suite_teardown(suite_module, deployment)
+              result
 
-          {:error, reason} ->
-            stats = mark_all_errored_stats(test_modules, reason, global_opts)
-            diagnostics = collect_diagnostics(deployment)
-            cleanup_between_suites()
-            %{stats: stats, diagnostics: diagnostics}
-        end
+            {:error, reason} ->
+              mark_all_errored_stats(test_modules, reason, global_opts)
+          end
+
+        diagnostics = collect_diagnostics(deployment)
+        finalize_suite(suite_module, test_results, diagnostics)
+        cleanup_between_suites()
+        %{stats: stats, diagnostics: diagnostics}
 
       {:error, reason} ->
         Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
-        stats = mark_all_errored_stats(test_modules, reason, global_opts)
+        {stats, test_results} = mark_all_errored_stats(test_modules, reason, global_opts)
+        finalize_suite(suite_module, test_results, nil)
         cleanup_between_suites()
         %{stats: stats, diagnostics: nil}
     end
@@ -191,18 +193,35 @@ defmodule ToastTest.Runner do
 
     run_suite_modules(config, test_modules)
 
-    collect_suite_stats(config, start_time)
+    stats = collect_suite_stats(config, start_time)
+    test_results = take_test_results()
+    {stats, test_results}
   end
 
   defp start_event_pipeline(opts) do
     {:ok, manager} = Compat.start_event_manager()
     {:ok, stats_pid} = Compat.add_runner_stats(manager, opts)
 
-    for formatter <- Keyword.get(opts, :formatters, []) do
+    formatters =
+      opts
+      |> Keyword.get(:formatters, [])
+      |> List.delete(ExUnit.CLIFormatter)
+      |> ensure_in_list(ToastTest.CLIFormatter, :front)
+      |> ensure_in_list(ToastTest.ResultFormatter, :back)
+
+    for formatter <- formatters do
       Compat.add_formatter(manager, formatter, opts)
     end
 
     {manager, stats_pid}
+  end
+
+  defp ensure_in_list(list, item, :front) do
+    if item in list, do: list, else: [item | list]
+  end
+
+  defp ensure_in_list(list, item, :back) do
+    if item in list, do: list, else: list ++ [item]
   end
 
   defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid) do
@@ -369,7 +388,8 @@ defmodule ToastTest.Runner do
     Compat.suite_finished(manager, times_us)
     stats = Compat.stats(stats_pid)
     Compat.stop(manager)
-    stats
+    test_results = take_test_results()
+    {stats, test_results}
   end
 
   defp emit_errored_module(manager, module, reason) do
@@ -404,6 +424,84 @@ defmodule ToastTest.Runner do
 
   defp cleanup_between_suites do
     ToastTest.StateCleanup.reset()
+  end
+
+  defp take_test_results do
+    results = Application.get_env(:toast, :__test_results__)
+    Application.delete_env(:toast, :__test_results__)
+    results
+  end
+
+  defp finalize_suite(suite_module, test_results, diagnostics) do
+    tests = if test_results, do: ToastTest.ResultFormatter.flat_tests(test_results)
+
+    sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, tests)
+    crash_matching = Toast.Diagnostics.CrashMatcher.match(diagnostics, tests)
+    log_matching = Toast.Diagnostics.LogMatcher.match(diagnostics, tests)
+
+    print_diagnostics_report(
+      diagnostics,
+      test_results,
+      crash_matching,
+      sanitizer_matching,
+      log_matching
+    )
+
+    suite_name = derive_suite_name(suite_module)
+
+    ToastTest.ResultExporter.export(
+      suite_name,
+      test_results,
+      diagnostics,
+      sanitizer_matching,
+      crash_matching,
+      log_matching
+    )
+  end
+
+  defp derive_suite_name(suite_module) do
+    suite_module |> Module.split() |> hd() |> Macro.underscore()
+  end
+
+  defp print_diagnostics_report(diagnostics, test_results, crash_matching, sanitizer_matching, log_matching) do
+    alias Toast.Diagnostics.Summary
+
+    if crash_matching.matched == [] and crash_matching.unmatched == [] do
+      maybe_print(Summary.format_crashed_servers(diagnostics))
+    end
+
+    crash_affected = find_crash_affected_tests(crash_matching, test_results)
+    maybe_print(Summary.format_crash_attribution(crash_matching, crash_affected))
+    maybe_print(Summary.format_sanitizer_issues(sanitizer_matching))
+    maybe_print(Summary.format_log_issues(log_matching))
+  end
+
+  defp maybe_print(nil), do: :ok
+  defp maybe_print(text), do: IO.puts(text)
+
+  defp find_crash_affected_tests(_crash_matching, nil), do: []
+
+  defp find_crash_affected_tests(%{matched: matched, unmatched: unmatched}, test_results) do
+    all_crashes = Enum.map(matched, & &1.crash) ++ unmatched
+    timestamps = all_crashes |> Enum.map(& &1.timestamp) |> Enum.reject(&is_nil/1)
+
+    case timestamps do
+      [] ->
+        []
+
+      _ ->
+        earliest = Enum.min(timestamps, DateTime)
+        attributed = MapSet.new(matched, fn m -> {m.module, m.test} end)
+
+        test_results
+        |> ToastTest.ResultFormatter.flat_tests()
+        |> Enum.filter(fn t ->
+          t.outcome == :failed and
+            t.started_at != nil and
+            DateTime.compare(t.started_at, earliest) in [:gt, :eq] and
+            not MapSet.member?(attributed, {t.module, t.name})
+        end)
+    end
   end
 
   defp start_process_history do

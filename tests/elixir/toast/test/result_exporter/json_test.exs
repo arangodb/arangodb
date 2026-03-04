@@ -9,41 +9,53 @@ defmodule ToastTest.ResultExporter.JSONTest do
 
   defp base_test_results do
     %{
-      suite_started_at: @started_at,
-      suite_finished_at: @finished_at,
+      started_at: @started_at,
+      finished_at: @finished_at,
       times_us: %{async: 0, load: 1_000_000, run: 120_000_000},
-      tests: [
-        %{
-          module: SomeTest,
-          name: "test passes",
-          outcome: :passed,
-          duration_us: 25_000,
-          failure: nil,
-          tags: %{file: "test/some_test.exs", line: 5}
-        },
-        %{
-          module: SomeTest,
-          name: "test fails",
-          outcome: :failed,
-          duration_us: 100_000,
-          failure: [
+      modules: %{
+        SomeTest => %{
+          tests: [
             %{
-              kind: "ExUnit.AssertionError",
-              message: "Expected true, got false",
-              stacktrace: "test/some_test.exs:11"
+              module: SomeTest,
+              name: "test passes",
+              outcome: :passed,
+              duration_us: 25_000,
+              failure: nil,
+              tags: %{file: "test/some_test.exs", line: 5}
+            },
+            %{
+              module: SomeTest,
+              name: "test fails",
+              outcome: :failed,
+              duration_us: 100_000,
+              failure: [
+                %{
+                  kind: "ExUnit.AssertionError",
+                  message: "Expected true, got false",
+                  stacktrace: "test/some_test.exs:11"
+                }
+              ],
+              tags: %{file: "test/some_test.exs", line: 10}
             }
           ],
-          tags: %{file: "test/some_test.exs", line: 10}
+          started_at: @started_at,
+          finished_at: @finished_at
         },
-        %{
-          module: OtherTest,
-          name: "test skipped",
-          outcome: :skipped,
-          duration_us: 0,
-          failure: %{message: "not implemented"},
-          tags: %{file: "test/other_test.exs", line: 3}
+        OtherTest => %{
+          tests: [
+            %{
+              module: OtherTest,
+              name: "test skipped",
+              outcome: :skipped,
+              duration_us: 0,
+              failure: %{message: "not implemented"},
+              tags: %{file: "test/other_test.exs", line: 3}
+            }
+          ],
+          started_at: @started_at,
+          finished_at: @finished_at
         }
-      ]
+      }
     }
   end
 
@@ -146,40 +158,46 @@ defmodule ToastTest.ResultExporter.JSONTest do
     test "skipped, excluded, and invalid tests counted correctly" do
       results = %{
         base_test_results()
-        | tests: [
-            %{
-              module: A,
-              name: "t1",
-              outcome: :skipped,
-              duration_us: 0,
-              failure: nil,
-              tags: %{file: "a.exs", line: 1}
-            },
-            %{
-              module: A,
-              name: "t2",
-              outcome: :excluded,
-              duration_us: 0,
-              failure: nil,
-              tags: %{file: "a.exs", line: 2}
-            },
-            %{
-              module: A,
-              name: "t3",
-              outcome: :invalid,
-              duration_us: 0,
-              failure: nil,
-              tags: %{file: "a.exs", line: 3}
-            },
-            %{
-              module: A,
-              name: "t4",
-              outcome: :passed,
-              duration_us: 1000,
-              failure: nil,
-              tags: %{file: "a.exs", line: 4}
+        | modules: %{
+            A => %{
+              tests: [
+                %{
+                  module: A,
+                  name: "t1",
+                  outcome: :skipped,
+                  duration_us: 0,
+                  failure: nil,
+                  tags: %{file: "a.exs", line: 1}
+                },
+                %{
+                  module: A,
+                  name: "t2",
+                  outcome: :excluded,
+                  duration_us: 0,
+                  failure: nil,
+                  tags: %{file: "a.exs", line: 2}
+                },
+                %{
+                  module: A,
+                  name: "t3",
+                  outcome: :invalid,
+                  duration_us: 0,
+                  failure: nil,
+                  tags: %{file: "a.exs", line: 3}
+                },
+                %{
+                  module: A,
+                  name: "t4",
+                  outcome: :passed,
+                  duration_us: 1000,
+                  failure: nil,
+                  tags: %{file: "a.exs", line: 4}
+                }
+              ],
+              started_at: @started_at,
+              finished_at: @finished_at
             }
-          ]
+          }
       }
 
       result = JSON.build(results, nil)
@@ -192,21 +210,21 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
   end
 
-  describe "build/2 test suites" do
+  describe "build/2 modules" do
     test "grouped by module name" do
       result = JSON.build(base_test_results(), nil)
 
-      suites = result["test_suites"]
-      assert Map.has_key?(suites, "Elixir.SomeTest")
-      assert Map.has_key?(suites, "Elixir.OtherTest")
-      assert length(suites["Elixir.SomeTest"]["tests"]) == 2
-      assert length(suites["Elixir.OtherTest"]["tests"]) == 1
+      modules = result["modules"]
+      assert Map.has_key?(modules, "Elixir.SomeTest")
+      assert Map.has_key?(modules, "Elixir.OtherTest")
+      assert length(modules["Elixir.SomeTest"]["tests"]) == 2
+      assert length(modules["Elixir.OtherTest"]["tests"]) == 1
     end
 
-    test "per-suite summary counts are correct" do
+    test "per-module summary counts are correct" do
       result = JSON.build(base_test_results(), nil)
 
-      some_summary = result["test_suites"]["Elixir.SomeTest"]["summary"]
+      some_summary = result["modules"]["Elixir.SomeTest"]["summary"]
       assert some_summary["total"] == 2
       assert some_summary["passed"] == 1
       assert some_summary["failed"] == 1
@@ -219,7 +237,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
       result = JSON.build(base_test_results(), nil)
 
       failed =
-        result["test_suites"]["Elixir.SomeTest"]["tests"]
+        result["modules"]["Elixir.SomeTest"]["tests"]
         |> Enum.find(&(&1["outcome"] == "failed"))
 
       assert is_list(failed["failure"])
@@ -233,7 +251,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
       result = JSON.build(base_test_results(), nil)
 
       passed =
-        result["test_suites"]["Elixir.SomeTest"]["tests"]
+        result["modules"]["Elixir.SomeTest"]["tests"]
         |> Enum.find(&(&1["outcome"] == "passed"))
 
       assert passed["failure"] == nil
@@ -351,7 +369,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
       assert result["test_run"]["duration_seconds"] == 120.0
 
       passed =
-        result["test_suites"]["Elixir.SomeTest"]["tests"]
+        result["modules"]["Elixir.SomeTest"]["tests"]
         |> Enum.find(&(&1["outcome"] == "passed"))
 
       assert passed["duration_seconds"] == 0.025

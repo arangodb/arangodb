@@ -14,21 +14,21 @@ defmodule ToastTest.ResultExporter.JSON do
         crash_matching \\ nil,
         log_matching \\ nil
       ) do
-    suites = build_suites(test_results.tests)
+    all_tests = all_tests_from_modules(test_results.modules)
 
     base = %{
       "toast_version" => @toast_version,
       "generated_at" => DateTime.to_iso8601(DateTime.utc_now()),
       "test_run" => build_test_run(test_results),
-      "summary" => build_summary(test_results.tests),
-      "test_suites" => suites,
+      "summary" => build_summary(all_tests),
+      "modules" => build_modules(test_results.modules),
       "server_health" => build_server_health(diagnostics)
     }
 
     base
-    |> conditional_put("sanitizer_matching", build_sanitizer_matching(sanitizer_matching))
-    |> conditional_put("crash_matching", build_crash_matching(crash_matching))
-    |> conditional_put("log_matching", build_log_matching(log_matching))
+    |> conditional_put("sanitizer_matching", build_matching(sanitizer_matching, :error, &build_sanitizer_error/1))
+    |> conditional_put("crash_matching", build_matching(crash_matching, :crash, &build_crash_info/1))
+    |> conditional_put("log_matching", build_matching(log_matching, :log, &build_log_entry/1))
   end
 
   @doc "Render test results and diagnostics as a JSON string."
@@ -45,68 +45,12 @@ defmodule ToastTest.ResultExporter.JSON do
     |> format_json()
   end
 
-  @doc "Render suite-level results as a JSON string."
-  @spec render_suites(map()) :: String.t()
-  def render_suites(suite_results) do
-    suite_results
-    |> build_suites_report()
-    |> format_json()
-  end
-
-  defp build_suites_report(suite_results) do
-    suites =
-      Enum.map(suite_results.suites, fn suite ->
-        %{
-          "name" => suite.name,
-          "suite_module" => Atom.to_string(suite.suite_module),
-          "deployment_mode" => Atom.to_string(suite.deployment_mode),
-          "started_at" => format_datetime(suite.started_at),
-          "finished_at" => format_datetime(suite.finished_at),
-          "duration_seconds" => us_to_seconds(suite.duration_us),
-          "diagnostics" => suite[:diagnostics],
-          "tests" => Enum.map(suite.tests, &build_suite_test/1)
-        }
-      end)
-
-    %{
-      "toast_version" => @toast_version,
-      "generated_at" => DateTime.to_iso8601(DateTime.utc_now()),
-      "started_at" => format_datetime(suite_results.started_at),
-      "finished_at" => format_datetime(suite_results.finished_at),
-      "duration_seconds" => us_to_seconds(suite_results.global_duration_us),
-      "suites" => suites,
-      "summary" => build_global_summary(suite_results.summary)
-    }
-  end
-
-  defp build_suite_test(test) do
-    %{
-      "module" => Atom.to_string(test.module),
-      "name" => test.name,
-      "outcome" => Atom.to_string(test.outcome),
-      "duration_seconds" => us_to_seconds(test.duration_us)
-    }
-  end
-
-  defp build_global_summary(summary) do
-    %{
-      "total" => summary.total,
-      "passed" => summary.passed,
-      "failed" => summary.failed,
-      "skipped" => summary.skipped,
-      "errored" => Map.get(summary, :errored, 0)
-    }
-  end
-
-  defp format_datetime(nil), do: nil
-  defp format_datetime(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-
   # --- Test run ---
 
   defp build_test_run(test_results) do
     %{
-      "started_at" => DateTime.to_iso8601(test_results.suite_started_at),
-      "finished_at" => DateTime.to_iso8601(test_results.suite_finished_at),
+      "started_at" => DateTime.to_iso8601(test_results.started_at),
+      "finished_at" => DateTime.to_iso8601(test_results.finished_at),
       "duration_seconds" => us_to_seconds(test_results.times_us.run)
     }
   end
@@ -126,22 +70,24 @@ defmodule ToastTest.ResultExporter.JSON do
     }
   end
 
-  # --- Suites ---
+  # --- Modules ---
 
-  defp build_suites(tests) do
-    tests
-    |> Enum.group_by(& &1.module)
-    |> Map.new(fn {module, module_tests} ->
-      {Atom.to_string(module), build_suite(module_tests)}
+  defp build_modules(modules) do
+    Map.new(modules, fn {module, mod_data} ->
+      {Atom.to_string(module), build_module(mod_data)}
     end)
   end
 
-  defp build_suite(tests) do
+  defp build_module(%{tests: tests}) do
     %{
       "duration_seconds" => tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> us_to_seconds(),
       "summary" => build_summary(tests),
       "tests" => Enum.map(tests, &build_test/1)
     }
+  end
+
+  defp all_tests_from_modules(modules) do
+    Enum.flat_map(modules, fn {_mod, %{tests: tests}} -> tests end)
   end
 
   defp build_test(test) do
@@ -230,81 +176,26 @@ defmodule ToastTest.ResultExporter.JSON do
   defp extract_message(%{message: msg}), do: msg
   defp extract_message(msg) when is_binary(msg), do: msg
 
-  # --- Sanitizer matching ---
+  # --- Diagnostic matching (shared by sanitizer, crash, log) ---
 
-  defp build_sanitizer_matching(nil), do: nil
-  defp build_sanitizer_matching(%{matched: [], unmatched: []}), do: nil
+  defp build_matching(nil, _item_key, _item_builder), do: nil
+  defp build_matching(%{matched: [], unmatched: []}, _item_key, _item_builder), do: nil
 
-  defp build_sanitizer_matching(%{matched: matched, unmatched: unmatched}) do
+  defp build_matching(%{matched: matched, unmatched: unmatched}, item_key, item_builder) do
     %{
-      "matched" => Enum.map(matched, &build_match_entry/1),
-      "unmatched" => Enum.map(unmatched, &build_sanitizer_error/1)
+      "matched" => Enum.map(matched, &build_match_entry(&1, item_key, item_builder)),
+      "unmatched" => Enum.map(unmatched, item_builder)
     }
   end
 
-  defp build_sanitizer_matching(_), do: nil
+  defp build_matching(_, _item_key, _item_builder), do: nil
 
-  defp build_match_entry(entry) do
+  defp build_match_entry(entry, item_key, item_builder) do
     %{
       "module" => Atom.to_string(entry.module),
       "test" => entry.test,
       "confidence" => Atom.to_string(entry.confidence),
-      "error" => build_sanitizer_error(entry.error)
-    }
-  end
-
-  # --- Crash matching ---
-
-  defp build_crash_matching(nil), do: nil
-  defp build_crash_matching(%{matched: [], unmatched: []}), do: nil
-
-  defp build_crash_matching(%{matched: matched, unmatched: unmatched}) do
-    %{
-      "matched" => Enum.map(matched, &build_crash_match_entry/1),
-      "unmatched" => Enum.map(unmatched, &build_crash_info/1)
-    }
-  end
-
-  defp build_crash_matching(_), do: nil
-
-  # --- Log matching ---
-
-  defp build_log_matching(nil), do: nil
-  defp build_log_matching(%{matched: [], unmatched: []}), do: nil
-
-  defp build_log_matching(%{matched: matched, unmatched: unmatched}) do
-    %{
-      "matched" => Enum.map(matched, &build_log_match_entry/1),
-      "unmatched" => Enum.map(unmatched, &build_log_entry/1)
-    }
-  end
-
-  defp build_log_matching(_), do: nil
-
-  defp build_log_match_entry(entry) do
-    %{
-      "module" => Atom.to_string(entry.module),
-      "test" => entry.test,
-      "confidence" => Atom.to_string(entry.confidence),
-      "log" => build_log_entry(entry.log)
-    }
-  end
-
-  defp build_log_entry(log) do
-    %{
-      "server_id" => log.server_id,
-      "message" => log.message,
-      "kind" => Atom.to_string(log.kind),
-      "timestamp" => if(log.timestamp, do: DateTime.to_iso8601(log.timestamp))
-    }
-  end
-
-  defp build_crash_match_entry(entry) do
-    %{
-      "module" => Atom.to_string(entry.module),
-      "test" => entry.test,
-      "confidence" => Atom.to_string(entry.confidence),
-      "crash" => build_crash_info(entry.crash)
+      Atom.to_string(item_key) => item_builder.(Map.fetch!(entry, item_key))
     }
   end
 
@@ -319,6 +210,15 @@ defmodule ToastTest.ResultExporter.JSON do
       "crash_output" => crash.crash_output,
       "log_file" => crash.log_file,
       "timestamp" => DateTime.to_iso8601(crash.timestamp)
+    }
+  end
+
+  defp build_log_entry(log) do
+    %{
+      "server_id" => log.server_id,
+      "message" => log.message,
+      "kind" => Atom.to_string(log.kind),
+      "timestamp" => if(log.timestamp, do: DateTime.to_iso8601(log.timestamp))
     }
   end
 

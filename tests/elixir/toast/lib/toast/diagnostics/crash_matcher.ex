@@ -34,27 +34,27 @@ defmodule Toast.Diagnostics.CrashMatcher do
         }
 
   @doc """
-  Match crash reports from diagnostics to test results by timestamp.
+  Match crash reports from diagnostics to tests by timestamp.
 
   Extracts crash reports from `diagnostics` (handles both single-server
   and cluster structures), filters to those with a signal and timestamp,
-  and attempts to match each to a test case. Returns matched entries
+  and attempts to match each to a test from `tests`. Returns matched entries
   (with test info and confidence) and unmatched crashes.
 
   ## Options
 
     * `:tolerance_seconds` — seconds after test end for low-confidence match (default: 5)
   """
-  @spec match(map() | nil, map() | nil, keyword()) :: match_result()
-  def match(diagnostics, test_results, opts \\ [])
+  @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
+  def match(diagnostics, tests, opts \\ [])
 
-  def match(nil, _test_results, _opts), do: Matcher.empty_result()
+  def match(nil, _tests, _opts), do: Matcher.empty_result()
   def match(_diagnostics, nil, _opts), do: Matcher.empty_result()
 
-  def match(diagnostics, test_results, opts) do
+  def match(diagnostics, tests, opts) do
     crashes = extract_crashes(diagnostics)
     {with_ts, without_ts} = Enum.split_with(crashes, & &1.timestamp)
-    result = Matcher.match(with_ts, test_results, :crash, opts)
+    result = Matcher.match(with_ts, tests, :crash, opts)
     %{result | unmatched: result.unmatched ++ without_ts}
   end
 

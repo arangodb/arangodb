@@ -8,41 +8,53 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
 
   defp base_test_results do
     %{
-      suite_started_at: @started_at,
-      suite_finished_at: @finished_at,
+      started_at: @started_at,
+      finished_at: @finished_at,
       times_us: %{async: 0, load: 1_000_000, run: 120_000_000},
-      tests: [
-        %{
-          module: SomeTest,
-          name: "test passes",
-          outcome: :passed,
-          duration_us: 25_000,
-          failure: nil,
-          tags: %{file: "test/some_test.exs", line: 5}
-        },
-        %{
-          module: SomeTest,
-          name: "test fails",
-          outcome: :failed,
-          duration_us: 100_000,
-          failure: [
+      modules: %{
+        SomeTest => %{
+          tests: [
             %{
-              kind: "ExUnit.AssertionError",
-              message: "Expected true, got false",
-              stacktrace: "test/some_test.exs:11"
+              module: SomeTest,
+              name: "test passes",
+              outcome: :passed,
+              duration_us: 25_000,
+              failure: nil,
+              tags: %{file: "test/some_test.exs", line: 5}
+            },
+            %{
+              module: SomeTest,
+              name: "test fails",
+              outcome: :failed,
+              duration_us: 100_000,
+              failure: [
+                %{
+                  kind: "ExUnit.AssertionError",
+                  message: "Expected true, got false",
+                  stacktrace: "test/some_test.exs:11"
+                }
+              ],
+              tags: %{file: "test/some_test.exs", line: 10}
             }
           ],
-          tags: %{file: "test/some_test.exs", line: 10}
+          started_at: @started_at,
+          finished_at: @finished_at
         },
-        %{
-          module: OtherTest,
-          name: "test skipped",
-          outcome: :skipped,
-          duration_us: 0,
-          failure: %{message: "not implemented"},
-          tags: %{file: "test/other_test.exs", line: 3}
+        OtherTest => %{
+          tests: [
+            %{
+              module: OtherTest,
+              name: "test skipped",
+              outcome: :skipped,
+              duration_us: 0,
+              failure: %{message: "not implemented"},
+              tags: %{file: "test/other_test.exs", line: 3}
+            }
+          ],
+          started_at: @started_at,
+          finished_at: @finished_at
         }
-      ]
+      }
     }
   end
 
@@ -118,16 +130,22 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     test "renders with error child element" do
       results = %{
         base_test_results()
-        | tests: [
-            %{
-              module: BrokenTest,
-              name: "test broken",
-              outcome: :invalid,
-              duration_us: 0,
-              failure: nil,
-              tags: %{file: "test/broken_test.exs", line: 1}
+        | modules: %{
+            BrokenTest => %{
+              tests: [
+                %{
+                  module: BrokenTest,
+                  name: "test broken",
+                  outcome: :invalid,
+                  duration_us: 0,
+                  failure: nil,
+                  tags: %{file: "test/broken_test.exs", line: 1}
+                }
+              ],
+              started_at: @started_at,
+              finished_at: @finished_at
             }
-          ]
+          }
       }
 
       xml = JUnitXML.render(results, nil)
@@ -210,16 +228,22 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     test "special characters escaped in test names" do
       results = %{
         base_test_results()
-        | tests: [
-            %{
-              module: SpecialTest,
-              name: ~s(test with <special> & "chars"),
-              outcome: :passed,
-              duration_us: 1000,
-              failure: nil,
-              tags: %{file: "test/special_test.exs", line: 1}
+        | modules: %{
+            SpecialTest => %{
+              tests: [
+                %{
+                  module: SpecialTest,
+                  name: ~s(test with <special> & "chars"),
+                  outcome: :passed,
+                  duration_us: 1000,
+                  failure: nil,
+                  tags: %{file: "test/special_test.exs", line: 1}
+                }
+              ],
+              started_at: @started_at,
+              finished_at: @finished_at
             }
-          ]
+          }
       }
 
       xml = JUnitXML.render(results, nil)
