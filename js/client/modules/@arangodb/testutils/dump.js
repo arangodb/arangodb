@@ -282,6 +282,13 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     return true;
   }
 
+  flipBinarySet() {
+    if (this.firstRunOptions.oldSource !== undefined) {
+      pu.switchBinarySet(1);
+    }
+    return true;
+  }
+
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
@@ -765,9 +772,9 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     }
   }
 
-  spawnStressArangosh(snippet, key, volume) {
+  spawnStressArangosh(snippet, key, volume, args) {
     global.instanceManager = this.instanceManager;
-    return ct.run.spawnStressArangoshInBG(this.clientInstances, snippet, key, volume);
+    return ct.run.spawnStressArangoshInBG(this.clientInstances, snippet, key, volume, args);
   }
   stopStressArangosh() {
     try {
