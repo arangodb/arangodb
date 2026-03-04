@@ -424,9 +424,8 @@ async<void> Query::prepareQuery() {
       auto const collections = querySlice.get("collections");
       auto const variables = querySlice.get("variables");
       auto const views = querySlice.get("views");
-      auto const snippets = querySlice.get("nodes");
       prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
-                                              variables, snippets);
+                                              variables);
       co_await instantiatePlan(querySlice);
 
       TRI_ASSERT(!_plans.empty());
@@ -2655,8 +2654,7 @@ void Query::debugKillQuery() {
 /// never call this on a DB server!
 void Query::prepareFromVelocyPackWithoutInstantiate(
     velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice views, velocypack::Slice variables,
-    velocypack::Slice snippets) {
+    velocypack::Slice views, velocypack::Slice variables) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -2669,7 +2667,7 @@ void Query::prepareFromVelocyPackWithoutInstantiate(
   // track memory usage
   ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
-                 variables.byteSize() + snippets.byteSize());
+                 variables.byteSize());
 
   _planMemoryUsage += scope.trackedAndSteal();
 

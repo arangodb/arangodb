@@ -230,8 +230,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void prepareFromVelocyPackWithoutInstantiate(velocypack::Slice querySlice,
                                                velocypack::Slice collections,
                                                velocypack::Slice views,
-                                               velocypack::Slice variables,
-                                               velocypack::Slice snippets);
+                                               velocypack::Slice variables);
 
   async<void> instantiatePlan(velocypack::Slice querySlice);
 

@@ -725,9 +725,9 @@ void ExecutionPlan::extendCollectionsByViewsFromVelocyPack(
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
     Ast* ast, velocypack::Slice slice) {
   TRI_ASSERT(ast != nullptr);
+  TRI_ASSERT(slice.isObject());
 
-  bool const isFullPlan = slice.isObject();
-  VPackSlice nodes = isFullPlan ? slice.get("nodes") : slice;
+  VPackSlice nodes = slice.get("nodes");
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
@@ -737,17 +737,15 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
   plan->_root = plan->fromSlice(nodes);
   plan->setVarUsageComputed();
 
-  if (isFullPlan) {
-    if (auto rules = slice.get("rules"); rules.isArray()) {
-      for (auto rule : VPackArrayIterator(rules)) {
-        int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
-        plan->_appliedRules.push_back(ruleId);
-      }
+  if (auto rules = slice.get("rules"); rules.isArray()) {
+    for (auto rule : VPackArrayIterator(rules)) {
+      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+      plan->_appliedRules.push_back(ruleId);
     }
+  }
 
-    if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
-      plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
-    }
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
   }
 
   return plan;

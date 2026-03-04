@@ -405,7 +405,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new DistributeNode(plan, slice);
     case TRAVERSAL:
     case SHORTEST_PATH:
-    case ENUMERATE_PATHS:
+    case ENUMERATE_PATHS: {
       if (basics::VelocyPackHelper::getBooleanValue(slice, "isLocalGraphNode",
                                                     false)) {
         return createLocalGraphNode(plan, slice);
@@ -416,6 +416,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
         return new ShortestPathNode(plan, slice);
       }
       return new EnumeratePathsNode(plan, slice);
+    }
     case REMOTE_SINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case REMOTE_MULTIPLE:
