@@ -2,6 +2,8 @@ add_subdirectory(EnumeratePathsFilter)
 
 target_sources(arango_aql PRIVATE
   OptimizerRuleBatchMaterializeDocuments.cpp
+  OptimizerRuleSortInValues.cpp
+  OptimizerRulesSortAndGather.cpp
   OptimizerRuleCollectWithIndex.cpp
   OptimizerRulePropagateConstantAttributes.cpp
   OptimizerRulePushDownLateMaterialization.cpp

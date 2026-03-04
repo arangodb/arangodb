@@ -49,16 +49,6 @@ void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 void activateCallstackSplit(ExecutionPlan& plan);
 
-/// @brief adds a SORT operation for IN right-hand side operands
-void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                      OptimizerRule const&);
-
-/// @brief remove redundant sorts
-/// this rule modifies the plan in place:
-/// - sorts that are covered by earlier sorts will be removed
-void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                              OptimizerRule const&);
-
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -314,10 +304,6 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
                   OptimizerRule const&);
 
-/// @brief make sort node aware of limit to enable internal optimizations
-void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>,
-                   OptimizerRule const&);
-
 /// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                             OptimizerRule const&);
@@ -344,10 +330,6 @@ void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                        OptimizerRule const&);
 
-/// @brief parallelize Gather nodes (cluster-only)
-void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                           OptimizerRule const&);
-
 /// @brief allows execution nodes to asynchronously prefetch the next batch from
 /// their upstream node.
 void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -356,11 +338,6 @@ void asyncPrefetchRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                           OptimizerRule const&);
-
-//// @brief reduces a sorted gather to an unsorted gather if only one shard is
-/// involved
-void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                  OptimizerRule const&);
 
 void createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
