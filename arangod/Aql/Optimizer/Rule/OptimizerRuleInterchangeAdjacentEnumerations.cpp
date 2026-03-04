@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleInterchangeAdjacentEnumerations.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleInterchangeAdjacentEnumerations.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -45,8 +45,8 @@ using EN = arangodb::aql::ExecutionNode;
 namespace {
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     interchangeAdjacentEnumerationsNodeTypes{
-      arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-      arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
 }  // namespace
 
 /// @brief helper to compute lots of permutation tuples

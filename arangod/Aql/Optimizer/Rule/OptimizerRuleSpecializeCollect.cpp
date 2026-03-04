@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleSpecializeCollect.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleSpecializeCollect.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CollectNode.h"

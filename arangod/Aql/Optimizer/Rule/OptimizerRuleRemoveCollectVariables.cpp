@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleRemoveCollectVariables.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleRemoveCollectVariables.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
