@@ -141,6 +141,7 @@ function ResponseHeadersSuite () {
 
         // cursor API returns 201 since it is async
         if (result.status === 201) {
+          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(1.0, false);

@@ -124,7 +124,7 @@ function performPOSTRequest() {
 }
 
 function performDELETERequest() {
-  arango.DELETE('/_dummy');
+  arango.DELETE("/_dummy");
 }
 
 describe('request statistics', function () {
