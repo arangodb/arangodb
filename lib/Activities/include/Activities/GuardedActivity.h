@@ -65,7 +65,6 @@ struct GuardedActivity : Activity {
     }
   };
 
-  // TODO: overwrite snapshot in RootActivity to get rid of this nullptr check?
   auto snapshot(velocypack::Builder& builder) -> inspection::Status override {
     auto snap = Snapshot{.id = id(),            //
                          .parent = parentId(),  //
@@ -75,7 +74,8 @@ struct GuardedActivity : Activity {
     return inspector.apply(snap);
   }
 
-  auto copyData() const noexcept -> Data { return _data.copy(); }
+  // Copying is not noexcept because it takes a lock, and that can throw
+  auto copyData() const -> Data { return _data.copy(); }
 
   template<typename F>
   requires DataConstAccessor<F, Data>
