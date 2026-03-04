@@ -1107,7 +1107,7 @@ function ahuacatlInsertSuite () {
       c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
-      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
+      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf' } IN @@cn RETURN NEW", { "@cn": cn1 });
       assertEqual(1, c1.count());
       var doc1 = rv1.toArray()[0];
       assertEqual(doc1._key, '123');
@@ -1127,7 +1127,7 @@ function ahuacatlInsertSuite () {
             FOR a IN 3..5
               INSERT { _key: CONCAT('12',a), name: a }
             IN @@cn
-              OPTIONS { overwrite: true }
+              OPTIONS { overwriteMode: 'replace' }
               RETURN {old: OLD, new: NEW}
           )
 
@@ -1157,7 +1157,7 @@ function ahuacatlInsertSuite () {
       c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
-      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf', drinks : { hard : 'korn' } } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
+      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf', drinks : { hard : 'korn' } } IN @@cn RETURN NEW", { "@cn": cn1 });
       assertEqual(1, c1.count());
       var doc1 = rv1.toArray()[0];
       assertEqual(doc1._key, '123');

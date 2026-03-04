@@ -1127,12 +1127,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
                                           : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
-        } else if (name == StaticStrings::Overwrite) {
-          // legacy: overwrite is set, superseded by overwriteMode
-          // default behavior if only "overwrite" is specified
-          if (!options.isOverwriteModeSet() && value->isTrue()) {
-            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
-          }
+        } else if (name == "overwrite" && value->isTrue()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "the 'overwrite' option has been removed, use "
+              "'overwriteMode' instead");
         } else if (name == StaticStrings::OverwriteMode &&
                    value->isStringValue()) {
           auto overwriteMode =
