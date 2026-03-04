@@ -95,8 +95,6 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
       Ast* ast, velocypack::Slice slice);
 
-  void upgradeGraphNodesToLocal();
-
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
 
