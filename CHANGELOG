@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
+  `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
+  
 * COR-198: Removed the overwrite query option for insert operations in favor of
   using overwriteMode
 

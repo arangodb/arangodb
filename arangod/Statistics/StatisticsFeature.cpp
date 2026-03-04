@@ -633,8 +633,9 @@ using this option to turn statistics off might relieve heavily-loaded instances
 a bit.
 
 A side effect of setting this option to `false` is that no statistics are
-shown in the dashboard of ArangoDB's web interface, and that the REST API for
-server statistics at `/_admin/statistics` returns HTTP 404.)");
+shown in the dashboard of ArangoDB's web interface, and the metrics exposed
+by the `GET /_admin/metrics` API will not include these statistics (or will
+report zero for them).)");
 
   options
       ->addOption(
