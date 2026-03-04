@@ -14,11 +14,12 @@
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
-* COR-77: Pick correct replica during smart graph traversal when reading from
-  followers.
 
 3.12.8 (XXXX-XX-XX)
 -------------------
+
+* COR-77: Pick correct replica during smart graph traversal when reading from
+  followers.
 
 * Updated minimatch to 10.2.3.
 
