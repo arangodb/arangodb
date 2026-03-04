@@ -2730,14 +2730,8 @@ void Query::prepareFromVelocyPackWithoutInstantiate(
 async<void> Query::instantiatePlan(velocypack::Slice querySlice) {
   bool const planRegisters = !_queryString.empty();
 
-  bool const simpleSnippetFormat = !querySlice.isObject();
-  auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), querySlice,
-                                                       simpleSnippetFormat);
+  auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), querySlice);
   TRI_ASSERT(plan != nullptr);
-
-  if (!simpleSnippetFormat) {
-    plan->upgradeGraphNodesToLocal();
-  }
 
   co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
   _plans.push_back(std::move(plan));
