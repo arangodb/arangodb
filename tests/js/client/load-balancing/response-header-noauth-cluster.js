@@ -138,7 +138,7 @@ function ResponseHeadersSuite () {
       let tries = 0;
       while (++tries < 30) {
         result = sendRequest('PUT', url, {}, {}, false);
-        
+
         // cursor API returns 201 since it is async
         if (result.status === 201) {
           break;
@@ -176,6 +176,7 @@ function ResponseHeadersSuite () {
         result = sendRequest('PUT', url, {}, {}, false);
 
         if (result.status === 200) {
+          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(1.0, false);
@@ -197,6 +198,8 @@ function ResponseHeadersSuite () {
       assertEqual(result.status, 202);
       assertFalse(result.headers["x-arango-async-id"] === undefined);
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
+      // connection header should be filtered out by cluster-internal 
+      // request forwarding, but not from responses given to end users
       assertEqual("Keep-Alive", result.headers["connection"]);
 
       const jobId = result.headers["x-arango-async-id"];
@@ -207,6 +210,7 @@ function ResponseHeadersSuite () {
 
         // cursor API returns 201 since it is async
         if (result.status === 201) {
+          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);
@@ -230,6 +234,8 @@ function ResponseHeadersSuite () {
       assertEqual(result.status, 202);
       assertFalse(result.headers["x-arango-async-id"] === undefined);
       assertTrue(result.headers["x-arango-async-id"].match(/^\d+$/).length > 0);
+      // connection header should be filtered out by cluster-internal 
+      // request forwarding, but not from responses given to end users
       assertEqual("Close", result.headers["connection"]);
 
       const jobId = result.headers["x-arango-async-id"];
@@ -240,6 +246,7 @@ function ResponseHeadersSuite () {
 
         // cursor API returns 201 since it is async
         if (result.status === 201) {
+          // jobs API may return HTTP 204 until job is ready
           break;
         }
         require("internal").wait(0.5, false);

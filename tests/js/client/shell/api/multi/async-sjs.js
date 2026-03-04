@@ -120,7 +120,7 @@ function dealing_with_async_requestsSuite () {
 
       assertEqual(doc.code, 202);
       assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
-      assertTrue(doc.parsedBody !== "");
+      assertEqual(doc.parsedBody, undefined);
     },
 
     test_checks_whether_POST_returns_status_202: function() {
