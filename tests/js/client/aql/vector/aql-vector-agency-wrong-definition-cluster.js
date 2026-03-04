@@ -26,8 +26,6 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const helper = require("@arangodb/aql-helper");
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,

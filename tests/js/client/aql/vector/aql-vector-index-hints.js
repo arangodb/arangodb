@@ -33,8 +33,7 @@ const {
   randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
-  waitForAllVectorIndexesBuildState,
-  waitForAllVectorIndexesBuildStateOnDBServers,
+  waitForIndexBuild,
   withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
@@ -110,18 +109,6 @@ function VectorIndexHintsSuite(expectedTrained) {
       const state = expectedTrained ? "ready" : "uninitialized";
       const indexTimeoutSec = expectedTrained ? (isCluster ? 120 : 60) : 5;
 
-      const waitForBuild = () => {
-        if (isCluster) {
-          assertTrue(
-            waitForAllVectorIndexesBuildStateOnDBServers(db, collection, state, indexTimeoutSec),
-            "Expected indexes to become " + state);
-        } else {
-          assertTrue(
-            waitForAllVectorIndexesBuildState(collection, state, indexTimeoutSec),
-            "Expected indexes to become " + state);
-        }
-      };
-
       const indexes = [
         {name: "vector_l2", fields: ["vector"], params: {metric: "l2", dimension, nLists: 5}},
         {name: "vector_l2_secondary", fields: ["vector"], params: {metric: "l2", dimension, nLists: 3}},
@@ -133,11 +120,13 @@ function VectorIndexHintsSuite(expectedTrained) {
         // In cluster, wait for each index build to complete before creating
         // the next one to avoid lock contention between build threads.
         if (isCluster) {
-          waitForBuild();
+          assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+            "Expected indexes to become " + state);
         }
       }
       if (!isCluster) {
-        waitForBuild();
+        assertTrue(waitForIndexBuild(collection, state, indexTimeoutSec),
+          "Expected indexes to become " + state);
       }
     },
 

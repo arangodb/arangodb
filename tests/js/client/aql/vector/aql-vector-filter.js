@@ -37,8 +37,8 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    waitForVectorIndexState,
-    waitForAllVectorIndexesBuildStateOnDBServers,
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
     withSuffix,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
@@ -155,54 +155,28 @@ function VectorIndexL2FilterTestSuite(expectedTrained) {
                 });
             }
 
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
-
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                }),
             });
 
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
-            const waitTimeoutSec = expectedTrained ? 60 : 5;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " on DB servers with " + numberOfDocs + " docs"
-                );
-            } else {
-                assertTrue(
-                    waitForVectorIndexState(collection, "vector_l2",
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " with " + numberOfDocs + " docs"
-                );
-            }
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -733,24 +707,10 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite(expectedTrained) {
                 ensureIndex();
             }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
-            const waitTimeoutSec = expectedTrained ? 60 : 5;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection1,
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " on DB servers with " + numberOfDocs + " docs"
-                );
-            } else {
-                assertTrue(
-                    waitForVectorIndexState(collection1, "vector_l2",
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " with " + numberOfDocs + " docs"
-                );
-            }
+            assertTrue(
+                waitForIndexBuild(collection1, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {
@@ -841,55 +801,29 @@ function VectorIndexL2FilterStoredValuesTestSuite(expectedTrained) {
                     floatField: i + 0.5
                 });
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
-
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vector_l2_stored_values",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: nProbeAndNlists,
-                    trainingIterations: 10,
-                    defaultNProbe: nProbeAndNlists,
-                },
-                storedValues: ["val", "stringField", "boolField", "floatField"]
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2_stored_values",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nProbeAndNlists,
+                        trainingIterations: 10,
+                        defaultNProbe: nProbeAndNlists,
+                    },
+                    storedValues: ["val", "stringField", "boolField", "floatField"]
+                }),
             });
 
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
             const expectedState = expectedTrained ? "ready" : "uninitialized";
-            const waitTimeoutSec = expectedTrained ? 60 : 5;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection,
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " on DB servers with " + numberOfDocs + " docs"
-                );
-            } else {
-                assertTrue(
-                    waitForVectorIndexState(collection, "vector_l2_stored_values",
-                        expectedState,
-                        waitTimeoutSec),
-                    "Expected index to become " + (expectedTrained ? "trained" : "untrained") +
-                    " with " + numberOfDocs + " docs"
-                );
-            }
+            assertTrue(
+                waitForIndexBuild(collection, expectedState, expectedTrained ? 60 : 5),
+                "Expected index to become " + expectedState + " with " + numberOfDocs + " docs"
+            );
         },
 
         tearDownAll: function() {

@@ -31,8 +31,8 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    waitForVectorIndexState,
-    waitForAllVectorIndexesBuildStateOnDBServers,
+    insertDocsAndEnsureIndex,
+    waitForIndexBuild,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
@@ -74,44 +74,25 @@ function VectorIndexL2NprobeTestSuite() {
                     vector
                 });
             }
-            const batchSize = 100;
-            const numBatches = Math.ceil(docs.length / batchSize);
-            const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
-
-            const ensureIndex = () => collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 300,
-                },
+            insertDocsAndEnsureIndex({
+                collection, docs, seed,
+                ensureIndex: () => collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 300,
+                    },
+                }),
             });
 
-            for (let i = 0; i < numBatches; i++) {
-                if (i === ensureIndexSlot) {
-                    ensureIndex();
-                }
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, docs.length);
-                collection.insert(docs.slice(start, end));
-            }
-            if (ensureIndexSlot === numBatches) {
-                ensureIndex();
-            }
-            const buildState = "ready";
-            const waitTimeoutSec = 60;
-            if (isCluster) {
-                assertTrue(
-                    waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState, waitTimeoutSec),
-                    "Expected vector index to become trained on DB servers"
-                );
-            } else {
-                assertTrue(waitForVectorIndexState(collection, "vector_l2", buildState, waitTimeoutSec),
-                    "Expected vector index to become trained");
-            }
+            assertTrue(
+                waitForIndexBuild(collection, "ready", 60),
+                "Expected vector index to become trained"
+            );
         },
 
         tearDownAll: function() {

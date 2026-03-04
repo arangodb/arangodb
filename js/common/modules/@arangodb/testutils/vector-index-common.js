@@ -347,9 +347,65 @@ function waitForAllVectorIndexesBuildStateOnDBServers(db, collection, buildState
     return false;
 }
 
+/**
+ * Inserts docs in batches, calling ensureIndex() at a random batch slot
+ * determined by the seed. This tests that index creation works regardless of
+ * whether it happens before, during, or after data insertion.
+ *
+ * @param {object} opts
+ * @param {ArangoCollection} opts.collection
+ * @param {Array} opts.docs - documents to insert
+ * @param {number} opts.seed - random seed (used to pick ensureIndex slot)
+ * @param {function} opts.ensureIndex - callback that creates the index(es)
+ * @param {number} [opts.batchSize=100]
+ * @param {function} [opts.onBatchInserted] - called with insert result per batch
+ */
+function insertDocsAndEnsureIndex({collection, docs, seed, ensureIndex,
+                                    batchSize = 100, onBatchInserted}) {
+    const numBatches = Math.ceil(docs.length / batchSize);
+    const ensureIndexSlot = Math.abs(seed) % (numBatches + 1);
+
+    for (let i = 0; i < numBatches; i++) {
+        if (i === ensureIndexSlot) {
+            ensureIndex();
+        }
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize, docs.length);
+        const result = collection.insert(docs.slice(start, end));
+        if (onBatchInserted) {
+            onBatchInserted(result);
+        }
+    }
+    if (ensureIndexSlot === numBatches) {
+        ensureIndex();
+    }
+}
+
+/**
+ * Waits until all vector indexes on the collection reach the expected build
+ * state, handling both cluster and single-server modes.
+ *
+ * @param {ArangoCollection} collection
+ * @param {string} expectedState - "ready" or "uninitialized"
+ * @param {number} [timeoutSec=60]
+ * @returns {boolean}
+ */
+function waitForIndexBuild(collection, expectedState, timeoutSec = 60) {
+    const internal = require("internal");
+    if (internal.isCluster()) {
+        const db = internal.db;
+        return waitForAllVectorIndexesBuildStateOnDBServers(
+            db, collection, expectedState, timeoutSec);
+    }
+    return waitForAllVectorIndexesBuildState(
+        collection, expectedState, timeoutSec);
+}
+
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
 exports.waitForVectorIndexState = waitForVectorIndexState;
 exports.waitForAllVectorIndexesBuildState = waitForAllVectorIndexesBuildState;
 exports.waitForAllVectorIndexesBuildStateOnDBServers = waitForAllVectorIndexesBuildStateOnDBServers;
+exports.insertDocsAndEnsureIndex = insertDocsAndEnsureIndex;
+exports.waitForIndexBuild = waitForIndexBuild;
 exports.withSuffix = withSuffix;

@@ -24,7 +24,6 @@
 /// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require("internal");
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const {
