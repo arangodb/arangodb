@@ -870,6 +870,11 @@ Run specific gtest tests:
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
 
+Run an upgrade from another source with compiled binaries:
+
+    ./scripts/unittest rta_makedata --cluster true --oldSource ../othersource
+    ./scripts/unittest dump_multiple_two --oldSource  ../othersource
+
 Controlling the place where the test-data is stored:
 
     TMPDIR=/some/other/path ./scripts/unittest shell_client_aql

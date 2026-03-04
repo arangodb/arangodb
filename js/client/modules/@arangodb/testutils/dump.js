@@ -282,6 +282,13 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     return true;
   }
 
+  flipBinarySet() {
+    if (this.firstRunOptions.oldSource !== undefined) {
+      pu.switchBinarySet(1);
+    }
+    return true;
+  }
+
   restartInstance() {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
