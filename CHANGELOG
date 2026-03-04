@@ -4,6 +4,9 @@
 * Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
   `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
   
+* COR-198: Removed the overwrite query option for insert operations in favor of
+  using overwriteMode
+
 * Existing `hash` and `skiplist` indexes are automatically converted to
   `persistent` during database upgrade. Converted indexes are renamed by
   appending `_migrated` to their name (e.g. `myIndex` becomes `myIndex_migrated`).
@@ -117,6 +120,9 @@
 * Remove /_admin/database/target-version endpoint in favor of /_api/version
 
 * Updated ArangoDB Starter to v0.20.0-preview-2.
+
+* The following keywords should be reserved in AQL, i.e. added to the lexer (tokens.ll):
+  MATCH, WHILE, UNTIL, SCAN, FOLD
 
 * Uninstall all routes for API version 0, which no longer exists in 4.0.
 
