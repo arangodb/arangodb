@@ -50,8 +50,8 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
       _state(READY),
       _progress(0.),
       _priority(desc.priority()),
-      _activity{activities::make<activities::GenericActivity>(
-          _description.name(), _description.allProperties())} {
+      _activity{activities::make<activities::ActionActivity>(
+          _description.name(), maintenance::ActionDescription{_description})} {
   init();
 }
 
@@ -61,8 +61,8 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
       _state(READY),
       _progress(0.),
       _priority(desc.priority()),
-      _activity{activities::make<activities::GenericActivity>(
-          _description.name(), _description.allProperties())} {
+      _activity{activities::make<activities::ActionActivity>(
+          _description.name(), maintenance::ActionDescription{_description})} {
   init();
 }
 
