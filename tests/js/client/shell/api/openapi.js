@@ -57,8 +57,27 @@ function openapi_endpointsSuite() {
       assertEqual(typeof response.paths, 'object');
     },
 
-    test_retrieves_openapi_v1: function() {
+    test_openapi_v1_does_not_exist: function () {
       let doc = arango.GET_RAW("/_arango/v1/openapi.json");
+
+      // even though this path does not exist, invalid versions are currently
+      // rejected with a 400 Bad Request
+      assertEqual(doc.code, 400);
+      assertEqual(doc.errorNum, 400);
+
+    },
+
+    test_openapi_v2_does_not_exist: function () {
+      let doc = arango.GET_RAW("/_arango/v2/openapix.json");
+
+      // even though this path does not exist, invalid versions are currently
+      // rejected with a 400 Bad Request
+      assertEqual(doc.code, 400);
+      assertEqual(doc.errorNum, 400);
+    },
+
+    test_retrieves_openapi_experimental: function () {
+      let doc = arango.GET_RAW("/_arango/experimental/openapi.json");
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], "application/json");
@@ -76,24 +95,24 @@ function openapi_endpointsSuite() {
       assertEqual(typeof response.paths, 'object');
     },
 
-    test_openapi_v0_and_v1_differ: function() {
+    test_openapi_v0_and_experimental_differ: function () {
       let docV0 = arango.GET_RAW("/_arango/v0/openapi.json");
-      let docV1 = arango.GET_RAW("/_arango/v1/openapi.json");
+      let docExp = arango.GET_RAW("/_arango/experimental/openapi.json");
 
       assertEqual(docV0.code, 200);
-      assertEqual(docV1.code, 200);
+      assertEqual(docExp.code, 200);
 
       let v0 = docV0.parsedBody;
-      let v1 = docV1.parsedBody;
+      let exp = docExp.parsedBody;
 
       // Both should be valid OpenAPI documents
       assertNotUndefined(v0.openapi);
-      assertNotUndefined(v1.openapi);
+      assertNotUndefined(exp.openapi);
 
       // They should potentially differ in content
       // (At minimum, they should have different version info or paths)
       assertNotUndefined(v0.paths);
-      assertNotUndefined(v1.paths);
+      assertNotUndefined(exp.paths);
     }
   };
 }

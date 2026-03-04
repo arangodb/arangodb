@@ -437,10 +437,12 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
   }
 
   // Check for /_arango/experimental
+  bool isExperimental = false;
   if (remainder.starts_with(experimentalSuffix)) {
     size_t suffixEnd = experimentalSuffix.size();
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
       _requestedApiVersion = ApiVersion::experimentalApiVersion;
+      isExperimental = true;
       start = p + suffixEnd;  // advance past "/_arango/experimental"
       return;
     }
@@ -448,53 +450,50 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
   }
 
   // Check for /_arango/vX where X is a decimal number
-  if (remainder.starts_with('v')) {
-    std::string_view afterV = remainder.substr(1);
-
-    size_t numEnd = 0;
-    while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
-      ++numEnd;
-    }
-
-    if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
-      // Check for leading zeros
-      if (afterV[0] == '0' && numEnd > 1) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_HTTP_BAD_PARAMETER,
-            absl::StrCat("invalid API version: version number must not have "
-                         "leading zeros, got path: ",
-                         std::string_view(start, end - start)));
-      }
-
-      std::string versionStr(afterV.substr(0, numEnd));
-      uint64_t version;
-      try {
-        version = std::stoull(versionStr);
-      } catch (std::exception& e) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_HTTP_BAD_PARAMETER,
-            absl::StrCat(
-                "invalid API version: failed to parse version number: ",
-                e.what(),
-                ", got path: ", std::string_view(start, end - start)));
-      }
-
-      if (version <= std::numeric_limits<uint32_t>::max()) {
-        _requestedApiVersion = static_cast<uint32_t>(version);
-        start = p + 1 + numEnd;  // advance past "/_arango/vX"
-        return;
-      }
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_BAD_PARAMETER,
-          absl::StrCat("invalid API version: version number too large, "
-                       "got path: ",
-                       std::string_view(start, end - start)));
-    }
+  if (!remainder.starts_with('v')) {
+    // /_arango/ present but not followed by a valid format
+    throwGenericError();
   }
 
-  // /_arango/ present but not followed by a valid format
-  throwGenericError();
+  std::string_view afterV = remainder.substr(1);
+
+  size_t numEnd = 0;
+  while (numEnd < afterV.size() && std::isdigit(afterV[numEnd])) {
+    ++numEnd;
+  }
+
+  if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
+    // Check for leading zeros
+    if (afterV[0] == '0' && numEnd > 1) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          absl::StrCat("invalid API version: version number must not have "
+                       "leading zeros, got path: ",
+                       std::string_view(start, end - start)));
+    }
+
+    std::string versionStr(afterV.substr(0, numEnd));
+    uint64_t version;
+    try {
+      version = std::stoull(versionStr);
+    } catch (std::exception& e) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          absl::StrCat(
+              "invalid API version: failed to parse version number: ", e.what(),
+              ", got path: ", std::string_view(start, end - start)));
+    }
+
+    if (!ApiVersion::isApiVersionSupported(version) && !isExperimental) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          absl::StrCat("invalid API version; got path: ",
+                       std::string_view(start, end - start)));
+    }
+
+    _requestedApiVersion = static_cast<uint32_t>(version);
+    start = p + 1 + numEnd;  // advance past "/_arango/vX"
+  }
 }
 
 }  // namespace arangodb
