@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleAsyncPrefetch.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleAsyncPrefetch.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"

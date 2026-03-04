@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleOptimizeProjections.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleOptimizeProjections.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
@@ -47,7 +47,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 class AttributeAccessReplacer final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-public:
+ public:
   AttributeAccessReplacer(ExecutionNode const* self,
                           Variable const* searchVariable,
                           std::span<std::string_view> attribute,
@@ -70,7 +70,7 @@ public:
     return false;
   }
 
-private:
+ private:
   ExecutionNode const* _self;
   Variable const* _searchVariable;
   std::span<std::string_view> _attribute;

@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleGeoIndex.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleGeoIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -716,7 +716,6 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   // signal that plan has been changed
   return true;
 }
-
 
 void arangodb::aql::geoIndexRule(Optimizer* opt,
                                  std::unique_ptr<ExecutionPlan> plan,

@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRuleOptimizeCount.h"
+#include "Aql/Optimizer/Rule/OptimizerRuleOptimizeCount.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
