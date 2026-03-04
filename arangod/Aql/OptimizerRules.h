@@ -59,7 +59,6 @@ void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeRedundantSortsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-
 /// @brief remove unused INTO variable from COLLECT, or unused aggregates
 void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                 OptimizerRule const&);
@@ -237,7 +236,6 @@ void removeUnnecessaryRemoteScatterRule(Optimizer*,
 void undistributeRemoveAfterEnumCollRule(Optimizer*,
                                          std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const&);
-
 
 /// @brief remove $OLD and $NEW variables from data-modification statements
 /// if not required

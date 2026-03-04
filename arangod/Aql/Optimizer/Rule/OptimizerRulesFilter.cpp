@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesFilter.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesFilter.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -48,10 +48,10 @@ using EN = arangodb::aql::ExecutionNode;
 namespace {
 static constexpr std::initializer_list<
     arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
-      arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-      arangodb::aql::ExecutionNode::INDEX,
-      arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-} // namespace
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX,
+    arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+}  // namespace
 
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:

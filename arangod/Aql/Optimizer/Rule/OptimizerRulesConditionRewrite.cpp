@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRulesConditionRewrite.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesConditionRewrite.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"

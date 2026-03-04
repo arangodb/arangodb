@@ -6655,7 +6655,6 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-
 namespace {
 
 /// @brief is the node parallelizable?
