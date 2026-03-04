@@ -22,6 +22,9 @@
 3.12.8 (XXXX-XX-XX)
 -------------------
 
+* COR-77: Pick correct replica during smart graph traversal when reading from
+  followers.
+
 * Updated minimatch to 10.2.3.
 
 * Fix potential shutdown blockage in UserManager which could block an upgrade.
