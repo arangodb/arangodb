@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Optimizer/Rule/OptimizerRulesCalculation.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesCalculation.h"
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
