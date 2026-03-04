@@ -25,7 +25,7 @@
 #include <thread>
 
 #include "Async/Registry/registry_variable.h"
-#include "ActivityRegistry/activity_registry_variable.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]) {
 
   // set metrics of registries
   arangodb::async_registry::registry.set_metrics(nullptr);
-  arangodb::activity_registry::registry.set_metrics(nullptr);
+  arangodb::activities::registry.setMetrics(nullptr);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the

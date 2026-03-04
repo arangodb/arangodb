@@ -65,11 +65,10 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
+
+#include <format>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -160,6 +159,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
+      _supportsRBAC(
+          Helper::getBooleanValue(info, StaticStrings::SupportsRBAC, true)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
@@ -334,11 +335,16 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
+  props.supportsRBAC = supportsRBAC();
   return props;
 }
 
 bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
+}
+
+bool LogicalCollection::supportsRBAC() const noexcept {
+  return _supportsRBAC.load();
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
@@ -759,6 +765,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
   build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
+  build.add(StaticStrings::SupportsRBAC, VPackValue(_supportsRBAC));
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -1100,6 +1107,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync);
+  _supportsRBAC = Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
+                                          _supportsRBAC);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
@@ -1408,11 +1417,11 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
 
   static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      basics::SourceLocation location, std::format_string<Args...> formatString,
       Args && ... args) {
     throw basics::Exception(
         TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+        std::format(formatString, std::forward<Args>(args)...), location);
   };
 
   auto leader = stateMachine->getLeader();

@@ -23,6 +23,7 @@
 
 #include "RestHandler.h"
 
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
@@ -45,13 +46,14 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "ActivityRegistry/activity.h"
+#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <unordered_map>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -209,11 +211,12 @@ void RestHandler::trackTaskEnd() noexcept {
 }
 
 void RestHandler::startActivity() {
-  _activity = std::make_unique<activity_registry::Activity>(
-      name(), activity_registry::Metadata{
-                  {"url", _request->fullUrl()},
-                  {"method", std::string{GeneralRequest::translateMethod(
-                                 _request->requestType())}}});
+  _activity = activities::make<activities::GenericActivity>(
+      "RestHandler", std::unordered_map<std::string, std::string>{
+                         {"handler", name()},
+                         {"url", _request->fullUrl()},
+                         {"method", std::string{GeneralRequest::translateMethod(
+                                        _request->requestType())}}});
 }
 
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
@@ -288,7 +291,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + fuerte::jwt::generateUserToken(
+            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                             auth->tokenCache().jwtSecret(), username));
       }
     }

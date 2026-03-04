@@ -91,7 +91,7 @@ void ArangodServer::addFeatures(
   addFeature<ApiRecordingFeature>(dataSourceRegistry);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
-  addFeature<activity_registry::Feature>();
+  addFeature<activities::Feature>(dataSourceRegistry);
   addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -123,8 +123,12 @@ void ArangodServer::addFeatures(
   addFeature<V8SecurityFeature>();
 #endif
   addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature,
-                               &v8DealerFeature);
+                               &systemDatabaseFeature, &clusterUpgradeFeature
+#ifdef USE_V8
+                               ,
+                               &v8DealerFeature
+#endif
+  );
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>();

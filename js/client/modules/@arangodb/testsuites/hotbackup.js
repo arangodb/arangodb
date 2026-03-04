@@ -206,7 +206,7 @@ function hotBackup_load_backend (options, which, args) {
         //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
-        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
+        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume, args.args) ||
         (function() { sleep(args.noiseDuration); return false; }()) ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
@@ -380,6 +380,7 @@ function hotBackup_aql (options) {
   return hotBackup_load_backend(options, which, {
     noiseScript: function () {
       const errors = require('internal').errors;
+      db._useDatabase('test');
       while (true) {
         try {
           db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",

@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Query.h"
+#include <unordered_map>
 
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
@@ -144,8 +146,9 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
       _queryKilled(false),
-      _activity("AQL Query", {{"query", queryString.string()},
-                              {"id", std::format("{}", id)}}) {
+      _activity(activities::make<activities::GenericActivity>(
+          "AQLQuery",
+          activities::GenericActivityData{{"query", queryString.string()}})) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");

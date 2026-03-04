@@ -58,15 +58,16 @@
 #include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
-#include <fuerte/jwt.h>
 #include <fuerte/requests.h>
 #include <fuerte/helper.h>
+#include "Ssl/jwt.h"
 #include <v8.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <stdexcept>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -613,8 +614,8 @@ void V8ClientConnection::prepareConnection() {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(
-        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
+    _builder.jwtToken(arangodb::rest::SslInterface::jwt::generateInternalToken(
+        _client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
@@ -3461,6 +3462,42 @@ void V8ClientConnection::forceNewConnection() {
   createConnection(/*bypassCache*/ true);
 }
 
+static void JS_getAddrInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getAddrInfo(<hostname>)");
+  }
+
+  std::string hostNameStr = TRI_ObjectToString(isolate, args[0]);
+
+  boost::asio::io_context io_ctx;
+  boost::asio::ip::tcp::resolver resolver(io_ctx);
+  boost::system::error_code ec;
+
+  auto results = resolver.resolve(hostNameStr, "", ec);
+
+  if (ec) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ec.message().c_str());
+  }
+
+  auto context = TRI_IGETC;
+  v8::Local<v8::Object> array = v8::Array::New(isolate);
+  uint32_t i = 0;
+
+  for (const auto& entry : results) {
+    std::string addr_str = entry.endpoint().address().to_string();
+    v8::Local<v8::String> oneAddr =
+        TRI_V8_ASCII_STRING(isolate, addr_str.c_str());
+    array->Set(context, i, oneAddr).FromMaybe(false);
+    i++;
+  }
+
+  TRI_V8_RETURN(array);
+  TRI_V8_TRY_CATCH_END
+}
+
 void V8ClientConnection::initServer(v8::Isolate* isolate,
                                     v8::Local<v8::Context> context) {
   v8::Local<v8::Value> v8client = v8::External::New(isolate, &_client);
@@ -3683,6 +3720,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
           v8::Local<v8::Object>()));
 
   ConnectionTempl.Reset(isolate, connection_inst);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "getAddrInfo"), JS_getAddrInfo);
 
   // add the client connection to the context:
   TRI_AddGlobalVariableVocbase(isolate,

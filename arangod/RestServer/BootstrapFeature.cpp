@@ -71,15 +71,21 @@ BootstrapFeature::BootstrapFeature(
     EngineSelectorFeature& engineSelectorFeature,
     DatabaseFeature& databaseFeature,
     SystemDatabaseFeature* systemDatabaseFeature,
-    ClusterUpgradeFeature* clusterUpgradeFeature,
-    V8DealerFeature* v8DealerFeature)
+    ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+    ,
+    V8DealerFeature* v8DealerFeature
+#endif
+    )
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
       _engineSelectorFeature(engineSelectorFeature),
       _databaseFeature(databaseFeature),
       _systemDatabaseFeature(systemDatabaseFeature),
       _clusterUpgradeFeature(clusterUpgradeFeature),
+#ifdef USE_V8
       _v8DealerFeature(v8DealerFeature),
+#endif
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 

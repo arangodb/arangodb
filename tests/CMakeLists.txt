@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -233,6 +233,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/GeneralRequestTest.cpp
   Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -260,6 +261,7 @@ set(ARANGODB_TESTS_SOURCES
   Transaction/ManagerTest.cpp
   Transaction/RestTransactionHandlerTest.cpp
   Utils/CollectionNameResolverTest.cpp
+  Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
   VocBase/ComputedValuesTest.cpp
@@ -282,7 +284,7 @@ if (USE_PERF_TESTS)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
     Scheduler/ThreadPoolPerfTest.cpp)
 endif()
-    
+
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -328,7 +330,7 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_activity_registry
+  arango_tests_activities
   arango_tests_basics
   arango_tests_forest
   arango_tests_replication2
@@ -351,7 +353,6 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
-  fmt
   velocypack_utils
 )
 
@@ -416,7 +417,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
-add_subdirectory(ActivityRegistry)
+add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)

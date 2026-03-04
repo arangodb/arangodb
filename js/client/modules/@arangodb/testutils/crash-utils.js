@@ -43,6 +43,7 @@ const pu = require('@arangodb/testutils/process-utils');
 
 const abortSignal = 6;
 const termSignal = 15;
+const killSignal = 9;
 
 
 const CYAN = internal.COLORS.COLOR_CYAN;
@@ -336,8 +337,13 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         });
       }
       if (!found) {
-        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
-        print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
+        if (instanceInfo.exitStatus.hasOwnProperty('signal') && instanceInfo.exitStatus.signal === killSignal) {
+          // SIG_KILL doesn't write coredumps 
+          GDB_OUTPUT += checkStr;
+        } else {
+          print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
+          print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
+        }
         return;
       }
     }
