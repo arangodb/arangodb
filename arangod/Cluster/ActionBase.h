@@ -26,6 +26,7 @@
 
 #include "ActionDescription.h"
 
+#include "Activities/GenericActivity.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Cluster/Utils/ShardID.h"
@@ -247,6 +248,7 @@ class ActionBase {
   std::atomic<double> _progress;
 
   int _priority;
+  activities::GenericActivity::HandleType _activity;
 
  private:
   mutable std::mutex resLock;

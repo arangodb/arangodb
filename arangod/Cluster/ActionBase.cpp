@@ -24,6 +24,7 @@
 
 #include "Cluster/ActionBase.h"
 
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterFeature.h"
@@ -48,7 +49,9 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
       _description(desc),
       _state(READY),
       _progress(0.),
-      _priority(desc.priority()) {
+      _priority(desc.priority()),
+      _activity{activities::make<activities::GenericActivity>(
+          _description.name(), _description.allProperties())} {
   init();
 }
 
@@ -57,7 +60,9 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
       _description(std::move(desc)),
       _state(READY),
       _progress(0.),
-      _priority(desc.priority()) {
+      _priority(desc.priority()),
+      _activity{activities::make<activities::GenericActivity>(
+          _description.name(), _description.allProperties())} {
   init();
 }
 
@@ -99,7 +104,8 @@ bool ActionBase::fastTrack() const noexcept {
   return _labels.contains(FAST_TRACK);
 }
 
-/// @brief execution finished successfully or failed ... and race timer expired
+/// @brief execution finished successfully or failed ... and race timer
+/// expired
 bool ActionBase::done() const {
   return (COMPLETE == _state || FAILED == _state) &&
          _actionDone.load() +
