@@ -339,7 +339,10 @@ Result VectorIndexBuildManager::build() {
   auto builder = std::make_shared<RocksDBBuilderIndex>(_index);
 
   RocksDBBuilderIndex::Locker locker(_rcoll);
-  std::move(locker.lock()).waitAndGet();
+  if (!std::move(locker.lock()).waitAndGet()) {
+    return Result{TRI_ERROR_LOCK_TIMEOUT,
+                  "failed to acquire collection lock for vector index build"};
+  }
   auto const res = builder->fillIndexBackground(locker).waitAndGet();
 
   if (res.fail()) {
