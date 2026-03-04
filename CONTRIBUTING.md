@@ -873,6 +873,7 @@ Run specific gtest tests:
 Run an upgrade from another source with compiled binaries:
 
     ./scripts/unittest rta_makedata --cluster true --oldSource ../othersource
+    ./scripts/unittest dump_multiple_two --oldSource  ../othersource
 
 Controlling the place where the test-data is stored:
 
