@@ -658,27 +658,34 @@ class instanceManager {
 
     let result;
     while (true) {
-      result = arango.POST_RAW('/_admin/cluster/resignLeadership',
-                                   { "server": dbServer.shortName, "undoMoves": false });
-      // BTS-2329: is 500 a valid code here? and what to do?
-      if (result.code !== 500) {
-        print("retrying resign leadership");
-        break;
+      while (true) {
+        result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+                                 { "server": dbServer.shortName, "undoMoves": false });
+        // BTS-2329: is 500 a valid code here? and what to do?
+        if (result.code !== 500) {
+          print(`${Date()} retrying resign leadership - ${result.code} - ${result.parsedBody}`);
+          break;
+        }
+      }
+      if (result.code !== 202) {
+        throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
+      }
+      let jobStatus;
+      while (true) {
+        sleep(1);
+        jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
+        if (jobStatus.parsedBody.status === 'Failed') {
+          let msg = `failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(jobStatus)}`;
+          print(`${RED}${Date()}${msg}${RESET}`);
+          break;
+        }
+        print(jobStatus.parsedBody.status);
+        if (jobStatus.parsedBody.status === 'Finished') {
+          print(`${GREEN}${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}${RESET}`);
+          return;
+        }
       }
     }
-    if (result.code !== 202) {
-      throw new Error(`failed to resign ${dbServer.name} (${dbServer.shortName}) from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
-    }
-    let jobStatus;
-    do {
-      sleep(1);
-      jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
-      if (jobStatus.parsedBody.status === 'Failed') {
-        throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(jobStatus)}`);
-      }
-      print(jobStatus.parsedBody.status);
-    } while (jobStatus.parsedBody.status !== 'Finished');
-    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
