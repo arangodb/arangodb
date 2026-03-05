@@ -106,7 +106,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options, Scheduler* scheduler);
+        QueryOptions options, AcceptanceQueue* queue);
 
   ~Query() override;
 
@@ -133,7 +133,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
       QueryOptions options = {},
-      Scheduler* scheduler = SchedulerFeature::SCHEDULER);
+      AcceptanceQueue* queue = SchedulerFeature::ACCEPTANCE_QUEUE);
 
   constexpr static uint64_t kDontCache = 0;
 

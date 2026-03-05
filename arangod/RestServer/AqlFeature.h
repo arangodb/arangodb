@@ -51,7 +51,7 @@ class AqlFeature final : public application_features::ApplicationFeature {
       std::shared_ptr<arangodb::transaction::Context> ctx,
       arangodb::aql::QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      arangodb::aql::QueryOptions options, Scheduler* scheduler);
+      arangodb::aql::QueryOptions options, AcceptanceQueue* queue);
 
  private:
   ApiRecordingFeature* _apiRecordingFeature = nullptr;

@@ -7,6 +7,8 @@ add_library(arango_scheduler STATIC
   SupervisedScheduler.cpp
   ThreadPoolScheduler.cpp
   WorkStealingThreadPool.cpp
+  AcceptanceQueue/AcceptanceQueueImpl.cpp
+  AcceptanceQueue/LowPrioAntiOverwhelm.cpp
 )
 
 target_link_libraries(arango_scheduler

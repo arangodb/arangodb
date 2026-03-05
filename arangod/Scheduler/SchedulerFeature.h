@@ -31,6 +31,7 @@
 namespace arangodb {
 
 class Scheduler;
+class AcceptanceQueue;
 namespace metrics {
 class MetricsFeature;
 }
@@ -40,6 +41,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
   static Scheduler* SCHEDULER;
+  static AcceptanceQueue* ACCEPTANCE_QUEUE;
 
   SchedulerFeature(application_features::ApplicationServer& server,
                    metrics::MetricsFeature& metrics);
@@ -67,6 +69,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   SchedulerFeatureOptions _options;
 
   std::unique_ptr<Scheduler> _scheduler;
+  std::unique_ptr<AcceptanceQueue> _acceptanceQueue;
   metrics::MetricsFeature& _metricsFeature;
 
   struct AsioHandler;

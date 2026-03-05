@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Scheduler/Scheduler.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
@@ -37,12 +37,12 @@ using namespace arangodb::aql;
 using application_features::ApplicationServer;
 
 SharedQueryState::SharedQueryState(ApplicationServer& server)
-    : SharedQueryState(server, SchedulerFeature::SCHEDULER) {}
+    : SharedQueryState(server, SchedulerFeature::ACCEPTANCE_QUEUE) {}
 
 SharedQueryState::SharedQueryState(ApplicationServer& server,
-                                   Scheduler* scheduler)
+                                   AcceptanceQueue* acceptanceQueue)
     : _server(server),
-      _scheduler(scheduler),
+      _acceptanceQueue(acceptanceQueue),
       _wakeupCallback(nullptr),
       _numWakeups(0),
       _callbackVersion(0),
@@ -52,7 +52,7 @@ SharedQueryState::SharedQueryState(ApplicationServer& server,
       _valid(true) {}
 
 SharedQueryState::SharedQueryState(SharedQueryState const& other)
-    : SharedQueryState(other._server, other._scheduler) {}
+    : SharedQueryState(other._server, other._acceptanceQueue) {}
 
 void SharedQueryState::invalidate() {
   {
@@ -138,7 +138,7 @@ void SharedQueryState::queueHandler() {
     return;
   }
 
-  if (ADB_UNLIKELY(_scheduler == nullptr)) {
+  if (ADB_UNLIKELY(_acceptanceQueue == nullptr)) {
     // We are shutting down
     return;
   }
@@ -153,7 +153,7 @@ void SharedQueryState::queueHandler() {
   // already finished, the callback will simply do nothing and return
   // immediately. The callbackVersion allows us to realize that the captured
   // callback is no longer valid and simply return _without consuming a wakeup_.
-  bool queued = _scheduler->tryBoundedQueue(
+  bool queued = _acceptanceQueue->tryBoundedQueue(
       lane, [self = shared_from_this(), cb = _wakeupCallback,
              version = _callbackVersion]() {
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
@@ -190,8 +190,9 @@ void SharedQueryState::queueHandler() {
 }
 
 bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
-  if (_scheduler) {
-    return _scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
+  if (_acceptanceQueue) {
+    return _acceptanceQueue->tryBoundedQueue(RequestLane::CLUSTER_AQL,
+                                             std::move(cb));
   }
   return false;
 }

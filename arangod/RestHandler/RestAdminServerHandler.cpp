@@ -36,7 +36,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/ApiRecordingFeature.h"
-#include "Scheduler/Scheduler.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -145,14 +145,14 @@ void RestAdminServerHandler::handleAvailability() {
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT: {
       available = !server().isStopping();
-      Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      if (available && scheduler) {
+      AcceptanceQueue* aq = SchedulerFeature::ACCEPTANCE_QUEUE;
+      if (available && aq) {
         // if the scheduler's queue is more than x% full, render
         // the server unavailable
-        double unavailabilityFillGrade =
-            scheduler->unavailabilityQueueFillGrade();
+        double const unavailabilityFillGrade =
+            aq->unavailabilityQueueFillGrade();
         if (unavailabilityFillGrade > 0.0) {
-          double fillGrade = scheduler->approximateQueueFillGrade();
+          double fillGrade = aq->approximateQueueFillGrade();
           if (fillGrade >= unavailabilityFillGrade) {
             // oops, queue is relatively full
             available = false;
