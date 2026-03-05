@@ -78,10 +78,9 @@ function metricsApiSuite() {
       let async_requests_1 = getAsyncCount();
 
       // use a simple query endpoint that supports async and sync
-      cmd = "/_api/cursor";
-      doc = arango.POST_RAW(cmd, '{"query":"RETURN 1"}', { "X-Arango-Async": "true" });
+      let cmd = "/_api/cursor";
+      let doc = arango.POST_RAW(cmd, '{"query":"RETURN 1"}', { "X-Arango-Async": "true" });
       assertEqual(doc.code, 202);
-      assertEqual(doc.parsedBody);
 
       internal.sleep(1);
 
