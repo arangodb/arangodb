@@ -487,7 +487,8 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
     // If the parsed version is not supported or experimental we do NOT set
     // _requestedApiVersion or strip the prefix. This will cause the handler
     // lookup to fail and return a 404 Not Found
-    if (ApiVersion::isApiVersionSupported(version) || isExperimental) {
+    if (version < std::numeric_limits<uint32_t>::max() &&
+        (ApiVersion::isApiVersionSupported(version) || isExperimental)) {
       _requestedApiVersion = static_cast<uint32_t>(version);
       start = p + 1 + numEnd;  // advance past "/_arango/vX"
     }
