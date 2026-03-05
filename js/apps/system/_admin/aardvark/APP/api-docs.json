@@ -14,7 +14,7 @@
   },
   "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
   "title": "ArangoDB Core API",
-  "version": "3.12.8-devel"
+  "version": "3.12.8"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -307,7 +307,7 @@
   },
   "/_admin/cluster/health": {
    "get": {
-    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)\n    - `Host`: An optional string, specifying the host machine if known.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
+    "description": "Queries the health of the cluster as assessed by the supervision (Agency) for\nmonitoring purposes. The response is a JSON object, containing the standard\n`code`, `error`, `errorNum`, and `errorMessage` fields as appropriate.\nThe endpoint-specific fields are as follows:\n\n- `ClusterId`: A UUID string identifying the cluster\n- `Health`: An object containing a descriptive sub-object for each node in the cluster.\n  - `\u003cnodeID\u003e`: Each entry in `Health` will be keyed by the node ID and contain the following attributes:\n    - `Endpoint`: A string representing the network endpoint of the server.\n    - `Role`: The role the server plays. Possible values are `\"AGENT\"`, `\"COORDINATOR\"`, and `\"DBSERVER\"`.\n    - `CanBeDeleted`: Boolean representing whether the node can safely be removed from the cluster.\n    - `Version`: Version String of ArangoDB used by that node.\n    - `Engine`: Storage Engine used by that node.\n    - `Status`: A string indicating the health of the node as assessed by the supervision (Agency). This should be considered primary source of truth for Coordinator and DB-Servers node health. If the node is responding normally to requests, it is `\"GOOD\"`. If it has missed one heartbeat, it is `\"BAD\"`. If it has been declared failed by the supervision, which occurs after missing heartbeats for about 15 seconds, it will be marked `\"FAILED\"`.\n\n    Additionally it will also have the following attributes for:\n\n    **Coordinators** and **DB-Servers**\n    - `SyncStatus`: The last sync status reported by the node. This value is primarily used to determine the value of `Status`. Possible values include `\"UNKNOWN\"`, `\"UNDEFINED\"`, `\"STARTUP\"`, `\"STOPPING\"`, `\"STOPPED\"`, `\"SERVING\"`, `\"SHUTDOWN\"`.\n    - `LastAckedTime`: ISO 8601 timestamp specifying the last heartbeat received.\n    - `ShortName`: A string representing the shortname of the server, e.g. `\"Coordinator0001\"`.\n    - `Timestamp`: ISO 8601 timestamp specifying the last heartbeat received. (deprecated)\n    - `Host`: An optional string, specifying the host machine if known.\n    - `SyncTime`: ISO 8601 timestamp of the last sync time reported by the node.\n\n    **Coordinators** only\n    - `AdvertisedEndpoint`: A string representing the advertised endpoint, if set. (e.g. external IP address or load balancer, optional)\n\n    **Agents**\n    - `Leader`: ID of the Agent this node regards as leader.\n    - `Leading`: Whether this Agent is the leader (true) or not (false).\n    - `LastAckedTime`: Time since last `acked` in seconds.\n",
     "operationId": "getClusterHealth",
     "responses": {
      "200": {
@@ -3222,7 +3222,7 @@
   },
   "/_db/_system/_admin/options": {
    "get": {
-    "description": "Return the effective configuration of the queried _arangod_ instance as\nset by startup options on the command-line and via a configuration file.\n\n{{\u003c security \u003e}}\nThis endpoint may reveal sensitive information about the deployment!\n{{\u003c /security \u003e}}\n\nThe endpoint can only be accessed via the `_system` database.\nIn addition, the `--server.options-api` startup option controls the\nrequired privileges to access the option endpoints and allows you to\ndisable them entirely. The option can have the following values:\n- `disabled`: the option endpoints are disabled\n- `jwt`: the option endpoints can only be accessed using a superuser JWT (default)\n- `admin`: the option endpoints can only be accessed by users with\n  *Administrate* access level for the `_system` database\n- `public`: every user with access to the `_system` database can access\n  the option endpoints\n",
+    "description": "Return the effective configuration of the queried _arangod_ instance as\nset by startup options on the command-line and via a configuration file.\n\n{{\u003c security \u003e}}\nThis endpoint may reveal sensitive information about the deployment!\n{{\u003c /security \u003e}}\n\nThe endpoint can only be accessed via the `_system` database. In addition, the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\ncontrols the required privileges to access the option endpoints and allows\nyou to disable them entirely. The option can have the following values:\n- `disabled`: This endpoint is disabled.\n- `jwt`: This endpoint can only be accessed using a superuser JWT (default).\n- `admin`: This endpoint can only be accessed by users with\n  write access to the `_system` database.\n- `public`: Every user with read access to the `_system` database can\n  access this endpoint.\n",
     "operationId": "getEffectiveStartupOptions",
     "responses": {
      "200": {
@@ -3234,6 +3234,114 @@
        }
       },
       "description": "An object with startup option names as keys and their effective\nvalue as values. The values can be of different data types, typically\nnumbers, strings, or arrays thereof.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You tried to authenticate with user credentials but a superuser token\ncreated from the JWT secret is required (`--server.options-api` set\nto `jwt`), you lack read access to the `_system` database\n(`--server.options-api` set to `public`), the credentials are wrong,\nor the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You don't have write access to the `_system` database\n(`--server.options-api` set to `admin`) or you tried to access the\nendpoint using a database other than `_system`.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
      }
     },
     "summary": "Get the startup option configuration",
@@ -3244,7 +3352,7 @@
   },
   "/_db/_system/_admin/options-description": {
    "get": {
-    "description": "Return the startup options available to configure the queried _arangod_\ninstance, similar to the `--dump-options` startup option.\n\nThe endpoint can only be accessed via the `_system` database.\nIn addition, the `--server.options-api` startup option controls the\nrequired privileges to access the option endpoints and allows you to\ndisable them entirely. The option can have the following values:\n- `disabled`: the option endpoints are disabled\n- `jwt`: the option endpoints can only be accessed using a superuser JWT (default)\n- `admin`: the option endpoints can be accessed by admin users in the `_system`\n  database only.\n- `public`: every user with access to the `_system` database can access\n  the option endpoints.\n",
+    "description": "Return the startup options available to configure the queried _arangod_\ninstance, similar to the `--dump-options` startup option.\n\nThe endpoint can only be accessed via the `_system` database. In addition, the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\ncontrols the required privileges to access the option endpoints and allows\nyou to disable them entirely. The option can have the following values:\n- `disabled`: This endpoint is disabled.\n- `jwt`: This endpoint can only be accessed using a superuser JWT (default).\n- `admin`: This endpoint can only be accessed by users with\n  write access to the `_system` database.\n- `public`: Every user with read access to the `_system` database can\n  access this endpoint.\n",
     "operationId": "getAvailableStartupOptions",
     "responses": {
      "200": {
@@ -3256,6 +3364,114 @@
        }
       },
       "description": "An object with startup option names as keys and sub-objects as values.\nThe structure of each sub-object is as follows:\n- `section` (string): The part before the dot of a startup option\n  (`--section.param`), or `\"\"` if it is a general option that doesn't\n  belong to a section\n- `description` (string): A succinct explanation of the startup option\n- `longDescription` (string, *optional*): Additional details about the\n  startup option if available\n- `category` (string): Either `\"option\"` for regular options or `\"command\"`\n  if using the option performs an action and then terminates the process\n- `hidden` (boolean): Whether the option is uncommon. If yes, then\n  the `--help` command does not list it, but `--help-all` lists every\n  startup option\n- `type` (string): the data type of the option, typically one of\n  `\"uint64\"`, `\"uint32\"`, `\"int64\"`, `\"int32\"`, `\"double\"`, `\"boolean\"`,\n  `\"string\"`, `\"string...\"`\n- `experimental` (boolean): Whether the option relates to a feature\n  that is not ready for production yet\n- `obsolete` (boolean): Whether the option has been deprecated and\n  no effect anymore\n- `enterpriseOnly` (boolean): Whether the option is implemented in\n  the non-public enterprise code.\n- `requiresValue` (boolean): Whether the option can be specified\n  without a value to enable it\n- `os` (array of strings): The operating systems the startup option\n  is supported on, always `[\"linux\"]`\n- `component` (array of strings): A list of server roles the startup\n  option is available on. If it is supported by all cluster node types\n  as well as the single server deployment mode, then the value is\n  `[\"coordinator\", \"dbserver\", \"agent\", \"single\"]`\n- `introducedIn` (array of strings\\|null): A list of versions the\n  startup option has been added in. Does not include later minor and\n  major versions then the current version, and the information may\n  get removed once all listed versions reach their end of life\n- `deprecatedIn` (array of strings\\|null): A list of versions the\n  startup option has been marked for deprecation in. It can still\n  be used until fully removed. Does not include later minor and\n  major versions then the current version, and the information may\n  get removed once all listed versions reach their end of life\n- `values` (string, *optional*):\n  A description of the possible values you can set\n- `default` (any, *optional*): The standard value if the option is not set\n- `dynamic` (boolean): Whether the default value is calculated based\n  on the target host configuration, e.g. available memory\n- `required` (boolean): Whether the option must be specified\n- `base` (number, *optional*): the unit for a numeric option\n- `minValue` (number, *optional*): The minimum value for a numeric option\n- `maxValue` (number, *optional*): The maximum value for a numeric option\n- `minInclusive` (boolean, *optional*): Whether the minimum value is\n  included in the allowed value range\n- `maxInclusive` (boolean, *optional*): Whether the maximum value is\n  included in the allowed value range\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You tried to authenticate with user credentials but a superuser token\nis required, the credentials are wrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "You don't have write access to the `_system` database or you tried\nto access the endpoint using a database other than `_system`.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
      }
     },
     "summary": "Get the available startup options",
@@ -3472,6 +3688,693 @@
      }
     },
     "summary": "List the endpoints of a single server (deprecated)",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/crashes": {
+   "get": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nReturn the list of crash dump directory identifiers (UUIDs).\n\nWhen the server crashes, the crash handler writes diagnostic data into\na per-crash directory under `\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`.\nEach dump includes information such as recent API calls and AQL queries,\na backtrace, and system information.\n\nThe server keeps the most recent 10 crash dumps. Older ones are removed\nduring startup.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "listCrashDumps",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "Array of crash dump identifiers (UUIDs).\n",
+           "items": {
+            "format": "uuid",
+            "type": "string"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returns a list of crash dump identifiers (UUIDs).\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "List crash dumps",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/crashes/{crashId}": {
+   "delete": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nDelete a specific crash dump directory and its contents. Crash dumps are\nstored under `\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`. The server keeps the\nmost recent 10 crash dumps. Older ones are removed during startup.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "deleteCrashDump",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The UUID of the crash dump directory to delete.\n",
+      "in": "path",
+      "name": "crashId",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "properties": {
+            "crashId": {
+             "format": "uuid",
+             "type": "string"
+            },
+            "deleted": {
+             "example": true,
+             "type": "boolean"
+            }
+           },
+           "required": [
+            "deleted",
+            "crashId"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash dump was deleted successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the crash dump folder based on the specified `crashId`\ncannot be found.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "Delete a crash dump",
+    "tags": [
+     "Administration"
+    ]
+   },
+   "get": {
+    "description": "\u003csmall\u003eIntroduced in: v3.12.8\u003c/small\u003e\n\nReturn the contents of a specific crash dump. The response includes all\nfiles from the crash directory (e.g. `backtrace.txt`, `system_info.txt`,\n`ApiRecording.json`, `AsyncRegistry.json`) as an object mapping filenames\nto their contents. Crash dumps are stored under\n`\u003cdatabase-directory\u003e/crashes/\u003cuuid\u003e/`.\n\nThis endpoint requires *administrate* access to the `_system` database.\n",
+    "operationId": "getCrashDump",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "The UUID of the crash dump directory.\n",
+      "in": "path",
+      "name": "crashId",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "properties": {
+            "crashId": {
+             "description": "The crash dump identifier (UUID).\n",
+             "format": "uuid",
+             "type": "string"
+            },
+            "files": {
+             "additionalProperties": {
+              "type": "string"
+             },
+             "description": "Object mapping file names to their contents (e.g.\n`backtrace.txt`, `system_info.txt`, `ApiRecording.json`,\n`Activities.json`, `AsyncRegistry.json`).\n",
+             "type": "object"
+            }
+           },
+           "required": [
+            "crashId",
+            "files"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returns the crash dump contents.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have at\nleast read access to the specified database, the credentials are\nwrong, or the user account is inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if authentication is enabled and the user does not have\nwrite access to the `_system` database.\n"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the crash dump folder based on the specified `crashId`\ncannot be found.\n"
+     },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 503,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The crash handler feature is not ready or has been disabled via the\n[`--crash-handler.enable-dumps` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--crash-handlerenable-dumps).\n"
+     }
+    },
+    "summary": "Get a crash dump",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/deployment/id": {
+   "get": {
+    "description": "Get the unique identifier of this ArangoDB deployment.\n",
+    "operationId": "getDeploymentId",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "id": {
+           "description": "The UUID that uniquely identifies the deployment.\n",
+           "format": "uuid",
+           "type": "string"
+          }
+         },
+         "required": [
+          "id"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The deployment ID has been retrieved successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The user account has insufficient permissions for the selected database.\n"
+     }
+    },
+    "summary": "Get the deployment ID",
     "tags": [
      "Administration"
     ]
@@ -3712,7 +4615,7 @@
   },
   "/_db/{database-name}/_admin/license": {
    "get": {
-    "description": "View the license information and status of an Enterprise Edition instance.\nCan be called on single servers, Coordinators, and DB-Servers.\n",
+    "description": "View the license information and status of the ArangoDB deployment.\n\nCan be called on single servers, Coordinators, and DB-Servers.\n\nIn the Community Edition before v3.12.5, only `{\"license\":\"none\"}`\nis returned.\n",
     "operationId": "getLicense",
     "parameters": [
      {
@@ -3796,16 +4699,15 @@
            "type": "string"
           },
           "license": {
-           "description": "The encrypted license key in Base64 encoding.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
+           "description": "The encrypted license key in Base64 encoding.\n\nThis attribute is only present if an Enterprise Edition license is applied\n(or has a value of `\"none\"` in the Community Edition before v3.12.5).\n",
            "example": "V0h/W...wEDw==",
            "type": "string"
           },
           "status": {
-           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is valid for more than 2 weeks.\n- `expiring`: The license is valid for less than 2 weeks.\n- `expired`: The license has expired. In this situation, no new\n  Enterprise Edition features can be utilized.\n- `read-only`: The license is expired over 2 weeks. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
+           "description": "The `status` attribute allows you to confirm the state of the\napplied license at a glance.\n\n- `good`: The license is still valid for more than a week.\n- `expiring`: The license is valid for less than a week.\n  This status is not applicable if you use license activation\n  (managed license, from v3.12.6 onward) rather than a license key,\n  in which case the transition is directly from `good` to\n  `read-only` when the activation expires.\n- `read-only`: The license has expired. The instance is now\n  restricted to read-only mode.\n\nThis attribute is only present if an Enterprise Edition license is applied.\n",
            "enum": [
             "good",
             "expiring",
-            "expired",
             "read-only"
            ],
            "example": "good",
@@ -3822,9 +4724,6 @@
            "type": "number"
           }
          },
-         "required": [
-          "upgrading"
-         ],
          "type": "object"
         }
        }
@@ -4062,6 +4961,138 @@
     "summary": "Get the metrics",
     "tags": [
      "Monitoring"
+    ]
+   }
+  },
+  "/_db/{database-name}/_admin/options-public": {
+   "get": {
+    "description": "Return a small, curated subset of the configured server startup options\nthat are safe to expose to any authenticated user with read access to the\nrequested database.\n\nAdministrative tools can use this endpoint to adapt their behavior to the server\nconfiguration. For example, they can show the valid range for `replicationFactor`\nwhen creating a collection, or respect `--database.extended-names` when\nvalidating names on the client-side.\n\nThis endpoint is available regardless of the\n[`--server.options-api` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--serveroptions-api)\nsetting, so that the Arango Data Platform web interface for instance can always\naccess the public options.\n",
+    "operationId": "getPublicStartupOptions",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "cluster.api-jwt-policy": {
+           "description": "The permissions required for accessing `/_admin/cluster/*` endpoints.\n",
+           "type": "string"
+          },
+          "cluster.max-number-of-shards": {
+           "description": "Maximum number of shards per collection.\n",
+           "type": "integer"
+          },
+          "cluster.max-replication-factor": {
+           "description": "Maximum replication factor for collections.\n",
+           "type": "integer"
+          },
+          "cluster.min-replication-factor": {
+           "description": "Minimum replication factor for collections.\n",
+           "type": "integer"
+          },
+          "database.extended-names": {
+           "description": "Whether the traditional or extended naming constraints\napply for collections, Views, etc.\n",
+           "type": "boolean"
+          },
+          "server.session-timeout": {
+           "description": "The timeout for JWT session tokens in seconds.\n",
+           "type": "number"
+          }
+         },
+         "type": "object"
+        }
+       }
+      },
+      "description": "An object with public startup option names as keys and their\neffective values.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Authentication is enabled and the user account you authenticated with\ndoesn't have at least read access to the specified database, the\ncredentials are wrong, or the user account is inactive.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned if the HTTP method is not `GET`.\n"
+     }
+    },
+    "summary": "Get the public startup option configuration",
+    "tags": [
+     "Administration"
     ]
    }
   },
@@ -14495,7 +15526,7 @@
         "schema": {
          "properties": {
           "name": {
-           "description": "will be `rocksdb`\n",
+           "description": "Always `rocksdb`.\n",
            "type": "string"
           }
          },
@@ -14506,10 +15537,153 @@
         }
        }
       },
-      "description": "is returned in all cases.\n"
+      "description": "Successfully retrieved storage engine name.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Missing read access to the given database.\n"
      }
     },
     "summary": "Get the storage engine type",
+    "tags": [
+     "Administration"
+    ]
+   }
+  },
+  "/_db/{database-name}/_api/engine/stats": {
+   "get": {
+    "description": "Returns detailed statistics related to the RocksDB storage engine activity,\nincluding figures about data size, cache usage, individual column families, etc.\n",
+    "operationId": "getEngineStats",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database. If the `--server.harden` startup option is enabled,\nadministrate access to the `_system` database is required.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "description": "A plethora of information about RocksDB.\n",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successfully retrieved the storage engine statistics.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The user account you authenticated with lacks read access to the\nspecified database, the credentials are wrong, or the user account\nis inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The `--server.harden` startup option is enabled but the user account\nyou authenticated with lacks write access to the `_system` database.\n"
+     }
+    },
+    "summary": "Get the storage engine statistics",
     "tags": [
      "Administration"
     ]
@@ -23454,14 +24628,28 @@
          "consolidationPolicy": {
           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
           "properties": {
+           "maxSkewThreshold": {
+            "default": 0.4,
+            "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
+           "minDeletionRatio": {
+            "default": 0.5,
+            "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
            "minScore": {
             "default": 0,
-            "description": "Filter out consolidation candidates with a score less than this.\n",
+            "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
             "type": "integer"
            },
            "segmentsBytesFloor": {
             "default": 25165824,
-            "description": "Defines the value (in bytes) to treat all smaller segments as equal for\nconsolidation selection.\n",
+            "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments as equal for\nconsolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
@@ -23471,17 +24659,17 @@
            },
            "segmentsMax": {
             "default": 200,
-            "description": "The maximum number of segments that are evaluated as candidates for\nconsolidation.\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as candidates for\nconsolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
             "default": 50,
-            "description": "The minimum number of segments that are evaluated as candidates for\nconsolidation.\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are evaluated as candidates for\nconsolidation.\n",
             "type": "integer"
            },
            "type": {
             "default": "tier",
-            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe supported types are:\n\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n",
+            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe supported types are:\n\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n",
             "type": "string"
            }
           },
@@ -24171,7 +25359,7 @@
             ]
            },
            "nLists": {
-            "description": "The number of Voronoi cells to partition the vector space\ninto, respectively the number of centroids in the index. What value to choose\ndepends on the data distribution and chosen metric. According to\n[The Faiss library paper](https://arxiv.org/abs/2401.08281), it should be\naround `15 * sqrt(N)` where `N` is the number of documents in the collection,\nrespectively the number of documents in the shard for cluster deployments.\nA bigger value produces more correct results but increases the training time\nand thus how long it takes to build the index. It cannot be bigger than the\nnumber of documents.\n",
+            "description": "The number of Voronoi cells to partition the vector space\ninto, respectively the number of centroids in the index. What value to choose\ndepends on the data distribution and chosen metric. According to\n[The Faiss library paper](https://arxiv.org/abs/2401.08281), it should scale\nsublinearly with the document count. The recommendation for ArangoDB is to use\napproximately `15 * sqrt(N)` where `N` is the number of documents in the collection,\nrespectively the number of documents in the shard for cluster deployments.\nA bigger value produces more correct results but increases the training time\nand thus how long it takes to build the index. It cannot be bigger than the\nnumber of documents.\n",
             "type": "integer"
            },
            "trainingIterations": {
@@ -24191,6 +25379,15 @@
           "default": false,
           "description": "Whether to create a sparse index that excludes documents with\nthe attribute for indexing missing or set to `null`. This\nattribute is defined by `fields`.\n",
           "type": "boolean"
+         },
+         "storedValues": {
+          "description": "Store additional attributes in the index (introduced in v3.12.7).\nUnlike with other index types, this is not for covering projections\nwith the index but for adding attributes that you filter on.\nThis lets you make the lookup in the vector index more efficient\nbecause it avoids materializing documents twice, once for the\nfiltering and once for the matches.\n\nThe maximum number of attributes that you can use in `storedValues` is 32.\n",
+          "items": {
+           "description": "A list of attribute paths. The `.` character denotes sub-attributes.\ntype: string\n",
+           "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
          },
          "type": {
           "description": "The index type. Needs to be `\"vector\"`.\n",
@@ -25667,7 +26864,7 @@
   },
   "/_db/{database-name}/_api/query/{query-id}": {
    "delete": {
-    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancelation point.\n",
+    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancellation point.\n",
     "operationId": "deleteAqlQuery",
     "parameters": [
      {
@@ -29007,16 +30204,30 @@
           "type": "integer"
          },
          "consolidationPolicy": {
-          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
+          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n  `minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
           "properties": {
+           "maxSkewThreshold": {
+            "default": 0.4,
+            "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
+           "minDeletionRatio": {
+            "default": 0.5,
+            "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
            "minScore": {
             "default": 0,
-            "description": "Filter out consolidation candidates with a score less than this.\n",
+            "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
             "type": "integer"
            },
            "segmentsBytesFloor": {
             "default": 25165824,
-            "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+            "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
@@ -29026,12 +30237,12 @@
            },
            "segmentsMax": {
             "default": 200,
-            "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
             "default": 50,
-            "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
            "threshold": {
@@ -29043,7 +30254,7 @@
            },
            "type": {
             "default": "tier",
-            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
             "enum": [
              "tier",
              "bytes_accum"
@@ -29198,14 +30409,26 @@
            "type": "integer"
           },
           "consolidationPolicy": {
-           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
+           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
            "properties": {
+            "maxSkewThreshold": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
+            "minDeletionRatio": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
             "minScore": {
-             "description": "Filter out consolidation candidates with a score less than this.\n",
+             "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
              "type": "integer"
             },
             "segmentsBytesFloor": {
-             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+             "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
              "type": "integer"
             },
             "segmentsBytesMax": {
@@ -29213,11 +30436,11 @@
              "type": "integer"
             },
             "segmentsMax": {
-             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
              "type": "integer"
             },
             "segmentsMin": {
-             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
              "type": "integer"
             },
             "threshold": {
@@ -29227,7 +30450,7 @@
              "type": "number"
             },
             "type": {
-             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
              "enum": [
               "tier",
               "bytes_accum"
@@ -30066,14 +31289,26 @@
            "type": "integer"
           },
           "consolidationPolicy": {
-           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
+           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
            "properties": {
+            "maxSkewThreshold": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
+            "minDeletionRatio": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
             "minScore": {
-             "description": "Filter out consolidation candidates with a score less than this.\n",
+             "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
              "type": "integer"
             },
             "segmentsBytesFloor": {
-             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+             "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
              "type": "integer"
             },
             "segmentsBytesMax": {
@@ -30081,11 +31316,11 @@
              "type": "integer"
             },
             "segmentsMax": {
-             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
              "type": "integer"
             },
             "segmentsMin": {
-             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
              "type": "integer"
             },
             "threshold": {
@@ -30095,7 +31330,7 @@
              "type": "number"
             },
             "type": {
-             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
              "enum": [
               "tier",
               "bytes_accum"
@@ -30366,16 +31601,30 @@
           "type": "integer"
          },
          "consolidationPolicy": {
-          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
+          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
           "properties": {
+           "maxSkewThreshold": {
+            "default": 0.4,
+            "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
+           "minDeletionRatio": {
+            "default": 0.5,
+            "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
            "minScore": {
             "default": 0,
-            "description": "Filter out consolidation candidates with a score less than this.\n",
+            "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
             "type": "integer"
            },
            "segmentsBytesFloor": {
             "default": 25165824,
-            "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+            "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
@@ -30385,12 +31634,12 @@
            },
            "segmentsMax": {
             "default": 200,
-            "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
             "default": 50,
-            "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
            "threshold": {
@@ -30401,7 +31650,7 @@
             "type": "number"
            },
            "type": {
-            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
             "enum": [
              "tier",
              "bytes_accum"
@@ -30443,14 +31692,26 @@
            "type": "integer"
           },
           "consolidationPolicy": {
-           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
+           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
            "properties": {
+            "maxSkewThreshold": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
+            "minDeletionRatio": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
             "minScore": {
-             "description": "Filter out consolidation candidates with a score less than this.\n",
+             "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
              "type": "integer"
             },
             "segmentsBytesFloor": {
-             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+             "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
              "type": "integer"
             },
             "segmentsBytesMax": {
@@ -30458,11 +31719,11 @@
              "type": "integer"
             },
             "segmentsMax": {
-             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
              "type": "integer"
             },
             "segmentsMin": {
-             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
              "type": "integer"
             },
             "threshold": {
@@ -30472,7 +31733,7 @@
              "type": "number"
             },
             "type": {
-             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
              "enum": [
               "tier",
               "bytes_accum"
@@ -30739,16 +32000,30 @@
           "type": "integer"
          },
          "consolidationPolicy": {
-          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
+          "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n\n_Background:_\n  With each ArangoDB transaction that inserts documents, one or more\n  ArangoSearch-internal segments get created.\n  Similarly, for removed documents, the segments that contain such documents\n  have these documents marked as 'deleted'.\n  Over time, this approach causes a lot of small and sparse segments to be\n  created.\n  A \"consolidation\" operation selects one or more segments and copies all of\n  their valid documents into a single new segment, thereby allowing the\n  search algorithm to perform more optimally and for extra file handles to be\n  released once old segments are no longer used.\n",
           "properties": {
+           "maxSkewThreshold": {
+            "default": 0.4,
+            "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
+           "minDeletionRatio": {
+            "default": 0.5,
+            "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+           },
            "minScore": {
             "default": 0,
-            "description": "Filter out consolidation candidates with a score less than this.\n",
+            "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
             "type": "integer"
            },
            "segmentsBytesFloor": {
             "default": 25165824,
-            "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+            "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
             "type": "integer"
            },
            "segmentsBytesMax": {
@@ -30758,12 +32033,12 @@
            },
            "segmentsMax": {
             "default": 200,
-            "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
             "type": "integer"
            },
            "segmentsMin": {
             "default": 50,
-            "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+            "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
             "type": "integer"
            },
            "threshold": {
@@ -30775,7 +32050,7 @@
            },
            "type": {
             "default": "tier",
-            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+            "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes. \n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
             "enum": [
              "tier",
              "bytes_accum"
@@ -30817,14 +32092,26 @@
            "type": "integer"
           },
           "consolidationPolicy": {
-           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
+           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
            "properties": {
+            "maxSkewThreshold": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
+            "minDeletionRatio": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
             "minScore": {
-             "description": "Filter out consolidation candidates with a score less than this.\n",
+             "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
              "type": "integer"
             },
             "segmentsBytesFloor": {
-             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+             "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
              "type": "integer"
             },
             "segmentsBytesMax": {
@@ -30832,11 +32119,11 @@
              "type": "integer"
             },
             "segmentsMax": {
-             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
              "type": "integer"
             },
             "segmentsMin": {
-             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
              "type": "integer"
             },
             "threshold": {
@@ -30846,7 +32133,7 @@
              "type": "number"
             },
             "type": {
-             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
              "enum": [
               "tier",
               "bytes_accum"
@@ -31684,14 +32971,26 @@
            "type": "integer"
           },
           "consolidationPolicy": {
-           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `segments*` and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
+           "description": "The consolidation policy to apply for selecting which segments should be merged.\n\n- If the `tier` type is used, then the `maxSkewThreshold`,\n`minDeletionRatio`, `segments*`, and `minScore` properties are available.\n- If the `bytes_accum` type is used, then the `threshold` property is available.\n",
            "properties": {
+            "maxSkewThreshold": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe skew describes how much segment files vary in file size. It is a number\nbetween `0.0` and `1.0` and is calculated by dividing the largest file size\nof a set of segment files by the total size. For example, the skew of a\n200 MiB, 300 MiB, and 500 MiB segment file is `0.5` (`500 / 1000`).\n\nA large `maxSkewThreshold` value allows merging large segment files with\nsmaller ones, consolidation occurs more frequently, and there are fewer\nsegment files on disk at all times. While this may potentially improve the\nread performance and use fewer file descriptors, frequent consolidations\ncause a higher write load and thus a higher write amplification.\n\nOn the other hand, a small threshold value triggers the consolidation only\nwhen there are a large number of segment files that don't vary in size a lot.\nConsolidation occurs less frequently, reducing the write amplification, but\nit can result in a greater number of segment files on disk.\n\nMultiple combinations of candidate segments are checked and the one with\nthe lowest skew value is selected for consolidation. The selection process\npicks the greatest number of segments that together have the lowest skew value\nwhile ensuring that the size of the new consolidated segment remains under\nthe configured `segmentsBytesMax`.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
+            "minDeletionRatio": {
+             "description": "This option is available from v3.12.7 onward:\n\nThe `minDeletionRatio` represents the minimum required deletion ratio\nin one or more segments to perform a cleanup of those segments.\nIt is a number between `0.0` and `1.0`.\n\nThe deletion ratio is the percentage of deleted documents across one or\nmore segment files and is calculated by dividing the number of deleted\ndocuments by the total number of documents in a segment or a group of\nsegments. For example, if there is a segment with 1000 documents of which\n300 are deleted and another segment with 1000 documents of which 700 are\ndeleted, the deletion ratio is `0.5` (50%, calculated as `1000 / 2000`).\n\nThe `minDeletionRatio` threshold must be carefully selected. A smaller\nvalue leads to earlier cleanup of deleted documents from segments and\nthus reclamation of disk space but it generates a higher write load.\nA very large value lowers the write amplification but at the same time\nthe system can be left with a large number of segment files with a high\npercentage of deleted documents that occupy disk space unnecessarily.\n\nDuring cleanup, the segment files are first arranged in decreasing\norder of their individual deletion ratios. Then the largest subset of\nsegments whose collective deletion ratio is greater than or equal to\n`minDeletionRatio` is picked.\n",
+             "maximum": 1,
+             "minimum": 0,
+             "type": "number"
+            },
             "minScore": {
-             "description": "Filter out consolidation candidates with a score less than this.\n",
+             "description": "This option is only available up to v3.12.6:\n\nFilter out consolidation candidates with a score less than this.\n",
              "type": "integer"
             },
             "segmentsBytesFloor": {
-             "description": "Defines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
+             "description": "This option is only available up to v3.12.6:\n\nDefines the value (in bytes) to treat all smaller segments\nas equal for consolidation selection.\n",
              "type": "integer"
             },
             "segmentsBytesMax": {
@@ -31699,11 +32998,11 @@
              "type": "integer"
             },
             "segmentsMax": {
-             "description": "The maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe maximum number of segments that are evaluated as\ncandidates for consolidation.\n",
              "type": "integer"
             },
             "segmentsMin": {
-             "description": "The minimum number of segments that are\nevaluated as candidates for consolidation\n",
+             "description": "This option is only available up to v3.12.6:\n\nThe minimum number of segments that are\nevaluated as candidates for consolidation\n",
              "type": "integer"
             },
             "threshold": {
@@ -31713,7 +33012,7 @@
              "type": "number"
             },
             "type": {
-             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
+             "description": "The segment candidates for the \"consolidation\" operation are selected based\nupon several possible configurable formulas as defined by their types.\nThe currently supported types are:\n- `\"tier\"`: consolidate based on segment byte size skew and live\n  document count as dictated by the customization attributes.\n- `\"bytes_accum\"`: consolidate if and only if\n  `{threshold} \u003e (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`\n  i.e. the sum of all candidate segment byte size is less than the total\n  segment byte size multiplied by the `{threshold}`.\n",
              "enum": [
               "tier",
               "bytes_accum"
@@ -32299,6 +33598,196 @@
     "summary": "Tail recent server operations",
     "tags": [
      "Replication"
+    ]
+   }
+  },
+  "/_db/{database-name}/_arango/experimental/_admin/activities": {
+   "get": {
+    "description": "\u003e **WARNING:**\nThe activities API is incomplete and thus an experimental feature.\n\n\nReturns the list of activities currently in progress on the server.\nEach activity has an identifier, a type (e.g. `RestHandler`, `AQLQuery`),\nan optional parent reference, and a `metadata` object. The structure of\n`metadata` depends on the activity type and may be extended in future\nversions.\n\nThe permissions required to use the endpoint depend on the\n[`--activities.only-superuser-enabled` startup option](https://docs.arango.ai/arangodb/3.12/components/arangodb-server/options/#--activitiesonly-superuser-enabled).\nBy default, *administrate* access for the `_system` database is\nsufficient. If the startup option is enabled, the endpoint is restricted\nto the superuser and you therefore need to authenticate with a token\ncreated from the JWT secret.\n",
+    "operationId": "getActivities",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and write access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "activities": {
+           "description": "Array of activity objects currently in progress.\n",
+           "items": {
+            "properties": {
+             "id": {
+              "description": "Unique identifier of the activity (opaque string).\n",
+              "example": "0x7ec9c067a7c0",
+              "type": "string"
+             },
+             "metadata": {
+              "description": "Type-specific details for this activity. The shape of\nthis object depends on the activity type and is\nintentionally left flexible so the feature can grow\nwithout breaking the API. Do not rely on a fixed schema.\n",
+              "type": "object"
+             },
+             "parent": {
+              "description": "The parent activity, if any. Use `id` to correlate\nwith another entry in the list. The value `\"0x0\"` means no parent.\n",
+              "properties": {
+               "id": {
+                "description": "Identifier of the parent activity.\n",
+                "example": "0x0",
+                "type": "string"
+               }
+              },
+              "required": [
+               "id"
+              ],
+              "type": "object"
+             },
+             "type": {
+              "description": "The kind of activity (e.g. `RestHandler`, `AQLQuery`).\n",
+              "example": "RestHandler",
+              "type": "string"
+             }
+            },
+            "required": [
+             "id",
+             "type",
+             "parent",
+             "metadata"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "activities"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The list of activities was returned successfully.\n"
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 401,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The user account you authenticated with lacks read access for the\nspecified database, the credentials are wrong, or the user account\nis inactive.\n"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The request is not authorized due to a lack of permissions.\nThe reason depends on the setting of the\n`--activities.only-superuser-enabled` startup option:\n\n- `false`: The endpoint is restricted to admin users but the\n  user account you authenticated with lacks write access to the\n  `_system` database.\n- `true`: The endpoint is restricted to the superuser but you didn't\n  authenticate with a token created from the JWT secret.\n"
+     },
+     "405": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 405,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when an HTTP method other than `GET` is used.\n"
+     }
+    },
+    "summary": "Get the activities (experimental)",
+    "tags": [
+     "Monitoring"
     ]
    }
   },
