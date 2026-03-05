@@ -32,7 +32,7 @@
 #include <string_view>
 #include <utility>
 
-#include "Activities/registry.h"
+#include "Activities/Registry.h"
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
@@ -176,7 +176,7 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
     LogContext _logContext;
-    activities::ActivityId _currentlyExecutingActivity;
+    activities::ActivityHandle _currentlyExecutingActivity;
   };
 
  protected:
@@ -207,7 +207,7 @@ class Scheduler {
 
    private:
     LogContext logContext;
-    activities::ActivityId currentlyExecutingActivity;
+    activities::ActivityHandle currentlyExecutingActivity;
   };
 
  public:

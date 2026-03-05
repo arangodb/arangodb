@@ -25,7 +25,7 @@
 
 #include "CommTask.h"
 
-#include "Activities/registry.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
 #include "Basics/EncodingUtils.h"
@@ -182,13 +182,6 @@ CommTask::Flow CommTask::prepareExecution(
     return !ServerState::isCoordinatorId(_requestSource) &&
            !ServerState::isDBServerId(_requestSource);
   });
-
-  // Detect and strip API version prefix (/_arango/vX or /_arango/experimental)
-  if (Result res = req.detectAndStripApiVersion(); res.fail()) {
-    sendErrorResponse(rest::ResponseCode::BAD, req.contentTypeResponse(),
-                      req.messageId(), res.errorNumber(), res.errorMessage());
-    return Flow::Abort;
-  }
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -459,7 +452,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   auto activityGuard = activities::Registry::ScopedCurrentlyExecutingActivity(
-      handler->_activity->id());
+      handler->_activity);
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase

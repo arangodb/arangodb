@@ -94,7 +94,8 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
               }
               // Search InputRow
               RegisterId const& regId = _regs[i];
-              TRI_ASSERT(regId < _input.getNumRegisters());
+              TRI_ASSERT(regId.isConstRegister() ||
+                         regId < _input.getNumRegisters());
               return _input.getValue(regId).clone();
             } else {
               if (i == _vertexVarIdx) {
@@ -108,7 +109,8 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
               }
               // Search InputRow
               RegisterId const& regId = _regs[i];
-              TRI_ASSERT(regId < _input.getNumRegisters());
+              TRI_ASSERT(regId.isConstRegister() ||
+                         regId < _input.getNumRegisters());
               return _input.getValue(regId);
             }
           }
