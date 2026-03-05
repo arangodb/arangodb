@@ -42,6 +42,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -127,6 +128,15 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
         true /* faiss owns the inverted list */);
 
     setBuildState(VectorIndexBuildState::kReady);
+  } else {
+    // Seed _documentCount from the collection's persisted document count so
+    // that after a restart an untrained index can still trigger training
+    // without requiring the full threshold of new inserts.
+    auto const* physical =
+        static_cast<RocksDBMetaCollection const*>(coll.getPhysical());
+    _documentCount.store(
+        static_cast<std::int64_t>(physical->meta().numberDocuments()),
+        std::memory_order_relaxed);
   }
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minumum number of documents to train the vector index, but that
@@ -305,6 +315,9 @@ void RocksDBVectorIndex::tryBuilding() {
       << " documents). Starting deferred training.";
 
   _buildThread = std::jthread([this] {
+#ifdef TRI_HAVE_SYS_PRCTL_H
+    pthread_setname_np(pthread_self(), "VectorIdxBuild");
+#endif
     auto const indexId = id().id();
     try {
       vector::VectorIndexBuildManager builder(*this);
@@ -312,7 +325,7 @@ void RocksDBVectorIndex::tryBuilding() {
         LOG_TOPIC("e164b", ERR, Logger::ENGINES)
             << "[index=" << indexId
             << "] Vector build failed: " << res.errorMessage();
-        this->setBuildState(VectorIndexBuildState::kUninitialized);
+        this->resetTrainingState();
         return;
       }
       this->setBuildState(VectorIndexBuildState::kReady);
@@ -320,20 +333,23 @@ void RocksDBVectorIndex::tryBuilding() {
       LOG_TOPIC("e164c", ERR, Logger::ENGINES)
           << "[index=" << indexId
           << "] Vector build thread exception: " << ex.what();
-      this->setBuildState(VectorIndexBuildState::kUninitialized);
+      this->resetTrainingState();
     } catch (...) {
       LOG_TOPIC("e164d", ERR, Logger::ENGINES)
           << "[index=" << indexId << "] Vector build thread unknown exception";
-      this->setBuildState(VectorIndexBuildState::kUninitialized);
+      this->resetTrainingState();
     }
   });
-#ifdef TRI_HAVE_SYS_PRCTL_H
-  pthread_setname_np(_buildThread.native_handle(), "VectorIndexBuilder");
-#endif
 }
 
 void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
   _buildState.store(state);
+}
+
+void RocksDBVectorIndex::resetTrainingState() noexcept {
+  _faissIndex.reset();
+  _trainedData.reset();
+  setBuildState(VectorIndexBuildState::kUninitialized);
 }
 
 /// @brief inserts a document into the index

@@ -136,6 +136,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// @brief Try to build the index if the training threshold is reached.
   void tryBuilding();
 
+  /// @brief Clear trained data and FAISS index on build failure so that
+  /// stale training state is not accidentally persisted.
+  void resetTrainingState() noexcept;
+
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
   bruteForceSearch(
       std::vector<float>& inputs, std::size_t topK, transaction::Methods* trx,
