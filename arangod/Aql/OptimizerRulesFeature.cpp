@@ -27,6 +27,7 @@
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesSubqueryStructure.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
 #include "Basics/Exceptions.h"
