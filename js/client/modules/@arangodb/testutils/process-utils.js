@@ -73,34 +73,12 @@ let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
 
-let BIN_DIR;
-let ARANGOBACKUP_BIN;
-let ARANGODUMP_BIN;
-let ARANGOD_BIN;
-let ARANGOIMPORT_BIN;
-let ARANGORESTORE_BIN;
-let ARANGOEXPORT_BIN;
-let ARANGOSH_BIN;
-let ARANGO_SECURE_INSTALLATION_BIN;
-let CONFIG_ARANGODB_DIR;
-let CONFIG_RELATIVE_DIR;
-let CONFIG_DIR;
-let JS_DIR;
-let JS_ENTERPRISE_DIR;
-let LOGS_DIR;
-let UNITTESTS_DIR;
+let binaries = [];
+let currentBinarySet = 0;
 
-const TOP_DIR = (function findTopDir () {
-  const topDir = fs.normalize(fs.makeAbsolute('.'));
-
-  if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('client-tools') && !fs.exists('tests')) {
-    throw new Error('Must be in ArangoDB topdir to execute tests.');
-  }
-
-  return topDir;
-}());
-
+function switchBinarySet(which) {
+  currentBinarySet = which;
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -108,73 +86,92 @@ const TOP_DIR = (function findTopDir () {
 // //////////////////////////////////////////////////////////////////////////////
 
 function setupBinaries (options) {
-  if (options.build === '') {
-    if (fs.exists('build') && fs.exists(fs.join('build', 'bin'))) {
-      options.build = 'build';
-    } else if (fs.exists('bin')) {
-      options.build = '.';
+  function setupOneSet(directory, bin_dir) {
+    let oneSet = {};
+
+    oneSet.BIN_DIR = bin_dir;
+    if (fs.exists(fs.join(directory, oneSet.BIN_DIR))) {
+      oneSet.BIN_DIR = fs.join(directory, oneSet.BIN_DIR);
+      if (fs.exists(fs.join(oneSet.BIN_DIR, "bin"))) {
+        oneSet.BIN_DIR = fs.join(oneSet.BIN_DIR, "bin");
+      }
+    } else if (fs.exists(fs.join(directory, "bin"))) {
+      oneSet.BIN_DIR = fs.join(directory, 'bin');
+    } else if (fs.exists(fs.join(oneSet.BIN_DIR, 'bin'))) {
+      oneSet.BIN_DIR = fs.join(oneSet.BIN_DIR, 'bin');
     } else {
-      print('FATAL: cannot find binaries, use "--build"\n');
-
-      return {
-        status: false
-      };
+      oneSet.BIN_DIR = fs.makeAbsolute(oneSet.BIN_DIR);
     }
-  }
-
-  BIN_DIR = fs.join(options.build, 'bin');
-  if (!fs.exists(BIN_DIR)) {
-    BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
-  }
-
-  if (!fs.exists(BIN_DIR)) {
-    BIN_DIR = fs.join(TOP_DIR, 'bin');
-  }
-
-  UNITTESTS_DIR = fs.join(fs.join(options.build, 'tests'));
-  if (!fs.exists(UNITTESTS_DIR)) {
-    UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
-  }
-
-  ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
-  ARANGODUMP_BIN = fs.join(BIN_DIR, 'arangodump' + executableExt);
-  ARANGOD_BIN = fs.join(BIN_DIR, 'arangod' + executableExt);
-  ARANGOIMPORT_BIN = fs.join(BIN_DIR, 'arangoimport' + executableExt);
-  ARANGORESTORE_BIN = fs.join(BIN_DIR, 'arangorestore' + executableExt);
-  ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
-  ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
-  ARANGO_SECURE_INSTALLATION_BIN = fs.join(BIN_DIR, 'arango-secure-installation' + executableExt);
-
-  CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
-  if (!fs.exists(CONFIG_ARANGODB_DIR)) {
-    CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
-  }
-
-  CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
-  CONFIG_DIR = fs.join(TOP_DIR, options.configDir);
-
-  JS_DIR = fs.join(TOP_DIR, 'js');
-  JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
-
-  LOGS_DIR = fs.join(TOP_DIR, 'logs');
-
-  let checkFiles = [
-    ARANGODUMP_BIN,
-    ARANGOD_BIN,
-    ARANGOIMPORT_BIN,
-    ARANGORESTORE_BIN,
-    ARANGOBACKUP_BIN,
-    ARANGOEXPORT_BIN,
-    ARANGOSH_BIN
-  ];
-
-  checkFiles.forEach((file) => {
-    if (!fs.isFile(file)) {
-      throw new Error('unable to locate ' + file);
+    oneSet.TOP_DIR = directory;
+    oneSet.UNITTESTS_DIR = fs.join(fs.join(options.build, 'tests'));
+    if (!fs.exists(oneSet.UNITTESTS_DIR)) {
+      oneSet.UNITTESTS_DIR = fs.join(directory, oneSet.UNITTESTS_DIR);
     }
-  });
 
-  global.ARANGOSH_BIN = ARANGOSH_BIN;
+    oneSet.ARANGOBACKUP_BIN = fs.join(oneSet.BIN_DIR, 'arangobackup' + executableExt);
+    oneSet.ARANGOBENCH_BIN = fs.join(oneSet.BIN_DIR, 'arangobench' + executableExt);
+    oneSet.ARANGODUMP_BIN = fs.join(oneSet.BIN_DIR, 'arangodump' + executableExt);
+    oneSet.ARANGOD_BIN = fs.join(oneSet.BIN_DIR, 'arangod' + executableExt);
+    oneSet.ARANGOIMPORT_BIN = fs.join(oneSet.BIN_DIR, 'arangoimport' + executableExt);
+    oneSet.ARANGORESTORE_BIN = fs.join(oneSet.BIN_DIR, 'arangorestore' + executableExt);
+    oneSet.ARANGOEXPORT_BIN = fs.join(oneSet.BIN_DIR, 'arangoexport' + executableExt);
+    oneSet.ARANGOSH_BIN = fs.join(oneSet.BIN_DIR, 'arangosh' + executableExt);
+    oneSet.ARANGO_SECURE_INSTALLATION_BIN = fs.join(oneSet.BIN_DIR, 'arango-secure-installation' + executableExt);
+
+    oneSet.CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
+    if (!fs.exists(oneSet.CONFIG_ARANGODB_DIR)) {
+      oneSet.CONFIG_ARANGODB_DIR = fs.join(directory, oneSet.CONFIG_ARANGODB_DIR);
+    }
+
+    oneSet.CONFIG_RELATIVE_DIR = fs.join(directory, 'etc', 'relative');
+    oneSet.CONFIG_DIR = fs.join(directory, options.configDir);
+
+    oneSet.JS_DIR = fs.join(directory, 'js');
+    oneSet.JS_ENTERPRISE_DIR = fs.join(directory, 'enterprise/js');
+
+    oneSet.LOGS_DIR = fs.join(directory, 'logs');
+
+    let checkFiles = [
+      oneSet.ARANGOBENCH_BIN,
+      oneSet.ARANGODUMP_BIN,
+      oneSet.ARANGOD_BIN,
+      oneSet.ARANGOIMPORT_BIN,
+      oneSet.ARANGORESTORE_BIN,
+      oneSet.ARANGOBACKUP_BIN,
+      oneSet.ARANGOEXPORT_BIN,
+      oneSet.ARANGOSH_BIN
+    ];
+
+    checkFiles.forEach((file) => {
+      if (!fs.isFile(file)) {
+        throw new Error('unable to locate ' + file);
+      }
+    });
+
+    global.ARANGOSH_BIN = oneSet.ARANGOSH_BIN;
+    return oneSet;
+  }
+  if (options.oldSource !== undefined) {
+    let oldSource = fs.makeAbsolute(options.oldSource);
+    let oldBin = '';
+    if (fs.exists(fs.join(oldSource, 'build')) && fs.exists(fs.join(oldSource, 'build', 'bin'))) {
+      oldBin = 'build';
+    }
+    binaries.push(setupOneSet(oldSource, oldBin));
+  }
+  if (options.build === '') {
+    print('FATAL: cannot find binaries, use "--build"\n');
+    return {
+      status: false
+    };
+  }
+  const topDir = fs.normalize(fs.makeAbsolute('.'));
+  if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
+    !fs.exists('client-tools') && !fs.exists('tests')) {
+    throw new Error('Must be in ArangoDB topdir to execute tests.');
+  }
+
+  binaries.push(setupOneSet(topDir, options.build));
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -470,34 +467,43 @@ exports.killRemainingProcesses = killRemainingProcesses;
 
 exports.executableExt = executableExt;
 
+exports.switchBinarySet = switchBinarySet;
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
-Object.defineProperty(exports, 'JS_DIR', {get: () => JS_DIR});
-Object.defineProperty(exports, 'JS_ENTERPRISE_DIR', {get: () => JS_ENTERPRISE_DIR});
-Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
-Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});
-Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => ARANGOD_BIN});
-Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => ARANGOEXPORT_BIN});
-Object.defineProperty(exports, 'ARANGOIMPORT_BIN', {get: () => ARANGOIMPORT_BIN});
-Object.defineProperty(exports, 'ARANGORESTORE_BIN', {get: () => ARANGORESTORE_BIN});
-Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
-Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => ARANGO_SECURE_INSTALLATION_BIN});
-Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
-Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
-Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});
-Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
-Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
-Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
-Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
+Object.defineProperty(exports, 'JS_DIR', {get: () => binaries[currentBinarySet].JS_DIR});
+Object.defineProperty(exports, 'JS_ENTERPRISE_DIR', {get: () => binaries[currentBinarySet].JS_ENTERPRISE_DIR});
+Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => binaries[currentBinarySet].ARANGOBACKUP_BIN});
+Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => binaries[currentBinarySet].ARANGODUMP_BIN});
+Object.defineProperty(exports, 'ARANGOD_BIN', {get: () => binaries[currentBinarySet].ARANGOD_BIN});
+Object.defineProperty(exports, 'ARANGOEXPORT_BIN', {get: () => binaries[currentBinarySet].ARANGOEXPORT_BIN});
+Object.defineProperty(exports, 'ARANGOIMPORT_BIN', {get: () => binaries[currentBinarySet].ARANGOIMPORT_BIN});
+Object.defineProperty(exports, 'ARANGORESTORE_BIN', {get: () => binaries[currentBinarySet].ARANGORESTORE_BIN});
+Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => binaries[currentBinarySet].ARANGOSH_BIN});
+Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => binaries[currentBinarySet].ARANGO_SECURE_INSTALLATION_BIN});
+Object.defineProperty(exports, 'CONFIG_DIR', {get: () => binaries[currentBinarySet].CONFIG_DIR});
+Object.defineProperty(exports, 'TOP_DIR', {get: () => binaries[currentBinarySet].TOP_DIR});
+Object.defineProperty(exports, 'LOGS_DIR', {get: () => binaries[currentBinarySet].LOGS_DIR});
+Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => binaries[currentBinarySet].UNITTESTS_DIR});
+Object.defineProperty(exports, 'BIN_DIR', {get: () => binaries[currentBinarySet].BIN_DIR});
+Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => binaries[currentBinarySet].CONFIG_ARANGODB_DIR});
+Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => binaries[currentBinarySet].CONFIG_RELATIVE_DIR});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'build': '',
+    'oldSource': undefined,
     'configDir': 'etc/testing',
   });
 
+  if (fs.exists('build') && fs.exists('build/bin')) {
+    optionsDefaults.build = 'build';
+  } else if (fs.exists('bin')) {
+    optionsDefaults.build = 'bin';
+  }
+
   tu.CopyIntoList(optionsDocumentation, [
     ' Environment options:',
+    '   - `oldSource`: if we launch two set of binaries, the other source directory',
     '   - `build`: the directory containing the binaries',
     '   - `configDir`: the directory containing the config files, defaults to',
     '                  etc/testing',

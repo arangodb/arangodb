@@ -129,9 +129,9 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
         command += `
 c.insert({ _key: "done${i}", value: true });
 `;
-        clients.push({client: launchPlainSnippetInBG(
+        clients.push(launchPlainSnippetInBG(
           command, 
-          `testCreateDropInParallel${i}`)});
+          `testCreateDropInParallel${i}`));
       }
 
       // wait for the shells to complete

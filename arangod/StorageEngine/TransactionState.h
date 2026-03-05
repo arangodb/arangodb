@@ -73,6 +73,11 @@ class CollectionNameResolver;
 struct ResourceMonitor;
 
 namespace transaction {
+
+namespace activity {
+struct TransactionActivity;
+}
+
 class CounterGuard;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class HistoryEntry;
@@ -512,6 +517,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   // number of times the metrics have been increased since the metrics
   // were last published
   size_t _shardBytesUnpublishedEvents = 0;
+
+  std::shared_ptr<transaction::activity::TransactionActivity> _activity;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

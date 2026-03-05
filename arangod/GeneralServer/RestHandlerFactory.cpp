@@ -30,6 +30,8 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -67,8 +69,10 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     errorBuilder.add("error", VPackValue(true));
     errorBuilder.add("code", VPackValue(404));
     errorBuilder.add("errorNum", VPackValue(404));
-    errorBuilder.add("errorMessage", VPackValue("unknown API version '" +
-                                                req->fullUrl() + "'"));
+    errorBuilder.add("errorMessage",
+                     VPackValue(absl::StrCat(
+                         "unknown API version ", std::to_string(apiVersion),
+                         " for path '", req->fullUrl(), "'")));
     errorBuilder.close();
 
     return nullptr;

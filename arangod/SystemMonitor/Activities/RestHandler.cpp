@@ -23,6 +23,7 @@
 #include "RestHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Rest/ApiVersion.h"
 
 using namespace arangodb;
 using namespace arangodb::activities;
@@ -59,11 +60,19 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     co_return;
   }
 
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("activities", _feature.getData().slice());
-  builder.close();
+  switch (_request->requestedApiVersion()) {
+    case ApiVersion::experimentalApiVersion: {
+      VPackBuilder builder;
+      builder.openObject();
+      builder.add("activities", _feature.getData().slice());
+      builder.close();
 
-  generateResult(rest::ResponseCode::OK, builder.slice());
+      generateResult(rest::ResponseCode::OK, builder.slice());
+    } break;
+    default: {
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    } break;
+  }
   co_return;
 }
