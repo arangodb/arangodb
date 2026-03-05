@@ -151,7 +151,10 @@ defmodule Toast.Deployment.Factory do
 
   defp build_cluster_server(config, server_id, executable, repo_root, role, port, custom_args) do
     with {:ok, paths} <- Filesystem.create_server_dirs(config.work_dir, server_id) do
-      merged_args = Map.merge(build_server_args(config), custom_args)
+      merged_args =
+        build_server_args(config)
+        |> Map.merge(role_config_args(config, role))
+        |> Map.merge(custom_args)
       server_spec = %{role: role, port: port, args: merged_args}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
@@ -200,6 +203,10 @@ defmodule Toast.Deployment.Factory do
       "foxx.force-update-on-startup" => "true"
     }
   end
+
+  defp role_config_args(config, :coordinator), do: config.coordinator_args
+  defp role_config_args(config, :dbserver), do: config.dbserver_args
+  defp role_config_args(config, :agent), do: config.agent_args
 
   @spec build_server_args(Config.t()) :: %{String.t() => String.t() | [String.t()]}
   def build_server_args(config) do

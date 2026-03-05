@@ -10,15 +10,15 @@ defmodule ToastTest.Suite do
   @default_opts [
     mode: :auto,
     timeout: 3_600_000,
-    server_args: [],
-    coordinator_args: [],
-    dbserver_args: [],
-    agent_args: [],
+    server_args: %{},
+    coordinator_args: %{},
+    dbserver_args: %{},
+    agent_args: %{},
     between_tests: :default
   ]
 
   defmacro __using__(opts \\ []) do
-    merged = Keyword.merge(@default_opts, opts)
+    defaults = Macro.escape(@default_opts)
 
     # Don't use ExUnit.CaseTemplate here — its @before_compile hook
     # would override our __using__ macro definition.
@@ -26,7 +26,7 @@ defmodule ToastTest.Suite do
       @behaviour ToastTest.Suite
 
       @impl ToastTest.Suite
-      def deployment_config, do: unquote(merged)
+      def deployment_config, do: Keyword.merge(unquote(defaults), unquote(opts))
 
       defoverridable deployment_config: 0
 

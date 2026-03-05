@@ -16,10 +16,10 @@ defmodule ToastTest.SuiteTest do
       use ToastTest.Suite,
         mode: :cluster,
         timeout: 600_000,
-        server_args: ["--javascript.enabled", "true"],
-        coordinator_args: ["--extra", "coord"],
-        dbserver_args: ["--extra", "db"],
-        agent_args: ["--extra", "agent"],
+        server_args: %{"javascript.enabled" => "true"},
+        coordinator_args: %{"extra" => "coord"},
+        dbserver_args: %{"extra" => "db"},
+        agent_args: %{"extra" => "agent"},
         cluster_dbservers: 3,
         cluster_coordinators: 2
     end
@@ -27,10 +27,10 @@ defmodule ToastTest.SuiteTest do
     config = CustomSuite.deployment_config()
     assert Keyword.get(config, :mode) == :cluster
     assert Keyword.get(config, :timeout) == 600_000
-    assert Keyword.get(config, :server_args) == ["--javascript.enabled", "true"]
-    assert Keyword.get(config, :coordinator_args) == ["--extra", "coord"]
-    assert Keyword.get(config, :dbserver_args) == ["--extra", "db"]
-    assert Keyword.get(config, :agent_args) == ["--extra", "agent"]
+    assert Keyword.get(config, :server_args) == %{"javascript.enabled" => "true"}
+    assert Keyword.get(config, :coordinator_args) == %{"extra" => "coord"}
+    assert Keyword.get(config, :dbserver_args) == %{"extra" => "db"}
+    assert Keyword.get(config, :agent_args) == %{"extra" => "agent"}
     assert Keyword.get(config, :cluster_dbservers) == 3
     assert Keyword.get(config, :cluster_coordinators) == 2
   end
@@ -103,13 +103,13 @@ defmodule ToastTest.SuiteTest do
   test "role-specific args take precedence in merge" do
     defmodule MergeSuite do
       use ToastTest.Suite,
-        server_args: ["--common", "arg"],
-        coordinator_args: ["--coord-only", "yes"]
+        server_args: %{"common" => "arg"},
+        coordinator_args: %{"coord-only" => "yes"}
     end
 
     config = MergeSuite.deployment_config()
-    assert Keyword.get(config, :server_args) == ["--common", "arg"]
-    assert Keyword.get(config, :coordinator_args) == ["--coord-only", "yes"]
+    assert Keyword.get(config, :server_args) == %{"common" => "arg"}
+    assert Keyword.get(config, :coordinator_args) == %{"coord-only" => "yes"}
   end
 
   describe "setup_deployment/1 error handling" do
@@ -145,66 +145,64 @@ defmodule ToastTest.SuiteTest do
   end
 
   describe "server_args merged with global defaults" do
-    test "server_args defaults to empty list" do
+    test "server_args defaults to empty map" do
       defmodule DefaultArgsSuite do
         use ToastTest.Suite
       end
 
       config = DefaultArgsSuite.deployment_config()
-      assert Keyword.get(config, :server_args) == []
+      assert Keyword.get(config, :server_args) == %{}
     end
 
     test "server_args are preserved alongside role-specific args" do
       defmodule GlobalAndRoleSuite do
         use ToastTest.Suite,
-          server_args: ["--log.level", "debug", "--database.extended-names", "true"],
-          coordinator_args: ["--query.memory-limit", "1073741824"],
-          dbserver_args: ["--rocksdb.block-cache-size", "536870912"],
-          agent_args: ["--agency.compaction-step-size", "1000"]
+          server_args: %{"log.level" => "debug", "database.extended-names" => "true"},
+          coordinator_args: %{"query.memory-limit" => "1073741824"},
+          dbserver_args: %{"rocksdb.block-cache-size" => "536870912"},
+          agent_args: %{"agency.compaction-step-size" => "1000"}
       end
 
       config = GlobalAndRoleSuite.deployment_config()
 
-      assert Keyword.get(config, :server_args) == [
-               "--log.level",
-               "debug",
-               "--database.extended-names",
-               "true"
-             ]
+      assert Keyword.get(config, :server_args) == %{
+               "log.level" => "debug",
+               "database.extended-names" => "true"
+             }
 
-      assert Keyword.get(config, :coordinator_args) == ["--query.memory-limit", "1073741824"]
-      assert Keyword.get(config, :dbserver_args) == ["--rocksdb.block-cache-size", "536870912"]
-      assert Keyword.get(config, :agent_args) == ["--agency.compaction-step-size", "1000"]
+      assert Keyword.get(config, :coordinator_args) == %{"query.memory-limit" => "1073741824"}
+      assert Keyword.get(config, :dbserver_args) == %{"rocksdb.block-cache-size" => "536870912"}
+      assert Keyword.get(config, :agent_args) == %{"agency.compaction-step-size" => "1000"}
     end
   end
 
   describe "role-specific args apply only to their respective roles" do
-    test "each role-specific arg list is independent" do
+    test "each role-specific arg map is independent" do
       defmodule AllRolesSuite do
         use ToastTest.Suite,
-          server_args: ["--common"],
-          coordinator_args: ["--coord"],
-          dbserver_args: ["--db"],
-          agent_args: ["--agent"]
+          server_args: %{"common" => "val"},
+          coordinator_args: %{"coord" => "val"},
+          dbserver_args: %{"db" => "val"},
+          agent_args: %{"agent" => "val"}
       end
 
       config = AllRolesSuite.deployment_config()
-      assert Keyword.get(config, :server_args) == ["--common"]
-      assert Keyword.get(config, :coordinator_args) == ["--coord"]
-      assert Keyword.get(config, :dbserver_args) == ["--db"]
-      assert Keyword.get(config, :agent_args) == ["--agent"]
+      assert Keyword.get(config, :server_args) == %{"common" => "val"}
+      assert Keyword.get(config, :coordinator_args) == %{"coord" => "val"}
+      assert Keyword.get(config, :dbserver_args) == %{"db" => "val"}
+      assert Keyword.get(config, :agent_args) == %{"agent" => "val"}
     end
 
-    test "omitted role args default to empty list" do
+    test "omitted role args default to empty map" do
       defmodule CoordOnlySuite do
         use ToastTest.Suite,
-          coordinator_args: ["--coord-flag", "on"]
+          coordinator_args: %{"coord-flag" => "on"}
       end
 
       config = CoordOnlySuite.deployment_config()
-      assert Keyword.get(config, :coordinator_args) == ["--coord-flag", "on"]
-      assert Keyword.get(config, :dbserver_args) == []
-      assert Keyword.get(config, :agent_args) == []
+      assert Keyword.get(config, :coordinator_args) == %{"coord-flag" => "on"}
+      assert Keyword.get(config, :dbserver_args) == %{}
+      assert Keyword.get(config, :agent_args) == %{}
     end
   end
 end

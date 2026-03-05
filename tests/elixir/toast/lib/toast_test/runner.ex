@@ -321,18 +321,19 @@ defmodule ToastTest.Runner do
   end
 
   defp build_deployment_opts(suite_config, global_opts) do
-    [
+    base = [
       on_crash: &ToastTest.CrashMonitor.handle_crash/2,
       on_event: &ToastTest.ProcessHistory.handle_event/1
     ]
-    |> Keyword.merge(
-      Keyword.take(suite_config, [
-        :server_args,
-        :coordinator_args,
-        :dbserver_args,
-        :agent_args
-      ])
-    )
+
+    suite_args =
+      for key <- [:server_args, :coordinator_args, :dbserver_args, :agent_args],
+          args = Keyword.get(suite_config, key, %{}),
+          args != %{},
+          do: {key, args}
+
+    base
+    |> Keyword.merge(suite_args)
     |> Keyword.merge(
       Keyword.take(global_opts, [
         :build_dir,

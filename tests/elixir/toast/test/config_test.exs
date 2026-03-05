@@ -209,6 +209,27 @@ defmodule Toast.ConfigTest do
 
       assert config.server_args == %{"log.level" => "debug"}
     end
+
+    test "role-specific args default to empty maps" do
+      config = Config.load()
+
+      assert config.coordinator_args == %{}
+      assert config.dbserver_args == %{}
+      assert config.agent_args == %{}
+    end
+
+    test "role-specific args pass through from opts" do
+      config =
+        Config.load(
+          coordinator_args: %{"query.memory-limit" => "1073741824"},
+          dbserver_args: %{"rocksdb.block-cache-size" => "536870912"},
+          agent_args: %{"agency.compaction-step-size" => "1000"}
+        )
+
+      assert config.coordinator_args == %{"query.memory-limit" => "1073741824"}
+      assert config.dbserver_args == %{"rocksdb.block-cache-size" => "536870912"}
+      assert config.agent_args == %{"agency.compaction-step-size" => "1000"}
+    end
   end
 
   describe "timeout_factor" do

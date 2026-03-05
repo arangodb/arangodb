@@ -3,13 +3,18 @@ defmodule Toast.Config do
 
   require Logger
 
+  @type server_args_map :: %{String.t() => String.t() | [String.t()]}
+
   @type t :: %__MODULE__{
           build_dir: Path.t() | nil,
           work_dir: Path.t(),
           result_dir: Path.t(),
           deployment_mode: :single_server | :cluster,
           show_server_logs: boolean(),
-          server_args: %{String.t() => String.t() | [String.t()]},
+          server_args: server_args_map(),
+          coordinator_args: server_args_map(),
+          dbserver_args: server_args_map(),
+          agent_args: server_args_map(),
           global_timeout: pos_integer(),
           test_timeout: pos_integer(),
           startup_timeout: pos_integer(),
@@ -37,6 +42,9 @@ defmodule Toast.Config do
             deployment_mode: :single_server,
             show_server_logs: false,
             server_args: %{},
+            coordinator_args: %{},
+            dbserver_args: %{},
+            agent_args: %{},
             global_timeout: 3_600_000,
             test_timeout: 300_000,
             startup_timeout: 60_000,
@@ -97,6 +105,9 @@ defmodule Toast.Config do
           local[:show_server_logs]
         ),
       server_args: Keyword.get(opts, :server_args, local[:server_args]),
+      coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]),
+      dbserver_args: Keyword.get(opts, :dbserver_args, local[:dbserver_args]),
+      agent_args: Keyword.get(opts, :agent_args, local[:agent_args]),
       global_timeout:
         opt_or(
           opts,
