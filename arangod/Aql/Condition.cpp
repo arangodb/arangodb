@@ -1546,9 +1546,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
       continue;
     }
 
-    // Remove redundant true conditions
+    // Remove redundant true conditions, but keep at least one member.
+    // If all conditions are true (e.g. x NOT IN [] AND y NOT IN []),
+    // removing all would make andNumMembers==0 and incorrectly drop
+    // the entire AND branch from the OR, turning always-true into false.
     if (andNumMembers > 1) {
       for (size_t j = andNumMembers; j > 0; --j) {
+        if (andNumMembers == 1) {
+          break;
+        }
         auto op = andNode->getMemberUnchecked(j - 1);
 
         if (op->isTrue()) {

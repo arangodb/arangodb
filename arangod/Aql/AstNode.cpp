@@ -256,8 +256,12 @@ VPackValueType getNodeCompareType(AstNode const* node) noexcept {
     case NODE_TYPE_FCALL:
       return VPackValueType::Custom;
     case NODE_TYPE_SUBQUERY:
+      // Subqueries should not be compared structurally. We assert here to
+      // catch any caller that forgets to guard against subqueries, and return
+      // Custom so that in release builds they are routed to
+      // compareAstNodesComplexVPack, which compares them by pointer identity.
       TRI_ASSERT(false);
-      return VPackValueType::Null;
+      return VPackValueType::Custom;
     default:
       return VPackValueType::Custom;
   }

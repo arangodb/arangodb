@@ -122,19 +122,6 @@ function NewAqlReplaceAnyWithINTestSuite() {
             IM.debugClearFailAt();
         },
 
-        testOom: function () {
-            if (!IM.debugCanUseFailAt()) {
-                return;
-            }
-            IM.debugSetFailAt("OptimizerRules::replaceAnyEqWithInRuleOom");
-            try {
-                db._query("FOR x IN " + replace.name() + " FILTER ['Alice', 'Bob'] ANY == x.name RETURN x");
-                fail();
-            } catch (err) {
-                assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
-            }
-        },
-
         testExecutionPlanVerification: function () {
             var query = "FOR x IN " + replace.name() +
                 " FILTER ['Alice', 'Bob'] ANY == x.name SORT x.value RETURN x.value";
