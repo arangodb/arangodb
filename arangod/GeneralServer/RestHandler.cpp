@@ -683,6 +683,17 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
+// restrict the allowed HTTP methods for the request
+bool RestHandler::isAllowedHttpMethod(std::initializer_list<rest::RequestType> allowed) {
+  auto method = _request->requestType();
+  if (std::find(allowed.begin(), allowed.end(), method) != allowed.end()) {
+    return true; 
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return false;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------

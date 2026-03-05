@@ -38,9 +38,7 @@ RestTimeHandler::RestTimeHandler(
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTimeHandler::execute() {
-  if (_request->requestType() != RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  if (!isAllowedHttpMethod({RequestType::GET})) {
     return RestStatus::DONE;
   }
 

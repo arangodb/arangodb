@@ -59,9 +59,11 @@ function head_requestsSuite () {
       let cmd = "/_api/version";
       let doc = arango.HEAD_RAW(cmd);
 
-      // /_api/version is GET-only; POST must return 405
+      // /_api/version is GET-only; HEAD must return 405
       assertEqual(doc.code, 405);
       assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
+      assertEqual(doc.parsedBody, undefined);
+      assertCspHeaders(doc, "text/plain");
     },
 
     test_checks_whether_HEAD_returns_a_body_on_3xx: function() {
@@ -469,15 +471,18 @@ function API_versioningSuite () {
       assertEqual(doc.code, 405);
       assertTrue(doc.parsedBody.error);
       assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
+      assertCspHeaders(doc);
     },
 
     test_checks_version_endpoint_with_v1_prefix_rejects_HEAD_with_405: function() {
       let cmd = "/_arango/v1/_api/version";
       let doc = arango.HEAD_RAW(cmd);
 
-      // /_api/version is GET-only; POST must return 405
+      // /_api/version is GET-only; HEAD must return 405
       assertEqual(doc.code, 405);
       assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
+      assertEqual(doc.parsedBody, undefined);
+      assertCspHeaders(doc, "text/plain");
     },
 
     test_checks_version_endpoint_reports_requested_api_version_v1: function() {

@@ -89,7 +89,7 @@ function metricsApiSuite() {
       assertTrue(async_requests_2 >= async_requests_1 + 1,
         'async request should increase async counter: ' + async_requests_1 + ' -> ' + async_requests_2);
 
-      // same request without async header - synchronous, should return 200
+      // same request without async header - synchronous, should return 201
       cmd = "/_api/cursor";
       doc = arango.POST_RAW(cmd, '{"query":"RETURN 1"}');
       assertEqual(doc.code, 201);
