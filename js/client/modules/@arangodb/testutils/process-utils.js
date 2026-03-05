@@ -109,7 +109,6 @@ function setupBinaries (options) {
     }
 
     oneSet.ARANGOBACKUP_BIN = fs.join(oneSet.BIN_DIR, 'arangobackup' + executableExt);
-    oneSet.ARANGOBENCH_BIN = fs.join(oneSet.BIN_DIR, 'arangobench' + executableExt);
     oneSet.ARANGODUMP_BIN = fs.join(oneSet.BIN_DIR, 'arangodump' + executableExt);
     oneSet.ARANGOD_BIN = fs.join(oneSet.BIN_DIR, 'arangod' + executableExt);
     oneSet.ARANGOIMPORT_BIN = fs.join(oneSet.BIN_DIR, 'arangoimport' + executableExt);
@@ -132,7 +131,6 @@ function setupBinaries (options) {
     oneSet.LOGS_DIR = fs.join(directory, 'logs');
 
     let checkFiles = [
-      oneSet.ARANGOBENCH_BIN,
       oneSet.ARANGODUMP_BIN,
       oneSet.ARANGOD_BIN,
       oneSet.ARANGOIMPORT_BIN,
