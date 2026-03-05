@@ -20,37 +20,50 @@ defmodule ToastTest.CrashMonitorTest do
     }
   end
 
-  test "handle_crash sets abort with server_id and signal" do
-    CrashMonitor.handle_crash(dummy_deployment(), %{
-      server_id: "db-1",
-      signal: 11,
-      exit_status: 139
-    })
+  test "handle_crash sets abort with signal and exit_status" do
+    CrashMonitor.handle_crash(
+      dummy_deployment(),
+      %Toast.Process.CrashInfo{signal: 11, exit_status: 139, timestamp: DateTime.utc_now()}
+    )
 
     assert {:crash, msg} = Runner.aborted?()
-    assert msg =~ "Server db-1 crashed"
+    assert msg =~ "Server crashed"
     assert msg =~ "signal: 11"
     assert msg =~ "exit_status=139"
   end
 
   test "handle_crash with only exit_status" do
-    CrashMonitor.handle_crash(dummy_deployment(), %{server_id: "agent-1", exit_status: 1})
+    CrashMonitor.handle_crash(
+      dummy_deployment(),
+      %Toast.Process.CrashInfo{exit_status: 1, signal: nil, timestamp: DateTime.utc_now()}
+    )
 
     assert {:crash, msg} = Runner.aborted?()
-    assert msg =~ "Server agent-1 crashed"
+    assert msg =~ "Server crashed"
     assert msg =~ "exit_status=1"
     refute msg =~ "signal"
   end
 
-  test "handle_crash with unknown server" do
-    CrashMonitor.handle_crash(dummy_deployment(), %{exit_status: 134, signal: 6})
+  test "handle_crash with nil signal and exit_status" do
+    CrashMonitor.handle_crash(
+      dummy_deployment(),
+      %Toast.Process.CrashInfo{exit_status: 134, signal: 6, timestamp: DateTime.utc_now()}
+    )
 
     assert {:crash, msg} = Runner.aborted?()
-    assert msg =~ "Server unknown crashed"
+    assert msg =~ "Server crashed"
   end
 
   test "handle_crash returns :ok" do
-    assert :ok = CrashMonitor.handle_crash(dummy_deployment(), %{server_id: "x"})
+    assert :ok =
+             CrashMonitor.handle_crash(
+               dummy_deployment(),
+               %Toast.Process.CrashInfo{
+                 exit_status: nil,
+                 signal: nil,
+                 timestamp: DateTime.utc_now()
+               }
+             )
   end
 
   test "callback has arity 2" do

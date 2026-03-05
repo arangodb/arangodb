@@ -74,7 +74,7 @@ defmodule Toast.Deployment.Controller.Cluster do
       Enum.all?(states, &(&1 == :running)) ->
         :ready
 
-      Enum.any?(states, &(&1 in [:stopped, :killed, :paused])) ->
+      Enum.any?(states, &(&1 in [:stopped, :killed, :paused, :crashed])) ->
         :degraded
 
       true ->
@@ -337,6 +337,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   defp wait_for_agency(state, deadline) do
     Logger.info("#{state.id}: waiting for agency consensus")
+
     agent_endpoints =
       Enum.map(state.mode_state.agents, fn id -> state.servers[id].endpoint end)
 
@@ -491,6 +492,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     state.mode_state.agents
     |> Enum.map(fn id -> state.servers[id] end)
     |> Enum.filter(fn server ->
+      # operational_state is nil before first state assignment during startup
       server && server.operational_state in [:running, nil]
     end)
     |> Enum.map(fn server -> %{id: server.id, endpoint: server.endpoint} end)

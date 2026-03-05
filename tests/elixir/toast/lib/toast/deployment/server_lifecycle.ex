@@ -89,7 +89,13 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Crash handling ---
 
-  @spec handle_crash(String.t(), map(), map(), ServerInstance.t() | nil, map()) ::
+  @spec handle_crash(
+          String.t(),
+          Toast.Process.CrashInfo.t(),
+          map(),
+          ServerInstance.t() | nil,
+          map()
+        ) ::
           {:expected, map()}
           | :intentional_exit
           | :crash_during_intentional_stop
@@ -119,7 +125,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   defp handle_unexpected_crash(server_id, crash_info, nil, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
+    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
 
     notify_event(
       on_crash_ctx.on_event,
@@ -147,7 +153,7 @@ defmodule Toast.Deployment.ServerLifecycle do
         "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
       )
 
-      notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
+      notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
 
       notify_event(
         on_crash_ctx.on_event,
@@ -160,7 +166,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   defp handle_unexpected_crash(server_id, crash_info, %ServerInstance{} = _server, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.deployment, crash_info)
+    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
 
     notify_event(
       on_crash_ctx.on_event,
@@ -295,13 +301,18 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   @spec notify_event((term() -> term()) | nil, term()) :: :ok
   def notify_event(nil, _event), do: :ok
-  def notify_event(on_event, event) when is_function(on_event, 1), do: on_event.(event)
+
+  def notify_event(on_event, event) when is_function(on_event, 1) do
+    on_event.(event)
+    :ok
+  end
 
   @spec notify_crash((term(), term() -> term()) | nil, term(), term()) :: :ok
-  def notify_crash(nil, _deployment, _crash_info), do: :ok
+  def notify_crash(nil, _server_id, _crash_info), do: :ok
 
-  def notify_crash(on_crash, deployment, crash_info) when is_function(on_crash, 2) do
-    on_crash.(deployment, crash_info)
+  def notify_crash(on_crash, server_id, crash_info) when is_function(on_crash, 2) do
+    on_crash.(server_id, crash_info)
+    :ok
   end
 
   # --- Server output ---

@@ -400,8 +400,7 @@ defmodule Toast.Deployment do
         binary_path: binary_path
       }
     end)
-    |> Enum.filter(& &1.binary_path)
-    |> Enum.filter(fn info -> info.os_pids != [] end)
+    |> Enum.filter(fn info -> info.binary_path && info.os_pids != [] end)
   end
 
   defp server_info_for_coredumps(_, _pid_history), do: []

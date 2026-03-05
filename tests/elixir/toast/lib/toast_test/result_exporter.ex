@@ -21,26 +21,15 @@ defmodule ToastTest.ResultExporter do
               log_matching: nil
   end
 
-  @default_result_dir "toast-results"
+  @spec export(String.t(), map() | nil, AnalysisData.t() | nil, Path.t()) :: :ok
+  def export(suite_name, results, analysis \\ %AnalysisData{}, result_dir)
 
-  @doc """
-  Export test results to JSON and JUnit XML files.
-
-  Writes files to the directory specified by TOAST_RESULT_DIR env var,
-  defaulting to `toast-results` in the current working directory.
-
-  No-op if results is nil.
-  """
-  @spec export(String.t(), map() | nil, AnalysisData.t() | nil) :: :ok
-  def export(suite_name, results, analysis \\ %AnalysisData{})
-
-  def export(_suite_name, nil, _analysis) do
+  def export(_suite_name, nil, _analysis, _result_dir) do
     Logger.info("No results!")
     :ok
   end
 
-  def export(suite_name, results, %AnalysisData{} = analysis) do
-    result_dir = result_dir()
+  def export(suite_name, results, %AnalysisData{} = analysis, result_dir) do
     File.mkdir_p!(result_dir)
 
     json_path = Path.join(result_dir, "#{suite_name}.json")
@@ -55,11 +44,5 @@ defmodule ToastTest.ResultExporter do
     error ->
       Logger.warning("Failed to export: #{Exception.message(error)}")
       :ok
-  end
-
-  @doc false
-  @spec result_dir() :: Path.t()
-  def result_dir do
-    System.get_env("TOAST_RESULT_DIR") || @default_result_dir
   end
 end

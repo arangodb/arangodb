@@ -47,9 +47,15 @@ defmodule Toast.Diagnostics.CrashMatcher do
   """
   @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
   def match(diagnostics, tests, opts \\ []) do
-    Matcher.match_from_diagnostics(diagnostics, tests, :crash, fn diag ->
-      diag |> extract_crashes() |> Enum.split_with(& &1.timestamp)
-    end, opts)
+    Matcher.match_from_diagnostics(
+      diagnostics,
+      tests,
+      :crash,
+      fn diag ->
+        diag |> extract_crashes() |> Enum.split_with(& &1.timestamp)
+      end,
+      opts
+    )
   end
 
   defp extract_crashes(diagnostics) do
@@ -59,8 +65,8 @@ defmodule Toast.Diagnostics.CrashMatcher do
   end
 
   defp maybe_crash_info(diag) do
-    crash = Map.get(diag, :log_report)
-    server = Map.get(diag, :server)
+    crash = diag.log_report
+    server = diag.server
 
     if crash && crash.signal_name do
       [

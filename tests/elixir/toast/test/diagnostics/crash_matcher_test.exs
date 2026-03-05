@@ -46,7 +46,8 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         Keyword.get(
           opts,
           :server_error,
-          {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}}
+          {:server_crashed,
+           %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: at(5)}}
         ),
       server: server
     }
@@ -173,9 +174,10 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         },
         "dbserver-1" => %{
           sanitizer_errors: [],
-          log_report:
-            Map.merge(crash, %{assertion_failures: [], warnings: []}),
-          server_error: {:server_crashed, %{exit_status: 139, signal: 11, timestamp: at(5)}},
+          log_report: Map.merge(crash, %{assertion_failures: [], warnings: []}),
+          server_error:
+            {:server_crashed,
+             %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: at(5)}},
           server: %ServerInstance{
             id: "dbserver-1",
             role: :dbserver,

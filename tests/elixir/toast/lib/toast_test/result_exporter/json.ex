@@ -25,9 +25,18 @@ defmodule ToastTest.ResultExporter.JSON do
     }
 
     base
-    |> conditional_put("sanitizer_matching", build_matching(analysis.sanitizer_matching, :error, &build_sanitizer_error/1))
-    |> conditional_put("crash_matching", build_matching(analysis.crash_matching, :crash, &build_crash_info/1))
-    |> conditional_put("log_matching", build_matching(analysis.log_matching, :log, &build_log_entry/1))
+    |> conditional_put(
+      "sanitizer_matching",
+      build_matching(analysis.sanitizer_matching, :error, &build_sanitizer_error/1)
+    )
+    |> conditional_put(
+      "crash_matching",
+      build_matching(analysis.crash_matching, :crash, &build_crash_info/1)
+    )
+    |> conditional_put(
+      "log_matching",
+      build_matching(analysis.log_matching, :log, &build_log_entry/1)
+    )
   end
 
   @doc "Render test results and diagnostics as a JSON string."
@@ -125,10 +134,12 @@ defmodule ToastTest.ResultExporter.JSON do
 
   defp build_single_server_health(diag) do
     %{}
-    |> conditional_put("sanitizer_errors", diag[:sanitizer_errors], fn errs -> Enum.map(errs, &build_sanitizer_error/1) end)
-    |> conditional_put("crash_report", diag[:log_report], &build_crash_report/1)
-    |> conditional_put("log_issues", diag[:log_report], &build_log_issues/1)
-    |> conditional_put("server", diag[:server], &build_server_instance/1)
+    |> conditional_put("sanitizer_errors", diag.sanitizer_errors, fn errs ->
+      Enum.map(errs, &build_sanitizer_error/1)
+    end)
+    |> conditional_put("crash_report", diag.log_report, &build_crash_report/1)
+    |> conditional_put("log_issues", diag.log_report, &build_log_issues/1)
+    |> conditional_put("server", diag.server, &build_server_instance/1)
   end
 
   defp build_sanitizer_error(error) do

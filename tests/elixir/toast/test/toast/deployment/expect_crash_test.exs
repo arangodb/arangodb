@@ -30,7 +30,8 @@ defmodule Toast.Deployment.ExpectCrashTest.MockController do
     Map.get(
       responses,
       :verify_crash,
-      {:ok, %{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}}
+      {:ok,
+       %Toast.Process.CrashInfo{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}}
     )
   end
 
@@ -57,7 +58,15 @@ defmodule Toast.Deployment.ExpectCrashTest do
   describe "expect_crash delegation" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 
@@ -81,7 +90,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
       {:ok, pid} =
         MockController.start_link(responses: %{expect_crash: {:error, :already_expected}})
 
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :already_expected} = Deployment.expect_crash(deployment(pid), "s1")
     end
@@ -90,7 +105,15 @@ defmodule Toast.Deployment.ExpectCrashTest do
   describe "verify_crash delegation" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 
@@ -111,23 +134,49 @@ defmodule Toast.Deployment.ExpectCrashTest do
     end
 
     test "returns {:ok, crash_info} when crash occurred", _context do
-      crash_info = %{exit_status: 11, signal: 11, timestamp: ~U[2026-01-01 00:00:00Z]}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 11,
+        signal: 11,
+        timestamp: ~U[2026-01-01 00:00:00Z]
+      }
+
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:ok, crash_info}})
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:ok, ^crash_info} = Deployment.verify_crash(deployment(pid), "s1")
     end
 
     test "returns {:error, :not_crashed} when no crash", _context do
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:error, :not_crashed}})
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :not_crashed} = Deployment.verify_crash(deployment(pid), "s1")
     end
 
     test "returns {:error, :timeout} when verify times out", _context do
       {:ok, pid} = MockController.start_link(responses: %{verify_crash: {:error, :timeout}})
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :timeout} = Deployment.verify_crash(deployment(pid), "s1")
     end
@@ -157,7 +206,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
           config: config
         )
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       # Set status to :ready so suspend_health_monitor is valid
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
@@ -186,7 +241,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
           config: config
         )
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
@@ -213,7 +274,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
           config: config
         )
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
@@ -239,7 +306,13 @@ defmodule Toast.Deployment.ExpectCrashTest do
           config: config
         )
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       :sys.replace_state(ctrl, fn state -> %{state | status: :ready} end)
 
@@ -247,7 +320,12 @@ defmodule Toast.Deployment.ExpectCrashTest do
       :ok = GenServer.call(ctrl, {:expect_crash, server_id, 5_000})
 
       # Simulate crash notification
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(ctrl, {:server_crashed, server_id, crash_info})
 
       # Give handle_info time to process
@@ -263,7 +341,15 @@ defmodule Toast.Deployment.ExpectCrashTest do
   describe "mode independence" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 

@@ -39,11 +39,7 @@ defmodule Toast.Process.ServerProcess do
 
   @type status :: :starting | :running | :stopping | :stopped | :crashed | :paused | :killed
 
-  @type crash_info :: %{
-          exit_status: non_neg_integer(),
-          signal: non_neg_integer() | nil,
-          timestamp: DateTime.t()
-        }
+  @type crash_info :: Toast.Process.CrashInfo.t()
 
   # --- Client API ---
 
@@ -368,7 +364,7 @@ defmodule Toast.Process.ServerProcess do
         %{state | exec_pid: nil, os_pid: nil}
 
       _ ->
-        crash_info = %{
+        crash_info = %Toast.Process.CrashInfo{
           exit_status: exit_status,
           signal: signal,
           timestamp: DateTime.utc_now()
@@ -389,7 +385,8 @@ defmodule Toast.Process.ServerProcess do
 
       {:signal, sig, _core} ->
         signum = signal_to_int(sig)
-        {128 + signum, signum}
+        exit_status = if signum, do: 128 + signum, else: 128
+        {exit_status, signum || sig}
     end
   end
 
@@ -400,7 +397,9 @@ defmodule Toast.Process.ServerProcess do
   defp signal_to_int(sig) when is_atom(sig) do
     :exec.signal_to_int(sig)
   rescue
-    FunctionClauseError -> 0
+    FunctionClauseError ->
+      Logger.warning("Unknown signal atom from erlexec: #{inspect(sig)}")
+      nil
   end
 
   defp notify_listener(nil, _id, _info), do: :ok

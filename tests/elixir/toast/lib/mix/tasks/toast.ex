@@ -145,6 +145,7 @@ defmodule Mix.Tasks.Toast do
       end)
 
     config = Toast.Config.load(Mix.Tasks.Toast.Helpers.opts_to_config_list(opts))
+    Toast.Application.reconfigure_file_logger(config.result_dir)
     global_opts = build_global_opts(config, ex_unit_opts)
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 

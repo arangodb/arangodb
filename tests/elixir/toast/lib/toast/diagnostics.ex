@@ -1,7 +1,7 @@
 defmodule Toast.Diagnostics do
   @moduledoc "Shared diagnostics utilities."
 
-  alias Toast.Diagnostics.{LogAnalyzer, Result, Sanitizer}
+  alias Toast.Diagnostics.{LogAnalyzer, Result, Sanitizer, ServerDiagnostics}
 
   @doc """
   Convert diagnostics to a uniform list of `{server_id, diag}` entries.
@@ -10,7 +10,7 @@ defmodule Toast.Diagnostics do
   with binary keys and map values (excluding non-diagnostics top-level
   keys like `:agency_dump`).
   """
-  @spec to_server_entries(Result.t() | map()) :: [{String.t(), map()}]
+  @spec to_server_entries(Result.t() | map()) :: [{String.t(), ServerDiagnostics.t()}]
   def to_server_entries(%Result{servers: servers}), do: Map.to_list(servers)
 
   def to_server_entries(diagnostics) when is_map(diagnostics) do
@@ -24,9 +24,9 @@ defmodule Toast.Diagnostics do
   Collects sanitizer errors and parses the server log in a single pass.
   Returns `%{sanitizer_errors:, log_report:, server_error:, server:}`.
   """
-  @spec build_server_diagnostics(struct(), term()) :: map()
+  @spec build_server_diagnostics(struct(), term()) :: ServerDiagnostics.t()
   def build_server_diagnostics(server, server_error) do
-    %{
+    %ServerDiagnostics{
       sanitizer_errors: Sanitizer.collect_errors(server.server_dir, server.id),
       log_report: LogAnalyzer.parse(server.log_file),
       server_error: server_error,

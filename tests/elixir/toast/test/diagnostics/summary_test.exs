@@ -58,7 +58,11 @@ defmodule Toast.Diagnostics.SummaryTest do
           },
           server_error:
             {:server_crashed,
-             %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+             %Toast.Process.CrashInfo{
+               exit_status: 139,
+               signal: 11,
+               timestamp: ~U[2024-01-15 10:01:30Z]
+             }}
         },
         overrides
       )
@@ -148,7 +152,11 @@ defmodule Toast.Diagnostics.SummaryTest do
         base_diagnostics(%{
           server_error:
             {:server_crashed,
-             %{exit_status: 139, signal: 11, timestamp: ~U[2024-01-15 10:01:30Z]}}
+             %Toast.Process.CrashInfo{
+               exit_status: 139,
+               signal: 11,
+               timestamp: ~U[2024-01-15 10:01:30Z]
+             }}
         })
 
       text = Summary.format_crashed_servers(diag)

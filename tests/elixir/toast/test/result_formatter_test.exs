@@ -222,7 +222,12 @@ defmodule ToastTest.ResultFormatterTest do
     test "server crash EXIT failure is captured as linked process exit" do
       {:ok, state} = ResultFormatter.init([])
       pid = spawn(fn -> :ok end)
-      crash_info = %{exit_status: 134, signal: 6}
+
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 134,
+        signal: 6,
+        timestamp: DateTime.utc_now()
+      }
 
       test =
         make_test(%{

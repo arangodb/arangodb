@@ -179,7 +179,9 @@ defmodule Mix.Tasks.Toast.Helpers do
   def build_suite_opts(test_modules, line_filters, test_name_pattern) do
     [
       if(test_name_pattern != nil, do: {:test_name_pattern, test_name_pattern}),
-      if(line_filters != [], do: {:only_test_ids, build_only_test_ids(test_modules, line_filters)})
+      if(line_filters != [],
+        do: {:only_test_ids, build_only_test_ids(test_modules, line_filters)}
+      )
     ]
     |> Toast.Utils.compact()
   end

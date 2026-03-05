@@ -11,8 +11,8 @@ defmodule ToastTest.StateCleanup do
 
   defp reset_deployment_registry do
     ToastTest.DeploymentRegistry.clear()
-  rescue
-    ArgumentError -> :ok
+  catch
+    :error, :badarg -> :ok
   end
 
   defp reset_abort_table do

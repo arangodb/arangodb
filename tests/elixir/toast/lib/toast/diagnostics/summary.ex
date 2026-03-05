@@ -49,9 +49,8 @@ defmodule Toast.Diagnostics.Summary do
   end
 
   defp has_crash?(diag) do
-    crash = Map.get(diag, :log_report)
-    error = Map.get(diag, :server_error)
-    (crash != nil and crash.signal_name != nil) or crash_error?(error)
+    (diag.log_report != nil and diag.log_report.signal_name != nil) or
+      crash_error?(diag.server_error)
   end
 
   defp crash_error?({:server_crashed, _}), do: true
@@ -59,8 +58,8 @@ defmodule Toast.Diagnostics.Summary do
   defp crash_error?(_), do: false
 
   defp format_server_crash({diag, server}) do
-    crash = Map.get(diag, :log_report)
-    error = Map.get(diag, :server_error)
+    crash = diag.log_report
+    error = diag.server_error
 
     [
       [format_server_header(server)],
@@ -88,12 +87,13 @@ defmodule Toast.Diagnostics.Summary do
     ["    Signal: #{name} (signal #{num})"]
   end
 
-  defp format_signal(_, {:server_crashed, %{signal: sig, exit_status: es}})
+  defp format_signal(_, {:server_crashed, %Toast.Process.CrashInfo{signal: sig, exit_status: es}})
        when not is_nil(sig) do
     ["    Exit: signal #{sig}, exit_status #{es}"]
   end
 
-  defp format_signal(_, {:server_crashed, %{exit_status: es}}) when not is_nil(es) do
+  defp format_signal(_, {:server_crashed, %Toast.Process.CrashInfo{exit_status: es}})
+       when not is_nil(es) do
     ["    Exit: exit_status #{es}"]
   end
 

@@ -40,6 +40,20 @@ defmodule Toast.Deployment.Controller do
       servers: %{},
       expected_crashes: %{}
     ]
+
+    @type t :: %__MODULE__{
+            config: Toast.Config.t(),
+            id: String.t() | nil,
+            error: term(),
+            diagnostics: term(),
+            on_crash: (term(), term() -> term()) | nil,
+            on_event: (term() -> term()) | nil,
+            mode: module() | nil,
+            mode_state: map(),
+            status: atom(),
+            servers: %{optional(String.t()) => ServerInstance.t()},
+            expected_crashes: map()
+          }
   end
 
   # --- Client API ---
@@ -246,7 +260,7 @@ defmodule Toast.Deployment.Controller do
     on_crash_ctx = %{
       on_crash: state.on_crash,
       on_event: state.on_event,
-      deployment: build_deployment_from_state(state)
+      server_id: server_id
     }
 
     case ServerLifecycle.handle_crash(
@@ -267,7 +281,10 @@ defmodule Toast.Deployment.Controller do
 
       :crash_during_intentional_stop ->
         stop_health_monitor(state, server_id)
-        state = update_server(state, server_id, operational_state: :crashed, expecting_exit: false)
+
+        state =
+          update_server(state, server_id, operational_state: :crashed, expecting_exit: false)
+
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
 
       :unexpected_crash ->
@@ -282,8 +299,14 @@ defmodule Toast.Deployment.Controller do
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, killing process")
     stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
-    crash_info = %{exit_status: nil, signal: nil, timestamp: DateTime.utc_now()}
-    ServerLifecycle.notify_crash(state.on_crash, build_deployment_from_state(state), crash_info)
+
+    crash_info = %Toast.Process.CrashInfo{
+      exit_status: nil,
+      signal: nil,
+      timestamp: DateTime.utc_now()
+    }
+
+    ServerLifecycle.notify_crash(state.on_crash, server_id, crash_info)
 
     ServerLifecycle.notify_event(
       state.on_event,
@@ -550,7 +573,8 @@ defmodule Toast.Deployment.Controller do
   @doc false
   def collect_diagnostics(state, error_for_server_fn) do
     Map.new(state.servers, fn {server_id, server} ->
-      {server_id, Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
+      {server_id,
+       Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
     end)
   end
 
@@ -568,25 +592,6 @@ defmodule Toast.Deployment.Controller do
   def clear_server_pids(servers) do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
   end
-
-  @doc false
-  def build_deployment_from_state(state) do
-    primary_endpoint =
-      state.mode.build_info(state)
-      |> Map.get(:primary_endpoint, "")
-
-    %Toast.Deployment{
-      id: state.id,
-      mode: deployment_mode(state.mode),
-      config: state.config,
-      controller: self(),
-      endpoint: primary_endpoint,
-      work_dir: state.config.work_dir
-    }
-  end
-
-  defp deployment_mode(Toast.Deployment.Controller.SingleServer), do: :single_server
-  defp deployment_mode(Toast.Deployment.Controller.Cluster), do: :cluster
 
   @doc false
   def remaining_ms(deadline) do

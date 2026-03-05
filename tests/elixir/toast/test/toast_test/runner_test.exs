@@ -162,7 +162,12 @@ defmodule ToastTest.RunnerTest do
           config: Toast.Config.load()
         )
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(ctrl, {:server_crashed, "test-server", crash_info})
       :sys.get_state(ctrl)
 

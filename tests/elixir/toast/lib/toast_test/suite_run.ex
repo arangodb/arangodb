@@ -12,6 +12,6 @@ defmodule ToastTest.SuiteRun do
           suite_module: module(),
           deployment: Toast.Deployment.t() | nil,
           suite_deadline: integer(),
-          timeout_factor: float()
+          timeout_factor: pos_integer()
         }
 end

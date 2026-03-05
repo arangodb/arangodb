@@ -1,6 +1,7 @@
 defmodule Toast.Diagnostics.Sanitizer do
   @moduledoc "Sanitizer environment variable handling and log file collection."
 
+  @typedoc "Sanitizer family. :alubsan = combined ASAN + LSAN + UBSAN."
   @type sanitizer_type :: :alubsan | :tsan
 
   @type sanitizer_error :: %{

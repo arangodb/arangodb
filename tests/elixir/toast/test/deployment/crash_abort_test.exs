@@ -13,7 +13,12 @@ defmodule Toast.Deployment.CrashAbortTest do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "test-server", crash_info})
       :sys.get_state(pid)
 
@@ -28,7 +33,12 @@ defmodule Toast.Deployment.CrashAbortTest do
 
       deployment = make_deployment(pid)
 
-      crash_info = %{exit_status: 134, signal: 6, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 134,
+        signal: 6,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "test-server", crash_info})
       :sys.get_state(pid)
 
@@ -56,7 +66,12 @@ defmodule Toast.Deployment.CrashAbortTest do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "test-server", crash_info})
       :sys.get_state(pid)
 
@@ -97,7 +112,12 @@ defmodule Toast.Deployment.CrashAbortTest do
       {:ok, pid} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "dbserver-1", crash_info})
       :sys.get_state(pid)
 
@@ -112,7 +132,12 @@ defmodule Toast.Deployment.CrashAbortTest do
 
       deployment = make_deployment(pid, id: "test-cluster", mode: :cluster)
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "agent-1", crash_info})
       :sys.get_state(pid)
 
@@ -125,7 +150,12 @@ defmodule Toast.Deployment.CrashAbortTest do
 
       deployment = make_deployment(pid, id: "test-cluster-crash", mode: :cluster)
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "agent-1", crash_info})
       :sys.get_state(pid)
 
@@ -146,7 +176,7 @@ defmodule Toast.Deployment.CrashAbortTest do
   describe "on_crash callback" do
     test "controller invokes on_crash callback on unexpected crash" do
       test_pid = self()
-      on_crash = fn _deployment, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
+      on_crash = fn _server_id, crash_info -> send(test_pid, {:crash_callback, crash_info}) end
 
       {:ok, pid} =
         Controller.start_link(
@@ -155,7 +185,12 @@ defmodule Toast.Deployment.CrashAbortTest do
           on_crash: on_crash
         )
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "test-server", crash_info})
 
       assert_receive {:crash_callback, _crash_info}, 1_000
@@ -174,7 +209,12 @@ defmodule Toast.Deployment.CrashAbortTest do
           on_event: on_event
         )
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(pid, {:server_crashed, "test-server", crash_info})
 
       assert_receive {:event, {:server_crashed, "test-server", _, _, _}}, 1_000

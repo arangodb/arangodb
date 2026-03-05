@@ -168,14 +168,21 @@ defmodule ToastTest.Runner do
           end
 
         diagnostics = collect_diagnostics(deployment)
-        finalize_suite(suite_module, test_results, diagnostics)
+
+        ToastTest.SuiteAnalysis.finalize(
+          suite_module,
+          test_results,
+          diagnostics,
+          toast_config.result_dir
+        )
+
         cleanup_between_suites()
         %{stats: stats, diagnostics: diagnostics}
 
       {:error, reason} ->
         Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
         {stats, test_results} = mark_all_errored_stats(test_modules, reason, global_opts)
-        finalize_suite(suite_module, test_results, nil)
+        ToastTest.SuiteAnalysis.finalize(suite_module, test_results, nil, toast_config.result_dir)
         cleanup_between_suites()
         %{stats: stats, diagnostics: nil}
     end
@@ -185,7 +192,8 @@ defmodule ToastTest.Runner do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
     {manager, stats_pid, result_formatter_pid} = start_event_pipeline(opts)
 
-    config = build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid)
+    config =
+      build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid)
 
     :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
 
@@ -432,78 +440,6 @@ defmodule ToastTest.Runner do
 
   defp cleanup_between_suites do
     ToastTest.StateCleanup.reset()
-  end
-
-  defp finalize_suite(suite_module, test_results, diagnostics) do
-    tests = if test_results, do: ToastTest.ResultFormatter.flat_tests(test_results)
-
-    sanitizer_matching = Toast.Diagnostics.SanitizerMatcher.match(diagnostics, tests)
-    crash_matching = Toast.Diagnostics.CrashMatcher.match(diagnostics, tests)
-    log_matching = Toast.Diagnostics.LogMatcher.match(diagnostics, tests)
-
-    print_diagnostics_report(
-      diagnostics,
-      test_results,
-      crash_matching,
-      sanitizer_matching,
-      log_matching
-    )
-
-    suite_name = derive_suite_name(suite_module)
-
-    analysis = %ToastTest.ResultExporter.AnalysisData{
-      diagnostics: diagnostics,
-      sanitizer_matching: sanitizer_matching,
-      crash_matching: crash_matching,
-      log_matching: log_matching
-    }
-
-    ToastTest.ResultExporter.export(suite_name, test_results, analysis)
-  end
-
-  defp derive_suite_name(suite_module) do
-    suite_module |> Module.split() |> hd() |> Macro.underscore()
-  end
-
-  defp print_diagnostics_report(diagnostics, test_results, crash_matching, sanitizer_matching, log_matching) do
-    alias Toast.Diagnostics.Summary
-
-    if crash_matching.matched == [] and crash_matching.unmatched == [] do
-      maybe_print(Summary.format_crashed_servers(diagnostics))
-    end
-
-    crash_affected = find_crash_affected_tests(crash_matching, test_results)
-    maybe_print(Summary.format_crash_attribution(crash_matching, crash_affected))
-    maybe_print(Summary.format_sanitizer_issues(sanitizer_matching))
-    maybe_print(Summary.format_log_issues(log_matching))
-  end
-
-  defp maybe_print(nil), do: :ok
-  defp maybe_print(text), do: IO.puts(text)
-
-  defp find_crash_affected_tests(_crash_matching, nil), do: []
-
-  defp find_crash_affected_tests(%{matched: matched, unmatched: unmatched}, test_results) do
-    all_crashes = Enum.map(matched, & &1.crash) ++ unmatched
-    timestamps = all_crashes |> Enum.map(& &1.timestamp) |> Enum.reject(&is_nil/1)
-
-    case timestamps do
-      [] ->
-        []
-
-      _ ->
-        earliest = Enum.min(timestamps, DateTime)
-        attributed = MapSet.new(matched, fn m -> {m.module, m.test} end)
-
-        test_results
-        |> ToastTest.ResultFormatter.flat_tests()
-        |> Enum.filter(fn t ->
-          t.outcome == :failed and
-            t.started_at != nil and
-            DateTime.compare(t.started_at, earliest) in [:gt, :eq] and
-            not MapSet.member?(attributed, {t.module, t.name})
-        end)
-    end
   end
 
   defp start_process_history do

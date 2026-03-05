@@ -200,9 +200,9 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   defp format_single_diagnostics(diag) do
     [
-      format_sanitizer_section(Map.get(diag, :sanitizer_errors)),
-      format_crash_section(Map.get(diag, :log_report)),
-      format_log_section(Map.get(diag, :log_report))
+      format_sanitizer_section(diag.sanitizer_errors),
+      format_crash_section(diag.log_report),
+      format_log_section(diag.log_report)
     ]
     |> Toast.Utils.compact_join("\n\n")
   end

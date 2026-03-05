@@ -124,7 +124,12 @@ defmodule Toast.Deployment.ControllerStateTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(ctrl, {:server_crashed, id, crash_info})
       :sys.get_state(ctrl)
 
@@ -142,7 +147,12 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       set_expecting_exit(ctrl, id, true)
 
-      crash_info = %{exit_status: 139, signal: 11, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        timestamp: DateTime.utc_now()
+      }
+
       send(ctrl, {:server_crashed, id, crash_info})
       :sys.get_state(ctrl)
 
@@ -159,7 +169,12 @@ defmodule Toast.Deployment.ControllerStateTest do
 
       set_expecting_exit(ctrl, id, true)
 
-      crash_info = %{exit_status: 0, signal: 15, timestamp: DateTime.utc_now()}
+      crash_info = %Toast.Process.CrashInfo{
+        exit_status: 0,
+        signal: 15,
+        timestamp: DateTime.utc_now()
+      }
+
       send(ctrl, {:server_crashed, id, crash_info})
       :sys.get_state(ctrl)
 
@@ -176,7 +191,14 @@ defmodule Toast.Deployment.ControllerStateTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{ctrl: ctrl}
     end
 

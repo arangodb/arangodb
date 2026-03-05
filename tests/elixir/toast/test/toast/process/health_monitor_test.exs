@@ -16,7 +16,7 @@ defmodule Toast.Process.HealthMonitorTest do
           interval: 60_000
         )
 
-      assert GenServer.call(pid, :status) == :healthy
+      assert HealthMonitor.status(pid) == :healthy
       HealthMonitor.stop(pid)
     end
   end
@@ -32,10 +32,9 @@ defmodule Toast.Process.HealthMonitorTest do
         )
 
       HealthMonitor.suspend(pid)
-      :sys.get_state(pid)
 
-      assert GenServer.call(pid, :status) == :suspended
-      assert GenServer.call(pid, :status) != :healthy
+      assert HealthMonitor.status(pid) == :suspended
+      assert HealthMonitor.status(pid) != :healthy
       HealthMonitor.stop(pid)
     end
 
@@ -51,8 +50,8 @@ defmodule Toast.Process.HealthMonitorTest do
       HealthMonitor.suspend(pid)
       HealthMonitor.suspend(pid)
       HealthMonitor.suspend(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :suspended
+
+      assert HealthMonitor.status(pid) == :suspended
 
       HealthMonitor.stop(pid)
     end
@@ -68,11 +67,10 @@ defmodule Toast.Process.HealthMonitorTest do
         )
 
       HealthMonitor.suspend(pid)
-      :sys.get_state(pid)
 
       Process.sleep(100)
 
-      assert GenServer.call(pid, :status) == :suspended
+      assert HealthMonitor.status(pid) == :suspended
       refute_received {:server_unhealthy, _}
 
       HealthMonitor.stop(pid)
@@ -90,12 +88,12 @@ defmodule Toast.Process.HealthMonitorTest do
         )
 
       HealthMonitor.suspend(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :suspended
+
+      assert HealthMonitor.status(pid) == :suspended
 
       HealthMonitor.resume(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :healthy
+
+      assert HealthMonitor.status(pid) == :healthy
 
       HealthMonitor.stop(pid)
     end
@@ -112,12 +110,12 @@ defmodule Toast.Process.HealthMonitorTest do
       HealthMonitor.suspend(pid)
       HealthMonitor.suspend(pid)
       HealthMonitor.suspend(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :suspended
+
+      assert HealthMonitor.status(pid) == :suspended
 
       HealthMonitor.resume(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :healthy
+
+      assert HealthMonitor.status(pid) == :healthy
 
       HealthMonitor.stop(pid)
     end
@@ -132,8 +130,8 @@ defmodule Toast.Process.HealthMonitorTest do
         )
 
       HealthMonitor.resume(pid)
-      :sys.get_state(pid)
-      assert GenServer.call(pid, :status) == :healthy
+
+      assert HealthMonitor.status(pid) == :healthy
 
       HealthMonitor.stop(pid)
     end

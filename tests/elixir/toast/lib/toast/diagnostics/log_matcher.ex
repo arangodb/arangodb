@@ -30,16 +30,22 @@ defmodule Toast.Diagnostics.LogMatcher do
 
   @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
   def match(diagnostics, tests, opts \\ []) do
-    Matcher.match_from_diagnostics(diagnostics, tests, :log, fn diag ->
-      diag |> extract_log_entries() |> Enum.split_with(& &1.timestamp)
-    end, opts)
+    Matcher.match_from_diagnostics(
+      diagnostics,
+      tests,
+      :log,
+      fn diag ->
+        diag |> extract_log_entries() |> Enum.split_with(& &1.timestamp)
+      end,
+      opts
+    )
   end
 
   defp extract_log_entries(diagnostics) do
     diagnostics
     |> Toast.Diagnostics.to_server_entries()
     |> Enum.flat_map(fn {server_id, diag} ->
-      case Map.get(diag, :log_report) do
+      case diag.log_report do
         nil ->
           []
 

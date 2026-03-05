@@ -42,6 +42,9 @@ defmodule Toast.Process.HealthMonitor do
     :ok
   end
 
+  @doc false
+  def status(server), do: GenServer.call(server, :status)
+
   @spec stop(GenServer.server()) :: :ok
   def stop(server) do
     GenServer.stop(server, :normal)
