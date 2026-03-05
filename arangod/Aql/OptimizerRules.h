@@ -167,11 +167,6 @@ void clusterPushSubqueryToDBServer(Optimizer* opt,
                                    OptimizerRule const& rule);
 #endif
 
-/// @brief scatter operations in cluster - send all incoming rows to all remote
-/// clients
-void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                          OptimizerRule const&);
-
 /// @brief distribute operations in cluster - send each incoming row to every
 /// remote client precisely once. This happens in queries like:
 ///
@@ -369,18 +364,6 @@ void createScatterGatherSnippet(
     SortElementVector const& elements, size_t numberOfShards,
     std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
     Collection const* collection);
-
-//// @brief enclose a node in SCATTER/GATHER
-void insertScatterGatherSnippet(
-    ExecutionPlan& plan, ExecutionNode* at,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
-        subqueries);
-
-//// @brief find all subqueries in a plan and store a map from subqueries to
-/// nodes
-void findSubqueriesInPlan(
-    ExecutionPlan& plan,
-    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
 DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
