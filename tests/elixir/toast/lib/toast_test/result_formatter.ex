@@ -3,8 +3,6 @@ defmodule ToastTest.ResultFormatter do
 
   use GenServer
 
-  @env_key :__test_results__
-
   # --- Client API ---
 
   @doc false
@@ -58,12 +56,15 @@ defmodule ToastTest.ResultFormatter do
       modules: modules
     }
 
-    Application.put_env(:toast, @env_key, results)
-    {:noreply, state}
+    {:noreply, Map.put(state, :results, results)}
   end
 
   def handle_cast(_msg, state) do
     {:noreply, state}
+  end
+
+  def handle_call(:get_results, _from, state) do
+    {:reply, state[:results], state}
   end
 
   @doc "Flatten hierarchical module results to a flat test list."

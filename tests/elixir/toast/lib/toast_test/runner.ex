@@ -7,6 +7,7 @@ defmodule ToastTest.Runner do
   # SPDX-FileCopyrightText: 2012 Plataformatec
 
   alias ToastTest.ExUnitCompat, as: Compat
+  alias ToastTest.TestLifecycle
 
   require Logger
 
@@ -182,9 +183,9 @@ defmodule ToastTest.Runner do
 
   defp run_suite_tests(suite_run, test_modules, global_opts, suite_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    {manager, stats_pid} = start_event_pipeline(opts)
+    {manager, stats_pid, result_formatter_pid} = start_event_pipeline(opts)
 
-    config = build_test_config(opts, suite_opts, suite_run, manager, stats_pid)
+    config = build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid)
 
     :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
 
@@ -193,9 +194,7 @@ defmodule ToastTest.Runner do
 
     run_suite_modules(config, test_modules)
 
-    stats = collect_suite_stats(config, start_time)
-    test_results = take_test_results()
-    {stats, test_results}
+    collect_suite_stats(config, start_time)
   end
 
   defp start_event_pipeline(opts) do
@@ -209,11 +208,17 @@ defmodule ToastTest.Runner do
       |> ensure_in_list(ToastTest.CLIFormatter, :front)
       |> ensure_in_list(ToastTest.ResultFormatter, :back)
 
-    for formatter <- formatters do
-      Compat.add_formatter(manager, formatter, opts)
-    end
+    formatter_pids =
+      for formatter <- formatters do
+        {:ok, pid} = Compat.add_formatter(manager, formatter, opts)
+        pid
+      end
 
-    {manager, stats_pid}
+    result_formatter_pid =
+      Enum.zip(formatters, formatter_pids)
+      |> Enum.find_value(fn {mod, pid} -> if mod == ToastTest.ResultFormatter, do: pid end)
+
+    {manager, stats_pid, result_formatter_pid}
   end
 
   defp ensure_in_list(list, item, :front) do
@@ -224,7 +229,7 @@ defmodule ToastTest.Runner do
     if item in list, do: list, else: list ++ [item]
   end
 
-  defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid) do
+  defp build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid) do
     only_test_ids =
       case Keyword.fetch(suite_opts, :only_test_ids) do
         {:ok, ids} -> ids
@@ -238,6 +243,7 @@ defmodule ToastTest.Runner do
       manager: manager,
       max_failures: opts[:max_failures],
       only_test_ids: only_test_ids,
+      result_formatter_pid: result_formatter_pid,
       runner_pid: self(),
       stats_pid: stats_pid,
       suite_deadline: suite_run.suite_deadline,
@@ -261,12 +267,13 @@ defmodule ToastTest.Runner do
     Compat.suite_finished(config.manager, times_us)
 
     stats = Compat.stats(config.stats_pid)
+    test_results = GenServer.call(config.result_formatter_pid, :get_results)
     Compat.stop(config.manager)
 
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
     Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
 
-    stats
+    {stats, test_results}
   end
 
   defp run_suite_modules(config, test_modules) do
@@ -378,7 +385,7 @@ defmodule ToastTest.Runner do
 
   defp mark_all_errored_stats(test_modules, reason, global_opts) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), global_opts))
-    {manager, stats_pid} = start_event_pipeline(opts)
+    {manager, stats_pid, result_formatter_pid} = start_event_pipeline(opts)
     Compat.suite_started(manager, opts)
 
     for module <- test_modules do
@@ -388,8 +395,8 @@ defmodule ToastTest.Runner do
     times_us = %{async: nil, load: nil, run: 0}
     Compat.suite_finished(manager, times_us)
     stats = Compat.stats(stats_pid)
+    test_results = GenServer.call(result_formatter_pid, :get_results)
     Compat.stop(manager)
-    test_results = take_test_results()
     {stats, test_results}
   end
 
@@ -425,12 +432,6 @@ defmodule ToastTest.Runner do
 
   defp cleanup_between_suites do
     ToastTest.StateCleanup.reset()
-  end
-
-  defp take_test_results do
-    results = Application.get_env(:toast, :__test_results__)
-    Application.delete_env(:toast, :__test_results__)
-    results
   end
 
   defp finalize_suite(suite_module, test_results, diagnostics) do
@@ -679,41 +680,18 @@ defmodule ToastTest.Runner do
   end
 
   defp run_setup_all(config, %ExUnit.TestModule{name: module} = test_module, context, callback) do
-    parent_pid = self()
-
-    {module_pid, module_ref} =
-      spawn_monitor(fn ->
-        ExUnit.OnExitHandler.register(self())
-
-        result =
-          try do
-            {:ok, Compat.get_setup_all(module, context)}
-          catch
-            kind, error ->
-              failed = failed(kind, error, prune_stacktrace(__STACKTRACE__))
-              {:error, %{test_module | state: failed}}
-          end
-
-        send(parent_pid, {self(), :setup_all, result})
-
-        ref = Process.monitor(parent_pid)
-
-        receive do
-          {^parent_pid, :exit} -> :ok
-          {:DOWN, ^ref, _, _, _} -> :ok
-        end
-      end)
+    {module_pid, module_ref} = TestLifecycle.spawn_setup_all(module, context)
 
     {ok_or_error, test_module} =
       receive do
         {^module_pid, :setup_all, {:ok, context}} ->
           finished_tests = callback.(context)
-          :ok = exit_setup_all(module_pid, module_ref)
+          :ok = TestLifecycle.exit_setup_all(module_pid, module_ref)
           {{:ok, finished_tests}, test_module}
 
-        {^module_pid, :setup_all, {:error, test_module}} ->
-          :ok = exit_setup_all(module_pid, module_ref)
-          {:error, test_module}
+        {^module_pid, :setup_all, {:error, {kind, error, stack}}} ->
+          :ok = TestLifecycle.exit_setup_all(module_pid, module_ref)
+          {:error, %{test_module | state: failed(kind, error, prune_stacktrace(stack))}}
 
         {:DOWN, ^module_ref, :process, ^module_pid, error} ->
           {:error, %{test_module | state: failed({:EXIT, module_pid}, error, [])}}
@@ -721,14 +699,6 @@ defmodule ToastTest.Runner do
 
     timeout = get_timeout(config, %{})
     {ok_or_error, exec_on_exit(test_module, module_pid, timeout)}
-  end
-
-  defp exit_setup_all(pid, ref) do
-    send(pid, {self(), :exit})
-
-    receive do
-      {:DOWN, ^ref, _, _, _} -> :ok
-    end
   end
 
   defp run_tests(config, tests, params, context) do
@@ -926,7 +896,7 @@ defmodule ToastTest.Runner do
   end
 
   defp exec_on_exit(test_or_case, pid, timeout) do
-    case ExUnit.OnExitHandler.run(pid, timeout) do
+    case TestLifecycle.run_on_exit(pid, timeout) do
       :ok ->
         test_or_case
 

@@ -7,7 +7,7 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{Controller, ServerInstance}
 
-  import Toast.Utils, only: [conditional_put: 3, conditional_put: 4, compact_join: 2]
+  import Toast.Utils, only: [compact_join: 2]
 
   @type mode :: :single_server | :cluster
 
@@ -250,6 +250,11 @@ defmodule Toast.Deployment do
     end
   end
 
+  @spec resolve_target(t(), server_target()) :: {:ok, [String.t()]} | {:error, term()}
+  def resolve_target(%__MODULE__{} = deployment, target) do
+    controller_call(deployment, {:resolve_target, target}, {:error, :stopped})
+  end
+
   # --- Failure point operations ---
 
   defdelegate set_failure_point(deployment, target, name),
@@ -315,6 +320,7 @@ defmodule Toast.Deployment do
 
   defp capture_pre_shutdown_data(pid, deployment) do
     if deployment.mode == :cluster and deployment.config.dump_agency_on_error do
+      # 10s per request, 3 requests per agent, plus 5s base buffer
       agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
 
       try do
@@ -416,9 +422,11 @@ defmodule Toast.Deployment do
   end
 
   defp merge_diagnostics(base, agency_dump, coredump_reports) do
-    (base || %{})
-    |> conditional_put(:agency_dump, agency_dump)
-    |> conditional_put(:coredump_reports, coredump_reports, coredump_reports != [])
+    %Toast.Diagnostics.Result{
+      servers: base || %{},
+      agency_dump: agency_dump,
+      coredump_reports: coredump_reports || []
+    }
   end
 
   defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do

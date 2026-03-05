@@ -13,11 +13,9 @@ defmodule ToastTest.StateCleanupTest do
     DeploymentRegistry.init()
 
     original_after_suite = Application.get_env(:ex_unit, :after_suite, [])
-    original_formatters = Application.get_env(:ex_unit, :formatters, [])
 
     on_exit(fn ->
       Application.put_env(:ex_unit, :after_suite, original_after_suite)
-      Application.put_env(:ex_unit, :formatters, original_formatters)
 
       try do
         :ets.delete(:toast_deployment_registry)
@@ -71,26 +69,6 @@ defmodule ToastTest.StateCleanupTest do
     assert Application.get_env(:ex_unit, :after_suite) == []
   end
 
-  test "reset stops non-standard formatters but preserves CLIFormatters" do
-    {:ok, mock_pid} =
-      GenServer.start_link(ToastTest.StateCleanupTest.MockFormatter, :ok,
-        name: ToastTest.StateCleanupTest.MockFormatter
-      )
-
-    ref = Process.monitor(mock_pid)
-
-    Application.put_env(:ex_unit, :formatters, [
-      ExUnit.CLIFormatter,
-      ToastTest.CLIFormatter,
-      ToastTest.StateCleanupTest.MockFormatter
-    ])
-
-    StateCleanup.reset()
-
-    assert_receive {:DOWN, ^ref, :process, ^mock_pid, :normal}
-    refute Process.alive?(mock_pid)
-  end
-
   test "reset does not touch port allocator state" do
     try do
       :ets.delete(:toast_port_allocator)
@@ -111,14 +89,4 @@ defmodule ToastTest.StateCleanupTest do
       :error, :badarg -> :ok
     end
   end
-end
-
-defmodule ToastTest.StateCleanupTest.MockFormatter do
-  use GenServer
-
-  @impl true
-  def init(:ok), do: {:ok, %{}}
-
-  @impl true
-  def handle_cast(_, state), do: {:noreply, state}
 end

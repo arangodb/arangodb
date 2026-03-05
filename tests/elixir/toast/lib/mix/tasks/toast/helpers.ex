@@ -240,15 +240,13 @@ defmodule Mix.Tasks.Toast.Helpers do
     end)
   end
 
-  defp extract_core_dumps(diagnostics) do
-    extract_from_diagnostics(diagnostics, :coredump_reports, fn
-      reports when is_list(reports) ->
-        reports |> Enum.map(& &1.core_path) |> Enum.filter(&is_binary/1)
-
-      _ ->
-        []
-    end)
+  defp extract_core_dumps(%Toast.Diagnostics.Result{coredump_reports: reports}) do
+    reports
+    |> Enum.map(& &1.core_path)
+    |> Enum.filter(&is_binary/1)
   end
+
+  defp extract_core_dumps(_), do: []
 
   defp extract_from_diagnostics(nil, _key, _extractor), do: []
 

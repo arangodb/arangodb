@@ -112,17 +112,15 @@ defmodule ToastTest.ResultFormatterTest do
   end
 
   describe "handle_cast {:suite_finished, _}" do
-    test "saves results to application env" do
-      on_exit(fn -> Application.delete_env(:toast, :__test_results__) end)
-
+    test "stores results in GenServer state" do
       {:ok, state} = ResultFormatter.init([])
       test = make_test()
       {:noreply, state} = ResultFormatter.handle_cast({:test_finished, test}, state)
 
       times_us = %{async: 0, sync: 25_000}
-      {:noreply, _state} = ResultFormatter.handle_cast({:suite_finished, times_us}, state)
+      {:noreply, state} = ResultFormatter.handle_cast({:suite_finished, times_us}, state)
 
-      results = Application.get_env(:toast, :__test_results__)
+      {:reply, results, _state} = ResultFormatter.handle_call(:get_results, self(), state)
       assert results != nil
       assert %DateTime{} = results.started_at
       assert %DateTime{} = results.finished_at
@@ -134,8 +132,6 @@ defmodule ToastTest.ResultFormatterTest do
 
   describe "multiple tests collected in order" do
     test "tests are returned in the order they were received" do
-      on_exit(fn -> Application.delete_env(:toast, :__test_results__) end)
-
       {:ok, state} = ResultFormatter.init([])
 
       test1 = make_test(%{name: :"test first", time: 10_000})
@@ -146,10 +142,10 @@ defmodule ToastTest.ResultFormatterTest do
       {:noreply, state} = ResultFormatter.handle_cast({:test_finished, test2}, state)
       {:noreply, state} = ResultFormatter.handle_cast({:test_finished, test3}, state)
 
-      {:noreply, _state} =
+      {:noreply, state} =
         ResultFormatter.handle_cast({:suite_finished, %{async: 0, sync: 60_000}}, state)
 
-      results = Application.get_env(:toast, :__test_results__)
+      {:reply, results, _state} = ResultFormatter.handle_call(:get_results, self(), state)
 
       fake_names = Enum.map(results.modules[FakeTest].tests, & &1.name)
       assert fake_names == ["test first", "test second"]

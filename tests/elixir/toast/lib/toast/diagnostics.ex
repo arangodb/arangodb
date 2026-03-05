@@ -1,7 +1,7 @@
 defmodule Toast.Diagnostics do
   @moduledoc "Shared diagnostics utilities."
 
-  alias Toast.Diagnostics.{LogAnalyzer, Sanitizer}
+  alias Toast.Diagnostics.{LogAnalyzer, Result, Sanitizer}
 
   @doc """
   Convert diagnostics to a uniform list of `{server_id, diag}` entries.
@@ -10,7 +10,9 @@ defmodule Toast.Diagnostics do
   with binary keys and map values (excluding non-diagnostics top-level
   keys like `:agency_dump`).
   """
-  @spec to_server_entries(map()) :: [{String.t(), map()}]
+  @spec to_server_entries(Result.t() | map()) :: [{String.t(), map()}]
+  def to_server_entries(%Result{servers: servers}), do: Map.to_list(servers)
+
   def to_server_entries(diagnostics) when is_map(diagnostics) do
     diagnostics
     |> Enum.filter(fn {key, val} -> is_binary(key) and is_map(val) end)

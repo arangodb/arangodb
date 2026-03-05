@@ -6,7 +6,6 @@ defmodule ToastTest.StateCleanup do
     reset_deployment_registry()
     reset_abort_table()
     reset_after_suite_callbacks()
-    reset_formatters()
     reset_process_history()
   end
 
@@ -29,19 +28,6 @@ defmodule ToastTest.StateCleanup do
 
   defp reset_after_suite_callbacks do
     Application.put_env(:ex_unit, :after_suite, [])
-  end
-
-  defp reset_formatters do
-    formatters = Application.get_env(:ex_unit, :formatters, [])
-
-    for formatter <- formatters,
-        formatter not in [ExUnit.CLIFormatter, ToastTest.CLIFormatter],
-        pid = GenServer.whereis(formatter),
-        is_pid(pid) do
-      GenServer.stop(pid, :normal, 1_000)
-    end
-  catch
-    :exit, _ -> :ok
   end
 
   defp reset_process_history do

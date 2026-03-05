@@ -543,8 +543,9 @@ defmodule Mix.Tasks.ToastTest do
       suites = [
         [
           suite_module: MyApp.Test,
-          diagnostics: %{
-            "s1" => %{coredump_reports: [%{core_path: "/cores/core.1234"}]}
+          diagnostics: %Toast.Diagnostics.Result{
+            servers: %{"s1" => %{}},
+            coredump_reports: [%{core_path: "/cores/core.1234"}]
           }
         ]
       ]
@@ -553,13 +554,16 @@ defmodule Mix.Tasks.ToastTest do
       assert diag.core_dumps == ["/cores/core.1234"]
     end
 
-    test "extracts cluster core dump paths" do
+    test "extracts multiple core dump paths" do
       suites = [
         [
           suite_module: MyApp.Test,
-          diagnostics: %{
-            "srv1" => %{coredump_reports: [%{core_path: "/cores/core.1"}]},
-            "srv2" => %{coredump_reports: [%{core_path: "/cores/core.2"}]}
+          diagnostics: %Toast.Diagnostics.Result{
+            servers: %{"srv1" => %{}, "srv2" => %{}},
+            coredump_reports: [
+              %{core_path: "/cores/core.1"},
+              %{core_path: "/cores/core.2"}
+            ]
           }
         ]
       ]

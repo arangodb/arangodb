@@ -6,17 +6,17 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
   import Toast.DeploymentTestHelpers, only: [make_deployment: 2]
 
   describe "stop_and_collect/2" do
-    test "returns {:ok, empty map} for a controller that never deployed" do
+    test "returns {:ok, empty result} for a controller that never deployed" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
       deployment = make_deployment(pid, id: "test-collect-never-deployed")
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
-      assert diagnostics == %{}
+      assert diagnostics == %Toast.Diagnostics.Result{}
     end
 
-    test "returns {:ok, empty map} for a controller that was already shut down" do
+    test "returns {:ok, empty result} for a controller that was already shut down" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
 
@@ -25,7 +25,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       :ok = Controller.shutdown(pid)
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
-      assert diagnostics == %{}
+      assert diagnostics == %Toast.Diagnostics.Result{}
     end
 
     test "returns {:error, ...} when controller process is dead" do
@@ -36,7 +36,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
       GenServer.stop(pid)
 
-      assert {:error, :controller_dead, %{}} =
+      assert {:error, :controller_dead, %Toast.Diagnostics.Result{}} =
                Toast.Deployment.stop_and_collect(deployment)
     end
 
@@ -54,7 +54,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       assert is_map(partial)
     end
 
-    test "returns {:ok, empty map} for a cluster controller that never deployed" do
+    test "returns {:ok, empty result} for a cluster controller that never deployed" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
@@ -66,10 +66,10 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         )
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
-      assert diagnostics == %{}
+      assert diagnostics == %Toast.Diagnostics.Result{}
     end
 
-    test "returns {:error, :controller_dead, empty map} for a dead cluster controller" do
+    test "returns {:error, :controller_dead, empty result} for a dead cluster controller" do
       {:ok, pid} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
@@ -82,11 +82,11 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
 
       GenServer.stop(pid)
 
-      assert {:error, :controller_dead, %{}} =
+      assert {:error, :controller_dead, %Toast.Diagnostics.Result{}} =
                Toast.Deployment.stop_and_collect(deployment)
     end
 
-    test "cluster with dump_agency_on_error: false omits agency_dump from result" do
+    test "cluster with dump_agency_on_error: false has nil agency_dump" do
       config = Toast.Config.load(dump_agency_on_error: false)
 
       {:ok, pid} =
@@ -100,7 +100,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
         )
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
-      refute Map.has_key?(diagnostics, :agency_dump)
+      assert diagnostics.agency_dump == nil
     end
 
     test "config accepts custom debugger module atom" do
@@ -117,7 +117,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       deployment = make_deployment(pid, id: "test-debugger-none", config: config)
 
       assert {:ok, diagnostics} = Toast.Deployment.stop_and_collect(deployment)
-      refute Map.has_key?(diagnostics, :coredump_reports)
+      assert diagnostics.coredump_reports == []
     end
   end
 

@@ -219,6 +219,10 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
+  def handle_call({:resolve_target, target}, _from, state) do
+    {:reply, state.mode.resolve_target(state, target), state}
+  end
+
   def handle_call(msg, from, state) do
     if function_exported?(state.mode, :handle_call_extra, 3) do
       case state.mode.handle_call_extra(msg, from, state) do

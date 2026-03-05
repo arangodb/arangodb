@@ -2,6 +2,7 @@ defmodule ToastTest.Interactive do
   @moduledoc "Quick interactive debugging helper that runs tests with proper ExUnit lifecycle support (setup_all, setup, on_exit)."
 
   alias ToastTest.ExUnitCompat, as: Compat
+  alias ToastTest.TestLifecycle
 
   @on_exit_timeout 30_000
 
@@ -45,40 +46,19 @@ defmodule ToastTest.Interactive do
   end
 
   defp run_with_lifecycle(%{name: module} = _test_module, tests) do
-    parent_pid = self()
     context = %{module: module, async: false}
 
-    {module_pid, module_ref} =
-      spawn_monitor(fn ->
-        ExUnit.OnExitHandler.register(self())
-
-        result =
-          try do
-            {:ok, Compat.get_setup_all(module, context)}
-          catch
-            kind, error ->
-              {:error, {kind, error, __STACKTRACE__}}
-          end
-
-        send(parent_pid, {self(), :setup_all, result})
-
-        ref = Process.monitor(parent_pid)
-
-        receive do
-          {^parent_pid, :exit} -> :ok
-          {:DOWN, ^ref, _, _, _} -> :ok
-        end
-      end)
+    {module_pid, module_ref} = TestLifecycle.spawn_setup_all(module, context)
 
     {results, setup_all_error} =
       receive do
         {^module_pid, :setup_all, {:ok, setup_all_context}} ->
           results = run_tests(module, tests, setup_all_context)
-          exit_setup_all(module_pid, module_ref)
+          TestLifecycle.exit_setup_all(module_pid, module_ref)
           {results, nil}
 
         {^module_pid, :setup_all, {:error, error}} ->
-          exit_setup_all(module_pid, module_ref)
+          TestLifecycle.exit_setup_all(module_pid, module_ref)
 
           failed =
             Enum.map(tests, fn test ->
@@ -108,14 +88,6 @@ defmodule ToastTest.Interactive do
 
     print_summary(results)
     results
-  end
-
-  defp exit_setup_all(pid, ref) do
-    send(pid, {self(), :exit})
-
-    receive do
-      {:DOWN, ^ref, _, _, _} -> :ok
-    end
   end
 
   defp run_tests(module, tests, context) do
@@ -171,7 +143,7 @@ defmodule ToastTest.Interactive do
   end
 
   defp run_on_exit(pid) do
-    case ExUnit.OnExitHandler.run(pid, @on_exit_timeout) do
+    case TestLifecycle.run_on_exit(pid, @on_exit_timeout) do
       :ok -> nil
       {kind, reason, stack} -> {kind, reason, stack}
     end
