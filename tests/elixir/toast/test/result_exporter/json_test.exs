@@ -1,7 +1,7 @@
 defmodule ToastTest.ResultExporter.JSONTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.ResultExporter.JSON
+  alias ToastTest.ResultExporter.{AnalysisData, JSON}
   alias Toast.Deployment.ServerInstance
 
   @started_at ~U[2024-01-15 10:00:00Z]
@@ -266,7 +266,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
 
     test "single-server diagnostics rendered in server_health" do
-      result = JSON.build(base_test_results(), single_server_diagnostics())
+      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
 
       health = result["server_health"]
       assert is_map(health)
@@ -288,12 +288,12 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
 
     test "log_file included in server instance" do
-      result = JSON.build(base_test_results(), single_server_diagnostics())
+      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
       assert result["server_health"]["toast-1"]["server"]["log_file"] == "/tmp/toast/server/log"
     end
 
     test "server instance included in server_health" do
-      result = JSON.build(base_test_results(), single_server_diagnostics())
+      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
       server = result["server_health"]["toast-1"]["server"]
       assert server["id"] == "toast-1"
       assert server["role"] == "single"
@@ -302,7 +302,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
 
     test "cluster diagnostics (per-server map) rendered correctly" do
-      result = JSON.build(base_test_results(), cluster_diagnostics())
+      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: cluster_diagnostics()})
 
       health = result["server_health"]
       assert Map.has_key?(health, "agent-1")
@@ -400,7 +400,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
         unmatched: []
       }
 
-      result = JSON.build(base_test_results(), nil, nil, crash_matching)
+      result = JSON.build(base_test_results(), %AnalysisData{crash_matching: crash_matching})
 
       assert Map.has_key?(result, "crash_matching")
       assert [entry] = result["crash_matching"]["matched"]
@@ -413,7 +413,7 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
 
     test "omits crash_matching when nil" do
-      result = JSON.build(base_test_results(), nil, nil, nil)
+      result = JSON.build(base_test_results())
       refute Map.has_key?(result, "crash_matching")
     end
   end

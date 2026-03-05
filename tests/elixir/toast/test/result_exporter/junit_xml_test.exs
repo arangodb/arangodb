@@ -1,7 +1,7 @@
 defmodule ToastTest.ResultExporter.JUnitXMLTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.ResultExporter.JUnitXML
+  alias ToastTest.ResultExporter.{AnalysisData, JUnitXML}
 
   @started_at ~U[2024-01-15 10:00:00Z]
   @finished_at ~U[2024-01-15 10:02:00Z]
@@ -180,7 +180,7 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
 
   describe "diagnostics" do
     test "server health diagnostics in system-err CDATA" do
-      xml = JUnitXML.render(base_test_results(), single_server_diagnostics())
+      xml = JUnitXML.render(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
 
       assert xml =~ "<system-err>"
       assert xml =~ "<![CDATA["
@@ -191,7 +191,7 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
     end
 
     test "crash section includes crash output" do
-      xml = JUnitXML.render(base_test_results(), single_server_diagnostics())
+      xml = JUnitXML.render(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
       assert xml =~ "Crash output:"
       assert xml =~ "caught unexpected signal 11"
       assert xml =~ "frame 0 at 0xdead"
@@ -212,7 +212,7 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
           }
       }
 
-      xml = JUnitXML.render(base_test_results(), %{"toast-1" => entry})
+      xml = JUnitXML.render(base_test_results(), %AnalysisData{diagnostics: %{"toast-1" => entry}})
       assert xml =~ "Fatal lines:"
       assert xml =~ "assertion failed at foo.cpp:42"
     end
@@ -294,7 +294,10 @@ defmodule ToastTest.ResultExporter.JUnitXMLTest do
         unmatched: []
       }
 
-      xml = JUnitXML.render(base_test_results(), single_server_diagnostics(), nil, crash_matching)
+      xml = JUnitXML.render(base_test_results(), %AnalysisData{
+        diagnostics: single_server_diagnostics(),
+        crash_matching: crash_matching
+      })
 
       assert xml =~ "Crash Attribution:"
       assert xml =~ "SomeTest"

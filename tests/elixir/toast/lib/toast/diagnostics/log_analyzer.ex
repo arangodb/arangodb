@@ -42,9 +42,6 @@ defmodule Toast.Diagnostics.LogAnalyzer do
     |> finalize()
   end
 
-  @spec has_crash?(String.t()) :: boolean()
-  def has_crash?(content), do: String.contains?(content, "{crash}")
-
   @spec format_summary(log_report()) :: String.t()
   def format_summary(%{signal_name: nil}), do: "No crash detected"
 
@@ -52,9 +49,7 @@ defmodule Toast.Diagnostics.LogAnalyzer do
     "#{name} (signal #{number}) - #{length(bt)} backtrace frames"
   end
 
-  @doc "Create initial accumulator for streaming line-by-line processing."
-  @spec new() :: map()
-  def new do
+  defp new do
     %{
       signal_number: nil,
       signal_name: nil,
@@ -69,9 +64,7 @@ defmodule Toast.Diagnostics.LogAnalyzer do
     }
   end
 
-  @doc "Process a single log line, updating the accumulator."
-  @spec process_line(String.t(), map()) :: map()
-  def process_line(line, report) do
+  defp process_line(line, report) do
     report
     |> maybe_collect_fatal(line)
     |> maybe_collect_crash(line)
@@ -79,9 +72,7 @@ defmodule Toast.Diagnostics.LogAnalyzer do
     |> maybe_collect_warning(line)
   end
 
-  @doc "Finalize the accumulator into a log_report (reverses collected lists, strips internal fields)."
-  @spec finalize(map()) :: log_report()
-  def finalize(report) do
+  defp finalize(report) do
     report
     |> Map.update!(:fatal_lines, &Enum.reverse/1)
     |> Map.update!(:backtrace, &Enum.reverse/1)

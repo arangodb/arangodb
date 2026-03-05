@@ -145,7 +145,8 @@ defmodule ToastTest.ResultExporterTest do
         server_log: nil
       }
 
-      assert :ok = ResultExporter.export("test", sample_results(), diagnostics)
+      analysis = %ToastTest.ResultExporter.AnalysisData{diagnostics: diagnostics}
+      assert :ok = ResultExporter.export("test", sample_results(), analysis)
 
       json_content = File.read!(Path.join(tmp, "test.json"))
       assert json_content =~ "server_health"

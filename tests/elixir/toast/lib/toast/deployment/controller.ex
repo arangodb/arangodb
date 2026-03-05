@@ -457,6 +457,7 @@ defmodule Toast.Deployment.Controller do
 
   # --- Server/state helpers (public for mode modules) ---
 
+  @doc false
   def fetch_server(state, server_id) do
     case Map.get(state.servers, server_id) do
       nil -> {:error, :not_found}
@@ -464,6 +465,7 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
+  @doc false
   def update_server(state, server_id, updates) do
     server = state.servers[server_id]
     updated = struct!(server, updates)
@@ -472,6 +474,7 @@ defmodule Toast.Deployment.Controller do
 
   # --- Health monitoring ---
 
+  @doc false
   def start_single_health_monitor(server_id, endpoint) do
     case Toast.Process.Supervisor.start_health_monitor(
            server_id: server_id,
@@ -487,12 +490,14 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
+  @doc false
   def stop_all_health_monitors(state) do
     for {_id, server} <- state.servers do
       ServerLifecycle.stop_health_monitor(server)
     end
   end
 
+  @doc false
   def stop_health_monitor(state, server_id) do
     case state.servers[server_id] do
       nil -> :ok
@@ -500,6 +505,7 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
+  @doc false
   def stop_server_process(state, server_id, timeout) do
     case state.servers[server_id] do
       %{server_pid: nil} ->
@@ -524,6 +530,7 @@ defmodule Toast.Deployment.Controller do
 
   # --- Shared helpers for mode modules ---
 
+  @doc false
   def spec_to_server_opts(spec) do
     [
       id: spec.id,
@@ -536,12 +543,14 @@ defmodule Toast.Deployment.Controller do
     ]
   end
 
+  @doc false
   def collect_diagnostics(state, error_for_server_fn) do
     Map.new(state.servers, fn {server_id, server} ->
       {server_id, Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
     end)
   end
 
+  @doc false
   def finalize_shutdown(state, diagnostics) do
     %{
       state
@@ -551,10 +560,12 @@ defmodule Toast.Deployment.Controller do
     }
   end
 
+  @doc false
   def clear_server_pids(servers) do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
   end
 
+  @doc false
   def build_deployment_from_state(state) do
     primary_endpoint =
       state.mode.build_info(state)
@@ -573,6 +584,7 @@ defmodule Toast.Deployment.Controller do
   defp deployment_mode(Toast.Deployment.Controller.SingleServer), do: :single_server
   defp deployment_mode(Toast.Deployment.Controller.Cluster), do: :cluster
 
+  @doc false
   def remaining_ms(deadline) do
     max(0, deadline - System.monotonic_time(:millisecond))
   end

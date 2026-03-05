@@ -7,10 +7,18 @@ defmodule Toast.Deployment do
   alias Toast.Config
   alias Toast.Deployment.{Controller, ServerInstance}
 
-  import Toast.Utils, only: [conditional_put: 3, conditional_put: 4]
+  import Toast.Utils, only: [conditional_put: 3, conditional_put: 4, compact_join: 2]
 
   @type mode :: :single_server | :cluster
 
+  @typedoc """
+  Target specifier for server control operations.
+
+  - `"server-id"` — direct server ID string (e.g., `"single"`, `"dbserver-0"`)
+  - `[role: :dbserver]` — all servers with that role
+  - `[role: :coordinator, index: 0]` — specific server by role and index
+  - `[cluster_id: "PRMR-abc"]` — server by cluster-internal ID
+  """
   @type server_target ::
           String.t()
           | [role: atom()]
@@ -165,10 +173,6 @@ defmodule Toast.Deployment do
     controller_call(deployment, {:get_servers, role}, [])
   end
 
-  @doc "Get the primary endpoint URL."
-  @spec endpoint(t()) :: String.t()
-  def endpoint(%__MODULE__{endpoint: ep}), do: ep
-
   @spec client(t(), String.t() | keyword()) :: {:ok, Client.t()} | {:error, term()}
   def client(%__MODULE__{} = deployment, server_id) when is_binary(server_id) do
     case server(deployment, server_id) do
@@ -178,17 +182,17 @@ defmodule Toast.Deployment do
   end
 
   def client(%__MODULE__{} = deployment, opts) when is_list(opts) do
-    if Keyword.has_key?(opts, :role) do
-      role = Keyword.fetch!(opts, :role)
-      index = Keyword.get(opts, :index, 0)
+    case Keyword.pop(opts, :role) do
+      {nil, _opts} ->
+        {:error, :invalid_target}
 
-      case servers(deployment, role: role) do
-        [] -> {:error, :unknown_server}
-        srvs when length(srvs) > index -> {:ok, Client.new(Enum.at(srvs, index).endpoint)}
-        _ -> {:error, :unknown_server}
-      end
-    else
-      {:error, :invalid_target}
+      {role, opts} ->
+        index = Keyword.get(opts, :index, 0)
+
+        case servers(deployment, role: role) do
+          srvs when length(srvs) > index -> {:ok, Client.new(Enum.at(srvs, index).endpoint)}
+          _ -> {:error, :unknown_server}
+        end
     end
   end
 
@@ -446,8 +450,7 @@ defmodule Toast.Deployment do
       if(details.server_crash_info, do: format_crash_exit(details.server_crash_info)),
       format_crash_log_summary(details.log_report, LogAnalyzer)
     ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(" ")
+    |> compact_join(" ")
   end
 
   defp format_crash_exit(ci) do

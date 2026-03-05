@@ -450,14 +450,14 @@ defmodule ToastTest.Runner do
 
     suite_name = derive_suite_name(suite_module)
 
-    ToastTest.ResultExporter.export(
-      suite_name,
-      test_results,
-      diagnostics,
-      sanitizer_matching,
-      crash_matching,
-      log_matching
-    )
+    analysis = %ToastTest.ResultExporter.AnalysisData{
+      diagnostics: diagnostics,
+      sanitizer_matching: sanitizer_matching,
+      crash_matching: crash_matching,
+      log_matching: log_matching
+    }
+
+    ToastTest.ResultExporter.export(suite_name, test_results, analysis)
   end
 
   defp derive_suite_name(suite_module) do
@@ -953,7 +953,7 @@ defmodule ToastTest.Runner do
   end
 
   defp process_max_failures(stats_pid, max_failures, bump) do
-    previous = ExUnit.RunnerStats.increment_failure_counter(stats_pid, bump)
+    previous = Compat.increment_failure_counter(stats_pid, bump)
 
     cond do
       previous >= max_failures -> :surpassed
@@ -964,7 +964,7 @@ defmodule ToastTest.Runner do
 
   defp max_failures_reached?(%{stats_pid: stats_pid, max_failures: max_failures}) do
     max_failures != :infinity and
-      ExUnit.RunnerStats.get_failure_counter(stats_pid) >= max_failures
+      Compat.get_failure_counter(stats_pid) >= max_failures
   end
 
   defp get_timeout(config, tags) do

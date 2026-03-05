@@ -1,17 +1,14 @@
 defmodule ToastTest.ResultExporter.JUnitXML do
   @moduledoc "Transform test results and diagnostics into JUnit XML format."
 
-  alias ToastTest.ResultExporter.Shared
+  alias ToastTest.ResultExporter.{AnalysisData, Shared}
 
   @doc "Render test results and diagnostics as a JUnit XML string."
-  @spec render(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: String.t()
-  def render(
-        test_results,
-        diagnostics,
-        sanitizer_matching \\ nil,
-        crash_matching \\ nil,
-        log_matching \\ nil
-      ) do
+  @spec render(map(), AnalysisData.t() | nil) :: String.t()
+  def render(test_results, analysis \\ %AnalysisData{})
+  def render(test_results, nil), do: render(test_results, %AnalysisData{})
+
+  def render(test_results, %AnalysisData{} = analysis) do
     all_tests = all_tests_from_modules(test_results.modules)
 
     total = length(all_tests)
@@ -29,7 +26,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
       |> Enum.map_join("\n", &render_testsuite/1)
 
     system_err =
-      render_system_err(diagnostics, sanitizer_matching, crash_matching, log_matching)
+      render_system_err(analysis)
 
     [
       ~s(<?xml version="1.0" encoding="UTF-8"?>),
@@ -141,30 +138,30 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   # --- system-err for diagnostics ---
 
-  defp render_system_err(nil, _sanitizer_matching, _crash_matching, _log_matching), do: ""
+  defp render_system_err(%AnalysisData{diagnostics: nil}), do: ""
 
-  defp render_system_err(diagnostics, sanitizer_matching, crash_matching, log_matching) do
+  defp render_system_err(%AnalysisData{} = analysis) do
     parts =
       [
-        format_diagnostics(diagnostics),
+        format_diagnostics(analysis.diagnostics),
         format_matching_attribution(
           "Crash Attribution",
           "Unattributed crashes",
-          crash_matching,
+          analysis.crash_matching,
           :crash,
           &format_crash_detail/1
         ),
         format_matching_attribution(
           "Sanitizer Attribution",
           "Unattributed sanitizer errors",
-          sanitizer_matching,
+          analysis.sanitizer_matching,
           :error,
           &format_sanitizer_detail/1
         ),
         format_matching_attribution(
           "Log Issue Attribution",
           "Unattributed log issues",
-          log_matching,
+          analysis.log_matching,
           :log,
           &format_log_detail/1
         )
@@ -207,8 +204,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
       format_crash_section(Map.get(diag, :log_report)),
       format_log_section(Map.get(diag, :log_report))
     ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join("\n\n")
+    |> Toast.Utils.compact_join("\n\n")
   end
 
   defp format_sanitizer_section(nil), do: nil

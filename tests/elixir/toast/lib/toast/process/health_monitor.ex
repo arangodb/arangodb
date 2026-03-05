@@ -30,14 +30,6 @@ defmodule Toast.Process.HealthMonitor do
     GenServer.start_link(__MODULE__, opts)
   end
 
-  @spec status(GenServer.server()) :: :healthy | :unhealthy | :suspended
-  def status(server) do
-    GenServer.call(server, :status)
-  end
-
-  @spec healthy?(GenServer.server()) :: boolean()
-  def healthy?(server), do: status(server) == :healthy
-
   @spec suspend(GenServer.server()) :: :ok
   def suspend(server) do
     send(server, :suspend)

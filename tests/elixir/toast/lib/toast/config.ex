@@ -241,10 +241,10 @@ defmodule Toast.Config do
 
   # Precedence: keyword opts > env vars > .toast.local.exs > nil
   defp opt_or(opts, key, env_fallback, local_fallback) do
-    if Keyword.has_key?(opts, key) do
-      Keyword.fetch!(opts, key)
-    else
-      if env_fallback != nil, do: env_fallback, else: local_fallback
+    cond do
+      Keyword.has_key?(opts, key) -> Keyword.fetch!(opts, key)
+      not is_nil(env_fallback) -> env_fallback
+      true -> local_fallback
     end
   end
 

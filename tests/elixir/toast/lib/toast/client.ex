@@ -75,7 +75,7 @@ defmodule Toast.Client do
   defp request(%__MODULE__{} = client, method, path, opts) do
     url = build_url(client, path)
     opts = [{:url, url} | apply_auth(client, opts)]
-    apply(Req, method, [client.req, opts])
+    Req.request(client.req, [method: method] ++ opts)
   end
 
   defp build_url(%__MODULE__{} = client, path) do
@@ -84,8 +84,7 @@ defmodule Toast.Client do
       if(client.database, do: "/_db/#{client.database}"),
       path
     ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join()
+    |> Toast.Utils.compact_join()
   end
 
   defp version_prefix(version) when is_integer(version), do: "/_arango/v#{version}"

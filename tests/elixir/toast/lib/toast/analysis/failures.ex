@@ -58,7 +58,7 @@ defmodule Toast.Analysis.Failures do
       "   [#{f["kind"]}] #{msg}",
       if(f["stacktrace"], do: "   #{truncate(f["stacktrace"], 500)}")
     ]
-    |> Enum.reject(&is_nil/1)
+    |> Toast.Utils.compact()
   end
 
   defp truncate(text, max_len) when is_binary(text) and byte_size(text) > max_len do

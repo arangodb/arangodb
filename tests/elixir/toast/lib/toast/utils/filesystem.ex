@@ -90,17 +90,6 @@ defmodule Toast.Utils.Filesystem do
     end)
   end
 
-  @doc false
-  @spec read_file_or_nil(Path.t() | nil) :: String.t() | nil
-  def read_file_or_nil(nil), do: nil
-
-  def read_file_or_nil(path) do
-    case File.read(path) do
-      {:ok, content} -> content
-      {:error, _} -> nil
-    end
-  end
-
   defp repository_root?(path) do
     # Check for ArangoDB-specific directories to avoid false positives.
     # "arangod/" is the server source dir — unlikely to exist elsewhere.

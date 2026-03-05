@@ -3,17 +3,16 @@ defmodule ToastTest.ResultExporter.JSON do
 
   import Toast.Utils, only: [conditional_put: 3, conditional_put: 4]
 
+  alias ToastTest.ResultExporter.AnalysisData
+
   @toast_version "0.1.0"
 
   @doc "Build a JSON-safe Elixir map from test results and diagnostics."
-  @spec build(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: map()
-  def build(
-        test_results,
-        diagnostics,
-        sanitizer_matching \\ nil,
-        crash_matching \\ nil,
-        log_matching \\ nil
-      ) do
+  @spec build(map(), AnalysisData.t() | nil) :: map()
+  def build(test_results, analysis \\ %AnalysisData{})
+  def build(test_results, nil), do: build(test_results, %AnalysisData{})
+
+  def build(test_results, %AnalysisData{} = analysis) do
     all_tests = all_tests_from_modules(test_results.modules)
 
     base = %{
@@ -22,26 +21,23 @@ defmodule ToastTest.ResultExporter.JSON do
       "test_run" => build_test_run(test_results),
       "summary" => build_summary(all_tests),
       "modules" => build_modules(test_results.modules),
-      "server_health" => build_server_health(diagnostics)
+      "server_health" => build_server_health(analysis.diagnostics)
     }
 
     base
-    |> conditional_put("sanitizer_matching", build_matching(sanitizer_matching, :error, &build_sanitizer_error/1))
-    |> conditional_put("crash_matching", build_matching(crash_matching, :crash, &build_crash_info/1))
-    |> conditional_put("log_matching", build_matching(log_matching, :log, &build_log_entry/1))
+    |> conditional_put("sanitizer_matching", build_matching(analysis.sanitizer_matching, :error, &build_sanitizer_error/1))
+    |> conditional_put("crash_matching", build_matching(analysis.crash_matching, :crash, &build_crash_info/1))
+    |> conditional_put("log_matching", build_matching(analysis.log_matching, :log, &build_log_entry/1))
   end
 
   @doc "Render test results and diagnostics as a JSON string."
-  @spec render(map(), map() | nil, map() | nil, map() | nil, map() | nil) :: String.t()
-  def render(
-        test_results,
-        diagnostics,
-        sanitizer_matching \\ nil,
-        crash_matching \\ nil,
-        log_matching \\ nil
-      ) do
+  @spec render(map(), AnalysisData.t() | nil) :: String.t()
+  def render(test_results, analysis \\ %AnalysisData{})
+  def render(test_results, nil), do: render(test_results, %AnalysisData{})
+
+  def render(test_results, %AnalysisData{} = analysis) do
     test_results
-    |> build(diagnostics, sanitizer_matching, crash_matching, log_matching)
+    |> build(analysis)
     |> format_json()
   end
 

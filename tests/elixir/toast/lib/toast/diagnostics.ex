@@ -14,7 +14,6 @@ defmodule Toast.Diagnostics do
   def to_server_entries(diagnostics) when is_map(diagnostics) do
     diagnostics
     |> Enum.filter(fn {key, val} -> is_binary(key) and is_map(val) end)
-    |> Enum.to_list()
   end
 
   @doc """

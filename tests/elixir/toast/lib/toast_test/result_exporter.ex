@@ -5,6 +5,22 @@ defmodule ToastTest.ResultExporter do
 
   alias ToastTest.ResultExporter.{JSON, JUnitXML}
 
+  defmodule AnalysisData do
+    @moduledoc "Bundled analysis results passed through the export pipeline."
+
+    @type t :: %__MODULE__{
+            diagnostics: map() | nil,
+            sanitizer_matching: map() | nil,
+            crash_matching: map() | nil,
+            log_matching: map() | nil
+          }
+
+    defstruct diagnostics: nil,
+              sanitizer_matching: nil,
+              crash_matching: nil,
+              log_matching: nil
+  end
+
   @default_result_dir "toast-results"
 
   @doc """
@@ -15,39 +31,23 @@ defmodule ToastTest.ResultExporter do
 
   No-op if results is nil.
   """
-  @spec export(String.t(), map() | nil, map() | nil, map() | nil, map() | nil, map() | nil) ::
-          :ok
-  def export(
-        suite_name,
-        results,
-        diagnostics \\ nil,
-        sanitizer_matching \\ nil,
-        crash_matching \\ nil,
-        log_matching \\ nil
-      )
+  @spec export(String.t(), map() | nil, AnalysisData.t() | nil) :: :ok
+  def export(suite_name, results, analysis \\ %AnalysisData{})
 
-  def export(_suite_name, nil, _diagnostics, _sanitizer_matching, _crash_matching, _log_matching) do
+  def export(_suite_name, nil, _analysis) do
     Logger.info("No results!")
     :ok
   end
 
-  def export(suite_name, results, diagnostics, sanitizer_matching, crash_matching, log_matching) do
+  def export(suite_name, results, %AnalysisData{} = analysis) do
     result_dir = result_dir()
     File.mkdir_p!(result_dir)
 
     json_path = Path.join(result_dir, "#{suite_name}.json")
-
-    File.write!(
-      json_path,
-      JSON.render(results, diagnostics, sanitizer_matching, crash_matching, log_matching)
-    )
+    File.write!(json_path, JSON.render(results, analysis))
 
     xml_path = Path.join(result_dir, "#{suite_name}.xml")
-
-    File.write!(
-      xml_path,
-      JUnitXML.render(results, diagnostics, sanitizer_matching, crash_matching, log_matching)
-    )
+    File.write!(xml_path, JUnitXML.render(results, analysis))
 
     Logger.info("Results written to #{result_dir}")
     :ok
@@ -62,5 +62,4 @@ defmodule ToastTest.ResultExporter do
   def result_dir do
     System.get_env("TOAST_RESULT_DIR") || @default_result_dir
   end
-
 end

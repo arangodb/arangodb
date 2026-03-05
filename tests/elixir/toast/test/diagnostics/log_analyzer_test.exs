@@ -136,19 +136,19 @@ defmodule Toast.Diagnostics.LogAnalyzerTest do
 
   describe "has_crash?/1" do
     test "returns true for log with crash topic" do
-      assert LogAnalyzer.has_crash?(@sigsegv_crash_log)
+      assert String.contains?(@sigsegv_crash_log, "{crash}")
     end
 
     test "returns false for clean log" do
-      refute LogAnalyzer.has_crash?(@clean_log)
+      refute String.contains?(@clean_log, "{crash}")
     end
 
     test "returns false for empty string" do
-      refute LogAnalyzer.has_crash?("")
+      refute String.contains?("", "{crash}")
     end
 
     test "returns false for fatal without crash topic" do
-      refute LogAnalyzer.has_crash?(@fatal_non_crash)
+      refute String.contains?(@fatal_non_crash, "{crash}")
     end
   end
 

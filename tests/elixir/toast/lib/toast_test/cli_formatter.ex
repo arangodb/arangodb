@@ -300,7 +300,7 @@ defmodule ToastTest.CLIFormatter do
       if(c.excluded > 0, do: "#{c.excluded} excluded"),
       if(c.invalid > 0, do: colorize("#{c.invalid} invalid", :red, state))
     ]
-    |> Enum.reject(&is_nil/1)
+    |> Toast.Utils.compact()
   end
 
   defp print_failure_summary(%{failures: []}), do: :ok

@@ -21,7 +21,7 @@ defmodule Toast.Diagnostics.LogMatcherTest do
     }
   end
 
-  defp make_log_entry(opts \\ []) do
+  defp make_log_entry(opts) do
     %{
       timestamp: Keyword.get(opts, :timestamp, at(5)),
       message: Keyword.get(opts, :message, "something happened")

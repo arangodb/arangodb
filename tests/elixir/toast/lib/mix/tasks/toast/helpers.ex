@@ -181,7 +181,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       if(test_name_pattern != nil, do: {:test_name_pattern, test_name_pattern}),
       if(line_filters != [], do: {:only_test_ids, build_only_test_ids(test_modules, line_filters)})
     ]
-    |> Enum.reject(&is_nil/1)
+    |> Toast.Utils.compact()
   end
 
   @doc """

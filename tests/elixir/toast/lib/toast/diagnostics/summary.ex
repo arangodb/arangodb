@@ -76,7 +76,7 @@ defmodule Toast.Diagnostics.Summary do
   defp format_server_header(%ServerInstance{id: id, pid: pid, endpoint: endpoint}) do
     details =
       [if(pid, do: "PID #{pid}"), endpoint]
-      |> Enum.reject(&is_nil/1)
+      |> Toast.Utils.compact()
 
     case details do
       [] -> "  #{id}:"
@@ -230,8 +230,7 @@ defmodule Toast.Diagnostics.Summary do
       indent(preview, 6),
       if(crash.log_file, do: "    (see #{crash.log_file})")
     ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join("\n")
+    |> Toast.Utils.compact_join("\n")
   end
 
   defp format_sanitizer_entry(error) do

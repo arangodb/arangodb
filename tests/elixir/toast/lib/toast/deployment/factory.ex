@@ -9,16 +9,25 @@ defmodule Toast.Deployment.Factory do
   alias Toast.Deployment.CommandBuilder
   alias Toast.Diagnostics.Sanitizer
 
-  @type launch_spec :: %{
-          id: String.t(),
-          executable: Path.t(),
-          args: [String.t()],
-          env: [{String.t(), String.t()}],
-          working_dir: Path.t(),
-          server_dir: Path.t(),
-          port: pos_integer(),
-          log_file: Path.t()
-        }
+  defmodule LaunchSpec do
+    @moduledoc "Server launch specification produced by Factory."
+
+    @type t :: %__MODULE__{
+            id: String.t(),
+            executable: Path.t(),
+            args: [String.t()],
+            env: [{String.t(), String.t()}],
+            working_dir: Path.t(),
+            server_dir: Path.t(),
+            port: pos_integer(),
+            log_file: Path.t()
+          }
+
+    @enforce_keys [:id, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
+    defstruct [:id, :executable, :args, :env, :working_dir, :server_dir, :port, :log_file]
+  end
+
+  @type launch_spec :: LaunchSpec.t()
 
   @spec build_single_server(Config.t(), String.t(), pos_integer()) ::
           {:ok, launch_spec()} | {:error, term()}
@@ -29,7 +38,7 @@ defmodule Toast.Deployment.Factory do
       server_spec = %{role: :single, port: port, args: build_server_args(config)}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
-      spec = %{
+      spec = %LaunchSpec{
         id: server_id,
         executable: executable,
         args: args,
@@ -159,7 +168,7 @@ defmodule Toast.Deployment.Factory do
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 
       {:ok,
-       %{
+       %LaunchSpec{
          id: server_id,
          executable: executable,
          args: args,

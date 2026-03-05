@@ -15,4 +15,12 @@ defmodule Toast.Utils do
 
   def conditional_put(%{} = map, key, val, modifier) when is_function(modifier, 1),
     do: Map.put(map, key, modifier.(val))
+
+  @doc false
+  @spec compact([term()]) :: [term()]
+  def compact(list), do: Enum.reject(list, &is_nil/1)
+
+  @doc false
+  @spec compact_join([term()], String.t()) :: String.t()
+  def compact_join(list, joiner \\ ""), do: list |> compact() |> Enum.join(joiner)
 end

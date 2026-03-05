@@ -13,8 +13,7 @@ defmodule ToastTest.CrashMonitor do
         if(signal, do: "(signal: #{signal})"),
         if(exit_status, do: "exit_status=#{exit_status}")
       ]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.join(" ")
+      |> Toast.Utils.compact_join(" ")
 
     ToastTest.Runner.abort!({:crash, message})
   end
