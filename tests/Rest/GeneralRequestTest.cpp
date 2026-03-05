@@ -185,7 +185,8 @@ TEST_F(ApiVersionDetectionTest, ValidApiVersionV0) {
   EXPECT_EQ("/path", r.remaining);
 }
 
-// Test: Version number followed by non-slash character - unrecognized, not stripped
+// Test: Version number followed by non-slash character - unrecognized, not
+// stripped
 TEST_F(ApiVersionDetectionTest, VersionFollowedByAlphaNotStripped) {
   HttpRequest request(ci, 1);
   auto r = callDetect(request, "/_arango/v1abc/path");
