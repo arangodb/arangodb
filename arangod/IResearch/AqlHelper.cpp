@@ -29,8 +29,8 @@
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
-#include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
+#include "Aql/TypedAstNodes.h"
 #include "Basics/fasthash.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -777,21 +777,21 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 }
 
 aql::Variable const* getSearchFuncRef(aql::ast::ArrayNode args) noexcept {
-  auto elements = args.getElements();
-  size_t const size = elements.size();
+  auto argv = args.getElements();
+  size_t const size = argv.size();
 
   if (size < 1) {
     return nullptr;  // invalid args
   }
 
   // 1st argument has to be reference to `ref`
-  auto const* arg0 = elements[0];
+  auto const* arg0 = argv[0];
 
   if (!arg0 || aql::NODE_TYPE_REFERENCE != arg0->type) {
     return nullptr;
   }
 
-  for (auto&& arg : elements) {
+  for (auto&& arg : argv) {
     if (!arg || !arg->isDeterministic()) {
       // we don't support non-deterministic arguments for scorers
       return nullptr;
