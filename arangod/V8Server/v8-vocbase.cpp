@@ -781,13 +781,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice variables = queryBuilder.slice().get("variables");
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  auto const snippets = queryBuilder.slice().get("nodes");
-  auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
-      querySlice, collections, viewsSlice, variables, snippets);
+      velocypack::Slice::emptyObjectSlice(), collections, viewsSlice,
+      variables);
   [&]() -> futures::Future<futures::Unit> {
-    co_return co_await query->instantiatePlan(snippets);
+    co_return co_await query->instantiatePlan(queryBuilder.slice());
   }()
                .waitAndGet();
 
