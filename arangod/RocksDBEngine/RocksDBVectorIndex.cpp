@@ -401,9 +401,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
         continue;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(), std::format("failed to read document vector data, "
-                                         "embeddings are in a wrong format: {}",
-                                         res.errorMessage()));
+          res.errorNumber(),
+          std::format(
+              "failed to read document vector data, "
+              "embeddings are in a wrong format and index is not sparse: {}",
+              res.errorMessage()));
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
