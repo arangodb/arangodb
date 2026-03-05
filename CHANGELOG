@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-3.
+
 * Remove `GET /_admin/statistics`, `GET /_admin/statistics-description`, and cluster endpoints
   `/_admin/cluster/nodeStatistics` and `/_admin/cluster/statistics`.
   
@@ -118,8 +120,6 @@
     - envelope  
 
 * Remove /_admin/database/target-version endpoint in favor of /_api/version
-
-* Updated ArangoDB Starter to v0.20.0-preview-2.
 
 * The following keywords should be reserved in AQL, i.e. added to the lexer (tokens.ll):
   MATCH, WHILE, UNTIL, SCAN, FOLD
