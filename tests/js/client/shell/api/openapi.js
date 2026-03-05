@@ -60,20 +60,16 @@ function openapi_endpointsSuite() {
     test_openapi_v1_does_not_exist: function () {
       let doc = arango.GET_RAW("/_arango/v1/openapi.json");
 
-      // even though this path does not exist, invalid versions are currently
-      // rejected with a 400 Bad Request
-      assertEqual(doc.code, 400);
-      assertEqual(doc.errorNum, 400);
+      assertEqual(doc.code, 404);
+      assertEqual(doc.errorNum, 404);
 
     },
 
     test_openapi_v2_does_not_exist: function () {
       let doc = arango.GET_RAW("/_arango/v2/openapix.json");
 
-      // even though this path does not exist, invalid versions are currently
-      // rejected with a 400 Bad Request
-      assertEqual(doc.code, 400);
-      assertEqual(doc.errorNum, 400);
+      assertEqual(doc.code, 404);
+      assertEqual(doc.errorNum, 404);
     },
 
     test_retrieves_openapi_experimental: function () {

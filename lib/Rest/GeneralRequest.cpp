@@ -484,15 +484,13 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
               ", got path: ", std::string_view(start, end - start)));
     }
 
-    if (!ApiVersion::isApiVersionSupported(version) && !isExperimental) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_BAD_PARAMETER,
-          absl::StrCat("invalid API version; got path: ",
-                       std::string_view(start, end - start)));
+    // If the parsed version is not supported or experimental we do NOT set
+    // _requestedApiVersion or strip the prefix. This will cause the handler
+    // lookup to fail and return a 404 Not Found
+    if (ApiVersion::isApiVersionSupported(version) || isExperimental) {
+      _requestedApiVersion = static_cast<uint32_t>(version);
+      start = p + 1 + numEnd;  // advance past "/_arango/vX"
     }
-
-    _requestedApiVersion = static_cast<uint32_t>(version);
-    start = p + 1 + numEnd;  // advance past "/_arango/vX"
   }
 }
 
