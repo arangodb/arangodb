@@ -66,12 +66,12 @@ defmodule Toast.PortAllocatorTest do
     end
   end
 
-  describe "allocate!/1" do
-    test "returns the port integer directly", context do
+  describe "allocate/1 returns port directly via pattern match" do
+    test "returns {:ok, port} with a valid port", context do
       name = unique_name(context)
       pid = start_supervised!({PortAllocator, name: name, base_port: 40_500})
 
-      port = PortAllocator.allocate!(pid)
+      assert {:ok, port} = PortAllocator.allocate(pid)
       assert is_integer(port)
       assert port > 0
     end

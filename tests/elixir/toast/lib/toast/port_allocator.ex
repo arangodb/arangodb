@@ -42,17 +42,6 @@ defmodule Toast.PortAllocator do
   end
 
   @doc """
-  Allocate an available port, raising on failure.
-  """
-  @spec allocate!(GenServer.server()) :: pos_integer()
-  def allocate!(server \\ __MODULE__) do
-    case allocate(server) do
-      {:ok, port} -> port
-      {:error, reason} -> raise "Failed to allocate port: #{inspect(reason)}"
-    end
-  end
-
-  @doc """
   Allocate `count` ports atomically in a single GenServer call.
   """
   @spec allocate_batch(GenServer.server(), pos_integer()) ::

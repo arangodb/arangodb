@@ -93,6 +93,25 @@ defmodule Toast.Diagnostics.Matcher do
     end
   end
 
+  @doc """
+  Match diagnostic items to tests using a provided extractor function.
+
+  Handles nil guards for diagnostics and tests, extracts items via `extractor`,
+  and delegates to `match/4`. The extractor receives diagnostics and must return
+  `{items_to_match, extra_unmatched}` where extra_unmatched items are appended
+  to the result's unmatched list.
+  """
+  @spec match_from_diagnostics(map() | nil, [map()] | nil, atom(), (map() -> {[map()], [map()]}), keyword()) :: map()
+  def match_from_diagnostics(diagnostics, tests, item_key, extractor, opts \\ [])
+  def match_from_diagnostics(nil, _tests, _item_key, _extractor, _opts), do: empty_result()
+  def match_from_diagnostics(_diagnostics, nil, _item_key, _extractor, _opts), do: empty_result()
+
+  def match_from_diagnostics(diagnostics, tests, item_key, extractor, opts) do
+    {items, extra_unmatched} = extractor.(diagnostics)
+    result = match(items, tests, item_key, opts)
+    %{result | unmatched: result.unmatched ++ extra_unmatched}
+  end
+
   @doc false
   def empty_result, do: %{matched: [], unmatched: []}
 

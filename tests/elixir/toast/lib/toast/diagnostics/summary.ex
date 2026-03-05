@@ -132,7 +132,7 @@ defmodule Toast.Diagnostics.Summary do
   case with confidence level, and unmatched crashes separately.
   """
   @spec format_crash_attribution(map(), [map()]) :: String.t() | nil
-  def format_crash_attribution(crash_matching, crash_affected_tests \\ [])
+  def format_crash_attribution(crash_matching, crash_affected_tests)
 
   def format_crash_attribution(%{matched: [], unmatched: []}, []), do: nil
 

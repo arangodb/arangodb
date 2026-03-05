@@ -22,24 +22,21 @@ defmodule Toast.Deployment.CommandBuilder do
       flatten_custom_args(args)
   end
 
-  @spec config_file(role()) :: String.t()
-  def config_file(:single), do: "etc/testing/arangod-single.conf"
-  def config_file(:agent), do: "etc/testing/arangod-agent.conf"
-  def config_file(:coordinator), do: "etc/testing/arangod-coordinator.conf"
-  def config_file(:dbserver), do: "etc/testing/arangod-dbserver.conf"
+  defp config_file(:single), do: "etc/testing/arangod-single.conf"
+  defp config_file(:agent), do: "etc/testing/arangod-agent.conf"
+  defp config_file(:coordinator), do: "etc/testing/arangod-coordinator.conf"
+  defp config_file(:dbserver), do: "etc/testing/arangod-dbserver.conf"
 
-  @spec role_args(role()) :: [String.t()]
-  def role_args(:single), do: ["--server.storage-engine", "rocksdb"]
-  def role_args(:agent), do: ["--agency.activate", "true", "--agency.supervision", "true"]
+  defp role_args(:single), do: ["--server.storage-engine", "rocksdb"]
+  defp role_args(:agent), do: ["--agency.activate", "true", "--agency.supervision", "true"]
 
-  def role_args(role) when role in [:coordinator, :dbserver] do
+  defp role_args(role) when role in [:coordinator, :dbserver] do
     ["--cluster.create-waits-for-sync-replication", "false", "--cluster.write-concern", "1"]
   end
 
-  @spec flatten_custom_args(%{String.t() => term()}) :: [String.t()]
-  def flatten_custom_args(args) when map_size(args) == 0, do: []
+  defp flatten_custom_args(args) when map_size(args) == 0, do: []
 
-  def flatten_custom_args(args) do
+  defp flatten_custom_args(args) do
     args
     |> Enum.sort_by(fn {key, _} -> key end)
     |> Enum.flat_map(&expand_arg/1)

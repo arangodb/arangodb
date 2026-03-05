@@ -208,8 +208,7 @@ defmodule Toast.Deployment.Factory do
   defp role_config_args(config, :dbserver), do: config.dbserver_args
   defp role_config_args(config, :agent), do: config.agent_args
 
-  @spec build_server_args(Config.t()) :: %{String.t() => String.t() | [String.t()]}
-  def build_server_args(config) do
+  defp build_server_args(config) do
     # Use "+" (stderr) for visible output. erlexec defaults all streams to /dev/null,
     # but ServerProcess explicitly captures stderr via pipe and forwards it to IO.
     defaults =

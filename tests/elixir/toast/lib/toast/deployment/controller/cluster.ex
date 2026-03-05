@@ -8,7 +8,6 @@ defmodule Toast.Deployment.Controller.Cluster do
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller
-  alias Toast.Diagnostics
   alias Toast.Diagnostics.AgencyDump
 
   @impl true
@@ -234,17 +233,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     all_specs = topology.agents ++ topology.dbservers ++ topology.coordinators
 
     Enum.reduce_while(all_specs, {:ok, state}, fn spec, {:ok, acc} ->
-      opts = [
-        id: spec.id,
-        executable: spec.executable,
-        args: spec.args,
-        env: spec.env,
-        working_dir: spec.working_dir,
-        listener: self(),
-        output_handler: &ServerLifecycle.print_server_output/2
-      ]
-
-      case Toast.Process.Supervisor.start_server(opts) do
+      case Toast.Process.Supervisor.start_server(Controller.spec_to_server_opts(spec)) do
         {:ok, pid} ->
           updated_server = %{acc.servers[spec.id] | server_pid: pid, launch_spec: spec}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, spec.id, updated_server)}}}
@@ -415,37 +404,21 @@ defmodule Toast.Deployment.Controller.Cluster do
     stop_servers(state.mode_state.dbservers, state, Controller.remaining_ms(deadline))
     Logger.debug("#{state.id}: stopping agents")
     stop_servers(state.mode_state.agents, state, Controller.remaining_ms(deadline))
-    diagnostics = collect_all_diagnostics(state)
+
+    diagnostics = Controller.collect_diagnostics(state, &crashed_server_error(state.error, &1))
     Logger.debug("#{state.id}: diagnostics collected")
-
-    %{
-      state
-      | status: :stopped,
-        servers: Controller.clear_server_pids(state.servers),
-        diagnostics: diagnostics
-    }
+    Controller.finalize_shutdown(state, diagnostics)
   end
 
-  defp collect_all_diagnostics(state) do
-    {crashed_id, crashed_info} = extract_crashed_server(state.error)
+  defp crashed_server_error({:server_crashed, crashed_id, crash_info}, server_id)
+       when server_id == crashed_id,
+       do: {:server_crashed, crash_info}
 
-    Map.new(state.servers, fn {server_id, server} ->
-      server_error =
-        if server_id == crashed_id,
-          do: {:server_crashed, crashed_info},
-          else: nil
+  defp crashed_server_error({:server_unhealthy, crashed_id}, server_id)
+       when server_id == crashed_id,
+       do: {:server_crashed, nil}
 
-      {server_id, Diagnostics.build_server_diagnostics(server, server_error)}
-    end)
-  end
-
-  defp extract_crashed_server({:server_crashed, server_id, crash_info}),
-    do: {server_id, crash_info}
-
-  defp extract_crashed_server({:server_unhealthy, server_id}),
-    do: {server_id, nil}
-
-  defp extract_crashed_server(_), do: {nil, nil}
+  defp crashed_server_error(_error, _server_id), do: nil
 
   defp stop_servers(server_ids, state, timeout) do
     on_event = state.on_event

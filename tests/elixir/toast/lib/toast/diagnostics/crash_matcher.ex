@@ -46,16 +46,10 @@ defmodule Toast.Diagnostics.CrashMatcher do
     * `:tolerance_seconds` — seconds after test end for low-confidence match (default: 5)
   """
   @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
-  def match(diagnostics, tests, opts \\ [])
-
-  def match(nil, _tests, _opts), do: Matcher.empty_result()
-  def match(_diagnostics, nil, _opts), do: Matcher.empty_result()
-
-  def match(diagnostics, tests, opts) do
-    crashes = extract_crashes(diagnostics)
-    {with_ts, without_ts} = Enum.split_with(crashes, & &1.timestamp)
-    result = Matcher.match(with_ts, tests, :crash, opts)
-    %{result | unmatched: result.unmatched ++ without_ts}
+  def match(diagnostics, tests, opts \\ []) do
+    Matcher.match_from_diagnostics(diagnostics, tests, :crash, fn diag ->
+      diag |> extract_crashes() |> Enum.split_with(& &1.timestamp)
+    end, opts)
   end
 
   defp extract_crashes(diagnostics) do

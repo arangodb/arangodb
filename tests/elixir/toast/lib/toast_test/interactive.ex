@@ -1,5 +1,5 @@
 defmodule ToastTest.Interactive do
-  @moduledoc "Runs individual test modules against an existing deployment for interactive debugging."
+  @moduledoc "Quick interactive debugging helper that runs test functions directly -- does not use ExUnit's full lifecycle (setup_all, on_exit, etc.), so use the proper runner for reliable results."
 
   @spec run(module() | String.t(), keyword()) :: [map()]
   def run(module_or_path, opts \\ [])

@@ -34,15 +34,10 @@ defmodule Toast.Diagnostics.SanitizerMatcher do
     * `:tolerance_seconds` — seconds after test end for low-confidence match (default: 5)
   """
   @spec match(map() | nil, [map()] | nil, keyword()) :: match_result()
-  def match(diagnostics, tests, opts \\ [])
-
-  def match(nil, _tests, _opts), do: Matcher.empty_result()
-  def match(_diagnostics, nil, _opts), do: Matcher.empty_result()
-
-  def match(diagnostics, tests, opts) do
-    diagnostics
-    |> extract_all_errors()
-    |> Matcher.match(tests, :error, opts)
+  def match(diagnostics, tests, opts \\ []) do
+    Matcher.match_from_diagnostics(diagnostics, tests, :error, fn diag ->
+      {extract_all_errors(diag), []}
+    end, opts)
   end
 
   defp extract_all_errors(diagnostics) do

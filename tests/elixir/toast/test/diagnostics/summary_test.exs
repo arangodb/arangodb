@@ -389,12 +389,12 @@ defmodule Toast.Diagnostics.SummaryTest do
     end
 
     test "returns nil when matched and unmatched are both empty" do
-      assert Summary.format_crash_attribution(%{matched: [], unmatched: []}) == nil
+      assert Summary.format_crash_attribution(%{matched: [], unmatched: []}, []) == nil
     end
 
     test "returns nil for non-matching input" do
-      assert Summary.format_crash_attribution(nil) == nil
-      assert Summary.format_crash_attribution(%{}) == nil
+      assert Summary.format_crash_attribution(nil, []) == nil
+      assert Summary.format_crash_attribution(%{}, []) == nil
     end
 
     test "formats matched crash with test attribution" do
@@ -410,7 +410,7 @@ defmodule Toast.Diagnostics.SummaryTest do
         unmatched: []
       }
 
-      text = Summary.format_crash_attribution(match_result)
+      text = Summary.format_crash_attribution(match_result, [])
 
       assert text =~ "CRASH ATTRIBUTION"
       assert text =~ "SmokeTest.VersionTest"
@@ -428,7 +428,7 @@ defmodule Toast.Diagnostics.SummaryTest do
         unmatched: [make_crash_info()]
       }
 
-      text = Summary.format_crash_attribution(match_result)
+      text = Summary.format_crash_attribution(match_result, [])
 
       assert text =~ "Not attributed to a specific test"
       assert text =~ "SIGSEGV"
@@ -447,7 +447,7 @@ defmodule Toast.Diagnostics.SummaryTest do
         unmatched: []
       }
 
-      text = Summary.format_crash_attribution(match_result)
+      text = Summary.format_crash_attribution(match_result, [])
 
       assert text =~ "low confidence"
     end

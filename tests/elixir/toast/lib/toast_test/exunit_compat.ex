@@ -1,5 +1,5 @@
 defmodule ToastTest.ExUnitCompat do
-  @moduledoc "Compatibility shim for ExUnit internals across Elixir versions."
+  @moduledoc "Seam point for isolating ExUnit internal API calls, enabling version-specific adaptation when Elixir upgrades change these interfaces."
 
   @supported_elixir "~> 1.19"
 

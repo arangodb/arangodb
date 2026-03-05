@@ -106,14 +106,6 @@ defmodule Toast.Process.ServerProcess do
     GenServer.call(server, :os_pid)
   end
 
-  @doc """
-  Get the server id.
-  """
-  @spec id(GenServer.server()) :: server_id()
-  def id(server) do
-    GenServer.call(server, :id)
-  end
-
   @spec kill(GenServer.server()) :: :ok | {:error, :not_running}
   def kill(server), do: GenServer.call(server, :kill)
 
@@ -263,10 +255,6 @@ defmodule Toast.Process.ServerProcess do
 
   def handle_call(:os_pid, _from, state) do
     {:reply, state.os_pid, state}
-  end
-
-  def handle_call(:id, _from, state) do
-    {:reply, state.id, state}
   end
 
   @impl true

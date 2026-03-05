@@ -42,23 +42,6 @@ defmodule Toast.Utils.FilesystemTest do
     end
   end
 
-  describe "cleanup_server_dirs/1" do
-    test "removes created directories" do
-      work_dir = unique_tmp_dir()
-      {:ok, dirs} = Filesystem.create_server_dirs(work_dir, "srv1")
-
-      assert File.dir?(dirs.base_dir)
-      assert Filesystem.cleanup_server_dirs(dirs.base_dir) == :ok
-      refute File.exists?(dirs.base_dir)
-    end
-
-    test "returns :ok for nonexistent directory" do
-      assert Filesystem.cleanup_server_dirs(
-               "/tmp/toast_nonexistent_#{System.unique_integer([:positive])}"
-             ) == :ok
-    end
-  end
-
   describe "find_arangod/1" do
     test "finds arangod in given build_dir" do
       dir = unique_tmp_dir()

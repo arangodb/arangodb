@@ -35,10 +35,6 @@ defmodule Toast.Deployment.ServerInstance do
     expecting_exit: false
   ]
 
-  @doc "Whether the controller is expecting this server to exit (e.g., after stop, kill, or pause)."
-  @spec expecting_exit?(t()) :: boolean()
-  def expecting_exit?(%__MODULE__{expecting_exit: expecting_exit}), do: expecting_exit
-
   @doc "Whether this server has crashed unexpectedly (not as part of an expected exit)."
   @spec unexpected_crash?(t()) :: boolean()
   def unexpected_crash?(%__MODULE__{operational_state: :crashed, expecting_exit: false}), do: true

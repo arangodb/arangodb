@@ -522,7 +522,34 @@ defmodule Toast.Deployment.Controller do
     Enum.find(state.servers, fn {_id, server} -> server.health_monitor == pid end)
   end
 
-  # --- Helpers ---
+  # --- Shared helpers for mode modules ---
+
+  def spec_to_server_opts(spec) do
+    [
+      id: spec.id,
+      executable: spec.executable,
+      args: spec.args,
+      env: spec.env,
+      working_dir: spec.working_dir,
+      listener: self(),
+      output_handler: &ServerLifecycle.print_server_output/2
+    ]
+  end
+
+  def collect_diagnostics(state, error_for_server_fn) do
+    Map.new(state.servers, fn {server_id, server} ->
+      {server_id, Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
+    end)
+  end
+
+  def finalize_shutdown(state, diagnostics) do
+    %{
+      state
+      | status: :stopped,
+        servers: clear_server_pids(state.servers),
+        diagnostics: diagnostics
+    }
+  end
 
   def clear_server_pids(servers) do
     Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)

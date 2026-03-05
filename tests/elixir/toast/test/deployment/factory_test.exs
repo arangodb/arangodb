@@ -26,31 +26,6 @@ defmodule Toast.Deployment.FactoryTest do
     )
   end
 
-  describe "build_server_args/1" do
-    test "show_server_logs false suppresses non-error output" do
-      config = Config.load(show_server_logs: false, server_args: %{})
-      assert Factory.build_server_args(config) == %{"log.output" => "+;all=error"}
-    end
-
-    test "show_server_logs true passes output through" do
-      config = Config.load(show_server_logs: true, server_args: %{})
-      assert Factory.build_server_args(config) == %{"log.output" => "+"}
-    end
-
-    test "custom server_args override defaults" do
-      config =
-        Config.load(
-          show_server_logs: false,
-          server_args: %{"log.output" => "custom", "extra" => "val"}
-        )
-
-      result = Factory.build_server_args(config)
-
-      assert result["log.output"] == "custom"
-      assert result["extra"] == "val"
-    end
-  end
-
   describe "build_single_server/3" do
     setup do
       tmp_dir =
@@ -103,6 +78,39 @@ defmodule Toast.Deployment.FactoryTest do
 
       assert {:error, msg} = Factory.build_single_server(config, "srv3", 8531)
       assert msg =~ "arangod not found"
+    end
+
+    test "show_server_logs false suppresses non-error output", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      work_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, work_dir, show_server_logs: false)
+
+      assert {:ok, spec} = Factory.build_single_server(config, "srv-log1", 8540)
+      assert has_flag_value?(spec.args, "--log.output", "+;all=error")
+    end
+
+    test "show_server_logs true passes output through", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      work_dir = Path.join(tmp_dir, "work")
+      config = make_config(build_dir, work_dir, show_server_logs: true)
+
+      assert {:ok, spec} = Factory.build_single_server(config, "srv-log2", 8541)
+      assert has_flag_value?(spec.args, "--log.output", "+")
+    end
+
+    test "custom server_args override defaults", %{tmp_dir: tmp_dir} do
+      %{build_dir: build_dir} = create_fake_repo(tmp_dir)
+      work_dir = Path.join(tmp_dir, "work")
+
+      config =
+        make_config(build_dir, work_dir,
+          show_server_logs: false,
+          server_args: %{"log.output" => "custom", "extra" => "val"}
+        )
+
+      assert {:ok, spec} = Factory.build_single_server(config, "srv-custom", 8542)
+      assert has_flag_value?(spec.args, "--log.output", "custom")
+      assert has_flag_value?(spec.args, "--extra", "val")
     end
   end
 
@@ -304,5 +312,11 @@ defmodule Toast.Deployment.FactoryTest do
       assert {:error, msg} = Factory.build_cluster(config, "test-cluster")
       assert msg =~ "arangod not found"
     end
+  end
+
+  defp has_flag_value?(args, flag, value) do
+    args
+    |> Enum.chunk_every(2, 1, :discard)
+    |> Enum.any?(fn [f, v] -> f == flag and v == value end)
   end
 end

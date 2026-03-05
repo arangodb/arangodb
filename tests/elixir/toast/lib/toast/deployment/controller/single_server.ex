@@ -8,7 +8,6 @@ defmodule Toast.Deployment.Controller.SingleServer do
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
   alias Toast.Deployment.Controller
-  alias Toast.Diagnostics
   alias Toast.PortAllocator
 
   @impl true
@@ -35,7 +34,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
       Logger.info("Deployment #{id} ready at #{state.servers[id].endpoint}")
 
       state =
-        update_server_fields(state, id,
+        Controller.update_server(state, id,
           health_monitor: monitor_pid,
           operational_state: :running
         )
@@ -116,11 +115,11 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   defp init_server_port(state, id, port) do
     Logger.debug("#{id}: allocated port #{port}")
-    update_server_fields(state, id, port: port, endpoint: "http://127.0.0.1:#{port}")
+    Controller.update_server(state, id, port: port, endpoint: "http://127.0.0.1:#{port}")
   end
 
   defp apply_launch_spec(state, id, launch_spec) do
-    update_server_fields(state, id,
+    Controller.update_server(state, id,
       log_file: launch_spec.log_file,
       server_dir: launch_spec.server_dir,
       launch_spec: launch_spec
@@ -139,23 +138,13 @@ defmodule Toast.Deployment.Controller.SingleServer do
         {:server_started, id, os_pid, DateTime.utc_now()}
       )
 
-      state = update_server_fields(state, id, server_pid: server_pid, pid: os_pid)
+      state = Controller.update_server(state, id, server_pid: server_pid, pid: os_pid)
       {:ok, state}
     end
   end
 
   defp start_server_process(launch_spec) do
-    opts = [
-      id: launch_spec.id,
-      executable: launch_spec.executable,
-      args: launch_spec.args,
-      env: launch_spec.env,
-      working_dir: launch_spec.working_dir,
-      listener: self(),
-      output_handler: &ServerLifecycle.print_server_output/2
-    ]
-
-    Toast.Process.Supervisor.start_server(opts)
+    Toast.Process.Supervisor.start_server(Controller.spec_to_server_opts(launch_spec))
   end
 
   defp wait_for_ready(state, id, timeout) do
@@ -183,28 +172,14 @@ defmodule Toast.Deployment.Controller.SingleServer do
       )
     end
 
-    diagnostics = collect_diagnostics(state)
+    diagnostics =
+      case Map.values(state.servers) do
+        [%{server_dir: nil}] -> nil
+        _ -> Controller.collect_diagnostics(state, fn _server_id -> state.error end)
+      end
+
     Logger.debug("#{state.id}: diagnostics collected")
-
-    %{
-      state
-      | status: :stopped,
-        servers: Controller.clear_server_pids(state.servers),
-        diagnostics: diagnostics
-    }
-  end
-
-  defp collect_diagnostics(state) do
-    case Map.values(state.servers) do
-      [%{server_dir: nil}] ->
-        nil
-
-      [server] ->
-        %{server.id => Diagnostics.build_server_diagnostics(server, state.error)}
-
-      _ ->
-        nil
-    end
+    Controller.finalize_shutdown(state, diagnostics)
   end
 
   defp rollback(state, reason) do
@@ -223,7 +198,4 @@ defmodule Toast.Deployment.Controller.SingleServer do
     }
   end
 
-  defp update_server_fields(state, server_id, updates) do
-    Controller.update_server(state, server_id, updates)
-  end
 end

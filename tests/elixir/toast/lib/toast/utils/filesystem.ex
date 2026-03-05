@@ -23,12 +23,6 @@ defmodule Toast.Utils.Filesystem do
     end
   end
 
-  @spec cleanup_server_dirs(Path.t()) :: :ok
-  def cleanup_server_dirs(base_dir) do
-    File.rm_rf(base_dir)
-    :ok
-  end
-
   @spec find_arangod(Path.t() | nil) :: {:ok, Path.t()} | {:error, String.t()}
   def find_arangod(nil) do
     case System.find_executable("arangod") do

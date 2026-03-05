@@ -31,22 +31,20 @@ defmodule Toast.Deployment do
 
   @doc "Start a single-server deployment."
   @spec start_single_server(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start_single_server(config_or_opts \\ []), do: start(:single_server, config_or_opts)
+  def start_single_server(config_or_opts \\ [])
+  def start_single_server(%Config{} = config), do: start(:single_server, config)
+  def start_single_server(opts) when is_list(opts), do: start(:single_server, Config.load(opts))
 
   @doc "Start a cluster deployment."
   @spec start_cluster(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start_cluster(config_or_opts \\ []), do: start(:cluster, config_or_opts)
+  def start_cluster(config_or_opts \\ [])
+  def start_cluster(%Config{} = config), do: start(:cluster, config)
+  def start_cluster(opts) when is_list(opts), do: start(:cluster, Config.load(opts))
 
   @doc "Start a deployment with the given mode."
-  @spec start(mode(), Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
-  def start(mode, config_or_opts \\ [])
-
+  @spec start(mode(), Config.t()) :: {:ok, t()} | {:error, term()}
   def start(mode, %Config{} = config) when mode in [:single_server, :cluster] do
     do_start(mode, config, [])
-  end
-
-  def start(mode, opts) when mode in [:single_server, :cluster] and is_list(opts) do
-    do_start(mode, Config.load(opts), opts)
   end
 
   @doc """
@@ -116,16 +114,7 @@ defmodule Toast.Deployment do
 
     Logger.debug("Stopping deployment #{deployment.id} and collecting diagnostics")
 
-    agency_dump =
-      if deployment.mode == :cluster and agency_dump_enabled?(deployment) do
-        agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
-
-        try do
-          Controller.dump_agency(pid, agency_timeout)
-        catch
-          :exit, _ -> nil
-        end
-      end
+    agency_dump = capture_pre_shutdown_data(pid, deployment)
 
     shutdown_result =
       try do
@@ -320,6 +309,18 @@ defmodule Toast.Deployment do
     end
   end
 
+  defp capture_pre_shutdown_data(pid, deployment) do
+    if deployment.mode == :cluster and deployment.config.dump_agency_on_error do
+      agency_timeout = deployment.config.cluster_agents * 3 * 10_000 + 5_000
+
+      try do
+        Controller.dump_agency(pid, agency_timeout)
+      catch
+        :exit, _ -> nil
+      end
+    end
+  end
+
   defp collect_post_shutdown(pid, deployment, opts, agency_dump) do
     info =
       try do
@@ -408,10 +409,6 @@ defmodule Toast.Deployment do
     catch
       :exit, _ -> :ok
     end
-  end
-
-  defp agency_dump_enabled?(deployment) do
-    deployment.config.dump_agency_on_error
   end
 
   defp merge_diagnostics(base, agency_dump, coredump_reports) do

@@ -55,10 +55,12 @@ defmodule Toast.Process.ServerProcessTest do
     end
   end
 
-  describe "id/1" do
-    test "returns the server id", %{id: id} do
-      pid = start_server(id)
-      assert ServerProcess.id(pid) == id
+  describe "server id" do
+    test "crash notification includes the correct server id", %{id: id} do
+      pid = start_server(id, args: ["--crash-after", "1"], listener: self())
+      ServerProcess.launch(pid)
+
+      assert_receive {:server_crashed, ^id, _crash_info}, 5_000
     end
   end
 
