@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <cstring>
 #include <omp.h>
@@ -277,17 +278,13 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
     if (value.isNone()) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
+                          transaction::helpers::extractKeyFromDocument(doc))};
     }
 
     if (!value.isArray()) {
       return {TRI_ERROR_TYPE_ERROR,
               std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc)
-                              .copyString()
-                              .c_str())};
+                          transaction::helpers::extractKeyFromDocument(doc))};
     }
 
     if (value.length() != _definition.dimension) {
@@ -295,9 +292,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
               std::format(
                   "provided vector is not of matching dimension for document "
                   "{}, index dimension: {}, document dimension: {}",
-                  transaction::helpers::extractKeyFromDocument(doc)
-                      .copyString()
-                      .c_str(),
+                  transaction::helpers::extractKeyFromDocument(doc),
                   _definition.dimension, value.length())};
     }
 
@@ -308,9 +303,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
             TRI_ERROR_TYPE_ERROR,
             std::format("vector contains data not representable as double for "
                         "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc)
-                            .copyString()
-                            .c_str())};
+                        transaction::helpers::extractKeyFromDocument(doc))};
       }
       output.push_back(d.getNumericValue<double>());
     }
@@ -407,8 +400,10 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
         it->Next();
         continue;
       }
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                     "invalid index type definition");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          res.errorNumber(), std::format("failed to read document vector data, "
+                                         "embeddings are in a wrong format: {}",
+                                         res.errorMessage()));
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -456,6 +451,9 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+    if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
+      return {};
+    }
     return res;
   }
 
