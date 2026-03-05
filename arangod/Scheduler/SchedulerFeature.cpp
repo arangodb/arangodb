@@ -410,12 +410,12 @@ void SchedulerFeature::unprepare() {
   // synchronization and complains about reads that have happened before
   // this write here, but are not officially inter-thread synchronized.
   // We use the atomic reference here and in these places to silence TSAN.
-  std::atomic_ref<AcceptanceQueue*> acceptanceQueueRef{ACCEPTANCE_QUEUE};
-  acceptanceQueueRef.store(nullptr, std::memory_order_relaxed);
-  _acceptanceQueue.reset();
   std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
   schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
+  std::atomic_ref<AcceptanceQueue*> acceptanceQueueRef{ACCEPTANCE_QUEUE};
+  acceptanceQueueRef.store(nullptr, std::memory_order_relaxed);
+  _acceptanceQueue.reset();
 }
 
 uint64_t SchedulerFeature::maximalThreads() const noexcept {

@@ -302,6 +302,7 @@ auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
 }
 
 void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
+  work.dequeued();
   incCounter(pool._metrics.jobsDequeued);
   if (pool._metrics.dequeueTimes) {
     auto queueTime = std::chrono::duration<double>(

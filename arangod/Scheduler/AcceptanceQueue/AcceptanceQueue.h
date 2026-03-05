@@ -57,6 +57,9 @@ class AcceptanceQueue {
 
     [[nodiscard]] RequestLane lane() const { return _lane; }
 
+   protected:
+    [[nodiscard]] AcceptanceQueue* queue() const noexcept { return _queue; }
+
    private:
     AcceptanceQueue* _queue;
     RequestLane const _lane;
@@ -69,12 +72,11 @@ class AcceptanceQueue {
                                      RequestLane const lane)
         : AcceptanceQueueWorkItemBase(queue, lane),
           F(std::move(f)),
-          _queue(queue),
           _logContext(LogContext::current()) {
-      _queue->trackQueueItemSize(static_cast<int64_t>(sizeof(*this)));
+      this->queue()->trackQueueItemSize(static_cast<int64_t>(sizeof(*this)));
     }
     ~AcceptanceQueueWorkItem() override {
-      _queue->trackQueueItemSize(-static_cast<int64_t>(sizeof(*this)));
+      this->queue()->trackQueueItemSize(-static_cast<int64_t>(sizeof(*this)));
     }
     void invoke() override {
       LogContext::ScopedContext ctxGuard(
@@ -83,7 +85,6 @@ class AcceptanceQueue {
     }
 
    private:
-    AcceptanceQueue* _queue;
     LogContext _logContext;
   };
 
