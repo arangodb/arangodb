@@ -164,16 +164,12 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
       test = make_test(started_at: at(0), finished_at: at(10))
 
       result_low =
-        SanitizerMatcher.match(make_diagnostics([error]), [test],
-          tolerance_seconds: 3
-        )
+        SanitizerMatcher.match(make_diagnostics([error]), [test], tolerance_seconds: 3)
 
       assert [%{confidence: :low}] = result_low.matched
 
       result_none =
-        SanitizerMatcher.match(make_diagnostics([error]), [test],
-          tolerance_seconds: 1
-        )
+        SanitizerMatcher.match(make_diagnostics([error]), [test], tolerance_seconds: 1)
 
       assert result_none.matched == []
       assert length(result_none.unmatched) == 1

@@ -46,7 +46,13 @@ defmodule ToastTest.ServerIdMappingTest do
 
       deployment = cluster_deployment(ctrl)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       %{ctrl: ctrl, deployment: deployment}
     end
@@ -88,7 +94,13 @@ defmodule ToastTest.ServerIdMappingTest do
 
       deployment = cluster_deployment(ctrl)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       %{ctrl: ctrl, deployment: deployment}
     end
@@ -109,7 +121,13 @@ defmodule ToastTest.ServerIdMappingTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       deployment = cluster_deployment(ctrl)
       assert {:error, :not_found} = Deployment.cluster_id(deployment, "agent-0")

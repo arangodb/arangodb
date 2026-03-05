@@ -8,47 +8,76 @@ defmodule Toast.Deployment.CommandBuilderTest do
 
   describe "build_args/3 config file" do
     test "single uses single config" do
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+
       assert config_value(result) == "etc/testing/arangod-single.conf"
     end
 
     test "agent uses agent config" do
-      result = CommandBuilder.build_args(%{role: :agent, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :agent, port: 8529, args: %{}}, @paths, @repo_root)
+
       assert config_value(result) == "etc/testing/arangod-agent.conf"
     end
 
     test "coordinator uses coordinator config" do
-      result = CommandBuilder.build_args(%{role: :coordinator, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(
+          %{role: :coordinator, port: 8529, args: %{}},
+          @paths,
+          @repo_root
+        )
+
       assert config_value(result) == "etc/testing/arangod-coordinator.conf"
     end
 
     test "dbserver uses dbserver config" do
-      result = CommandBuilder.build_args(%{role: :dbserver, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :dbserver, port: 8529, args: %{}}, @paths, @repo_root)
+
       assert config_value(result) == "etc/testing/arangod-dbserver.conf"
     end
   end
 
   describe "build_args/3 role args" do
     test "single includes storage engine args" do
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+
       assert has_flag_value?(result, "--server.storage-engine", "rocksdb")
     end
 
     test "agent includes agency args" do
-      result = CommandBuilder.build_args(%{role: :agent, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :agent, port: 8529, args: %{}}, @paths, @repo_root)
+
       assert has_flag_value?(result, "--agency.activate", "true")
       assert has_flag_value?(result, "--agency.supervision", "true")
     end
 
     test "coordinator includes cluster args" do
-      result = CommandBuilder.build_args(%{role: :coordinator, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(
+          %{role: :coordinator, port: 8529, args: %{}},
+          @paths,
+          @repo_root
+        )
+
       assert has_flag_value?(result, "--cluster.create-waits-for-sync-replication", "false")
       assert has_flag_value?(result, "--cluster.write-concern", "1")
     end
 
     test "dbserver includes same cluster args as coordinator" do
-      db = CommandBuilder.build_args(%{role: :dbserver, port: 8529, args: %{}}, @paths, @repo_root)
-      coord = CommandBuilder.build_args(%{role: :coordinator, port: 8529, args: %{}}, @paths, @repo_root)
+      db =
+        CommandBuilder.build_args(%{role: :dbserver, port: 8529, args: %{}}, @paths, @repo_root)
+
+      coord =
+        CommandBuilder.build_args(
+          %{role: :coordinator, port: 8529, args: %{}},
+          @paths,
+          @repo_root
+        )
 
       db_role_args = Enum.drop(db, 12)
       coord_role_args = Enum.drop(coord, 12)
@@ -98,18 +127,28 @@ defmodule Toast.Deployment.CommandBuilderTest do
 
   describe "build_args/3 custom args" do
     test "empty custom args add nothing beyond base and role args" do
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: %{}}, @paths, @repo_root)
+
       refute "--key" in result
     end
 
     test "string values" do
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: %{"key" => "val"}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(
+          %{role: :single, port: 8529, args: %{"key" => "val"}},
+          @paths,
+          @repo_root
+        )
+
       assert has_flag_value?(result, "--key", "val")
     end
 
     test "list values produce repeated flags" do
       args = %{"agency.endpoint" => ["tcp://a:1", "tcp://b:2"]}
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
+
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
 
       pairs =
         result
@@ -120,13 +159,21 @@ defmodule Toast.Deployment.CommandBuilderTest do
     end
 
     test "nil values are skipped" do
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: %{"key" => nil}}, @paths, @repo_root)
+      result =
+        CommandBuilder.build_args(
+          %{role: :single, port: 8529, args: %{"key" => nil}},
+          @paths,
+          @repo_root
+        )
+
       refute "--key" in result
     end
 
     test "keys are sorted for deterministic ordering" do
       args = %{"zebra" => "1", "alpha" => "2", "middle" => "3"}
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
+
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
 
       custom_start = Enum.find_index(result, &(&1 == "--alpha"))
       custom = Enum.drop(result, custom_start)
@@ -135,7 +182,9 @@ defmodule Toast.Deployment.CommandBuilderTest do
 
     test "mixed types are converted to strings" do
       args = %{"bool" => true, "number" => 42, "string" => "hello"}
-      result = CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
+
+      result =
+        CommandBuilder.build_args(%{role: :single, port: 8529, args: args}, @paths, @repo_root)
 
       assert has_flag_value?(result, "--bool", "true")
       assert has_flag_value?(result, "--number", "42")

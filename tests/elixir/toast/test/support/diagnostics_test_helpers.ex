@@ -19,5 +19,4 @@ defmodule Toast.DiagnosticsTestHelpers do
       tags: %{file: "test/version_test.exs", line: 5}
     }
   end
-
 end

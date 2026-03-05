@@ -15,6 +15,7 @@ defmodule ToastTest.InteractiveTest do
 
   defmodule Fixtures.Passing do
     use ExUnit.Case, async: false
+
     test "passes" do
       assert 1 + 1 == 2
     end

@@ -164,6 +164,7 @@ defmodule Toast.Deployment.Factory do
         build_server_args(config)
         |> Map.merge(role_config_args(config, role))
         |> Map.merge(custom_args)
+
       server_spec = %{role: role, port: port, args: merged_args}
       args = CommandBuilder.build_args(server_spec, paths, repo_root)
 

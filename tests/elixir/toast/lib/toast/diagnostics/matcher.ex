@@ -101,7 +101,13 @@ defmodule Toast.Diagnostics.Matcher do
   `{items_to_match, extra_unmatched}` where extra_unmatched items are appended
   to the result's unmatched list.
   """
-  @spec match_from_diagnostics(map() | nil, [map()] | nil, atom(), (map() -> {[map()], [map()]}), keyword()) :: map()
+  @spec match_from_diagnostics(
+          map() | nil,
+          [map()] | nil,
+          atom(),
+          (map() -> {[map()], [map()]}),
+          keyword()
+        ) :: map()
   def match_from_diagnostics(diagnostics, tests, item_key, extractor, opts \\ [])
   def match_from_diagnostics(nil, _tests, _item_key, _extractor, _opts), do: empty_result()
   def match_from_diagnostics(_diagnostics, nil, _item_key, _extractor, _opts), do: empty_result()

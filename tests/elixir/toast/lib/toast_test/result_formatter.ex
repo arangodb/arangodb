@@ -44,8 +44,10 @@ defmodule ToastTest.ResultFormatter do
         {mod,
          %{
            tests: tests,
-           started_at: tests |> Enum.map(& &1.started_at) |> Enum.reject(&is_nil/1) |> min_datetime(),
-           finished_at: tests |> Enum.map(& &1.finished_at) |> Enum.reject(&is_nil/1) |> max_datetime()
+           started_at:
+             tests |> Enum.map(& &1.started_at) |> Enum.reject(&is_nil/1) |> min_datetime(),
+           finished_at:
+             tests |> Enum.map(& &1.finished_at) |> Enum.reject(&is_nil/1) |> max_datetime()
          }}
       end)
 

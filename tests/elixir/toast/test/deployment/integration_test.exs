@@ -48,9 +48,7 @@ defmodule Toast.Deployment.IntegrationTest do
 
     test "custom server args are applied" do
       {:ok, deployment} =
-        Toast.Deployment.start_single_server(
-          server_args: %{"server.authentication" => "false"}
-        )
+        Toast.Deployment.start_single_server(server_args: %{"server.authentication" => "false"})
 
       assert {:ok, %{status: 200}} =
                Req.get(deployment.endpoint <> "/_api/version", retry: false)

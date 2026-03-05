@@ -197,5 +197,4 @@ defmodule Toast.Deployment.Controller.SingleServer do
         error: reason
     }
   end
-
 end

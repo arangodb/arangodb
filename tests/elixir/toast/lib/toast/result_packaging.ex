@@ -150,8 +150,11 @@ defmodule Toast.ResultPackaging do
           dest = Path.join(result_dir, basename <> ext)
 
           case compress_file(core_path, dest) do
-            {:ok, _} -> :ok
-            {:error, reason} -> Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
+            {:ok, _} ->
+              :ok
+
+            {:error, reason} ->
+              Logger.warning("Failed to compress #{core_path}: #{inspect(reason)}")
           end
       end
     end)

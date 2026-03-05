@@ -7,7 +7,15 @@ defmodule ToastTest.ProcessHistoryTest do
     # Start with a unique name so tests don't conflict
     name = :"process_history_#{System.unique_integer([:positive])}"
     {:ok, pid} = ProcessHistory.start_link(name: name)
-    on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+    on_exit(fn ->
+      try do
+        GenServer.stop(pid)
+      catch
+        :exit, _ -> :ok
+      end
+    end)
+
     %{pid: pid, name: name}
   end
 

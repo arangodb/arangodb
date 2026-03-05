@@ -100,7 +100,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       result = Controller.stop_server(ctrl, id)
       assert {:error, {:unexpected_state, _}} = result
@@ -112,7 +118,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :not_found} = Controller.stop_server(ctrl, "wrong-id")
     end
@@ -125,7 +137,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       result = Controller.stop_server(ctrl, role: :single)
       assert {:error, {:unexpected_state, _}} = result
@@ -137,7 +155,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, {:no_servers_for_role, :dbserver}} =
                Controller.stop_server(ctrl, role: :dbserver)
@@ -157,7 +181,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, {:invalid_target, 42}} = Controller.stop_server(ctrl, 42)
     end
@@ -170,7 +200,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.Cluster, config: Toast.Config.load())
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       inject_cluster_servers(
         ctrl,
@@ -201,7 +237,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
       {:ok, ctrl} =
         Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load(), id: id)
 
-      on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+      on_exit(fn ->
+        try do
+          GenServer.stop(ctrl)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       deployment = %Toast.Deployment{
         id: id,
@@ -232,7 +274,13 @@ defmodule Toast.Deployment.ResolveTargetTest do
 
     inject_cluster_servers(ctrl, servers, status: :ready)
 
-    on_exit(fn -> try do GenServer.stop(ctrl) catch :exit, _ -> :ok end end)
+    on_exit(fn ->
+      try do
+        GenServer.stop(ctrl)
+      catch
+        :exit, _ -> :ok
+      end
+    end)
 
     %{ctrl: ctrl}
   end

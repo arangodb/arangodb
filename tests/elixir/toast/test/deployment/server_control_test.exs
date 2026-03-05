@@ -42,7 +42,15 @@ defmodule Toast.Deployment.ServerControlTest do
   describe "operation delegation" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 
@@ -80,7 +88,15 @@ defmodule Toast.Deployment.ServerControlTest do
   describe "opts passthrough" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 
@@ -108,7 +124,15 @@ defmodule Toast.Deployment.ServerControlTest do
   describe "mode routing" do
     setup do
       {:ok, pid} = MockController.start_link()
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
+
       %{pid: pid}
     end
 

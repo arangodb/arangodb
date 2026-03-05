@@ -129,7 +129,8 @@ defmodule Toast.PortAllocator do
 
   # Random strategy
 
-  defp allocate_random_batch(_min, _max, allocated, 0, acc), do: {:ok, Enum.reverse(acc), allocated}
+  defp allocate_random_batch(_min, _max, allocated, 0, acc),
+    do: {:ok, Enum.reverse(acc), allocated}
 
   defp allocate_random_batch(min, max, allocated, remaining, acc) do
     case find_random(min, max, allocated, 0) do

@@ -266,7 +266,8 @@ defmodule ToastTest.ResultExporter.JSONTest do
     end
 
     test "single-server diagnostics rendered in server_health" do
-      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
+      result =
+        JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
 
       health = result["server_health"]
       assert is_map(health)
@@ -283,17 +284,24 @@ defmodule ToastTest.ResultExporter.JSONTest do
       assert server_health["crash_report"]["signal_name"] == "SIGSEGV"
       assert server_health["crash_report"]["backtrace"] == ["frame 0 at 0xdead"]
 
-      assert server_health["log_issues"]["assertion_failures"] == ["assertion failed at foo.cpp:42"]
+      assert server_health["log_issues"]["assertion_failures"] == [
+               "assertion failed at foo.cpp:42"
+             ]
+
       assert server_health["log_issues"]["warnings"] == ["FATAL shutdown"]
     end
 
     test "log_file included in server instance" do
-      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
+      result =
+        JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
+
       assert result["server_health"]["toast-1"]["server"]["log_file"] == "/tmp/toast/server/log"
     end
 
     test "server instance included in server_health" do
-      result = JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
+      result =
+        JSON.build(base_test_results(), %AnalysisData{diagnostics: single_server_diagnostics()})
+
       server = result["server_health"]["toast-1"]["server"]
       assert server["id"] == "toast-1"
       assert server["role"] == "single"

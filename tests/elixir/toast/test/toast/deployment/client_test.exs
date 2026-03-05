@@ -63,7 +63,14 @@ defmodule Toast.Deployment.ClientTest do
     test "returns a client targeting that server's endpoint" do
       srv = server_instance("s1", endpoint: "http://localhost:9090")
       {:ok, pid} = MockController.start_link(servers: [srv])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:ok, client} = Deployment.client(deployment(pid), "s1")
       assert client.base_url == "http://localhost:9090"
@@ -71,7 +78,14 @@ defmodule Toast.Deployment.ClientTest do
 
     test "returns {:error, :not_found} for unknown server_id" do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :not_found} = Deployment.client(deployment(pid), "nonexistent")
     end
@@ -80,7 +94,14 @@ defmodule Toast.Deployment.ClientTest do
       srv1 = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       srv2 = server_instance("db-0", endpoint: "http://localhost:9002", role: :dbserver)
       {:ok, pid} = MockController.start_link(servers: [srv1, srv2])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:ok, client} = Deployment.client(deployment(pid, :cluster), "db-0")
       assert client.base_url == "http://localhost:9002"
@@ -93,7 +114,14 @@ defmodule Toast.Deployment.ClientTest do
       srv2 = server_instance("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
       srv3 = server_instance("db-0", endpoint: "http://localhost:9003", role: :dbserver)
       {:ok, pid} = MockController.start_link(servers: [srv1, srv2, srv3])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:ok, client} = Deployment.client(deployment(pid, :cluster), role: :coordinator)
       assert client.base_url == "http://localhost:9001"
@@ -103,7 +131,14 @@ defmodule Toast.Deployment.ClientTest do
       srv1 = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       srv2 = server_instance("coord-1", endpoint: "http://localhost:9002", role: :coordinator)
       {:ok, pid} = MockController.start_link(servers: [srv1, srv2])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:ok, client} =
                Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 1)
@@ -114,7 +149,14 @@ defmodule Toast.Deployment.ClientTest do
     test "returns {:error, :unknown_server} when no servers match role" do
       srv = server_instance("db-0", endpoint: "http://localhost:9001", role: :dbserver)
       {:ok, pid} = MockController.start_link(servers: [srv])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :unknown_server} =
                Deployment.client(deployment(pid, :cluster), role: :coordinator)
@@ -123,7 +165,14 @@ defmodule Toast.Deployment.ClientTest do
     test "returns {:error, :unknown_server} when index out of range" do
       srv = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       {:ok, pid} = MockController.start_link(servers: [srv])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :unknown_server} =
                Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 5)
@@ -131,7 +180,14 @@ defmodule Toast.Deployment.ClientTest do
 
     test "returns {:error, :invalid_target} when opts lack :role key" do
       {:ok, pid} = MockController.start_link(servers: [])
-      on_exit(fn -> try do GenServer.stop(pid) catch :exit, _ -> :ok end end)
+
+      on_exit(fn ->
+        try do
+          GenServer.stop(pid)
+        catch
+          :exit, _ -> :ok
+        end
+      end)
 
       assert {:error, :invalid_target} = Deployment.client(deployment(pid), foo: :bar)
     end

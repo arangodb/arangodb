@@ -72,8 +72,11 @@ defmodule Toast.Analysis.Crashes do
 
   defp format_server_health_crashes(results) do
     case results["server_health"] do
-      health when is_map(health) -> format_section(collect_crash_reports(health), "Server Crashes:")
-      _ -> []
+      health when is_map(health) ->
+        format_section(collect_crash_reports(health), "Server Crashes:")
+
+      _ ->
+        []
     end
   end
 
