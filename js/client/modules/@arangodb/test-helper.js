@@ -272,7 +272,7 @@ exports.assertEndpointGetOnly = function(url) {
   assertEqual(res.errorNum, code405);
   res = arango.HEAD_RAW(url);
   assertEqual(res.errorNum, code405);
-}
+};
 
 exports.getMetricSingle = function (name) {
   let res = arango.GET_RAW("/_admin/metrics");
