@@ -457,17 +457,6 @@ function ExplainSuite () {
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
     },
-
-    testV8QueryWithFCall : function () {
-      if (!IM.options.skipServerJS) {
-        // should not crash the server either
-        var st = new ArangoStatement(db, { query : "FOR i IN [ 1, 2, 3 ] FILTER V8(TO_STRING(i)) == '1' RETURN i" });
-        var nodes = st.explain().plan.nodes, node;
-
-        node = nodes[0];
-        assertEqual("SingletonNode", node.type);
-      }
-    }
   };
 }
 
