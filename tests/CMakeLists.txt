@@ -182,6 +182,7 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/RbacBackendTest.cpp
   Auth/RbacSerializationTest.cpp
+  Auth/RbacServiceTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
