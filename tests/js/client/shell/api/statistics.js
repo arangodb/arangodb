@@ -60,10 +60,6 @@ function metricsApiSuite() {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
-    // check request statistics counting of async requests;
-    //////////////////////////////////////////////////////////////////////////////#;
-
     test_testing_async_requests_: function () {
       const ASYNC_METRIC = 'arangodb_http_request_statistics_async_requests_total';
 

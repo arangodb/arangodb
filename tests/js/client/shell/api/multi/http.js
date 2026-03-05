@@ -63,7 +63,7 @@ function head_requestsSuite () {
       assertEqual(doc.code, 405);
       assertEqual(doc.errorNum, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
       assertEqual(doc.parsedBody, undefined);
-      assertCspHeaders(doc, "text/plain");
+      assertCspHeaders(doc);
     },
 
     test_checks_whether_HEAD_returns_a_body_on_3xx: function() {
