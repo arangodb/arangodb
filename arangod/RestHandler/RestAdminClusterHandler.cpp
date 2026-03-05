@@ -2231,16 +2231,9 @@ async<void> RestAdminClusterHandler::handleHealth() {
     co_return;
   }
 
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isSingleServer()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server and coordinators");
-    co_return;
-  }
-
-  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "not allowed on single servers");
+                  "only allowed on coordinators");
     co_return;
   }
 
