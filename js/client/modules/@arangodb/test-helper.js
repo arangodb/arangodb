@@ -259,6 +259,21 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
   return metricValue;
 };
 
+// can be used to assert that an endpoint only accepts GET requests
+exports.assertEndpointGetOnly = function(url) {
+  const code405 = internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code;
+  let res = arango.POST_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.PUT_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.DELETE_RAW(url);
+  assertEqual(res.errorNum, code405);
+  res = arango.PATCH_RAW(url, {});
+  assertEqual(res.errorNum, code405);
+  res = arango.HEAD_RAW(url);
+  assertEqual(res.errorNum, code405);
+}
+
 exports.getMetricSingle = function (name) {
   let res = arango.GET_RAW("/_admin/metrics");
   if (res.code !== 200) {

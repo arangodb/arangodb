@@ -27,21 +27,7 @@
 const jsunity = require('jsunity');
 const request = require('@arangodb/request');
 const isCluster = require("internal").isCluster();
-const { getEndpointsByType } = require('@arangodb/test-helper');
-
-function assertMethodNotAllowed(url) {
-  const code405 = internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code;
-  let res = arango.POST_RAW(url, {});
-  assertEqual(res.errorNum, code405);
-  res = arango.PUT_RAW(url, {});
-  assertEqual(res.errorNum, code405);
-  res = arango.DELETE_RAW(url);
-  assertEqual(res.errorNum, code405);
-  res = arango.PATCH_RAW(url, {});
-  assertEqual(res.errorNum, code405);
-  res = arango.HEAD_RAW(url);
-  assertEqual(res.errorNum, code405);
-}
+const { getEndpointsByType, assertEndpointGetOnly } = require('@arangodb/test-helper');
 
 function supportInfoApiSuite() {
   'use strict';
@@ -142,7 +128,7 @@ function supportInfoApiSuite() {
 
     testSupportInfoOnlyAcceptsGet : function() {
       let url = "/_admin/support-info";
-      assertMethodNotAllowed(url);
+      assertEndpointGetOnly(url);
     },
   };
 }
