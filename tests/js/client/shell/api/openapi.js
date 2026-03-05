@@ -66,7 +66,7 @@ function openapi_endpointsSuite() {
     },
 
     test_openapi_v2_does_not_exist: function () {
-      let doc = arango.GET_RAW("/_arango/v2/openapix.json");
+      let doc = arango.GET_RAW("/_arango/v2/openapi.json");
 
       assertEqual(doc.code, 404);
       assertEqual(doc.errorNum, 404);
