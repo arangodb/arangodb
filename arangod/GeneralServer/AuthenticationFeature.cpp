@@ -356,14 +356,13 @@ void AuthenticationFeature::validateOptions(
   }
 
   // Validate RBAC service endpoint
-  if (!_options.externalRBACservice.empty()) {
-    if (!_options.externalRBACservice.starts_with("http://") &&
-        !_options.externalRBACservice.starts_with("https://")) {
-      LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
-          << "--server.external-rbac-service must start with http:// or "
-             "https://";
-      FATAL_ERROR_EXIT();
-    }
+  if (!_options.externalRBACservice.empty() &&
+      !_options.externalRBACservice.starts_with("http://") &&
+      !_options.externalRBACservice.starts_with("https://")) {
+    LOG_TOPIC("1aaaf", FATAL, arangodb::Logger::AUTHENTICATION)
+        << "--server.external-rbac-service must start with http:// or "
+           "https://";
+    FATAL_ERROR_EXIT();
   }
 }
 

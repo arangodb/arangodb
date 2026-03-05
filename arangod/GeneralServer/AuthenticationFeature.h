@@ -39,6 +39,8 @@ class TokenCache;
 class UserManager;
 }  // namespace auth
 
+// TODO Should be renamed to AuthFeature, as it handles both authentication and
+//      authorization aspects.
 class AuthenticationFeature final
     : public application_features::ApplicationFeature {
  public:

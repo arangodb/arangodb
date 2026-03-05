@@ -6,6 +6,8 @@ add_library(arangoserver STATIC
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManagerImpl.cpp
+  Auth/Rbac/Backend.cpp Auth/Rbac/Backend.h
+  Auth/Rbac/BackendImpl.cpp Auth/Rbac/BackendImpl.h
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
@@ -56,7 +58,8 @@ add_library(arangoserver STATIC
   GeneralServer/AcceptorTcp.cpp
   GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
-  GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/AuthenticationFeature.cpp GeneralServer/AuthenticationFeature.h
+  GeneralServer/AuthenticationOptions.h
   GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp

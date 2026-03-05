@@ -149,10 +149,14 @@ class Message {
   virtual std::vector<velocypack::Slice> slices() const = 0;
   virtual asio_ns::const_buffer payload() const = 0;
   virtual std::size_t payloadSize() const = 0;
-  std::string payloadAsString() const {
+
+  std::string_view payloadAsStringView() const {
     auto p = payload();
-    return std::string(asio_ns::buffer_cast<char const*>(p),
-                       asio_ns::buffer_size(p));
+    return std::string_view(asio_ns::buffer_cast<char const*>(p),
+                            asio_ns::buffer_size(p));
+  }
+  std::string payloadAsString() const {
+    return std::string{payloadAsStringView()};
   }
 
   /// get the content as a slice

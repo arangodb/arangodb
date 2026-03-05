@@ -211,12 +211,14 @@ class ResultT {
 
   T& get() { return _val.value(); }
 
-  ResultT map(ResultT<T> (*fun)(T const& val)) const {
+  template<std::invocable<T const&> F,
+           typename S = std::invoke_result_t<F, T const&>>
+  ResultT<S> map(F&& fun) const {
     if (ok()) {
-      return ResultT<T>::success(fun(get()));
+      return ResultT<S>::success(fun(get()));
     }
 
-    return *this;
+    return ResultT<S>::error(result());
   }
 
   bool operator==(ResultT<T> const& other) const {

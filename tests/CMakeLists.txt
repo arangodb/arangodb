@@ -180,6 +180,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/RbacBackendTest.cpp
+  Auth/RbacSerializationTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
