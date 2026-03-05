@@ -1233,10 +1233,10 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
         // bypass NOOPT(...) for testing
         TRI_ASSERT(originalNode->numMembers() == 1);
         ast::FunctionCallNode fcall(originalNode);
-        auto args = fcall.getArguments();
+        auto args = fcall.getArguments().getElements();
 
-        if (args->numMembers() > 0) {
-          testNode = args->getMemberUnchecked(0);
+        if (args.size() > 0) {
+          testNode = args[0];
         }
       }
 
@@ -1635,7 +1635,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -4537,7 +4537,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -7044,7 +7044,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 
@@ -7848,12 +7848,11 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       } else if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
         ast::FunctionCallNode fcall(node);
         auto func = fcall.getFunction();
-        auto args = fcall.getArguments();
+        auto args = fcall.getArguments().getElements();
         if (func->name == "FIRST" || func->name == "LENGTH" ||
             func->name == "COUNT") {
-          if (args->numMembers() > 0 &&
-              args->getMemberUnchecked(0)->type == NODE_TYPE_REFERENCE) {
-            ast::ReferenceNode ref(args->getMemberUnchecked(0));
+          if (args.size() > 0 && args[0]->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args[0]);
             Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
@@ -8247,11 +8246,10 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
       if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
         ast::FunctionCallNode fcall(node);
         auto func = fcall.getFunction();
-        auto args = fcall.getArguments();
+        auto args = fcall.getArguments().getElements();
         if (func->name == "LENGTH" || func->name == "COUNT") {
-          if (args->numMembers() > 0 &&
-              args->getMemberUnchecked(0)->type == NODE_TYPE_REFERENCE) {
-            ast::ReferenceNode ref(args->getMemberUnchecked(0));
+          if (args.size() > 0 && args[0]->type == NODE_TYPE_REFERENCE) {
+            ast::ReferenceNode ref(args[0]);
             Variable const* v = ref.getVariable();
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {

@@ -31,6 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "IResearch/IResearchFeature.h"
@@ -44,12 +45,13 @@ namespace {
 using namespace arangodb;
 
 bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
-                aql::AstNode const& args,
+                aql::ast::ArrayNode args,
                 arangodb::iresearch::QueryContext const& ctx) {
-  TRI_ASSERT(!args.numMembers() || !ctx.ref ||
-             arangodb::iresearch::findReference(*args.getMember(0), *ctx.ref));
+  auto argv = args.getElements();
+  TRI_ASSERT(!argv.size() || !ctx.ref ||
+             arangodb::iresearch::findReference(*argv[0], *ctx.ref));
 
-  switch (args.numMembers()) {
+  switch (argv.size()) {
     case 0:
       break;
     case 1: {
@@ -71,9 +73,7 @@ bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
 
       builder.openArray();
 
-      for (size_t i = 1, count = args.numMembers(); i < count; ++i) {
-        auto const* argNode = args.getMemberUnchecked(i);
-
+      for (auto&& argNode : argv) {
         if (!argNode) {
           return false;  // invalid arg
         }
@@ -101,7 +101,7 @@ bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
 }
 
 bool fromFCall(irs::Scorer::ptr* scorer, std::string_view scorerName,
-               aql::AstNode const* args,
+               aql::ast::ArrayNode args,
                arangodb::iresearch::QueryContext const& ctx) {
   auto const* ref = arangodb::iresearch::getSearchFuncRef(args);
 
@@ -121,14 +121,13 @@ bool fromFCall(irs::Scorer::ptr* scorer, std::string_view scorerName,
   // we don't support non-constant arguments for scorers now, if it
   // will change ensure that proper `ExpressionContext` set in `ctx`
 
-  return makeScorer(*scorer, scorerName, *args, ctx);
+  return makeScorer(*scorer, scorerName, args, ctx);
 }
 
-bool nameFromFCall(std::string& scorerName, aql::AstNode const& node) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
-  auto* fn = static_cast<aql::Function*>(node.getData());
+bool nameFromFCall(std::string& scorerName, aql::ast::FunctionCallNode fc) {
+  auto* fn = fc.getFunction();
 
-  if (!fn || 1 != node.numMembers() || !arangodb::iresearch::isScorer(*fn)) {
+  if (!fn || !arangodb::iresearch::isScorer(*fn)) {
     return false;  // no function
   }
 
@@ -141,7 +140,7 @@ bool nameFromFCall(std::string& scorerName, aql::AstNode const& node) {
   return true;
 }
 
-bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
+bool fromFCall(irs::Scorer::ptr* scorer, aql::ast::FunctionCallNode node,
                arangodb::iresearch::QueryContext const& ctx) {
   std::string scorerName;
 
@@ -149,34 +148,14 @@ bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
     return false;
   }
 
-  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
-}
-
-bool nameFromFCallUser(std::string_view& scorerName, aql::AstNode const& node) {
-  TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
-
-  if (aql::VALUE_TYPE_STRING != node.value.type || 1 != node.numMembers()) {
-    return false;  // no function name
-  }
-
-  return arangodb::iresearch::parseValue(scorerName, node);
-}
-
-bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
-                   arangodb::iresearch::QueryContext const& ctx) {
-  std::string_view scorerName;
-
-  if (!nameFromFCallUser(scorerName, node)) {
-    return false;
-  }
-
-  return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
+  return fromFCall(scorer, scorerName, node.getArguments(), ctx);
 }
 
 }  // namespace
 
 namespace arangodb::iresearch::order_factory {
 
+#if 0
 aql::Variable const* refFromScorer(aql::AstNode const& node) {
   if (aql::NODE_TYPE_FCALL != node.type &&
       aql::NODE_TYPE_FCALL_USER != node.type) {
@@ -199,14 +178,17 @@ aql::Variable const* refFromScorer(aql::AstNode const& node) {
 
   return ref;
 }
+#endif
 
 bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
             QueryContext const& ctx) {
   switch (node.type) {
-    case aql::NODE_TYPE_FCALL:  // function call
-      return fromFCall(scorer, node, ctx);
+    case aql::NODE_TYPE_FCALL:       // function call
     case aql::NODE_TYPE_FCALL_USER:  // user function call
-      return fromFCallUser(scorer, node, ctx);
+    {
+      auto fc = aql::ast::FunctionCallNode(&node);
+      return ::fromFCall(scorer, fc, ctx);
+    }
     default:
       // IResearch does not support any
       // expressions except function calls
@@ -214,6 +196,7 @@ bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
   }
 }
 
+#if 0
 bool comparer(irs::Scorer::ptr* comparer, aql::AstNode const& node) {
   std::string buf;
   std::string_view scorerName;
@@ -254,5 +237,5 @@ bool comparer(irs::Scorer::ptr* comparer, aql::AstNode const& node) {
 
   return bool(*comparer);
 }
-
+#endif
 }  // namespace arangodb::iresearch::order_factory

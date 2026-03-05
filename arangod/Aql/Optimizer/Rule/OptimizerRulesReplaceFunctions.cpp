@@ -78,23 +78,23 @@ struct NearOrWithinParams {
   NearOrWithinParams(AstNode const* node, bool isNear) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     ast::FunctionCallNode fcall(node);
-    AstNode* arr = fcall.getArguments();
-    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMemberUnchecked(0)->isStringValue()) {
-      collection = arr->getMemberUnchecked(0)->getString();
+    auto args = fcall.getArguments().getElements();
+
+    if (auto v = args[0]; v->isStringValue()) {
+      collection = v->getString();
       // otherwise the "" collection will not be found
     }
-    latitude = arr->getMemberUnchecked(1);
-    longitude = arr->getMemberUnchecked(2);
-    if (arr->numMembers() > 4) {
-      distanceName = arr->getMemberUnchecked(4);
+    latitude = args[1];
+    longitude = args[2];
+    if (args.size() > 4) {
+      distanceName = args[4];
     }
 
-    if (arr->numMembers() > 3) {
+    if (args.size() > 3) {
       if (isNear) {
-        limit = arr->getMemberUnchecked(3);
+        limit = args[3];
       } else {
-        radius = arr->getMemberUnchecked(3);
+        radius = args[3];
       }
     }
   }
@@ -109,16 +109,15 @@ struct FulltextParams {
   explicit FulltextParams(AstNode const* node) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     ast::FunctionCallNode fcall(node);
-    AstNode* arr = fcall.getArguments();
-    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMemberUnchecked(0)->isStringValue()) {
-      collection = arr->getMemberUnchecked(0)->getString();
+    auto args = fcall.getArguments().getElements();
+    if (auto v = args[0]; v->isStringValue()) {
+      collection = v->getString();
     }
-    if (arr->getMemberUnchecked(1)->isStringValue()) {
-      attribute = arr->getMemberUnchecked(1)->getString();
+    if (auto v = args[1]; v->isStringValue()) {
+      attribute = v->getString();
     }
-    if (arr->numMembers() > 3) {
-      limit = arr->getMemberUnchecked(3);
+    if (args.size() > 3) {
+      limit = args[3];
     }
   }
 };
@@ -401,20 +400,19 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
 
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
   ast::FunctionCallNode fcall(funAstNode);
-  AstNode* fargs = fcall.getArguments();
-  TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
+  auto fargs = fcall.getArguments().getElements();
 
-  if (fargs->numMembers() < 5) {
+  if (fargs.size() < 5) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN_RECTANGLE",
         5, 5);
   }
 
-  AstNode const* coll = fargs->getMemberUnchecked(0);
-  AstNode const* lat1 = fargs->getMemberUnchecked(1);
-  AstNode const* lng1 = fargs->getMemberUnchecked(2);
-  AstNode const* lat2 = fargs->getMemberUnchecked(3);
-  AstNode const* lng2 = fargs->getMemberUnchecked(4);
+  AstNode const* coll = fargs[0];
+  AstNode const* lat1 = fargs[1];
+  AstNode const* lng1 = fargs[2];
+  AstNode const* lat2 = fargs[3];
+  AstNode const* lng2 = fargs[4];
 
   if (!::isValueTypeCollection(coll)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -468,15 +466,15 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   coords->addMember(loop);
   polygon->addMember(ast->createNodeObjectElement("coordinates", coords));
 
-  fargs = ast->createNodeArray(2);
-  fargs->addMember(polygon);
+  auto new_fargs = ast->createNodeArray(2);
+  new_fargs->addMember(polygon);
 
   // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
   if (index->fields().size() == 2) {
     AstNode* arr = ast->createNodeArray(2);
     arr->addMember(ast->createNodeAccess(collVar, index->fields()[1]));
     arr->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
-    fargs->addMember(arr);
+    new_fargs->addMember(arr);
   } else {
     velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
     VPackBuilder builder(sb);
@@ -484,7 +482,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
     bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(),
                                                              "geoJson", false);
     if (geoJson) {
-      fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
+      new_fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
     } else {  // combined [lat, lon] field
       AstNode* arr = ast->createNodeArray(2);
       AstNode* access = ast->createNodeAccess(collVar, index->fields()[0]);
@@ -492,11 +490,11 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
           ast->createNodeIndexedAccess(access, ast->createNodeValueInt(1)));
       arr->addMember(
           ast->createNodeIndexedAccess(access, ast->createNodeValueInt(0)));
-      fargs->addMember(arr);
+      new_fargs->addMember(arr);
     }
   }
   AstNode* geoContainsCall =
-      ast->createNodeFunctionCall("GEO_CONTAINS", fargs, true);
+      ast->createNodeFunctionCall("GEO_CONTAINS", new_fargs, true);
 
   // FILTER part
   AstNode* filterNode = ast->createNodeFilter(geoContainsCall);
@@ -667,11 +665,11 @@ void arangodb::aql::replaceLikeWithRangeRule(
         // character to it, which compares higher than other characters.
         bool caseInsensitive = false;  // this is the default behavior of LIKE
         ast::FunctionCallNode likeFcall(node);
-        auto args = likeFcall.getArguments();
-        if (args->numMembers() >= 3) {
+        auto args = likeFcall.getArguments().getElements();
+        if (args.size() >= 3) {
           caseInsensitive =
               true;  // we have 3 arguments, set case-sensitive to false now
-          auto caseArg = args->getMemberUnchecked(2);
+          auto caseArg = args[2];
           if (caseArg->isConstant()) {
             // ok, we can figure out at compile time if the parameter is true or
             // false
@@ -679,11 +677,11 @@ void arangodb::aql::replaceLikeWithRangeRule(
           }
         }
 
-        auto patternArg = args->getMemberUnchecked(1);
+        auto patternArg = args[1];
 
         if (!caseInsensitive && patternArg->isStringValue() &&
-            args->getMemberUnchecked(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          AstNode const* sub = args->getMemberUnchecked(0);
+            args[0]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          AstNode const* sub = args[0];
           while (sub != nullptr && sub->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             ast::AttributeAccessNode attrAccess(sub);
             sub = attrAccess.getObject();
@@ -744,8 +742,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                 ast->createNodeValueString(p, unescapedPattern.size());
 
             return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
-                                                 args->getMemberUnchecked(0),
-                                                 pattern);
+                                                 args[0], pattern);
           }
 
           if (!unescapedPattern.empty()) {
@@ -758,8 +755,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
             AstNode* pattern =
                 ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* lhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_GE, args->getMemberUnchecked(0),
-                pattern);
+                NODE_TYPE_OPERATOR_BINARY_GE, args[0], pattern);
 
             // add a new end character \uFFFF that is expected to sort "higher"
             // than anything else (note: \xef\xbf\xbf is equivalent to \uFFFF).
@@ -769,8 +765,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
                                                 unescapedPattern.size());
             pattern = ast->createNodeValueString(p, unescapedPattern.size());
             AstNode* rhs = ast->createNodeBinaryOperator(
-                NODE_TYPE_OPERATOR_BINARY_LT, args->getMemberUnchecked(0),
-                pattern);
+                NODE_TYPE_OPERATOR_BINARY_LT, args[0], pattern);
 
             AstNode* op = ast->createNodeBinaryOperator(
                 NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);

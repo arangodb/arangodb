@@ -189,12 +189,11 @@ bool checkApproxNearExpressionMatchesVectorIndex(
 SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
                                      ResourceMonitor& resourceMonitor) {
   ast::FunctionCallNode fcall(calculationNodeExpressionNode);
-  auto const* approxFunctionParameters = fcall.getArguments();
+  auto approxFunctionParameters = fcall.getArguments().getElements();
 
-  if (approxFunctionParameters->numMembers() == 3 &&
-      approxFunctionParameters->getMemberUnchecked(2)->isObject()) {
-    auto const searchParametersNode =
-        approxFunctionParameters->getMemberUnchecked(2);
+  if (approxFunctionParameters.size() == 3 &&
+      approxFunctionParameters[2]->isObject()) {
+    auto const searchParametersNode = approxFunctionParameters[2];
 
     SearchParameters searchParameters;
     // Buffer won't escape from this function's scope
@@ -220,17 +219,15 @@ AstNode* getApproxNearAttributeExpression(
     std::shared_ptr<Index> const& vectorIndex, const auto* outVariable) {
   // one of the params must be a documentField and the other a query point
   ast::FunctionCallNode fcall(calculationNodeExpressionNode);
-  auto const* approxFunctionParameters = fcall.getArguments();
-  TRI_ASSERT(approxFunctionParameters->numMembers() > 1 &&
-             approxFunctionParameters->numMembers() < 4)
+  auto approxFunctionParameters = fcall.getArguments().getElements();
+  TRI_ASSERT(approxFunctionParameters.size() > 1 &&
+             approxFunctionParameters.size() < 4)
       << "There can be only two or three arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
 
-  auto* approxFunctionParamLeft =
-      approxFunctionParameters->getMemberUnchecked(0);
-  auto* approxFunctionParamRight =
-      approxFunctionParameters->getMemberUnchecked(1);
+  auto* approxFunctionParamLeft = approxFunctionParameters[0];
+  auto* approxFunctionParamRight = approxFunctionParameters[1];
 
   if (approxFunctionParamLeft->type ==
       arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {

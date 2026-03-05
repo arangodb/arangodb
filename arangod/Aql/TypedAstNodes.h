@@ -831,7 +831,9 @@ struct FunctionCallNode : TypedAstNode {
 
   std::string_view getFunctionName() const { return _node->getStringView(); }
 
-  AstNode* getArguments() const { return _node->getMember(0); }
+  AstNode* getArgumentsNode() const { return _node->getMember(0); }
+
+  ArrayNode getArguments() const { return ArrayNode(_node->getMember(0)); }
 
   Function* getFunction() const {
     return static_cast<Function*>(_node->getData());
