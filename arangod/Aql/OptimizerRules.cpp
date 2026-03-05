@@ -3004,11 +3004,12 @@ struct SortToIndexNode final
           std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
       const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto andOp = ast::LogicalOperatorNode(node);
       // recurse into both sides
-      getSpecialAttributes(node->getMemberUnchecked(0), variable,
-                           constAttributes, nonNullAttributes);
-      getSpecialAttributes(node->getMemberUnchecked(1), variable,
-                           constAttributes, nonNullAttributes);
+      getSpecialAttributes(andOp.getLeft(), variable, constAttributes,
+                           nonNullAttributes);
+      getSpecialAttributes(andOp.getRight(), variable, constAttributes,
+                           nonNullAttributes);
       return;
     }
 
