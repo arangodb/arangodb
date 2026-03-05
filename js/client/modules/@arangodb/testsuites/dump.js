@@ -100,6 +100,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
           !helper.dumpFromRta() ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
+          !helper.flipBinarySet() ||
           !helper.restartInstance() ||
           !helper.restoreSrc() ||
           !helper.restoreTo('_system', { separate: true }) ||
@@ -118,6 +119,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
           !helper.dumpFrom('_system', false) ||
           (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
           !helper.runCleanupSuite(cleanupFile) ||
+          !helper.flipBinarySet() ||
           !helper.restartInstance() ||
           !helper.restoreSrc() ||
           !helper.restoreTo('_system', { separate: true, fromDir: 'dump' }) ||

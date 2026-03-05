@@ -5,6 +5,14 @@
   replicationFactor is increased. The follower now trains and populates
   the vector index from local documents after initial sync.
 
+* COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
+  cluster-one-shard databases containing graph traversals. When a cached
+  plan was restored, the `_appliedRules` metadata (including
+  `cluster-one-shard`) was not deserialized, causing the coordinator to
+  incorrectly attempt distributed execution on a plan optimized for a
+  single DB server. Additionally, graph nodes lost their
+  `LocalGraphNode` type during cache round-trip.
+
 * Fixed a bug in arangodump that prevented the `--local-network-threads`
   startup option from accepting the specified value and potentially
   overwriting the `--dbserver-worker-threads` setting.

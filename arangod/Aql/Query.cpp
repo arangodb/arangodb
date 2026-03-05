@@ -428,10 +428,9 @@ async<void> Query::prepareQuery() {
       auto const collections = querySlice.get("collections");
       auto const variables = querySlice.get("variables");
       auto const views = querySlice.get("views");
-      auto const snippets = querySlice.get("nodes");
       prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
-                                              variables, snippets);
-      co_await instantiatePlan(snippets);
+                                              variables);
+      co_await instantiatePlan(querySlice);
 
       TRI_ASSERT(!_plans.empty());
 
@@ -2659,8 +2658,7 @@ void Query::debugKillQuery() {
 /// never call this on a DB server!
 void Query::prepareFromVelocyPackWithoutInstantiate(
     velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice views, velocypack::Slice variables,
-    velocypack::Slice snippets) {
+    velocypack::Slice views, velocypack::Slice variables) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -2673,7 +2671,7 @@ void Query::prepareFromVelocyPackWithoutInstantiate(
   // track memory usage
   ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
-                 variables.byteSize() + snippets.byteSize());
+                 variables.byteSize());
 
   _planMemoryUsage += scope.trackedAndSteal();
 
@@ -2731,20 +2729,14 @@ void Query::prepareFromVelocyPackWithoutInstantiate(
   enterState(QueryExecutionState::ValueType::PARSING);
 }
 
-async<void> Query::instantiatePlan(velocypack::Slice snippets) {
+async<void> Query::instantiatePlan(velocypack::Slice querySlice) {
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
-    auto plan =
-        ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet, true);
-    TRI_ASSERT(plan != nullptr);
 
-    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
-    _plans.push_back(std::move(plan));
-    co_return;
-  };
+  auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), querySlice);
+  TRI_ASSERT(plan != nullptr);
 
-  // a single snippet
-  co_await instantiateSnippet(snippets);
+  co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+  _plans.push_back(std::move(plan));
   TRI_ASSERT(!_snippets.empty());
   TRI_ASSERT(!_trx->state()->isDBServer() || _snippets.back()->engineId() != 0);
 
