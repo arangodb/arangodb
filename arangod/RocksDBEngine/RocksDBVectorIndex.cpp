@@ -42,7 +42,6 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -128,15 +127,10 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
         true /* faiss owns the inverted list */);
 
     setBuildState(VectorIndexBuildState::kReady);
-  } else {
-    // Seed _documentCount from the collection's persisted document count so
-    // that after a restart an untrained index can still trigger training
-    // without requiring the full threshold of new inserts.
-    auto const* physical =
-        static_cast<RocksDBMetaCollection const*>(coll.getPhysical());
-    _documentCount.store(
-        static_cast<std::int64_t>(physical->meta().numberDocuments()),
-        std::memory_order_relaxed);
+  }
+
+  if (auto dc = info.get("documentCount"); !dc.isNone()) {
+    _documentCount.store(dc.getInt(), std::memory_order_relaxed);
   }
   // Below 1000 documents training is not worth the effort nor having a index
   // 39 is the minumum number of documents to train the vector index, but that
@@ -209,6 +203,12 @@ void RocksDBVectorIndex::toVelocyPack(
   }
 
   builder.add("buildState", VPackValue(buildStateToString(_buildState)));
+
+  if (Index::hasFlag(flags, Index::Serialize::Internals) &&
+      !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
+    builder.add("documentCount",
+                VPackValue(_documentCount.load(std::memory_order_relaxed)));
+  }
 
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
@@ -347,9 +347,8 @@ void RocksDBVectorIndex::setBuildState(VectorIndexBuildState state) noexcept {
 }
 
 void RocksDBVectorIndex::resetTrainingState() noexcept {
-  _faissIndex.reset();
-  _trainedData.reset();
   setBuildState(VectorIndexBuildState::kUninitialized);
+  _trainedData.reset();
 }
 
 /// @brief inserts a document into the index
