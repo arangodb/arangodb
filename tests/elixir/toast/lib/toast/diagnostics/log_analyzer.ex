@@ -16,6 +16,11 @@ defmodule Toast.Diagnostics.LogAnalyzer do
   # Log topic IDs that produce uninteresting noise (arangod internal topics)
   @uninteresting_topics ["de8f3", "e8b68", "1afb1", "d72fb", "f3108"]
 
+  # Startup phase markers — log messages between these IDs are routine startup
+  # noise and should be ignored for test attribution.
+  @startup_begin_id "e52b0"
+  @startup_end_id "3bb7d"
+
   @doc "Parse a log file. Returns nil if file doesn't exist."
   @spec parse(Path.t() | nil) :: log_report() | nil
   def parse(nil), do: nil
@@ -52,16 +57,26 @@ defmodule Toast.Diagnostics.LogAnalyzer do
       timestamp: nil,
       assertion_failures: [],
       warnings: [],
-      uninteresting_topics: @uninteresting_topics
+      uninteresting_topics: @uninteresting_topics,
+      in_startup_phase: false
     }
   end
 
   defp process_line(line, report) do
     report
+    |> track_startup_phase(line)
     |> maybe_collect_fatal(line)
     |> maybe_collect_crash(line)
     |> maybe_collect_assertion(line)
     |> maybe_collect_warning(line)
+  end
+
+  defp track_startup_phase(report, line) do
+    cond do
+      String.contains?(line, "[#{@startup_begin_id}]") -> %{report | in_startup_phase: true}
+      String.contains?(line, "[#{@startup_end_id}]") -> %{report | in_startup_phase: false}
+      true -> report
+    end
   end
 
   defp finalize(report) do
@@ -148,6 +163,9 @@ defmodule Toast.Diagnostics.LogAnalyzer do
 
   defp maybe_collect_warning(report, line) do
     cond do
+      report.in_startup_phase ->
+        report
+
       info_line?(line) ->
         report
 

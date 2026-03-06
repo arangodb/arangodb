@@ -393,10 +393,63 @@ defmodule Toast.Diagnostics.LogAnalyzerTest do
     end
   end
 
+  describe "parse/1 startup phase filtering" do
+    test "filters warnings between startup begin and end markers" do
+      log = """
+      2024-01-15T10:30:00Z [12345] INFO  [e52b0] {general} ArangoDB 3.12.0 enterprise
+      2024-01-15T10:30:00Z [12345] WARNING [0458b] {general} maintainer mode warning
+      2024-01-15T10:30:00Z [12345] WARNING [118b0] {memory} max memory mappings too low
+      2024-01-15T10:30:00Z [12345] INFO  [3bb7d] {cluster} Starting up with role COORDINATOR
+      2024-01-15T10:30:01Z [12345] WARNING [abc12] {general} Real warning after startup
+      """
+
+      report = parse_lines(log)
+      assert length(report.warnings) == 1
+      assert hd(report.warnings).message =~ "Real warning after startup"
+    end
+
+    test "handles multiple startup sequences from server restarts" do
+      log = """
+      2024-01-15T10:30:00Z [12345] INFO  [e52b0] {general} ArangoDB 3.12.0 first start
+      2024-01-15T10:30:00Z [12345] WARNING [0458b] {general} startup noise 1
+      2024-01-15T10:30:00Z [12345] INFO  [3bb7d] {cluster} Starting up with role DBSERVER
+      2024-01-15T10:30:10Z [12345] WARNING [abc12] {general} Real warning between restarts
+      2024-01-15T10:30:20Z [12345] INFO  [e52b0] {general} ArangoDB 3.12.0 second start
+      2024-01-15T10:30:20Z [12345] WARNING [0458b] {general} startup noise 2
+      2024-01-15T10:30:20Z [12345] INFO  [3bb7d] {cluster} Starting up with role DBSERVER
+      2024-01-15T10:30:30Z [12345] WARNING [def34] {general} Real warning after second start
+      """
+
+      report = parse_lines(log)
+      assert length(report.warnings) == 2
+      messages = Enum.map(report.warnings, & &1.message)
+      assert Enum.any?(messages, &(&1 =~ "Real warning between restarts"))
+      assert Enum.any?(messages, &(&1 =~ "Real warning after second start"))
+    end
+
+    test "startup phase does not suppress crash or assertion collection" do
+      log = """
+      2024-01-15T10:30:00Z [12345] INFO  [e52b0] {general} ArangoDB 3.12.0
+      2024-01-15T10:30:00Z [12345] ERROR [abc12] {assertion} Assertion during startup
+      2024-01-15T10:30:00Z [12345] FATAL [a7902] {crash} caught unexpected signal 11 (SIGSEGV)
+      2024-01-15T10:30:00Z [12345] INFO  [3bb7d] {cluster} Starting up with role SINGLE
+      """
+
+      report = parse_lines(log)
+      assert length(report.assertion_failures) == 1
+      assert report.signal_number == 11
+    end
+  end
+
   describe "finalize/1 removes internal fields" do
     test "uninteresting_topics is not present in finalized report" do
       report = parse_lines("")
       refute Map.has_key?(report, :uninteresting_topics)
+    end
+
+    test "in_startup_phase is not present in finalized report" do
+      report = parse_lines("")
+      refute Map.has_key?(report, :in_startup_phase)
     end
   end
 end

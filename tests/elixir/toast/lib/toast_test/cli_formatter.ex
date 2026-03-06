@@ -274,7 +274,8 @@ defmodule ToastTest.CLIFormatter do
 
     # Abort reason
     if abort_reason do
-      IO.puts("#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_reason}")
+      abort_msg = format_abort_reason(abort_reason)
+      IO.puts("#{timestamp()} #{colorize("[   ABORTED ]", :red, state)} #{abort_msg}")
     end
 
     # Detail line
@@ -446,4 +447,8 @@ defmodule ToastTest.CLIFormatter do
   defp colorize(text, color, true) when is_binary(color) do
     IO.iodata_to_binary([color, text, IO.ANSI.reset()])
   end
+
+  defp format_abort_reason({_type, msg}), do: msg
+  defp format_abort_reason(msg) when is_binary(msg), do: msg
+  defp format_abort_reason(other), do: inspect(other)
 end
