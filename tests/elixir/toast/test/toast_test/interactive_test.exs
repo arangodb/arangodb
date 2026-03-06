@@ -159,7 +159,7 @@ defmodule ToastTest.InteractiveTest do
   describe "run/2 with passing tests" do
     test "returns passed outcome" do
       results = Interactive.run(Fixtures.Passing, deployment: :fake)
-      assert [%{outcome: :passed, error: nil}] = results
+      assert [%{outcome: :passed, failure: nil}] = results
     end
 
     test "result contains the test name as an atom" do
@@ -183,7 +183,7 @@ defmodule ToastTest.InteractiveTest do
       register_collector()
       results = Interactive.run(AlwaysFails, deployment: :fake)
       assert [%{outcome: :failed}] = results
-      assert [%{error: {:error, %RuntimeError{message: "intentional"}, _}}] = results
+      assert [%{failure: {:error, %RuntimeError{message: "intentional"}, _}}] = results
     end
   end
 

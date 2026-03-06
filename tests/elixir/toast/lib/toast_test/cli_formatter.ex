@@ -354,7 +354,10 @@ defmodule ToastTest.CLIFormatter do
     end
   end
 
-  defp abort_skipped?(%ExUnit.Test{state: {:skipped, "Suite aborted: " <> _}}), do: true
+  defp abort_skipped?(%ExUnit.Test{state: {:skipped, msg}}) when is_binary(msg) do
+    String.starts_with?(msg, ToastTest.Runner.abort_prefix())
+  end
+
   defp abort_skipped?(_test), do: false
 
   defp maybe_record_failure(state, %ExUnit.Test{state: {:failed, _}} = test) do

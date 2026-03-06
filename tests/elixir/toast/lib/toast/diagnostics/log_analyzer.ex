@@ -9,17 +9,9 @@ defmodule Toast.Diagnostics.LogAnalyzer do
 
   @type log_entry :: %{timestamp: DateTime.t() | nil, message: String.t()}
 
-  @type log_report :: %{
-          signal_number: non_neg_integer() | nil,
-          signal_name: String.t() | nil,
-          crash_header: String.t() | nil,
-          backtrace: [String.t()],
-          fatal_lines: [String.t()],
-          crash_output: [String.t()],
-          timestamp: DateTime.t() | nil,
-          assertion_failures: [log_entry()],
-          warnings: [log_entry()]
-        }
+  alias Toast.Diagnostics.LogReport
+
+  @type log_report :: LogReport.t()
 
   # Log topic IDs that produce uninteresting noise (arangod internal topics)
   @uninteresting_topics ["de8f3", "e8b68", "1afb1", "d72fb", "f3108"]
@@ -42,10 +34,10 @@ defmodule Toast.Diagnostics.LogAnalyzer do
     |> finalize()
   end
 
-  @spec format_summary(log_report()) :: String.t()
-  def format_summary(%{signal_name: nil}), do: "No crash detected"
+  @spec format_summary(LogReport.t()) :: String.t()
+  def format_summary(%LogReport{signal_name: nil}), do: "No crash detected"
 
-  def format_summary(%{signal_name: name, signal_number: number, backtrace: bt}) do
+  def format_summary(%LogReport{signal_name: name, signal_number: number, backtrace: bt}) do
     "#{name} (signal #{number}) - #{length(bt)} backtrace frames"
   end
 
@@ -73,13 +65,17 @@ defmodule Toast.Diagnostics.LogAnalyzer do
   end
 
   defp finalize(report) do
-    report
-    |> Map.update!(:fatal_lines, &Enum.reverse/1)
-    |> Map.update!(:backtrace, &Enum.reverse/1)
-    |> Map.update!(:crash_output, &Enum.reverse/1)
-    |> Map.update!(:assertion_failures, &Enum.reverse/1)
-    |> Map.update!(:warnings, &Enum.reverse/1)
-    |> Map.delete(:uninteresting_topics)
+    %LogReport{
+      signal_number: report.signal_number,
+      signal_name: report.signal_name,
+      crash_header: report.crash_header,
+      backtrace: Enum.reverse(report.backtrace),
+      fatal_lines: Enum.reverse(report.fatal_lines),
+      crash_output: Enum.reverse(report.crash_output),
+      timestamp: report.timestamp,
+      assertion_failures: Enum.reverse(report.assertion_failures),
+      warnings: Enum.reverse(report.warnings)
+    }
   end
 
   # --- Fatal lines (FATAL non-crash, bare strings for crash diagnostic display) ---

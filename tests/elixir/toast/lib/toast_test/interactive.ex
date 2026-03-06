@@ -6,7 +6,7 @@ defmodule ToastTest.Interactive do
 
   @on_exit_timeout 30_000
 
-  @spec run(module() | String.t(), keyword()) :: [map()]
+  @spec run(module() | String.t(), keyword()) :: [ToastTest.TestResult.t()]
   def run(module_or_path, opts \\ [])
 
   def run(path, opts) when is_binary(path) do
@@ -62,7 +62,12 @@ defmodule ToastTest.Interactive do
 
           failed =
             Enum.map(tests, fn test ->
-              %{name: test.name, outcome: :failed, error: error}
+              %ToastTest.TestResult{
+                module: module,
+                name: test.name,
+                outcome: :failed,
+                failure: error
+              }
             end)
 
           {failed, error}
@@ -70,7 +75,12 @@ defmodule ToastTest.Interactive do
         {:DOWN, ^module_ref, :process, ^module_pid, error} ->
           failed =
             Enum.map(tests, fn test ->
-              %{name: test.name, outcome: :failed, error: {:EXIT, error, []}}
+              %ToastTest.TestResult{
+                module: module,
+                name: test.name,
+                outcome: :failed,
+                failure: {:EXIT, error, []}
+              }
             end)
 
           {failed, {:EXIT, error, []}}
@@ -120,14 +130,19 @@ defmodule ToastTest.Interactive do
       receive do
         {^test_pid, :test_finished, :passed} ->
           Process.demonitor(test_ref, [:flush])
-          %{name: test.name, outcome: :passed, error: nil}
+          %ToastTest.TestResult{module: module, name: test.name, outcome: :passed}
 
         {^test_pid, :test_finished, {:failed, error}} ->
           Process.demonitor(test_ref, [:flush])
-          %{name: test.name, outcome: :failed, error: error}
+          %ToastTest.TestResult{module: module, name: test.name, outcome: :failed, failure: error}
 
         {:DOWN, ^test_ref, :process, ^test_pid, error} ->
-          %{name: test.name, outcome: :failed, error: {:EXIT, error, []}}
+          %ToastTest.TestResult{
+            module: module,
+            name: test.name,
+            outcome: :failed,
+            failure: {:EXIT, error, []}
+          }
       end
 
     case run_on_exit(test_pid) do
@@ -135,7 +150,7 @@ defmodule ToastTest.Interactive do
         result
 
       on_exit_error when result.outcome == :passed ->
-        %{result | outcome: :failed, error: on_exit_error}
+        %{result | outcome: :failed, failure: on_exit_error}
 
       _on_exit_error ->
         result

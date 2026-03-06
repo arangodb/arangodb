@@ -86,7 +86,7 @@ defmodule ToastTest.ResultFormatter do
     {outcome, failure} = extract_outcome(test.state)
     finished_at = if started_at, do: DateTime.add(started_at, test.time, :microsecond)
 
-    %{
+    %ToastTest.TestResult{
       module: test.module,
       name: to_string(test.name),
       outcome: outcome,

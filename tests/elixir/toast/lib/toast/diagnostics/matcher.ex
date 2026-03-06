@@ -134,7 +134,7 @@ defmodule Toast.Diagnostics.Matcher do
   end
 
   defp match_test_confidence(test, timestamp, tolerance, {best_conf, _} = acc) do
-    case {test[:started_at], test[:finished_at]} do
+    case {Map.get(test, :started_at), Map.get(test, :finished_at)} do
       {%DateTime{} = started, %DateTime{} = finished} ->
         case calculate_confidence(timestamp, started, finished, tolerance) do
           :high -> {:halt, {:high, test}}

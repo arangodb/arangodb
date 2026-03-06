@@ -28,8 +28,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   defp on_crash_ctx(overrides \\ []) do
     %{
       on_crash: Keyword.get(overrides, :on_crash),
-      on_event: Keyword.get(overrides, :on_event),
-      server_id: Keyword.get(overrides, :server_id, "s1")
+      on_event: Keyword.get(overrides, :on_event)
     }
   end
 

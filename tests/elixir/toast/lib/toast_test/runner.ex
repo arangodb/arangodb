@@ -11,8 +11,34 @@ defmodule ToastTest.Runner do
 
   require Logger
 
+  defmodule Config do
+    @moduledoc false
+    @enforce_keys [:manager, :stats_pid, :result_formatter_pid, :runner_pid, :suite_run]
+    defstruct [
+      :capture_log,
+      :exclude,
+      :include,
+      :manager,
+      :max_failures,
+      :only_test_ids,
+      :result_formatter_pid,
+      :runner_pid,
+      :stats_pid,
+      :suite_deadline,
+      :suite_run,
+      :test_name_pattern,
+      :timeout,
+      :timeout_factor,
+      :trace
+    ]
+  end
+
   @current_key __MODULE__
   @abort_table :toast_suite_abort
+  @abort_prefix "Suite aborted: "
+
+  @doc false
+  def abort_prefix, do: @abort_prefix
 
   ## Public API
 
@@ -30,18 +56,19 @@ defmodule ToastTest.Runner do
     try do
       _ =
         System.trap_signal(:sigquit, id, fn ->
-          ref = Process.monitor(runner)
-          send(runner, {ref, self(), :sigquit})
+          case Process.info(runner, :dictionary) do
+            {:dictionary, dict} ->
+              manager = Keyword.get(dict, :toast_manager)
+              current = Keyword.get(dict, @current_key)
 
-          receive do
-            ^ref -> :ok
-            {:DOWN, ^ref, _, _, _} -> :ok
-          after
-            5_000 -> :ok
+              if manager do
+                running = if current, do: List.wrap(current), else: []
+                Compat.sigquit(manager, running)
+              end
+
+            nil ->
+              :ok
           end
-
-          Process.demonitor(ref, [:flush])
-          :ok
         end)
 
       do_run_suites(suites, global_opts)
@@ -195,6 +222,9 @@ defmodule ToastTest.Runner do
     config =
       build_test_config(opts, suite_opts, suite_run, manager, stats_pid, result_formatter_pid)
 
+    # Expose manager to SIGQUIT signal handler (reads via Process.info/2)
+    Process.put(:toast_manager, manager)
+
     :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
 
     start_time = System.monotonic_time()
@@ -244,7 +274,7 @@ defmodule ToastTest.Runner do
         :error -> opts[:only_test_ids]
       end
 
-    %{
+    %Config{
       capture_log: opts[:capture_log],
       exclude: opts[:exclude],
       include: opts[:include],
@@ -290,7 +320,7 @@ defmodule ToastTest.Runner do
 
       cond do
         reason = aborted?() ->
-          emit_skipped_module(config, module, "Suite aborted: " <> abort_display_reason(reason))
+          emit_skipped_module(config, module, @abort_prefix <> abort_display_reason(reason))
 
         max_failures_reached?(config) ->
           :ok
@@ -505,7 +535,7 @@ defmodule ToastTest.Runner do
   end
 
   defp finish_aborted_module(config, test_module, invalid_tests, finished_tests, reason) do
-    abort_msg = "Suite aborted: " <> abort_display_reason(reason)
+    abort_msg = @abort_prefix <> abort_display_reason(reason)
 
     for test <- invalid_tests do
       skipped = %{test | state: {:skipped, abort_msg}}
@@ -546,7 +576,7 @@ defmodule ToastTest.Runner do
     include = config.include
     exclude = config.exclude
     test_ids = config.only_test_ids
-    name_pattern = Map.get(config, :test_name_pattern)
+    name_pattern = config.test_name_pattern
 
     {to_run, to_skip} =
       for test <- tests,
@@ -674,7 +704,7 @@ defmodule ToastTest.Runner do
     end
   end
 
-  @spec check_between_tests(map(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
+  @spec check_between_tests(Config.t(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
   defp check_between_tests(%{suite_run: %{deployment: nil}}, _prev_test), do: :ok
 
   defp check_between_tests(
@@ -814,7 +844,7 @@ defmodule ToastTest.Runner do
 
   defp exec_test_setup(%ExUnit.Test{module: module} = test, context) do
     if reason = aborted?() do
-      {:skipped, %{test | state: {:skipped, "Suite aborted: " <> abort_display_reason(reason)}}}
+      {:skipped, %{test | state: {:skipped, @abort_prefix <> abort_display_reason(reason)}}}
     else
       {:ok, Compat.get_test_setup(module, context)}
     end

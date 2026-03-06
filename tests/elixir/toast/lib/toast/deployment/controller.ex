@@ -50,7 +50,7 @@ defmodule Toast.Deployment.Controller do
             on_event: (term() -> term()) | nil,
             mode: module() | nil,
             mode_state: map(),
-            status: atom(),
+            status: Toast.Deployment.Controller.status(),
             servers: %{optional(String.t()) => ServerInstance.t()},
             expected_crashes: map()
           }
@@ -105,11 +105,11 @@ defmodule Toast.Deployment.Controller do
 
   @spec restart_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
   def restart_server(server, server_id, opts \\ []),
-    do: GenServer.call(server, {:restart_server, server_id, opts}, 65_000)
+    do: GenServer.call(server, {:restart_server, server_id, opts}, :infinity)
 
   @spec start_server(GenServer.server(), term(), keyword()) :: :ok | {:error, term()}
   def start_server(server, server_id, opts \\ []),
-    do: GenServer.call(server, {:start_server, server_id, opts}, 65_000)
+    do: GenServer.call(server, {:start_server, server_id, opts}, :infinity)
 
   # --- Server callbacks ---
 
@@ -259,8 +259,7 @@ defmodule Toast.Deployment.Controller do
 
     on_crash_ctx = %{
       on_crash: state.on_crash,
-      on_event: state.on_event,
-      server_id: server_id
+      on_event: state.on_event
     }
 
     case ServerLifecycle.handle_crash(

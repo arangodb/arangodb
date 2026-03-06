@@ -146,7 +146,7 @@ defmodule Toast.Deployment.ClientTest do
       assert client.base_url == "http://localhost:9002"
     end
 
-    test "returns {:error, :unknown_server} when no servers match role" do
+    test "returns {:error, :not_found} when no servers match role" do
       srv = server_instance("db-0", endpoint: "http://localhost:9001", role: :dbserver)
       {:ok, pid} = MockController.start_link(servers: [srv])
 
@@ -158,11 +158,11 @@ defmodule Toast.Deployment.ClientTest do
         end
       end)
 
-      assert {:error, :unknown_server} =
+      assert {:error, :not_found} =
                Deployment.client(deployment(pid, :cluster), role: :coordinator)
     end
 
-    test "returns {:error, :unknown_server} when index out of range" do
+    test "returns {:error, :not_found} when index out of range" do
       srv = server_instance("coord-0", endpoint: "http://localhost:9001", role: :coordinator)
       {:ok, pid} = MockController.start_link(servers: [srv])
 
@@ -174,7 +174,7 @@ defmodule Toast.Deployment.ClientTest do
         end
       end)
 
-      assert {:error, :unknown_server} =
+      assert {:error, :not_found} =
                Deployment.client(deployment(pid, :cluster), role: :coordinator, index: 5)
     end
 
@@ -208,8 +208,8 @@ defmodule Toast.Deployment.ClientTest do
       Process.sleep(50)
 
       # servers/2 with dead controller returns [] (the default),
-      # so client/2 returns {:error, :unknown_server}
-      assert {:error, :unknown_server} = Deployment.client(deployment(dead), role: :coordinator)
+      # so client/2 returns {:error, :not_found}
+      assert {:error, :not_found} = Deployment.client(deployment(dead), role: :coordinator)
     end
   end
 end

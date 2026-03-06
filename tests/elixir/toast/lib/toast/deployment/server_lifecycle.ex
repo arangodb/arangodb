@@ -125,7 +125,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   defp handle_unexpected_crash(server_id, crash_info, nil, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
+    notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
 
     notify_event(
       on_crash_ctx.on_event,
@@ -153,7 +153,7 @@ defmodule Toast.Deployment.ServerLifecycle do
         "Server #{server_id} crashed unexpectedly during intentional stop: #{inspect(crash_info)}"
       )
 
-      notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
+      notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
 
       notify_event(
         on_crash_ctx.on_event,
@@ -166,7 +166,7 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   defp handle_unexpected_crash(server_id, crash_info, %ServerInstance{} = _server, on_crash_ctx) do
     Logger.error("Server #{server_id} crashed: #{inspect(crash_info)}")
-    notify_crash(on_crash_ctx.on_crash, on_crash_ctx.server_id, crash_info)
+    notify_crash(on_crash_ctx.on_crash, server_id, crash_info)
 
     notify_event(
       on_crash_ctx.on_event,

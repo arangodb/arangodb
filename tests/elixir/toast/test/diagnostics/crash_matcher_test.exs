@@ -1,14 +1,14 @@
 defmodule Toast.Diagnostics.CrashMatcherTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Diagnostics.CrashMatcher
+  alias Toast.Diagnostics.{CrashMatcher, LogReport}
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
     only: [at: 1, make_test: 0, make_test: 1]
 
   defp make_crash_report(opts \\ []) do
-    %{
+    %LogReport{
       signal_number: Keyword.get(opts, :signal_number, 11),
       signal_name: Keyword.get(opts, :signal_name, "SIGSEGV"),
       crash_header: Keyword.get(opts, :crash_header, "caught unexpected signal 11 (SIGSEGV)"),
@@ -31,13 +31,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         log_file: "/tmp/toast/server/log"
       })
 
-    crash = Keyword.get(opts, :crash_report, make_crash_report())
-
-    log_report =
-      Map.merge(crash, %{
-        assertion_failures: [],
-        warnings: []
-      })
+    log_report = Keyword.get(opts, :crash_report, make_crash_report())
 
     entry = %{
       sanitizer_errors: [],
@@ -56,17 +50,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
   end
 
   defp no_crash_report do
-    %{
-      signal_number: nil,
-      signal_name: nil,
-      crash_header: nil,
-      backtrace: [],
-      fatal_lines: [],
-      crash_output: [],
-      timestamp: nil,
-      assertion_failures: [],
-      warnings: []
-    }
+    %LogReport{}
   end
 
   describe "match/3" do
@@ -174,7 +158,7 @@ defmodule Toast.Diagnostics.CrashMatcherTest do
         },
         "dbserver-1" => %{
           sanitizer_errors: [],
-          log_report: Map.merge(crash, %{assertion_failures: [], warnings: []}),
+          log_report: crash,
           server_error:
             {:server_crashed,
              %Toast.Process.CrashInfo{exit_status: 139, signal: 11, timestamp: at(5)}},

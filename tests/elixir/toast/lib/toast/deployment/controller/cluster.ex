@@ -229,6 +229,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     {servers, ids}
   end
 
+  # No deadline — OS process creation is near-instant; health check timeouts dominate.
   defp start_all_server_processes(state, topology) do
     all_specs = topology.agents ++ topology.dbservers ++ topology.coordinators
 

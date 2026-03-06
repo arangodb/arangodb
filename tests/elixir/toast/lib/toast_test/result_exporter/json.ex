@@ -13,7 +13,7 @@ defmodule ToastTest.ResultExporter.JSON do
   def build(test_results, nil), do: build(test_results, %AnalysisData{})
 
   def build(test_results, %AnalysisData{} = analysis) do
-    all_tests = all_tests_from_modules(test_results.modules)
+    all_tests = ToastTest.ResultFormatter.flat_tests(test_results)
 
     base = %{
       "toast_version" => @toast_version,
@@ -89,10 +89,6 @@ defmodule ToastTest.ResultExporter.JSON do
       "summary" => build_summary(tests),
       "tests" => Enum.map(tests, &build_test/1)
     }
-  end
-
-  defp all_tests_from_modules(modules) do
-    Enum.flat_map(modules, fn {_mod, %{tests: tests}} -> tests end)
   end
 
   defp build_test(test) do

@@ -116,7 +116,8 @@ defmodule Toast.Deployment do
   Returns `{:ok, diagnostics}` on success or `{:error, reason, partial_diagnostics}`
   on shutdown failure (partial diagnostics are still collected when possible).
   """
-  @spec stop_and_collect(t(), keyword()) :: {:ok, map()} | {:error, term(), map()}
+  @spec stop_and_collect(t(), keyword()) ::
+          {:ok, Toast.Diagnostics.Result.t()} | {:error, term(), Toast.Diagnostics.Result.t()}
   def stop_and_collect(%__MODULE__{controller: pid} = deployment, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, default_shutdown_timeout(deployment))
 
@@ -189,9 +190,9 @@ defmodule Toast.Deployment do
       {role, opts} ->
         index = Keyword.get(opts, :index, 0)
 
-        case servers(deployment, role: role) do
-          srvs when length(srvs) > index -> {:ok, Client.new(Enum.at(srvs, index).endpoint)}
-          _ -> {:error, :unknown_server}
+        case Enum.at(servers(deployment, role: role), index) do
+          nil -> {:error, :not_found}
+          srv -> {:ok, Client.new(srv.endpoint)}
         end
     end
   end
@@ -431,7 +432,7 @@ defmodule Toast.Deployment do
   defp extract_crash_info({:server_crashed, server_id, crash_info}, servers) do
     server = if servers, do: servers[server_id]
     log_file = if server, do: server.log_file
-    log_report = read_and_parse_log(log_file)
+    log_report = Toast.Diagnostics.LogAnalyzer.parse(log_file)
 
     {:ok,
      %{
@@ -473,9 +474,6 @@ defmodule Toast.Deployment do
       summary -> "- #{summary}"
     end
   end
-
-  defp read_and_parse_log(log_file),
-    do: Toast.Diagnostics.LogAnalyzer.parse(log_file)
 
   defp controller_call_control(deployment, op, target, opts \\ []) do
     case opts do

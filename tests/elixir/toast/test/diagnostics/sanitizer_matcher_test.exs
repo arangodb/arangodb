@@ -1,7 +1,7 @@
 defmodule Toast.Diagnostics.SanitizerMatcherTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Diagnostics.{Matcher, SanitizerMatcher}
+  alias Toast.Diagnostics.{LogReport, Matcher, SanitizerMatcher}
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
@@ -22,16 +22,7 @@ defmodule Toast.Diagnostics.SanitizerMatcherTest do
     %{
       "toast-1" => %{
         sanitizer_errors: errors,
-        log_report: %{
-          signal_number: nil,
-          signal_name: nil,
-          crash_header: nil,
-          backtrace: [],
-          fatal_lines: [],
-          crash_output: [],
-          assertion_failures: [],
-          warnings: []
-        },
+        log_report: %LogReport{},
         server_error: nil,
         server: %ServerInstance{id: "toast-1", role: :single}
       }

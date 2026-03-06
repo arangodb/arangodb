@@ -1,12 +1,12 @@
 defmodule Toast.Diagnostics.ServerDiagnostics do
   alias Toast.Deployment.ServerInstance
-  alias Toast.Diagnostics.{LogAnalyzer, Sanitizer}
+  alias Toast.Diagnostics.{LogReport, Sanitizer}
 
   @enforce_keys [:server]
 
   @type t :: %__MODULE__{
           sanitizer_errors: [Sanitizer.sanitizer_error()],
-          log_report: LogAnalyzer.log_report() | nil,
+          log_report: LogReport.t() | nil,
           server_error: term(),
           server: ServerInstance.t()
         }

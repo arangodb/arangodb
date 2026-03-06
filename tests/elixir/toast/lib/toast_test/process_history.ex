@@ -14,9 +14,10 @@ defmodule ToastTest.ProcessHistory do
     GenServer.cast(__MODULE__, {:event, event})
   end
 
-  @spec events() :: [term()]
-  def events do
-    GenServer.call(__MODULE__, :events)
+  @doc false
+  @spec events(GenServer.server()) :: [term()]
+  def events(server \\ __MODULE__) do
+    GenServer.call(server, :events)
   end
 
   @spec clear() :: :ok

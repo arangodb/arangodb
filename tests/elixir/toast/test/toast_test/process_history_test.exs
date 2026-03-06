@@ -30,18 +30,17 @@ defmodule ToastTest.ProcessHistoryTest do
   end
 
   describe "handle_event/1" do
-    test "records a server lifecycle event", %{pid: pid, name: name} do
+    test "records a server lifecycle event", %{name: name} do
       event = %{type: :started, server_id: "s1", timestamp: DateTime.utc_now()}
       GenServer.cast(name, {:event, event})
-      :sys.get_state(pid)
 
-      events = GenServer.call(name, :events)
+      events = ProcessHistory.events(name)
       assert length(events) == 1
       assert hd(events).server_id == "s1"
       assert hd(events).type == :started
     end
 
-    test "records multiple events in order", %{pid: pid, name: name} do
+    test "records multiple events in order", %{name: name} do
       t1 = DateTime.utc_now()
       t2 = DateTime.add(t1, 1, :second)
       t3 = DateTime.add(t1, 2, :second)
@@ -49,9 +48,8 @@ defmodule ToastTest.ProcessHistoryTest do
       GenServer.cast(name, {:event, %{type: :started, server_id: "s1", timestamp: t1}})
       GenServer.cast(name, {:event, %{type: :stopped, server_id: "s1", timestamp: t2}})
       GenServer.cast(name, {:event, %{type: :started, server_id: "s2", timestamp: t3}})
-      :sys.get_state(pid)
 
-      events = GenServer.call(name, :events)
+      events = ProcessHistory.events(name)
       assert length(events) == 3
       assert Enum.at(events, 0).type == :started
       assert Enum.at(events, 0).server_id == "s1"
@@ -61,59 +59,50 @@ defmodule ToastTest.ProcessHistoryTest do
   end
 
   describe "events are timestamped" do
-    test "event timestamps are preserved", %{pid: pid, name: name} do
+    test "event timestamps are preserved", %{name: name} do
       now = DateTime.utc_now()
       event = %{type: :crashed, server_id: "s1", os_pid: 12_345, timestamp: now}
       GenServer.cast(name, {:event, event})
-      :sys.get_state(pid)
 
-      [recorded] = GenServer.call(name, :events)
+      [recorded] = ProcessHistory.events(name)
       assert recorded.timestamp == now
     end
   end
 
-  describe "events/0" do
+  describe "event recording" do
     test "returns empty list when no events recorded", %{name: name} do
-      assert GenServer.call(name, :events) == []
+      assert ProcessHistory.events(name) == []
     end
 
-    test "returns events in chronological order", %{pid: pid, name: name} do
+    test "returns events in chronological order", %{name: name} do
       for i <- 1..5 do
         GenServer.cast(name, {:event, %{index: i}})
       end
 
-      :sys.get_state(pid)
-
-      events = GenServer.call(name, :events)
+      events = ProcessHistory.events(name)
       indices = Enum.map(events, & &1.index)
       assert indices == [1, 2, 3, 4, 5]
     end
   end
 
   describe "clear/0" do
-    test "removes all recorded events", %{pid: pid, name: name} do
+    test "removes all recorded events", %{name: name} do
       GenServer.cast(name, {:event, %{type: :started, server_id: "s1"}})
       GenServer.cast(name, {:event, %{type: :stopped, server_id: "s1"}})
-      :sys.get_state(pid)
 
-      assert length(GenServer.call(name, :events)) == 2
+      assert length(ProcessHistory.events(name)) == 2
 
       GenServer.cast(name, :clear)
-      :sys.get_state(pid)
 
-      assert GenServer.call(name, :events) == []
+      assert ProcessHistory.events(name) == []
     end
 
-    test "events can be recorded after clear", %{pid: pid, name: name} do
+    test "events can be recorded after clear", %{name: name} do
       GenServer.cast(name, {:event, %{type: :started}})
-      :sys.get_state(pid)
       GenServer.cast(name, :clear)
-      :sys.get_state(pid)
-
       GenServer.cast(name, {:event, %{type: :restarted}})
-      :sys.get_state(pid)
 
-      events = GenServer.call(name, :events)
+      events = ProcessHistory.events(name)
       assert length(events) == 1
       assert hd(events).type == :restarted
     end

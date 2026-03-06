@@ -1,23 +1,14 @@
 defmodule Toast.Diagnostics.SummaryTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Diagnostics.Summary
+  alias Toast.Diagnostics.{LogReport, Summary}
   alias Toast.Deployment.ServerInstance
 
   defp base_diag_entry(overrides) do
     Map.merge(
       %{
         sanitizer_errors: [],
-        log_report: %{
-          signal_number: nil,
-          signal_name: nil,
-          crash_header: nil,
-          backtrace: [],
-          fatal_lines: [],
-          crash_output: [],
-          assertion_failures: [],
-          warnings: []
-        },
+        log_report: %LogReport{},
         server_error: nil,
         server: %ServerInstance{
           id: "toast-42",
@@ -41,7 +32,7 @@ defmodule Toast.Diagnostics.SummaryTest do
     base_diag_entry(
       Map.merge(
         %{
-          log_report: %{
+          log_report: %LogReport{
             signal_number: 11,
             signal_name: "SIGSEGV",
             crash_header: "caught unexpected signal 11 (SIGSEGV)",
@@ -52,9 +43,7 @@ defmodule Toast.Diagnostics.SummaryTest do
               "physical memory: 16384, rss usage: 1234567",
               "frame 0 at 0xdead",
               "frame 1 at 0xbeef"
-            ],
-            assertion_failures: [],
-            warnings: []
+            ]
           },
           server_error:
             {:server_crashed,
@@ -177,15 +166,10 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "shows 'no crash information' when crash_output is empty" do
       diag =
         crashed_diagnostics(%{
-          log_report: %{
+          log_report: %LogReport{
             signal_number: 11,
             signal_name: "SIGSEGV",
-            crash_header: "caught unexpected signal 11 (SIGSEGV)",
-            backtrace: [],
-            fatal_lines: [],
-            crash_output: [],
-            assertion_failures: [],
-            warnings: []
+            crash_header: "caught unexpected signal 11 (SIGSEGV)"
           }
         })
 
@@ -200,15 +184,11 @@ defmodule Toast.Diagnostics.SummaryTest do
     test "omits Fatal log entries section when fatal_lines is empty" do
       diag =
         crashed_diagnostics(%{
-          log_report: %{
+          log_report: %LogReport{
             signal_number: 11,
             signal_name: "SIGSEGV",
             crash_header: "caught unexpected signal 11 (SIGSEGV)",
-            backtrace: [],
-            fatal_lines: [],
-            crash_output: ["caught unexpected signal 11 (SIGSEGV)"],
-            assertion_failures: [],
-            warnings: []
+            crash_output: ["caught unexpected signal 11 (SIGSEGV)"]
           }
         })
 

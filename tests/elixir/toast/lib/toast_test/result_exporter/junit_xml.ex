@@ -9,7 +9,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
   def render(test_results, nil), do: render(test_results, %AnalysisData{})
 
   def render(test_results, %AnalysisData{} = analysis) do
-    all_tests = all_tests_from_modules(test_results.modules)
+    all_tests = ToastTest.ResultFormatter.flat_tests(test_results)
 
     total = length(all_tests)
     failures = count_by_outcome(all_tests, :failed)
@@ -41,10 +41,6 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   # --- Test suites ---
 
-  defp all_tests_from_modules(modules) do
-    Enum.flat_map(modules, fn {_mod, %{tests: tests}} -> tests end)
-  end
-
   defp render_testsuite({module, %{tests: tests}}) do
     name = Atom.to_string(module)
     total = length(tests)
@@ -65,7 +61,7 @@ defmodule ToastTest.ResultExporter.JUnitXML do
 
   # --- Test cases ---
 
-  def count_by_outcome(tests, outcome) do
+  defp count_by_outcome(tests, outcome) do
     Enum.count(tests, &(&1.outcome == outcome))
   end
 

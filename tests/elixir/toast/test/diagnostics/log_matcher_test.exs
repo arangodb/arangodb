@@ -1,21 +1,14 @@
 defmodule Toast.Diagnostics.LogMatcherTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Diagnostics.LogMatcher
+  alias Toast.Diagnostics.{LogMatcher, LogReport}
   alias Toast.Deployment.ServerInstance
 
   import Toast.DiagnosticsTestHelpers,
     only: [at: 1, make_test: 0, make_test: 1]
 
   defp make_log_report(opts \\ []) do
-    %{
-      signal_number: nil,
-      signal_name: nil,
-      crash_header: nil,
-      backtrace: [],
-      fatal_lines: [],
-      crash_output: [],
-      timestamp: nil,
+    %LogReport{
       assertion_failures: Keyword.get(opts, :assertion_failures, []),
       warnings: Keyword.get(opts, :warnings, [])
     }

@@ -16,14 +16,7 @@ defmodule ToastTest.StateCleanup do
   end
 
   defp reset_abort_table do
-    try do
-      :ets.delete(:toast_suite_abort)
-    catch
-      :error, :badarg -> :ok
-    end
-
-    :ets.new(:toast_suite_abort, [:named_table, :set, :public])
-    :ok
+    ToastTest.Runner.clear_abort!()
   end
 
   defp reset_after_suite_callbacks do
