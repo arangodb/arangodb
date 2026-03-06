@@ -74,9 +74,9 @@ auto swapOutLastElementAccesses(
             ast::VariableNode varNode(node);
             variable = varNode.getVariable();
           }
-          if (pathVariables.contains(const_cast<Variable*>(variable))) {
+          if (pathVariables.contains(variable)) {
             currentState = PathAccessState::kAccessEdgesOrVertices;
-            matchingPath = const_cast<Variable*>(variable);
+            matchingPath = variable;
           }
         }
         // Keep for now
