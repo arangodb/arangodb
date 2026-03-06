@@ -48,10 +48,9 @@ std::string const RestAdminDeploymentHandler::Id = "id";
 
 auto RestAdminDeploymentHandler::executeAsync()
     -> futures::Future<futures::Unit> {
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isSingleServer()) {
+  if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server and coordinators");
+                  "only allowed on coordinators");
     co_return;
   }
 
