@@ -60,7 +60,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
       _description(std::move(desc)),
       _state(READY),
       _progress(0.),
-      _priority(desc.priority()),
+      _priority(_description.priority()),
       _activity{activities::make<activity::ActionActivity>(
           _description.name(), maintenance::ActionDescription{_description})} {
   init();
