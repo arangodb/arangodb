@@ -118,7 +118,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -164,7 +164,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__using_collection_name: function() {
-      let cmd = `/_api/document?collection=${cn}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -209,7 +209,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_none_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -272,7 +272,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -354,7 +354,7 @@ function checking_a_documentSuite () {
     },
 
     test_create_a_document_and_check_to_read_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, { 'accept-encoding': 'identity' });
 
@@ -385,7 +385,7 @@ function checking_a_documentSuite () {
     },
 
     test_use_an_invalid_revision_for_HEAD: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 

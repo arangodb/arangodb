@@ -250,11 +250,11 @@ function schema_validationSuite () {
 
       sleep(2);
       body = "{ \"name\": { \"first\": \"test\", \"last\": \"test\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 202);
 
       body = "{ \"name\": { \"first\": \"a\", \"last\": \"b\" }, \"status\": \"inactive\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 202);
     },
 
@@ -266,32 +266,32 @@ function schema_validationSuite () {
       sleep(2);
 
       body = "{ \"name\": { \"first\" : \"\", \"last\": \"test\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"\", \"last\": \"\" }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" } }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { \"first\" : \"test\", \"last\": \"test\" }, \"status\": \"foo\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"name\": { }, \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
 
       body = "{ \"first\": \"abc\", \"last\": \"test\", \"status\": \"active\" }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
       assertEqual(doc.code, 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_FAILED.code);
     }
@@ -463,7 +463,7 @@ function readingSuite () {
 
       // create a new document;
       let body = "{ \"test\" : 1 }";
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch revision again;
       doc = arango.GET_RAW(cmd);
@@ -479,7 +479,7 @@ function readingSuite () {
       assertNotEqual(r1, r2);;
 
       // create another document;
-      doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
+      doc = arango.POST_RAW("/_api/document/" + cn, body);
 
       // fetch revision again;
       doc = arango.GET_RAW(cmd);
@@ -656,7 +656,7 @@ function truncatingSuite () {
     },
 
     test_truncate_a_collection_by_identifier: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let docs = [];
       for (let i = 0; i < 10; i++){
         docs.push({ "hello" : "world"});
@@ -695,7 +695,7 @@ function propertiesSuite () {
     test_changing_the_properties_of_a_collection_by_identifier: function() {
       let cid = db._create(cn);
 
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let docs = [];
       for (let i = 0; i < 10; i++){
         docs.push({ "hello" : "world"});

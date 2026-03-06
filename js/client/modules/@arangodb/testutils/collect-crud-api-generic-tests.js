@@ -40,7 +40,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
 
     const collection = collectionWrapper.rawCollection();
     const cn = collection.name();
-    const baseUrl = "/_api/document?collection=" + encodeURIComponent(cn);
+    const baseUrl = "/_api/document/" + encodeURIComponent(cn);
     const singleDocBaseUrl = "/_api/document/" + encodeURIComponent(cn);
     for (const doc of generator) {
       let keyUrl;
