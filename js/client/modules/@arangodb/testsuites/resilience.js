@@ -60,15 +60,6 @@ const testPaths = {
 
 var _resilience = function(path, enableAliveMonitor, skipServerJS) {
   this.func = function resilience (options) {
-    if (skipServerJS && options.skipServerJS) {
-      return {
-        [path]: {
-          status: true,
-          message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
-        },
-        status: true
-      };
-    }
     let suiteName = path;
     let localOptions = _.clone(options);
     localOptions.cluster = true;
