@@ -56,19 +56,10 @@ class Methods;
 
 namespace iresearch::order_factory {
 
-// Extract reference from scorer node
-aql::Variable const* refFromScorer(aql::AstNode const& node);
-
 // Determine if the 'node' can be converted into an iresearch scorer
 // if 'scorer' != nullptr then also append build iresearch scorer
 // there.
 bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
             QueryContext const& ctx);
-
-// Determine if the 'node' can be converted into an iresearch scorer
-// if 'scorer' != nullptr then also append build iresearch comparer
-// there
-bool comparer(irs::Scorer::ptr* scorer, aql::AstNode const& node);
-
 }  // namespace iresearch::order_factory
 }  // namespace arangodb

@@ -25,13 +25,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Function.h"
 #include "Graph/PathType.h"
 
 #include <span>
-
-namespace arangodb::aql {
-struct Function;
-}
 
 namespace arangodb::aql::ast {
 
@@ -827,15 +824,30 @@ struct FunctionCallNode : TypedAstNode {
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in function call, found " << node->numMembers();
+    TRI_ASSERT(node->getMemberUnchecked(0) != nullptr)
+        << "expected member 0 to not be nullptr";
   }
 
-  std::string_view getFunctionName() const { return _node->getStringView(); }
+  std::string_view getFunctionName() const {
+    switch (_node->type) {
+      case NODE_TYPE_FCALL:
+        return getFunction()->name;
+      case NODE_TYPE_FCALL_USER:
+        return _node->getStringView();
+      default:
+        TRI_ASSERT(false)
+            << "expected NODE_TYPE_FCALL or NODE_TYPE_FCALL_USER, but got "
+            << _node->getTypeString();
+        return "";
+    }
+  }
 
   AstNode* getArgumentsNode() const { return _node->getMember(0); }
 
   ArrayNode getArguments() const { return ArrayNode(_node->getMember(0)); }
 
   Function* getFunction() const {
+    TRI_ASSERT(_node->type == NODE_TYPE_FCALL);
     return static_cast<Function*>(_node->getData());
   }
 };
