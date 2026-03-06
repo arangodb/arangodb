@@ -77,6 +77,46 @@ defmodule Toast.Process.HealthMonitorTest do
     end
   end
 
+  describe "unhealthy detection" do
+    test "notifies listener after max_failures consecutive failures" do
+      server_id = "unhealthy-test"
+
+      {:ok, pid} =
+        HealthMonitor.start_link(
+          server_id: server_id,
+          endpoint: "http://127.0.0.1:1",
+          listener: self(),
+          interval: 10,
+          max_failures: 3
+        )
+
+      assert_receive {:server_unhealthy, ^server_id}, 5_000
+      assert HealthMonitor.status(pid) == :unhealthy
+
+      HealthMonitor.stop(pid)
+    end
+
+    test "stops polling after becoming unhealthy" do
+      server_id = "unhealthy-stop-test"
+
+      {:ok, pid} =
+        HealthMonitor.start_link(
+          server_id: server_id,
+          endpoint: "http://127.0.0.1:1",
+          listener: self(),
+          interval: 10,
+          max_failures: 1
+        )
+
+      assert_receive {:server_unhealthy, ^server_id}, 5_000
+
+      Process.sleep(100)
+      refute_received {:server_unhealthy, _}
+
+      HealthMonitor.stop(pid)
+    end
+  end
+
   describe "resume/1" do
     test "restores monitoring after suspend" do
       {:ok, pid} =

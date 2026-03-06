@@ -112,15 +112,23 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   defp handle_expected_crash(server_id, crash_info, entry, expected_crashes, on_crash_ctx) do
     Logger.info("Server #{server_id} crashed as expected")
-    entry = %{entry | crash_info: crash_info}
-    expected_crashes = Map.put(expected_crashes, server_id, entry)
 
     notify_event(
       on_crash_ctx.on_event,
       {:server_crashed, server_id, nil, crash_info, DateTime.utc_now()}
     )
 
-    {:expected, expected_crashes}
+    case entry.waiter do
+      {from, verify_timer} ->
+        Process.cancel_timer(verify_timer)
+        Process.cancel_timer(entry.timer)
+        GenServer.reply(from, {:ok, crash_info})
+        {:expected, Map.delete(expected_crashes, server_id)}
+
+      nil ->
+        entry = %{entry | crash_info: crash_info}
+        {:expected, Map.put(expected_crashes, server_id, entry)}
+    end
   end
 
   defp handle_unexpected_crash(server_id, crash_info, nil, on_crash_ctx) do
@@ -186,7 +194,7 @@ defmodule Toast.Deployment.ServerLifecycle do
     else
       suspend_health_monitor(server)
       timer = Process.send_after(self(), {:expect_crash_timeout, server_id}, timeout)
-      entry = %{timer: timer, crash_info: nil}
+      entry = %{timer: timer, crash_info: nil, waiter: nil}
       {:ok, Map.put(expected_crashes, server_id, entry)}
     end
   end
@@ -198,10 +206,10 @@ defmodule Toast.Deployment.ServerLifecycle do
       nil ->
         {:reply, {:error, :no_expectation}, expected_crashes}
 
-      %{crash_info: nil} ->
-        deadline = System.monotonic_time(:millisecond) + timeout
-        Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
-        {:noreply, expected_crashes}
+      %{crash_info: nil} = entry ->
+        verify_timer = Process.send_after(self(), {:verify_crash_timeout, server_id}, timeout)
+        entry = %{entry | waiter: {from, verify_timer}}
+        {:noreply, Map.put(expected_crashes, server_id, entry)}
 
       %{crash_info: crash_info, timer: timer} ->
         Process.cancel_timer(timer)
@@ -212,8 +220,15 @@ defmodule Toast.Deployment.ServerLifecycle do
   @spec handle_expect_crash_timeout(String.t(), map(), ServerInstance.t() | nil) :: map()
   def handle_expect_crash_timeout(server_id, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
-      %{crash_info: nil} ->
+      %{crash_info: nil, waiter: nil} ->
         Logger.warning("Expected crash for #{server_id} timed out")
+        if server, do: resume_health_monitor(server)
+        Map.delete(expected_crashes, server_id)
+
+      %{crash_info: nil, waiter: {from, verify_timer}} ->
+        Logger.warning("Expected crash for #{server_id} timed out")
+        Process.cancel_timer(verify_timer)
+        GenServer.reply(from, {:error, :timeout})
         if server, do: resume_health_monitor(server)
         Map.delete(expected_crashes, server_id)
 
@@ -222,38 +237,16 @@ defmodule Toast.Deployment.ServerLifecycle do
     end
   end
 
-  @spec handle_verify_crash_check(
-          String.t(),
-          GenServer.from(),
-          integer(),
-          map(),
-          ServerInstance.t() | nil
-        ) ::
-          {:wait, map()} | {:done, map()}
-  def handle_verify_crash_check(server_id, from, deadline, expected_crashes, server) do
+  @spec handle_verify_crash_timeout(String.t(), map(), ServerInstance.t() | nil) :: map()
+  def handle_verify_crash_timeout(server_id, expected_crashes, server) do
     case Map.get(expected_crashes, server_id) do
-      %{crash_info: nil} ->
-        check_crash_deadline(server_id, from, deadline, expected_crashes, server)
+      %{waiter: {from, _}} ->
+        GenServer.reply(from, {:error, :timeout})
+        if server, do: resume_health_monitor(server)
+        Map.delete(expected_crashes, server_id)
 
-      %{crash_info: crash_info, timer: timer} ->
-        Process.cancel_timer(timer)
-        GenServer.reply(from, {:ok, crash_info})
-        {:done, Map.delete(expected_crashes, server_id)}
-
-      nil ->
-        GenServer.reply(from, {:error, :no_expectation})
-        {:done, expected_crashes}
-    end
-  end
-
-  defp check_crash_deadline(server_id, from, deadline, expected_crashes, server) do
-    if System.monotonic_time(:millisecond) < deadline do
-      Process.send_after(self(), {:verify_crash_check, server_id, from, deadline}, 100)
-      {:wait, expected_crashes}
-    else
-      if server, do: resume_health_monitor(server)
-      GenServer.reply(from, {:error, :timeout})
-      {:done, Map.delete(expected_crashes, server_id)}
+      _ ->
+        expected_crashes
     end
   end
 

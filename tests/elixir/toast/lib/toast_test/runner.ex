@@ -421,7 +421,15 @@ defmodule ToastTest.Runner do
 
   defp run_suite_teardown(suite_module, deployment) do
     if function_exported?(suite_module, :teardown_deployment, 1) do
-      suite_module.teardown_deployment(deployment)
+      case suite_module.teardown_deployment(deployment) do
+        {:error, reason} ->
+          Logger.warning(
+            "#{inspect(suite_module)}.teardown_deployment/1 failed: #{inspect(reason)}"
+          )
+
+        _ ->
+          :ok
+      end
     end
 
     :ok

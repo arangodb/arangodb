@@ -34,10 +34,10 @@ defmodule Toast.Deployment.ServerLifecycleTest do
 
   # --- handle_crash/5 ---
 
-  describe "handle_crash/5 with expected crash" do
+  describe "handle_crash/5 with expected crash (no waiter)" do
     test "returns {:expected, updated_map} when server_id is in expected_crashes" do
       timer = make_ref()
-      expected = %{"s1" => %{timer: timer, crash_info: nil}}
+      expected = %{"s1" => %{timer: timer, crash_info: nil, waiter: nil}}
       info = crash_info()
 
       assert {:expected, updated} =
@@ -52,7 +52,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       on_event = fn event -> send(test_pid, {:event, event}) end
 
       timer = make_ref()
-      expected = %{"s1" => %{timer: timer, crash_info: nil}}
+      expected = %{"s1" => %{timer: timer, crash_info: nil, waiter: nil}}
       info = crash_info()
 
       ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
@@ -64,7 +64,7 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       on_crash = fn _server_id, _info -> send(test_pid, :crash_callback) end
 
       timer = make_ref()
-      expected = %{"s1" => %{timer: timer, crash_info: nil}}
+      expected = %{"s1" => %{timer: timer, crash_info: nil, waiter: nil}}
 
       ServerLifecycle.handle_crash(
         "s1",
@@ -75,6 +75,31 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       )
 
       refute_receive :crash_callback, 50
+    end
+  end
+
+  describe "handle_crash/5 with expected crash (waiter present)" do
+    test "replies to waiter and removes entry" do
+      {result, updated} = run_handle_crash_with_waiter()
+      assert {:ok, %Toast.Process.CrashInfo{exit_status: 139, signal: 11}} = result
+      refute Map.has_key?(updated, "s1")
+    end
+
+    test "fires on_event even when waiter is present" do
+      test_pid = self()
+      on_event = fn event -> send(test_pid, {:event, event}) end
+
+      info = crash_info()
+      from = spawn_genserver_from()
+      verify_timer = Process.send_after(self(), :noop, 60_000)
+      expect_timer = Process.send_after(self(), :noop, 60_000)
+
+      expected = %{
+        "s1" => %{timer: expect_timer, crash_info: nil, waiter: {from, verify_timer}}
+      }
+
+      ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx(on_event: on_event))
+      assert_receive {:event, {:server_crashed, "s1", nil, ^info, _timestamp}}
     end
   end
 
@@ -208,11 +233,11 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   # --- expect_crash/4 ---
 
   describe "expect_crash/4" do
-    test "returns {:ok, updated_map} with timer and nil crash_info" do
+    test "returns {:ok, updated_map} with timer, nil crash_info and nil waiter" do
       srv = server(health_monitor: nil)
       assert {:ok, expected} = ServerLifecycle.expect_crash("s1", 5_000, %{}, srv)
 
-      assert %{timer: timer, crash_info: nil} = expected["s1"]
+      assert %{timer: timer, crash_info: nil, waiter: nil} = expected["s1"]
       assert is_reference(timer)
       Process.cancel_timer(timer)
     end
@@ -275,85 +300,95 @@ defmodule Toast.Deployment.ServerLifecycleTest do
       refute_receive :timer_fired, 100
     end
 
-    test "returns {:noreply, _} and schedules check when crash not yet recorded" do
-      expected = %{"s1" => %{timer: make_ref(), crash_info: nil}}
+    test "returns {:noreply, _} and stores waiter when crash not yet recorded" do
+      expected = %{"s1" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
+      from = {self(), make_ref()}
 
-      assert {:noreply, ^expected} =
-               ServerLifecycle.verify_crash("s1", 1_000, expected, self())
+      assert {:noreply, updated} =
+               ServerLifecycle.verify_crash("s1", 1_000, expected, from)
 
-      assert_receive {:verify_crash_check, "s1", _from, _deadline}, 200
+      assert {^from, verify_timer} = updated["s1"].waiter
+      assert is_reference(verify_timer)
+      Process.cancel_timer(verify_timer)
+    end
+
+    test "schedules verify_crash_timeout message" do
+      expected = %{"s1" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
+
+      assert {:noreply, _updated} =
+               ServerLifecycle.verify_crash("s1", 50, expected, {self(), make_ref()})
+
+      assert_receive {:verify_crash_timeout, "s1"}, 200
     end
   end
 
   # --- handle_expect_crash_timeout/3 ---
 
   describe "handle_expect_crash_timeout/3" do
-    test "removes entry when crash has not occurred" do
-      expected = %{"s1" => %{timer: make_ref(), crash_info: nil}}
+    test "removes entry when crash has not occurred and no waiter" do
+      expected = %{"s1" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
       result = ServerLifecycle.handle_expect_crash_timeout("s1", expected, nil)
       assert result == %{}
     end
 
+    test "replies to waiter with timeout when crash has not occurred" do
+      {reply, updated} = run_expect_timeout_with_waiter()
+      assert reply == {:error, :timeout}
+      assert updated == %{}
+    end
+
     test "keeps entry when crash has been recorded" do
       info = crash_info()
-      expected = %{"s1" => %{timer: make_ref(), crash_info: info}}
+      expected = %{"s1" => %{timer: make_ref(), crash_info: info, waiter: nil}}
       result = ServerLifecycle.handle_expect_crash_timeout("s1", expected, nil)
       assert result == expected
     end
 
     test "keeps entry when server_id not found in expected_crashes" do
-      expected = %{"other" => %{timer: make_ref(), crash_info: nil}}
+      expected = %{"other" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
       result = ServerLifecycle.handle_expect_crash_timeout("s1", expected, nil)
       assert result == expected
     end
 
     test "resumes health monitor on timeout when server provided" do
-      # We cannot easily verify HealthMonitor.resume is called without mocking,
-      # but we can verify no crash when health_monitor is nil.
       srv = server(health_monitor: nil)
-      expected = %{"s1" => %{timer: make_ref(), crash_info: nil}}
+      expected = %{"s1" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
       result = ServerLifecycle.handle_expect_crash_timeout("s1", expected, srv)
       assert result == %{}
     end
   end
 
-  # --- handle_verify_crash_check/5 ---
+  # --- handle_verify_crash_timeout/3 ---
 
-  describe "handle_verify_crash_check/5" do
-    test "returns {:done, _} with reply when crash is recorded" do
-      # We need a real GenServer caller to receive the reply.
-      # Use a Task that calls GenServer to get a proper `from`.
-      {result, updated} = run_verify_crash_check_with_crash()
-      assert {:ok, %Toast.Process.CrashInfo{exit_status: 139, signal: 11}} = result
-      refute Map.has_key?(updated, "s1")
-    end
-
-    test "returns {:done, _} with :no_expectation when entry missing" do
-      from = spawn_genserver_from()
-
-      assert {:done, %{}} =
-               ServerLifecycle.handle_verify_crash_check("s1", from, 0, %{}, nil)
-    end
-
-    test "returns {:wait, _} when deadline not reached and crash not yet recorded" do
-      deadline = System.monotonic_time(:millisecond) + 10_000
-      expected = %{"s1" => %{timer: make_ref(), crash_info: nil}}
-      from = spawn_genserver_from()
-
-      assert {:wait, ^expected} =
-               ServerLifecycle.handle_verify_crash_check("s1", from, deadline, expected, nil)
-
-      assert_receive {:verify_crash_check, "s1", ^from, ^deadline}, 200
-    end
-
-    test "returns {:done, _} with timeout when deadline passed and no crash" do
-      deadline = System.monotonic_time(:millisecond) - 1
-      expected = %{"s1" => %{timer: make_ref(), crash_info: nil}}
-      {reply, tag} = receive_verify_timeout(deadline, expected)
-
+  describe "handle_verify_crash_timeout/3" do
+    test "replies with timeout and removes entry when waiter present" do
+      {reply, updated} = run_verify_crash_timeout_with_waiter()
       assert reply == {:error, :timeout}
-      assert tag == :done
-      # Entry should be removed from expected_crashes
+      assert updated == %{}
+    end
+
+    test "no-ops when entry has no waiter" do
+      expected = %{"s1" => %{timer: make_ref(), crash_info: nil, waiter: nil}}
+      result = ServerLifecycle.handle_verify_crash_timeout("s1", expected, nil)
+      assert result == expected
+    end
+
+    test "no-ops when server_id not in expected_crashes" do
+      result = ServerLifecycle.handle_verify_crash_timeout("s1", %{}, nil)
+      assert result == %{}
+    end
+
+    test "resumes health monitor on timeout" do
+      srv = server(health_monitor: nil)
+      from = spawn_genserver_from()
+      verify_timer = Process.send_after(self(), :noop, 60_000)
+
+      expected = %{
+        "s1" => %{timer: make_ref(), crash_info: nil, waiter: {from, verify_timer}}
+      }
+
+      result = ServerLifecycle.handle_verify_crash_timeout("s1", expected, srv)
+      assert result == %{}
     end
   end
 
@@ -490,14 +525,13 @@ defmodule Toast.Deployment.ServerLifecycleTest do
   # --- Helpers for testing GenServer.reply interactions ---
 
   # Spawns a GenServer that captures the `from` tuple and sends it back,
-  # so we can pass it to handle_verify_crash_check.
+  # allowing us to create a valid GenServer.from() for testing reply paths.
   defp spawn_genserver_from do
     parent = self()
 
     {:ok, pid} =
       GenServer.start(Toast.Deployment.ServerLifecycleTest.FromCapture, parent)
 
-    # Make a call that will capture `from` and send it to us
     Task.async(fn -> GenServer.call(pid, :capture, 5_000) end)
 
     receive do
@@ -507,16 +541,13 @@ defmodule Toast.Deployment.ServerLifecycleTest do
     end
   end
 
-  defp run_verify_crash_check_with_crash do
+  # Calls handle_crash with a waiter present and returns {reply, updated_map}.
+  defp run_handle_crash_with_waiter do
     parent = self()
+    info = crash_info()
 
-    info = %Toast.Process.CrashInfo{
-      exit_status: 139,
-      signal: 11,
-      timestamp: ~U[2026-01-15 12:00:00Z]
-    }
-
-    timer = Process.send_after(self(), :noop, 60_000)
+    expect_timer = Process.send_after(self(), :noop, 60_000)
+    verify_timer = Process.send_after(self(), :noop, 60_000)
 
     task =
       Task.async(fn ->
@@ -533,18 +564,21 @@ defmodule Toast.Deployment.ServerLifecycleTest do
         1_000 -> raise "timeout"
       end
 
-    expected = %{"s1" => %{timer: timer, crash_info: info}}
+    expected = %{
+      "s1" => %{timer: expect_timer, crash_info: nil, waiter: {from, verify_timer}}
+    }
 
-    {tag, updated} =
-      ServerLifecycle.handle_verify_crash_check("s1", from, 0, expected, nil)
+    {:expected, updated} =
+      ServerLifecycle.handle_crash("s1", info, expected, nil, on_crash_ctx())
 
     result = Task.await(task, 1_000)
-    assert tag == :done
     {result, updated}
   end
 
-  defp receive_verify_timeout(deadline, expected) do
+  # Calls handle_verify_crash_timeout with a waiter and returns {reply, updated_map}.
+  defp run_verify_crash_timeout_with_waiter do
     parent = self()
+    verify_timer = Process.send_after(self(), :noop, 60_000)
 
     task =
       Task.async(fn ->
@@ -561,10 +595,41 @@ defmodule Toast.Deployment.ServerLifecycleTest do
         1_000 -> raise "timeout"
       end
 
-    {tag, _updated} =
-      ServerLifecycle.handle_verify_crash_check("s1", from, deadline, expected, nil)
+    expected = %{
+      "s1" => %{timer: make_ref(), crash_info: nil, waiter: {from, verify_timer}}
+    }
 
+    updated = ServerLifecycle.handle_verify_crash_timeout("s1", expected, nil)
     reply = Task.await(task, 1_000)
-    {reply, tag}
+    {reply, updated}
+  end
+
+  # Calls handle_expect_crash_timeout with a waiter and returns {reply, updated_map}.
+  defp run_expect_timeout_with_waiter do
+    parent = self()
+    verify_timer = Process.send_after(self(), :noop, 60_000)
+
+    task =
+      Task.async(fn ->
+        {:ok, pid} =
+          GenServer.start(Toast.Deployment.ServerLifecycleTest.FromCapture, parent)
+
+        GenServer.call(pid, :capture, 5_000)
+      end)
+
+    from =
+      receive do
+        {:from, f} -> f
+      after
+        1_000 -> raise "timeout"
+      end
+
+    expected = %{
+      "s1" => %{timer: make_ref(), crash_info: nil, waiter: {from, verify_timer}}
+    }
+
+    updated = ServerLifecycle.handle_expect_crash_timeout("s1", expected, nil)
+    reply = Task.await(task, 1_000)
+    {reply, updated}
   end
 end

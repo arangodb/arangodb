@@ -340,17 +340,11 @@ defmodule Toast.Deployment.Controller do
     {:noreply, %{state | expected_crashes: expected_crashes}}
   end
 
-  def handle_info({:verify_crash_check, server_id, from, deadline}, state) do
+  def handle_info({:verify_crash_timeout, server_id}, state) do
     server = Map.get(state.servers, server_id)
 
-    {_tag, expected_crashes} =
-      ServerLifecycle.handle_verify_crash_check(
-        server_id,
-        from,
-        deadline,
-        state.expected_crashes,
-        server
-      )
+    expected_crashes =
+      ServerLifecycle.handle_verify_crash_timeout(server_id, state.expected_crashes, server)
 
     {:noreply, %{state | expected_crashes: expected_crashes}}
   end

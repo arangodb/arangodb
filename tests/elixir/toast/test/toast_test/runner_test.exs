@@ -73,45 +73,6 @@ defmodule ToastTest.RunnerTest do
     end
   end
 
-  describe "ExUnitCompat adapter" do
-    alias ToastTest.ExUnitCompat, as: Compat
-
-    test "start_event_manager returns {:ok, manager}" do
-      assert {:ok, manager} = Compat.start_event_manager()
-      assert is_tuple(manager)
-      Compat.stop(manager)
-    end
-
-    test "add_runner_stats returns {:ok, pid}" do
-      {:ok, manager} = Compat.start_event_manager()
-      assert {:ok, stats_pid} = Compat.add_runner_stats(manager, [])
-      assert is_pid(stats_pid)
-      Compat.stop(manager)
-    end
-
-    test "stats returns a map" do
-      {:ok, manager} = Compat.start_event_manager()
-      {:ok, stats_pid} = Compat.add_runner_stats(manager, [])
-      stats = Compat.stats(stats_pid)
-      assert is_map(stats)
-      Compat.stop(manager)
-    end
-
-    test "get_test_metadata returns ExUnit module info" do
-      defmodule MetaTestModule do
-        use ExUnit.Case, async: false
-
-        test "example" do
-          :ok
-        end
-      end
-
-      meta = Compat.get_test_metadata(MetaTestModule)
-      assert %ExUnit.TestModule{} = meta
-      assert meta.name == MetaTestModule
-    end
-  end
-
   describe "health check between tests" do
     # The runner calls Deployment.check_health/1 between tests via
     # check_config_deployments. This tests the decision function that

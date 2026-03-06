@@ -51,7 +51,7 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
       assert {:error, {:invalid_status, :starting}, partial} =
                Toast.Deployment.stop_and_collect(deployment)
 
-      assert is_map(partial)
+      assert %Toast.Diagnostics.Result{} = partial
     end
 
     test "returns {:ok, empty result} for a cluster controller that never deployed" do

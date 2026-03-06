@@ -69,8 +69,8 @@ defmodule Toast.Deployment.Controller.SingleServer do
           true -> :degraded
         end
 
-      _ ->
-        :ready
+      [] ->
+        :stopped
     end
   end
 

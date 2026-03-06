@@ -6,6 +6,7 @@ defmodule Toast.ConfigTest do
   @env_vars ~w(
     TOAST_BUILD_DIR
     TOAST_WORK_DIR
+    TOAST_RESULT_DIR
     TOAST_DEPLOYMENT_MODE
     TOAST_SHOW_SERVER_LOGS
     TOAST_GLOBAL_TIMEOUT
@@ -21,6 +22,8 @@ defmodule Toast.ConfigTest do
     TOAST_DEBUGGER
     TOAST_DUMP_AGENCY
     TOAST_COREDUMP_TIMEOUT
+    TOAST_KEEP_WORK_DIR
+    TOAST_SANITIZER
     TOAST_CI
   )
 
@@ -474,6 +477,49 @@ defmodule Toast.ConfigTest do
       config = Config.load()
       assert config.dump_agency_on_error == true
       assert config.coredump_timeout == 90_000
+    end
+
+    test "invalid syntax logs warning and returns defaults", %{local_path: path} do
+      File.write!(path, "this is not valid elixir {{{")
+
+      config = Config.load()
+      assert config.build_dir == nil
+      assert config.deployment_mode == :single_server
+    end
+  end
+
+  describe "TOAST_SHUTDOWN_TIMEOUT env var" do
+    test "parses integer from string" do
+      System.put_env("TOAST_SHUTDOWN_TIMEOUT", "90000")
+
+      assert Config.load().shutdown_timeout == 90_000
+    end
+
+    test "factor is applied to shutdown_timeout" do
+      System.put_env("TOAST_SHUTDOWN_TIMEOUT", "30000")
+
+      config = Config.load(active_sanitizers: MapSet.new(["asan"]))
+
+      assert config.shutdown_timeout == 30_000 * 3
+    end
+  end
+
+  describe "TOAST_RESULT_DIR env var" do
+    test "reads result_dir from environment" do
+      System.put_env("TOAST_RESULT_DIR", "/custom/results")
+
+      assert Config.load().result_dir == "/custom/results"
+    end
+
+    test "defaults to toast-results when not set" do
+      assert Config.load().result_dir == "toast-results"
+    end
+
+    test "keyword override takes precedence" do
+      System.put_env("TOAST_RESULT_DIR", "/env/results")
+
+      config = Config.load(result_dir: "/opt/results")
+      assert config.result_dir == "/opt/results"
     end
   end
 end
