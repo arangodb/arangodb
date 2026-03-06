@@ -40,21 +40,23 @@
 
 namespace arangodb {
 
-namespace activities {
+class MaintenanceFeature;
+
+namespace maintenance {
+
+namespace activity {
 
 struct ActionActivity
-    : GuardedActivity<ActionActivity, maintenance::ActionDescription> {
-  ActionActivity(ActivityId id, ActivityHandle parent, ActivityType type,
+    : activities::GuardedActivity<ActionActivity,
+                                  maintenance::ActionDescription> {
+  ActionActivity(activities::ActivityId id, activities::ActivityHandle parent,
+                 activities::ActivityType type,
                  maintenance::ActionDescription data)
       : GuardedActivity<ActionActivity, maintenance::ActionDescription>(
             std::move(id), std::move(parent), std::move(type),
             std::move(data)) {}
 };
-}  // namespace activities
-
-class MaintenanceFeature;
-
-namespace maintenance {
+}  // namespace activity
 
 class Action;
 
@@ -261,7 +263,7 @@ class ActionBase {
   std::atomic<double> _progress;
 
   int _priority;
-  activities::ActionActivity::HandleType _activity;
+  activity::ActionActivity::HandleType _activity;
 
  private:
   mutable std::mutex resLock;

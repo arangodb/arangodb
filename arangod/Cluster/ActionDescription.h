@@ -195,7 +195,9 @@ template<typename Inspector>
 auto inspect(Inspector& f, ActionDescription& x) {
   return f.object(x).fields(
       f.field("discriminatoryProperties", x._description),
-      f.field("nonDiscriminatoryProperties", x._properties));
+      f.field("nonDiscriminatoryProperties", x._properties),
+      f.field("priority", x._priority),
+      f.field("runEvenIfDuplicate", x._runEvenIfDuplicate));
 }
 
 }  // namespace maintenance
