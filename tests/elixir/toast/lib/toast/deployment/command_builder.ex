@@ -10,9 +10,10 @@ defmodule Toast.Deployment.CommandBuilder do
         }
 
   @type server_paths :: %{
-          data_dir: Path.t(),
-          app_dir: Path.t(),
-          log_file: Path.t()
+          required(:data_dir) => Path.t(),
+          required(:app_dir) => Path.t(),
+          required(:log_file) => Path.t(),
+          optional(atom()) => term()
         }
 
   @spec build_args(server_spec(), server_paths(), Path.t()) :: [String.t()]

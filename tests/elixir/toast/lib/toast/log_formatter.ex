@@ -12,7 +12,12 @@ defmodule Toast.LogFormatter do
   """
 
   @doc "Elixir Logger console format callback."
-  @spec format(Logger.level(), Logger.message(), Logger.Formatter.time(), keyword()) ::
+  @spec format(
+          Logger.level(),
+          Logger.message(),
+          {{pos_integer(), 1..12, 1..31}, {0..23, 0..59, 0..59, 0..999}},
+          keyword()
+        ) ::
           IO.chardata()
   def format(level, message, _timestamp, metadata) do
     module = format_module(metadata[:mfa])

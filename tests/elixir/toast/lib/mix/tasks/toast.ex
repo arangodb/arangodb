@@ -206,7 +206,6 @@ defmodule Mix.Tasks.Toast do
       case config.deployment_mode do
         :cluster -> [:single_only]
         :single_server -> [:cluster_only]
-        _ -> []
       end
 
     ex_unit_opts

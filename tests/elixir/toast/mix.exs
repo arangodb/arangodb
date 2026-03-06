@@ -8,7 +8,8 @@ defmodule Toast.MixProject do
       elixir: "~> 1.19",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      dialyzer: [plt_add_apps: [:ex_unit, :mix]]
     ]
   end
 
@@ -28,7 +29,8 @@ defmodule Toast.MixProject do
       {:erlexec, "~> 2.0"},
       {:joken, "~> 2.6"},
       {:plug, "~> 1.0", only: :test},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 end

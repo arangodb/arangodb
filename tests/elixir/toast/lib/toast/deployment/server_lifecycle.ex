@@ -276,19 +276,19 @@ defmodule Toast.Deployment.ServerLifecycle do
 
   # --- Health monitor helpers ---
 
-  @spec suspend_health_monitor(%{health_monitor: pid() | nil}) :: :ok
+  @spec suspend_health_monitor(ServerInstance.t()) :: :ok
   def suspend_health_monitor(%{health_monitor: nil}), do: :ok
 
   def suspend_health_monitor(%{health_monitor: pid}),
     do: Toast.Process.HealthMonitor.suspend(pid)
 
-  @spec resume_health_monitor(%{health_monitor: pid() | nil}) :: :ok
+  @spec resume_health_monitor(ServerInstance.t()) :: :ok
   def resume_health_monitor(%{health_monitor: nil}), do: :ok
 
   def resume_health_monitor(%{health_monitor: pid}),
     do: Toast.Process.HealthMonitor.resume(pid)
 
-  @spec stop_health_monitor(%{health_monitor: pid() | nil}) :: :ok
+  @spec stop_health_monitor(ServerInstance.t()) :: :ok
   def stop_health_monitor(%{health_monitor: nil}), do: :ok
 
   def stop_health_monitor(%{health_monitor: pid}) do

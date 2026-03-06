@@ -15,14 +15,18 @@ defmodule Toast.Deployment.Controller do
 
   @callback init_mode_state() :: map()
   @callback init_servers(String.t()) :: %{String.t() => ServerInstance.t()}
-  @callback deploy(State.t(), timeout()) :: {:ok, State.t()} | {:error, term(), State.t()}
-  @callback shutdown(State.t(), timeout()) :: State.t()
+  @callback deploy(__MODULE__.State.t(), timeout()) ::
+              {:ok, __MODULE__.State.t()} | {:error, term(), __MODULE__.State.t()}
+  @callback shutdown(__MODULE__.State.t(), timeout()) :: __MODULE__.State.t()
   @callback derive_status(%{String.t() => ServerInstance.t()}) :: atom()
-  @callback resolve_target(State.t(), term()) :: {:ok, [String.t()]} | {:error, term()}
-  @callback build_info(State.t()) :: map()
+  @callback resolve_target(__MODULE__.State.t(), term()) ::
+              {:ok, [String.t()]} | {:error, term()}
+  @callback build_info(__MODULE__.State.t()) :: map()
 
-  @callback handle_call_extra(term(), GenServer.from(), State.t()) ::
-              {:reply, term(), State.t()} | {:noreply, State.t()} | :not_handled
+  @callback handle_call_extra(term(), GenServer.from(), __MODULE__.State.t()) ::
+              {:reply, term(), __MODULE__.State.t()}
+              | {:noreply, __MODULE__.State.t()}
+              | :not_handled
   @optional_callbacks [handle_call_extra: 3]
 
   defmodule State do

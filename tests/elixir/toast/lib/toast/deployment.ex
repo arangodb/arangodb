@@ -414,7 +414,7 @@ defmodule Toast.Deployment do
     %Toast.Diagnostics.Result{
       servers: base || %{},
       agency_dump: agency_dump,
-      coredump_reports: coredump_reports || []
+      coredump_reports: coredump_reports
     }
   end
 

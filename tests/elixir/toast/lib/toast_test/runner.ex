@@ -30,6 +30,23 @@ defmodule ToastTest.Runner do
       :timeout_factor,
       :trace
     ]
+
+    @type t :: %__MODULE__{
+            capture_log: boolean() | nil,
+            exclude: [term()] | nil,
+            include: [term()] | nil,
+            manager: {pid(), pid()},
+            max_failures: non_neg_integer() | :infinity | nil,
+            only_test_ids: MapSet.t() | nil,
+            result_formatter_pid: pid(),
+            stats_pid: pid(),
+            suite_deadline: integer() | nil,
+            suite_run: ToastTest.SuiteRun.t(),
+            test_name_pattern: Regex.t() | nil,
+            timeout: pos_integer() | nil,
+            timeout_factor: number() | nil,
+            trace: boolean() | nil
+          }
   end
 
   @current_key __MODULE__
@@ -462,7 +479,6 @@ defmodule ToastTest.Runner do
     case Toast.Deployment.stop_and_collect(deployment, opts) do
       {:ok, diagnostics} -> diagnostics
       {:error, _reason, partial} -> partial
-      _ -> nil
     end
   end
 
@@ -703,8 +719,6 @@ defmodule ToastTest.Runner do
   end
 
   @spec check_between_tests(Config.t(), ExUnit.Test.t() | nil) :: :ok | {:error, term()}
-  defp check_between_tests(%{suite_run: %{deployment: nil}}, _prev_test), do: :ok
-
   defp check_between_tests(
          %{suite_run: %{suite_module: suite_module, deployment: deployment}},
          prev_test
@@ -722,8 +736,6 @@ defmodule ToastTest.Runner do
         Toast.Deployment.check_health(deployment, prev_test)
     end
   end
-
-  defp check_between_tests(_config, _prev_test), do: :ok
 
   defp run_test(config, test, context) do
     Compat.test_started(config.manager, test)

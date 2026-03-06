@@ -423,7 +423,6 @@ defmodule ToastTest.CLIFormatter do
   defp ansi_code(color) when is_list(color),
     do: IO.iodata_to_binary(Enum.map(color, &apply(IO.ANSI, &1, [])))
 
-  defp ansi_code(:bold), do: IO.ANSI.bright()
   defp ansi_code(color) when is_atom(color), do: apply(IO.ANSI, color, [])
   defp ansi_code(color) when is_binary(color), do: color
 

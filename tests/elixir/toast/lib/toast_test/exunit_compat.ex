@@ -7,6 +7,9 @@ defmodule ToastTest.ExUnitCompat do
     IO.warn("ToastTest.ExUnitCompat: untested Elixir version #{System.version()}")
   end
 
+  # Specs document intent but wrap ExUnit internal APIs that dialyzer can't verify.
+  @dialyzer [:no_contracts]
+
   @spec start_event_manager() :: {:ok, pid()}
   def start_event_manager do
     ExUnit.EventManager.start_link()
