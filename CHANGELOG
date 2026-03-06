@@ -22,6 +22,8 @@
 * Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
   fields in views and inverted indexes.
 
+* FE-972: fix sparse option not being sent in vector index creation payload.
+
 
 3.12.8 (XXXX-XX-XX)
 -------------------
@@ -63,8 +65,6 @@
 * BTS-2316: List broken hotbackups and report, why they are broken.
 
 * Fixes BTS-2309: Treat empty object in schema definition as null.
-
-* FE-972: fix sparse option not being sent in vector index creation payload.
 
 * COR-8: Added new coordinator-level metrics for shard replication state:
   `arangodb_metadata_total_number_of_shards`,
