@@ -111,7 +111,7 @@ defmodule Toast.ResultPackaging do
   defp create_tar_gz(archive_path, tagged_files) do
     tar_files =
       Enum.map(tagged_files, fn {suite_name, path} ->
-        archive_name = Path.join(suite_name, Path.basename(path))
+        archive_name = Path.join(suite_name, flatten_artifact_name(path))
         {String.to_charlist(archive_name), String.to_charlist(path)}
       end)
 
@@ -167,6 +167,18 @@ defmodule Toast.ResultPackaging do
       zstd_available?() -> ".zst"
       gzip_available?() -> ".gz"
       true -> nil
+    end
+  end
+
+  # Flattens "work_dir/dbserver-0/log" → "dbserver-0.log"
+  # and "work_dir/dbserver-0/tsan.log" → "dbserver-0.tsan.log"
+  defp flatten_artifact_name(path) do
+    basename = Path.basename(path)
+    server_id = path |> Path.dirname() |> Path.basename()
+
+    case basename do
+      "log" -> "#{server_id}.log"
+      _ -> "#{server_id}.#{basename}"
     end
   end
 

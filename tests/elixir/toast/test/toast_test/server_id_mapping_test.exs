@@ -174,8 +174,7 @@ defmodule ToastTest.ServerIdMappingTest do
       mode: :single_server,
       config: Toast.Config.load(),
       controller: ctrl,
-      endpoint: "http://localhost:8529",
-      work_dir: "/tmp/test"
+      endpoint: "http://localhost:8529"
     }
   end
 
@@ -185,8 +184,7 @@ defmodule ToastTest.ServerIdMappingTest do
       mode: :cluster,
       config: Toast.Config.load(),
       controller: ctrl,
-      endpoint: "http://localhost:8529",
-      work_dir: "/tmp/test"
+      endpoint: "http://localhost:8529"
     }
   end
 

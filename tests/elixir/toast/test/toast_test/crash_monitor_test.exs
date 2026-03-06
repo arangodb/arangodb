@@ -15,8 +15,7 @@ defmodule ToastTest.CrashMonitorTest do
       mode: :single_server,
       config: Toast.Config.load(),
       controller: self(),
-      endpoint: "http://127.0.0.1:0",
-      work_dir: "/tmp/toast-test"
+      endpoint: "http://127.0.0.1:0"
     }
   end
 

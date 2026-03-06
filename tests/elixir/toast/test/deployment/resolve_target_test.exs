@@ -250,8 +250,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
         mode: :single_server,
         config: Toast.Config.load(),
         controller: ctrl,
-        endpoint: "http://127.0.0.1:0",
-        work_dir: "/tmp/test"
+        endpoint: "http://127.0.0.1:0"
       }
 
       result = Toast.Deployment.stop_server(deployment, role: :single)
@@ -305,8 +304,7 @@ defmodule Toast.Deployment.ResolveTargetTest do
       mode: :cluster,
       config: Toast.Config.load(),
       controller: ctrl,
-      endpoint: "http://127.0.0.1:0",
-      work_dir: "/tmp/test"
+      endpoint: "http://127.0.0.1:0"
     }
   end
 end

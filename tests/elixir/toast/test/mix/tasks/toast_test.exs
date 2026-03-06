@@ -3,33 +3,33 @@ defmodule Mix.Tasks.ToastTest do
 
   alias Mix.Tasks.Toast.Helpers
 
-  describe "parse_suite_args/2" do
+  describe "parse_suite_args/1" do
     test "empty args returns :all with empty filters" do
-      assert {:all, %{}} = Helpers.parse_suite_args([], "/suites")
+      assert {:all, %{}} = Helpers.parse_suite_args([])
     end
 
     test "single suite name returns list with that name" do
-      {names, filters} = Helpers.parse_suite_args(["smoke"], "/suites")
+      {names, filters} = Helpers.parse_suite_args(["smoke"])
 
       assert names == ["smoke"]
       assert filters == %{}
     end
 
     test "multiple suite names preserves order and deduplicates" do
-      {names, _} = Helpers.parse_suite_args(["b", "a", "b"], "/suites")
+      {names, _} = Helpers.parse_suite_args(["b", "a", "b"])
 
       assert names == ["b", "a"]
     end
 
     test "suite/file syntax extracts file filter" do
-      {names, filters} = Helpers.parse_suite_args(["smoke/test_basics.exs"], "/suites")
+      {names, filters} = Helpers.parse_suite_args(["smoke/test_basics.exs"])
 
       assert names == ["smoke"]
       assert filters == %{"smoke" => ["test_basics.exs"]}
     end
 
     test "suite/file:line syntax passes through to filters" do
-      {names, filters} = Helpers.parse_suite_args(["smoke/test_basics.exs:42"], "/suites")
+      {names, filters} = Helpers.parse_suite_args(["smoke/test_basics.exs:42"])
 
       assert names == ["smoke"]
       assert filters == %{"smoke" => ["test_basics.exs:42"]}
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.ToastTest do
 
     test "multiple files for same suite accumulates filters" do
       args = ["smoke/test_a.exs", "smoke/test_b.exs"]
-      {names, filters} = Helpers.parse_suite_args(args, "/suites")
+      {names, filters} = Helpers.parse_suite_args(args)
 
       assert names == ["smoke"]
       assert "test_a.exs" in filters["smoke"]
@@ -46,17 +46,11 @@ defmodule Mix.Tasks.ToastTest do
 
     test "mixed bare suite names and file-filtered suites" do
       args = ["smoke/test_a.exs", "cluster"]
-      {names, filters} = Helpers.parse_suite_args(args, "/suites")
+      {names, filters} = Helpers.parse_suite_args(args)
 
       assert names == ["smoke", "cluster"]
       assert Map.has_key?(filters, "smoke")
       refute Map.has_key?(filters, "cluster")
-    end
-
-    test "suites_dir argument is unused in current implementation" do
-      # The second argument is accepted but not used for parsing.
-      {names, _} = Helpers.parse_suite_args(["foo"], "/anything")
-      assert names == ["foo"]
     end
   end
 
@@ -120,12 +114,6 @@ defmodule Mix.Tasks.ToastTest do
       opts = Helpers.process_opts(trace: true)
 
       assert opts[:trace] == true
-    end
-
-    test "passes through max_cases" do
-      opts = Helpers.process_opts(max_cases: 4)
-
-      assert opts[:max_cases] == 4
     end
 
     test "passes through timeout" do

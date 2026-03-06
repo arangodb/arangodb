@@ -71,8 +71,8 @@ defmodule ToastTest.SuiteDiscoveryTest do
     end
   end
 
-  describe "parse_suite_args/2" do
-    # parse_suite_args is private in Mix.Tasks.Toast but we can test
+  describe "suite discovery and argument parsing" do
+    # parse_suite_args is in Mix.Tasks.Toast.Helpers and we can test
     # the observable behavior: suite_requests and file_filters are derived
     # from CLI arguments. We verify the argument format parsing logic.
 

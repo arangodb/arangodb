@@ -7,11 +7,11 @@ defmodule Mix.Tasks.Toast.Helpers do
   Parses suite arguments into a suite request (`:all` or list of names)
   and a map of file filters keyed by suite name.
   """
-  @spec parse_suite_args([String.t()], String.t()) ::
+  @spec parse_suite_args([String.t()]) ::
           {:all | [String.t()], %{optional(String.t()) => [String.t()]}}
-  def parse_suite_args([], _suites_dir), do: {:all, %{}}
+  def parse_suite_args([]), do: {:all, %{}}
 
-  def parse_suite_args(args, _suites_dir) do
+  def parse_suite_args(args) do
     {suite_names, file_filters} =
       Enum.reduce(args, {[], %{}}, fn arg, {names, filters} ->
         case String.split(arg, "/", parts: 2) do
@@ -36,7 +36,6 @@ defmodule Mix.Tasks.Toast.Helpers do
       :include,
       :exclude,
       :trace,
-      :max_cases,
       :timeout,
       :max_failures,
       :formatters,
@@ -86,6 +85,13 @@ defmodule Mix.Tasks.Toast.Helpers do
       for {cli_key, config_key} <- mapping,
           {:ok, value} <- [Keyword.fetch(opts, cli_key)] do
         {config_key, value}
+      end
+
+    config_list =
+      if opts[:no_agency_dump] do
+        Keyword.put(config_list, :dump_agency_on_error, false)
+      else
+        config_list
       end
 
     cond do

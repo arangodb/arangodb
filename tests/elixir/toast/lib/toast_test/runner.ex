@@ -13,7 +13,7 @@ defmodule ToastTest.Runner do
 
   defmodule Config do
     @moduledoc false
-    @enforce_keys [:manager, :stats_pid, :result_formatter_pid, :runner_pid, :suite_run]
+    @enforce_keys [:manager, :stats_pid, :result_formatter_pid, :suite_run]
     defstruct [
       :capture_log,
       :exclude,
@@ -22,7 +22,6 @@ defmodule ToastTest.Runner do
       :max_failures,
       :only_test_ids,
       :result_formatter_pid,
-      :runner_pid,
       :stats_pid,
       :suite_deadline,
       :suite_run,
@@ -282,7 +281,6 @@ defmodule ToastTest.Runner do
       max_failures: opts[:max_failures],
       only_test_ids: only_test_ids,
       result_formatter_pid: result_formatter_pid,
-      runner_pid: self(),
       stats_pid: stats_pid,
       suite_deadline: suite_run.suite_deadline,
       suite_run: suite_run,
@@ -365,6 +363,17 @@ defmodule ToastTest.Runner do
     end
   end
 
+  @topology_keys [:cluster_agents, :cluster_dbservers, :cluster_coordinators, :replication_factor]
+  @infra_keys [
+    :build_dir,
+    :work_dir,
+    :startup_timeout,
+    :shutdown_timeout,
+    :sanitizer,
+    :show_server_logs,
+    :keep_work_dir
+  ]
+
   defp build_deployment_opts(suite_config, global_opts) do
     base = [
       on_crash: &ToastTest.CrashMonitor.handle_crash/2,
@@ -377,23 +386,12 @@ defmodule ToastTest.Runner do
           args != %{},
           do: {key, args}
 
+    suite_topology = Keyword.take(suite_config, @topology_keys)
+
     base
     |> Keyword.merge(suite_args)
-    |> Keyword.merge(
-      Keyword.take(global_opts, [
-        :build_dir,
-        :work_dir,
-        :startup_timeout,
-        :shutdown_timeout,
-        :sanitizer,
-        :show_server_logs,
-        :keep_work_dir,
-        :cluster_agents,
-        :cluster_dbservers,
-        :cluster_coordinators,
-        :replication_factor
-      ])
-    )
+    |> Keyword.merge(Keyword.take(global_opts, @infra_keys ++ @topology_keys))
+    |> Keyword.merge(suite_topology)
   end
 
   defp run_suite_setup(suite_module, deployment) do

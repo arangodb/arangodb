@@ -365,8 +365,7 @@ defmodule ToastTest.RunnerTest do
       mode: mode,
       config: Toast.Config.load(),
       controller: ctrl,
-      endpoint: "http://127.0.0.1:0",
-      work_dir: "/tmp/toast-test"
+      endpoint: "http://127.0.0.1:0"
     }
   end
 end

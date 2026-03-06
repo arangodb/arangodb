@@ -68,7 +68,6 @@ defmodule Mix.Tasks.Toast do
     exclude: :keep,
     only: :keep,
     trace: :boolean,
-    max_cases: :integer,
     timeout: :integer,
     max_failures: :integer,
     formatter: :keep,
@@ -110,11 +109,11 @@ defmodule Mix.Tasks.Toast do
     {opts, args_rest} = OptionParser.parse!(args, strict: @switches, aliases: @aliases)
 
     unless opts[:compile] == false do
-      Mix.Task.run("compile", args)
+      Mix.Task.run("compile", [])
     end
 
     unless opts[:start] == false do
-      Mix.Task.run("app.start", args)
+      Mix.Task.run("app.start", [])
     end
 
     Application.ensure_all_started(:ex_unit)
@@ -129,7 +128,7 @@ defmodule Mix.Tasks.Toast do
   defp run_suite_mode(args, opts, ex_unit_opts, suites_dir) do
     ExUnit.start(Keyword.merge(ex_unit_opts, autorun: false))
 
-    {suite_requests, file_filters} = Mix.Tasks.Toast.Helpers.parse_suite_args(args, suites_dir)
+    {suite_requests, file_filters} = Mix.Tasks.Toast.Helpers.parse_suite_args(args)
 
     suite_modules = discover_and_compile_suites(suites_dir, suite_requests)
 
@@ -165,7 +164,6 @@ defmodule Mix.Tasks.Toast do
       Toast.ResultPackaging.package(
         ci: true,
         result_dir: config.result_dir,
-        work_dir: config.work_dir,
         suite_diagnostics: suite_diagnostics
       )
     end
@@ -207,17 +205,30 @@ defmodule Mix.Tasks.Toast do
   defp build_global_opts(config, ex_unit_opts) do
     global_deadline = System.monotonic_time(:millisecond) + config.global_timeout
 
+    mode_exclusion =
+      case config.deployment_mode do
+        :cluster -> [:single_only]
+        :single_server -> [:cluster_only]
+        _ -> []
+      end
+
     ex_unit_opts
+    |> Keyword.update(:exclude, mode_exclusion, &(mode_exclusion ++ &1))
     |> Keyword.merge(
       global_deadline: global_deadline,
       deployment_mode: config.deployment_mode,
+      timeout: config.test_timeout,
       timeout_factor: config.timeout_factor,
       build_dir: config.build_dir,
       work_dir: config.work_dir,
       startup_timeout: config.startup_timeout,
       shutdown_timeout: config.shutdown_timeout,
       show_server_logs: config.show_server_logs,
-      keep_work_dir: config.keep_work_dir
+      keep_work_dir: config.keep_work_dir,
+      cluster_agents: config.cluster_agents,
+      cluster_dbservers: config.cluster_dbservers,
+      cluster_coordinators: config.cluster_coordinators,
+      replication_factor: config.cluster_replication_factor
     )
   end
 

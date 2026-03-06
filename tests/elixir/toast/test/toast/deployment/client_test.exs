@@ -54,8 +54,7 @@ defmodule Toast.Deployment.ClientTest do
       mode: mode,
       config: %Toast.Config{},
       controller: pid,
-      endpoint: "http://localhost:8529",
-      work_dir: "/tmp"
+      endpoint: "http://localhost:8529"
     }
   end
 

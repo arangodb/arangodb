@@ -29,8 +29,7 @@ defmodule Toast.DeploymentTestHelpers do
       mode: Keyword.get(opts, :mode, :single_server),
       config: Keyword.get(opts, :config, Toast.Config.load()),
       endpoint: "http://127.0.0.1:0",
-      controller: pid,
-      work_dir: "/tmp/toast-test"
+      controller: pid
     }
   end
 end

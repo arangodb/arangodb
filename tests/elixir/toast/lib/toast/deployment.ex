@@ -30,12 +30,11 @@ defmodule Toast.Deployment do
           mode: mode(),
           config: Config.t(),
           controller: pid(),
-          endpoint: String.t(),
-          work_dir: Path.t()
+          endpoint: String.t()
         }
 
-  @enforce_keys [:id, :mode, :config, :controller, :endpoint, :work_dir]
-  defstruct [:id, :mode, :config, :controller, :endpoint, :work_dir]
+  @enforce_keys [:id, :mode, :config, :controller, :endpoint]
+  defstruct [:id, :mode, :config, :controller, :endpoint]
 
   @doc "Start a single-server deployment."
   @spec start_single_server(Config.t() | keyword()) :: {:ok, t()} | {:error, term()}
@@ -87,8 +86,7 @@ defmodule Toast.Deployment do
          mode: mode,
          config: config,
          endpoint: info[:coordinator_endpoint] || info[:primary_endpoint] || "",
-         controller: pid,
-         work_dir: config.work_dir
+         controller: pid
        }}
     end
   end

@@ -50,8 +50,7 @@ defmodule Toast.Deployment.ExpectCrashTest do
       mode: mode,
       config: %Toast.Config{},
       controller: pid,
-      endpoint: "http://localhost:1",
-      work_dir: "/tmp"
+      endpoint: "http://localhost:1"
     }
   end
 

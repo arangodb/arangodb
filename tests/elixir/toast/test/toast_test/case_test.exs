@@ -29,8 +29,7 @@ defmodule ToastTest.CaseContextTest do
       mode: :single_server,
       config: %Toast.Config{},
       endpoint: "http://localhost:8529",
-      controller: self(),
-      work_dir: "/tmp/toast-test"
+      controller: self()
     }
 
     fields = Map.merge(defaults, overrides)
@@ -40,8 +39,7 @@ defmodule ToastTest.CaseContextTest do
       mode: fields.mode,
       config: fields.config,
       endpoint: fields.endpoint,
-      controller: fields.controller,
-      work_dir: fields.work_dir
+      controller: fields.controller
     }
   end
 
