@@ -41,10 +41,8 @@ defmodule Mix.Tasks.Toast do
       --exclude       - Exclude tests matching the filter
       --only          - Run only tests matching the filter (excludes all others)
       --trace         - Enable verbose output
-      --max-cases     - Maximum number of test modules to run concurrently
       --timeout       - Timeout per test in milliseconds
       --max-failures  - Stop after N failures
-      --formatter     - Add a custom formatter module
       --color         - Enable ANSI coloring
       --no-color      - Disable ANSI coloring
       --no-compile    - Skip project compilation
@@ -70,7 +68,6 @@ defmodule Mix.Tasks.Toast do
     trace: :boolean,
     timeout: :integer,
     max_failures: :integer,
-    formatter: :keep,
     color: :boolean,
     compile: :boolean,
     start: :boolean,
@@ -149,7 +146,7 @@ defmodule Mix.Tasks.Toast do
     result = ToastTest.Runner.run_suites(suite_data, global_opts)
 
     abort_reason = ToastTest.Runner.aborted?()
-    has_sanitizer_errors = Mix.Tasks.Toast.Helpers.has_sanitizer_errors?(result.suites)
+    has_sanitizer_errors = Toast.Diagnostics.Summary.has_sanitizer_errors?(result.suites)
 
     run_results = %{
       test_failures: result.stats.failures,
@@ -159,7 +156,7 @@ defmodule Mix.Tasks.Toast do
     }
 
     if config.ci do
-      suite_diagnostics = Mix.Tasks.Toast.Helpers.build_suite_diagnostics(result.suites)
+      suite_diagnostics = Toast.Diagnostics.Summary.build_suite_diagnostics(result.suites)
 
       Toast.ResultPackaging.package(
         ci: true,

@@ -308,15 +308,6 @@ defmodule Toast.Deployment do
     :exit, _ -> {:error, :controller_not_available}
   end
 
-  @doc "Retrieve diagnostics collected during shutdown."
-  @spec diagnostics(t()) :: map() | nil
-  def diagnostics(deployment) do
-    case controller_call(deployment, :get_info, nil) do
-      nil -> nil
-      info -> info[:diagnostics]
-    end
-  end
-
   defp capture_pre_shutdown_data(pid, deployment) do
     if deployment.mode == :cluster and deployment.config.dump_agency_on_error do
       # 10s per request, 3 requests per agent, plus 5s base buffer
@@ -508,6 +499,11 @@ defmodule Toast.Deployment do
   defp controller_call(%__MODULE__{controller: pid}, function, default) do
     GenServer.call(pid, function)
   catch
-    :exit, _ -> default
+    :exit, _ ->
+      Logger.debug(
+        "Controller call #{inspect(function)} failed (controller dead), returning default"
+      )
+
+      default
   end
 end

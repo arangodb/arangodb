@@ -369,7 +369,7 @@ defmodule ToastTest.Runner do
     :work_dir,
     :startup_timeout,
     :shutdown_timeout,
-    :sanitizer,
+    :sanitizer_override,
     :show_server_logs,
     :keep_work_dir
   ]

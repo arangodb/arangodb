@@ -240,7 +240,7 @@ defmodule Toast.ConfigTest do
     end
 
     test "auto-detects factor 3 when sanitizer is present" do
-      config = Config.load(sanitizer: MapSet.new(["tsan"]))
+      config = Config.load(active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 3
       assert config.test_timeout == 300_000 * 3
@@ -252,14 +252,14 @@ defmodule Toast.ConfigTest do
     test "TOAST_TIMEOUT_FACTOR env var overrides auto-detection" do
       System.put_env("TOAST_TIMEOUT_FACTOR", "2")
 
-      config = Config.load(sanitizer: MapSet.new(["tsan"]))
+      config = Config.load(active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 2
       assert config.test_timeout == 300_000 * 2
     end
 
     test "keyword override takes precedence" do
-      config = Config.load(timeout_factor: 5, sanitizer: MapSet.new(["tsan"]))
+      config = Config.load(timeout_factor: 5, active_sanitizers: MapSet.new(["tsan"]))
 
       assert config.timeout_factor == 5
       assert config.test_timeout == 300_000 * 5
@@ -268,7 +268,7 @@ defmodule Toast.ConfigTest do
     test "factor multiplies explicitly set timeouts" do
       System.put_env("TOAST_TEST_TIMEOUT", "600000")
 
-      config = Config.load(sanitizer: MapSet.new(["alubsan"]))
+      config = Config.load(active_sanitizers: MapSet.new(["alubsan"]))
 
       assert config.timeout_factor == 3
       assert config.test_timeout == 600_000 * 3

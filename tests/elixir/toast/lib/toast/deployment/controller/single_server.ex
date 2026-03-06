@@ -7,7 +7,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
-  alias Toast.Deployment.Controller
+  alias Toast.Deployment.Controller.Helpers
   alias Toast.PortAllocator
 
   @impl true
@@ -30,11 +30,11 @@ defmodule Toast.Deployment.Controller.SingleServer do
          {:ok, state} <- launch_and_notify(state, id, server_pid),
          :ok <- wait_for_ready(state, id, timeout),
          {:ok, monitor_pid} <-
-           Controller.start_single_health_monitor(id, state.servers[id].endpoint) do
+           Helpers.start_single_health_monitor(id, state.servers[id].endpoint) do
       Logger.info("Deployment #{id} ready at #{state.servers[id].endpoint}")
 
       state =
-        Controller.update_server(state, id,
+        Helpers.update_server(state, id,
           health_monitor: monitor_pid,
           operational_state: :running
         )
@@ -76,9 +76,7 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   @impl true
   def resolve_target(state, server_id) when is_binary(server_id) do
-    if Map.has_key?(state.servers, server_id),
-      do: {:ok, [server_id]},
-      else: {:error, :not_found}
+    Helpers.resolve_target_by_id(state, server_id)
   end
 
   def resolve_target(state, role: :single) do
@@ -115,11 +113,11 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   defp init_server_port(state, id, port) do
     Logger.debug("#{id}: allocated port #{port}")
-    Controller.update_server(state, id, port: port, endpoint: "http://127.0.0.1:#{port}")
+    Helpers.update_server(state, id, port: port, endpoint: "http://127.0.0.1:#{port}")
   end
 
   defp apply_launch_spec(state, id, launch_spec) do
-    Controller.update_server(state, id,
+    Helpers.update_server(state, id,
       log_file: launch_spec.log_file,
       server_dir: launch_spec.server_dir,
       launch_spec: launch_spec
@@ -138,13 +136,13 @@ defmodule Toast.Deployment.Controller.SingleServer do
         {:server_started, id, os_pid, DateTime.utc_now()}
       )
 
-      state = Controller.update_server(state, id, server_pid: server_pid, pid: os_pid)
+      state = Helpers.update_server(state, id, server_pid: server_pid, pid: os_pid)
       {:ok, state}
     end
   end
 
   defp start_server_process(launch_spec) do
-    Toast.Process.Supervisor.start_server(Controller.spec_to_server_opts(launch_spec))
+    Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(launch_spec))
   end
 
   defp wait_for_ready(state, id, timeout) do
@@ -159,10 +157,10 @@ defmodule Toast.Deployment.Controller.SingleServer do
 
   defp do_cleanup(state, timeout) do
     Logger.debug("Cleaning up #{state.id}")
-    Controller.stop_all_health_monitors(state)
+    Helpers.stop_all_health_monitors(state)
 
     for {server_id, _server} <- state.servers do
-      Controller.stop_server_process(state, server_id, timeout)
+      Helpers.stop_server_process(state, server_id, timeout)
     end
 
     for {server_id, server} <- state.servers do
@@ -175,25 +173,25 @@ defmodule Toast.Deployment.Controller.SingleServer do
     diagnostics =
       case Map.values(state.servers) do
         [%{server_dir: nil}] -> nil
-        _ -> Controller.collect_diagnostics(state, fn _server_id -> state.error end)
+        _ -> Helpers.collect_diagnostics(state, fn _server_id -> state.error end)
       end
 
     Logger.debug("#{state.id}: diagnostics collected")
-    Controller.finalize_shutdown(state, diagnostics)
+    Helpers.finalize_shutdown(state, diagnostics)
   end
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
-    Controller.stop_all_health_monitors(state)
+    Helpers.stop_all_health_monitors(state)
 
     for {server_id, _server} <- state.servers do
-      Controller.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
+      Helpers.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
     end
 
     %{
       state
       | status: :failed,
-        servers: Controller.clear_server_pids(state.servers),
+        servers: Helpers.clear_server_pids(state.servers),
         error: reason
     }
   end

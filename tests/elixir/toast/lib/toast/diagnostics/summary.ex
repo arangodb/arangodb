@@ -276,4 +276,76 @@ defmodule Toast.Diagnostics.Summary do
     |> String.split("\n")
     |> Enum.map_join("\n", &(pad <> &1))
   end
+
+  # --- Diagnostics query functions ---
+
+  @spec has_sanitizer_errors?([map()]) :: boolean()
+  def has_sanitizer_errors?(suites) do
+    Enum.any?(suites, fn suite ->
+      diag = suite[:diagnostics]
+      diag != nil and has_sanitizer_in_diagnostics?(diag)
+    end)
+  end
+
+  @spec build_suite_diagnostics([map()]) :: [map()]
+  def build_suite_diagnostics(suites) do
+    Enum.map(suites, fn suite ->
+      %{
+        name: suite[:suite_module] |> inspect(),
+        log_files: extract_log_files(suite[:diagnostics]),
+        sanitizer_files: extract_sanitizer_files(suite[:diagnostics]),
+        crash_reports: [],
+        agency_dumps: [],
+        core_dumps: extract_core_dumps(suite[:diagnostics])
+      }
+    end)
+  end
+
+  defp has_sanitizer_in_diagnostics?(diagnostics) when is_map(diagnostics) do
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Enum.any?(fn {_id, diag} ->
+      case Map.get(diag, :sanitizer_errors) do
+        errors when is_list(errors) and errors != [] -> true
+        _ -> false
+      end
+    end)
+  end
+
+  defp has_sanitizer_in_diagnostics?(_), do: false
+
+  defp extract_log_files(diagnostics) do
+    extract_from_diagnostics(diagnostics, :server, fn
+      %{log_file: path} when is_binary(path) -> [path]
+      _ -> []
+    end)
+  end
+
+  defp extract_sanitizer_files(diagnostics) do
+    extract_from_diagnostics(diagnostics, :sanitizer_errors, fn
+      errors when is_list(errors) ->
+        errors |> Enum.map(& &1.file_path) |> Enum.filter(&is_binary/1)
+
+      _ ->
+        []
+    end)
+  end
+
+  defp extract_core_dumps(%Toast.Diagnostics.Result{coredump_reports: reports}) do
+    reports
+    |> Enum.map(& &1.core_path)
+    |> Enum.filter(&is_binary/1)
+  end
+
+  defp extract_core_dumps(_), do: []
+
+  defp extract_from_diagnostics(nil, _key, _extractor), do: []
+
+  defp extract_from_diagnostics(diagnostics, key, extractor) when is_map(diagnostics) do
+    diagnostics
+    |> Toast.Diagnostics.to_server_entries()
+    |> Enum.flat_map(fn {_id, server_diag} -> extractor.(Map.get(server_diag, key)) end)
+  end
+
+  defp extract_from_diagnostics(_diagnostics, _key, _extractor), do: []
 end

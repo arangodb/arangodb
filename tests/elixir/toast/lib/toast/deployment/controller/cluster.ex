@@ -7,7 +7,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   alias Toast.Process.ServerProcess
   alias Toast.Deployment.{Factory, Health, ServerInstance, ServerLifecycle}
-  alias Toast.Deployment.Controller
+  alias Toast.Deployment.Controller.Helpers
   alias Toast.Diagnostics.AgencyDump
 
   @impl true
@@ -84,9 +84,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   @impl true
   def resolve_target(state, server_id) when is_binary(server_id) do
-    if Map.has_key?(state.servers, server_id),
-      do: {:ok, [server_id]},
-      else: {:error, :not_found}
+    Helpers.resolve_target_by_id(state, server_id)
   end
 
   def resolve_target(state, role: role) when is_atom(role) do
@@ -234,7 +232,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     all_specs = topology.agents ++ topology.dbservers ++ topology.coordinators
 
     Enum.reduce_while(all_specs, {:ok, state}, fn spec, {:ok, acc} ->
-      case Toast.Process.Supervisor.start_server(Controller.spec_to_server_opts(spec)) do
+      case Toast.Process.Supervisor.start_server(Helpers.spec_to_server_opts(spec)) do
         {:ok, pid} ->
           updated_server = %{acc.servers[spec.id] | server_pid: pid, launch_spec: spec}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, spec.id, updated_server)}}}
@@ -247,7 +245,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   defp launch_agents(state, deadline) do
     Logger.info("#{state.id}: launching agents")
-    launch_servers(state, state.mode_state.agents, timeout: Controller.remaining_ms(deadline))
+    launch_servers(state, state.mode_state.agents, timeout: Helpers.remaining_ms(deadline))
   end
 
   defp launch_dbservers(state, deadline) do
@@ -255,7 +253,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
     launch_servers(state, state.mode_state.dbservers,
       health_check: true,
-      timeout: Controller.remaining_ms(deadline)
+      timeout: Helpers.remaining_ms(deadline)
     )
   end
 
@@ -264,7 +262,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
     launch_servers(state, state.mode_state.coordinators,
       health_check: true,
-      timeout: Controller.remaining_ms(deadline)
+      timeout: Helpers.remaining_ms(deadline)
     )
   end
 
@@ -342,7 +340,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     agent_endpoints =
       Enum.map(state.mode_state.agents, fn id -> state.servers[id].endpoint end)
 
-    Health.wait_for_agency_ready(agent_endpoints, timeout: Controller.remaining_ms(deadline))
+    Health.wait_for_agency_ready(agent_endpoints, timeout: Helpers.remaining_ms(deadline))
   end
 
   defp fetch_cluster_id_mapping(state) do
@@ -399,17 +397,17 @@ defmodule Toast.Deployment.Controller.Cluster do
   defp do_shutdown(state, timeout) do
     deadline = System.monotonic_time(:millisecond) + timeout
 
-    Controller.stop_all_health_monitors(state)
+    Helpers.stop_all_health_monitors(state)
     Logger.debug("#{state.id}: stopping coordinators")
-    stop_servers(state.mode_state.coordinators, state, Controller.remaining_ms(deadline))
+    stop_servers(state.mode_state.coordinators, state, Helpers.remaining_ms(deadline))
     Logger.debug("#{state.id}: stopping dbservers")
-    stop_servers(state.mode_state.dbservers, state, Controller.remaining_ms(deadline))
+    stop_servers(state.mode_state.dbservers, state, Helpers.remaining_ms(deadline))
     Logger.debug("#{state.id}: stopping agents")
-    stop_servers(state.mode_state.agents, state, Controller.remaining_ms(deadline))
+    stop_servers(state.mode_state.agents, state, Helpers.remaining_ms(deadline))
 
-    diagnostics = Controller.collect_diagnostics(state, &crashed_server_error(state.error, &1))
+    diagnostics = Helpers.collect_diagnostics(state, &crashed_server_error(state.error, &1))
     Logger.debug("#{state.id}: diagnostics collected")
-    Controller.finalize_shutdown(state, diagnostics)
+    Helpers.finalize_shutdown(state, diagnostics)
   end
 
   defp crashed_server_error({:server_crashed, crashed_id, crash_info}, server_id)
@@ -454,7 +452,7 @@ defmodule Toast.Deployment.Controller.Cluster do
 
   defp rollback(state, reason) do
     Logger.debug("Rolling back #{state.id} due to: #{inspect(reason)}")
-    Controller.stop_all_health_monitors(state)
+    Helpers.stop_all_health_monitors(state)
     ms = state.mode_state
     all_ids = ms.agents ++ ms.dbservers ++ ms.coordinators
     stop_servers(all_ids, state, 5_000 * state.config.timeout_factor)
@@ -462,7 +460,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     %{
       state
       | status: :failed,
-        servers: Controller.clear_server_pids(state.servers),
+        servers: Helpers.clear_server_pids(state.servers),
         error: reason
     }
   end
@@ -476,7 +474,7 @@ defmodule Toast.Deployment.Controller.Cluster do
     Enum.reduce_while(all_ids, {:ok, state}, fn server_id, {:ok, acc} ->
       server = acc.servers[server_id]
 
-      case Controller.start_single_health_monitor(server_id, server.endpoint) do
+      case Helpers.start_single_health_monitor(server_id, server.endpoint) do
         {:ok, pid} ->
           updated = %{server | health_monitor: pid}
           {:cont, {:ok, %{acc | servers: Map.put(acc.servers, server_id, updated)}}}

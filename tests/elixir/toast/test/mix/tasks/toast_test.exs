@@ -2,6 +2,7 @@ defmodule Mix.Tasks.ToastTest do
   use ExUnit.Case, async: true
 
   alias Mix.Tasks.Toast.Helpers
+  alias Toast.Diagnostics.Summary
 
   describe "parse_suite_args/1" do
     test "empty args returns :all with empty filters" do
@@ -173,12 +174,6 @@ defmodule Mix.Tasks.ToastTest do
       refute Keyword.has_key?(opts, :colors)
     end
 
-    test "formatter option converts string to module" do
-      opts = Helpers.process_opts(formatter: "ExUnit.CLIFormatter")
-
-      assert opts[:formatters] == [ExUnit.CLIFormatter]
-    end
-
     test "strips non-ExUnit keys from output" do
       opts = Helpers.process_opts(build_dir: "/foo", cluster: true)
 
@@ -198,10 +193,10 @@ defmodule Mix.Tasks.ToastTest do
       assert Keyword.get(config, :build_dir) == "/path"
     end
 
-    test "maps sanitizer to :explicit_sanitizer" do
+    test "maps sanitizer to :sanitizer_override" do
       config = Helpers.opts_to_config_list(sanitizer: "tsan")
 
-      assert Keyword.get(config, :explicit_sanitizer) == "tsan"
+      assert Keyword.get(config, :sanitizer_override) == "tsan"
     end
 
     test "maps replication_factor to :cluster_replication_factor" do
@@ -377,31 +372,31 @@ defmodule Mix.Tasks.ToastTest do
 
   describe "has_sanitizer_errors?/1" do
     test "returns false for empty suite list" do
-      refute Helpers.has_sanitizer_errors?([])
+      refute Summary.has_sanitizer_errors?([])
     end
 
     test "returns false for suite with nil diagnostics" do
       suites = [%{diagnostics: nil}]
 
-      refute Helpers.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns false for suite with empty diagnostics map" do
       suites = [%{diagnostics: %{}}]
 
-      refute Helpers.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns false when diagnostics has no sanitizer_errors key" do
       suites = [%{diagnostics: %{"s1" => %{server: %{log_file: "/log"}}}}]
 
-      refute Helpers.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns false when sanitizer_errors is empty list" do
       suites = [%{diagnostics: %{"s1" => %{sanitizer_errors: []}}}]
 
-      refute Helpers.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns true for single-server sanitizer errors" do
@@ -409,7 +404,7 @@ defmodule Mix.Tasks.ToastTest do
         %{diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/tmp/san.log"}]}}}
       ]
 
-      assert Helpers.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns true for cluster-level sanitizer errors in nested diagnostics" do
@@ -422,7 +417,7 @@ defmodule Mix.Tasks.ToastTest do
         }
       ]
 
-      assert Helpers.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns false when all cluster servers have empty sanitizer errors" do
@@ -435,7 +430,7 @@ defmodule Mix.Tasks.ToastTest do
         }
       ]
 
-      refute Helpers.has_sanitizer_errors?(suites)
+      refute Summary.has_sanitizer_errors?(suites)
     end
 
     test "returns true if any suite has errors among multiple suites" do
@@ -444,24 +439,24 @@ defmodule Mix.Tasks.ToastTest do
         %{diagnostics: %{"s2" => %{sanitizer_errors: [%{file_path: "/err"}]}}}
       ]
 
-      assert Helpers.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?(suites)
     end
 
     test "handles suite maps accessed via keyword-style :diagnostics" do
       suites = [[diagnostics: %{"s1" => %{sanitizer_errors: [%{file_path: "/err"}]}}]]
 
-      assert Helpers.has_sanitizer_errors?(suites)
+      assert Summary.has_sanitizer_errors?(suites)
     end
   end
 
   describe "build_suite_diagnostics/1" do
     test "returns empty list for empty suites" do
-      assert Helpers.build_suite_diagnostics([]) == []
+      assert Summary.build_suite_diagnostics([]) == []
     end
 
     test "extracts name from suite_module" do
       suites = [[suite_module: MyApp.Smoke, diagnostics: nil]]
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
 
       assert diag.name == "MyApp.Smoke"
     end
@@ -474,7 +469,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert diag.log_files == ["/tmp/arangod.log"]
     end
 
@@ -489,7 +484,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert Enum.sort(diag.log_files) == ["/tmp/db1.log", "/tmp/db2.log"]
     end
 
@@ -508,7 +503,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert Enum.sort(diag.sanitizer_files) == ["/tmp/asan.log", "/tmp/tsan.log"]
     end
 
@@ -523,7 +518,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert Enum.sort(diag.sanitizer_files) == ["/tmp/s1.log", "/tmp/s2.log"]
     end
 
@@ -538,7 +533,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert diag.core_dumps == ["/cores/core.1234"]
     end
 
@@ -556,13 +551,13 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert Enum.sort(diag.core_dumps) == ["/cores/core.1", "/cores/core.2"]
     end
 
     test "nil diagnostics produces empty lists for all file fields" do
       suites = [[suite_module: MyApp.Test, diagnostics: nil]]
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
 
       assert diag.log_files == []
       assert diag.sanitizer_files == []
@@ -586,7 +581,7 @@ defmodule Mix.Tasks.ToastTest do
         ]
       ]
 
-      [diag] = Helpers.build_suite_diagnostics(suites)
+      [diag] = Summary.build_suite_diagnostics(suites)
       assert diag.sanitizer_files == ["/tmp/ok.log"]
     end
   end

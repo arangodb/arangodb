@@ -25,8 +25,8 @@ defmodule Toast.Config do
           cluster_coordinators: pos_integer(),
           cluster_replication_factor: pos_integer(),
           keep_work_dir: boolean(),
-          explicit_sanitizer: String.t() | nil,
-          sanitizer: MapSet.t(String.t()),
+          sanitizer_override: String.t() | nil,
+          active_sanitizers: MapSet.t(String.t()),
           api_version: non_neg_integer() | String.t() | nil,
           debugger: :gdb | :lldb | :auto | :none | nil,
           dump_agency_on_error: boolean(),
@@ -55,8 +55,8 @@ defmodule Toast.Config do
             cluster_coordinators: 1,
             cluster_replication_factor: 2,
             keep_work_dir: false,
-            explicit_sanitizer: nil,
-            sanitizer: MapSet.new(),
+            sanitizer_override: nil,
+            active_sanitizers: MapSet.new(),
             api_version: nil,
             debugger: :auto,
             dump_agency_on_error: true,
@@ -69,9 +69,9 @@ defmodule Toast.Config do
   @spec load(keyword()) :: t()
   def load(opts) do
     local = load_local_config()
-    {build_dir, explicit_sanitizer, sanitizer, factor} = resolve_sanitizer(opts, local)
+    {build_dir, sanitizer_override, active_sanitizers, factor} = resolve_sanitizer(opts, local)
 
-    build_config(opts, local, build_dir, explicit_sanitizer, sanitizer, factor)
+    build_config(opts, local, build_dir, sanitizer_override, active_sanitizers, factor)
     |> apply_timeout_factor(factor)
     |> log_config()
   end
@@ -79,35 +79,44 @@ defmodule Toast.Config do
   defp resolve_sanitizer(opts, local) do
     build_dir = opt_or(opts, :build_dir, env("TOAST_BUILD_DIR"), local[:build_dir])
 
-    explicit_sanitizer =
-      opt_or(opts, :explicit_sanitizer, env("TOAST_SANITIZER"), local[:explicit_sanitizer]) ||
+    sanitizer_override =
+      opt_or(opts, :sanitizer_override, env("TOAST_SANITIZER"), local[:sanitizer_override]) ||
         Toast.Diagnostics.Sanitizer.detect_from_build_dir(build_dir)
 
-    sanitizer = opt_or(opts, :sanitizer, Toast.Diagnostics.Sanitizer.detect(explicit_sanitizer))
-    factor = opt_or(opts, :timeout_factor, read_timeout_factor(sanitizer), local[:timeout_factor])
+    active_sanitizers =
+      opt_or(opts, :active_sanitizers, Toast.Diagnostics.Sanitizer.detect(sanitizer_override))
 
-    {build_dir, explicit_sanitizer, sanitizer, factor}
+    factor =
+      opt_or(
+        opts,
+        :timeout_factor,
+        read_timeout_factor(active_sanitizers),
+        local[:timeout_factor]
+      )
+
+    {build_dir, sanitizer_override, active_sanitizers, factor}
   end
 
-  defp build_config(opts, local, build_dir, explicit_sanitizer, sanitizer, factor) do
+  defp build_config(opts, local, build_dir, sanitizer_override, active_sanitizers, factor) do
+    (build_path_config(opts, local, build_dir) ++
+       build_timeout_config(opts, local, factor) ++
+       build_cluster_config(opts, local) ++
+       build_deployment_config(opts, local, sanitizer_override, active_sanitizers))
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> then(&struct(__MODULE__, &1))
+  end
+
+  defp build_path_config(opts, local, build_dir) do
     [
       build_dir: build_dir,
       work_dir:
         opt_or(opts, :work_dir, env("TOAST_WORK_DIR"), local[:work_dir]) || default_work_dir(),
-      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir]),
-      deployment_mode:
-        opt_or(opts, :deployment_mode, read_deployment_mode(), local[:deployment_mode]),
-      show_server_logs:
-        opt_or(
-          opts,
-          :show_server_logs,
-          read_bool("TOAST_SHOW_SERVER_LOGS"),
-          local[:show_server_logs]
-        ),
-      server_args: Keyword.get(opts, :server_args, local[:server_args]),
-      coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]),
-      dbserver_args: Keyword.get(opts, :dbserver_args, local[:dbserver_args]),
-      agent_args: Keyword.get(opts, :agent_args, local[:agent_args]),
+      result_dir: opt_or(opts, :result_dir, env("TOAST_RESULT_DIR"), local[:result_dir])
+    ]
+  end
+
+  defp build_timeout_config(opts, local, factor) do
+    [
       global_timeout:
         opt_or(
           opts,
@@ -131,7 +140,19 @@ defmodule Toast.Config do
           read_pos_int("TOAST_SHUTDOWN_TIMEOUT"),
           local[:shutdown_timeout]
         ),
-      timeout_factor: factor,
+      coredump_timeout:
+        opt_or(
+          opts,
+          :coredump_timeout,
+          read_pos_int("TOAST_COREDUMP_TIMEOUT"),
+          local[:coredump_timeout]
+        ),
+      timeout_factor: factor
+    ]
+  end
+
+  defp build_cluster_config(opts, local) do
+    [
       cluster_agents:
         opt_or(
           opts,
@@ -159,11 +180,29 @@ defmodule Toast.Config do
           :cluster_replication_factor,
           read_pos_int("TOAST_CLUSTER_REPLICATION_FACTOR"),
           local[:cluster_replication_factor]
+        )
+    ]
+  end
+
+  defp build_deployment_config(opts, local, sanitizer_override, active_sanitizers) do
+    [
+      deployment_mode:
+        opt_or(opts, :deployment_mode, read_deployment_mode(), local[:deployment_mode]),
+      show_server_logs:
+        opt_or(
+          opts,
+          :show_server_logs,
+          read_bool("TOAST_SHOW_SERVER_LOGS"),
+          local[:show_server_logs]
         ),
+      server_args: Keyword.get(opts, :server_args, local[:server_args]),
+      coordinator_args: Keyword.get(opts, :coordinator_args, local[:coordinator_args]),
+      dbserver_args: Keyword.get(opts, :dbserver_args, local[:dbserver_args]),
+      agent_args: Keyword.get(opts, :agent_args, local[:agent_args]),
       keep_work_dir:
         opt_or(opts, :keep_work_dir, read_bool("TOAST_KEEP_WORK_DIR"), local[:keep_work_dir]),
-      explicit_sanitizer: explicit_sanitizer,
-      sanitizer: sanitizer,
+      sanitizer_override: sanitizer_override,
+      active_sanitizers: active_sanitizers,
       api_version: opt_or(opts, :api_version, read_api_version(), local[:api_version]),
       debugger: opt_or(opts, :debugger, read_debugger(), local[:debugger]),
       dump_agency_on_error:
@@ -173,17 +212,8 @@ defmodule Toast.Config do
           read_opt_bool("TOAST_DUMP_AGENCY"),
           local[:dump_agency_on_error]
         ),
-      coredump_timeout:
-        opt_or(
-          opts,
-          :coredump_timeout,
-          read_pos_int("TOAST_COREDUMP_TIMEOUT"),
-          local[:coredump_timeout]
-        ),
       ci: opt_or(opts, :ci, read_bool("TOAST_CI"), local[:ci])
     ]
-    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-    |> then(&struct(__MODULE__, &1))
   end
 
   defp apply_timeout_factor(config, factor) do
@@ -210,7 +240,7 @@ defmodule Toast.Config do
         test_timeout: "#{config.test_timeout}ms",
         startup_timeout: "#{config.startup_timeout}ms",
         shutdown_timeout: "#{config.shutdown_timeout}ms",
-        sanitizer: inspect(MapSet.to_list(config.sanitizer))
+        active_sanitizers: inspect(MapSet.to_list(config.active_sanitizers))
       ]
 
       fields =
@@ -295,9 +325,9 @@ defmodule Toast.Config do
     end
   end
 
-  defp read_timeout_factor(sanitizer) do
+  defp read_timeout_factor(active_sanitizers) do
     case env("TOAST_TIMEOUT_FACTOR") do
-      nil -> if MapSet.size(sanitizer) > 0, do: 3, else: 1
+      nil -> if MapSet.size(active_sanitizers) > 0, do: 3, else: 1
       val -> read_pos_int_value("TOAST_TIMEOUT_FACTOR", val)
     end
   end

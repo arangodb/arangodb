@@ -46,7 +46,6 @@ defmodule ToastTest.Case do
   using do
     quote do
       alias Toast.Client
-      @moduletag :toast_suite
     end
   end
 

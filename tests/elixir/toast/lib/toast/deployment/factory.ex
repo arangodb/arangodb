@@ -44,10 +44,10 @@ defmodule Toast.Deployment.Factory do
         args: args,
         env:
           Sanitizer.build_env(
-            config.sanitizer,
+            config.active_sanitizers,
             paths.base_dir,
             repo_root,
-            config.explicit_sanitizer
+            config.sanitizer_override
           ),
         # Run from repo root so relative config paths (etc/testing/...) resolve correctly
         working_dir: repo_root,
@@ -175,10 +175,10 @@ defmodule Toast.Deployment.Factory do
          args: args,
          env:
            Sanitizer.build_env(
-             config.sanitizer,
+             config.active_sanitizers,
              paths.base_dir,
              repo_root,
-             config.explicit_sanitizer
+             config.sanitizer_override
            ),
          working_dir: repo_root,
          server_dir: paths.base_dir,

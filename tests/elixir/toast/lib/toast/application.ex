@@ -3,6 +3,8 @@ defmodule Toast.Application do
 
   use Application
 
+  require Logger
+
   @impl true
   def start(_type, _args) do
     setup_file_logger()
@@ -22,7 +24,12 @@ defmodule Toast.Application do
     log_file = Path.join(result_dir, "toast.log") |> String.to_charlist()
     :logger.update_handler_config(:toast_file, :config, %{file: log_file})
   catch
-    _, _ -> :ok
+    kind, reason ->
+      Logger.warning(
+        "Failed to reconfigure file logger for #{result_dir}: #{inspect(kind)}: #{inspect(reason)}"
+      )
+
+      :ok
   end
 
   defp setup_file_logger do

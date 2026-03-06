@@ -121,28 +121,6 @@ defmodule Toast.Deployment.DeploymentLifecycleTest do
     end
   end
 
-  describe "diagnostics/1" do
-    test "returns nil for a controller that never deployed" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
-
-      deployment = make_deployment(pid, id: "test-diagnostics-clean")
-
-      assert Toast.Deployment.diagnostics(deployment) == nil
-    end
-
-    test "returns nil when controller process is dead" do
-      {:ok, pid} =
-        Controller.start_link(mode: Controller.SingleServer, config: Toast.Config.load())
-
-      deployment = make_deployment(pid, id: "test-diagnostics-dead")
-
-      GenServer.stop(pid)
-
-      assert Toast.Deployment.diagnostics(deployment) == nil
-    end
-  end
-
   describe "status/1 with dead controller" do
     test "returns :stopped when controller process has died" do
       {:ok, pid} =

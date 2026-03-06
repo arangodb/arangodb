@@ -7,6 +7,7 @@ defmodule Toast.Deployment.Controller do
 
   alias Toast.Config
   alias Toast.Deployment.{ServerInstance, ServerLifecycle}
+  alias Toast.Deployment.Controller.Helpers
 
   @type status :: :stopped | :starting | :ready | :degraded | :stopping | :failed
 
@@ -271,7 +272,13 @@ defmodule Toast.Deployment.Controller do
          ) do
       {:expected, expected_crashes} ->
         state = %{state | expected_crashes: expected_crashes}
-        state = update_server(state, server_id, operational_state: :crashed, expecting_exit: true)
+
+        state =
+          Helpers.update_server(state, server_id,
+            operational_state: :crashed,
+            expecting_exit: true
+          )
+
         state = %{state | status: state.mode.derive_status(state.servers)}
         {:noreply, state}
 
@@ -279,25 +286,30 @@ defmodule Toast.Deployment.Controller do
         {:noreply, state}
 
       :crash_during_intentional_stop ->
-        stop_health_monitor(state, server_id)
+        Helpers.stop_health_monitor(state, server_id)
 
         state =
-          update_server(state, server_id, operational_state: :crashed, expecting_exit: false)
+          Helpers.update_server(state, server_id,
+            operational_state: :crashed,
+            expecting_exit: false
+          )
 
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
 
       :unexpected_crash ->
         state =
-          if server, do: update_server(state, server_id, operational_state: :crashed), else: state
+          if server,
+            do: Helpers.update_server(state, server_id, operational_state: :crashed),
+            else: state
 
-        stop_health_monitor(state, server_id)
+        Helpers.stop_health_monitor(state, server_id)
         {:noreply, %{state | status: :failed, error: {:server_crashed, server_id, crash_info}}}
     end
   end
 
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, killing process")
-    stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
+    Helpers.stop_server_process(state, server_id, 5_000 * state.config.timeout_factor)
 
     crash_info = %Toast.Process.CrashInfo{
       exit_status: nil,
@@ -349,7 +361,7 @@ defmodule Toast.Deployment.Controller do
 
         server = state.servers[server_id]
 
-        case start_single_health_monitor(server_id, server.endpoint) do
+        case Helpers.start_single_health_monitor(server_id, server.endpoint) do
           {:ok, new_pid} ->
             updated = %{server | health_monitor: new_pid}
             {:noreply, %{state | servers: Map.put(state.servers, server_id, updated)}}
@@ -371,10 +383,12 @@ defmodule Toast.Deployment.Controller do
   # --- Control operations ---
 
   defp do_stop_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
-      acc = update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
+
+      acc =
+        Helpers.update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
 
       ServerLifecycle.notify_event(
         acc.on_event,
@@ -386,45 +400,57 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp do_kill_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.kill_server(server)
-      acc = update_server(acc, server_id, operational_state: :killed, expecting_exit: true)
+
+      acc =
+        Helpers.update_server(acc, server_id, operational_state: :killed, expecting_exit: true)
+
       ServerLifecycle.notify_event(acc.on_event, {:server_killed, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
   end
 
   defp do_pause_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :running) do
       ServerLifecycle.pause_server(server)
-      acc = update_server(acc, server_id, operational_state: :paused, expecting_exit: true)
+
+      acc =
+        Helpers.update_server(acc, server_id, operational_state: :paused, expecting_exit: true)
+
       ServerLifecycle.notify_event(acc.on_event, {:server_paused, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
   end
 
   defp do_resume_server(server_id, acc) do
-    with {:ok, server} <- fetch_server(acc, server_id),
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state(server, :paused) do
       ServerLifecycle.resume_server(server)
-      acc = update_server(acc, server_id, operational_state: :running, expecting_exit: false)
+
+      acc =
+        Helpers.update_server(acc, server_id, operational_state: :running, expecting_exit: false)
+
       ServerLifecycle.notify_event(acc.on_event, {:server_resumed, server_id, DateTime.utc_now()})
       {:ok, acc}
     end
   end
 
   defp do_restart_server(server_id, acc, opts) do
-    with {:ok, server} <- fetch_server(acc, server_id) do
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-      acc = update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
+
+      acc =
+        Helpers.update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
+
       relaunch_server(server_id, acc, server, opts)
     end
   end
 
   defp do_start_server(server_id, acc, opts) do
-    with {:ok, server} <- fetch_server(acc, server_id),
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id),
          :ok <- ServerLifecycle.require_state_in(server, [:stopped, :killed, :crashed]) do
       relaunch_server(server_id, acc, server, opts)
     end
@@ -435,7 +461,12 @@ defmodule Toast.Deployment.Controller do
 
     case ServerLifecycle.relaunch_and_wait(server, opts) do
       :ok ->
-        acc = update_server(acc, server_id, operational_state: :running, expecting_exit: false)
+        acc =
+          Helpers.update_server(acc, server_id,
+            operational_state: :running,
+            expecting_exit: false
+          )
+
         {:ok, acc}
 
       {:error, _} = err ->
@@ -444,7 +475,7 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp do_expect_crash(server_id, acc, timeout) do
-    with {:ok, server} <- fetch_server(acc, server_id) do
+    with {:ok, server} <- Helpers.fetch_server(acc, server_id) do
       case ServerLifecycle.expect_crash(server_id, timeout, acc.expected_crashes, server) do
         {:ok, expected_crashes} ->
           {:ok, %{acc | expected_crashes: expected_crashes}}
@@ -481,120 +512,8 @@ defmodule Toast.Deployment.Controller do
     end
   end
 
-  # --- Server/state helpers (public for mode modules) ---
-
-  @doc false
-  def fetch_server(state, server_id) do
-    case Map.get(state.servers, server_id) do
-      nil -> {:error, :not_found}
-      server -> {:ok, server}
-    end
-  end
-
-  @doc false
-  def update_server(state, server_id, updates) do
-    server = state.servers[server_id]
-    updated = struct!(server, updates)
-    %{state | servers: Map.put(state.servers, server_id, updated)}
-  end
-
-  # --- Health monitoring ---
-
-  @doc false
-  def start_single_health_monitor(server_id, endpoint) do
-    case Toast.Process.Supervisor.start_health_monitor(
-           server_id: server_id,
-           endpoint: endpoint,
-           listener: self()
-         ) do
-      {:ok, pid} ->
-        Process.monitor(pid)
-        {:ok, pid}
-
-      error ->
-        error
-    end
-  end
-
-  @doc false
-  def stop_all_health_monitors(state) do
-    for {_id, server} <- state.servers do
-      ServerLifecycle.stop_health_monitor(server)
-    end
-  end
-
-  @doc false
-  def stop_health_monitor(state, server_id) do
-    case state.servers[server_id] do
-      nil -> :ok
-      server -> ServerLifecycle.stop_health_monitor(server)
-    end
-  end
-
-  @doc false
-  def stop_server_process(state, server_id, timeout) do
-    case state.servers[server_id] do
-      %{server_pid: nil} ->
-        :ok
-
-      %{server_pid: pid} ->
-        try do
-          Toast.Process.ServerProcess.stop(pid, timeout)
-          DynamicSupervisor.terminate_child(Toast.Process.Supervisor, pid)
-        catch
-          :exit, _ -> :ok
-        end
-
-      nil ->
-        :ok
-    end
-  end
-
   defp find_server_by_health_monitor(state, pid) do
     Enum.find(state.servers, fn {_id, server} -> server.health_monitor == pid end)
-  end
-
-  # --- Shared helpers for mode modules ---
-
-  @doc false
-  def spec_to_server_opts(spec) do
-    [
-      id: spec.id,
-      executable: spec.executable,
-      args: spec.args,
-      env: spec.env,
-      working_dir: spec.working_dir,
-      listener: self(),
-      output_handler: &ServerLifecycle.print_server_output/2
-    ]
-  end
-
-  @doc false
-  def collect_diagnostics(state, error_for_server_fn) do
-    Map.new(state.servers, fn {server_id, server} ->
-      {server_id,
-       Toast.Diagnostics.build_server_diagnostics(server, error_for_server_fn.(server_id))}
-    end)
-  end
-
-  @doc false
-  def finalize_shutdown(state, diagnostics) do
-    %{
-      state
-      | status: :stopped,
-        servers: clear_server_pids(state.servers),
-        diagnostics: diagnostics
-    }
-  end
-
-  @doc false
-  def clear_server_pids(servers) do
-    Map.new(servers, fn {id, server} -> {id, %{server | server_pid: nil, health_monitor: nil}} end)
-  end
-
-  @doc false
-  def remaining_ms(deadline) do
-    max(0, deadline - System.monotonic_time(:millisecond))
   end
 
   defp generate_id(Toast.Deployment.Controller.SingleServer) do

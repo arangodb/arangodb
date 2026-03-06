@@ -38,7 +38,6 @@ defmodule Mix.Tasks.Toast.Helpers do
       :trace,
       :timeout,
       :max_failures,
-      :formatters,
       :colors,
       :exit_status,
       :only_test_ids
@@ -49,7 +48,6 @@ defmodule Mix.Tasks.Toast.Helpers do
       |> filter_opts(:include)
       |> filter_opts(:exclude)
       |> filter_only()
-      |> formatter_opts()
       |> color_opts()
       |> Keyword.put_new(:exit_status, 2)
       |> Keyword.take(option_keys)
@@ -73,7 +71,7 @@ defmodule Mix.Tasks.Toast.Helpers do
       shutdown_timeout: :shutdown_timeout,
       timeout_factor: :timeout_factor,
       keep_work_dir: :keep_work_dir,
-      sanitizer: :explicit_sanitizer,
+      sanitizer: :sanitizer_override,
       cluster_agents: :cluster_agents,
       cluster_dbservers: :cluster_dbservers,
       cluster_coordinators: :cluster_coordinators,
@@ -150,35 +148,6 @@ defmodule Mix.Tasks.Toast.Helpers do
   end
 
   @doc """
-  Checks whether any suite in the results has sanitizer errors.
-  Handles both single-server and cluster diagnostics layouts.
-  """
-  @spec has_sanitizer_errors?([map()]) :: boolean()
-  def has_sanitizer_errors?(suites) do
-    Enum.any?(suites, fn suite ->
-      diag = suite[:diagnostics]
-      diag != nil and has_sanitizer_in_diagnostics?(diag)
-    end)
-  end
-
-  @doc """
-  Builds suite diagnostics from suite results for CI packaging.
-  """
-  @spec build_suite_diagnostics([map()]) :: [map()]
-  def build_suite_diagnostics(suites) do
-    Enum.map(suites, fn suite ->
-      %{
-        name: suite[:suite_module] |> inspect(),
-        log_files: extract_log_files(suite[:diagnostics]),
-        sanitizer_files: extract_sanitizer_files(suite[:diagnostics]),
-        crash_reports: [],
-        agency_dumps: [],
-        core_dumps: extract_core_dumps(suite[:diagnostics])
-      }
-    end)
-  end
-
-  @doc """
   Builds per-suite options from test modules, line filters, and test name pattern.
   """
   @spec build_suite_opts([module()], [{String.t(), pos_integer()}], String.t() | nil) :: keyword()
@@ -217,54 +186,6 @@ defmodule Mix.Tasks.Toast.Helpers do
   end
 
   # -- Internal helpers --
-
-  defp has_sanitizer_in_diagnostics?(diagnostics) when is_map(diagnostics) do
-    diagnostics
-    |> Toast.Diagnostics.to_server_entries()
-    |> Enum.any?(fn {_id, diag} ->
-      case Map.get(diag, :sanitizer_errors) do
-        errors when is_list(errors) and errors != [] -> true
-        _ -> false
-      end
-    end)
-  end
-
-  defp has_sanitizer_in_diagnostics?(_), do: false
-
-  defp extract_log_files(diagnostics) do
-    extract_from_diagnostics(diagnostics, :server, fn
-      %{log_file: path} when is_binary(path) -> [path]
-      _ -> []
-    end)
-  end
-
-  defp extract_sanitizer_files(diagnostics) do
-    extract_from_diagnostics(diagnostics, :sanitizer_errors, fn
-      errors when is_list(errors) ->
-        errors |> Enum.map(& &1.file_path) |> Enum.filter(&is_binary/1)
-
-      _ ->
-        []
-    end)
-  end
-
-  defp extract_core_dumps(%Toast.Diagnostics.Result{coredump_reports: reports}) do
-    reports
-    |> Enum.map(& &1.core_path)
-    |> Enum.filter(&is_binary/1)
-  end
-
-  defp extract_core_dumps(_), do: []
-
-  defp extract_from_diagnostics(nil, _key, _extractor), do: []
-
-  defp extract_from_diagnostics(diagnostics, key, extractor) when is_map(diagnostics) do
-    diagnostics
-    |> Toast.Diagnostics.to_server_entries()
-    |> Enum.flat_map(fn {_id, server_diag} -> extractor.(Map.get(server_diag, key)) end)
-  end
-
-  defp extract_from_diagnostics(_diagnostics, _key, _extractor), do: []
 
   defp build_only_test_ids(test_modules, line_filters) do
     for mod <- test_modules,
@@ -306,17 +227,6 @@ defmodule Mix.Tasks.Toast.Helpers do
         |> Keyword.delete(:only)
         |> Keyword.update(:include, parsed, &(parsed ++ &1))
         |> Keyword.update(:exclude, [:test], &[:test | &1])
-    end
-  end
-
-  defp formatter_opts(opts) do
-    case Keyword.get_values(opts, :formatter) do
-      [] ->
-        Keyword.delete(opts, :formatter)
-
-      formatters ->
-        modules = Enum.map(formatters, &Module.concat([&1]))
-        opts |> Keyword.delete(:formatter) |> Keyword.put(:formatters, modules)
     end
   end
 
