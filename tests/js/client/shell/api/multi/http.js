@@ -101,7 +101,7 @@ function head_requestsSuite () {
       // create collection with one document;
       db._create(cn);
       try {
-        let cmd = `/_api/document?collection=${cn}`;
+        let cmd = `/_api/document/${cn}`;
         let body = { "Hello" : "World" };
         let doc = arango.POST_RAW(cmd, body);
 

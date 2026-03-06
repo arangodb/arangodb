@@ -682,7 +682,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 
@@ -733,7 +733,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -783,7 +783,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 
@@ -835,7 +835,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -891,7 +891,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i ++) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : i, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -949,7 +949,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}`};
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
 
         doc = arango.DELETE_RAW(`/_api/document/UnitTestsReplication/test${i}`, body);
@@ -978,7 +978,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 10; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1009,7 +1009,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 100; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1052,7 +1052,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 10; i++) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1669,7 +1669,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}`};
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202, doc);
       }
 
@@ -1717,7 +1717,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1770,7 +1770,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202, doc);
       }
 
@@ -1827,7 +1827,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1886,7 +1886,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
         
         doc = arango.DELETE_RAW(`/_db/UnitTestDB/_api/document/UnitTestsReplication/test${i}`, body);
@@ -1916,7 +1916,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1948,7 +1948,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 100; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
 
@@ -1993,7 +1993,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
+        let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document/UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       };
 
