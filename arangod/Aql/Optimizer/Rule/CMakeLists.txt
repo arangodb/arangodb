@@ -11,6 +11,7 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleVectorIndex.cpp
   OptimizerRulePushFilterVectorIndex.cpp
   OptimizerRulesCluster.cpp
+  OptimizerRulesClusterDistribution.cpp
   OptimizerRulesGraph.cpp
   OptimizerRulesIResearchView.cpp
   OptimizerRulesIndexNode.cpp
