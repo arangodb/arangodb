@@ -164,7 +164,13 @@ class backupTestRunner extends trs.runInArangoshRunner {
         fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
         fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
       } else {
-        throw new Error('Health check failed!');
+        print('Health check failed!');
+        path = {
+          state: false,
+          failed: 1,
+          shutdown: false,
+          message: "health check of dump server failed"
+        };
       }
       this.instanceManager = IM;
       log('done.');
