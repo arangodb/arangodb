@@ -248,7 +248,7 @@ function known_collection_nameSuite1 () {
     },
 
     test_using_collection_ids_in_collection__from_and_to: function() {
-      let cmd = `/_api/document/${vid._id}`;
+      let cmd = `/_api/document/${cv}`;
 
       // create a vertex;
       let body = { "a" : 1 };
@@ -265,7 +265,7 @@ function known_collection_nameSuite1 () {
       let translated = id.replace(/UnitTestsCollectionVertex/, vid._id);
 
       // create edge, using collection id;
-      cmd = `/_api/document/${eid._id}`;
+      cmd = `/_api/document/${ce}`;
       body = { "_from" : translated, "_to" : translated };
       doc = arango.POST_RAW(cmd, body);
 

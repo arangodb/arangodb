@@ -87,7 +87,7 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_document_identifier_is_unknown: function() {
-      let cmd = `/_api/document/${cid._id}/234567`;
+      let cmd = `/_api/document/${cn}/234567`;
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -118,7 +118,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -209,7 +209,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_none_match: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -272,7 +272,7 @@ function reading_a_documentSuite () {
     },
 
     test_create_a_document_and_read_it__use_if_match: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -354,7 +354,7 @@ function checking_a_documentSuite () {
     },
 
     test_create_a_document_and_check_to_read_it: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body, { 'accept-encoding': 'identity' });
 
@@ -385,7 +385,7 @@ function checking_a_documentSuite () {
     },
 
     test_use_an_invalid_revision_for_HEAD: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -417,7 +417,7 @@ function checking_a_documentSuite () {
     },
 
     test_use_empty_array_for_documents_read: function () {
-      let cmd = `/_api/document/${cid._id}?onlyget=true`;
+      let cmd = `/_api/document/${cn}?onlyget=true`;
       let body = [];
       let doc = arango.PUT_RAW(cmd, body);
 

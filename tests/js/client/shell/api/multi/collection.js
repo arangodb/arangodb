@@ -316,7 +316,7 @@ function readingSuite () {
 
     // get;
     test_finds_the_collection_by_identifier: function() {
-      let cmd = api + `/${cid._id}`;
+      let cmd = api + "/" + cn;
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200, doc);
@@ -656,7 +656,7 @@ function truncatingSuite () {
     },
 
     test_truncate_a_collection_by_identifier: function() {
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let docs = [];
       for (let i = 0; i < 10; i++){
         docs.push({ "hello" : "world"});
@@ -695,7 +695,7 @@ function propertiesSuite () {
     test_changing_the_properties_of_a_collection_by_identifier: function() {
       let cid = db._create(cn);
 
-      let cmd = `/_api/document/${cid._id}`;
+      let cmd = `/_api/document/${cn}`;
       let docs = [];
       for (let i = 0; i < 10; i++){
         docs.push({ "hello" : "world"});
