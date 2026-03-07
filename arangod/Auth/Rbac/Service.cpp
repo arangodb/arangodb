@@ -56,19 +56,27 @@ auto Service::toAuthorizationQuery(Permission permission,
                     std::format("db:analyzer:{}:{}", c.database, c.name)};
           },
           [&](Category::Documents const& c) -> AuthorizationQuery {
-            return {std::format("db:{}Documents", perm),
-                    std::format("db:collection:{}:{}", c.database,
-                                c.collection)};
+            return {
+                std::format("db:{}Documents", perm),
+                std::format("db:collection:{}:{}", c.database, c.collection)};
           },
       },
       category);
 }
 
 auto Service::may(User user, Permission permission,
-                  Category::Any category) noexcept -> ResultT<bool> {
+                  Category::Any const& category) noexcept -> async<ResultT<bool>> {
   auto query = toAuthorizationQuery(permission, category);
   return mayImpl(std::move(user), std::move(query.action),
                  std::move(query.resource));
+}
+
+auto Service::maySync(Service::User user, Service::Permission permission,
+                      Service::Category::Any const& category) noexcept
+    -> ResultT<bool> {
+  auto query = toAuthorizationQuery(permission, category);
+  return maySyncImpl(std::move(user), std::move(query.action),
+                     std::move(query.resource));
 }
 
 }  // namespace arangodb::rbac

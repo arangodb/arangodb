@@ -31,21 +31,22 @@
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace rbac {
+namespace arangodb::rbac {
 
 struct BackendImpl : Backend {
   BackendImpl(network::ConnectionPool& pool, std::string authorizationEndpoint);
   BackendImpl(network::Sender sendRequest, std::string authorizationEndpoint);
 
-  auto evaluateTokenMany(JwtToken const& token, RequestItems const& items)
+  auto evaluateTokenManyImpl(JwtToken const& token, RequestItems const& items,
+                             transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> override;
-  auto evaluateMany(PlainUser const& user, RequestItems const& items)
+  auto evaluateManyImpl(PlainUser const& user, RequestItems const& items,
+                        transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> override;
 
  protected:
   auto sendRequest(arangodb::fuerte::RestVerb type, std::string path,
-                   std::string_view payload)
+                   std::string_view payload, transaction::MethodsApi api)
       -> futures::Future<network::Response>;
 
  private:
@@ -169,5 +170,4 @@ auto inspect(Inspector& f, EvaluateTokenManyRequest& v) {
                             f.field("items", v.items));
 }
 
-}  // namespace rbac
-}  // namespace arangodb
+}  // namespace arangodb::rbac

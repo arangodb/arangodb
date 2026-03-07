@@ -96,10 +96,11 @@ auto parseEvaluateResponseMany(std::string_view jsonBody)
   return result;
 }
 
-auto makeJsonRequestOptions() -> network::RequestOptions {
+auto makeJsonRequestOptions(transaction::MethodsApi api) -> network::RequestOptions {
   return network::RequestOptions{
       .contentType = StaticStrings::MimeTypeJson,
       .acceptType = StaticStrings::MimeTypeJson,
+      .skipScheduler = api == transaction::MethodsApi::Synchronous,
       .sendHLCHeader = false,
   };
 }
@@ -112,8 +113,9 @@ auto jsonToPayload(std::string_view json) -> velocypack::Buffer<uint8_t> {
 
 }  // namespace
 
-auto BackendImpl::evaluateTokenMany(JwtToken const& token,
-                                    RequestItems const& items)
+auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
+                                        RequestItems const& items,
+                                        transaction::MethodsApi api)
     -> futures::Future<ResultT<EvaluateResponseMany>> {
   auto requestBody = EvaluateTokenManyRequest{
       .token = token.jwtToken,
@@ -127,7 +129,7 @@ auto BackendImpl::evaluateTokenMany(JwtToken const& token,
 
   auto response = co_await sendRequest(
       fuerte::RestVerb::Post,
-      "/_integration/authorization/v1/evaluate-token-many", bodyResult.get());
+      "/_integration/authorization/v1/evaluate-token-many", bodyResult.get(), api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
@@ -137,7 +139,9 @@ auto BackendImpl::evaluateTokenMany(JwtToken const& token,
       response.response().payloadAsStringView());
 }
 
-auto BackendImpl::evaluateMany(PlainUser const& user, RequestItems const& items)
+auto BackendImpl::evaluateManyImpl(PlainUser const& user,
+                                   RequestItems const& items,
+                                   transaction::MethodsApi api)
     -> futures::Future<ResultT<EvaluateResponseMany>> {
   auto requestBody = EvaluateManyRequest{
       .user = user.username,
@@ -152,7 +156,7 @@ auto BackendImpl::evaluateMany(PlainUser const& user, RequestItems const& items)
 
   auto response = co_await sendRequest(
       fuerte::RestVerb::Post, "/_integration/authorization/v1/evaluate-many",
-      bodyResult.get());
+      bodyResult.get(), api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
@@ -163,13 +167,22 @@ auto BackendImpl::evaluateMany(PlainUser const& user, RequestItems const& items)
 }
 
 auto BackendImpl::sendRequest(arangodb::fuerte::RestVerb verb, std::string path,
-                              std::string_view payload)
+                              std::string_view payload, transaction::MethodsApi api)
     -> futures::Future<network::Response> {
   // TODO It's currently necessary to copy the data once, because the inspector
   //      can only write into an stream, but the network Methods only take a
   //      velocypack::Buffer as payload.
-  return _sendRequest(_authorizationEndpoint, verb, std::move(path),
-                      jsonToPayload(payload), makeJsonRequestOptions(), {});
+  auto fut = _sendRequest(_authorizationEndpoint, verb, std::move(path),
+                      jsonToPayload(payload), makeJsonRequestOptions(api), {});
+  if (api == transaction::MethodsApi::Synchronous) {
+    // Wait here if the caller is synchronous, because in this case,
+    // skipScheduler is set, and we must not execute arbitrary code on the
+    // network thread. Waiting here will ensure that the current thread
+    // continues execution after the following co_await, and not the network
+    // thread resolving the promise.
+    fut.wait();
+  }
+  return fut;
 }
 
 }  // namespace arangodb::rbac

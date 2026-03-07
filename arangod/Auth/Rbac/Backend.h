@@ -25,6 +25,7 @@
 
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
+#include "Transaction/MethodsApi.h"
 
 namespace arangodb::rbac {
 
@@ -68,26 +69,62 @@ struct Backend {
   //      be set. Figure out how best to do that (e.g., a parameter, or
   //      additional functions?).
 
+  // public API, asynchronous versions
+  auto evaluateTokenMany(JwtToken const&, RequestItems const&)
+      -> futures::Future<ResultT<EvaluateResponseMany>>;
+  auto evaluateMany(PlainUser const&, RequestItems const&)
+      -> futures::Future<ResultT<EvaluateResponseMany>>;
+  auto evaluateToken(JwtToken const& jwtToken, RequestItem const& item)
+      -> futures::Future<ResultT<EvaluateResponse>>;
+  auto evaluate(PlainUser const& user, RequestItem const& item)
+      -> futures::Future<ResultT<EvaluateResponse>>;
+
+  // public API, synchronous versions
+  [[deprecated("Use the asynchronous counterpart instead")]] auto
+  evaluateTokenManySync(JwtToken const&,
+                        RequestItems const&) -> ResultT<EvaluateResponseMany>;
+  [[deprecated("Use the asynchronous counterpart instead")]] auto
+  evaluateManySync(PlainUser const&,
+                   RequestItems const&) -> ResultT<EvaluateResponseMany>;
+  [[deprecated("Use the asynchronous counterpart instead")]] auto
+  evaluateTokenSync(JwtToken const& jwtToken,
+                    RequestItem const& item) -> ResultT<EvaluateResponse>;
+  [[deprecated("Use the asynchronous counterpart instead")]] auto evaluateSync(
+      PlainUser const& user,
+      RequestItem const& item) -> ResultT<EvaluateResponse>;
+
+ protected:
+  // API implementation
+  // Distinguishing between non-virtual public and non-public virtual
+  // api methods is (only) necessary to provide both synchronous and
+  // asynchronous variants.
+
   // essential functions
-  virtual auto evaluateTokenMany(JwtToken const&, RequestItems const&)
+  virtual auto evaluateTokenManyImpl(JwtToken const&, RequestItems const&,
+                                     transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> = 0;
-  virtual auto evaluateMany(PlainUser const&, RequestItems const&)
+  virtual auto evaluateManyImpl(PlainUser const&, RequestItems const&,
+                                transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> = 0;
 
   // unessential functions with fallback implementations
   // (there are corresponding APIs, but they don't provide additional
   // functionality)
-  virtual auto evaluateToken(JwtToken const& jwtToken, RequestItem const& item)
+  virtual auto evaluateTokenImpl(JwtToken const& jwtToken,
+                                 RequestItem const& item,
+                                 transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponse>> {
-    auto result =
-        co_await evaluateTokenMany(jwtToken, RequestItems{.items = {item}});
+    auto result = co_await evaluateTokenManyImpl(
+        jwtToken, RequestItems{.items = {item}}, api);
     co_return result.map([](EvaluateResponseMany const& r) -> EvaluateResponse {
       return r;  // NOLINT(cppcoreguidelines-slicing)
     });
   };
-  virtual auto evaluate(PlainUser const& user, RequestItem const& item)
+  virtual auto evaluateImpl(PlainUser const& user, RequestItem const& item,
+                            transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponse>> {
-    auto result = co_await evaluateMany(user, RequestItems{.items = {item}});
+    auto result =
+        co_await evaluateManyImpl(user, RequestItems{.items = {item}}, api);
     co_return result.map([](EvaluateResponseMany const& r) -> EvaluateResponse {
       return r;  // NOLINT(cppcoreguidelines-slicing)
     });

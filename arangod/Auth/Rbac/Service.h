@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Async/async.h"
 #include "Basics/ResultT.h"
 
 #include <string>
@@ -72,11 +73,18 @@ struct Service {
       -> AuthorizationQuery;
 
   auto may(User user, Permission permission,
-           Category::Any category) noexcept -> ResultT<bool>;
+           Category::Any const& category) noexcept -> async<ResultT<bool>>;
+
+  [[deprecated("Use the asynchronous counterpart instead")]]
+  auto maySync(User user, Permission permission,
+               Category::Any const& category) noexcept -> ResultT<bool>;
 
  private:
   virtual auto mayImpl(User user, std::string action,
-                       std::string resource) noexcept -> ResultT<bool> = 0;
+                       std::string resource) noexcept
+      -> async<ResultT<bool>> = 0;
+  virtual auto maySyncImpl(User user, std::string action,
+                           std::string resource) noexcept -> ResultT<bool> = 0;
 };
 
 }  // namespace arangodb::rbac
