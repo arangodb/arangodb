@@ -13,12 +13,12 @@ from src.output_generators.sizing import ResourceSizer
 @pytest.mark.parametrize(
     "size,x64_class,aarch64_class",
     [
-        (ResourceSize.SMALL, "small", "arm.medium"),
-        (ResourceSize.MEDIUM, "medium", "arm.medium"),
-        (ResourceSize.MEDIUM_PLUS, "medium+", "arm.large"),
-        (ResourceSize.LARGE, "large", "arm.large"),
-        (ResourceSize.XLARGE, "xlarge", "arm.xlarge"),
-        (ResourceSize.XXLARGE, "2xlarge", "arm.2xlarge"),
+        (ResourceSize.SMALL, "arangodb/amd-small-amd64", "arangodb/amd-medium-arm64"),
+        (ResourceSize.MEDIUM, "arangodb/amd-medium-amd64", "arangodb/amd-medium-arm64"),
+        (ResourceSize.MEDIUM_PLUS, "arangodb/amd-medium-amd64", "arangodb/amd-large-arm64"),
+        (ResourceSize.LARGE, "arangodb/amd-large-amd64", "arangodb/amd-large-arm64"),
+        (ResourceSize.XLARGE, "arangodb/amd-xlarge-amd64", "arangodb/amd-xlarge-arm64"),
+        (ResourceSize.XXLARGE, "arangodb/amd-2xlarge-amd64", "arangodb/amd-2xlarge-arm64"),
     ],
 )
 class TestGetResourceClass:
@@ -45,19 +45,19 @@ class TestGetTestSize:
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
-            == "small"
+            == "arangodb/amd-small-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.MEDIUM, config, is_cluster=False)
-            == "medium"
+            == "arangodb/amd-medium-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.LARGE, config, is_cluster=False)
-            == "large"
+            == "arangodb/amd-large-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=False)
-            == "xlarge"
+            == "arangodb/amd-xlarge-amd64"
         )
 
     def test_tsan_cluster_small_to_xlarge(self, x64_tsan_build):
@@ -67,7 +67,7 @@ class TestGetTestSize:
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=True
         )
-        assert result == "large"
+        assert result == "arangodb/amd-large-amd64"
 
     def test_tsan_single_small_to_large(self):
         """Test TSAN single small tests need large (not xlarge)."""
@@ -79,7 +79,7 @@ class TestGetTestSize:
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=False
         )
-        assert result == "large"
+        assert result == "arangodb/amd-large-amd64"
 
     def test_alubsan_small_to_large(self):
         """Test non-TSAN sanitizers bump small to large."""
@@ -91,11 +91,11 @@ class TestGetTestSize:
         # Both cluster and single get large for alubsan
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
-            == "large"
+            == "arangodb/amd-large-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
-            == "large"
+            == "arangodb/amd-large-amd64"
         )
 
     def test_sanitizer_medium_to_xlarge(self):
@@ -122,11 +122,11 @@ class TestGetTestSize:
                     size, config, is_cluster=False
                 )
 
-                assert result_cluster == "xlarge", (
+                assert result_cluster == "arangodb/amd-xlarge-amd64", (
                     f"Expected xlarge for {name} {size.value} cluster, "
                     f"got {result_cluster}"
                 )
-                assert result_single == "xlarge", (
+                assert result_single == "arangodb/amd-xlarge-amd64", (
                     f"Expected xlarge for {name} {size.value} single, "
                     f"got {result_single}"
                 )
@@ -140,11 +140,11 @@ class TestGetTestSize:
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=True)
-            == "xlarge"
+            == "arangodb/amd-xlarge-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=False)
-            == "xlarge"
+            == "arangodb/amd-xlarge-amd64"
         )
 
     def test_sanitizer_2xlarge_unchanged(self):
@@ -156,11 +156,11 @@ class TestGetTestSize:
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=True)
-            == "2xlarge"
+            == "arangodb/amd-2xlarge-amd64"
         )
         assert (
             ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=False)
-            == "2xlarge"
+            == "arangodb/amd-2xlarge-amd64"
         )
 
     def test_aarch64_with_sanitizer(self):
@@ -170,22 +170,22 @@ class TestGetTestSize:
             build_variant=BuildVariant.TSAN,
         )
 
-        # Small on TSAN cluster -> xlarge -> arm.xlarge
+        # Small on TSAN cluster -> xlarge -> arangodb/amd-xlarge-arm64
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
-            == "arm.large"
+            == "arangodb/amd-large-arm64"
         )
 
-        # Small on TSAN single -> large -> arm.large
+        # Small on TSAN single -> large -> arangodb/amd-large-arm64
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
-            == "arm.large"
+            == "arangodb/amd-large-arm64"
         )
 
-        # Medium on TSAN -> xlarge -> arm.xlarge
+        # Medium on TSAN -> xlarge -> arangodb/amd-xlarge-arm64
         assert (
             ResourceSizer.get_test_size(ResourceSize.MEDIUM, config, is_cluster=True)
-            == "arm.xlarge"
+            == "arangodb/amd-xlarge-arm64"
         )
 
     def test_all_sanitizers_apply_same_logic(self):
@@ -206,14 +206,14 @@ class TestGetTestSize:
                     ResourceSizer.get_test_size(
                         ResourceSize.SMALL, config, is_cluster=True
                     )
-                    == "large"
+                    == "arangodb/amd-large-amd64"
                 )
             else:
                 # Other sanitizers: small -> large
                 result = ResourceSizer.get_test_size(
                     ResourceSize.SMALL, config, is_cluster=True
                 )
-                assert result == "large", (
+                assert result == "arangodb/amd-large-amd64", (
                     f"Expected large for {name} small cluster, " f"got {result}"
                 )
 
@@ -222,7 +222,7 @@ class TestGetTestSize:
                 ResourceSizer.get_test_size(
                     ResourceSize.MEDIUM, config, is_cluster=False
                 )
-                == "xlarge"
+                == "arangodb/amd-xlarge-amd64"
             )
 
 
@@ -237,18 +237,18 @@ class TestSanitizerOverhead:
         )
 
         expected = {
-            (ResourceSize.SMALL, True): "large",  # Special case: TSAN cluster small
-            (ResourceSize.SMALL, False): "large",
-            (ResourceSize.MEDIUM, True): "xlarge",
-            (ResourceSize.MEDIUM, False): "xlarge",
-            (ResourceSize.MEDIUM_PLUS, True): "xlarge",
-            (ResourceSize.MEDIUM_PLUS, False): "xlarge",
-            (ResourceSize.LARGE, True): "xlarge",
-            (ResourceSize.LARGE, False): "xlarge",
-            (ResourceSize.XLARGE, True): "xlarge",
-            (ResourceSize.XLARGE, False): "xlarge",
-            (ResourceSize.XXLARGE, True): "2xlarge",
-            (ResourceSize.XXLARGE, False): "2xlarge",
+            (ResourceSize.SMALL, True): "arangodb/amd-large-amd64",  # Special case: TSAN cluster small
+            (ResourceSize.SMALL, False): "arangodb/amd-large-amd64",
+            (ResourceSize.MEDIUM, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM_PLUS, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM_PLUS, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.LARGE, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.LARGE, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XLARGE, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XLARGE, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XXLARGE, True): "arangodb/amd-2xlarge-amd64",
+            (ResourceSize.XXLARGE, False): "arangodb/amd-2xlarge-amd64",
         }
 
         for (size, is_cluster), expected_result in expected.items():
@@ -266,18 +266,18 @@ class TestSanitizerOverhead:
         )
 
         expected = {
-            (ResourceSize.SMALL, True): "large",
-            (ResourceSize.SMALL, False): "large",
-            (ResourceSize.MEDIUM, True): "xlarge",
-            (ResourceSize.MEDIUM, False): "xlarge",
-            (ResourceSize.MEDIUM_PLUS, True): "xlarge",
-            (ResourceSize.MEDIUM_PLUS, False): "xlarge",
-            (ResourceSize.LARGE, True): "xlarge",
-            (ResourceSize.LARGE, False): "xlarge",
-            (ResourceSize.XLARGE, True): "xlarge",
-            (ResourceSize.XLARGE, False): "xlarge",
-            (ResourceSize.XXLARGE, True): "2xlarge",
-            (ResourceSize.XXLARGE, False): "2xlarge",
+            (ResourceSize.SMALL, True): "arangodb/amd-large-amd64",
+            (ResourceSize.SMALL, False): "arangodb/amd-large-amd64",
+            (ResourceSize.MEDIUM, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM_PLUS, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.MEDIUM_PLUS, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.LARGE, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.LARGE, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XLARGE, True): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XLARGE, False): "arangodb/amd-xlarge-amd64",
+            (ResourceSize.XXLARGE, True): "arangodb/amd-2xlarge-amd64",
+            (ResourceSize.XXLARGE, False): "arangodb/amd-2xlarge-amd64",
         }
 
         for (size, is_cluster), expected_result in expected.items():

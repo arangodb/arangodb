@@ -41,7 +41,7 @@ parameters:
     type: string
     default: tests.yml ui.yml
     description: Space separated list of YAML files with test definitions. Available files
-      arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
+      arangojs.yml java.yml spark-ds.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop.yml py-async.yml py.yml tests.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -64,7 +64,7 @@ parameters:
     description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4331f810
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5677fe406
     description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
   build-docker-image:
     type: string

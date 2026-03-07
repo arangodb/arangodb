@@ -102,7 +102,7 @@ function rtaMakeCheckDataSuite() {
         console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
         break;
       }
-      
+
       if (!printed) {
         console.topic("replication=debug", "waiting for follower to catch up");
         printed = true;
