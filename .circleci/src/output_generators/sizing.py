@@ -14,21 +14,21 @@ class ResourceSizer:
 
     # Resource class mappings by architecture
     AARCH64_SIZES: Dict[ResourceSize, str] = {
-        ResourceSize.SMALL: "arm.medium",
-        ResourceSize.MEDIUM: "arm.medium",
-        ResourceSize.MEDIUM_PLUS: "arm.large",
-        ResourceSize.LARGE: "arm.large",
-        ResourceSize.XLARGE: "arm.xlarge",
-        ResourceSize.XXLARGE: "arm.2xlarge",
+        ResourceSize.SMALL: "arangodb/amd-small-arm64",
+        ResourceSize.MEDIUM: "arangodb/amd-medium-arm64",
+        ResourceSize.MEDIUM_PLUS: "arangodb/amd-medium-arm64",
+        ResourceSize.LARGE: "arangodb/amd-large-arm64",
+        ResourceSize.XLARGE: "arangodb/amd-xlarge-arm64",
+        ResourceSize.XXLARGE: "arangodb/amd-2xlarge-arm64",
     }
 
     X86_SIZES: Dict[ResourceSize, str] = {
-        ResourceSize.SMALL: "small",
-        ResourceSize.MEDIUM: "medium",
-        ResourceSize.MEDIUM_PLUS: "medium+",
-        ResourceSize.LARGE: "large",
-        ResourceSize.XLARGE: "xlarge",
-        ResourceSize.XXLARGE: "2xlarge",
+        ResourceSize.SMALL: "arangodb/amd-small-amd64",
+        ResourceSize.MEDIUM: "arangodb/amd-medium-amd64",
+        ResourceSize.MEDIUM_PLUS: "arangodb/amd-medium-amd64",
+        ResourceSize.LARGE: "arangodb/amd-large-amd64",
+        ResourceSize.XLARGE: "arangodb/amd-xlarge-amd64",
+        ResourceSize.XXLARGE: "arangodb/amd-2xlarge-amd64",
     }
 
     @classmethod
