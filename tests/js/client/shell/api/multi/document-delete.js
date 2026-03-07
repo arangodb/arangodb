@@ -121,7 +121,7 @@ function deleting_documentsSuite () {
     },
 
     test_create_a_document_and_delete_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -152,7 +152,7 @@ function deleting_documentsSuite () {
     },
 
     test_create_a_document_and_delete_it__using_if_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -201,7 +201,7 @@ function deleting_documentsSuite () {
     },
 
     test_create_a_document_and_delete_it__using_an_invalid_revision: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -244,7 +244,7 @@ function deleting_documentsSuite () {
     },
 
     test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_false: function() {
-      let cmd = `/_api/document?collection=${cid._id}&waitForSync=false`;
+      let cmd = `/_api/document/${cid._id}?waitForSync=false`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -275,7 +275,7 @@ function deleting_documentsSuite () {
     },
 
     test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_true: function() {
-      let cmd = `/_api/document?collection=${cid._id}&waitForSync=true`;
+      let cmd = `/_api/document/${cid._id}?waitForSync=true`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
