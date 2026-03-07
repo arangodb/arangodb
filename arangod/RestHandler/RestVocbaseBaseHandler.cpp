@@ -46,7 +46,9 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -473,7 +475,8 @@ RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
     OperationOptions const& opOptions,
     transaction::OperationOrigin operationOrigin,
-    transaction::Options&& trxOpts) const {
+    transaction::Options&& trxOpts,
+    CollectionResolutionMode resolutionMode) const {
   bool const isDBServer = ServerState::instance()->isDBServer();
   bool isFollower =
       !opOptions.isSynchronousReplicationFrom.empty() && isDBServer;
@@ -485,9 +488,22 @@ RestVocbaseBaseHandler::createTransaction(
     if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
       trxOpts.allowDirtyReads = true;
     }
-    auto tmp = std::make_unique<SingleCollectionTransaction>(
+    std::unique_ptr<SingleCollectionTransaction> tmp;
+    if (resolutionMode == CollectionResolutionMode::NameOnly) {
+      CollectionNameResolver resolver(_vocbase);
+      auto coll = resolver.getCollection(collectionName, resolutionMode);
+      if (!coll) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                       "collection not found");
+      }
+      tmp = std::make_unique<SingleCollectionTransaction>(
+        transaction::StandaloneContext::create(_vocbase, operationOrigin),
+        *coll, type, std::move(trxOpts));
+    } else {
+      tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::create(_vocbase, operationOrigin),
         collectionName, type, std::move(trxOpts));
+    }
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }

@@ -27,6 +27,7 @@
 #include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <shared_mutex>
 
@@ -68,14 +69,17 @@ class CollectionNameResolver {
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalCollection> getCollection(
-      std::string_view nameOrId) const;
+      std::string_view nameOrId,
+      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case),
   /// use this if you know you are on a single server or on a DBserver
   /// and need to look up a local collection name (or shard name).
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionIdLocal(std::string_view name) const;
+  DataSourceId getCollectionIdLocal(
+      std::string_view name,
+      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster collection id for a cluster collection name,
@@ -83,7 +87,9 @@ class CollectionNameResolver {
   /// cases the name is resolved as a cluster wide collection name and the
   /// cluster wide collection id is returned.
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionIdCluster(std::string_view name) const;
+  DataSourceId getCollectionIdCluster(
+      std::string_view name,
+      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId) const;
 
   std::shared_ptr<LogicalCollection> getCollectionStructCluster(
       std::string_view name) const;
@@ -94,7 +100,9 @@ class CollectionNameResolver {
   /// single server or DBserver it will use the local lookup and on a
   /// coordinator it will use the cluster wide lookup.
   //////////////////////////////////////////////////////////////////////////////
-  DataSourceId getCollectionId(std::string_view name) const;
+  DataSourceId getCollectionId(
+      std::string_view name,
+      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
@@ -130,7 +138,8 @@ class CollectionNameResolver {
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalDataSource> getDataSource(
-      std::string_view nameOrId) const;
+      std::string_view nameOrId,
+      CollectionResolutionMode mode = CollectionResolutionMode::NameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a view id

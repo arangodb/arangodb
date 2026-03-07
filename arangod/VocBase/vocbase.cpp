@@ -679,8 +679,8 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
 }
 
 std::shared_ptr<LogicalCollection> TRI_vocbase_t::lookupCollection(
-    std::string_view nameOrId) const noexcept {
-  auto ptr = lookupDataSource(nameOrId);
+    std::string_view nameOrId, CollectionResolutionMode mode) const noexcept {
+  auto ptr = lookupDataSource(nameOrId, mode);
   if (!ptr || ptr->category() != LogicalDataSource::Category::kCollection) {
     return nullptr;
   }
@@ -711,15 +711,17 @@ std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 }
 
 std::shared_ptr<LogicalDataSource> TRI_vocbase_t::lookupDataSource(
-    std::string_view nameOrId) const noexcept {
+    std::string_view nameOrId, CollectionResolutionMode mode) const noexcept {
   if (nameOrId.empty()) {
     return nullptr;
   }
 
-  // lookup by id if the data-source name is passed as a stringified id
-  DataSourceId::BaseType id;
-  if (absl::SimpleAtoi(nameOrId, &id)) {
-    return lookupDataSource(DataSourceId{id});
+  if (mode == CollectionResolutionMode::NameOrId) {
+    // lookup by id if the data-source name is passed as a stringified id
+    DataSourceId::BaseType id;
+    if (absl::SimpleAtoi(nameOrId, &id)) {
+      return lookupDataSource(DataSourceId{id});
+    }
   }
 
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
