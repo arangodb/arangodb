@@ -25,28 +25,41 @@
 
 namespace arangodb::rbac {
 
+namespace {
+
+auto flattenQueries(std::vector<Service::AuthorizationQuery> const& queries)
+    -> Backend::RequestItems {
+  Backend::RequestItems items;
+  for (auto const& q : queries) {
+    items.items.push_back(Backend::RequestItem{
+        .action = q.action, .resource = q.resource, .attributeValues = {}});
+  }
+  return items;
+}
+
+}  // namespace
+
 ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
-auto ServiceImpl::mayImpl(User user, std::string action,
-                          std::string resource) noexcept
+auto ServiceImpl::mayImpl(User user,
+                          std::vector<AuthorizationQuery> queries) noexcept
     -> async<ResultT<bool>> {
-  auto result = co_await _backend->evaluateToken(
-      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)},
-      Backend::RequestItem{.action = std::move(action),
-                           .resource = std::move(resource)});
+  auto items = flattenQueries(queries);
+  auto result = co_await _backend->evaluateTokenMany(
+      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)}, items);
   if (!result.ok()) {
     co_return result.result();
   }
   co_return result.get().effect == Backend::Effect::Allow;
 }
 
-auto ServiceImpl::maySyncImpl(User user, std::string action,
-                              std::string resource) noexcept -> ResultT<bool> {
-  auto result = _backend->evaluateTokenSync(
-      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)},
-      Backend::RequestItem{.action = std::move(action),
-                           .resource = std::move(resource)});
+auto ServiceImpl::maySyncImpl(User user,
+                              std::vector<AuthorizationQuery> queries) noexcept
+    -> ResultT<bool> {
+  auto items = flattenQueries(queries);
+  auto result = _backend->evaluateTokenManySync(
+      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)}, items);
   if (!result.ok()) {
     return result.result();
   }

@@ -34,10 +34,10 @@ struct ServiceImpl : Service {
   explicit ServiceImpl(std::unique_ptr<Backend> backend);
 
  private:
-  auto mayImpl(User user, std::string action,
-               std::string resource) noexcept -> async<ResultT<bool>> override;
-  auto maySyncImpl(User user, std::string action,
-                   std::string resource) noexcept -> ResultT<bool> override;
+  auto mayImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
+      -> async<ResultT<bool>> override;
+  auto maySyncImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
+      -> ResultT<bool> override;
 
   std::unique_ptr<Backend> _backend;
 };

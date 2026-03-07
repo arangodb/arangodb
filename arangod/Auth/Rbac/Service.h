@@ -28,6 +28,7 @@
 
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace arangodb::rbac {
 
@@ -70,9 +71,13 @@ struct Service {
     std::string resource;
   };
 
-  static auto toAuthorizationQuery(Permission permission,
-                                   Category::Any const& category)
-      -> AuthorizationQuery;
+  // Expands a (Permission, Category) pair into the full hierarchy of
+  // authorization queries required by the RBAC design. For example,
+  // reading documents requires db:ReadDocuments, db:ReadCollection,
+  // and db:ReadDatabase.
+  static auto toAuthorizationQueries(Permission permission,
+                                     Category::Any const& category)
+      -> std::vector<AuthorizationQuery>;
 
   auto may(User user, Permission permission,
            Category::Any const& category) noexcept -> async<ResultT<bool>>;
@@ -81,12 +86,28 @@ struct Service {
   auto maySync(User user, Permission permission,
                Category::Any const& category) noexcept -> ResultT<bool>;
 
+  struct PermissionQuery {
+    Permission permission;
+    Category::Any category;
+  };
+
+  // TODO We might want to change the return type in a way that it reports
+  //      which permission(s) are missing, in order to give a proper error
+  //      message to the user.
+  auto mayAll(User user, std::vector<PermissionQuery> queries) noexcept
+      -> async<ResultT<bool>>;
+
+  [[deprecated("Use the asynchronous counterpart instead")]]
+  auto mayAllSync(User user, std::vector<PermissionQuery> queries) noexcept
+      -> ResultT<bool>;
+
  private:
-  virtual auto mayImpl(User user, std::string action,
-                       std::string resource) noexcept
+  virtual auto mayImpl(User user,
+                       std::vector<AuthorizationQuery> queries) noexcept
       -> async<ResultT<bool>> = 0;
-  virtual auto maySyncImpl(User user, std::string action,
-                           std::string resource) noexcept -> ResultT<bool> = 0;
+  virtual auto maySyncImpl(User user,
+                           std::vector<AuthorizationQuery> queries) noexcept
+      -> ResultT<bool> = 0;
 };
 
 }  // namespace arangodb::rbac
