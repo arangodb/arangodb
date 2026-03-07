@@ -118,7 +118,7 @@ function error_handlingSuite () {
     },
 
     test_returns_an_error_if_the_policy_parameter_is_bad: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -145,7 +145,7 @@ function error_handlingSuite () {
     },
 
     test_create_a_document_and_update_it_with_invalid_JSON: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -164,7 +164,7 @@ function error_handlingSuite () {
     },
 
     test_create_a_document_and_replace_it__using_ignoreRevsEQfalse: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
 
@@ -240,7 +240,7 @@ function error_handlingSuite () {
     },
 
     test_create_a_document_and_replace_it__using_ignoreRevsEQfalse_with_key: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "_key" : "hello", "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -333,7 +333,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -367,7 +367,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__using_if_match: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -447,7 +447,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__using_an_invalid_revision: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -488,7 +488,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__waitForSync_URL_paramEQfalse: function() {
-      let cmd = `/_api/document?collection=${cid._id}&waitForSync=false`;
+      let cmd = `/_api/document/${cid._id}?waitForSync=false`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -522,7 +522,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__waitForSync_URL_paramEQtrue: function() {
-      let cmd = `/_api/document?collection=${cid._id}&waitForSync=true`;
+      let cmd = `/_api/document/${cid._id}?waitForSync=true`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -556,7 +556,7 @@ function updating_documentSuite () {
     },
 
     test_update_a_document__using_patch: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -595,7 +595,7 @@ function updating_documentSuite () {
     },
 
     test_update_a_document__using_patch__keepNull_EQ_true: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -634,7 +634,7 @@ function updating_documentSuite () {
     },
 
     test_update_a_document__using_patch__keepNull_EQ_false: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -673,7 +673,7 @@ function updating_documentSuite () {
     },
 
     test_update_a_document__using_duplicate_attributes: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -694,7 +694,7 @@ function updating_documentSuite () {
     },
 
     test_update_a_document__using_duplicate_nested_attributes: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -715,7 +715,7 @@ function updating_documentSuite () {
     },
 
     test_replace_a_document__using_duplicate_attributes: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -736,7 +736,7 @@ function updating_documentSuite () {
     },
 
     test_replace_a_document__using_duplicate_nested_attributes: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -757,7 +757,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__using_ignoreRevsEQfalse: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -833,7 +833,7 @@ function updating_documentSuite () {
     },
 
     test_create_a_document_and_update_it__using_ignoreRevsEQfalse_with_key: function() {
-      let cmd = `/_api/document?collection=${cid._id}`;
+      let cmd = `/_api/document/${cid._id}`;
       let body = { "_key" : "hello", "Hallo" : "World" };
       let doc = arango.POST_RAW(cmd, body);
 
