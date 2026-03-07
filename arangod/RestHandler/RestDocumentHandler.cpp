@@ -162,8 +162,7 @@ async<void> RestDocumentHandler::insertDocument() {
         suffixes.size() > 1 ? TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES
                             : TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
         suffixes.size() > 1
-            ? "superfluous suffix, expecting " + DOCUMENT_PATH +
-                  "/<collection>"
+            ? "superfluous suffix, expecting " + DOCUMENT_PATH + "/<collection>"
             : "'collection' is missing, expecting " + DOCUMENT_PATH +
                   " POST /_api/document/<collection>");
     co_return;
@@ -468,8 +467,9 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   if (suffixes.size() == 0 || suffixes.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
-    msg.append(" /_api/document/<collection> or"
-               " /_api/document/<collection>/<key>");
+    msg.append(
+        " /_api/document/<collection> or"
+        " /_api/document/<collection>/<key>");
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     co_return;
   }
