@@ -78,11 +78,12 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
 }
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
-    std::string_view nameOrId) const {
+    std::string_view nameOrId, CollectionResolutionMode mode) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(nameOrId));
+  return std::dynamic_pointer_cast<LogicalCollection>(
+      getDataSource(nameOrId, mode));
 #else
-  auto dataSource = getDataSource(nameOrId);
+  auto dataSource = getDataSource(nameOrId, mode);
 
   return dataSource && dataSource->category() ==
                            LogicalDataSource::Category::kCollection
@@ -98,15 +99,17 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
 //////////////////////////////////////////////////////////////////////////////
 
 DataSourceId CollectionNameResolver::getCollectionIdLocal(
-    std::string_view name) const {
+    std::string_view name, CollectionResolutionMode mode) const {
   if (!name.empty()) {
-    if (name[0] >= '0' && name[0] <= '9') {
-      // name is a numeric id
-      return DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
-          name.data(), name.data() + name.size())};
+    if (mode == CollectionResolutionMode::NameOrId) {
+      if (name[0] >= '0' && name[0] <= '9') {
+        // name is a numeric id
+        return DataSourceId{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+            name.data(), name.data() + name.size())};
+      }
     }
 
-    auto ds = _vocbase.lookupDataSource(name);
+    auto ds = _vocbase.lookupDataSource(name, mode);
 
     if (ds != nullptr) {
       return ds->id();
@@ -124,25 +127,28 @@ DataSourceId CollectionNameResolver::getCollectionIdLocal(
 //////////////////////////////////////////////////////////////////////////////
 
 DataSourceId CollectionNameResolver::getCollectionIdCluster(
-    std::string_view name) const {
+    std::string_view name, CollectionResolutionMode mode) const {
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
   if (name.empty()) {
     return DataSourceId::none();
   }
-  if (name[0] >= '0' && name[0] <= '9') {
-    // name is a numeric id
-    DataSourceId cid{NumberUtils::atoi_zero<DataSourceId::BaseType>(
-        name.data(), name.data() + name.size())};
-    auto collection = getCollection(cid);
-    // Now validate the cid
-    auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
-    if (type == TRI_COL_TYPE_UNKNOWN) {
-      return DataSourceId::none();
+  if (mode == CollectionResolutionMode::NameOrId) {
+    if (name[0] >= '0' && name[0] <= '9') {
+      // name is a numeric id
+      DataSourceId cid{NumberUtils::atoi_zero<DataSourceId::BaseType>(
+          name.data(), name.data() + name.size())};
+      auto collection = getCollection(cid);
+      // Now validate the cid
+      auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
+
+      if (type == TRI_COL_TYPE_UNKNOWN) {
+        return DataSourceId::none();
+      }
+      return cid;
     }
-    return cid;
   }
 
   try {
@@ -187,12 +193,12 @@ CollectionNameResolver::getCollectionStructCluster(
 //////////////////////////////////////////////////////////////////////////////
 
 DataSourceId CollectionNameResolver::getCollectionId(
-    std::string_view name) const {
+    std::string_view name, CollectionResolutionMode mode) const {
   if (!ServerState::isRunningInCluster(_serverRole) ||
       ServerState::isDBServer(_serverRole)) {
-    return getCollectionIdLocal(name);
+    return getCollectionIdLocal(name, mode);
   }
-  return getCollectionIdCluster(name);
+  return getCollectionIdCluster(name, mode);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -308,7 +314,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-    std::string_view nameOrId) const {
+    std::string_view nameOrId, CollectionResolutionMode mode) const {
   {
     std::shared_lock guard{_lock};
     auto itr = _dataSourceByName.find(nameOrId);
@@ -321,9 +327,13 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 
   // db server / standalone
   if (!ServerState::isCoordinator(_serverRole)) {
-    ptr = _vocbase.lookupDataSource(nameOrId);
+    ptr = _vocbase.lookupDataSource(nameOrId, mode);
   } else {
     // cluster coordinator
+    if (mode == CollectionResolutionMode::NameOnly && !nameOrId.empty() &&
+        (nameOrId[0] >= '0' && nameOrId[0] <= '9')) {
+      return nullptr;
+    }
     if (!_vocbase.server().hasFeature<ClusterFeature>()) {
       return nullptr;
     }
