@@ -150,7 +150,7 @@ class TestCreateBuildJob:
         assert params["preset"] == "enterprise-pr"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
-        assert params["resource-class"] == "2xlarge"
+        assert params["resource-class"] == "arangodb/amd-2xlarge-amd64"
         assert "s3-prefix" not in params
 
     def test_create_build_job_with_sanitizer(self):
@@ -744,7 +744,7 @@ class TestCreateTestJob:
 
         job_data = result["run-linux-tests"]
         # Should be overridden to medium-plus for nightly single-server
-        assert "medium+" in job_data["size"]
+        assert "arangodb/amd-medium-amd64" in job_data["size"]
 
     def test_create_test_job_size_no_override_cluster(self):
         """Test shell_client_aql nightly cluster does NOT get size override."""
@@ -762,7 +762,7 @@ class TestCreateTestJob:
 
         job_data = result["run-linux-tests"]
         # Should use default small size for cluster (no override)
-        assert "small" in job_data["size"]
+        assert "arangodb/amd-small-amd64" in job_data["size"]
 
     def test_create_test_job_with_repository(self):
         """Test job with external repository configuration."""
