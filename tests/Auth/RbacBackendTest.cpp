@@ -212,3 +212,49 @@ TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
 
   EXPECT_FALSE(result.ok());
 }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
+TEST(RbacBackendTest, evaluateManySync_setsSkipSchedulerAndReturnsResult) {
+  auto responseJson = buildAllowResponseJson();
+
+  auto sendRequestMock = [&](network::DestinationId const&, fuerte::RestVerb,
+                             std::string const&,
+                             velocypack::Buffer<uint8_t> const&,
+                             network::RequestOptions const& opts,
+                             network::Headers const&) -> network::FutureRes {
+    EXPECT_TRUE(opts.skipScheduler);
+    return makeNetworkResponse(fuerte::StatusOK, responseJson);
+  };
+  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
+
+  auto result = testee.evaluateManySync(
+      rbac::Backend::PlainUser{.username = "alice", .roles = {}},
+      rbac::Backend::RequestItems{});
+
+  EXPECT_TRUE(result.ok());
+}
+
+TEST(RbacBackendTest,
+     evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
+  auto responseJson = buildAllowResponseJson();
+
+  auto sendRequestMock = [&](network::DestinationId const&, fuerte::RestVerb,
+                             std::string const&,
+                             velocypack::Buffer<uint8_t> const&,
+                             network::RequestOptions const& opts,
+                             network::Headers const&) -> network::FutureRes {
+    EXPECT_TRUE(opts.skipScheduler);
+    return makeNetworkResponse(fuerte::StatusOK, responseJson);
+  };
+  auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
+
+  auto result = testee.evaluateTokenManySync(
+      rbac::Backend::JwtToken{.jwtToken = "my.jwt.token"},
+      rbac::Backend::RequestItems{});
+
+  EXPECT_TRUE(result.ok());
+}
+
+#pragma GCC diagnostic pop
