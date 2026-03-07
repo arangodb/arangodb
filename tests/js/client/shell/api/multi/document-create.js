@@ -78,10 +78,10 @@ function error_handlingSuite () {
 
     test_returns_an_error_if_the_JSON_body_is_corrupted: function() {
       let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
+      db._create(cn);
 
       try {
-        let cmd = `/_api/document/${id._id}`;
+        let cmd = `/_api/document/${cn}`;
         let body = "{ 1 : 2 }";
         let doc = arango.POST_RAW(cmd, body);
         
@@ -99,10 +99,10 @@ function error_handlingSuite () {
 
     test_returns_an_error_if_an_object_sub_attribute_in_the_JSON_body_is_corrupted: function() {
       let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
+      db._create(cn);
 
       try {
-        let cmd = `/_api/document/${id._id}`;
+        let cmd = `/_api/document/${cn}`;
         let body = "{ \"foo\" : { \"bar\" : \"baz\", \"blue\" : moo } }";
         let doc = arango.POST_RAW(cmd, body);
 
@@ -120,9 +120,9 @@ function error_handlingSuite () {
 
     test_returns_an_error_if_an_array_attribute_in_the_JSON_body_is_corrupted: function() {
       let cn = "UnitTestsCollectionBasics";
-      let id = db._create(cn);
+      db._create(cn);
       try {
-        let cmd = `/_api/document/${id._id}`;
+        let cmd = `/_api/document/${cn}`;
         let body = "{ \"foo\" : [ 1, 2, \"bar\", moo ] }";
         let doc = arango.POST_RAW(cmd, body);
 

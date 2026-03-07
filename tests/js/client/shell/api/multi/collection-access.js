@@ -47,7 +47,7 @@ function readingSuite () {
     },
 
     test_finds_the_collection_by_identifier: function() {
-      let cmd = api + "/" + cid._id;
+      let cmd = api + "/" + cn;
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
@@ -59,7 +59,7 @@ function readingSuite () {
     },
 
     test_retrieves_the_collection_s_figures_by_identifier: function() {
-      let cmd = api + "/" + cid._id + "/figures";
+      let cmd = api + "/" + cn + "/figures";
       let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
