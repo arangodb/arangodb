@@ -34,7 +34,9 @@ namespace arangodb::rbac {
 struct Service {
   virtual ~Service() = default;
 
-  struct User {};
+  struct User {
+    std::string jwtToken;
+  };
 
   struct Category {
     struct Databases {};

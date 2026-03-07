@@ -183,6 +183,7 @@ set(ARANGODB_TESTS_SOURCES
   Auth/RbacBackendTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/RbacServiceTest.cpp
+  Auth/RbacServiceImplTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
   Cache/BucketState.cpp
