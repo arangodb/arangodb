@@ -12,13 +12,15 @@ defmodule ToastTest.ResultExporter do
             diagnostics: map() | nil,
             sanitizer_matching: map() | nil,
             crash_matching: map() | nil,
-            log_matching: map() | nil
+            log_matching: map() | nil,
+            failures: [ExUnit.Test.t()]
           }
 
     defstruct diagnostics: nil,
               sanitizer_matching: nil,
               crash_matching: nil,
-              log_matching: nil
+              log_matching: nil,
+              failures: []
   end
 
   @spec export(String.t(), map() | nil, AnalysisData.t() | nil, Path.t()) :: :ok
@@ -37,6 +39,11 @@ defmodule ToastTest.ResultExporter do
 
     xml_path = Path.join(result_dir, "#{suite_name}.xml")
     File.write!(xml_path, JUnitXML.render(results, analysis))
+
+    if analysis.failures != [] do
+      etf_path = Path.join(result_dir, "#{suite_name}.failures.etf")
+      File.write!(etf_path, :erlang.term_to_binary(analysis.failures))
+    end
 
     Logger.info("Results written to #{result_dir}")
     :ok

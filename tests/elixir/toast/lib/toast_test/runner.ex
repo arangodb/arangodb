@@ -198,7 +198,7 @@ defmodule ToastTest.Runner do
         suite_run = %{suite_run | deployment: deployment}
         ToastTest.DeploymentRegistry.put(suite_module, deployment)
 
-        {stats, test_results} =
+        {stats, results} =
           case run_suite_setup(suite_module, deployment) do
             {:ok, extra_context} ->
               ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
@@ -214,7 +214,7 @@ defmodule ToastTest.Runner do
 
         ToastTest.SuiteAnalysis.finalize(
           suite_module,
-          test_results,
+          results,
           diagnostics,
           toast_config.result_dir
         )
@@ -224,8 +224,8 @@ defmodule ToastTest.Runner do
 
       {:error, reason} ->
         Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
-        {stats, test_results} = mark_all_errored_stats(test_modules, reason, global_opts)
-        ToastTest.SuiteAnalysis.finalize(suite_module, test_results, nil, toast_config.result_dir)
+        {stats, results} = mark_all_errored_stats(test_modules, reason, global_opts)
+        ToastTest.SuiteAnalysis.finalize(suite_module, results, nil, toast_config.result_dir)
         cleanup_between_suites()
         %{stats: stats, diagnostics: nil}
     end
@@ -262,15 +262,13 @@ defmodule ToastTest.Runner do
       |> ensure_in_list(ToastTest.CLIFormatter, :front)
       |> ensure_in_list(ToastTest.ResultFormatter, :back)
 
-    formatter_pids =
+    result_formatter_pid =
       for formatter <- formatters do
         {:ok, pid} = Compat.add_formatter(manager, formatter, opts)
-        pid
+        {formatter, pid}
       end
-
-    result_formatter_pid =
-      Enum.zip(formatters, formatter_pids)
-      |> Enum.find_value(fn {mod, pid} -> if mod == ToastTest.ResultFormatter, do: pid end)
+      |> Map.new()
+      |> Map.fetch!(ToastTest.ResultFormatter)
 
     {manager, stats_pid, result_formatter_pid}
   end
@@ -320,13 +318,13 @@ defmodule ToastTest.Runner do
     Compat.suite_finished(config.manager, times_us)
 
     stats = Compat.stats(config.stats_pid)
-    test_results = GenServer.call(config.result_formatter_pid, :get_results)
+    results = ToastTest.ResultFormatter.get_results(config.result_formatter_pid)
     Compat.stop(config.manager)
 
     after_suite_callbacks = Application.fetch_env!(:ex_unit, :after_suite)
     Enum.each(after_suite_callbacks, fn callback -> callback.(stats) end)
 
-    {stats, test_results}
+    {stats, results}
   end
 
   defp run_suite_modules(config, test_modules) do
@@ -456,9 +454,9 @@ defmodule ToastTest.Runner do
     times_us = %{async: nil, load: nil, run: 0}
     Compat.suite_finished(manager, times_us)
     stats = Compat.stats(stats_pid)
-    test_results = GenServer.call(result_formatter_pid, :get_results)
+    results = ToastTest.ResultFormatter.get_results(result_formatter_pid)
     Compat.stop(manager)
-    {stats, test_results}
+    {stats, results}
   end
 
   defp emit_errored_module(manager, module, reason) do

@@ -35,7 +35,6 @@ defmodule ToastTest.CLIFormatterTest do
                total: 0
              }
 
-      assert state.failures == []
       assert state.colors_enabled == false
     end
 
@@ -242,7 +241,6 @@ defmodule ToastTest.CLIFormatterTest do
 
       assert_received {:state, new_state}
       assert new_state.counters.failed == 1
-      assert length(new_state.failures) == 1
       assert new_state.failure_counter == 1
     end
   end
@@ -484,8 +482,7 @@ defmodule ToastTest.CLIFormatterTest do
       state = %{
         init_state()
         | counters: %{passed: 2, failed: 1, skipped: 0, excluded: 0, invalid: 0, total: 3},
-          suite_start_time: System.monotonic_time(:millisecond) - 1000,
-          failures: [make_test(%{name: :"test fails", state: {:failed, []}, time: 100_000})]
+          suite_start_time: System.monotonic_time(:millisecond) - 1000
       }
 
       output =
@@ -496,7 +493,6 @@ defmodule ToastTest.CLIFormatterTest do
 
       assert output =~ "FAILED"
       assert output =~ "1 failed"
-      assert output =~ "TEST FAILURES"
     end
 
     test "includes skipped count when present" do
@@ -513,6 +509,36 @@ defmodule ToastTest.CLIFormatterTest do
         end)
 
       assert output =~ "1 skipped"
+    end
+  end
+
+  describe "print_failure_summary/1" do
+    test "prints nothing for empty list" do
+      output = capture_io(fn -> CLIFormatter.print_failure_summary([]) end)
+      assert output == ""
+    end
+
+    test "prints failure banner and details" do
+      failed_test =
+        make_test(%{
+          name: :"test something fails",
+          state:
+            {:failed,
+             [
+               {:error,
+                %ExUnit.AssertionError{
+                  message: "Expected true, got false",
+                  expr: {:assert, [], [false]},
+                  left: false,
+                  right: :ex_unit_no_meaningful_value
+                }, []}
+             ]},
+          time: 100_000
+        })
+
+      output = capture_io(fn -> CLIFormatter.print_failure_summary([failed_test]) end)
+      assert output =~ "TEST FAILURES"
+      assert output =~ "something fails"
     end
   end
 

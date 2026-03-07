@@ -34,7 +34,6 @@ defmodule ToastTest.CLIFormatter do
       module_skipped_count: 0,
       module_skipped_reason: nil,
       # Suite-level stats
-      failures: [],
       failure_counter: 0,
       counters: %{passed: 0, failed: 0, skipped: 0, excluded: 0, invalid: 0, total: 0},
       suite_start_time: System.monotonic_time(:millisecond)
@@ -83,7 +82,7 @@ defmodule ToastTest.CLIFormatter do
     state = update_counters(state, test)
     state = track_abort_skipped(state, test)
     print_test_result(test, state)
-    state = maybe_record_failure(state, test)
+    state = count_failure(state, test)
     {:noreply, state}
   end
 
@@ -99,15 +98,6 @@ defmodule ToastTest.CLIFormatter do
 
   def handle_cast({:suite_finished, _times_us}, state) do
     print_session_summary(state)
-
-    # When aborted due to crash, skip the failure summary here —
-    # the after_suite CRASH ATTRIBUTION section handles it with better context.
-    if ToastTest.Runner.aborted?() do
-      :ok
-    else
-      print_failure_summary(state)
-    end
-
     {:noreply, state}
   end
 
@@ -304,9 +294,18 @@ defmodule ToastTest.CLIFormatter do
     |> Toast.Utils.compact()
   end
 
-  defp print_failure_summary(%{failures: []}), do: :ok
+  @doc """
+  Print a failure summary for the given list of failed `%ExUnit.Test{}` structs.
 
-  defp print_failure_summary(state) do
+  Called by SuiteAnalysis to position the failure summary within the
+  severity-ordered diagnostics output.
+  """
+  @spec print_failure_summary([ExUnit.Test.t()]) :: :ok
+  def print_failure_summary([]), do: :ok
+
+  def print_failure_summary(failures) do
+    colors_enabled = IO.ANSI.enabled?()
+
     colorize(
       [
         "\n",
@@ -315,15 +314,23 @@ defmodule ToastTest.CLIFormatter do
         String.duplicate("=", 80)
       ],
       :red,
-      state
+      colors_enabled
     )
     |> IO.puts()
 
-    state.failures
-    |> Enum.reverse()
+    failures
     |> Enum.with_index(1)
-    |> Enum.each(fn {%ExUnit.Test{state: {:failed, failures}} = test, idx} ->
-      print_failure_details(test, failures, %{state | failure_counter: idx - 1})
+    |> Enum.each(fn {%ExUnit.Test{state: {:failed, failure_details}} = test, idx} ->
+      formatted =
+        ExUnit.Formatter.format_test_failure(
+          test,
+          failure_details,
+          idx,
+          :infinity,
+          &formatter_cb/2
+        )
+
+      IO.puts("\n#{formatted}")
     end)
   end
 
@@ -361,11 +368,11 @@ defmodule ToastTest.CLIFormatter do
 
   defp abort_skipped?(_test), do: false
 
-  defp maybe_record_failure(state, %ExUnit.Test{state: {:failed, _}} = test) do
-    %{state | failures: [test | state.failures], failure_counter: state.failure_counter + 1}
+  defp count_failure(state, %ExUnit.Test{state: {:failed, _}}) do
+    %{state | failure_counter: state.failure_counter + 1}
   end
 
-  defp maybe_record_failure(state, _test), do: state
+  defp count_failure(state, _test), do: state
 
   # --- Helpers ---
 

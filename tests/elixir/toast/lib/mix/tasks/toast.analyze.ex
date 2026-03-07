@@ -39,24 +39,48 @@ defmodule Mix.Tasks.Toast.Analyze do
       Mix.raise("Error: file not found: #{file_path}")
     end
 
+    if opts[:failures] do
+      format_failures(file_path)
+    else
+      results = decode_json!(file_path)
+      output = format_output(results, opts)
+      Mix.shell().info(output)
+    end
+  end
+
+  defp format_failures(json_path) do
+    etf_path = derive_etf_path(json_path)
+
+    if File.exists?(etf_path) do
+      failures =
+        etf_path
+        |> File.read!()
+        |> :erlang.binary_to_term()
+
+      ToastTest.CLIFormatter.print_failure_summary(failures)
+    else
+      results = decode_json!(json_path)
+      Mix.shell().info(Toast.Analysis.Failures.format(results))
+    end
+  end
+
+  defp derive_etf_path(json_path) do
+    base = Path.rootname(json_path)
+    Path.join(Path.dirname(json_path), Path.basename(base) <> ".failures.etf")
+  end
+
+  defp decode_json!(file_path) do
     content = File.read!(file_path)
 
-    results =
-      try do
-        :json.decode(content)
-      rescue
-        _ -> Mix.raise("Error: invalid JSON in #{file_path}")
-      end
-
-    output = format_output(results, opts)
-    Mix.shell().info(output)
+    try do
+      :json.decode(content)
+    rescue
+      _ -> Mix.raise("Error: invalid JSON in #{file_path}")
+    end
   end
 
   defp format_output(results, opts) do
     cond do
-      opts[:failures] ->
-        Toast.Analysis.Failures.format(results)
-
       opts[:crashes] ->
         Toast.Analysis.Crashes.format(results)
 

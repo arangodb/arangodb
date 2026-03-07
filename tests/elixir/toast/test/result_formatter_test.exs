@@ -267,6 +267,38 @@ defmodule ToastTest.ResultFormatterTest do
     end
   end
 
+  describe "failures in results" do
+    test "results include raw ExUnit.Test structs for failed tests" do
+      {:ok, state} = ResultFormatter.init([])
+
+      passed = make_test(%{name: :"test passes", time: 10_000})
+      failed = make_test(%{name: :"test fails", state: {:failed, []}, time: 100_000})
+
+      {:noreply, state} = ResultFormatter.handle_cast({:test_finished, passed}, state)
+      {:noreply, state} = ResultFormatter.handle_cast({:test_finished, failed}, state)
+
+      {:noreply, state} =
+        ResultFormatter.handle_cast({:suite_finished, %{async: 0, sync: 110_000}}, state)
+
+      {:reply, results, _} = ResultFormatter.handle_call(:get_results, self(), state)
+      assert length(results.failures) == 1
+      assert hd(results.failures).name == :"test fails"
+    end
+
+    test "results have empty failures when no tests failed" do
+      {:ok, state} = ResultFormatter.init([])
+      passed = make_test(%{name: :"test passes", time: 10_000})
+
+      {:noreply, state} = ResultFormatter.handle_cast({:test_finished, passed}, state)
+
+      {:noreply, state} =
+        ResultFormatter.handle_cast({:suite_finished, %{async: 0, sync: 10_000}}, state)
+
+      {:reply, results, _} = ResultFormatter.handle_call(:get_results, self(), state)
+      assert results.failures == []
+    end
+  end
+
   describe "handle_cast with unhandled messages" do
     test "ignores unknown messages" do
       {:ok, state} = ResultFormatter.init([])

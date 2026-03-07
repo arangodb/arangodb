@@ -3,17 +3,59 @@ defmodule ToastTest.ResultFormatter do
 
   use GenServer
 
+  defmodule Results do
+    @moduledoc "Collected test results from a suite run."
+
+    @type t :: %__MODULE__{
+            started_at: DateTime.t(),
+            finished_at: DateTime.t() | nil,
+            times_us: map() | nil,
+            modules: %{module() => %{tests: [ToastTest.TestResult.t()]}},
+            failures: [ExUnit.Test.t()]
+          }
+
+    @enforce_keys [:started_at]
+    defstruct [
+      :started_at,
+      :finished_at,
+      :times_us,
+      modules: %{},
+      failures: []
+    ]
+  end
+
+  # --- State ---
+
+  defmodule State do
+    @moduledoc false
+
+    @type t :: %__MODULE__{
+            suite_started_at: DateTime.t(),
+            results: Results.t() | nil,
+            modules: %{module() => [ToastTest.TestResult.t()]},
+            test_start_times: %{{module(), atom()} => DateTime.t()},
+            failures: [ExUnit.Test.t()],
+            config: keyword()
+          }
+
+    defstruct [
+      :suite_started_at,
+      :results,
+      modules: %{},
+      test_start_times: %{},
+      failures: [],
+      config: []
+    ]
+  end
+
   # --- Client API ---
+
+  @spec get_results(pid()) :: Results.t() | nil
+  def get_results(pid), do: GenServer.call(pid, :get_results)
 
   @doc false
   def init(opts) do
-    {:ok,
-     %{
-       suite_started_at: DateTime.utc_now(),
-       modules: %{},
-       test_start_times: %{},
-       config: opts
-     }}
+    {:ok, %State{suite_started_at: DateTime.utc_now(), config: opts}}
   end
 
   # --- Event handling ---
@@ -25,7 +67,7 @@ defmodule ToastTest.ResultFormatter do
 
   def handle_cast({:test_started, %ExUnit.Test{} = test}, state) do
     key = {test.module, test.name}
-    {:noreply, put_in(state, [:test_start_times, key], DateTime.utc_now())}
+    {:noreply, put_in(state.test_start_times[key], DateTime.utc_now())}
   end
 
   def handle_cast({:test_finished, %ExUnit.Test{} = test}, state) do
@@ -33,7 +75,8 @@ defmodule ToastTest.ResultFormatter do
     started_at = state.test_start_times[key]
     result = extract_test_result(test, started_at)
     modules = Map.update(state.modules, test.module, [result], &[result | &1])
-    {:noreply, %{state | modules: modules}}
+    failures = record_failure(state.failures, test)
+    {:noreply, %{state | modules: modules, failures: failures}}
   end
 
   def handle_cast({:suite_finished, times_us}, state) do
@@ -51,14 +94,15 @@ defmodule ToastTest.ResultFormatter do
          }}
       end)
 
-    results = %{
+    results = %Results{
       started_at: state.suite_started_at,
       finished_at: DateTime.utc_now(),
       times_us: times_us,
-      modules: modules
+      modules: modules,
+      failures: Enum.reverse(state.failures)
     }
 
-    {:noreply, Map.put(state, :results, results)}
+    {:noreply, %{state | results: results}}
   end
 
   def handle_cast(_msg, state) do
@@ -66,7 +110,7 @@ defmodule ToastTest.ResultFormatter do
   end
 
   def handle_call(:get_results, _from, state) do
-    {:reply, state[:results], state}
+    {:reply, state.results, state}
   end
 
   @doc "Flatten hierarchical module results to a flat test list."
@@ -152,4 +196,7 @@ defmodule ToastTest.ResultFormatter do
       stacktrace: Exception.format_stacktrace(stack)
     }
   end
+
+  defp record_failure(failures, %ExUnit.Test{state: {:failed, _}} = test), do: [test | failures]
+  defp record_failure(failures, _test), do: failures
 end
