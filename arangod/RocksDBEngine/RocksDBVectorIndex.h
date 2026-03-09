@@ -142,7 +142,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// @brief Try to build the index if the training threshold is reached.
   void tryBuilding();
 
-  /// @brief Clear trained data and FAISS index on build failure so that
+  /// @brief Clear trained data on build failure so that
   /// stale training state is not accidentally persisted.
   void resetTrainingState() noexcept;
 

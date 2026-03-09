@@ -77,7 +77,7 @@ class VectorIndexTrainer {
 
   /// Restore a FAISS IndexIVF from previously serialized trained data.
   /// Returns the index along with resolved nLists and defaultNProbe values.
-  /// trainedData in the result is std::nullopt (caller already has it).
+  /// trainedData in the result is default-constructed (caller already has it).
   static TrainingResult restoreFromTrainedData(TrainedData const& data);
 
   /// Create a fresh (untrained) FAISS IndexIVF from the definition.

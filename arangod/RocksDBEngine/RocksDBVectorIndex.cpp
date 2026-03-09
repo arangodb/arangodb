@@ -145,7 +145,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     _documentCount.store(dc.getInt());
   }
   // Below 1000 documents training is not worth the effort nor having a index
-  // 39 is the minumum number of documents to train the vector index, but that
+  // 39 is the minimum number of documents to train the vector index, but that
   // does not mean it cannot be achieved with less documents.
   _trainingThreshold = std::max<std::int64_t>(_definition.nLists * 39, 1000);
 
@@ -527,13 +527,6 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  if (auto const state = _trainingState.load();
-      state == VectorIndexTrainingState::kUntrained ||
-      state == VectorIndexTrainingState::kTraining) {
-    _documentCount.fetch_sub(1);
-    return {};
-  }
-
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
@@ -541,6 +534,13 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
       return {};
     }
     return res;
+  }
+
+  if (auto const state = _trainingState.load();
+      state == VectorIndexTrainingState::kUntrained ||
+      state == VectorIndexTrainingState::kTraining) {
+    _documentCount.fetch_sub(1);
+    return {};
   }
 
   if (_definition.metric == SimilarityMetric::kCosine) {
@@ -777,6 +777,10 @@ Result RocksDBVectorIndex::ingestVectors(
 
         documentIterator->Next();
         if (batch->docIds.size() == documentPerBatch) {
+          if (_definition.metric == SimilarityMetric::kCosine) {
+            faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                  batch->vectors.data());
+          }
           auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
           counters.readProduceBlocked += blocked;
 
@@ -787,11 +791,11 @@ Result RocksDBVectorIndex::ingestVectors(
         }
       }
 
-      if (_definition.metric == SimilarityMetric::kCosine) {
-        faiss::fvec_renorm_L2(dim, batch->docIds.size(), batch->vectors.data());
-      }
-
-      if (batch) {
+      if (batch && !batch->docIds.empty()) {
+        if (_definition.metric == SimilarityMetric::kCosine) {
+          faiss::fvec_renorm_L2(dim, batch->docIds.size(),
+                                batch->vectors.data());
+        }
         std::ignore = documentChannel.push(std::move(batch));
       }
     });
