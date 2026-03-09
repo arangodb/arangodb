@@ -105,7 +105,7 @@ arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client,
                            double& uptime) {
   arangodb::Result result;
 
-  std::string const url = "/_admin/statistics";
+  std::string const url = "/_admin/metrics";
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
   result = ::checkHttpResponse(client, response);
@@ -113,37 +113,46 @@ arangodb::Result getUptime(arangodb::httpclient::SimpleHttpClient& client,
     return result;
   }
 
-  // extract vpack body from response
-  std::shared_ptr<VPackBuilder> parsedBody;
-  try {
-    parsedBody = response->getBodyVelocyPack();
-  } catch (...) {
-    result.reset(::ErrorMalformedJsonResponse);
-    return result;
+  // Metrics API returns Prometheus text; parse uptime from it
+  std::string const body = response->getBody().toString();
+  std::istringstream iss(body);
+  std::string line;
+  constexpr std::string_view metricName =
+      "arangodb_server_statistics_server_uptime_total";
+
+  while (std::getline(iss, line)) {
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+    if (line.find(metricName) != 0) {
+      continue;
+    }
+    // Value is the last token on the line (after optional labels and space)
+    std::size_t end = line.find_last_not_of(" \t\r\n");
+    if (end == std::string::npos) {
+      continue;
+    }
+    std::size_t lastSpace = line.rfind(' ', end + 1);
+    if (lastSpace == std::string::npos) {
+      lastSpace = line.rfind('\t', end + 1);
+    }
+    if (lastSpace == std::string::npos) {
+      continue;
+    }
+    std::string valueStr = line.substr(lastSpace + 1, end - lastSpace);
+    try {
+      uptime = std::stod(valueStr);
+      return result;
+    } catch (...) {
+      result.reset(TRI_ERROR_INTERNAL,
+                   "failed to parse uptime from metrics response");
+      return result;
+    }
   }
 
-  VPackSlice const resBody = parsedBody->slice();
-  if (!resBody.isObject()) {
-    result.reset(TRI_ERROR_INTERNAL, "expected reponse to be an object");
-    return result;
-  }
-  TRI_ASSERT(resBody.isObject());
-
-  VPackSlice const serverObject = resBody.get("server");
-  if (!serverObject.isObject()) {
-    result.reset(TRI_ERROR_INTERNAL, "expected 'server' to be an object");
-    return result;
-  }
-  TRI_ASSERT(serverObject.isObject());
-
-  VPackSlice const uptimeSlice = serverObject.get("uptime");
-  if (!uptimeSlice.isNumber()) {
-    result.reset(TRI_ERROR_INTERNAL, "expected 'server.uptime' to be numeric");
-    return result;
-  }
-  TRI_ASSERT(uptimeSlice.isNumber());
-  uptime = uptimeSlice.getNumericValue<double>();
-
+  result.reset(TRI_ERROR_INTERNAL,
+               "arangodb_server_statistics_server_uptime_total not found in "
+               "metrics response");
   return result;
 }
 

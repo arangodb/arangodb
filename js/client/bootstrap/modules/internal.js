@@ -135,24 +135,105 @@
   // / @brief processStatistics
   // //////////////////////////////////////////////////////////////////////////////
 
+  const SERVER_METRIC_NAMES = [
+    'arangodb_server_statistics_server_uptime_total',
+    'arangodb_server_statistics_physical_memory',
+    'arangodb_transactions_started_total',
+    'arangodb_transactions_aborted_total',
+    'arangodb_transactions_committed_total',
+    'arangodb_intermediate_commits_total',
+    'arangodb_read_transactions_total',
+    'arangodb_dirty_read_transactions_total'
+  ];
+
+  const PROCESS_METRIC_NAMES = [
+    'arangodb_process_statistics_minor_page_faults_total',
+    'arangodb_process_statistics_major_page_faults_total',
+    'arangodb_process_statistics_user_time',
+    'arangodb_process_statistics_system_time',
+    'arangodb_process_statistics_number_of_threads',
+    'arangodb_process_statistics_resident_set_size',
+    'arangodb_process_statistics_resident_set_size_percent',
+    'arangodb_process_statistics_virtual_memory_size'
+  ];
+  
+  // Parse Prometheus-format metrics text. Returns numeric value for a single metric
+  // (sums all matching lines), or undefined if not found. Reuses same pattern as test-helper getMetricName.
+  function parsePrometheusMetric(text, metricName) {
+    const re = new RegExp('^' + metricName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const lines = text.split('\n')
+      .filter((line) => line.length > 0 && line[0] !== '#')
+      .filter((line) => re.test(line));
+    if (lines.length === 0) {
+      return undefined;
+    }
+    let sum = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/\s+([0-9.eE+-]+)\s*$/);
+      if (m) {
+        sum += Number(m[1]);
+      }
+    }
+    return sum;
+  }
+
+  // For external use by instance-manager.js, clusterstats.js
+  exports.parsePrometheusMetric = parsePrometheusMetric;
+
+  // Fetch metrics text once and return an object { metricName: value } for requested names.
+  function getMetricsFromServer(metricNames) {
+    const res = exports.arango.GET_RAW('/_admin/metrics');
+    if (res.code !== 200) {
+      const arangosh = require('@arangodb/arangosh');
+      arangosh.checkRequestResult({ error: true, code: res.code });
+    }
+    const text = typeof res.body === 'string' ? res.body : String(res.body);
+    const out = {};
+    for (let i = 0; i < metricNames.length; i++) {
+      const name = metricNames[i];
+      const val = parsePrometheusMetric(text, name);
+      if (val !== undefined) {
+        out[name] = val;
+      }
+    }
+    return out;
+  }
+
+
   if (global.SYS_PROCESS_STATISTICS) {
     exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
     delete global.SYS_PROCESS_STATISTICS;
   }
 
   exports.processStatistics = function () {
-    const arangosh = require('@arangodb/arangosh');
-    let requestResult = exports.arango.GET('/_admin/statistics');
-    arangosh.checkRequestResult(requestResult);
-    return requestResult.system;
+    const metrics = getMetricsFromServer(PROCESS_METRIC_NAMES);
+    return {
+      minorPageFaults: metrics.arangodb_process_statistics_minor_page_faults_total ?? 0,
+      majorPageFaults: metrics.arangodb_process_statistics_major_page_faults_total ?? 0,
+      userTime: metrics.arangodb_process_statistics_user_time ?? 0,
+      systemTime: metrics.arangodb_process_statistics_system_time ?? 0,
+      numberOfThreads: metrics.arangodb_process_statistics_number_of_threads ?? 0,
+      residentSize: metrics.arangodb_process_statistics_resident_set_size ?? 0,
+      residentSizePercent: metrics.arangodb_process_statistics_resident_set_size_percent ?? 0,
+      virtualSize: metrics.arangodb_process_statistics_virtual_memory_size ?? 0
+    };
   };
   
   // / @brief serverStatistics
   exports.serverStatistics = function () {
-    const arangosh = require('@arangodb/arangosh');
-    let requestResult = exports.arango.GET('/_admin/statistics');
-    arangosh.checkRequestResult(requestResult);
-    return requestResult.server;
+    const metrics = getMetricsFromServer(SERVER_METRIC_NAMES);
+    return {
+      uptime: metrics.arangodb_server_statistics_server_uptime_total ?? 0,
+      physicalMemory: metrics.arangodb_server_statistics_physical_memory ?? 0,
+      transactions: {
+        started: metrics.arangodb_transactions_started_total ?? 0,
+        aborted: metrics.arangodb_transactions_aborted_total ?? 0,
+        committed: metrics.arangodb_transactions_committed_total ?? 0,
+        intermediateCommits: metrics.arangodb_intermediate_commits_total ?? 0,
+        readOnly: metrics.arangodb_read_transactions_total ?? 0,
+        dirtyReadOnly: metrics.arangodb_dirty_read_transactions_total ?? 0
+      }
+    };
   };
 
   // / @brief ttlStatistics
