@@ -40,7 +40,6 @@
 #include "Logger/LogMacros.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
 #include <velocypack/Builder.h>
@@ -63,11 +62,7 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(
 
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::initResultList() -> ResultList {
-  if constexpr (std::is_same_v<Step, enterprise::SmartGraphStep>) {
-    return ResultList{_provider};
-  } else {
-    return ResultList{};
-  }
+  return ResultList{};
 }
 
 template<class Configuration>
@@ -140,17 +135,12 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   auto posPrevious = _interior.append(std::move(value));
   auto& step = _interior.getStepReference(posPrevious);
 
-  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
-    // TODO check if any Step besides SmartGraphStep actually has the
-    // isResponsible Implemented.
-    // only explore here if we're responsible
-    if (!_provider.isResponsible(step)) {
-      // This server cannot decide on this specific vertex.
-      // Include it in results, to report back that we
-      // found this undecided path
-      _results.emplace_back(step);
-      return;
-    }
+  if (!_provider.isResponsible(step)) {
+    // This server cannot decide on this specific vertex.
+    // Include it in results, to report back that we
+    // found this undecided path
+    _results.emplace_back(step);
+    return;
   }
   ValidationResult res = _validator.validatePath(step);
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
@@ -453,8 +443,6 @@ MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     SingleServerProvider<SingleServerProviderStep>)
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(ClusterProvider<ClusterProviderStep>)
 #ifdef USE_ENTERPRISE
-MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
-    SingleServerProvider<graph::enterprise::SmartGraphStep>)
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     graph::enterprise::SmartGraphProvider<graph::ClusterProviderStep>)
 #endif

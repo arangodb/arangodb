@@ -28,10 +28,6 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#endif
-
 using namespace arangodb::graph;
 
 template<class Step>
@@ -137,8 +133,3 @@ auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
 
 template struct arangodb::graph::SingleServerNeighbourProvider<
     SingleServerProviderStep>;
-
-#ifdef USE_ENTERPRISE
-template struct arangodb::graph::SingleServerNeighbourProvider<
-    enterprise::SmartGraphStep>;
-#endif

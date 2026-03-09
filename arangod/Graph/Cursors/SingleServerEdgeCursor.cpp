@@ -43,10 +43,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -471,8 +467,3 @@ bool SingleServerEdgeCursor<StepType>::hasDepthSpecificLookup(
 
 template class arangodb::graph::SingleServerEdgeCursor<
     SingleServerProviderStep>;
-
-#ifdef USE_ENTERPRISE
-template class arangodb::graph::SingleServerEdgeCursor<
-    enterprise::SmartGraphStep>;
-#endif

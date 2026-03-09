@@ -31,7 +31,6 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
@@ -39,10 +38,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-
-namespace arangodb::graph::enterprise {
-class SmartGraphStep;
-}  // namespace arangodb::graph::enterprise
 
 template<class ProviderType, class PathStoreType, class Step>
 SingleProviderPathResult<ProviderType, PathStoreType,
@@ -189,13 +184,6 @@ template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::SingleServerProvider<SingleServerProviderStep>,
     ::arangodb::graph::PathStore<SingleServerProviderStep>,
     SingleServerProviderStep>;
-
-#ifdef USE_ENTERPRISE
-template class ::arangodb::graph::SingleProviderPathResult<
-    ::arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>,
-    ::arangodb::graph::PathStore<enterprise::SmartGraphStep>,
-    enterprise::SmartGraphStep>;
-#endif
 
 // TODO: check if cluster is needed here
 /* ClusterProvider Section */

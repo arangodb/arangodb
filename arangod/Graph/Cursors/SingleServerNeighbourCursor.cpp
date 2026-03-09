@@ -29,10 +29,6 @@
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#endif
-
 using namespace arangodb::graph;
 
 template<class Step>
@@ -107,8 +103,3 @@ auto SingleServerNeighbourCursor<Step>::hasMore() -> bool {
 
 template struct arangodb::graph::SingleServerNeighbourCursor<
     SingleServerProviderStep>;
-
-#ifdef USE_ENTERPRISE
-template struct arangodb::graph::SingleServerNeighbourCursor<
-    enterprise::SmartGraphStep>;
-#endif

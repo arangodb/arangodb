@@ -38,10 +38,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/QueryRegistryFeature.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#endif
-
 #include <vector>
 
 using namespace arangodb;
@@ -311,8 +307,3 @@ bool SingleServerProvider<StepType>::hasDepthSpecificLookup(
 }
 
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;
-
-#ifdef USE_ENTERPRISE
-template class arangodb::graph::SingleServerProvider<
-    enterprise::SmartGraphStep>;
-#endif

@@ -30,7 +30,6 @@
 #include "Graph/Types/ValidationResult.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
@@ -205,26 +204,7 @@ template void PathStore<SingleServerProviderStep>::reverseBuildPath<
     PathResult<SingleServerProvider<SingleServerProviderStep>,
                SingleServerProviderStep>& path) const;
 
-#ifdef USE_ENTERPRISE
-template class PathStore<enterprise::SmartGraphStep>;
-
-template void PathStore<enterprise::SmartGraphStep>::buildPath<
-    PathResult<SingleServerProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>>(
-    enterprise::SmartGraphStep const& vertex,
-    PathResult<SingleServerProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>& path) const;
-
-template void PathStore<enterprise::SmartGraphStep>::reverseBuildPath<
-    SingleServerProvider<enterprise::SmartGraphStep>>(
-    enterprise::SmartGraphStep const& vertex,
-    PathResult<SingleServerProvider<enterprise::SmartGraphStep>,
-               enterprise::SmartGraphStep>& path) const;
-
-#endif
-
 /* ClusterProvider Section */
-
 template class PathStore<ClusterProviderStep>;
 template void PathStore<ClusterProviderStep>::buildPath<
     PathResult<ClusterProvider<ClusterProviderStep>, ClusterProviderStep>>(

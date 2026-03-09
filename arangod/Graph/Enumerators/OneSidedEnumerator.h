@@ -48,7 +48,6 @@ class ValidationResult;
 struct VertexDescription;
 
 namespace enterprise {
-class SmartGraphStep;
 template<class Provider>
 struct SmartGraphResponse;
 }  // namespace enterprise
@@ -66,9 +65,7 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
-  using ResultList = typename std::conditional_t<
-      std::is_same_v<Step, enterprise::SmartGraphStep>,
-      enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;
+  using ResultList = std::vector<Step>;
   using GraphOptions = graph::OneSidedEnumeratorOptions;
 
  public:
@@ -139,8 +136,6 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   bool skipPath() override;
   auto destroyEngines() -> void override;
 
-  template<typename =
-               std::enable_if<std::is_same_v<Step, enterprise::SmartGraphStep>>>
   auto getSmartSearch() -> ResultPathType const&;
 
   auto prepareIndexExpressions(aql::Ast* ast) -> void override;

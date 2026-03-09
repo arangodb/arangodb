@@ -34,7 +34,6 @@
 #include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 
 // For additional information, please read PathValidatorEE.cpp
@@ -510,8 +509,8 @@ auto PathValidator<Provider, PathStore, vertexUniqueness, edgeUniqueness>::
 //    VertexUniqueness    EdgeUniqueness
 //    PATH                PATH
 //    GLOBAL              PATH
-// For the enterprise version, we need SingleServerProvider<SmartGraphStep>
-// and SmartGraphProvider<ClusterProviderStep>, but only for the
+// For the enterprise version, we need and
+// SmartGraphProvider<ClusterProviderStep>, but only for the
 // OneSidedEnumerator, since no logic for the TwoSidedEnumerator and
 // smart graphs has been implemented yet.
 //
@@ -538,31 +537,7 @@ template class PathValidator<
     SingleProvider, PathStore<SingleServerProviderStep>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
 
-#ifdef USE_ENTERPRISE
-template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<enterprise::SmartGraphStep>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::NONE>;
-
-template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<enterprise::SmartGraphStep>,
-                             VertexUniquenessLevel::NONE,
-                             EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<enterprise::SmartGraphStep>,
-                             VertexUniquenessLevel::PATH,
-                             EdgeUniquenessLevel::PATH>;
-
-template class PathValidator<SingleServerProvider<enterprise::SmartGraphStep>,
-                             PathStore<enterprise::SmartGraphStep>,
-                             VertexUniquenessLevel::GLOBAL,
-                             EdgeUniquenessLevel::PATH>;
-
-#endif
-
 /* ClusterProvider Section */
-
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 template class PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
