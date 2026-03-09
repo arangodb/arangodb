@@ -25,19 +25,9 @@ defmodule Toast.Diagnostics.Summary do
       sections =
         entries
         |> Enum.sort_by(fn {_diag, server} -> server.id end)
-        |> Enum.map_join("\n\n", &format_server_crash/1)
+        |> Enum.map(&format_server_crash/1)
 
-      IO.iodata_to_binary([
-        "\n",
-        IO.ANSI.red(),
-        @separator,
-        "\n CRASHED SERVERS\n",
-        @separator,
-        IO.ANSI.reset(),
-        "\n\n",
-        sections,
-        "\n"
-      ])
+      wrap_attribution_banner("CRASHED SERVERS", :red, sections)
     end
   end
 
@@ -142,7 +132,7 @@ defmodule Toast.Diagnostics.Summary do
         format_unmatched_section(unmatched, &format_crash_entry/1) ++
         format_crash_affected(crash_affected_tests)
 
-    wrap_attribution_banner("CRASH ATTRIBUTION", IO.ANSI.red(), sections)
+    wrap_attribution_banner("CRASH ATTRIBUTION", :red, sections)
   end
 
   def format_crash_attribution(_, _), do: nil
@@ -162,7 +152,7 @@ defmodule Toast.Diagnostics.Summary do
       format_matched_sections(matched, :error, &format_sanitizer_entry/1) ++
         format_unmatched_section(unmatched, &format_sanitizer_entry/1)
 
-    wrap_attribution_banner("SANITIZER ISSUES", IO.ANSI.yellow(), sections)
+    wrap_attribution_banner("SANITIZER ISSUES", :yellow, sections)
   end
 
   def format_sanitizer_issues(_), do: nil
@@ -182,7 +172,7 @@ defmodule Toast.Diagnostics.Summary do
       format_matched_sections(matched, :log, &format_log_entry/1) ++
         format_unmatched_section(unmatched, &format_log_entry/1)
 
-    wrap_attribution_banner("LOG ISSUES", IO.ANSI.yellow(), sections)
+    wrap_attribution_banner("LOG ISSUES", :yellow, sections)
   end
 
   def format_log_issues(_), do: nil
@@ -191,12 +181,7 @@ defmodule Toast.Diagnostics.Summary do
 
   defp wrap_attribution_banner(title, color, sections) do
     IO.iodata_to_binary([
-      "\n",
-      color,
-      @separator,
-      "\n #{title}\n",
-      @separator,
-      IO.ANSI.reset(),
+      IO.ANSI.format([String.to_atom("#{color}_background"), :bright, "\n    ", title, :reset]),
       "\n\n",
       Enum.join(sections, "\n\n"),
       "\n"
