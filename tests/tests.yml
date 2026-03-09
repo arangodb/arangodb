@@ -9,6 +9,7 @@
       - BackupAuthNoSysTests
       - BackupAuthSysTests
       - BackupNoAuthSysTests
+      - BackupNoAuthNoSysTests
       - arangosh
       - arangobench
       - permissions
@@ -458,13 +459,17 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
+      extraArgs:vector-index: true
     suites:
       - hot_backup
       - hot_backup_views
       - hot_backup_aql
       - hot_backup_smart_graphs
       - hot_backup_el_cheapo
+      - BackupAuthNoSysTests
+      - BackupAuthSysTests
+      - BackupNoAuthSysTests
+      - BackupNoAuthNoSysTests
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 - server_parameters:
