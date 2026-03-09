@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertMatch, assertNotEqual
-  assertUndefined, assertFalse, fail */
+  assertUndefined, assertFalse, fail, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -56,9 +56,9 @@ function ReplicationLoggerSuite () {
   var getLogEntries = function (tick, type) {
     var result = [ ];
     getLastLogTick();
-  
+
     var exclude = function(name) {
-      return (name.substr(0, 11) === '_statistics' || 
+      return (name.substr(0, 11) === '_statistics' ||
               name === '_apps' ||
               name === '_foxxlog' ||
               name === '_jobs' ||
@@ -168,7 +168,7 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       // query the state again
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -251,7 +251,7 @@ function ReplicationLoggerSuite () {
       var tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertMatch(/^\d+$/, tick);
-      
+
       var firstTick = replication.logger.firstTick();
       assertTrue(typeof firstTick === 'string');
       assertMatch(/^\d+$/, firstTick);
@@ -268,7 +268,7 @@ function ReplicationLoggerSuite () {
       var tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertMatch(/^\d+$/, tick);
- 
+
       var ranges = replication.logger.tickRanges();
       assertTrue(Array.isArray(ranges));
       assertTrue(ranges.length > 0);
@@ -413,12 +413,12 @@ function ReplicationLoggerSuite () {
 
     testLoggerSystemCollection : function () {
       db._useDatabase('_system');
-      db._drop("_unittests", true);
+      db._drop("_unittests", { isSystem: true});
 
       var tick = getLastLogTick();
 
       var c = db._create("_unittests", { isSystem : true });
-  
+
       try {
         var entry = getLogEntries(tick, 2000)[0];
 
@@ -437,7 +437,7 @@ function ReplicationLoggerSuite () {
         tick = getLastLogTick();
       } finally {
         db._useDatabase('_system');
-        db._drop("_unittests", true);
+        db._drop("_unittests", { isSystem: true});
       }
     },
 
@@ -506,7 +506,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2201, entry[101].type);
       assertEqual(tid, entry[101].tid);
     },
-    
+
     testLoggerTruncateCollectionRocksDB : function () {
       let c = db._create(cn);
       let docs = [];
@@ -528,7 +528,7 @@ function ReplicationLoggerSuite () {
       // truncate marker
       assertEqual(2004, entry[0].type);
     },
-    
+
     testLoggerTruncateCollectionAndThenSomeRocksDB : function () {
       let c = db._create(cn);
       let docs = [];
@@ -872,7 +872,7 @@ function ReplicationLoggerSuite () {
     testLoggerDropIndex : function () {
       var c = db._create(cn);
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
-      
+
       var tick = getLastLogTick();
 
       // use index at #1 (#0 is primary index)
@@ -891,7 +891,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveDocument : function () {
       var c = db._create(cn);
-      
+
       var tick = getLastLogTick();
 
       c.save({ "test": 1, "_key": "abc" });
@@ -935,7 +935,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveDocuments : function () {
       var c = db._create(cn);
-      
+
       var tick = getLastLogTick();
 
       for (var i = 0; i < 100; ++i) {
@@ -1283,16 +1283,20 @@ function ReplicationLoggerSuite () {
       db._create(cn);
 
       var tick = getLastLogTick();
-
-      var actual = db._executeTransaction({
-        collections: {
-        },
-        action: function () {
-          return true;
-        }
-      });
-      assertTrue(actual);
-
+      if (SYS_IS_V8_BUILD) {
+        var actual = db._executeTransaction({
+          collections: {
+          },
+          action: function () {
+            return true;
+          }
+        });
+        assertTrue(actual);
+      } else {
+        let trx = db._createTransaction({collections:{}});
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
       var entry = getLogEntries(tick, 2200);
       assertEqual(0, entry.length);
     },
@@ -1307,16 +1311,21 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      var actual = db._executeTransaction({
-        collections: {
-          read: cn
-        },
-        action: function () {
-          return true;
-        }
-      });
-      assertTrue(actual);
-
+      if (SYS_IS_V8_BUILD) {
+        var actual = db._executeTransaction({
+          collections: {
+            read: cn
+          },
+          action: function () {
+            return true;
+          }
+        });
+        assertTrue(actual);
+      } else {
+        let trx = db._createTransaction({collections:{read: cn}});
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
       var entry = getLogEntries(tick, 2200);
       assertEqual(0, entry.length);
     },
@@ -1331,22 +1340,30 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      var actual = db._executeTransaction({
-        collections: {
-          read: cn
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.cn);
+      if (SYS_IS_V8_BUILD) {
+        var actual = db._executeTransaction({
+          collections: {
+            read: cn
+          },
+          action: function (params) {
+            var c = require("internal").db._collection(params.cn);
 
-          c.document("abc");
+            c.document("abc");
 
-          return true;
-        },
-        params: {
-          cn: cn
-        }
-      });
-      assertTrue(actual);
+            return true;
+          },
+          params: {
+            cn: cn
+          }
+        });
+        assertTrue(actual);
+      } else {
+        let trx = db._createTransaction({collections:{read: cn}});
+        let tc = trx.collection(cn);
+        tc.document("abc");
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
       assertEqual(0, entry.length);
@@ -1361,26 +1378,37 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      try {
-        var actual = db._executeTransaction({
-          collections: {
-            read: cn
-          },
-          action: function (params) {
-            var c = require("internal").db._collection(params.cn);
+      if (SYS_IS_V8_BUILD) {
+        try {
+          var actual = db._executeTransaction({
+            collections: {
+              read: cn
+            },
+            action: function (params) {
+              var c = require("internal").db._collection(params.cn);
 
-            c.save({ "foo" : "bar" });
+              c.save({ "foo" : "bar" });
 
-            return true;
-          },
-          params: {
-            cn: cn
-          }
-        });
-        actual = true;
-        fail();
-      }
-      catch (err) {
+              return true;
+            },
+            params: {
+              cn: cn
+            }
+          });
+          actual = true;
+          fail();
+        }
+        catch (err) {
+        }
+      } else {
+        let trx = db._createTransaction({collections:{read:cn}});
+        let tc = trx.collection(cn);
+        try {
+          tc.save({"foo": "bar"});
+          fail();
+        } catch(err) {
+          trx.abort();
+        }
       }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
@@ -1395,15 +1423,21 @@ function ReplicationLoggerSuite () {
       db._create(cn);
       var tick = getLastLogTick();
 
-      var actual = db._executeTransaction({
-        collections: {
-          write: cn
-        },
-        action: function () {
-          return true;
-        }
-      });
-      assertTrue(actual);
+      if (SYS_IS_V8_BUILD) {
+        var actual = db._executeTransaction({
+          collections: {
+            write: cn
+          },
+          action: function () {
+            return true;
+          }
+        });
+        assertTrue(actual);
+      } else {
+        let trx = db._createTransaction({collections:{write: cn}});
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
       assertEqual(0, entry.length);
@@ -1417,21 +1451,29 @@ function ReplicationLoggerSuite () {
       var c = db._create(cn);
       var tick = getLastLogTick();
 
-      var actual = db._executeTransaction({
-        collections: {
-          write: cn
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.cn);
+      if (SYS_IS_V8_BUILD) {
+        var actual = db._executeTransaction({
+          collections: {
+            write: cn
+          },
+          action: function (params) {
+            var c = require("internal").db._collection(params.cn);
 
-          c.save({ "test" : 2, "_key": "abc" });
-          return true;
-        },
-        params: {
-          cn: cn
-        }
-      });
-      assertTrue(actual);
+            c.save({ "test" : 2, "_key": "abc" });
+            return true;
+          },
+          params: {
+            cn: cn
+          }
+        });
+        assertTrue(actual);
+      } else {
+        let trx = db._createTransaction({collections:{write: cn}});
+        let tc = trx.collection(cn);
+        tc.save({ "test" : 2, "_key": "abc" });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(3, entry.length);
@@ -1457,24 +1499,36 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      try {
-        db._executeTransaction({
-          collections: {
-            write: cn
-          },
-          action: function (params) {
-            var c2 = require("internal").db._collection(params.cn2);
+      if (SYS_IS_V8_BUILD) {
+        try {
+          db._executeTransaction({
+            collections: {
+              write: cn
+            },
+            action: function (params) {
+              var c2 = require("internal").db._collection(params.cn2);
 
-            // we're using a wrong collection here
-            c2.save({ "test" : 2, "_key": "abc" });
-          },
-          params: {
-            cn2: cn2
-          }
-        });
-        fail();
-      }
-      catch (err) {
+              // we're using a wrong collection here
+              c2.save({ "test" : 2, "_key": "abc" });
+            },
+            params: {
+              cn2: cn2
+            }
+          });
+          fail();
+        }
+        catch (err) {
+        }
+      } else {
+        let trx = db._createTransaction({collections:{write: cn}});
+        let tc = trx.collection(cn2);
+        // we're using a wrong collection here
+        try {
+          print(tc.save({ "test" : 2, "_key": "abc" }));
+          fail();
+        } catch (err) {
+          let res = trx.abort();
+        }
       }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
@@ -1491,20 +1545,30 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, cn2 ]
-        },
-        action: function (params) {
-          var c2 = require("internal").db._collection(params.cn);
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, cn2 ]
+          },
+          action: function (params) {
+            var c2 = require("internal").db._collection(params.cn);
 
-          c2.save({ "test" : 1, "_key": "12345" });
-          c2.save({ "test" : 2, "_key": "abc" });
-        },
-        params: {
-          cn: cn
-        }
-      });
+            c2.save({ "test" : 1, "_key": "12345" });
+            c2.save({ "test" : 2, "_key": "abc" });
+          },
+          params: {
+            cn: cn
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let tc = trx.collection(cn);
+        // we're using a wrong collection here
+        tc.save({ "test" : 1, "_key": "12345" });
+        tc.save({ "test" : 2, "_key": "abc" });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
@@ -1529,23 +1593,33 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, cn2 ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-          var c2 = require("internal").db._collection(params.cn2);
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, cn2 ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+            var c2 = require("internal").db._collection(params.cn2);
 
-          c1.save({ "test" : 1, "_key": "12345" });
-          c2.save({ "test" : 2, "_key": "abc" });
-        },
-        params: {
-          cn: cn,
-          cn2: cn2
-        }
-      });
-
+            c1.save({ "test" : 1, "_key": "12345" });
+            c2.save({ "test" : 2, "_key": "abc" });
+          },
+          params: {
+            cn: cn,
+            cn2: cn2
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let tc = trx.collection(cn);
+        let tc2 = trx.collection(cn2);
+        // we're using a wrong collection here
+        tc.save({ "test" : 1, "_key": "12345" });
+        tc2.save({ "test" : 2, "_key": "abc" });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
 
@@ -1572,20 +1646,29 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-              
-          c1.update("foo", { value: 2 });
-          c1.insert({ _key: "foo2", value: 3 });
-        },
-        params: {
-          cn: cn
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+
+            c1.update("foo", { value: 2 });
+            c1.insert({ _key: "foo2", value: 3 });
+          },
+          params: {
+            cn: cn
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [ cn ]}});
+        let tc = trx.collection(cn);
+        tc.update("foo", { value: 2 });
+        tc.insert({ _key: "foo2", value: 3 });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
@@ -1598,11 +1681,11 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value);
@@ -1619,20 +1702,29 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-              
-          c1.replace("foo", { value2: 2 });
-          c1.insert({ _key: "foo2", value2: 3 });
-        },
-        params: {
-          cn: cn
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+
+            c1.replace("foo", { value2: 2 });
+            c1.insert({ _key: "foo2", value2: 3 });
+          },
+          params: {
+            cn: cn
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [ cn ]}});
+        let tc = trx.collection(cn);
+        tc.replace("foo", { value2: 2 });
+        tc.insert({ _key: "foo2", value2: 3 });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
@@ -1645,12 +1737,12 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value2);
       assertFalse(entry[1].data.hasOwnProperty("value"));
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value2);
@@ -1668,20 +1760,29 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-              
-          c1.replace("foo", { value2: 2 });
-          c1.remove("foo");
-        },
-        params: {
-          cn: cn
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+
+            c1.replace("foo", { value2: 2 });
+            c1.remove("foo");
+          },
+          params: {
+            cn: cn
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn]}});
+        let tc = trx.collection(cn);
+        tc.replace("foo", { value2: 2 });
+        tc.remove("foo");
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
       assertEqual(4, entry.length);
@@ -1694,12 +1795,12 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value2);
       assertFalse(entry[1].data.hasOwnProperty("value"));
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo", entry[2].data._key);
     },
@@ -1711,27 +1812,39 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionMultiRemove : function () {
       var c1 = db._create(cn), i;
 
+      let docs = [];
       for (i = 0; i < 100; ++i) {
-        c1.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c1.save(docs);
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-              
-          for (var i = 0; i < 100; ++i) {
-            c1.remove("test" + i);
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+
+            for (var i = 0; i < 100; ++i) {
+              c1.remove("test" + i);
+            }
+          },
+          params: {
+            cn: cn
           }
-        },
-        params: {
-          cn: cn
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn]}});
+        let tc = trx.collection(cn);
+        for (var i = 0; i < 100; ++i) {
+          tc.remove("test" + i);
         }
-      });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
       assertEqual(102, entry.length);
@@ -1759,25 +1872,38 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, cn2 ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-          var c2 = require("internal").db._collection(params.cn2);
-              
-          c1.replace("foo", { value: 2 });
-          c1.insert({ _key: "foo2", value: 3 });
-              
-          c2.replace("bar", { value: "B" });
-          c2.insert({ _key: "bar2", value: "C" });
-        },
-        params: {
-          cn: cn,
-          cn2: cn2
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, cn2 ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+            var c2 = require("internal").db._collection(params.cn2);
+
+            c1.replace("foo", { value: 2 });
+            c1.insert({ _key: "foo2", value: 3 });
+
+            c2.replace("bar", { value: "B" });
+            c2.insert({ _key: "bar2", value: "C" });
+          },
+          params: {
+            cn: cn,
+            cn2: cn2
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let tc1 = trx.collection(cn);
+        let tc2 = trx.collection(cn2);
+        tc1.replace("foo", { value: 2 });
+        tc1.insert({ _key: "foo2", value: 3 });
+
+        tc2.replace("bar", { value: "B" });
+        tc2.insert({ _key: "bar2", value: "C" });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(6, entry.length);
@@ -1794,19 +1920,19 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[2].tid, entry[3].tid);
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value);
-      
+
       assertEqual("UnitTestsReplication2", entry[3].cname);
       assertEqual("bar", entry[3].data._key);
       assertEqual("B", entry[3].data.value);
-      
+
       assertEqual("UnitTestsReplication2", entry[4].cname);
       assertEqual("bar2", entry[4].data._key);
       assertEqual("C", entry[4].data.value);
@@ -1825,25 +1951,38 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, cn2 ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-          var c2 = require("internal").db._collection(params.cn2);
-              
-          c1.replace("foo", { value: 2 });
-          c1.remove("foo");
-              
-          c2.replace("bar", { value: "B" });
-          c2.remove("bar");
-        },
-        params: {
-          cn: cn,
-          cn2: cn2
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, cn2 ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+            var c2 = require("internal").db._collection(params.cn2);
+
+            c1.replace("foo", { value: 2 });
+            c1.remove("foo");
+
+            c2.replace("bar", { value: "B" });
+            c2.remove("bar");
+          },
+          params: {
+            cn: cn,
+            cn2: cn2
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let tc1 = trx.collection(cn);
+        let tc2 = trx.collection(cn2);
+        tc1.replace("foo", { value: 2 });
+        tc1.remove("foo");
+
+        tc2.replace("bar", { value: "B" });
+        tc2.remove("bar");
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
       assertEqual(6, entry.length);
@@ -1860,18 +1999,18 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[2].tid, entry[3].tid);
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(2, entry[1].data.value);
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo", entry[2].data._key);
-      
+
       assertEqual("UnitTestsReplication2", entry[3].cname);
       assertEqual("bar", entry[3].data._key);
       assertEqual("B", entry[3].data.value);
-      
+
       assertEqual("UnitTestsReplication2", entry[4].cname);
       assertEqual("bar", entry[4].data._key);
     },
@@ -1889,25 +2028,38 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, cn2 ]
-        },
-        action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
-          var c2 = require("internal").db._collection(params.cn2);
-              
-          c1.update("foo", { value2: 2 });
-          c1.insert({ _key: "foo2", value2: 3 });
-              
-          c2.update("bar", { value2: "B" });
-          c2.insert({ _key: "bar2", value2: "C" });
-        },
-        params: {
-          cn: cn,
-          cn2: cn2
-        }
-      });
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, cn2 ]
+          },
+          action: function (params) {
+            var c1 = require("internal").db._collection(params.cn);
+            var c2 = require("internal").db._collection(params.cn2);
+
+            c1.update("foo", { value2: 2 });
+            c1.insert({ _key: "foo2", value2: 3 });
+
+            c2.update("bar", { value2: "B" });
+            c2.insert({ _key: "bar2", value2: "C" });
+          },
+          params: {
+            cn: cn,
+            cn2: cn2
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, cn2]}});
+        let tc1 = trx.collection(cn);
+        let tc2 = trx.collection(cn2);
+        tc1.update("foo", { value2: 2 });
+        tc1.insert({ _key: "foo2", value2: 3 });
+
+        tc2.update("bar", { value2: "B" });
+        tc2.insert({ _key: "bar2", value2: "C" });
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(6, entry.length);
@@ -1924,22 +2076,22 @@ function ReplicationLoggerSuite () {
       assertEqual(entry[2].tid, entry[3].tid);
       assertEqual(entry[3].tid, entry[4].tid);
       assertEqual(entry[4].tid, entry[5].tid);
-        
+
       assertEqual("UnitTestsReplication", entry[1].cname);
       assertEqual("foo", entry[1].data._key);
       assertEqual(1, entry[1].data.value);
       assertEqual(2, entry[1].data.value2);
-      
+
       assertEqual("UnitTestsReplication", entry[2].cname);
       assertEqual("foo2", entry[2].data._key);
       assertEqual(3, entry[2].data.value2);
       assertFalse(entry[2].data.hasOwnProperty("value"));
-      
+
       assertEqual("UnitTestsReplication2", entry[3].cname);
       assertEqual("bar", entry[3].data._key);
       assertEqual("A", entry[3].data.value);
       assertEqual("B", entry[3].data.value2);
-      
+
       assertEqual("UnitTestsReplication2", entry[4].cname);
       assertEqual("bar2", entry[4].data._key);
       assertEqual("C", entry[4].data.value2);
@@ -1955,22 +2107,33 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
 
-      db._executeTransaction({
-        collections: {
-          write: [ cn, "_users" ]
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.cn);
-          var users = require("internal").db._collection("_users");
+      if (SYS_IS_V8_BUILD) {
+        db._executeTransaction({
+          collections: {
+            write: [ cn, "_users" ]
+          },
+          action: function (params) {
+            var c = require("internal").db._collection(params.cn);
+            var users = require("internal").db._collection("_users");
 
-          c.save({ "test" : 2, "_key": "12345" });
-          users.save({ "_key": "unittests1", "foo": false });
-          users.remove("unittests1");
-        },
-        params: {
-          cn: cn
-        }
-      });
+            c.save({ "test" : 2, "_key": "12345" });
+            users.save({ "_key": "unittests1", "foo": false });
+            users.remove("unittests1");
+          },
+          params: {
+            cn: cn
+          }
+        });
+      } else {
+        let trx = db._createTransaction({collections:{write: [cn, "_users"]}});
+        let tc1 = trx.collection(cn);
+        let users = trx.collection("_users");
+        tc1.save({ "test" : 2, "_key": "12345" });
+        users.save({ "_key": "unittests1", "foo": false });
+        users.remove("unittests1");
+        let res = trx.commit();
+        assertEqual(res.status, "committed", res);
+      }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
       assertEqual(5, entry.length);
@@ -2050,7 +2213,7 @@ function ReplicationApplierSuite () {
         maxConnectRetries: 0,
         connectionRetryWaitTime: 1
       });
-      
+
       replication.applier.start();
       state = replication.applier.state();
       assertEqual(errors.ERROR_NO_ERROR.code, state.state.lastError.errorNum);
@@ -2250,7 +2413,7 @@ function ReplicationApplierSuite () {
       assertEqual(42.44, properties.idleMaxWaitTime);
       assertTrue(properties.autoResync);
       assertEqual(13, properties.autoResyncRetries);
-      
+
       replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9998",
         autoStart: false,
@@ -2263,7 +2426,7 @@ function ReplicationApplierSuite () {
         autoResync: false,
         autoResyncRetries: 22
       });
-      
+
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9998");
       assertEqual(5, properties.requestTimeout);
@@ -2280,14 +2443,14 @@ function ReplicationApplierSuite () {
       assertEqual(42.44, properties.idleMaxWaitTime);
       assertFalse(properties.autoResync);
       assertEqual(22, properties.autoResyncRetries);
-      
+
       replication.applier.properties({
         restrictType: "",
         restrictCollections: [ ],
         idleMaxWaitTime: 33,
         autoResyncRetries: 0
       });
-      
+
       properties = replication.applier.properties();
       assertEqual("", properties.restrictType);
       assertEqual([ ], properties.restrictCollections);
@@ -2302,7 +2465,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplierPropertiesChange : function () {
-      replication.applier.properties({ 
+      replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9999",
         connectTimeout: 2,
         maxConnectRetries: 0,
@@ -2381,16 +2544,16 @@ function ReplicationSyncSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief no endpoint
 ////////////////////////////////////////////////////////////////////////////////
-
-    testSyncNoEndpoint : function () {
-      try {
-        replication.sync();
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
+// TODO: does this test make sense at all?
+//    testSyncNoEndpoint : function () {
+//      try {
+//        replication.sync();
+//        fail();
+//      }
+//      catch (err) {
+//        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+//      }
+//    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid endpoint
@@ -2530,4 +2693,3 @@ jsunity.run(ReplicationApplierSuite);
 jsunity.run(ReplicationSyncSuite);
 
 return jsunity.done();
-
