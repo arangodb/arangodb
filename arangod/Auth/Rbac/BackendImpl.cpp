@@ -61,6 +61,10 @@ namespace {
 template<typename T>
 auto buildJsonBody(T& value) -> ResultT<std::string> {
   std::ostringstream stream;
+  // TODO The JsonPrintInspector does not (yet) escape strings!
+  //      This needs to be resolved before merging, either by implementing
+  //      escaping in the JsonPrintInspector, or by serializing into VelocyPack
+  //      first, and then converting the VelocyPack to JSON.
   inspection::JsonPrintInspector<> inspector{
       stream, inspection::JsonPrintFormat::kMinimal};
   auto res = inspector.apply(value);
@@ -74,6 +78,10 @@ auto buildJsonBody(T& value) -> ResultT<std::string> {
 
 auto parseEvaluateResponseMany(std::string_view jsonBody)
     -> ResultT<Backend::EvaluateResponseMany> {
+  // TODO We parse the JSON response into a VelocyPack first, and then
+  //      use the VPackLoadInspector to convert it into a EvaluateResponseMany.
+  //      This is not optimal, but we currently don't have an
+  //      inspection::JsonLoadInspector.
   std::shared_ptr<velocypack::Builder> builder;
   try {
     builder = velocypack::Parser::fromJson(jsonBody);

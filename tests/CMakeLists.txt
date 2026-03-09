@@ -181,7 +181,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/RbacBackendTest.cpp
+  Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
+  Auth/SmockerClient.cpp
   Auth/RbacServiceTest.cpp
   Auth/RbacServiceImplTest.cpp
   Auth/UserManagerClusterTest.cpp
