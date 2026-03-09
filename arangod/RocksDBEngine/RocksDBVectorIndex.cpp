@@ -268,7 +268,8 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.add("documentCount", VPackValue(_documentCount.load()));
   }
 
-  if (_faissIndex && Index::hasFlag(flags, Index::Serialize::Internals) &&
+  if (_trainingState.load() == VectorIndexTrainingState::kReady &&
+      Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     auto td = vector::serializeIndex(*_faissIndex);
     builder.add(VPackValue("trainedData"));
