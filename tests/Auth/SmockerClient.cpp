@@ -116,8 +116,8 @@ void SmockerClient::start() {
   ASSERT_EQ(status._exitStatus, 0) << "docker run exited with non-zero status";
 
   auto config = network::ConnectionPool::Config();
-  config.metrics = network::ConnectionPool::Metrics::createStub(
-      "SmockerClient admin");
+  config.metrics =
+      network::ConnectionPool::Metrics::createStub("SmockerClient admin");
   adminPool_ = std::make_unique<network::ConnectionPool>(config);
 
   for (auto start = std::chrono::steady_clock::now();
@@ -149,8 +149,7 @@ void SmockerClient::resetMocks() {
 void SmockerClient::addMock(std::string const& path, int status,
                             std::string const& responseBody) {
   // TODO JsonPrintInspector doesn't escape string contents — fix that.
-  auto escapedBody =
-      basics::StringUtils::escapeUnicode(responseBody, false);
+  auto escapedBody = basics::StringUtils::escapeUnicode(responseBody, false);
   auto mocks = std::vector<SmockerMockDef>{{
       .request = {.method = "POST", .path = path},
       .response =
@@ -167,8 +166,7 @@ void SmockerClient::addMock(std::string const& path, int status,
       << "Failed to add smocker mock: " << res->payloadAsString();
 }
 
-auto SmockerClient::sendToAdmin(fuerte::RestVerb verb,
-                                std::string const& path,
+auto SmockerClient::sendToAdmin(fuerte::RestVerb verb, std::string const& path,
                                 std::string const& body)
     -> std::unique_ptr<fuerte::Response> {
   bool isFromPool = false;

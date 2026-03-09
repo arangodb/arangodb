@@ -97,17 +97,17 @@ struct Backend {
 
   // public API, synchronous versions
   [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateTokenManySync(JwtToken const&,
-                        RequestItems const&) -> ResultT<EvaluateResponseMany>;
+  evaluateTokenManySync(JwtToken const&, RequestItems const&)
+      -> ResultT<EvaluateResponseMany>;
   [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateManySync(PlainUser const&,
-                   RequestItems const&) -> ResultT<EvaluateResponseMany>;
+  evaluateManySync(PlainUser const&, RequestItems const&)
+      -> ResultT<EvaluateResponseMany>;
   [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateTokenSync(JwtToken const& jwtToken,
-                    RequestItem const& item) -> ResultT<EvaluateResponse>;
+  evaluateTokenSync(JwtToken const& jwtToken, RequestItem const& item)
+      -> ResultT<EvaluateResponse>;
   [[deprecated("Use the asynchronous counterpart instead")]] auto evaluateSync(
-      PlainUser const& user,
-      RequestItem const& item) -> ResultT<EvaluateResponse>;
+      PlainUser const& user, RequestItem const& item)
+      -> ResultT<EvaluateResponse>;
 
  protected:
   // API implementation

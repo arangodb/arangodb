@@ -74,8 +74,7 @@ auto Service::toAuthorizationQueries(Permission permission,
                     {std::format("db:{}Database", perm),
                      std::format("db:database:{}", c.database)}};
           },
-          [&](Category::Documents const& c)
-              -> std::vector<AuthorizationQuery> {
+          [&](Category::Documents const& c) -> std::vector<AuthorizationQuery> {
             return {
                 {std::format("db:{}Documents", perm),
                  std::format("db:collection:{}:{}", c.database, c.collection)},

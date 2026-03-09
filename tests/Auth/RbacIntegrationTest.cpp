@@ -52,8 +52,8 @@ auto buildAllowResponse(std::size_t numItems, std::string_view message = "")
     if (i > 0) items += ",";
     items += R"({"effect":"Allow","message":""})";
   }
-  return std::format(
-      R"({{"effect":"Allow","message":"{}","items":[{}]}})", message, items);
+  return std::format(R"({{"effect":"Allow","message":"{}","items":[{}]}})",
+                     message, items);
 }
 
 auto buildDenyResponse(std::size_t numItems,
@@ -64,8 +64,8 @@ auto buildDenyResponse(std::size_t numItems,
     if (i > 0) items += ",";
     items += std::format(R"({{"effect":"Deny","message":"{}"}})", message);
   }
-  return std::format(
-      R"({{"effect":"Deny","message":"{}","items":[{}]}})", message, items);
+  return std::format(R"({{"effect":"Deny","message":"{}","items":[{}]}})",
+                     message, items);
 }
 
 auto buildMixedResponse(std::initializer_list<std::string_view> effects)
@@ -80,8 +80,8 @@ auto buildMixedResponse(std::initializer_list<std::string_view> effects)
     if (effect == "Deny") anyDeny = true;
   }
   auto overallEffect = anyDeny ? "Deny" : "Allow";
-  return std::format(
-      R"({{"effect":"{}","message":"","items":[{}]}})", overallEffect, items);
+  return std::format(R"({{"effect":"{}","message":"","items":[{}]}})",
+                     overallEffect, items);
 }
 
 }  // namespace
@@ -115,8 +115,7 @@ struct RbacIntegrationTest : ::testing::Test {
 
   static auto makeSender(network::ConnectionPool& pool) -> network::Sender {
     return [&pool](network::DestinationId const& dest, fuerte::RestVerb verb,
-                   std::string const& path,
-                   velocypack::Buffer<uint8_t> payload,
+                   std::string const& path, velocypack::Buffer<uint8_t> payload,
                    network::RequestOptions const&,
                    network::Headers) -> network::FutureRes {
       bool isFromPool = false;
@@ -154,10 +153,10 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Allow) {
   _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(1));
   auto service = makeService();
 
-  auto result = service->maySync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Database{.name = "mydb"});
+  auto result =
+      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                       rbac::Service::Permission::Read,
+                       rbac::Service::Category::Database{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_TRUE(result.get());
@@ -167,10 +166,10 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_Deny) {
   _smocker->addMock(kEvaluateTokenManyPath, 200, buildDenyResponse(1));
   auto service = makeService();
 
-  auto result = service->maySync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Database{.name = "mydb"});
+  auto result =
+      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                       rbac::Service::Permission::Read,
+                       rbac::Service::Category::Database{.name = "mydb"});
 
   ASSERT_TRUE(result.ok()) << result.result().errorMessage();
   EXPECT_FALSE(result.get());
@@ -180,10 +179,10 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_HttpServerError) {
   _smocker->addMock(kEvaluateTokenManyPath, 500, R"({"error":"internal"})");
   auto service = makeService();
 
-  auto result = service->maySync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Database{.name = "mydb"});
+  auto result =
+      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                       rbac::Service::Permission::Read,
+                       rbac::Service::Category::Database{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }
@@ -192,10 +191,10 @@ TEST_F(RbacIntegrationTest, ServiceMaySync_MalformedResponse) {
   _smocker->addMock(kEvaluateTokenManyPath, 200, "not valid json {{{");
   auto service = makeService();
 
-  auto result = service->maySync(
-      rbac::Service::User{.jwtToken = "test.jwt.token"},
-      rbac::Service::Permission::Read,
-      rbac::Service::Category::Database{.name = "mydb"});
+  auto result =
+      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
+                       rbac::Service::Permission::Read,
+                       rbac::Service::Category::Database{.name = "mydb"});
 
   EXPECT_FALSE(result.ok());
 }

@@ -70,10 +70,9 @@ TEST(RbacServiceImplTest, maySync_allow_returnsTrue) {
   mock->nextEffect = rbac::Backend::Effect::Allow;
   rbac::ServiceImpl svc{std::move(mock)};
 
-  auto result =
-      svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                  rbac::Service::Permission::Read,
-                  rbac::Service::Category::Database{.name = "mydb"});
+  auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
+                            rbac::Service::Permission::Read,
+                            rbac::Service::Category::Database{.name = "mydb"});
 
   ASSERT_TRUE(result.ok());
   EXPECT_TRUE(result.get());
@@ -112,10 +111,10 @@ TEST(RbacServiceImplTest, maySync_collection_sends_hierarchy) {
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
-  svc.maySync(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Read,
-              rbac::Service::Category::Collection{.database = "mydb",
-                                                  .name = "edges"});
+  svc.maySync(
+      rbac::Service::User{.jwtToken = testToken},
+      rbac::Service::Permission::Read,
+      rbac::Service::Category::Collection{.database = "mydb", .name = "edges"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 2);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");
@@ -185,10 +184,9 @@ TEST(RbacServiceImplTest, maySync_backendError_propagatesError) {
 
   rbac::ServiceImpl svc{std::make_unique<ErrorBackend>()};
 
-  auto result =
-      svc.maySync(rbac::Service::User{.jwtToken = testToken},
-                  rbac::Service::Permission::Read,
-                  rbac::Service::Category::Databases{});
+  auto result = svc.maySync(rbac::Service::User{.jwtToken = testToken},
+                            rbac::Service::Permission::Read,
+                            rbac::Service::Category::Databases{});
 
   EXPECT_FALSE(result.ok());
 }
@@ -198,11 +196,10 @@ TEST(RbacServiceImplTest, may_async_collection_sends_hierarchy) {
   auto* mockPtr = rawMock.get();
   rbac::ServiceImpl svc{std::move(rawMock)};
 
-  std::ignore =
-      svc.may(rbac::Service::User{.jwtToken = testToken},
-              rbac::Service::Permission::Read,
-              rbac::Service::Category::Collection{.database = "mydb",
-                                                  .name = "edges"});
+  std::ignore = svc.may(
+      rbac::Service::User{.jwtToken = testToken},
+      rbac::Service::Permission::Read,
+      rbac::Service::Category::Collection{.database = "mydb", .name = "edges"});
 
   ASSERT_EQ(mockPtr->lastItems.size(), 2);
   EXPECT_EQ(mockPtr->lastItems[0].action, "db:ReadCollection");

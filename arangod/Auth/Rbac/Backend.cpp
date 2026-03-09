@@ -23,7 +23,6 @@
 
 #include "Backend.h"
 
-
 namespace arangodb::rbac {
 
 auto Backend::evaluateTokenMany(Backend::JwtToken const& jwtToken,
@@ -81,5 +80,4 @@ auto Backend::evaluateSync(Backend::PlainUser const& user,
       .waitAndGet();
 }
 
-} // namespace arangodb::rbac
-
+}  // namespace arangodb::rbac

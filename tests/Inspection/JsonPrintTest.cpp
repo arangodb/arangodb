@@ -40,8 +40,7 @@ struct FieldAfterMap {
 
   template<class Inspector>
   friend auto inspect(Inspector& f, FieldAfterMap& x) {
-    return f.object(x).fields(f.field("before", x.before),
-                              f.field("m", x.m),
+    return f.object(x).fields(f.field("before", x.before), f.field("m", x.m),
                               f.field("after", x.after));
   }
 };

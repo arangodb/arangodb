@@ -82,9 +82,9 @@ struct Service {
   auto may(User user, Permission permission,
            Category::Any const& category) noexcept -> async<ResultT<bool>>;
 
-  [[deprecated("Use the asynchronous counterpart instead")]]
-  auto maySync(User user, Permission permission,
-               Category::Any const& category) noexcept -> ResultT<bool>;
+  [[deprecated("Use the asynchronous counterpart instead")]] auto maySync(
+      User user, Permission permission, Category::Any const& category) noexcept
+      -> ResultT<bool>;
 
   struct PermissionQuery {
     Permission permission;
@@ -97,8 +97,8 @@ struct Service {
   auto mayAll(User user, std::vector<PermissionQuery> queries) noexcept
       -> async<ResultT<bool>>;
 
-  [[deprecated("Use the asynchronous counterpart instead")]]
-  auto mayAllSync(User user, std::vector<PermissionQuery> queries) noexcept
+  [[deprecated("Use the asynchronous counterpart instead")]] auto mayAllSync(
+      User user, std::vector<PermissionQuery> queries) noexcept
       -> ResultT<bool>;
 
  private:

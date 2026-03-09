@@ -216,8 +216,7 @@ struct JsonPrintInspector
 
   template<class T>
   [[nodiscard]] auto processMap(T const& map) -> Status {
-    using KeyType =
-        std::remove_cvref_t<decltype(map.begin()->first)>;
+    using KeyType = std::remove_cvref_t<decltype(map.begin()->first)>;
     auto end = map.end();
     _stream << _linebreak;
     for (auto it = map.begin(); it != end;) {

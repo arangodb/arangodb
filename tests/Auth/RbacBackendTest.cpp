@@ -236,8 +236,7 @@ TEST(RbacBackendTest, evaluateManySync_setsSkipSchedulerAndReturnsResult) {
   EXPECT_TRUE(result.ok());
 }
 
-TEST(RbacBackendTest,
-     evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
+TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
   auto responseJson = buildAllowResponseJson();
 
   auto sendRequestMock = [&](network::DestinationId const&, fuerte::RestVerb,

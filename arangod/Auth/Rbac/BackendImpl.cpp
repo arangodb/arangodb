@@ -104,7 +104,8 @@ auto parseEvaluateResponseMany(std::string_view jsonBody)
   return result;
 }
 
-auto makeJsonRequestOptions(transaction::MethodsApi api) -> network::RequestOptions {
+auto makeJsonRequestOptions(transaction::MethodsApi api)
+    -> network::RequestOptions {
   return network::RequestOptions{
       .contentType = StaticStrings::MimeTypeJson,
       .acceptType = StaticStrings::MimeTypeJson,
@@ -135,9 +136,10 @@ auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
     co_return bodyResult.result();
   }
 
-  auto response = co_await sendRequest(
-      fuerte::RestVerb::Post,
-      "/_integration/authorization/v1/evaluate-token-many", bodyResult.get(), api);
+  auto response =
+      co_await sendRequest(fuerte::RestVerb::Post,
+                           "/_integration/authorization/v1/evaluate-token-many",
+                           bodyResult.get(), api);
 
   if (auto result = response.combinedResult(); result.fail()) {
     co_return result;
@@ -175,13 +177,15 @@ auto BackendImpl::evaluateManyImpl(PlainUser const& user,
 }
 
 auto BackendImpl::sendRequest(arangodb::fuerte::RestVerb verb, std::string path,
-                              std::string_view payload, transaction::MethodsApi api)
+                              std::string_view payload,
+                              transaction::MethodsApi api)
     -> futures::Future<network::Response> {
   // TODO It's currently necessary to copy the data once, because the inspector
   //      can only write into an stream, but the network Methods only take a
   //      velocypack::Buffer as payload.
-  auto fut = _sendRequest(_authorizationEndpoint, verb, std::move(path),
-                      jsonToPayload(payload), makeJsonRequestOptions(api), {});
+  auto fut =
+      _sendRequest(_authorizationEndpoint, verb, std::move(path),
+                   jsonToPayload(payload), makeJsonRequestOptions(api), {});
   if (api == transaction::MethodsApi::Synchronous) {
     // Wait here if the caller is synchronous, because in this case,
     // skipScheduler is set, and we must not execute arbitrary code on the

@@ -93,8 +93,7 @@ TEST(RbacServiceTest, Collection_write_requires_WriteDatabase) {
 
 TEST(RbacServiceTest, View_requires_ReadDatabase) {
   MockService svc;
-  svc.maySync({}, Perm::Write,
-              Cat::View{.database = "mydb", .name = "search"});
+  svc.maySync({}, Perm::Write, Cat::View{.database = "mydb", .name = "search"});
   ASSERT_EQ(svc.lastQueries.size(), 2);
   EXPECT_EQ(svc.lastQueries[0].action, "db:WriteView");
   EXPECT_EQ(svc.lastQueries[0].resource, "db:view:mydb:search");
@@ -129,9 +128,8 @@ TEST(RbacServiceTest, Documents_requires_ReadCollection_and_ReadDatabase) {
 TEST(RbacServiceTest, mayAllSync_combines_hierarchies) {
   MockService svc;
   svc.mayAllSync(
-      {},
-      {{Perm::Read, Cat::Database{.name = "db1"}},
-       {Perm::Read, Cat::Collection{.database = "db2", .name = "col"}}});
+      {}, {{Perm::Read, Cat::Database{.name = "db1"}},
+           {Perm::Read, Cat::Collection{.database = "db2", .name = "col"}}});
   // Database: 1 query, Collection: 2 queries
   ASSERT_EQ(svc.lastQueries.size(), 3);
   EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDatabase");
@@ -161,8 +159,7 @@ TEST(RbacServiceTest, may_async) {
 TEST(RbacServiceTest, mayAll_async) {
   MockService svc;
   auto result = svc.mayAll(
-      {},
-      {{Perm::Read, Cat::Documents{.database = "db", .collection = "c"}}});
+      {}, {{Perm::Read, Cat::Documents{.database = "db", .collection = "c"}}});
   ASSERT_EQ(svc.lastQueries.size(), 3);
   EXPECT_EQ(svc.lastQueries[0].action, "db:ReadDocuments");
   EXPECT_EQ(svc.lastQueries[1].action, "db:ReadCollection");
