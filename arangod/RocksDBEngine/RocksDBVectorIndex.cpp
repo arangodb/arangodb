@@ -165,8 +165,8 @@ void RocksDBVectorIndex::joinBuildThread() noexcept {
 }
 
 RocksDBVectorIndex::~RocksDBVectorIndex() {
-  deregisterMetrics();
   joinBuildThread();
+  deregisterMetrics();
 }
 
 namespace {
@@ -371,6 +371,8 @@ void RocksDBVectorIndex::tryBuilding() {
           std::memory_order_acq_rel, std::memory_order_acquire)) {
     return;  // another thread already started training, or state changed
   }
+
+  _stateEnteredAt = std::chrono::steady_clock::now();
 
   LOG_VECTOR_INDEX("e161b", INFO, Logger::ENGINES)
       << "Training threshold reached (" << _trainingThreshold
