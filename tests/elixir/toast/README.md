@@ -1,9 +1,9 @@
-# TOAST — **TO**olkit for **A**rango **S**ystem **T**oasting, ah, Testing
+# 🥑 TOAST 🍞
 
-TOAST is an Elixir-based integration testing framework for ArangoDB. It manages
-ArangoDB server deployments (single-server and cluster), runs tests against them,
-collects diagnostics (crash logs, sanitizer errors, core dumps), and produces
-CI-friendly reports (JSON, JUnit XML).
+**TO**olkit for **A**rango **S**ystem **T**oasting, ah, Testing is an Elixir-based
+integration testing framework for ArangoDB. It manages ArangoDB server deployments
+(single-server and cluster), runs tests against them, collects diagnostics (crash
+logs, sanitizer errors, core dumps), and produces CI-friendly reports (JSON, JUnit XML).
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ A minimal test suite consists of two files under `suites/<name>/`:
 
 ```
 suites/
-  smoke/
+  smoke/              # Suite name
     suite.ex          # Suite definition
     test_version.exs  # Test file (must start with test_)
 ```
@@ -49,6 +49,8 @@ defmodule Smoke.VersionTest do
 end
 ```
 
+Note: the module names of all files belonging to a suite must be namespaced with the suite name.
+
 ## Running Tests
 
 ### Command-Line Usage
@@ -68,7 +70,7 @@ mix toast smoke resilience          # Run multiple suites
 
 ### Filtering Tests
 
-Filter by file within a suite using `suite_name/file`:
+Filter by file within a suite using `<suite_name>/<file>`:
 
 ```bash
 mix toast smoke/test_version.exs
@@ -126,10 +128,8 @@ mix toast --include edge_case
 | `--exclude` / `-e` | Exclude tests matching the filter |
 | `--only` | Run only tests matching the filter |
 | `--trace` / `-t` | Enable verbose per-test output |
-| `--max-cases N` | Maximum concurrent test modules |
 | `--timeout MS` | Per-test timeout (ExUnit level) |
 | `--max-failures N` | Stop after N failures |
-| `--formatter MODULE` | Add a custom formatter module |
 | `--color` / `--no-color` | Enable/disable ANSI coloring |
 | `--no-compile` | Skip project compilation |
 | `--no-start` | Skip application startup |
@@ -539,9 +539,9 @@ mix toast.analyze toast-results/results.json --slow 20
 |---|---|
 | 0 | All tests passed |
 | 1 | Test failures |
-| 2 | Infrastructure failure (deployment failed to start, etc.) |
-| 3 | Server crash |
-| 4 | Sanitizer errors detected |
+| 2 | Sanitizer errors detected |
+| 3 | Infrastructure failure (deployment failed to start, etc.) |
+| 4 | Server crash |
 
 ### CI Mode
 
